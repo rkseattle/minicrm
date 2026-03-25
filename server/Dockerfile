@@ -15,6 +15,7 @@ RUN npm ci --workspace=server --omit=dev
 # Copy source files needed at runtime
 COPY server/ ./server/
 COPY shared/ ./shared/
+COPY db/ ./db/
 
 EXPOSE 3001
 

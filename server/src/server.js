@@ -6,6 +6,7 @@
 import 'dotenv/config';
 import app from './app.js';
 import logger from './logger.js';
+import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 
 /** Default port for the API server */
@@ -15,5 +16,6 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 app.listen(port, async () => {
   logger.info(`MiniCRM API server listening on port ${port}`);
+  await runMigrations();
   await seedDefaultAdmin();
 });
