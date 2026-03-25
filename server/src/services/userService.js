@@ -3,7 +3,11 @@
  * Business logic belongs here. Controllers must not query the database directly.
  */
 
+import bcrypt from 'bcrypt';
 import pool from '../db.js';
+
+/** Number of bcrypt salt rounds for password hashing */
+const BCRYPT_SALT_ROUNDS = 12;
 
 /**
  * @typedef {Object} UserRow
@@ -112,6 +116,39 @@ export async function listUsers() {
     'SELECT * FROM users ORDER BY created_at ASC',
   );
   return result.rows;
+}
+
+/**
+ * Seeds a default admin user if no users exist in the database.
+ * Reads credentials from ADMIN_EMAIL, ADMIN_NAME, and ADMIN_PASSWORD env vars.
+ * No-op if any user already exists.
+ *
+ * @returns {Promise<void>}
+ */
+export async function seedDefaultAdmin() {
+  const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
+  if (rows.length > 0) return;
+
+  const { ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } = process.env;
+
+  if (!ADMIN_EMAIL || !ADMIN_NAME || !ADMIN_PASSWORD) {
+    console.warn(
+      'Skipping default admin seed: ADMIN_EMAIL, ADMIN_NAME, or ADMIN_PASSWORD not set.',
+    );
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_SALT_ROUNDS);
+
+  await createUser({
+    email: ADMIN_EMAIL,
+    name: ADMIN_NAME,
+    role: 'admin',
+    passwordHash,
+    status: 'active',
+  });
+
+  console.log(`Default admin user created: ${ADMIN_EMAIL}`);
 }
 
 /**
