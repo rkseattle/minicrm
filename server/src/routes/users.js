@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   inviteUser,
   listUsers,
@@ -21,24 +22,24 @@ const router = Router();
  * Must be declared before the /:id routes so it is not treated as an ID param.
  * Unauthenticated — used by invited users to activate their account.
  */
-router.post('/set-password', setPassword);
+router.post('/set-password', asyncHandler(setPassword));
 
 /** All routes below require authentication + admin role */
 router.use(authenticate, requireRole('admin'));
 
 /** GET /api/users — list all users */
-router.get('/', listUsers);
+router.get('/', asyncHandler(listUsers));
 
 /** POST /api/users/invite — create an invited user */
-router.post('/invite', inviteUser);
+router.post('/invite', asyncHandler(inviteUser));
 
 /** PATCH /api/users/:id/role — change a user's role */
-router.patch('/:id/role', updateUserRole);
+router.patch('/:id/role', asyncHandler(updateUserRole));
 
 /** PATCH /api/users/:id/deactivate — deactivate a user */
-router.patch('/:id/deactivate', deactivateUser);
+router.patch('/:id/deactivate', asyncHandler(deactivateUser));
 
 /** PATCH /api/users/:id/reactivate — reactivate a user */
-router.patch('/:id/reactivate', reactivateUser);
+router.patch('/:id/reactivate', asyncHandler(reactivateUser));
 
 export default router;
