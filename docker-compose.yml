@@ -58,8 +58,8 @@ services:
     container_name: minicrm-client
     logging: *default-logging
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: client/Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}
@@ -69,9 +69,9 @@ services:
     depends_on:
       - server
     volumes:
-      - ./client:/app
-      - ./shared:/shared
-      - /app/node_modules
+      - ./client:/app/client
+      - ./shared:/app/shared
+      - /app/client/node_modules
 
 volumes:
   db_data:
