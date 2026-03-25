@@ -10,7 +10,7 @@
     "migrate": "node-pg-migrate -m ../db/migrations up",
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "typecheck": "tsc --noEmit",
-    "test": "DOTENV_CONFIG_PATH=../.env node --experimental-vm-modules ../node_modules/.bin/jest --runInBand"
+    "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
     "@minicrm/shared": "*",
@@ -52,6 +52,10 @@
       ".ts"
     ],
     "testEnvironment": "node",
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "globalSetup": "./src/__tests__/globalSetup.ts",
     "transform": {
       "^.+\\.tsx?$": [
         "ts-jest",
