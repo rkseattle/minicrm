@@ -35,7 +35,7 @@ app.use(
 // ── HTTP request logging ────────────────────────────────────────────────────────
 app.use(
   morgan('dev', {
-    stream: { write: (message) => logger.debug(message.trimEnd()) },
+    stream: { write: (message) => logger.info(message.trimEnd()) },
   }),
 );
 
