@@ -41,6 +41,9 @@ services:
       DB_NAME: ${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: http://localhost:5173
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_NAME: ${ADMIN_NAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
       - "3001:3001"
     depends_on:
