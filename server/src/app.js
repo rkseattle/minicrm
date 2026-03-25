@@ -6,7 +6,9 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import morgan from 'morgan';
 import 'dotenv/config';
+import logger from './logger.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 
@@ -27,6 +29,13 @@ app.use(
       }
     },
     credentials: true,
+  }),
+);
+
+// ── HTTP request logging ────────────────────────────────────────────────────────
+app.use(
+  morgan('dev', {
+    stream: { write: (message) => logger.debug(message.trimEnd()) },
   }),
 );
 
@@ -54,7 +63,7 @@ app.use((_req, res) => {
 // Must have four parameters so Express recognizes it as an error handler.
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
-  console.error('Unhandled error:', err);
+  logger.error({ err }, 'Unhandled error');
   res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',

@@ -5,6 +5,7 @@
 
 import bcrypt from 'bcrypt';
 import pool from '../db.js';
+import logger from '../logger.js';
 
 /** Number of bcrypt salt rounds for password hashing */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -132,9 +133,7 @@ export async function seedDefaultAdmin() {
   const { ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } = process.env;
 
   if (!ADMIN_EMAIL || !ADMIN_NAME || !ADMIN_PASSWORD) {
-    console.warn(
-      'Skipping default admin seed: ADMIN_EMAIL, ADMIN_NAME, or ADMIN_PASSWORD not set.',
-    );
+    logger.warn('Skipping default admin seed: ADMIN_EMAIL, ADMIN_NAME, or ADMIN_PASSWORD not set.');
     return;
   }
 
@@ -148,7 +147,7 @@ export async function seedDefaultAdmin() {
     status: 'active',
   });
 
-  console.log(`Default admin user created: ${ADMIN_EMAIL}`);
+  logger.info(`Default admin user created: ${ADMIN_EMAIL}`);
 }
 
 /**
