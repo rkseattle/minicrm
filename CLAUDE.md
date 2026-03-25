@@ -127,6 +127,7 @@ Reference story keys when implementing features (e.g., "implements MINCRM-8").
 - No magic numbers — use named constants
 - Never use `any` in TypeScript or skip Zod validation
 - Coding must pass all relevant linters
+- all interactable frontend UI elements must have a unique data-testid attribute
 
 ### Architecture Rules
 - Business logic belongs in /server/src/services — never in routes or controllers
@@ -135,6 +136,7 @@ Reference story keys when implementing features (e.g., "implements MINCRM-8").
 - New API endpoints must follow the existing REST conventions in CLAUDE.md
 - All user-facing text must support internationalization and localization for: English, Mandarin Chinese, Spanish, French, and German
 - All functionality must be accurately documented in the project
+- Implement frontend in reusable components, to minimize code churn during refactors 
 
 ### Testing
 - Write at least one test for every new service function
