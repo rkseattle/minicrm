@@ -1,0 +1,67 @@
+# ─── Environment & Secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.yarn/cache
+.pnpm-store/
+
+# ─── React / Vite (client) ────────────────────────────────────────────────────
+client/dist/
+client/.vite/
+client/build/
+
+# ─── Server build output ──────────────────────────────────────────────────────
+server/dist/
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+# Ignore local override files but keep the base compose files
+docker-compose.override.yml
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+# Local Postgres data volume if mounted to a local directory
+db/data/
+*.sql.bak
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+pids/
+*.pid
+*.seed
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# ─── OS & Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# ─── Claude Code ──────────────────────────────────────────────────────────────
+# Session-specific memory files Claude Code writes locally
+.claude/settings.local.json
+
+# ─── Git ──────────────────────────────────────────────────────────────────────
+*.orig
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
