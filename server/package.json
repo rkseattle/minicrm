@@ -1,0 +1,38 @@
+{
+  "name": "minicrm-server",
+  "version": "0.1.0",
+  "description": "MiniCRM API server",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node-pg-migrate -m ../db/migrations up",
+    "migrate:down": "node-pg-migrate -m ../db/migrations down",
+    "test": "node --experimental-vm-modules ../../node_modules/.bin/jest --runInBand"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-pg-migrate": "^7.5.2",
+    "pg": "^8.12.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {},
+    "moduleNameMapper": {
+      "^@shared/schemas/(.*)$": "<rootDir>/../shared/schemas/$1"
+    }
+  }
+}
