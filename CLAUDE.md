@@ -144,6 +144,7 @@ Reference story keys when implementing features (e.g., "implements MINCRM-8").
 ### Git
 - Commit messages must follow conventional commits: feat:, fix:, chore:, etc.
 - Never commit directly to main — always use a feature branch
+- Branch names must include the related Jira work item ID as a prefix after the type (e.g. `feat/MINCRM-8-contact-crud`, `fix/MINCRM-15-deal-stage`)
 - One logical change per commit — do not bundle unrelated changes
 - All pre commit linters must pass
 
