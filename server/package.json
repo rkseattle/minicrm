@@ -35,7 +35,7 @@
     "testEnvironment": "node",
     "transform": {},
     "moduleNameMapper": {
-      "^@shared/schemas/(.*)$": "<rootDir>/../shared/schemas/$1"
+      "^@minicrm/shared/schemas/(.*)$": "<rootDir>/../shared/schemas/$1"
     }
   }
 }

@@ -10,7 +10,7 @@ import {
   inviteUserSchema,
   setPasswordSchema,
   updateRoleSchema,
-} from '@shared/schemas/userSchema.js';
+} from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 
 /** bcrypt work factor */

@@ -5,7 +5,7 @@
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { loginSchema } from '@shared/schemas/userSchema.js';
+import { loginSchema } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 
