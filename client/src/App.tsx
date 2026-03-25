@@ -4,16 +4,14 @@
  */
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from '@/components/ProtectedRoute.jsx';
-import AdminRoute from '@/components/AdminRoute.jsx';
-import LoginPage from '@/pages/LoginPage.jsx';
-import DashboardPage from '@/pages/DashboardPage.jsx';
-import UsersPage from '@/pages/UsersPage.jsx';
+import ProtectedRoute from '@/components/ProtectedRoute.js';
+import AdminRoute from '@/components/AdminRoute.js';
+import LoginPage from '@/pages/LoginPage.js';
+import DashboardPage from '@/pages/DashboardPage.js';
+import UsersPage from '@/pages/UsersPage.js';
 
 /**
  * Root application component with route definitions.
- *
- * @returns {JSX.Element}
  */
 export default function App() {
   return (

@@ -10,8 +10,6 @@ import { useAuth } from '@/hooks/useAuth.js';
 /**
  * Renders child routes only when the user is authenticated.
  * Redirects to /login otherwise.
- *
- * @returns {JSX.Element}
  */
 export default function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();

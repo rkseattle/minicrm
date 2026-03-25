@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import NavBar from '@/components/NavBar.jsx';
+import NavBar from '@/components/NavBar.js';
 import {
   listUsers,
   inviteUser,
@@ -15,19 +15,16 @@ import {
   deactivateUser,
   reactivateUser,
 } from '@/api/users.js';
+import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
 
 /** React Query cache key for the users list */
-const USERS_QUERY_KEY = ['users'];
+const USERS_QUERY_KEY = ['users'] as const;
 
 /**
  * Formats a user status string for display using i18n keys.
- *
- * @param {'active'|'invited'|'inactive'} status
- * @param {Function} t
- * @returns {string}
  */
-function formatStatus(status, t) {
-  const statusMap = {
+function formatStatus(status: UserStatus, t: (key: string) => string): string {
+  const statusMap: Record<UserStatus, string> = {
     active: t('users.statusActive'),
     invited: t('users.statusInvited'),
     inactive: t('users.statusInactive'),
@@ -35,18 +32,31 @@ function formatStatus(status, t) {
   return statusMap[status] ?? status;
 }
 
+interface InviteUserFormProps {
+  onSuccess?: () => void;
+}
+
+interface InviteFormState {
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
 /**
  * Invite user form component.
- *
- * @param {{ onSuccess: function }} props
- * @returns {JSX.Element}
  */
-function InviteUserForm({ onSuccess }) {
+function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState({ email: '', name: '', role: 'rep' });
-  const [lastInviteResult, setLastInviteResult] = useState(null);
+  const [formData, setFormData] = useState<InviteFormState>({
+    email: '',
+    name: '',
+    role: 'rep',
+  });
+  const [lastInviteResult, setLastInviteResult] = useState<{
+    setPasswordPath: string;
+  } | null>(null);
 
   const inviteMutation = useMutation({
     mutationFn: () => inviteUser(formData),
@@ -58,12 +68,12 @@ function InviteUserForm({ onSuccess }) {
     },
   });
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     inviteMutation.mutate();
   };
 
-  const handleChange = (event) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
@@ -78,6 +88,7 @@ function InviteUserForm({ onSuccess }) {
           </label>
           <input
             id="invite-name"
+            data-testid="invite-name"
             name="name"
             type="text"
             required
@@ -93,6 +104,7 @@ function InviteUserForm({ onSuccess }) {
           </label>
           <input
             id="invite-email"
+            data-testid="invite-email"
             name="email"
             type="email"
             required
@@ -107,6 +119,7 @@ function InviteUserForm({ onSuccess }) {
           </label>
           <select
             id="invite-role"
+            data-testid="invite-role"
             name="role"
             value={formData.role}
             onChange={handleChange}
@@ -117,7 +130,7 @@ function InviteUserForm({ onSuccess }) {
         </div>
 
         <div style={{ alignSelf: 'flex-end' }}>
-          <button type="submit" disabled={inviteMutation.isPending}>
+          <button type="submit" data-testid="invite-submit" disabled={inviteMutation.isPending}>
             {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
           </button>
         </div>
@@ -149,7 +162,8 @@ function InviteUserForm({ onSuccess }) {
                 wordBreak: 'break-all',
               }}
             >
-              {window.location.origin}{lastInviteResult.setPasswordPath}
+              {window.location.origin}
+              {lastInviteResult.setPasswordPath}
             </code>
             <button
               type="button"
@@ -168,7 +182,8 @@ function InviteUserForm({ onSuccess }) {
 
       {inviteMutation.isError && (
         <p role="alert" style={{ color: '#dc2626', marginTop: '0.5rem', fontSize: '0.875rem' }}>
-          {inviteMutation.error?.response?.data?.error?.message ?? t('errors.generic')}
+          {(inviteMutation.error as { response?: { data?: { error?: { message?: string } } } })
+            ?.response?.data?.error?.message ?? t('errors.generic')}
         </p>
       )}
     </div>
@@ -177,8 +192,6 @@ function InviteUserForm({ onSuccess }) {
 
 /**
  * Users management page — lists users and provides admin actions.
- *
- * @returns {JSX.Element}
  */
 export default function UsersPage() {
   const { t } = useTranslation();
@@ -190,21 +203,21 @@ export default function UsersPage() {
   });
 
   const roleMutation = useMutation({
-    mutationFn: ({ id, role }) => updateUserRole(id, role),
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUserRole(id, role),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
   });
 
   const deactivateMutation = useMutation({
-    mutationFn: (id) => deactivateUser(id),
+    mutationFn: (id: string) => deactivateUser(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
   });
 
   const reactivateMutation = useMutation({
-    mutationFn: (id) => reactivateUser(id),
+    mutationFn: (id: string) => reactivateUser(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
   });
 
-  const users = data?.users ?? [];
+  const users: UserResponse[] = data?.users ?? [];
 
   return (
     <div>
@@ -215,7 +228,11 @@ export default function UsersPage() {
         <InviteUserForm />
 
         {isLoading && <p aria-busy="true">Loading…</p>}
-        {isError && <p role="alert" style={{ color: '#dc2626' }}>{t('errors.generic')}</p>}
+        {isError && (
+          <p role="alert" style={{ color: '#dc2626' }}>
+            {t('errors.generic')}
+          </p>
+        )}
 
         {!isLoading && !isError && (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -241,6 +258,7 @@ export default function UsersPage() {
                     {user.role === 'rep' ? (
                       <button
                         type="button"
+                        data-testid={`make-admin-${user.id}`}
                         onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
                         disabled={roleMutation.isPending}
                       >
@@ -249,6 +267,7 @@ export default function UsersPage() {
                     ) : (
                       <button
                         type="button"
+                        data-testid={`make-rep-${user.id}`}
                         onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
                         disabled={roleMutation.isPending}
                       >
@@ -259,6 +278,7 @@ export default function UsersPage() {
                     {user.status === 'inactive' ? (
                       <button
                         type="button"
+                        data-testid={`reactivate-${user.id}`}
                         onClick={() => reactivateMutation.mutate(user.id)}
                         disabled={reactivateMutation.isPending}
                       >
@@ -267,6 +287,7 @@ export default function UsersPage() {
                     ) : (
                       <button
                         type="button"
+                        data-testid={`deactivate-${user.id}`}
                         onClick={() => deactivateMutation.mutate(user.id)}
                         disabled={deactivateMutation.isPending}
                       >

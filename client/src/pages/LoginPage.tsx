@@ -8,18 +8,27 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type { AxiosError } from 'axios';
 import { login } from '@/api/auth.js';
 import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
+
+interface ApiError {
+  error: {
+    code: string;
+    message: string;
+  };
+}
 
 /**
  * Extracts a translated error message from an axios error response.
  *
- * @param {unknown} error - The caught error object.
- * @param {Function} t - The i18next translate function.
- * @returns {string}
+ * @param error - The caught error object.
+ * @param t - The i18next translate function.
  */
-function resolveErrorMessage(error, t) {
-  const code = error?.response?.data?.error?.code;
+function resolveErrorMessage(error: unknown, t: TFunction): string {
+  const axiosError = error as AxiosError<ApiError>;
+  const code = axiosError?.response?.data?.error?.code;
   if (code && t(`errors.${code}`, { defaultValue: '' })) {
     return t(`errors.${code}`);
   }
@@ -28,8 +37,6 @@ function resolveErrorMessage(error, t) {
 
 /**
  * Login page with email and password form.
- *
- * @returns {JSX.Element}
  */
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -47,7 +54,7 @@ export default function LoginPage() {
     },
   });
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     loginMutation.mutate();
   };
@@ -72,9 +79,7 @@ export default function LoginPage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}
       >
-        <h1 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>
-          {t('login.title')}
-        </h1>
+        <h1 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>{t('login.title')}</h1>
 
         <form onSubmit={handleSubmit} noValidate>
           <div style={{ marginBottom: '1rem' }}>
@@ -83,6 +88,7 @@ export default function LoginPage() {
             </label>
             <input
               id="email"
+              data-testid="login-email"
               type="email"
               autoComplete="email"
               required
@@ -99,6 +105,7 @@ export default function LoginPage() {
             </label>
             <input
               id="password"
+              data-testid="login-password"
               type="password"
               autoComplete="current-password"
               required
@@ -120,6 +127,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            data-testid="login-submit"
             disabled={loginMutation.isPending}
             style={{ width: '100%', padding: '0.625rem' }}
           >

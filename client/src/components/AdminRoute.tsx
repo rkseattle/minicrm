@@ -10,8 +10,6 @@ import { useAuth } from '@/hooks/useAuth.js';
 
 /**
  * Guards routes that require the admin role.
- *
- * @returns {JSX.Element}
  */
 export default function AdminRoute() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -24,7 +22,7 @@ export default function AdminRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'admin') {
+  if (user!.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
