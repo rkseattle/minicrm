@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Benutzer",
+    "logout": "Abmelden"
+  },
+  "login": {
+    "title": "Bei MiniCRM anmelden",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "sie@beispiel.de",
+    "passwordLabel": "Passwort",
+    "passwordPlaceholder": "Ihr Passwort",
+    "submitButton": "Anmelden",
+    "submitting": "Anmeldung läuft…"
+  },
+  "users": {
+    "pageTitle": "Benutzerverwaltung",
+    "inviteButton": "Benutzer einladen",
+    "inviteTitle": "Neuen Benutzer einladen",
+    "nameLabel": "Vollständiger Name",
+    "namePlaceholder": "Max Mustermann",
+    "emailLabel": "E-Mail-Adresse",
+    "roleLabel": "Rolle",
+    "roleAdmin": "Administrator",
+    "roleRep": "Vertreter",
+    "submitInvite": "Einladung senden",
+    "submitting": "Wird gesendet…",
+    "columnName": "Name",
+    "columnEmail": "E-Mail",
+    "columnRole": "Rolle",
+    "columnStatus": "Status",
+    "columnActions": "Aktionen",
+    "statusActive": "Aktiv",
+    "statusInvited": "Eingeladen",
+    "statusInactive": "Inaktiv",
+    "actionDeactivate": "Deaktivieren",
+    "actionReactivate": "Reaktivieren",
+    "actionMakeAdmin": "Zum Administrator machen",
+    "actionMakeRep": "Zum Vertreter machen",
+    "inviteSuccess": "Benutzer eingeladen. Teilen Sie den Passwort-Setzen-Link mit ihm.",
+    "inviteTokenLabel": "Passwort-Setzen-Link",
+    "copyLink": "Link kopieren"
+  },
+  "dashboard": {
+    "welcome": "Willkommen, {{name}}"
+  },
+  "errors": {
+    "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",
+    "AUTH_ACCOUNT_DEACTIVATED": "Ihr Konto wurde deaktiviert. Wenden Sie sich an einen Administrator.",
+    "AUTH_ACCOUNT_NOT_ACTIVATED": "Bitte legen Sie Ihr Passwort fest, bevor Sie sich anmelden.",
+    "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+  }
+}

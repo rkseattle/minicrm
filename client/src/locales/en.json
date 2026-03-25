@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "logout": "Log out"
+  },
+  "login": {
+    "title": "Sign in to MiniCRM",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Your password",
+    "submitButton": "Sign in",
+    "submitting": "Signing in…"
+  },
+  "users": {
+    "pageTitle": "User Management",
+    "inviteButton": "Invite user",
+    "inviteTitle": "Invite a new user",
+    "nameLabel": "Full name",
+    "namePlaceholder": "Jane Smith",
+    "emailLabel": "Email address",
+    "roleLabel": "Role",
+    "roleAdmin": "Admin",
+    "roleRep": "Rep",
+    "submitInvite": "Send invite",
+    "submitting": "Sending…",
+    "columnName": "Name",
+    "columnEmail": "Email",
+    "columnRole": "Role",
+    "columnStatus": "Status",
+    "columnActions": "Actions",
+    "statusActive": "Active",
+    "statusInvited": "Invited",
+    "statusInactive": "Inactive",
+    "actionDeactivate": "Deactivate",
+    "actionReactivate": "Reactivate",
+    "actionMakeAdmin": "Make admin",
+    "actionMakeRep": "Make rep",
+    "inviteSuccess": "User invited. Share the set-password link with them.",
+    "inviteTokenLabel": "Set-password link",
+    "copyLink": "Copy link"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {{name}}"
+  },
+  "errors": {
+    "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
+    "AUTH_ACCOUNT_DEACTIVATED": "Your account has been deactivated. Contact an administrator.",
+    "AUTH_ACCOUNT_NOT_ACTIVATED": "Please set your password before signing in.",
+    "VALIDATION_ERROR": "Please check your input and try again.",
+    "generic": "Something went wrong. Please try again."
+  }
+}

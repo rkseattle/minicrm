@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs",
+    "logout": "Se déconnecter"
+  },
+  "login": {
+    "title": "Connexion à MiniCRM",
+    "emailLabel": "Adresse e-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Votre mot de passe",
+    "submitButton": "Se connecter",
+    "submitting": "Connexion en cours…"
+  },
+  "users": {
+    "pageTitle": "Gestion des utilisateurs",
+    "inviteButton": "Inviter un utilisateur",
+    "inviteTitle": "Inviter un nouvel utilisateur",
+    "nameLabel": "Nom complet",
+    "namePlaceholder": "Marie Dupont",
+    "emailLabel": "Adresse e-mail",
+    "roleLabel": "Rôle",
+    "roleAdmin": "Administrateur",
+    "roleRep": "Représentant",
+    "submitInvite": "Envoyer l'invitation",
+    "submitting": "Envoi en cours…",
+    "columnName": "Nom",
+    "columnEmail": "E-mail",
+    "columnRole": "Rôle",
+    "columnStatus": "Statut",
+    "columnActions": "Actions",
+    "statusActive": "Actif",
+    "statusInvited": "Invité",
+    "statusInactive": "Inactif",
+    "actionDeactivate": "Désactiver",
+    "actionReactivate": "Réactiver",
+    "actionMakeAdmin": "Rendre administrateur",
+    "actionMakeRep": "Rendre représentant",
+    "inviteSuccess": "Utilisateur invité. Partagez le lien de définition du mot de passe.",
+    "inviteTokenLabel": "Lien de définition du mot de passe",
+    "copyLink": "Copier le lien"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue, {{name}}"
+  },
+  "errors": {
+    "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",
+    "AUTH_ACCOUNT_DEACTIVATED": "Votre compte a été désactivé. Contactez un administrateur.",
+    "AUTH_ACCOUNT_NOT_ACTIVATED": "Veuillez définir votre mot de passe avant de vous connecter.",
+    "VALIDATION_ERROR": "Veuillez vérifier vos informations et réessayer.",
+    "generic": "Une erreur s'est produite. Veuillez réessayer."
+  }
+}

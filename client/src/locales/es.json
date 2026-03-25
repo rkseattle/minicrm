@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "users": "Usuarios",
+    "logout": "Cerrar sesión"
+  },
+  "login": {
+    "title": "Iniciar sesión en MiniCRM",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Tu contraseña",
+    "submitButton": "Iniciar sesión",
+    "submitting": "Iniciando sesión…"
+  },
+  "users": {
+    "pageTitle": "Gestión de usuarios",
+    "inviteButton": "Invitar usuario",
+    "inviteTitle": "Invitar a un nuevo usuario",
+    "nameLabel": "Nombre completo",
+    "namePlaceholder": "Juan García",
+    "emailLabel": "Correo electrónico",
+    "roleLabel": "Rol",
+    "roleAdmin": "Administrador",
+    "roleRep": "Representante",
+    "submitInvite": "Enviar invitación",
+    "submitting": "Enviando…",
+    "columnName": "Nombre",
+    "columnEmail": "Correo electrónico",
+    "columnRole": "Rol",
+    "columnStatus": "Estado",
+    "columnActions": "Acciones",
+    "statusActive": "Activo",
+    "statusInvited": "Invitado",
+    "statusInactive": "Inactivo",
+    "actionDeactivate": "Desactivar",
+    "actionReactivate": "Reactivar",
+    "actionMakeAdmin": "Hacer administrador",
+    "actionMakeRep": "Hacer representante",
+    "inviteSuccess": "Usuario invitado. Comparte el enlace de configuración de contraseña.",
+    "inviteTokenLabel": "Enlace para establecer contraseña",
+    "copyLink": "Copiar enlace"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido, {{name}}"
+  },
+  "errors": {
+    "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",
+    "AUTH_ACCOUNT_DEACTIVATED": "Tu cuenta ha sido desactivada. Contacta a un administrador.",
+    "AUTH_ACCOUNT_NOT_ACTIVATED": "Por favor, establece tu contraseña antes de iniciar sesión.",
+    "VALIDATION_ERROR": "Por favor, revisa tu información e inténtalo de nuevo.",
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo."
+  }
+}
