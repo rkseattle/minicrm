@@ -3,7 +3,7 @@
  * Business logic belongs here. Controllers must not query the database directly.
  */
 
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logger from '../logger.js';
 

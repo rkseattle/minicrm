@@ -3,7 +3,7 @@
  * Request/response shaping only — no direct DB access.
  */
 
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loginSchema } from '@shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
