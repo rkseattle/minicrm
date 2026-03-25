@@ -14,7 +14,6 @@ const DEFAULT_DB_PORT = 5432;
 /**
  * Shared connection pool instance.
  * Reads connection parameters from environment variables.
- * @type {pg.Pool}
  */
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -25,8 +24,8 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected PostgreSQL pool error', err);
-  process.exit(1);
+  // Rethrow fatal pool errors so the process crashes with a visible stack trace
+  throw new Error(`Unexpected PostgreSQL pool error: ${err.message}`);
 });
 
 export default pool;

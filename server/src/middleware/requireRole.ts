@@ -6,32 +6,36 @@
  * Must be used after the `authenticate` middleware so that req.user is set.
  */
 
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
+
 /**
  * Creates an Express middleware that enforces a required role.
  *
- * @param {'admin' | 'rep'} role - The role the user must have.
- * @returns {import('express').RequestHandler} Express middleware
+ * @param role - The role the user must have.
  */
-export function requireRole(role) {
-  return (req, res, next) => {
+export function requireRole(role: UserRole): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         error: {
           code: 'AUTH_MISSING_TOKEN',
           message: 'Authentication required',
         },
       });
+      return;
     }
 
     if (req.user.role !== role) {
-      return res.status(403).json({
+      res.status(403).json({
         error: {
           code: 'AUTH_FORBIDDEN',
           message: 'You do not have permission to perform this action',
         },
       });
+      return;
     }
 
-    return next();
+    next();
   };
 }
