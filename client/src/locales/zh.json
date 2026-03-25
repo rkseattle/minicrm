@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "dashboard": "仪表板",
+    "users": "用户",
+    "logout": "退出登录"
+  },
+  "login": {
+    "title": "登录 MiniCRM",
+    "emailLabel": "电子邮件地址",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "密码",
+    "passwordPlaceholder": "您的密码",
+    "submitButton": "登录",
+    "submitting": "登录中…"
+  },
+  "users": {
+    "pageTitle": "用户管理",
+    "inviteButton": "邀请用户",
+    "inviteTitle": "邀请新用户",
+    "nameLabel": "全名",
+    "namePlaceholder": "张三",
+    "emailLabel": "电子邮件地址",
+    "roleLabel": "角色",
+    "roleAdmin": "管理员",
+    "roleRep": "销售代表",
+    "submitInvite": "发送邀请",
+    "submitting": "发送中…",
+    "columnName": "姓名",
+    "columnEmail": "电子邮件",
+    "columnRole": "角色",
+    "columnStatus": "状态",
+    "columnActions": "操作",
+    "statusActive": "活跃",
+    "statusInvited": "已邀请",
+    "statusInactive": "未激活",
+    "actionDeactivate": "停用",
+    "actionReactivate": "重新激活",
+    "actionMakeAdmin": "设为管理员",
+    "actionMakeRep": "设为销售代表",
+    "inviteSuccess": "用户已邀请。请将设置密码链接分享给他们。",
+    "inviteTokenLabel": "设置密码链接",
+    "copyLink": "复制链接"
+  },
+  "dashboard": {
+    "welcome": "欢迎，{{name}}"
+  },
+  "errors": {
+    "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",
+    "AUTH_ACCOUNT_DEACTIVATED": "您的帐户已被停用。请联系管理员。",
+    "AUTH_ACCOUNT_NOT_ACTIVATED": "请在登录前设置密码。",
+    "VALIDATION_ERROR": "请检查您的输入并重试。",
+    "generic": "出了问题，请重试。"
+  }
+}
