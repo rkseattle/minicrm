@@ -4,7 +4,6 @@
  * Request/response shaping only — no direct DB access.
  */
 
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
 import {
@@ -13,22 +12,11 @@ import {
   updateRoleSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
-import type { UserRow } from '../services/userService.js';
 import type { JwtTokenPayload } from '../types/express.js';
-
-/** bcrypt work factor */
-const BCRYPT_SALT_ROUNDS = 12;
+import { sanitizeUser } from '../utils/userUtils.js';
 
 /** Invite token expiry — 72 hours */
 const INVITE_TOKEN_EXPIRY = '72h';
-
-/**
- * Strips the password_hash field before returning a user object to the client.
- */
-function sanitizeUser(user: UserRow): Omit<UserRow, 'password_hash'> {
-  const { password_hash: _password_hash, ...safeUser } = user;
-  return safeUser;
-}
 
 /**
  * POST /api/users/invite
@@ -214,9 +202,7 @@ export async function setPassword(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
-  await userService.setUserPassword(user.id, passwordHash);
+  await userService.setUserPasswordFromPlaintext(user.id, password);
   await userService.updateUserStatus(user.id, 'active');
 
   res.status(200).json({ message: 'Password set successfully. You may now log in.' });

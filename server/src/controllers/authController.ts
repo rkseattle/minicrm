@@ -8,22 +8,14 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
 import { loginSchema } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
-import type { UserRow } from '../services/userService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import { sanitizeUser } from '../utils/userUtils.js';
 
 /** JWT expiry — 8 hours expressed in seconds */
 const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
 
 /** Cookie max-age in milliseconds (same duration as JWT) */
 const COOKIE_MAX_AGE_MS = JWT_EXPIRY_SECONDS * 1000;
-
-/**
- * Strips the password_hash field before returning a user object to the client.
- */
-function sanitizeUser(user: UserRow): Omit<UserRow, 'password_hash'> {
-  const { password_hash: _password_hash, ...safeUser } = user;
-  return safeUser;
-}
 
 /**
  * POST /api/auth/login

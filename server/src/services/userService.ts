@@ -159,3 +159,18 @@ export async function setUserPassword(id: string, passwordHash: string): Promise
   );
   return result.rows[0] ?? null;
 }
+
+/**
+ * Hashes a plaintext password and stores it on the user. Used in the invite-acceptance flow.
+ * Keeps password hashing (business logic) in the service layer.
+ *
+ * @param id - The user UUID.
+ * @param plaintext - The user's chosen plaintext password.
+ */
+export async function setUserPasswordFromPlaintext(
+  id: string,
+  plaintext: string,
+): Promise<UserRow | null> {
+  const passwordHash = await bcrypt.hash(plaintext, BCRYPT_SALT_ROUNDS);
+  return setUserPassword(id, passwordHash);
+}
