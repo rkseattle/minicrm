@@ -175,6 +175,26 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   });
 });
 
+// ── GET /api/contacts — list + ?account filter ──────────────────────────────
+
+describe('GET /api/contacts — ?account filter', () => {
+  it('returns 400 when ?account is not a valid UUID', async () => {
+    const res = await request(app).get('/api/contacts?account=not-a-uuid').set('Cookie', repCookie);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 200 with an empty array for a valid UUID that matches no contacts', async () => {
+    const res = await request(app)
+      .get('/api/contacts?account=00000000-0000-0000-0000-000000000000')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.contacts).toEqual([]);
+  });
+});
+
 // ── GET /api/contacts/:id ────────────────────────────────────────────────────
 
 describe('GET /api/contacts/:id — visibility', () => {
