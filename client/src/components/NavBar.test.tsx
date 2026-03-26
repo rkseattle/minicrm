@@ -6,6 +6,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { Routes, Route } from 'react-router-dom';
 import NavBar from './NavBar.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
@@ -57,9 +58,16 @@ describe('NavBar', () => {
     });
   });
 
-  it('calls logout API and navigates to /login when logout is clicked', async () => {
+  it('navigates to /login after logout is clicked', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<NavBar />);
+
+    // Render NavBar inside a route tree so MemoryRouter can handle the redirect
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<NavBar />} />
+        <Route path="/login" element={<div>Login page</div>} />
+      </Routes>,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
@@ -67,11 +75,8 @@ describe('NavBar', () => {
 
     await user.click(screen.getByTestId('nav-logout'));
 
-    // After logout the auth/me query is invalidated — we can only confirm the
-    // logout button was present and clickable (navigation happens inside the
-    // router which MemoryRouter handles in the test environment)
     await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+      expect(screen.getByText('Login page')).toBeInTheDocument();
     });
   });
 });

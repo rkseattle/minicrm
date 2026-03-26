@@ -30,6 +30,7 @@ jobs:
 
   server-tests:
     name: Server Tests
+    needs: lint-and-typecheck
     runs-on: ubuntu-latest
 
     services:
@@ -71,6 +72,7 @@ jobs:
 
   client-tests:
     name: Client Tests
+    needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

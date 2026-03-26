@@ -18,8 +18,8 @@ describe('Select', () => {
   });
 
   it('does not render a label when label prop is omitted', () => {
-    render(<Select />);
-    expect(screen.queryByRole('label')).not.toBeInTheDocument();
+    const { container } = render(<Select />);
+    expect(container.querySelector('label')).not.toBeInTheDocument();
   });
 
   it('renders children options', () => {
