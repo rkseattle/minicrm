@@ -12,6 +12,8 @@ import type { TFunction } from 'i18next';
 import type { AxiosError } from 'axios';
 import { login } from '@/api/auth.js';
 import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
+import { Button } from '@/components/ui/Button.js';
+import { Input } from '@/components/ui/Input.js';
 
 interface ApiError {
   error: {
@@ -60,80 +62,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f9fafb',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '400px',
-          padding: '2rem',
-          backgroundColor: '#ffffff',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}
-      >
-        <h1 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>{t('login.title')}</h1>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">MiniCRM</h1>
+          <p className="text-gray-500 mt-1 text-sm">{t('login.tagline')}</p>
+        </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{ display: 'block', marginBottom: '0.25rem' }}>
-              {t('login.emailLabel')}
-            </label>
-            <input
+        {/* Card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <h2 className="text-base font-semibold text-gray-900 mb-6">{t('login.title')}</h2>
+
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+            <Input
               id="email"
               data-testid="login-email"
               type="email"
               autoComplete="email"
               required
+              label={t('login.emailLabel')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('login.emailPlaceholder')}
-              style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
             />
-          </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="password" style={{ display: 'block', marginBottom: '0.25rem' }}>
-              {t('login.passwordLabel')}
-            </label>
-            <input
+            <Input
               id="password"
               data-testid="login-password"
               type="password"
               autoComplete="current-password"
               required
+              label={t('login.passwordLabel')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('login.passwordPlaceholder')}
-              style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
             />
-          </div>
 
-          {loginMutation.isError && (
-            <p
-              role="alert"
-              style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '0.875rem' }}
+            {loginMutation.isError && (
+              <div
+                role="alert"
+                className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+              >
+                {resolveErrorMessage(loginMutation.error, t)}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              data-testid="login-submit"
+              disabled={loginMutation.isPending}
+              fullWidth
             >
-              {resolveErrorMessage(loginMutation.error, t)}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            data-testid="login-submit"
-            disabled={loginMutation.isPending}
-            style={{ width: '100%', padding: '0.625rem' }}
-          >
-            {loginMutation.isPending ? t('login.submitting') : t('login.submitButton')}
-          </button>
-        </form>
+              {loginMutation.isPending ? t('login.submitting') : t('login.submitButton')}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

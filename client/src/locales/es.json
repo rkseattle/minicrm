@@ -5,7 +5,8 @@
     "logout": "Cerrar sesión"
   },
   "login": {
-    "title": "Iniciar sesión en MiniCRM",
+    "title": "Inicia sesión en tu cuenta",
+    "tagline": "Tu pipeline de ventas, simplificado.",
     "emailLabel": "Correo electrónico",
     "emailPlaceholder": "tu@ejemplo.com",
     "passwordLabel": "Contraseña",
@@ -39,10 +40,14 @@
     "actionMakeRep": "Hacer representante",
     "inviteSuccess": "Usuario invitado. Comparte el enlace de configuración de contraseña.",
     "inviteTokenLabel": "Enlace para establecer contraseña",
-    "copyLink": "Copiar enlace"
+    "copyLink": "Copiar enlace",
+    "loading": "Cargando usuarios…",
+    "empty": "Aún no hay usuarios."
   },
   "dashboard": {
-    "welcome": "Bienvenido, {{name}}"
+    "welcome": "Bienvenido, {{name}}",
+    "subtitle": "Aquí tienes un resumen de tu pipeline.",
+    "emptyState": "Tu pipeline aparecerá aquí una vez que se creen contactos y tratos."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

@@ -5,7 +5,8 @@
     "logout": "退出登录"
   },
   "login": {
-    "title": "登录 MiniCRM",
+    "title": "登录您的账户",
+    "tagline": "简化您的销售流程。",
     "emailLabel": "电子邮件地址",
     "emailPlaceholder": "you@example.com",
     "passwordLabel": "密码",
@@ -39,10 +40,14 @@
     "actionMakeRep": "设为销售代表",
     "inviteSuccess": "用户已邀请。请将设置密码链接分享给他们。",
     "inviteTokenLabel": "设置密码链接",
-    "copyLink": "复制链接"
+    "copyLink": "复制链接",
+    "loading": "正在加载用户…",
+    "empty": "暂无用户。"
   },
   "dashboard": {
-    "welcome": "欢迎，{{name}}"
+    "welcome": "欢迎，{{name}}",
+    "subtitle": "以下是您的销售流程概览。",
+    "emptyState": "一旦创建联系人和交易，您的销售流程将显示在此处。"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",
