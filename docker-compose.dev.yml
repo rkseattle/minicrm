@@ -1,0 +1,25 @@
+# Development overrides for docker-compose.yml.
+# Mounts local source into containers for hot-reload and overrides NODE_ENV.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  server:
+    environment:
+      NODE_ENV: development
+    command: npm run dev --workspace=minicrm-server
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      # Anonymous volume keeps the container's node_modules intact when the
+      # host source tree is mounted on top of /app.
+      - /app/node_modules
+
+  client:
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./client:/app/client
+      - ./shared:/app/shared
+      - /app/client/node_modules
