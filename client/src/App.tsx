@@ -10,6 +10,8 @@ import LoginPage from '@/pages/LoginPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
 import ContactsPage from '@/pages/ContactsPage.js';
 import ContactDetailPage from '@/pages/ContactDetailPage.js';
+import AccountsPage from '@/pages/AccountsPage.js';
+import AccountDetailPage from '@/pages/AccountDetailPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 
 /**
@@ -26,6 +28,8 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/contacts/:id" element={<ContactDetailPage />} />
+        <Route path="/accounts" element={<AccountsPage />} />
+        <Route path="/accounts/:id" element={<AccountDetailPage />} />
       </Route>
 
       {/* Admin-only routes */}
