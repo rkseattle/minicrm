@@ -8,7 +8,10 @@ services:
   server:
     environment:
       NODE_ENV: development
-    command: npm run dev --workspace=minicrm-server
+    # tsx watch is used instead of nodemon because tsx is in production
+    # dependencies; nodemon is a devDependency and is not present in the
+    # image (built with --omit=dev).
+    command: npx tsx watch server/src/server.ts
     volumes:
       - ./server:/app/server
       - ./shared:/app/shared
