@@ -9,6 +9,15 @@ import type {
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
 
+/** Columns that may be updated via updateAccount — guards against SQL injection from dynamic field names */
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAccountInput> = new Set([
+  'name',
+  'industry',
+  'website',
+  'employee_range',
+  'revenue_range',
+]);
+
 /** Shape of an account row returned from the database */
 export interface AccountRow {
   id: string;
@@ -98,7 +107,9 @@ export async function updateAccount(
   id: string,
   params: UpdateAccountInput,
 ): Promise<AccountRow | null> {
-  const fields = Object.keys(params) as (keyof UpdateAccountInput)[];
+  const fields = (Object.keys(params) as (keyof UpdateAccountInput)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field),
+  );
 
   // Build dynamic SET clause: name = $2, industry = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');

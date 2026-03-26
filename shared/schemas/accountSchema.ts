@@ -15,7 +15,7 @@ export const createAccountSchema = z.object({
     .min(1, 'Company name is required')
     .trim(),
   industry: z.string().trim().optional(),
-  website: z.string().trim().optional(),
+  website: z.string().trim().url('Website must be a valid URL').optional(),
   employee_range: z.string().trim().optional(),
   revenue_range: z.string().trim().optional(),
 });

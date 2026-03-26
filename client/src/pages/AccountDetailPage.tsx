@@ -25,6 +25,7 @@ export default function AccountDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const accountQueryKey = ['accounts', id] as const;
 
@@ -60,10 +61,14 @@ export default function AccountDetailPage() {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       navigate('/accounts', { replace: true });
     },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
   });
 
   const handleDelete = (): void => {
     if (window.confirm(t('accounts.confirmDelete'))) {
+      setDeleteError(null);
       deleteMutation.mutate();
     }
   };
@@ -121,26 +126,33 @@ export default function AccountDetailPage() {
           </h1>
 
           {!isEditing && (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="edit-account-button"
-                onClick={() => setIsEditing(true)}
-              >
-                {t('accounts.edit')}
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                data-testid="delete-account-button"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? t('accounts.deleting') : t('accounts.delete')}
-              </Button>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  data-testid="edit-account-button"
+                  onClick={() => setIsEditing(true)}
+                >
+                  {t('accounts.edit')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  data-testid="delete-account-button"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? t('accounts.deleting') : t('accounts.delete')}
+                </Button>
+              </div>
+              {deleteError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
+                  {deleteError}
+                </p>
+              )}
             </div>
           )}
         </div>
