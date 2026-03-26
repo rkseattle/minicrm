@@ -32,7 +32,7 @@ services:
       dockerfile: server/Dockerfile
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       DB_HOST: db
       DB_PORT: 5432
@@ -49,10 +49,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./server:/app/server
-      - ./shared:/app/shared
-      - /app/node_modules
 
   client:
     container_name: minicrm-client
@@ -62,16 +58,12 @@ services:
       dockerfile: client/Dockerfile
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
       API_URL: http://server:3001
     ports:
       - "5173:5173"
     depends_on:
       - server
-    volumes:
-      - ./client:/app/client
-      - ./shared:/app/shared
-      - /app/client/node_modules
 
 volumes:
   db_data:

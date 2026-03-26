@@ -1,8 +1,10 @@
 # ─── Environment & Secrets ────────────────────────────────────────────────────
 .env
 .env.local
+.env.test
 .env.*.local
 !.env.example
+!.env.test.example
 
 # ─── Node ─────────────────────────────────────────────────────────────────────
 node_modules/

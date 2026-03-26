@@ -14,6 +14,8 @@ the deal through a pipeline. Nothing beyond that loop is in scope for alpha.
 - **Validation:** Zod (shared schemas used on both client and server)
 - **Auth:** JWT stored in httpOnly cookies
 - **Infrastructure:** Docker + Docker Compose (one container each for db, server, client)
+  - `docker-compose.yml` — production-ready base (no source mounts)
+  - `docker-compose.dev.yml` — dev override (source mounts + hot-reload); run with `-f docker-compose.yml -f docker-compose.dev.yml`
 - **Monorepo layout:** /client, /server, /db — all in one repo
 
 ## Project Structure
