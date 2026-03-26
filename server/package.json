@@ -66,6 +66,7 @@
     },
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1",
+      "^@minicrm/shared/schemas/(.*)\\.js$": "<rootDir>/../shared/schemas/$1",
       "^@minicrm/shared/schemas/(.*)$": "<rootDir>/../shared/schemas/$1"
     }
   }
