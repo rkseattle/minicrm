@@ -11,6 +11,7 @@ import 'dotenv/config';
 import logger from './logger.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import contactRoutes from './routes/contacts.js';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use(cookieParser());
 // ── Routes ─────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/contacts', contactRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req: Request, res: Response) => {

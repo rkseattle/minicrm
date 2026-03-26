@@ -82,11 +82,20 @@ const serverConfig = {
   },
 };
 
+// ── Test files (devDependency imports are valid) ───────────────────────────────
+const testConfig = {
+  files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+  rules: {
+    'n/no-unpublished-import': 'off',
+  },
+};
+
 export default [
   { ignores: IGNORED },
   baseConfig,
   clientConfig,
   serverConfig,
+  testConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,
 ];

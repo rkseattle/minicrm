@@ -1,0 +1,220 @@
+/**
+ * ContactDetailPage component.
+ * Displays all fields and metadata for a single contact.
+ * Supports toggling to an edit form and deleting the contact.
+ */
+
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import NavBar from '@/components/NavBar.js';
+import ContactForm from '@/components/ContactForm.js';
+import { Button } from '@/components/ui/Button.js';
+import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
+import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
+import type { ContactFormValues } from '@/components/ContactForm.js';
+
+/**
+ * Single contact detail page with view/edit/delete.
+ */
+export default function ContactDetailPage() {
+  const { t } = useTranslation();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  const contactQueryKey = ['contacts', id] as const;
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: contactQueryKey,
+    queryFn: () => getContact(id!),
+    enabled: Boolean(id),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (values: ContactFormValues) =>
+      updateContact(id!, {
+        first_name: values.first_name,
+        last_name: values.last_name,
+        email: values.email,
+        phone: values.phone || undefined,
+        title: values.title || undefined,
+        department: values.department || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: contactQueryKey });
+      queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
+      setIsEditing(false);
+      setUpdateError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteContact(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
+      navigate('/contacts', { replace: true });
+    },
+  });
+
+  const handleDelete = (): void => {
+    if (window.confirm(t('contacts.confirmDelete'))) {
+      deleteMutation.mutate();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <NavBar />
+        <main className="max-w-3xl mx-auto px-6 py-8">
+          <p aria-busy="true" className="text-sm text-gray-400">
+            {t('contacts.loading')}
+          </p>
+        </main>
+      </div>
+    );
+  }
+
+  if (isError || !data?.contact) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <NavBar />
+        <main className="max-w-3xl mx-auto px-6 py-8">
+          <p role="alert" className="text-sm text-red-600">
+            {t('contacts.notFound')}
+          </p>
+          <Link
+            to="/contacts"
+            className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+          >
+            {t('contacts.backToContacts')}
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
+  const contact = data.contact;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <main className="max-w-3xl mx-auto px-6 py-8">
+        {/* Back link */}
+        <Link
+          to="/contacts"
+          data-testid="back-to-contacts"
+          className="inline-flex items-center text-sm text-indigo-600 hover:underline mb-6"
+        >
+          ← {t('contacts.backToContacts')}
+        </Link>
+
+        <div className="flex items-start justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900" data-testid="contact-name">
+            {contact.first_name} {contact.last_name}
+          </h1>
+
+          {!isEditing && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                data-testid="edit-contact-button"
+                onClick={() => setIsEditing(true)}
+              >
+                {t('contacts.edit')}
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                data-testid="delete-contact-button"
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? t('contacts.deleting') : t('contacts.delete')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">
+              {t('contacts.saveChanges')}
+            </h2>
+            <ContactForm
+              initialValues={contact}
+              onSubmit={(values) => {
+                setUpdateError(null);
+                updateMutation.mutate(values);
+              }}
+              onCancel={() => {
+                setIsEditing(false);
+                setUpdateError(null);
+              }}
+              isSubmitting={updateMutation.isPending}
+              submitLabel={t('contacts.saveChanges')}
+              error={updateError ?? undefined}
+            />
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+            <DetailRow
+              label={t('contacts.emailLabel')}
+              value={contact.email}
+              testId="detail-email"
+            />
+            <DetailRow
+              label={t('contacts.phoneLabel')}
+              value={contact.phone ?? '—'}
+              testId="detail-phone"
+            />
+            <DetailRow
+              label={t('contacts.titleLabel')}
+              value={contact.title ?? '—'}
+              testId="detail-title"
+            />
+            <DetailRow
+              label={t('contacts.departmentLabel')}
+              value={contact.department ?? '—'}
+              testId="detail-department"
+            />
+            <DetailRow
+              label={t('contacts.createdLabel')}
+              value={new Date(contact.created_at).toLocaleDateString()}
+              testId="detail-created"
+            />
+            <DetailRow
+              label={t('contacts.ownerLabel')}
+              value={contact.owner_id}
+              testId="detail-owner"
+            />
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+/** Renders a labelled read-only row in the detail card. */
+function DetailRow({ label, value, testId }: { label: string; value: string; testId: string }) {
+  return (
+    <div className="px-6 py-4 flex items-start gap-4">
+      <span className="w-36 shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide pt-0.5">
+        {label}
+      </span>
+      <span className="text-sm text-gray-900" data-testid={testId}>
+        {value}
+      </span>
+    </div>
+  );
+}
