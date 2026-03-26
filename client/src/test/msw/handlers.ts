@@ -163,6 +163,7 @@ export const handlers = [
           phone: body.phone ?? null,
           title: body.title ?? null,
           department: body.department ?? null,
+          account_id: body.account_id !== undefined ? body.account_id : CONTACT_1.account_id,
         },
       },
       { status: 201 },

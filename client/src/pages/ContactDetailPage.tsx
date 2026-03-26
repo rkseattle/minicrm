@@ -36,7 +36,7 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  const { data: accountsData } = useQuery({
+  const { data: accountsData, isLoading: accountsLoading } = useQuery({
     queryKey: ACCOUNTS_QUERY_KEY,
     queryFn: () => listAccounts(),
   });
@@ -207,7 +207,11 @@ export default function ContactDetailPage() {
               <span className="w-36 shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide pt-0.5">
                 {t('contacts.accountLabel')}
               </span>
-              {linkedAccount ? (
+              {accountsLoading ? (
+                <span className="text-sm text-gray-400" data-testid="detail-account">
+                  …
+                </span>
+              ) : linkedAccount ? (
                 <Link
                   to={`/accounts/${linkedAccount.id}`}
                   data-testid="detail-account"

@@ -37,7 +37,7 @@ export default function AccountDetailPage() {
     enabled: Boolean(id),
   });
 
-  const { data: linkedContactsData } = useQuery({
+  const { data: linkedContactsData, isLoading: linkedContactsLoading } = useQuery({
     queryKey: linkedContactsQueryKey,
     queryFn: () => listContacts(undefined, id!),
     enabled: Boolean(id),
@@ -230,7 +230,11 @@ export default function AccountDetailPage() {
                 {t('accounts.linkedContactsHeading')}
               </h2>
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {!linkedContactsData || linkedContactsData.contacts.length === 0 ? (
+                {linkedContactsLoading ? (
+                  <p aria-busy="true" className="px-6 py-4 text-sm text-gray-400">
+                    {t('accounts.loading')}
+                  </p>
+                ) : !linkedContactsData || linkedContactsData.contacts.length === 0 ? (
                   <p
                     className="px-6 py-4 text-sm text-gray-400"
                     data-testid="linked-contacts-empty"
