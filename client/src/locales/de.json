@@ -73,6 +73,8 @@
     "titlePlaceholder": "Account Manager",
     "departmentLabel": "Abteilung",
     "departmentPlaceholder": "Vertrieb",
+    "accountLabel": "Konto",
+    "accountNone": "— Kein Konto —",
     "ownerLabel": "Eigentümer",
     "createdLabel": "Erstellt am",
     "columnName": "Name",
@@ -119,7 +121,9 @@
     "loading": "Konten werden geladen…",
     "empty": "Noch keine Konten. Fügen Sie eines hinzu.",
     "notFound": "Konto nicht gefunden.",
-    "backToAccounts": "Zurück zu Konten"
+    "backToAccounts": "Zurück zu Konten",
+    "linkedContactsHeading": "Verknüpfte Kontakte",
+    "linkedContactsEmpty": "Keine Kontakte mit diesem Konto verknüpft."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

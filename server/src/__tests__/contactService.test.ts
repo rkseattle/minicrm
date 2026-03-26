@@ -16,6 +16,7 @@ import {
   updateContact,
   deleteContact,
 } from '../services/contactService.js';
+import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -40,11 +41,16 @@ const BASE_CONTACT = {
 
 let ownerId: string;
 
+let accountId: string;
+
 beforeAll(async () => {
   await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM accounts');
   await pool.query('DELETE FROM users');
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
+  const account = await createAccount({ name: 'Test Account', owner_id: ownerId });
+  accountId = account.id;
 });
 
 beforeEach(async () => {
@@ -53,6 +59,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM accounts');
   await pool.query('DELETE FROM users');
   await pool.end();
 });
@@ -94,6 +101,17 @@ describe('createContact', () => {
     expect(contact.phone).toBeNull();
     expect(contact.title).toBeNull();
     expect(contact.department).toBeNull();
+    expect(contact.account_id).toBeNull();
+  });
+
+  it('stores account_id when provided', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'linked@example.com',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+    expect(contact.account_id).toBe(accountId);
   });
 
   it('throws when owner_id does not reference a real user', async () => {
@@ -153,6 +171,20 @@ describe('listContacts', () => {
     expect(mine).toHaveLength(1);
     expect(mine[0].email).toBe('mine@example.com');
   });
+
+  it('filters by accountId when provided', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      email: 'linked@example.com',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+    await createContact({ ...BASE_CONTACT, email: 'unlinked@example.com', owner_id: ownerId });
+
+    const linked = await listContacts({ accountId });
+    expect(linked).toHaveLength(1);
+    expect(linked[0].email).toBe('linked@example.com');
+  });
 });
 
 // ── updateContact ───────────────────────────────────────────────────────────────
@@ -175,6 +207,27 @@ describe('updateContact', () => {
     const updated = await updateContact(contact.id, { phone: '+1-555-9999' });
 
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(contact.updated_at.getTime());
+  });
+
+  it('links a contact to an account', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    expect(contact.account_id).toBeNull();
+
+    const updated = await updateContact(contact.id, { account_id: accountId });
+    expect(updated!.account_id).toBe(accountId);
+  });
+
+  it('unlinks a contact from an account by setting account_id to null', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'linked2@example.com',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+    expect(contact.account_id).toBe(accountId);
+
+    const updated = await updateContact(contact.id, { account_id: null });
+    expect(updated!.account_id).toBeNull();
   });
 
   it('returns null for a non-existent contact', async () => {

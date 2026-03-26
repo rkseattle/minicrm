@@ -9,6 +9,17 @@ import type {
   UpdateContactInput,
 } from '@minicrm/shared/schemas/contactSchema.js';
 
+/** Columns that may be updated via updateContact — guards against SQL injection from dynamic field names */
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
+  'first_name',
+  'last_name',
+  'email',
+  'phone',
+  'title',
+  'department',
+  'account_id',
+]);
+
 /** Shape of a contact row returned from the database */
 export interface ContactRow {
   id: string;
@@ -18,6 +29,7 @@ export interface ContactRow {
   phone: string | null;
   title: string | null;
   department: string | null;
+  account_id: string | null;
   owner_id: string;
   created_at: Date;
   updated_at: Date;
@@ -27,6 +39,8 @@ export interface ContactRow {
 interface ListContactsOptions {
   /** When provided, only contacts with this owner_id are returned */
   ownerId?: string;
+  /** When provided, only contacts linked to this account_id are returned */
+  accountId?: string;
 }
 
 /**
@@ -38,11 +52,11 @@ interface ListContactsOptions {
 export async function createContact(
   params: CreateContactInput & { owner_id: string },
 ): Promise<ContactRow> {
-  const { first_name, last_name, email, phone, title, department, owner_id } = params;
+  const { first_name, last_name, email, phone, title, department, account_id, owner_id } = params;
 
   const result = await pool.query<ContactRow>(
-    `INSERT INTO contacts (first_name, last_name, email, phone, title, department, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO contacts (first_name, last_name, email, phone, title, department, account_id, owner_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
       first_name,
@@ -51,6 +65,7 @@ export async function createContact(
       phone ?? null,
       title ?? null,
       department ?? null,
+      account_id ?? null,
       owner_id,
     ],
   );
@@ -77,10 +92,26 @@ export async function findContactById(id: string): Promise<ContactRow | null> {
  * @returns Array of contact rows ordered by created_at ascending
  */
 export async function listContacts(options: ListContactsOptions = {}): Promise<ContactRow[]> {
+  if (options.ownerId && options.accountId) {
+    const result = await pool.query<ContactRow>(
+      'SELECT * FROM contacts WHERE owner_id = $1 AND account_id = $2 ORDER BY created_at ASC',
+      [options.ownerId, options.accountId],
+    );
+    return result.rows;
+  }
+
   if (options.ownerId) {
     const result = await pool.query<ContactRow>(
       'SELECT * FROM contacts WHERE owner_id = $1 ORDER BY created_at ASC',
       [options.ownerId],
+    );
+    return result.rows;
+  }
+
+  if (options.accountId) {
+    const result = await pool.query<ContactRow>(
+      'SELECT * FROM contacts WHERE account_id = $1 ORDER BY created_at ASC',
+      [options.accountId],
     );
     return result.rows;
   }
@@ -104,7 +135,9 @@ export async function updateContact(
     ...params,
     ...(params.email !== undefined ? { email: params.email.toLowerCase() } : {}),
   };
-  const fields = Object.keys(normalized) as (keyof UpdateContactInput)[];
+  const fields = (Object.keys(normalized) as (keyof UpdateContactInput)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field),
+  );
 
   // Build dynamic SET clause: first_name = $2, last_name = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');

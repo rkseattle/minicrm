@@ -53,7 +53,7 @@ export const ACCOUNT_1: AccountResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
 };
 
-/** Reusable fixture: a contact record */
+/** Reusable fixture: a contact record linked to ACCOUNT_1 */
 export const CONTACT_1: ContactResponse = {
   id: '00000000-0000-0000-0000-000000000101',
   first_name: 'Alice',
@@ -62,6 +62,7 @@ export const CONTACT_1: ContactResponse = {
   phone: '+1-555-0100',
   title: 'VP Sales',
   department: 'Sales',
+  account_id: '00000000-0000-0000-0000-000000000201',
   owner_id: '00000000-0000-0000-0000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -138,9 +139,14 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: GET /api/contacts */
-  http.get('/api/contacts', () => {
-    return HttpResponse.json({ contacts: [CONTACT_1] });
+  /** Contacts: GET /api/contacts — supports ?account=<id> filter */
+  http.get('/api/contacts', ({ request }) => {
+    const url = new URL(request.url);
+    const accountId = url.searchParams.get('account');
+    const contacts = accountId
+      ? [CONTACT_1].filter((c) => c.account_id === accountId)
+      : [CONTACT_1];
+    return HttpResponse.json({ contacts });
   }),
 
   /** Contacts: POST /api/contacts */
@@ -157,6 +163,7 @@ export const handlers = [
           phone: body.phone ?? null,
           title: body.title ?? null,
           department: body.department ?? null,
+          account_id: body.account_id !== undefined ? body.account_id : CONTACT_1.account_id,
         },
       },
       { status: 201 },

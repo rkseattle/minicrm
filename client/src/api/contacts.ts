@@ -19,13 +19,19 @@ interface ContactSingleResponse {
 }
 
 /**
- * Returns all contacts. Pass owner='me' to scope to the current user.
+ * Returns all contacts. Pass owner='me' to scope to the current user,
+ * or accountId to scope to contacts linked to a specific account.
  *
  * @param owner - When 'me', only the current user's contacts are returned
+ * @param accountId - When provided, only contacts linked to this account are returned
  */
-export async function listContacts(owner?: 'me'): Promise<ContactsResponse> {
-  const params = owner ? { owner } : undefined;
-  const response = await apiClient.get<ContactsResponse>('/contacts', { params });
+export async function listContacts(owner?: 'me', accountId?: string): Promise<ContactsResponse> {
+  const params: Record<string, string> = {};
+  if (owner) params.owner = owner;
+  if (accountId) params.account = accountId;
+  const response = await apiClient.get<ContactsResponse>('/contacts', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
   return response.data;
 }
 

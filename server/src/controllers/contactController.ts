@@ -4,6 +4,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { createContactSchema, updateContactSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import {
   createContact,
@@ -29,7 +30,11 @@ export async function createContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const contact = await createContact({ ...parsed.data, owner_id: req.user!.id });
+  const contact = await createContact({
+    ...parsed.data,
+    account_id: parsed.data.account_id ?? null,
+    owner_id: req.user!.id,
+  });
   res.status(201).json({ contact });
 }
 
@@ -39,7 +44,20 @@ export async function createContactHandler(req: Request, res: Response): Promise
  */
 export async function listContactsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
-  const contacts = await listContacts({ ownerId });
+
+  let accountId: string | undefined;
+  if (typeof req.query.account === 'string' && req.query.account.length > 0) {
+    const parsed = z.string().uuid().safeParse(req.query.account);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
+      });
+      return;
+    }
+    accountId = parsed.data;
+  }
+
+  const contacts = await listContacts({ ownerId, accountId });
   res.status(200).json({ contacts });
 }
 

@@ -12,6 +12,8 @@ import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { listContacts, createContact } from '@/api/contacts.js';
+import { listAccounts } from '@/api/accounts.js';
+import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 
@@ -32,6 +34,13 @@ export default function ContactsPage() {
     queryFn: () => listContacts(),
   });
 
+  const { data: accountsData } = useQuery({
+    queryKey: ACCOUNTS_QUERY_KEY,
+    queryFn: () => listAccounts(),
+  });
+
+  const accountOptions = (accountsData?.accounts ?? []).map((a) => ({ id: a.id, name: a.name }));
+
   const createMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
       createContact({
@@ -41,6 +50,7 @@ export default function ContactsPage() {
         phone: values.phone || undefined,
         title: values.title || undefined,
         department: values.department || undefined,
+        account_id: values.account_id || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
@@ -76,6 +86,7 @@ export default function ContactsPage() {
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('contacts.newContact')}</h2>
             <ContactForm
+              accounts={accountOptions}
               onSubmit={(values) => {
                 setCreateError(null);
                 createMutation.mutate(values);

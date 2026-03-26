@@ -73,6 +73,8 @@
     "titlePlaceholder": "客户经理",
     "departmentLabel": "部门",
     "departmentPlaceholder": "销售",
+    "accountLabel": "所属客户",
+    "accountNone": "— 无客户 —",
     "ownerLabel": "负责人",
     "createdLabel": "创建时间",
     "columnName": "姓名",
@@ -119,7 +121,9 @@
     "loading": "正在加载客户…",
     "empty": "暂无客户，请添加。",
     "notFound": "未找到客户。",
-    "backToAccounts": "返回客户列表"
+    "backToAccounts": "返回客户列表",
+    "linkedContactsHeading": "关联联系人",
+    "linkedContactsEmpty": "此客户暂无关联联系人。"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

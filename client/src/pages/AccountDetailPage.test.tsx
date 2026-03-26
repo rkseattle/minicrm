@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import AccountDetailPage from './AccountDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { ACCOUNT_1 } from '../test/msw/handlers.js';
+import { ACCOUNT_1, CONTACT_1 } from '../test/msw/handlers.js';
 
 /** Renders AccountDetailPage with the ACCOUNT_1 id in route params. */
 function renderAccountDetail() {
@@ -76,6 +76,35 @@ describe('AccountDetailPage', () => {
     expect(screen.getByTestId('account-form')).toBeInTheDocument();
     await user.click(screen.getByTestId('account-form-cancel'));
     expect(screen.queryByTestId('account-form')).not.toBeInTheDocument();
+  });
+
+  it('renders the linked contacts section heading', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('linked-contacts-heading')).toBeInTheDocument();
+    });
+  });
+
+  it('renders linked contacts when contacts are linked to the account', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('linked-contacts-list')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`linked-contact-${CONTACT_1.id}`)).toHaveTextContent(
+      `${CONTACT_1.first_name} ${CONTACT_1.last_name}`,
+    );
+  });
+
+  it('renders the empty state when no contacts are linked', async () => {
+    server.use(
+      http.get('/api/contacts', () => {
+        return HttpResponse.json({ contacts: [] });
+      }),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('linked-contacts-empty')).toBeInTheDocument();
+    });
   });
 
   it('submits the edit form and returns to detail view on success', async () => {

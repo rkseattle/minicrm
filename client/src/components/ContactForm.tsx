@@ -7,8 +7,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
+import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+
+/** Minimal account option used to populate the account selector */
+export interface AccountOption {
+  id: string;
+  name: string;
+}
 
 /** Form field values managed by this component */
 export interface ContactFormValues {
@@ -18,11 +25,15 @@ export interface ContactFormValues {
   phone: string;
   title: string;
   department: string;
+  /** UUID of the linked account, or empty string for no account */
+  account_id: string;
 }
 
 interface ContactFormProps {
   /** Pre-populate fields when editing an existing contact */
   initialValues?: Partial<ContactResponse>;
+  /** List of accounts available for linking */
+  accounts?: AccountOption[];
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: ContactFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -48,6 +59,7 @@ function buildInitialState(initial?: Partial<ContactResponse>): ContactFormValue
     phone: initial?.phone ?? '',
     title: initial?.title ?? '',
     department: initial?.department ?? '',
+    account_id: initial?.account_id ?? '',
   };
 }
 
@@ -56,6 +68,7 @@ function buildInitialState(initial?: Partial<ContactResponse>): ContactFormValue
  */
 export default function ContactForm({
   initialValues,
+  accounts = [],
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -69,6 +82,11 @@ export default function ContactForm({
   );
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
@@ -156,6 +174,23 @@ export default function ContactForm({
           onChange={handleChange}
           disabled={isSubmitting}
         />
+
+        <Select
+          id="contact-account"
+          data-testid="contact-account-select"
+          name="account_id"
+          label={t('contacts.accountLabel')}
+          value={formData.account_id}
+          onChange={handleSelectChange}
+          disabled={isSubmitting}
+        >
+          <option value="">{t('contacts.accountNone')}</option>
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {error && (

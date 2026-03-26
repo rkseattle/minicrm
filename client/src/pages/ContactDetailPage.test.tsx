@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1 } from '../test/msw/handlers.js';
+import { CONTACT_1, ACCOUNT_1 } from '../test/msw/handlers.js';
 
 describe('ContactDetailPage', () => {
   it('renders the contact name', async () => {
@@ -145,6 +145,42 @@ describe('ContactDetailPage', () => {
     // After delete the component navigates to /contacts; confirm the button is gone
     await waitFor(() => {
       expect(screen.queryByTestId('delete-contact-button')).not.toBeInTheDocument();
+    });
+  });
+
+  it('renders the linked account name as a clickable link', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      const accountLink = screen.getByTestId('detail-account');
+      expect(accountLink).toHaveTextContent(ACCOUNT_1.name);
+    });
+    expect(screen.getByTestId('detail-account').closest('a')).toHaveAttribute(
+      'href',
+      `/accounts/${ACCOUNT_1.id}`,
+    );
+  });
+
+  it('renders "—" in the account row when no account is linked', async () => {
+    server.use(
+      http.get('/api/contacts/:id', ({ params }) => {
+        if (params.id === CONTACT_1.id) {
+          return HttpResponse.json({ contact: { ...CONTACT_1, account_id: null } });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-account')).toHaveTextContent('—');
     });
   });
 
