@@ -5,7 +5,8 @@
     "logout": "Abmelden"
   },
   "login": {
-    "title": "Bei MiniCRM anmelden",
+    "title": "Bei Ihrem Konto anmelden",
+    "tagline": "Ihre Verkaufspipeline, vereinfacht.",
     "emailLabel": "E-Mail-Adresse",
     "emailPlaceholder": "sie@beispiel.de",
     "passwordLabel": "Passwort",
@@ -39,10 +40,14 @@
     "actionMakeRep": "Zum Vertreter machen",
     "inviteSuccess": "Benutzer eingeladen. Teilen Sie den Passwort-Setzen-Link mit ihm.",
     "inviteTokenLabel": "Passwort-Setzen-Link",
-    "copyLink": "Link kopieren"
+    "copyLink": "Link kopieren",
+    "loading": "Benutzer werden geladen…",
+    "empty": "Noch keine Benutzer."
   },
   "dashboard": {
-    "welcome": "Willkommen, {{name}}"
+    "welcome": "Willkommen, {{name}}",
+    "subtitle": "Hier ist eine Übersicht Ihrer Pipeline.",
+    "emptyState": "Ihre Pipeline wird hier angezeigt, sobald Kontakte und Geschäfte erstellt wurden."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

@@ -8,6 +8,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import { Button } from '@/components/ui/Button.js';
+import { Input } from '@/components/ui/Input.js';
+import { Select } from '@/components/ui/Select.js';
+import { Badge } from '@/components/ui/Badge.js';
 import {
   listUsers,
   inviteUser,
@@ -20,17 +24,12 @@ import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSch
 /** React Query cache key for the users list */
 const USERS_QUERY_KEY = ['users'] as const;
 
-/**
- * Formats a user status string for display using i18n keys.
- */
-function formatStatus(status: UserStatus, t: (key: string) => string): string {
-  const statusMap: Record<UserStatus, string> = {
-    active: t('users.statusActive'),
-    invited: t('users.statusInvited'),
-    inactive: t('users.statusInactive'),
-  };
-  return statusMap[status] ?? status;
-}
+/** Maps a user status to a Badge variant */
+const STATUS_BADGE_VARIANT: Record<UserStatus, 'success' | 'warning' | 'neutral'> = {
+  active: 'success',
+  invited: 'warning',
+  inactive: 'neutral',
+};
 
 interface InviteUserFormProps {
   onSuccess?: () => void;
@@ -43,7 +42,7 @@ interface InviteFormState {
 }
 
 /**
- * Invite user form component.
+ * Invite user form component rendered inside a card.
  */
 function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   const { t } = useTranslation();
@@ -79,114 +78,93 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   };
 
   return (
-    <div style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1rem', marginBottom: '1rem' }}>{t('users.inviteTitle')}</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div>
-          <label htmlFor="invite-name" style={{ display: 'block', fontSize: '0.875rem' }}>
-            {t('users.nameLabel')}
-          </label>
-          <input
+    <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+      <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('users.inviteTitle')}</h2>
+
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
+        <div className="min-w-40">
+          <Input
             id="invite-name"
             data-testid="invite-name"
             name="name"
             type="text"
             required
+            label={t('users.nameLabel')}
             value={formData.name}
             onChange={handleChange}
             placeholder={t('users.namePlaceholder')}
           />
         </div>
 
-        <div>
-          <label htmlFor="invite-email" style={{ display: 'block', fontSize: '0.875rem' }}>
-            {t('users.emailLabel')}
-          </label>
-          <input
+        <div className="min-w-48">
+          <Input
             id="invite-email"
             data-testid="invite-email"
             name="email"
             type="email"
             required
+            label={t('users.emailLabel')}
             value={formData.email}
             onChange={handleChange}
           />
         </div>
 
-        <div>
-          <label htmlFor="invite-role" style={{ display: 'block', fontSize: '0.875rem' }}>
-            {t('users.roleLabel')}
-          </label>
-          <select
+        <div className="min-w-32">
+          <Select
             id="invite-role"
             data-testid="invite-role"
             name="role"
+            label={t('users.roleLabel')}
             value={formData.role}
             onChange={handleChange}
           >
             <option value="rep">{t('users.roleRep')}</option>
             <option value="admin">{t('users.roleAdmin')}</option>
-          </select>
+          </Select>
         </div>
 
-        <div style={{ alignSelf: 'flex-end' }}>
-          <button type="submit" data-testid="invite-submit" disabled={inviteMutation.isPending}>
-            {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
-          </button>
-        </div>
+        <Button type="submit" data-testid="invite-submit" disabled={inviteMutation.isPending}>
+          {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
+        </Button>
       </form>
 
       {inviteMutation.isSuccess && lastInviteResult && (
-        <div
-          role="status"
-          style={{
-            marginTop: '1rem',
-            padding: '0.75rem',
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '4px',
-          }}
-        >
-          <p style={{ marginBottom: '0.5rem' }}>{t('users.inviteSuccess')}</p>
-          <p style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+        <div role="status" className="mt-4 rounded-md bg-emerald-50 border border-emerald-200 p-4">
+          <p className="text-sm font-medium text-emerald-800 mb-2">{t('users.inviteSuccess')}</p>
+          <p className="text-xs text-emerald-700 mb-2">
             <strong>{t('users.inviteTokenLabel')}:</strong>
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <code
-              style={{
-                display: 'block',
-                padding: '0.25rem 0.5rem',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                wordBreak: 'break-all',
-              }}
-            >
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded bg-white border border-emerald-200 px-3 py-1.5 text-xs text-gray-700 break-all">
               {window.location.origin}
               {lastInviteResult.setPasswordPath}
             </code>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() =>
                 navigator.clipboard.writeText(
                   `${window.location.origin}${lastInviteResult.setPasswordPath}`,
                 )
               }
-              style={{ flexShrink: 0 }}
             >
               {t('users.copyLink')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {inviteMutation.isError && (
-        <p role="alert" style={{ color: '#dc2626', marginTop: '0.5rem', fontSize: '0.875rem' }}>
+        <div
+          role="alert"
+          className="mt-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+        >
           {(inviteMutation.error as { response?: { data?: { error?: { message?: string } } } })
             ?.response?.data?.error?.message ?? t('errors.generic')}
-        </p>
+        </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -220,85 +198,134 @@ export default function UsersPage() {
   const users: UserResponse[] = data?.users ?? [];
 
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main style={{ padding: '2rem' }}>
-        <h1 style={{ marginBottom: '1.5rem' }}>{t('users.pageTitle')}</h1>
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('users.pageTitle')}</h1>
 
         <InviteUserForm />
 
-        {isLoading && <p aria-busy="true">Loading…</p>}
-        {isError && (
-          <p role="alert" style={{ color: '#dc2626' }}>
-            {t('errors.generic')}
-          </p>
+        {/* Loading state */}
+        {isLoading && (
+          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+            <p aria-busy="true" className="text-sm text-gray-400">
+              {t('users.loading')}
+            </p>
+          </div>
         )}
 
-        {!isLoading && !isError && (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                <th style={{ padding: '0.5rem' }}>{t('users.columnName')}</th>
-                <th style={{ padding: '0.5rem' }}>{t('users.columnEmail')}</th>
-                <th style={{ padding: '0.5rem' }}>{t('users.columnRole')}</th>
-                <th style={{ padding: '0.5rem' }}>{t('users.columnStatus')}</th>
-                <th style={{ padding: '0.5rem' }}>{t('users.columnActions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '0.5rem' }}>{user.name}</td>
-                  <td style={{ padding: '0.5rem' }}>{user.email}</td>
-                  <td style={{ padding: '0.5rem' }}>
-                    {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>{formatStatus(user.status, t)}</td>
-                  <td style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                    {user.role === 'rep' ? (
-                      <button
-                        type="button"
-                        data-testid={`make-admin-${user.id}`}
-                        onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
-                        disabled={roleMutation.isPending}
-                      >
-                        {t('users.actionMakeAdmin')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        data-testid={`make-rep-${user.id}`}
-                        onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
-                        disabled={roleMutation.isPending}
-                      >
-                        {t('users.actionMakeRep')}
-                      </button>
-                    )}
+        {/* Error state */}
+        {isError && (
+          <div
+            role="alert"
+            className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          >
+            {t('errors.generic')}
+          </div>
+        )}
 
-                    {user.status === 'inactive' ? (
-                      <button
-                        type="button"
-                        data-testid={`reactivate-${user.id}`}
-                        onClick={() => reactivateMutation.mutate(user.id)}
-                        disabled={reactivateMutation.isPending}
-                      >
-                        {t('users.actionReactivate')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        data-testid={`deactivate-${user.id}`}
-                        onClick={() => deactivateMutation.mutate(user.id)}
-                        disabled={deactivateMutation.isPending}
-                      >
-                        {t('users.actionDeactivate')}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Users table */}
+        {!isLoading && !isError && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            {users.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-400">{t('users.empty')}</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('users.columnName')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('users.columnEmail')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('users.columnRole')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('users.columnStatus')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('users.columnActions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
+                      <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                          {user.status === 'active'
+                            ? t('users.statusActive')
+                            : user.status === 'invited'
+                              ? t('users.statusInvited')
+                              : t('users.statusInactive')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {user.role === 'rep' ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              data-testid={`make-admin-${user.id}`}
+                              onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
+                              disabled={roleMutation.isPending}
+                            >
+                              {t('users.actionMakeAdmin')}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              data-testid={`make-rep-${user.id}`}
+                              onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
+                              disabled={roleMutation.isPending}
+                            >
+                              {t('users.actionMakeRep')}
+                            </Button>
+                          )}
+
+                          {user.status === 'inactive' ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              data-testid={`reactivate-${user.id}`}
+                              onClick={() => reactivateMutation.mutate(user.id)}
+                              disabled={reactivateMutation.isPending}
+                            >
+                              {t('users.actionReactivate')}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              data-testid={`deactivate-${user.id}`}
+                              onClick={() => deactivateMutation.mutate(user.id)}
+                              disabled={deactivateMutation.isPending}
+                            >
+                              {t('users.actionDeactivate')}
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
       </main>
     </div>

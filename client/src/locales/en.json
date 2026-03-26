@@ -5,7 +5,8 @@
     "logout": "Log out"
   },
   "login": {
-    "title": "Sign in to MiniCRM",
+    "title": "Sign in to your account",
+    "tagline": "Your sales pipeline, simplified.",
     "emailLabel": "Email address",
     "emailPlaceholder": "you@example.com",
     "passwordLabel": "Password",
@@ -39,10 +40,14 @@
     "actionMakeRep": "Make rep",
     "inviteSuccess": "User invited. Share the set-password link with them.",
     "inviteTokenLabel": "Set-password link",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "loading": "Loading users…",
+    "empty": "No users yet."
   },
   "dashboard": {
-    "welcome": "Welcome, {{name}}"
+    "welcome": "Welcome, {{name}}",
+    "subtitle": "Here's an overview of your pipeline.",
+    "emptyState": "Your pipeline will appear here once contacts and deals are created."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

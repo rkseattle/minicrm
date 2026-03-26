@@ -5,7 +5,8 @@
     "logout": "Se déconnecter"
   },
   "login": {
-    "title": "Connexion à MiniCRM",
+    "title": "Connectez-vous à votre compte",
+    "tagline": "Votre pipeline commercial, simplifié.",
     "emailLabel": "Adresse e-mail",
     "emailPlaceholder": "vous@exemple.com",
     "passwordLabel": "Mot de passe",
@@ -39,10 +40,14 @@
     "actionMakeRep": "Rendre représentant",
     "inviteSuccess": "Utilisateur invité. Partagez le lien de définition du mot de passe.",
     "inviteTokenLabel": "Lien de définition du mot de passe",
-    "copyLink": "Copier le lien"
+    "copyLink": "Copier le lien",
+    "loading": "Chargement des utilisateurs…",
+    "empty": "Aucun utilisateur pour l'instant."
   },
   "dashboard": {
-    "welcome": "Bienvenue, {{name}}"
+    "welcome": "Bienvenue, {{name}}",
+    "subtitle": "Voici un aperçu de votre pipeline.",
+    "emptyState": "Votre pipeline apparaîtra ici une fois les contacts et les offres créés."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",
