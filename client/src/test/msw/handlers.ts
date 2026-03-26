@@ -8,6 +8,7 @@
 import { http, HttpResponse } from 'msw';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -37,6 +38,19 @@ export const INVITED_USER: UserResponse = {
   role: 'rep',
   status: 'invited',
   created_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: an account record */
+export const ACCOUNT_1: AccountResponse = {
+  id: '00000000-0000-0000-0000-000000000201',
+  name: 'Acme Corp',
+  industry: 'Technology',
+  website: 'https://acme.example.com',
+  employee_range: '51-200',
+  revenue_range: '10M-50M',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
 };
 
 /** Reusable fixture: a contact record */
@@ -170,6 +184,54 @@ export const handlers = [
 
   /** Contacts: DELETE /api/contacts/:id */
   http.delete('/api/contacts/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Accounts: GET /api/accounts */
+  http.get('/api/accounts', () => {
+    return HttpResponse.json({ accounts: [ACCOUNT_1] });
+  }),
+
+  /** Accounts: POST /api/accounts */
+  http.post('/api/accounts', async ({ request }) => {
+    const body = (await request.json()) as Partial<AccountResponse>;
+    return HttpResponse.json(
+      {
+        account: {
+          ...ACCOUNT_1,
+          id: '00000000-0000-0000-0000-000000000202',
+          name: body.name ?? 'New Account',
+          industry: body.industry ?? null,
+          website: body.website ?? null,
+          employee_range: body.employee_range ?? null,
+          revenue_range: body.revenue_range ?? null,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Accounts: GET /api/accounts/:id */
+  http.get('/api/accounts/:id', ({ params }) => {
+    if (params.id === ACCOUNT_1.id) {
+      return HttpResponse.json({ account: ACCOUNT_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Account not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Accounts: PATCH /api/accounts/:id */
+  http.patch('/api/accounts/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<AccountResponse>;
+    return HttpResponse.json({
+      account: { ...ACCOUNT_1, ...body, id: params.id as string },
+    });
+  }),
+
+  /** Accounts: DELETE /api/accounts/:id */
+  http.delete('/api/accounts/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 ];

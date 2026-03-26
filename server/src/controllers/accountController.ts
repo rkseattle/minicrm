@@ -1,0 +1,115 @@
+/**
+ * Account controller — request/response shaping for account endpoints.
+ * No business logic here; all DB access goes through accountService.
+ */
+
+import type { Request, Response } from 'express';
+import { createAccountSchema, updateAccountSchema } from '@minicrm/shared/schemas/accountSchema.js';
+import {
+  createAccount,
+  findAccountById,
+  listAccounts,
+  updateAccount,
+  deleteAccount,
+} from '../services/accountService.js';
+
+const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+
+/**
+ * POST /api/accounts
+ * Creates a new account owned by the authenticated user.
+ */
+export async function createAccountHandler(req: Request, res: Response): Promise<void> {
+  const parsed = createAccountSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const account = await createAccount({ ...parsed.data, owner_id: req.user!.id });
+  res.status(201).json({ account });
+}
+
+/**
+ * GET /api/accounts
+ * Lists accounts. Pass ?owner=me to scope to the authenticated user's accounts.
+ */
+export async function listAccountsHandler(req: Request, res: Response): Promise<void> {
+  const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
+  const accounts = await listAccounts({ ownerId });
+  res.status(200).json({ accounts });
+}
+
+/**
+ * GET /api/accounts/:id
+ * Returns a single account by ID.
+ */
+export async function getAccountHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const account = await findAccountById(id);
+
+  if (!account) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  res.status(200).json({ account });
+}
+
+/**
+ * PATCH /api/accounts/:id
+ * Updates one or more fields of an existing account.
+ * Reps may only update accounts they own; admins may update any account.
+ */
+export async function updateAccountHandler(req: Request, res: Response): Promise<void> {
+  const parsed = updateAccountSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const id = String(req.params['id']);
+  const existing = await findAccountById(id);
+
+  if (!existing) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  const account = await updateAccount(id, parsed.data);
+  res.status(200).json({ account });
+}
+
+/**
+ * DELETE /api/accounts/:id
+ * Deletes an account and unlinks associated contacts. Returns 204 No Content on success.
+ * Reps may only delete accounts they own; admins may delete any account.
+ */
+export async function deleteAccountHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const existing = await findAccountById(id);
+
+  if (!existing) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  await deleteAccount(id);
+  res.status(204).send();
+}
