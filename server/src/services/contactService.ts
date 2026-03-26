@@ -44,7 +44,15 @@ export async function createContact(
     `INSERT INTO contacts (first_name, last_name, email, phone, title, department, owner_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [first_name, last_name, email, phone ?? null, title ?? null, department ?? null, owner_id],
+    [
+      first_name,
+      last_name,
+      email.toLowerCase(),
+      phone ?? null,
+      title ?? null,
+      department ?? null,
+      owner_id,
+    ],
   );
 
   return result.rows[0];
@@ -92,7 +100,11 @@ export async function updateContact(
   id: string,
   params: UpdateContactInput,
 ): Promise<ContactRow | null> {
-  const fields = Object.keys(params) as (keyof UpdateContactInput)[];
+  const normalized: UpdateContactInput = {
+    ...params,
+    ...(params.email !== undefined ? { email: params.email.toLowerCase() } : {}),
+  };
+  const fields = Object.keys(normalized) as (keyof UpdateContactInput)[];
 
   // Build dynamic SET clause: first_name = $2, last_name = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
@@ -102,7 +114,7 @@ export async function updateContact(
      SET ${setClauses}, updated_at = now()
      WHERE id = $1
      RETURNING *`,
-    [id, ...fields.map((f) => params[f])],
+    [id, ...fields.map((f) => normalized[f])],
   );
 
   return result.rows[0] ?? null;
