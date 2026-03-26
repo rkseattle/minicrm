@@ -19,6 +19,7 @@ const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const IGNORED = [
   '**/node_modules/**',
   '**/dist/**',
+  '**/coverage/**',
   'db/migrations/**',
 ];
 
