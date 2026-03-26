@@ -5,23 +5,30 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
 import { getMe } from '@/api/auth.js';
+import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 /** React Query cache key for the current user */
-export const AUTH_QUERY_KEY = ['auth', 'me'];
+export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
+
+interface UseAuthResult {
+  user: UserResponse | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
 
 /**
  * Returns the current user from the server, or null if unauthenticated.
- *
- * @returns {{ user: object|null, isLoading: boolean, isAuthenticated: boolean }}
  */
-export function useAuth() {
+export function useAuth(): UseAuthResult {
   const { data, isLoading } = useQuery({
     queryKey: AUTH_QUERY_KEY,
     queryFn: getMe,
     // Do not retry on 401 — unauthenticated is a valid state, not an error
     retry: (failureCount, error) => {
-      if (error?.response?.status === 401) return false;
+      const axiosError = error as AxiosError;
+      if (axiosError?.response?.status === 401) return false;
       return failureCount < 2;
     },
     // Treat 401 as a successful "no user" response rather than an error state

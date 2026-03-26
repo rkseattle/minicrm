@@ -4,11 +4,16 @@
  *
  * Express 4 does not automatically catch async errors — without this wrapper
  * an unhandled rejection would bypass the global error handler entirely.
- *
- * @param {function(import('express').Request, import('express').Response, import('express').NextFunction): Promise<void>} fn
- * @returns {function(import('express').Request, import('express').Response, import('express').NextFunction): void}
  */
-export function asyncHandler(fn) {
+
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
+
+/**
+ * Wraps an async Express handler and forwards any rejections to next().
+ */
+export function asyncHandler(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
+): RequestHandler {
   return (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

@@ -19,4 +19,4 @@ COPY db/ ./db/
 
 EXPOSE 3001
 
-CMD ["node", "server/src/server.js"]
+CMD ["npx", "tsx", "server/src/server.ts"]

@@ -5,9 +5,11 @@
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import type { Request, Response } from 'express';
 import { loginSchema } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import { sanitizeUser } from '../utils/userUtils.js';
 
 /** JWT expiry — 8 hours expressed in seconds */
 const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
@@ -16,67 +18,57 @@ const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
 const COOKIE_MAX_AGE_MS = JWT_EXPIRY_SECONDS * 1000;
 
 /**
- * Strips the password_hash field before returning a user object to the client.
- *
- * @param {import('../services/userService.js').UserRow} user
- * @returns {Omit<import('../services/userService.js').UserRow, 'password_hash'>}
- */
-function sanitizeUser(user) {
-  const { password_hash, ...safeUser } = user;
-  return safeUser;
-}
-
-/**
  * POST /api/auth/login
  * Validates credentials, signs a JWT, and sets it as an httpOnly cookie.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
  */
-export async function login(req, res) {
+export async function login(req: Request, res: Response): Promise<void> {
   const parseResult = loginSchema.safeParse(req.body);
   if (!parseResult.success) {
-    return res.status(400).json({
+    res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
         message: parseResult.error.errors[0].message,
       },
     });
+    return;
   }
 
   const { email, password } = parseResult.data;
 
   const user = await userService.findUserByEmail(email);
   if (!user) {
-    return res.status(401).json({
+    res.status(401).json({
       error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' },
     });
+    return;
   }
 
   if (user.status === 'inactive') {
-    return res.status(403).json({
+    res.status(403).json({
       error: {
         code: 'AUTH_ACCOUNT_DEACTIVATED',
         message: 'Your account has been deactivated. Contact an admin.',
       },
     });
+    return;
   }
 
   if (user.status === 'invited' || !user.password_hash) {
-    return res.status(403).json({
+    res.status(403).json({
       error: {
         code: 'AUTH_ACCOUNT_NOT_ACTIVATED',
         message: 'You must set your password before logging in.',
       },
     });
+    return;
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
   if (!passwordMatch) {
-    return res.status(401).json({
+    res.status(401).json({
       error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' },
     });
+    return;
   }
 
   const tokenPayload = {
@@ -87,7 +79,7 @@ export async function login(req, res) {
     status: user.status,
   };
 
-  const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+  const token = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
     expiresIn: JWT_EXPIRY_SECONDS,
   });
 
@@ -98,41 +90,34 @@ export async function login(req, res) {
     maxAge: COOKIE_MAX_AGE_MS,
   });
 
-  return res.status(200).json({ user: sanitizeUser(user) });
+  res.status(200).json({ user: sanitizeUser(user) });
 }
 
 /**
  * POST /api/auth/logout
  * Clears the auth cookie.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {void}
  */
-export function logout(req, res) {
+export function logout(_req: Request, res: Response): void {
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
   });
-  return res.status(200).json({ message: 'Logged out successfully' });
+  res.status(200).json({ message: 'Logged out successfully' });
 }
 
 /**
  * GET /api/auth/me
  * Returns the currently authenticated user (decoded from JWT via middleware).
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @returns {Promise<void>}
  */
-export async function me(req, res) {
+export async function me(req: Request, res: Response): Promise<void> {
   // Refresh from DB to get current status/role (token may be stale)
-  const user = await userService.findUserById(req.user.id);
+  const user = await userService.findUserById(req.user!.id);
   if (!user || user.status === 'inactive') {
-    return res.status(401).json({
+    res.status(401).json({
       error: { code: 'AUTH_INVALID_TOKEN', message: 'User not found or deactivated' },
     });
+    return;
   }
-  return res.status(200).json({ user: sanitizeUser(user) });
+  res.status(200).json({ user: sanitizeUser(user) });
 }

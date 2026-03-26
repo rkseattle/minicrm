@@ -5,13 +5,11 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import NavBar from '@/components/NavBar.jsx';
+import NavBar from '@/components/NavBar.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
 /**
  * Dashboard landing page.
- *
- * @returns {JSX.Element}
  */
 export default function DashboardPage() {
   const { t } = useTranslation();

@@ -7,14 +7,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/hooks/useAuth.js';
+import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
-import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 
 /**
  * Top-level navigation bar.
- *
- * @returns {JSX.Element}
  */
 export default function NavBar() {
   const { t } = useTranslation();

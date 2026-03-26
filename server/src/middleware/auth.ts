@@ -5,33 +5,31 @@
  */
 
 import jwt from 'jsonwebtoken';
+import type { Request, Response, NextFunction } from 'express';
+import type { JwtTokenPayload } from '../types/express.js';
 
 /** Name of the cookie that holds the JWT */
 export const AUTH_COOKIE_NAME = 'minicrm_token';
 
 /**
  * Express middleware that validates the JWT from the httpOnly cookie.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
- * @returns {void}
  */
-export function authenticate(req, res, next) {
-  const token = req.cookies?.[AUTH_COOKIE_NAME];
+export function authenticate(req: Request, res: Response, next: NextFunction): void {
+  const token = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
   if (!token) {
-    return res.status(401).json({
+    res.status(401).json({
       error: { code: 'AUTH_MISSING_TOKEN', message: 'Authentication required' },
     });
+    return;
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET ?? '') as JwtTokenPayload;
     req.user = decoded;
-    return next();
+    next();
   } catch {
-    return res.status(401).json({
+    res.status(401).json({
       error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid or expired token' },
     });
   }

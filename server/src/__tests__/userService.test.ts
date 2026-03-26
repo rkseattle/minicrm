@@ -24,9 +24,9 @@ import pool from '../db.js';
 const BASE_USER = {
   email: 'test@example.com',
   name: 'Test User',
-  role: 'rep',
+  role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
-  status: 'active',
+  status: 'active' as const,
 };
 
 beforeEach(async () => {
@@ -80,7 +80,7 @@ describe('findUserByEmail', () => {
     await createUser(BASE_USER);
     const found = await findUserByEmail('test@example.com');
     expect(found).not.toBeNull();
-    expect(found.email).toBe('test@example.com');
+    expect(found!.email).toBe('test@example.com');
   });
 
   it('returns null when no user matches', async () => {
@@ -102,7 +102,7 @@ describe('findUserById', () => {
     const created = await createUser(BASE_USER);
     const found = await findUserById(created.id);
     expect(found).not.toBeNull();
-    expect(found.id).toBe(created.id);
+    expect(found!.id).toBe(created.id);
   });
 
   it('returns null for a non-existent UUID', async () => {
@@ -117,20 +117,17 @@ describe('updateUserStatus', () => {
   it('updates status to inactive', async () => {
     const user = await createUser(BASE_USER);
     const updated = await updateUserStatus(user.id, 'inactive');
-    expect(updated.status).toBe('inactive');
+    expect(updated!.status).toBe('inactive');
   });
 
   it('updates status to active from inactive', async () => {
     const user = await createUser({ ...BASE_USER, status: 'inactive' });
     const updated = await updateUserStatus(user.id, 'active');
-    expect(updated.status).toBe('active');
+    expect(updated!.status).toBe('active');
   });
 
   it('returns null for a non-existent user', async () => {
-    const result = await updateUserStatus(
-      '00000000-0000-0000-0000-000000000000',
-      'inactive',
-    );
+    const result = await updateUserStatus('00000000-0000-0000-0000-000000000000', 'inactive');
     expect(result).toBeNull();
   });
 });
@@ -141,20 +138,17 @@ describe('updateUserRole', () => {
   it('promotes a rep to admin', async () => {
     const user = await createUser(BASE_USER);
     const updated = await updateUserRole(user.id, 'admin');
-    expect(updated.role).toBe('admin');
+    expect(updated!.role).toBe('admin');
   });
 
   it('demotes an admin to rep', async () => {
     const user = await createUser({ ...BASE_USER, role: 'admin' });
     const updated = await updateUserRole(user.id, 'rep');
-    expect(updated.role).toBe('rep');
+    expect(updated!.role).toBe('rep');
   });
 
   it('returns null for a non-existent user', async () => {
-    const result = await updateUserRole(
-      '00000000-0000-0000-0000-000000000000',
-      'admin',
-    );
+    const result = await updateUserRole('00000000-0000-0000-0000-000000000000', 'admin');
     expect(result).toBeNull();
   });
 });
@@ -191,14 +185,11 @@ describe('setUserPassword', () => {
     const newHash = '$2b$12$new_hash_value';
     const updated = await setUserPassword(user.id, newHash);
 
-    expect(updated.password_hash).toBe(newHash);
+    expect(updated!.password_hash).toBe(newHash);
   });
 
   it('returns null for a non-existent user', async () => {
-    const result = await setUserPassword(
-      '00000000-0000-0000-0000-000000000000',
-      'hash',
-    );
+    const result = await setUserPassword('00000000-0000-0000-0000-000000000000', 'hash');
     expect(result).toBeNull();
   });
 });

@@ -3,7 +3,7 @@
  * Configures middleware, mounts routes, and adds the global error handler.
  */
 
-import express from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -48,12 +48,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
 
 // ── 404 handler ────────────────────────────────────────────────────────────────
-app.use((_req, res) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     error: { code: 'NOT_FOUND', message: 'The requested resource was not found' },
   });
@@ -61,16 +61,12 @@ app.use((_req, res) => {
 
 // ── Global error handler ───────────────────────────────────────────────────────
 // Must have four parameters so Express recognizes it as an error handler.
-// eslint-disable-next-line no-unused-vars
-app.use((err, _req, res, _next) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, 'Unhandled error');
   res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',
-      message:
-        process.env.NODE_ENV === 'production'
-          ? 'An unexpected error occurred'
-          : err.message,
+      message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
     },
   });
 });

@@ -6,14 +6,10 @@
 import { z } from 'zod';
 
 /** Allowed user roles */
-export const USER_ROLES = /** @type {const} */ (['admin', 'rep']);
+export const USER_ROLES = ['admin', 'rep'] as const;
 
 /** Allowed user statuses */
-export const USER_STATUSES = /** @type {const} */ ([
-  'active',
-  'invited',
-  'inactive',
-]);
+export const USER_STATUSES = ['active', 'invited', 'inactive'] as const;
 
 /**
  * Schema for the login request body.
@@ -25,9 +21,7 @@ export const loginSchema = z.object({
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(1, 'Password is required'),
+  password: z.string({ required_error: 'Password is required' }).min(1, 'Password is required'),
 });
 
 /**
@@ -40,10 +34,7 @@ export const inviteUserSchema = z.object({
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),
-  name: z
-    .string({ required_error: 'Name is required' })
-    .min(1, 'Name is required')
-    .trim(),
+  name: z.string({ required_error: 'Name is required' }).min(1, 'Name is required').trim(),
   role: z.enum(USER_ROLES, {
     required_error: 'Role is required',
     invalid_type_error: 'Role must be admin or rep',
@@ -82,3 +73,13 @@ export const userResponseSchema = z.object({
   status: z.enum(USER_STATUSES),
   created_at: z.string().or(z.date()),
 });
+
+// ── Inferred types ─────────────────────────────────────────────────────────────
+
+export type UserRole = (typeof USER_ROLES)[number];
+export type UserStatus = (typeof USER_STATUSES)[number];
+export type LoginInput = z.infer<typeof loginSchema>;
+export type InviteUserInput = z.infer<typeof inviteUserSchema>;
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+export type UserResponse = z.infer<typeof userResponseSchema>;

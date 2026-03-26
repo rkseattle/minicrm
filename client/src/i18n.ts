@@ -25,18 +25,16 @@ const resources = {
   de: { translation: de },
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    /** Default language — fall back to English when the detected locale is missing */
-    fallbackLng: 'en',
-    /** Detect language from the browser */
-    lng: navigator.language.split('-')[0],
-    interpolation: {
-      /** React already escapes values, so disable i18next's own escaping */
-      escapeValue: false,
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  /** Default language — fall back to English when the detected locale is missing */
+  fallbackLng: 'en',
+  /** Detect language from the browser */
+  lng: navigator.language.split('-')[0],
+  interpolation: {
+    /** React already escapes values, so disable i18next's own escaping */
+    escapeValue: false,
+  },
+});
 
 export default i18n;

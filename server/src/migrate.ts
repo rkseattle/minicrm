@@ -5,7 +5,7 @@
 
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
-import migrationRunner from 'node-pg-migrate';
+import { runner as migrationRunner } from 'node-pg-migrate';
 import logger from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,10 +15,8 @@ const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
 
 /**
  * Applies all pending migrations.
- *
- * @returns {Promise<void>}
  */
-export async function runMigrations() {
+export async function runMigrations(): Promise<void> {
   const databaseUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${process.env.DB_NAME}`;
 
   logger.info('Running database migrations...');
@@ -28,7 +26,7 @@ export async function runMigrations() {
     dir: MIGRATIONS_DIR,
     direction: 'up',
     migrationsTable: 'pgmigrations',
-    log: (msg) => logger.debug(msg),
+    log: (msg: string) => logger.debug(msg),
   });
 
   logger.info('Migrations complete.');
