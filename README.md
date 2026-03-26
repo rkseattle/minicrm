@@ -117,6 +117,23 @@ Migrations run automatically on server startup. To run manually:
 npm run migrate --workspace=minicrm-server
 ```
 
+## Implemented Features
+
+### Auth (MINCRM-21–23)
+
+- Email/password login and logout
+- Admin can invite users (generates a set-password link)
+- Admin can assign roles (admin / rep) and deactivate / reactivate users
+- JWT stored in httpOnly cookie; sessions expire after 8 hours
+
+### Contacts (MINCRM-8)
+
+- List all contacts in a sortable table
+- Create, edit, and delete contacts via inline forms
+- Contact detail page with full field display
+- Contacts are scoped to the authenticated user (`?owner=me` filter supported)
+- Full CRUD REST API at `/api/contacts`
+
 ## Auth
 
 - Two roles: `admin` and `rep`

@@ -8,6 +8,8 @@ import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
 import LoginPage from '@/pages/LoginPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
+import ContactsPage from '@/pages/ContactsPage.js';
+import ContactDetailPage from '@/pages/ContactDetailPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 
 /**
@@ -22,6 +24,8 @@ export default function App() {
       {/* Authenticated routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/contacts" element={<ContactsPage />} />
+        <Route path="/contacts/:id" element={<ContactDetailPage />} />
       </Route>
 
       {/* Admin-only routes */}

@@ -1,0 +1,167 @@
+/**
+ * ContactsPage component.
+ * Lists all contact records and provides an inline form for creating new ones.
+ * Each row links to the ContactDetailPage.
+ */
+
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import NavBar from '@/components/NavBar.js';
+import ContactForm from '@/components/ContactForm.js';
+import { Button } from '@/components/ui/Button.js';
+import { listContacts, createContact } from '@/api/contacts.js';
+import type { ContactFormValues } from '@/components/ContactForm.js';
+import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+
+/** React Query cache key for the contacts list */
+export const CONTACTS_QUERY_KEY = ['contacts'] as const;
+
+/**
+ * Contacts list page with inline create form.
+ */
+export default function ContactsPage() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: CONTACTS_QUERY_KEY,
+    queryFn: () => listContacts(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (values: ContactFormValues) =>
+      createContact({
+        first_name: values.first_name,
+        last_name: values.last_name,
+        email: values.email,
+        phone: values.phone || undefined,
+        title: values.title || undefined,
+        department: values.department || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
+      setShowForm(false);
+      setCreateError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const contacts: ContactResponse[] = data?.contacts ?? [];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">{t('contacts.pageTitle')}</h1>
+          {!showForm && (
+            <Button
+              type="button"
+              data-testid="new-contact-button"
+              onClick={() => setShowForm(true)}
+            >
+              {t('contacts.newContact')}
+            </Button>
+          )}
+        </div>
+
+        {/* Inline create form */}
+        {showForm && (
+          <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('contacts.newContact')}</h2>
+            <ContactForm
+              onSubmit={(values) => {
+                setCreateError(null);
+                createMutation.mutate(values);
+              }}
+              onCancel={() => {
+                setShowForm(false);
+                setCreateError(null);
+              }}
+              isSubmitting={createMutation.isPending}
+              submitLabel={t('contacts.save')}
+              error={createError ?? undefined}
+            />
+          </section>
+        )}
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+            <p aria-busy="true" className="text-sm text-gray-400">
+              {t('contacts.loading')}
+            </p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {isError && (
+          <div
+            role="alert"
+            className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          >
+            {t('errors.generic')}
+          </div>
+        )}
+
+        {/* Contacts table */}
+        {!isLoading && !isError && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            {contacts.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-400">{t('contacts.empty')}</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnName')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnEmail')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnPhone')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnTitle')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnDepartment')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {contacts.map((contact) => (
+                    <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-indigo-600">
+                        <Link
+                          to={`/contacts/${contact.id}`}
+                          data-testid={`contact-link-${contact.id}`}
+                          className="hover:underline"
+                        >
+                          {contact.first_name} {contact.last_name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{contact.email}</td>
+                      <td className="px-4 py-3 text-gray-500">{contact.phone ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

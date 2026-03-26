@@ -1,0 +1,205 @@
+/**
+ * Integration tests for contactService.
+ *
+ * Runs against a real PostgreSQL test database.
+ * A single test user is created in beforeAll and reused as owner_id.
+ * The contacts table is truncated before each test to ensure isolation.
+ *
+ * Run: npm test (from /server)
+ */
+
+import 'dotenv/config';
+import {
+  createContact,
+  findContactById,
+  listContacts,
+  updateContact,
+  deleteContact,
+} from '../services/contactService.js';
+import { createUser } from '../services/userService.js';
+import pool from '../db.js';
+
+/** Minimal user fixture used as contact owner */
+const OWNER_USER = {
+  email: 'owner@example.com',
+  name: 'Owner User',
+  role: 'rep' as const,
+  passwordHash: '$2b$12$placeholder_hash',
+  status: 'active' as const,
+};
+
+/** Minimal contact fixture */
+const BASE_CONTACT = {
+  first_name: 'Alice',
+  last_name: 'Smith',
+  email: 'alice@example.com',
+  phone: '+1-555-0100',
+  title: 'VP Sales',
+  department: 'Sales',
+};
+
+let ownerId: string;
+
+beforeAll(async () => {
+  await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM users');
+  const owner = await createUser(OWNER_USER);
+  ownerId = owner.id;
+});
+
+beforeEach(async () => {
+  await pool.query('DELETE FROM contacts');
+});
+
+afterAll(async () => {
+  await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM users');
+  await pool.end();
+});
+
+// ── createContact ───────────────────────────────────────────────────────────────
+
+describe('createContact', () => {
+  it('inserts a contact and returns the full row', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+
+    expect(contact.id).toBeDefined();
+    expect(contact.first_name).toBe('Alice');
+    expect(contact.last_name).toBe('Smith');
+    expect(contact.email).toBe('alice@example.com');
+    expect(contact.phone).toBe('+1-555-0100');
+    expect(contact.title).toBe('VP Sales');
+    expect(contact.department).toBe('Sales');
+    expect(contact.owner_id).toBe(ownerId);
+    expect(contact.created_at).toBeInstanceOf(Date);
+  });
+
+  it('normalizes email to lowercase', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'UPPER@EXAMPLE.COM',
+      owner_id: ownerId,
+    });
+    expect(contact.email).toBe('upper@example.com');
+  });
+
+  it('stores null for optional fields when omitted', async () => {
+    const contact = await createContact({
+      first_name: 'Bob',
+      last_name: 'Jones',
+      email: 'bob@example.com',
+      owner_id: ownerId,
+    });
+
+    expect(contact.phone).toBeNull();
+    expect(contact.title).toBeNull();
+    expect(contact.department).toBeNull();
+  });
+
+  it('throws when owner_id does not reference a real user', async () => {
+    await expect(
+      createContact({ ...BASE_CONTACT, owner_id: '00000000-0000-0000-0000-000000000000' }),
+    ).rejects.toThrow();
+  });
+});
+
+// ── findContactById ─────────────────────────────────────────────────────────────
+
+describe('findContactById', () => {
+  it('returns the contact row when found', async () => {
+    const created = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const found = await findContactById(created.id);
+
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(created.id);
+    expect(found!.first_name).toBe('Alice');
+  });
+
+  it('returns null for a non-existent UUID', async () => {
+    const found = await findContactById('00000000-0000-0000-0000-000000000000');
+    expect(found).toBeNull();
+  });
+});
+
+// ── listContacts ────────────────────────────────────────────────────────────────
+
+describe('listContacts', () => {
+  it('returns an empty array when no contacts exist', async () => {
+    const contacts = await listContacts();
+    expect(contacts).toEqual([]);
+  });
+
+  it('returns all contacts ordered by created_at', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'a@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'b@example.com', owner_id: ownerId });
+
+    const contacts = await listContacts();
+    expect(contacts).toHaveLength(2);
+    expect(contacts[0].email).toBe('a@example.com');
+    expect(contacts[1].email).toBe('b@example.com');
+  });
+
+  it('filters by ownerId when provided', async () => {
+    // Create a second owner
+    const other = await createUser({
+      ...OWNER_USER,
+      email: 'other@example.com',
+    });
+
+    await createContact({ ...BASE_CONTACT, email: 'mine@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'theirs@example.com', owner_id: other.id });
+
+    const mine = await listContacts({ ownerId });
+    expect(mine).toHaveLength(1);
+    expect(mine[0].email).toBe('mine@example.com');
+  });
+});
+
+// ── updateContact ───────────────────────────────────────────────────────────────
+
+describe('updateContact', () => {
+  it('updates the specified fields and returns the updated row', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+
+    const updated = await updateContact(contact.id, { first_name: 'Alicia', title: 'CRO' });
+
+    expect(updated!.first_name).toBe('Alicia');
+    expect(updated!.title).toBe('CRO');
+    // Unchanged fields remain intact
+    expect(updated!.last_name).toBe('Smith');
+    expect(updated!.email).toBe('alice@example.com');
+  });
+
+  it('updates updated_at timestamp', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const updated = await updateContact(contact.id, { phone: '+1-555-9999' });
+
+    expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(contact.updated_at.getTime());
+  });
+
+  it('returns null for a non-existent contact', async () => {
+    const result = await updateContact('00000000-0000-0000-0000-000000000000', {
+      first_name: 'Ghost',
+    });
+    expect(result).toBeNull();
+  });
+});
+
+// ── deleteContact ───────────────────────────────────────────────────────────────
+
+describe('deleteContact', () => {
+  it('removes the contact and returns the deleted row', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+
+    const deleted = await deleteContact(contact.id);
+    expect(deleted!.id).toBe(contact.id);
+
+    const found = await findContactById(contact.id);
+    expect(found).toBeNull();
+  });
+
+  it('returns null for a non-existent contact', async () => {
+    const result = await deleteContact('00000000-0000-0000-0000-000000000000');
+    expect(result).toBeNull();
+  });
+});

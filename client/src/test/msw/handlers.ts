@@ -7,6 +7,7 @@
 
 import { http, HttpResponse } from 'msw';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
+import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -36,6 +37,20 @@ export const INVITED_USER: UserResponse = {
   role: 'rep',
   status: 'invited',
   created_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a contact record */
+export const CONTACT_1: ContactResponse = {
+  id: '00000000-0000-0000-0000-000000000101',
+  first_name: 'Alice',
+  last_name: 'Smith',
+  email: 'alice@example.com',
+  phone: '+1-555-0100',
+  title: 'VP Sales',
+  department: 'Sales',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
 };
 
 /** Default handlers — can be overridden in individual tests with server.use() */
@@ -107,5 +122,54 @@ export const handlers = [
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'active' },
     });
+  }),
+
+  /** Contacts: GET /api/contacts */
+  http.get('/api/contacts', () => {
+    return HttpResponse.json({ contacts: [CONTACT_1] });
+  }),
+
+  /** Contacts: POST /api/contacts */
+  http.post('/api/contacts', async ({ request }) => {
+    const body = (await request.json()) as Partial<ContactResponse>;
+    return HttpResponse.json(
+      {
+        contact: {
+          ...CONTACT_1,
+          id: '00000000-0000-0000-0000-000000000102',
+          first_name: body.first_name ?? 'New',
+          last_name: body.last_name ?? 'Contact',
+          email: body.email ?? 'new@example.com',
+          phone: body.phone ?? null,
+          title: body.title ?? null,
+          department: body.department ?? null,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Contacts: GET /api/contacts/:id */
+  http.get('/api/contacts/:id', ({ params }) => {
+    if (params.id === CONTACT_1.id) {
+      return HttpResponse.json({ contact: CONTACT_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Contacts: PATCH /api/contacts/:id */
+  http.patch('/api/contacts/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<ContactResponse>;
+    return HttpResponse.json({
+      contact: { ...CONTACT_1, ...body, id: params.id as string },
+    });
+  }),
+
+  /** Contacts: DELETE /api/contacts/:id */
+  http.delete('/api/contacts/:id', () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
