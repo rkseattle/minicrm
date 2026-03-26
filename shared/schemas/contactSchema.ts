@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 /**
  * Schema for creating a new contact.
- * first_name and email are required; all other fields are optional.
+ * first_name, last_name, and email are required; all other fields are optional.
  */
 export const createContactSchema = z.object({
   first_name: z

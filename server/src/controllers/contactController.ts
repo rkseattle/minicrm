@@ -13,6 +13,8 @@ import {
   deleteContact,
 } from '../services/contactService.js';
 
+const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+
 /**
  * POST /api/contacts
  * Creates a new contact owned by the authenticated user.
@@ -60,6 +62,7 @@ export async function getContactHandler(req: Request, res: Response): Promise<vo
 /**
  * PATCH /api/contacts/:id
  * Updates one or more fields of an existing contact.
+ * Reps may only update contacts they own; admins may update any contact.
  */
 export async function updateContactHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateContactSchema.safeParse(req.body);
@@ -72,28 +75,41 @@ export async function updateContactHandler(req: Request, res: Response): Promise
   }
 
   const id = String(req.params['id']);
-  const contact = await updateContact(id, parsed.data);
+  const existing = await findContactById(id);
 
-  if (!contact) {
+  if (!existing) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
     return;
   }
 
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  const contact = await updateContact(id, parsed.data);
   res.status(200).json({ contact });
 }
 
 /**
  * DELETE /api/contacts/:id
  * Deletes a contact. Returns 204 No Content on success.
+ * Reps may only delete contacts they own; admins may delete any contact.
  */
 export async function deleteContactHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
-  const deleted = await deleteContact(id);
+  const existing = await findContactById(id);
 
-  if (!deleted) {
+  if (!existing) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
     return;
   }
 
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  await deleteContact(id);
   res.status(204).send();
 }
