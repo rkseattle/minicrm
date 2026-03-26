@@ -29,7 +29,11 @@ export async function createContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const contact = await createContact({ ...parsed.data, owner_id: req.user!.id });
+  const contact = await createContact({
+    ...parsed.data,
+    account_id: parsed.data.account_id ?? null,
+    owner_id: req.user!.id,
+  });
   res.status(201).json({ contact });
 }
 
@@ -39,7 +43,11 @@ export async function createContactHandler(req: Request, res: Response): Promise
  */
 export async function listContactsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
-  const contacts = await listContacts({ ownerId });
+  const accountId =
+    typeof req.query.account === 'string' && req.query.account.length > 0
+      ? req.query.account
+      : undefined;
+  const contacts = await listContacts({ ownerId, accountId });
   res.status(200).json({ contacts });
 }
 

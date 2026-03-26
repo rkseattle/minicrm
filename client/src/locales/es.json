@@ -73,6 +73,8 @@
     "titlePlaceholder": "Ejecutivo de cuentas",
     "departmentLabel": "Departamento",
     "departmentPlaceholder": "Ventas",
+    "accountLabel": "Cuenta",
+    "accountNone": "— Sin cuenta —",
     "ownerLabel": "Propietario",
     "createdLabel": "Creado",
     "columnName": "Nombre",
@@ -119,7 +121,9 @@
     "loading": "Cargando cuentas…",
     "empty": "Aún no hay cuentas. Agrega una para empezar.",
     "notFound": "Cuenta no encontrada.",
-    "backToAccounts": "Volver a cuentas"
+    "backToAccounts": "Volver a cuentas",
+    "linkedContactsHeading": "Contactos vinculados",
+    "linkedContactsEmpty": "No hay contactos vinculados a esta cuenta."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

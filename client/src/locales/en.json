@@ -73,6 +73,8 @@
     "titlePlaceholder": "Account Executive",
     "departmentLabel": "Department",
     "departmentPlaceholder": "Sales",
+    "accountLabel": "Account",
+    "accountNone": "— No account —",
     "ownerLabel": "Owner",
     "createdLabel": "Created",
     "columnName": "Name",
@@ -119,7 +121,9 @@
     "loading": "Loading accounts…",
     "empty": "No accounts yet. Add one to get started.",
     "notFound": "Account not found.",
-    "backToAccounts": "Back to accounts"
+    "backToAccounts": "Back to accounts",
+    "linkedContactsHeading": "Linked Contacts",
+    "linkedContactsEmpty": "No contacts linked to this account."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

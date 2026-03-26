@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
+import { listContacts } from '@/api/contacts.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 
@@ -28,10 +29,17 @@ export default function AccountDetailPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const accountQueryKey = ['accounts', id] as const;
+  const linkedContactsQueryKey = ['contacts', 'byAccount', id] as const;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: accountQueryKey,
     queryFn: () => getAccount(id!),
+    enabled: Boolean(id),
+  });
+
+  const { data: linkedContactsData } = useQuery({
+    queryKey: linkedContactsQueryKey,
+    queryFn: () => listContacts(undefined, id!),
     enabled: Boolean(id),
   });
 
@@ -178,38 +186,78 @@ export default function AccountDetailPage() {
             />
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-            <DetailRow
-              label={t('accounts.industryLabel')}
-              value={account.industry ?? '—'}
-              testId="detail-industry"
-            />
-            <DetailRow
-              label={t('accounts.websiteLabel')}
-              value={account.website ?? '—'}
-              testId="detail-website"
-            />
-            <DetailRow
-              label={t('accounts.employeeRangeLabel')}
-              value={account.employee_range ?? '—'}
-              testId="detail-employee-range"
-            />
-            <DetailRow
-              label={t('accounts.revenueRangeLabel')}
-              value={account.revenue_range ?? '—'}
-              testId="detail-revenue-range"
-            />
-            <DetailRow
-              label={t('accounts.createdLabel')}
-              value={new Date(account.created_at).toLocaleDateString()}
-              testId="detail-created"
-            />
-            <DetailRow
-              label={t('accounts.ownerLabel')}
-              value={account.owner_id}
-              testId="detail-owner"
-            />
-          </div>
+          <>
+            <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+              <DetailRow
+                label={t('accounts.industryLabel')}
+                value={account.industry ?? '—'}
+                testId="detail-industry"
+              />
+              <DetailRow
+                label={t('accounts.websiteLabel')}
+                value={account.website ?? '—'}
+                testId="detail-website"
+              />
+              <DetailRow
+                label={t('accounts.employeeRangeLabel')}
+                value={account.employee_range ?? '—'}
+                testId="detail-employee-range"
+              />
+              <DetailRow
+                label={t('accounts.revenueRangeLabel')}
+                value={account.revenue_range ?? '—'}
+                testId="detail-revenue-range"
+              />
+              <DetailRow
+                label={t('accounts.createdLabel')}
+                value={new Date(account.created_at).toLocaleDateString()}
+                testId="detail-created"
+              />
+              <DetailRow
+                label={t('accounts.ownerLabel')}
+                value={account.owner_id}
+                testId="detail-owner"
+              />
+            </div>
+
+            {/* Linked contacts */}
+            <section className="mt-8" aria-labelledby="linked-contacts-heading">
+              <h2
+                id="linked-contacts-heading"
+                className="text-sm font-semibold text-gray-900 mb-3"
+                data-testid="linked-contacts-heading"
+              >
+                {t('accounts.linkedContactsHeading')}
+              </h2>
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {!linkedContactsData || linkedContactsData.contacts.length === 0 ? (
+                  <p
+                    className="px-6 py-4 text-sm text-gray-400"
+                    data-testid="linked-contacts-empty"
+                  >
+                    {t('accounts.linkedContactsEmpty')}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
+                    {linkedContactsData.contacts.map((contact) => (
+                      <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
+                        <Link
+                          to={`/contacts/${contact.id}`}
+                          data-testid={`linked-contact-${contact.id}`}
+                          className="text-sm font-medium text-indigo-600 hover:underline"
+                        >
+                          {contact.first_name} {contact.last_name}
+                        </Link>
+                        {contact.title && (
+                          <span className="text-sm text-gray-500">{contact.title}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </>
         )}
       </main>
     </div>

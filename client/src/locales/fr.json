@@ -73,6 +73,8 @@
     "titlePlaceholder": "Chargé de comptes",
     "departmentLabel": "Département",
     "departmentPlaceholder": "Ventes",
+    "accountLabel": "Compte",
+    "accountNone": "— Aucun compte —",
     "ownerLabel": "Propriétaire",
     "createdLabel": "Créé le",
     "columnName": "Nom",
@@ -119,7 +121,9 @@
     "loading": "Chargement des comptes…",
     "empty": "Aucun compte pour l'instant. Ajoutez-en un pour commencer.",
     "notFound": "Compte introuvable.",
-    "backToAccounts": "Retour aux comptes"
+    "backToAccounts": "Retour aux comptes",
+    "linkedContactsHeading": "Contacts associés",
+    "linkedContactsEmpty": "Aucun contact associé à ce compte."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

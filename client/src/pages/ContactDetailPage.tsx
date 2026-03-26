@@ -12,7 +12,9 @@ import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
+import { listAccounts } from '@/api/accounts.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
+import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 
 /**
@@ -34,6 +36,14 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
+  const { data: accountsData } = useQuery({
+    queryKey: ACCOUNTS_QUERY_KEY,
+    queryFn: () => listAccounts(),
+  });
+
+  const accounts = accountsData?.accounts ?? [];
+  const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
+
   const updateMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
       updateContact(id!, {
@@ -43,6 +53,7 @@ export default function ContactDetailPage() {
         phone: values.phone || undefined,
         title: values.title || undefined,
         department: values.department || undefined,
+        account_id: values.account_id || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactQueryKey });
@@ -102,6 +113,9 @@ export default function ContactDetailPage() {
   }
 
   const contact = data.contact;
+  const linkedAccount = contact.account_id
+    ? accounts.find((a) => a.id === contact.account_id)
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -153,6 +167,7 @@ export default function ContactDetailPage() {
             </h2>
             <ContactForm
               initialValues={contact}
+              accounts={accountOptions}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
@@ -188,6 +203,24 @@ export default function ContactDetailPage() {
               value={contact.department ?? '—'}
               testId="detail-department"
             />
+            <div className="px-6 py-4 flex items-start gap-4">
+              <span className="w-36 shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide pt-0.5">
+                {t('contacts.accountLabel')}
+              </span>
+              {linkedAccount ? (
+                <Link
+                  to={`/accounts/${linkedAccount.id}`}
+                  data-testid="detail-account"
+                  className="text-sm text-indigo-600 hover:underline"
+                >
+                  {linkedAccount.name}
+                </Link>
+              ) : (
+                <span className="text-sm text-gray-900" data-testid="detail-account">
+                  —
+                </span>
+              )}
+            </div>
             <DetailRow
               label={t('contacts.createdLabel')}
               value={new Date(contact.created_at).toLocaleDateString()}

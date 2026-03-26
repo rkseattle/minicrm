@@ -26,6 +26,7 @@ export const createContactSchema = z.object({
   phone: z.string().trim().optional(),
   title: z.string().trim().optional(),
   department: z.string().trim().optional(),
+  account_id: z.string().uuid('Account ID must be a valid UUID').nullable().optional(),
 });
 
 /**
@@ -49,6 +50,7 @@ export const contactResponseSchema = z.object({
   phone: z.string().nullable(),
   title: z.string().nullable(),
   department: z.string().nullable(),
+  account_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
