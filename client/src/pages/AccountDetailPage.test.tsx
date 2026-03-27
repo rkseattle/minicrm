@@ -135,6 +135,25 @@ describe('AccountDetailPage', () => {
     });
   });
 
+  it('renders the owner select immediately when the edit form opens, even if the active users query is still loading', async () => {
+    // Hang the active users response so it never resolves during this test.
+    // The owner select must still render — the form cannot gate on this query.
+    server.use(http.get('/api/users/active', () => new Promise(() => {})));
+
+    const user = userEvent.setup();
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-account-button'));
+
+    // Select must be present even though users haven't loaded yet
+    const ownerSelect = screen.getByTestId<HTMLSelectElement>('account-owner-select');
+    expect(ownerSelect).toBeInTheDocument();
+    // The current owner UUID is preserved in state (not silently replaced)
+    expect(ownerSelect.value).toBe(ACCOUNT_1.owner_id);
+  });
+
   it('shows the owner select in the edit form populated with active users', async () => {
     const user = userEvent.setup();
     renderAccountDetail();

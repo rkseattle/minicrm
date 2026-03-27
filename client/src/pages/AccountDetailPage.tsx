@@ -182,7 +182,7 @@ export default function AccountDetailPage() {
             </h2>
             <AccountForm
               initialValues={account}
-              users={activeUsersData?.users}
+              users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
