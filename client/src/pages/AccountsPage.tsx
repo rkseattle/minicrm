@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 

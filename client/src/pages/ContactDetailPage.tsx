@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
