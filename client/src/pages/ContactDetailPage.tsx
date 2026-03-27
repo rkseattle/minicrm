@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
-import type { ActiveUser } from '@/api/users.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
@@ -50,7 +49,8 @@ export default function ContactDetailPage() {
 
   const accounts = accountsData?.accounts ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
-  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+  // Keep undefined while loading so ContactForm hides the owner select until users are available
+  const activeUsers = activeUsersData?.users;
 
   const updateMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
