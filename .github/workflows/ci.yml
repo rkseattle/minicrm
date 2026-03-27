@@ -35,7 +35,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        # Using ECR Public mirror to avoid Docker Hub unauthenticated pull rate limits
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
