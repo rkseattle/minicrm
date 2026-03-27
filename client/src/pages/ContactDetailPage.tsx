@@ -177,7 +177,7 @@ export default function ContactDetailPage() {
             <ContactForm
               initialValues={contact}
               accounts={accountOptions}
-              users={activeUsersData?.users}
+              users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
