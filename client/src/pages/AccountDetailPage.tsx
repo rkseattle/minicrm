@@ -13,23 +13,9 @@ import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
-import { listActiveUsers } from '@/api/users.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
-import { ACTIVE_USERS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
-import type { ActiveUser } from '@/api/users.js';
-
-/**
- * Resolves an owner UUID to a display name using the active users list.
- * Returns a fallback string when the user is not found (e.g. deactivated).
- *
- * @param ownerId - The UUID stored on the account
- * @param users - List of active users
- * @param fallback - Text to show when the owner is not in the active users list
- */
-function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
-  return users.find((u) => u.id === ownerId)?.name ?? fallback;
-}
 
 /**
  * Single account detail page with view/edit/delete.

@@ -15,32 +15,16 @@ import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { listContacts, createContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
-import { listActiveUsers } from '@/api/users.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
-import type { ActiveUser } from '@/api/users.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
 
-/** React Query cache key for the active users list */
-export const ACTIVE_USERS_QUERY_KEY = ['users', 'active'] as const;
-
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
 type OwnerFilter = 'all' | 'me';
-
-/**
- * Resolves an owner UUID to a display name using the active users list.
- * Returns a fallback string when the user is not found (e.g. deactivated).
- *
- * @param ownerId - The UUID stored on the record
- * @param users - List of active users
- * @param fallback - Text to show when the owner is not in the active users list
- */
-function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
-  return users.find((u) => u.id === ownerId)?.name ?? fallback;
-}
 
 /**
  * Contacts list page with owner filter and inline create form.

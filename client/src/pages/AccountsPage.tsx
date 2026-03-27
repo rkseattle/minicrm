@@ -14,29 +14,15 @@ import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
-import { listActiveUsers } from '@/api/users.js';
-import { ACTIVE_USERS_QUERY_KEY } from '@/pages/ContactsPage.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
-import type { ActiveUser } from '@/api/users.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
 
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
 type OwnerFilter = 'all' | 'me';
-
-/**
- * Resolves an owner UUID to a display name using the active users list.
- * Returns a fallback string when the user is not found (e.g. deactivated).
- *
- * @param ownerId - The UUID stored on the record
- * @param users - List of active users
- * @param fallback - Text to show when the owner is not in the active users list
- */
-function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
-  return users.find((u) => u.id === ownerId)?.name ?? fallback;
-}
 
 /**
  * Accounts list page with owner filter and inline create form.

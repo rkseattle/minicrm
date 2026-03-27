@@ -13,23 +13,10 @@ import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
-import { listActiveUsers } from '@/api/users.js';
-import { CONTACTS_QUERY_KEY, ACTIVE_USERS_QUERY_KEY } from '@/pages/ContactsPage.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
-import type { ActiveUser } from '@/api/users.js';
-
-/**
- * Resolves an owner UUID to a display name using the active users list.
- * Returns a fallback string when the user is not found (e.g. deactivated).
- *
- * @param ownerId - The UUID stored on the contact
- * @param users - List of active users
- * @param fallback - Text to show when the owner is not in the active users list
- */
-function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
-  return users.find((u) => u.id === ownerId)?.name ?? fallback;
-}
 
 /**
  * Single contact detail page with view/edit/delete.

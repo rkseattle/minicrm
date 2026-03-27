@@ -13,6 +13,21 @@ export interface ActiveUser {
   name: string;
 }
 
+/** React Query cache key for the active users list */
+export const ACTIVE_USERS_QUERY_KEY = ['users', 'active'] as const;
+
+/**
+ * Resolves an owner UUID to a display name using the active users list.
+ * Returns a fallback string when the user is not found (e.g. deactivated).
+ *
+ * @param ownerId - The UUID stored on the record
+ * @param users - List of active users
+ * @param fallback - Text to show when the owner is not in the active users list
+ */
+export function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
+  return users.find((u) => u.id === ownerId)?.name ?? fallback;
+}
+
 interface ActiveUsersResponse {
   users: ActiveUser[];
 }
