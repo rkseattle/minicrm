@@ -239,6 +239,43 @@ describe('ContactDetailPage', () => {
     expect(options).toContain(REP_USER.name);
   });
 
+  it('shows a disabled unknown option in the edit form when the owner is deactivated', async () => {
+    const deactivatedOwnerId = '00000000-0000-0000-0000-000000000999';
+    server.use(
+      http.get('/api/contacts/:id', ({ params }) => {
+        if (params.id === CONTACT_1.id) {
+          return HttpResponse.json({
+            contact: { ...CONTACT_1, owner_id: deactivatedOwnerId },
+          });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-contact-button'));
+
+    const ownerSelect = screen.getByTestId<HTMLSelectElement>('contact-owner-select');
+    // The unknown UUID must be preserved in the select's value, not silently replaced
+    expect(ownerSelect.value).toBe(deactivatedOwnerId);
+    // The disabled placeholder option should be present so the browser shows it
+    const unknownOption = Array.from(ownerSelect.options).find(
+      (o) => o.value === deactivatedOwnerId,
+    );
+    expect(unknownOption).toBeDefined();
+    expect(unknownOption?.disabled).toBe(true);
+  });
+
   it('sends updated owner_id when owner is changed and form is saved', async () => {
     const user = userEvent.setup();
     let patchedBody: Record<string, unknown> = {};

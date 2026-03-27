@@ -210,6 +210,7 @@ export default function ContactForm({
             name="owner_id"
             label={t('contacts.ownerLabel')}
             users={users}
+            unknownLabel={t('contacts.ownerUnknown')}
             value={formData.owner_id}
             onChange={handleSelectChange}
             disabled={isSubmitting}

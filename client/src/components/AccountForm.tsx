@@ -165,6 +165,7 @@ export default function AccountForm({
             name="owner_id"
             label={t('accounts.ownerLabel')}
             users={users}
+            unknownLabel={t('accounts.ownerUnknown')}
             value={formData.owner_id}
             onChange={handleSelectChange}
             disabled={isSubmitting}
