@@ -126,13 +126,31 @@ npm run migrate --workspace=minicrm-server
 - Admin can assign roles (admin / rep) and deactivate / reactivate users
 - JWT stored in httpOnly cookie; sessions expire after 8 hours
 
-### Contacts (MINCRM-8)
+### Contacts (MINCRM-8, MINCRM-14)
 
-- List all contacts in a sortable table
+- List all contacts in a sortable table with owner column
 - Create, edit, and delete contacts via inline forms
-- Contact detail page with full field display
-- Contacts are scoped to the authenticated user (`?owner=me` filter supported)
+- Contact detail page with full field display including resolved owner name
+- Filter contacts by owner (all vs. mine) via `?owner=me` query parameter
+- Owner defaults to the creating user; can be reassigned to any active user from the edit form
 - Full CRUD REST API at `/api/contacts`
+
+### Accounts (MINCRM-9, MINCRM-10, MINCRM-14)
+
+- List all accounts in a sortable table with owner column
+- Create, edit, and delete accounts via inline forms
+- Account detail page with full field display including resolved owner name
+- Filter accounts by owner (all vs. mine) via `?owner=me` query parameter
+- Owner defaults to the creating user; can be reassigned to any active user from the edit form
+- Linked contacts listed on the account detail page
+- Full CRUD REST API at `/api/accounts`
+
+### Ownership (MINCRM-14)
+
+- Every contact and account has a single `owner_id` that defaults to the creating user
+- Owner is displayed as a resolved name (not UUID) in list and detail views
+- Active users are fetched from `GET /api/users/active` (auth required, no admin role needed)
+- Owner can be changed from the record's edit form; change is reflected immediately without page reload
 
 ## Auth
 

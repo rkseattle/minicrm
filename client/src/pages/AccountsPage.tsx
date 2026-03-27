@@ -1,6 +1,7 @@
 /**
  * AccountsPage component.
- * Lists all account records and provides an inline form for creating new ones.
+ * Lists all account records with an owner column and owner filter.
+ * Provides an inline form for creating new accounts.
  * Each row links to the AccountDetailPage.
  */
 
@@ -11,26 +12,56 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
+import { Select } from '@/components/ui/Select.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
+import { listActiveUsers } from '@/api/users.js';
+import { ACTIVE_USERS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { ActiveUser } from '@/api/users.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
 
+/** Owner filter value — 'all' means no filter, 'me' means current user only */
+type OwnerFilter = 'all' | 'me';
+
 /**
- * Accounts list page with inline create form.
+ * Resolves an owner UUID to a display name using the active users list.
+ * Returns a fallback string when the user is not found (e.g. deactivated).
+ *
+ * @param ownerId - The UUID stored on the record
+ * @param users - List of active users
+ * @param fallback - Text to show when the owner is not in the active users list
+ */
+function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
+  return users.find((u) => u.id === ownerId)?.name ?? fallback;
+}
+
+/**
+ * Accounts list page with owner filter and inline create form.
  */
 export default function AccountsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+
+  const accountsQueryKey =
+    ownerFilter === 'me' ? ([...ACCOUNTS_QUERY_KEY, { owner: 'me' }] as const) : ACCOUNTS_QUERY_KEY;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ACCOUNTS_QUERY_KEY,
-    queryFn: () => listAccounts(),
+    queryKey: accountsQueryKey,
+    queryFn: () => listAccounts(ownerFilter === 'me' ? 'me' : undefined),
   });
+
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+  });
+
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const createMutation = useMutation({
     mutationFn: (values: AccountFormValues) =>
@@ -70,7 +101,7 @@ export default function AccountsPage() {
           )}
         </div>
 
-        {/* Inline create form */}
+        {/* Inline create form — owner field intentionally omitted; defaults to creating user */}
         {showForm && (
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('accounts.newAccount')}</h2>
@@ -89,6 +120,20 @@ export default function AccountsPage() {
             />
           </section>
         )}
+
+        {/* Owner filter */}
+        <div className="mb-4 flex items-center gap-3">
+          <Select
+            id="accounts-owner-filter"
+            data-testid="accounts-owner-filter"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
+            className="w-48"
+          >
+            <option value="all">{t('accounts.ownerFilterAll')}</option>
+            <option value="me">{t('accounts.ownerFilterMe')}</option>
+          </Select>
+        </div>
 
         {/* Loading state */}
         {isLoading && (
@@ -135,6 +180,9 @@ export default function AccountsPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnRevenueRange')}
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('accounts.columnOwner')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -153,6 +201,16 @@ export default function AccountsPage() {
                       <td className="px-4 py-3 text-gray-500">{account.website ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{account.employee_range ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{account.revenue_range ?? '—'}</td>
+                      <td
+                        className="px-4 py-3 text-gray-500"
+                        data-testid={`account-owner-${account.id}`}
+                      >
+                        {resolveOwnerName(
+                          account.owner_id,
+                          activeUsers,
+                          t('accounts.ownerUnknown'),
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -4,12 +4,12 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import AccountDetailPage from './AccountDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { ACCOUNT_1, CONTACT_1 } from '../test/msw/handlers.js';
+import { ACCOUNT_1, CONTACT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 /** Renders AccountDetailPage with the ACCOUNT_1 id in route params. */
 function renderAccountDetail() {
@@ -104,6 +104,91 @@ describe('AccountDetailPage', () => {
     renderAccountDetail();
     await waitFor(() => {
       expect(screen.getByTestId('linked-contacts-empty')).toBeInTheDocument();
+    });
+  });
+
+  it('displays the owner name (not UUID) in the detail view', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-owner')).toHaveTextContent(ADMIN_USER.name);
+    });
+    expect(screen.getByTestId('detail-owner')).not.toHaveTextContent(ACCOUNT_1.owner_id!);
+  });
+
+  it('shows fallback owner text when owner is not in the active users list', async () => {
+    server.use(
+      http.get('/api/accounts/:id', ({ params }) => {
+        if (params.id === ACCOUNT_1.id) {
+          return HttpResponse.json({
+            account: { ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
+          });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Account not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-owner')).toHaveTextContent('Unknown');
+    });
+  });
+
+  it('shows the owner select in the edit form populated with active users', async () => {
+    const user = userEvent.setup();
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-account-button'));
+
+    const ownerSelect = screen.getByTestId<HTMLSelectElement>('account-owner-select');
+    expect(ownerSelect).toBeInTheDocument();
+    // Should be pre-populated with the current owner
+    expect(ownerSelect.value).toBe(ACCOUNT_1.owner_id);
+    // Should list both active users as options
+    const options = Array.from(ownerSelect.options).map((o) => o.text);
+    expect(options).toContain(ADMIN_USER.name);
+    expect(options).toContain(REP_USER.name);
+  });
+
+  it('sends updated owner_id when owner is changed and form is saved', async () => {
+    const user = userEvent.setup();
+    let patchedBody: Record<string, unknown> = {};
+    server.use(
+      http.patch('/api/accounts/:id', async ({ params, request }) => {
+        patchedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          account: { ...ACCOUNT_1, ...patchedBody, id: params.id as string },
+        });
+      }),
+    );
+
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-account-button'));
+
+    await user.selectOptions(screen.getByTestId('account-owner-select'), REP_USER.id);
+    await user.click(screen.getByTestId('account-form-submit'));
+
+    await waitFor(() => {
+      expect(patchedBody.owner_id).toBe(REP_USER.id);
+    });
+  });
+
+  it('shows delete button and navigates away after confirmed delete', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-account-button'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('delete-account-button')).not.toBeInTheDocument();
     });
   });
 

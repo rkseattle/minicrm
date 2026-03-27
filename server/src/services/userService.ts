@@ -114,6 +114,24 @@ export async function listUsers(): Promise<UserRow[]> {
   return result.rows;
 }
 
+/** Minimal user shape returned by listActiveUsers — id and name only */
+export interface ActiveUserRow {
+  id: string;
+  name: string;
+}
+
+/**
+ * Returns id and name for every user with status = 'active', ordered alphabetically by name.
+ * Intended for owner-assignment dropdowns accessible to all authenticated users,
+ * not just admins.
+ */
+export async function listActiveUsers(): Promise<ActiveUserRow[]> {
+  const result = await pool.query<ActiveUserRow>(
+    `SELECT id, name FROM users WHERE status = 'active' ORDER BY name ASC`,
+  );
+  return result.rows;
+}
+
 /**
  * Seeds a default admin user if no users exist in the database.
  * Reads credentials from ADMIN_EMAIL, ADMIN_NAME, and ADMIN_PASSWORD env vars.

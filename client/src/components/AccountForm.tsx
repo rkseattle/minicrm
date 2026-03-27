@@ -8,7 +8,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
+import OwnerSelect from '@/components/OwnerSelect.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { ActiveUser } from '@/api/users.js';
 
 /** Form field values managed by this component */
 export interface AccountFormValues {
@@ -17,11 +19,18 @@ export interface AccountFormValues {
   website: string;
   employee_range: string;
   revenue_range: string;
+  /** UUID of the owner; populated only when users prop is provided (edit mode) */
+  owner_id: string;
 }
 
 interface AccountFormProps {
   /** Pre-populate fields when editing an existing account */
   initialValues?: Partial<AccountResponse>;
+  /**
+   * When provided, an owner selector is rendered.
+   * Omit on the create form (ownership defaults to the creating user server-side).
+   */
+  users?: ActiveUser[];
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: AccountFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -46,6 +55,7 @@ function buildInitialState(initial?: Partial<AccountResponse>): AccountFormValue
     website: initial?.website ?? '',
     employee_range: initial?.employee_range ?? '',
     revenue_range: initial?.revenue_range ?? '',
+    owner_id: initial?.owner_id ?? '',
   };
 }
 
@@ -54,6 +64,7 @@ function buildInitialState(initial?: Partial<AccountResponse>): AccountFormValue
  */
 export default function AccountForm({
   initialValues,
+  users,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -67,6 +78,11 @@ export default function AccountForm({
   );
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
@@ -141,6 +157,19 @@ export default function AccountForm({
           onChange={handleChange}
           disabled={isSubmitting}
         />
+
+        {users !== undefined && (
+          <OwnerSelect
+            id="account-owner"
+            data-testid="account-owner-select"
+            name="owner_id"
+            label={t('accounts.ownerLabel')}
+            users={users}
+            value={formData.owner_id}
+            onChange={handleSelectChange}
+            disabled={isSubmitting}
+          />
+        )}
       </div>
 
       {error && (

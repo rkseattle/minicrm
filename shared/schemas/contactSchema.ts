@@ -31,9 +31,13 @@ export const createContactSchema = z.object({
 
 /**
  * Schema for updating an existing contact.
- * All fields are optional; at least one must be present.
+ * All create fields are optional; owner_id may also be changed.
+ * At least one field must be present.
  */
 export const updateContactSchema = createContactSchema
+  .extend({
+    owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
+  })
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',

@@ -7,6 +7,16 @@
 import apiClient from './axiosInstance.js';
 import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
 
+/** Minimal user shape returned by the /active endpoint — sufficient for owner dropdowns */
+export interface ActiveUser {
+  id: string;
+  name: string;
+}
+
+interface ActiveUsersResponse {
+  users: ActiveUser[];
+}
+
 interface UsersResponse {
   users: UserResponse[];
 }
@@ -29,6 +39,15 @@ interface InviteUserInput {
 
 interface MessageResponse {
   message: string;
+}
+
+/**
+ * Returns id and name for every active user. Available to all authenticated users
+ * so that owner-assignment dropdowns work for reps and admins alike.
+ */
+export async function listActiveUsers(): Promise<ActiveUsersResponse> {
+  const response = await apiClient.get<ActiveUsersResponse>('/users/active');
+  return response.data;
 }
 
 /**

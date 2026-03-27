@@ -18,6 +18,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   'title',
   'department',
   'account_id',
+  'owner_id',
 ]);
 
 /** Shape of a contact row returned from the database */

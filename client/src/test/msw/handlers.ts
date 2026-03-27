@@ -97,6 +97,16 @@ export const handlers = [
     return HttpResponse.json({ users: [ADMIN_USER, REP_USER, INVITED_USER] });
   }),
 
+  /** Users: GET /api/users/active — returns only active users with id+name */
+  http.get('/api/users/active', () => {
+    return HttpResponse.json({
+      users: [
+        { id: ADMIN_USER.id, name: ADMIN_USER.name },
+        { id: REP_USER.id, name: REP_USER.name },
+      ],
+    });
+  }),
+
   /** Users: POST /api/users/invite */
   http.post('/api/users/invite', async ({ request }) => {
     const body = (await request.json()) as { email: string; name: string; role: string };
@@ -139,13 +149,14 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: GET /api/contacts — supports ?account=<id> filter */
+  /** Contacts: GET /api/contacts — supports ?account=<id> and ?owner=me filters */
   http.get('/api/contacts', ({ request }) => {
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account');
-    const contacts = accountId
-      ? [CONTACT_1].filter((c) => c.account_id === accountId)
-      : [CONTACT_1];
+    const owner = url.searchParams.get('owner');
+    let contacts = [CONTACT_1];
+    if (accountId) contacts = contacts.filter((c) => c.account_id === accountId);
+    if (owner === 'me') contacts = contacts.filter((c) => c.owner_id === ADMIN_USER.id);
     return HttpResponse.json({ contacts });
   }),
 
