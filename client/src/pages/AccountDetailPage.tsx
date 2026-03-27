@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 
@@ -49,8 +50,7 @@ export default function AccountDetailPage() {
     queryFn: listActiveUsers,
   });
 
-  // Keep undefined while loading so AccountForm hides the owner select until users are available
-  const activeUsers = activeUsersData?.users;
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (values: AccountFormValues) =>
@@ -182,7 +182,7 @@ export default function AccountDetailPage() {
             </h2>
             <AccountForm
               initialValues={account}
-              users={activeUsers}
+              users={activeUsersData?.users}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
