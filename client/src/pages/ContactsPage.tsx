@@ -1,6 +1,7 @@
 /**
  * ContactsPage component.
- * Lists all contact records and provides an inline form for creating new ones.
+ * Lists all contact records with an owner column and owner filter.
+ * Provides an inline form for creating new contacts.
  * Each row links to the ContactDetailPage.
  */
 
@@ -11,8 +12,11 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
+import { Select } from '@/components/ui/Select.js';
 import { listContacts, createContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
@@ -20,18 +24,25 @@ import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
 
+/** Owner filter value — 'all' means no filter, 'me' means current user only */
+type OwnerFilter = 'all' | 'me';
+
 /**
- * Contacts list page with inline create form.
+ * Contacts list page with owner filter and inline create form.
  */
 export default function ContactsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+
+  const contactsQueryKey =
+    ownerFilter === 'me' ? ([...CONTACTS_QUERY_KEY, { owner: 'me' }] as const) : CONTACTS_QUERY_KEY;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: CONTACTS_QUERY_KEY,
-    queryFn: () => listContacts(),
+    queryKey: contactsQueryKey,
+    queryFn: () => listContacts(ownerFilter === 'me' ? 'me' : undefined),
   });
 
   const { data: accountsData } = useQuery({
@@ -39,7 +50,13 @@ export default function ContactsPage() {
     queryFn: () => listAccounts(),
   });
 
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+  });
+
   const accountOptions = (accountsData?.accounts ?? []).map((a) => ({ id: a.id, name: a.name }));
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const createMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
@@ -81,7 +98,7 @@ export default function ContactsPage() {
           )}
         </div>
 
-        {/* Inline create form */}
+        {/* Inline create form — owner field intentionally omitted; defaults to creating user */}
         {showForm && (
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('contacts.newContact')}</h2>
@@ -101,6 +118,20 @@ export default function ContactsPage() {
             />
           </section>
         )}
+
+        {/* Owner filter */}
+        <div className="mb-4 flex items-center gap-3">
+          <Select
+            id="contacts-owner-filter"
+            data-testid="contacts-owner-filter"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
+            className="w-48"
+          >
+            <option value="all">{t('contacts.ownerFilterAll')}</option>
+            <option value="me">{t('contacts.ownerFilterMe')}</option>
+          </Select>
+        </div>
 
         {/* Loading state */}
         {isLoading && (
@@ -147,6 +178,9 @@ export default function ContactsPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnDepartment')}
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('contacts.columnOwner')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -165,6 +199,16 @@ export default function ContactsPage() {
                       <td className="px-4 py-3 text-gray-500">{contact.phone ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
+                      <td
+                        className="px-4 py-3 text-gray-500"
+                        data-testid={`contact-owner-${contact.id}`}
+                      >
+                        {resolveOwnerName(
+                          contact.owner_id,
+                          activeUsers,
+                          t('contacts.ownerUnknown'),
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

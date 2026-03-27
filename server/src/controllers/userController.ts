@@ -12,6 +12,7 @@ import {
   updateRoleSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
+import type { ActiveUserRow } from '../services/userService.js';
 import type { JwtTokenPayload } from '../types/express.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 
@@ -77,6 +78,16 @@ export async function inviteUser(req: Request, res: Response): Promise<void> {
 export async function listUsers(_req: Request, res: Response): Promise<void> {
   const users = await userService.listUsers();
   res.status(200).json({ users: users.map(sanitizeUser) });
+}
+
+/**
+ * GET /api/users/active
+ * Returns id and name for every active user. Available to all authenticated users
+ * so that owner-assignment dropdowns work for reps as well as admins.
+ */
+export async function listActiveUsersHandler(_req: Request, res: Response): Promise<void> {
+  const users: ActiveUserRow[] = await userService.listActiveUsers();
+  res.status(200).json({ users });
 }
 
 /**

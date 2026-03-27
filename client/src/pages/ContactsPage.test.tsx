@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import ContactsPage from './ContactsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1 } from '../test/msw/handlers.js';
+import { CONTACT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 describe('ContactsPage', () => {
   it('renders the page heading', async () => {
@@ -76,6 +76,73 @@ describe('ContactsPage', () => {
     expect(screen.getByTestId('contact-form')).toBeInTheDocument();
     await user.click(screen.getByTestId('contact-form-cancel'));
     expect(screen.queryByTestId('contact-form')).not.toBeInTheDocument();
+  });
+
+  it('renders the owner column with the resolved user name', async () => {
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`contact-owner-${CONTACT_1.id}`)).toHaveTextContent(
+        ADMIN_USER.name,
+      );
+    });
+  });
+
+  it('shows the owner filter select defaulting to all', async () => {
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      const filter = screen.getByTestId<HTMLSelectElement>('contacts-owner-filter');
+      expect(filter.value).toBe('all');
+    });
+  });
+
+  it('filters contacts to current user when owner filter is set to me', async () => {
+    const repContact = {
+      ...CONTACT_1,
+      id: '00000000-0000-0000-0000-000000000103',
+      first_name: 'Bob',
+      last_name: 'Jones',
+      owner_id: REP_USER.id,
+    };
+    server.use(
+      http.get('/api/contacts', ({ request }) => {
+        const owner = new URL(request.url).searchParams.get('owner');
+        const contacts = owner === 'me' ? [CONTACT_1] : [CONTACT_1, repContact];
+        return HttpResponse.json({ contacts });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactsPage />);
+
+    // Both contacts visible before filtering
+    await waitFor(() => {
+      expect(
+        screen.getByText(`${repContact.first_name} ${repContact.last_name}`),
+      ).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('contacts-owner-filter'), 'me');
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(`${repContact.first_name} ${repContact.last_name}`),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`)).toBeInTheDocument();
+  });
+
+  it('shows fallback text for contacts with an unresolvable owner', async () => {
+    server.use(
+      http.get('/api/contacts', () =>
+        HttpResponse.json({
+          contacts: [{ ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+        }),
+      ),
+    );
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`contact-owner-${CONTACT_1.id}`)).toHaveTextContent('Unknown');
+    });
   });
 
   it('submits the create form and hides it on success', async () => {

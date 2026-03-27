@@ -1,7 +1,7 @@
 /**
  * ContactDetailPage component.
  * Displays all fields and metadata for a single contact.
- * Supports toggling to an edit form and deleting the contact.
+ * Supports toggling to an edit form (including owner reassignment) and deleting the contact.
  */
 
 import { useState } from 'react';
@@ -13,6 +13,8 @@ import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
@@ -41,8 +43,14 @@ export default function ContactDetailPage() {
     queryFn: () => listAccounts(),
   });
 
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+  });
+
   const accounts = accountsData?.accounts ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
@@ -54,6 +62,7 @@ export default function ContactDetailPage() {
         title: values.title || undefined,
         department: values.department || undefined,
         account_id: values.account_id || null,
+        owner_id: values.owner_id || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactQueryKey });
@@ -168,6 +177,7 @@ export default function ContactDetailPage() {
             <ContactForm
               initialValues={contact}
               accounts={accountOptions}
+              users={activeUsersData?.users}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
@@ -232,7 +242,7 @@ export default function ContactDetailPage() {
             />
             <DetailRow
               label={t('contacts.ownerLabel')}
-              value={contact.owner_id}
+              value={resolveOwnerName(contact.owner_id, activeUsers, t('contacts.ownerUnknown'))}
               testId="detail-owner"
             />
           </div>

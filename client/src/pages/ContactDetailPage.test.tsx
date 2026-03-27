@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1, ACCOUNT_1 } from '../test/msw/handlers.js';
+import { CONTACT_1, ACCOUNT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 describe('ContactDetailPage', () => {
   it('renders the contact name', async () => {
@@ -181,6 +181,127 @@ describe('ContactDetailPage', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('detail-account')).toHaveTextContent('—');
+    });
+  });
+
+  it('displays the owner name (not UUID) in the detail view', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-owner')).toHaveTextContent(ADMIN_USER.name);
+    });
+    expect(screen.getByTestId('detail-owner')).not.toHaveTextContent(CONTACT_1.owner_id!);
+  });
+
+  it('shows fallback owner text when owner is not in the active users list', async () => {
+    server.use(
+      http.get('/api/contacts/:id', ({ params }) => {
+        if (params.id === CONTACT_1.id) {
+          return HttpResponse.json({
+            contact: { ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
+          });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-owner')).toHaveTextContent('Unknown');
+    });
+  });
+
+  it('shows the owner select in the edit form populated with active users', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-contact-button'));
+
+    const ownerSelect = screen.getByTestId<HTMLSelectElement>('contact-owner-select');
+    expect(ownerSelect).toBeInTheDocument();
+    // Should be pre-populated with the current owner
+    expect(ownerSelect.value).toBe(CONTACT_1.owner_id);
+    // Should list both active users as options
+    const options = Array.from(ownerSelect.options).map((o) => o.text);
+    expect(options).toContain(ADMIN_USER.name);
+    expect(options).toContain(REP_USER.name);
+  });
+
+  it('shows a disabled unknown option in the edit form when the owner is deactivated', async () => {
+    const deactivatedOwnerId = '00000000-0000-0000-0000-000000000999';
+    server.use(
+      http.get('/api/contacts/:id', ({ params }) => {
+        if (params.id === CONTACT_1.id) {
+          return HttpResponse.json({
+            contact: { ...CONTACT_1, owner_id: deactivatedOwnerId },
+          });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-contact-button'));
+
+    const ownerSelect = screen.getByTestId<HTMLSelectElement>('contact-owner-select');
+    // The unknown UUID must be preserved in the select's value, not silently replaced
+    expect(ownerSelect.value).toBe(deactivatedOwnerId);
+    // The disabled placeholder option should be present so the browser shows it
+    const unknownOption = Array.from(ownerSelect.options).find(
+      (o) => o.value === deactivatedOwnerId,
+    );
+    expect(unknownOption).toBeDefined();
+    expect(unknownOption?.disabled).toBe(true);
+  });
+
+  it('sends updated owner_id when owner is changed and form is saved', async () => {
+    const user = userEvent.setup();
+    let patchedBody: Record<string, unknown> = {};
+    server.use(
+      http.patch('/api/contacts/:id', async ({ params, request }) => {
+        patchedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          contact: { ...CONTACT_1, ...patchedBody, id: params.id as string },
+        });
+      }),
+    );
+
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-contact-button'));
+
+    await user.selectOptions(screen.getByTestId('contact-owner-select'), REP_USER.id);
+    await user.click(screen.getByTestId('contact-form-submit'));
+
+    await waitFor(() => {
+      expect(patchedBody.owner_id).toBe(REP_USER.id);
     });
   });
 

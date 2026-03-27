@@ -8,6 +8,7 @@ import { requireRole } from '../middleware/requireRole.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   inviteUser,
+  listActiveUsersHandler,
   listUsers,
   updateUserRole,
   deactivateUser,
@@ -23,6 +24,13 @@ const router = Router();
  * Unauthenticated — used by invited users to activate their account.
  */
 router.post('/set-password', asyncHandler(setPassword));
+
+/**
+ * GET /api/users/active
+ * Must be declared before the admin-gated router.use() block so it is not
+ * subject to the requireRole('admin') check. Requires authentication only.
+ */
+router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
 
 /** All routes below require authentication + admin role */
 router.use(authenticate, requireRole('admin'));

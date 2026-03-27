@@ -16,6 +16,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAccountInput> = new Set([
   'website',
   'employee_range',
   'revenue_range',
+  'owner_id',
 ]);
 
 /** Shape of an account row returned from the database */

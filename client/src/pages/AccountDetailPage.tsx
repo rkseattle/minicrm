@@ -1,7 +1,7 @@
 /**
  * AccountDetailPage component.
  * Displays all fields and metadata for a single account.
- * Supports toggling to an edit form and deleting the account.
+ * Supports toggling to an edit form (including owner reassignment) and deleting the account.
  */
 
 import { useState } from 'react';
@@ -13,6 +13,8 @@ import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 
@@ -43,6 +45,13 @@ export default function AccountDetailPage() {
     enabled: Boolean(id),
   });
 
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+  });
+
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+
   const updateMutation = useMutation({
     mutationFn: (values: AccountFormValues) =>
       updateAccount(id!, {
@@ -51,6 +60,7 @@ export default function AccountDetailPage() {
         website: values.website || undefined,
         employee_range: values.employee_range || undefined,
         revenue_range: values.revenue_range || undefined,
+        owner_id: values.owner_id || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
@@ -172,6 +182,7 @@ export default function AccountDetailPage() {
             </h2>
             <AccountForm
               initialValues={account}
+              users={activeUsersData?.users}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
@@ -215,7 +226,7 @@ export default function AccountDetailPage() {
               />
               <DetailRow
                 label={t('accounts.ownerLabel')}
-                value={account.owner_id}
+                value={resolveOwnerName(account.owner_id, activeUsers, t('accounts.ownerUnknown'))}
                 testId="detail-owner"
               />
             </div>

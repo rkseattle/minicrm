@@ -9,7 +9,9 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
+import OwnerSelect from '@/components/OwnerSelect.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+import type { ActiveUser } from '@/api/users.js';
 
 /** Minimal account option used to populate the account selector */
 export interface AccountOption {
@@ -27,6 +29,8 @@ export interface ContactFormValues {
   department: string;
   /** UUID of the linked account, or empty string for no account */
   account_id: string;
+  /** UUID of the owner; populated only when users prop is provided (edit mode) */
+  owner_id: string;
 }
 
 interface ContactFormProps {
@@ -34,6 +38,11 @@ interface ContactFormProps {
   initialValues?: Partial<ContactResponse>;
   /** List of accounts available for linking */
   accounts?: AccountOption[];
+  /**
+   * When provided, an owner selector is rendered.
+   * Omit on the create form (ownership defaults to the creating user server-side).
+   */
+  users?: ActiveUser[];
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: ContactFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -60,6 +69,7 @@ function buildInitialState(initial?: Partial<ContactResponse>): ContactFormValue
     title: initial?.title ?? '',
     department: initial?.department ?? '',
     account_id: initial?.account_id ?? '',
+    owner_id: initial?.owner_id ?? '',
   };
 }
 
@@ -69,6 +79,7 @@ function buildInitialState(initial?: Partial<ContactResponse>): ContactFormValue
 export default function ContactForm({
   initialValues,
   accounts = [],
+  users,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -191,6 +202,20 @@ export default function ContactForm({
             </option>
           ))}
         </Select>
+
+        {users !== undefined && (
+          <OwnerSelect
+            id="contact-owner"
+            data-testid="contact-owner-select"
+            name="owner_id"
+            label={t('contacts.ownerLabel')}
+            users={users}
+            unknownLabel={t('contacts.ownerUnknown')}
+            value={formData.owner_id}
+            onChange={handleSelectChange}
+            disabled={isSubmitting}
+          />
+        )}
       </div>
 
       {error && (

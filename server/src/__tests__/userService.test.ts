@@ -16,6 +16,7 @@ import {
   updateUserStatus,
   updateUserRole,
   listUsers,
+  listActiveUsers,
   setUserPassword,
 } from '../services/userService.js';
 import pool from '../db.js';
@@ -169,6 +170,59 @@ describe('listUsers', () => {
     expect(users).toHaveLength(2);
     expect(users[0].email).toBe('a@example.com');
     expect(users[1].email).toBe('b@example.com');
+  });
+});
+
+// ── listActiveUsers ────────────────────────────────────────────────────────────
+
+describe('listActiveUsers', () => {
+  it('returns an empty array when no active users exist', async () => {
+    const users = await listActiveUsers();
+    expect(users).toEqual([]);
+  });
+
+  it('returns only id and name fields', async () => {
+    await createUser(BASE_USER);
+    const users = await listActiveUsers();
+    expect(users).toHaveLength(1);
+    expect(users[0]).toEqual({ id: expect.any(String), name: BASE_USER.name });
+    expect(users[0]).not.toHaveProperty('email');
+    expect(users[0]).not.toHaveProperty('password_hash');
+    expect(users[0]).not.toHaveProperty('role');
+  });
+
+  it('excludes invited users', async () => {
+    await createUser({
+      ...BASE_USER,
+      email: 'invited@example.com',
+      status: 'invited',
+      passwordHash: null,
+    });
+    const users = await listActiveUsers();
+    expect(users).toHaveLength(0);
+  });
+
+  it('excludes inactive users', async () => {
+    await createUser({ ...BASE_USER, email: 'inactive@example.com', status: 'inactive' });
+    const users = await listActiveUsers();
+    expect(users).toHaveLength(0);
+  });
+
+  it('orders results alphabetically by name', async () => {
+    await createUser({ ...BASE_USER, email: 'charlie@example.com', name: 'Charlie' });
+    await createUser({ ...BASE_USER, email: 'alice@example.com', name: 'Alice' });
+    await createUser({ ...BASE_USER, email: 'bob@example.com', name: 'Bob' });
+
+    const users = await listActiveUsers();
+    expect(users.map((u) => u.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+  });
+
+  it('includes all active users regardless of role', async () => {
+    await createUser({ ...BASE_USER, email: 'admin@example.com', role: 'admin' });
+    await createUser({ ...BASE_USER, email: 'rep@example.com', role: 'rep' });
+
+    const users = await listActiveUsers();
+    expect(users).toHaveLength(2);
   });
 });
 

@@ -7,6 +7,31 @@
 import apiClient from './axiosInstance.js';
 import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
 
+/** Minimal user shape returned by the /active endpoint — sufficient for owner dropdowns */
+export interface ActiveUser {
+  id: string;
+  name: string;
+}
+
+/** React Query cache key for the active users list */
+export const ACTIVE_USERS_QUERY_KEY = ['users', 'active'] as const;
+
+/**
+ * Resolves an owner UUID to a display name using the active users list.
+ * Returns a fallback string when the user is not found (e.g. deactivated).
+ *
+ * @param ownerId - The UUID stored on the record
+ * @param users - List of active users
+ * @param fallback - Text to show when the owner is not in the active users list
+ */
+export function resolveOwnerName(ownerId: string, users: ActiveUser[], fallback: string): string {
+  return users.find((u) => u.id === ownerId)?.name ?? fallback;
+}
+
+interface ActiveUsersResponse {
+  users: ActiveUser[];
+}
+
 interface UsersResponse {
   users: UserResponse[];
 }
@@ -29,6 +54,15 @@ interface InviteUserInput {
 
 interface MessageResponse {
   message: string;
+}
+
+/**
+ * Returns id and name for every active user. Available to all authenticated users
+ * so that owner-assignment dropdowns work for reps and admins alike.
+ */
+export async function listActiveUsers(): Promise<ActiveUsersResponse> {
+  const response = await apiClient.get<ActiveUsersResponse>('/users/active');
+  return response.data;
 }
 
 /**
