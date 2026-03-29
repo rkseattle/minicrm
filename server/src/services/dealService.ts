@@ -51,7 +51,7 @@ export async function createDeal(params: CreateDealInput & { owner_id: string })
   const result = await pool.query<DealRow>(
     `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id)
      VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
+     RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
     [name, stage, value ?? null, close_date ?? null, account_id ?? null, owner_id],
   );
 
@@ -65,7 +65,10 @@ export async function createDeal(params: CreateDealInput & { owner_id: string })
  * @returns The deal row, or null if not found
  */
 export async function findDealById(id: string): Promise<DealRow | null> {
-  const result = await pool.query<DealRow>('SELECT * FROM deals WHERE id = $1 LIMIT 1', [id]);
+  const result = await pool.query<DealRow>(
+    'SELECT id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at FROM deals WHERE id = $1 LIMIT 1',
+    [id],
+  );
   return result.rows[0] ?? null;
 }
 
@@ -91,7 +94,7 @@ export async function listDeals(options: ListDealsOptions = {}): Promise<DealRow
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const result = await pool.query<DealRow>(
-    `SELECT * FROM deals ${where} ORDER BY created_at ASC`,
+    `SELECT id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at FROM deals ${where} ORDER BY created_at ASC`,
     values,
   );
   return result.rows;
@@ -121,7 +124,7 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
     `UPDATE deals
      SET ${setClauses}, updated_at = now()
      WHERE id = $1
-     RETURNING *`,
+     RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
     [id, ...fields.map((f) => params[f])],
   );
 
@@ -137,7 +140,10 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
  * @returns The deleted deal row, or null if not found
  */
 export async function deleteDeal(id: string): Promise<DealRow | null> {
-  const result = await pool.query<DealRow>('DELETE FROM deals WHERE id = $1 RETURNING *', [id]);
+  const result = await pool.query<DealRow>(
+    'DELETE FROM deals WHERE id = $1 RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at',
+    [id],
+  );
   return result.rows[0] ?? null;
 }
 
