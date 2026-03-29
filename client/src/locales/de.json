@@ -4,6 +4,7 @@
     "contacts": "Kontakte",
     "accounts": "Konten",
     "deals": "Geschäfte",
+    "pipeline": "Pipeline",
     "users": "Benutzer",
     "logout": "Abmelden"
   },
@@ -171,6 +172,11 @@
     "backToDeals": "Zurück zu Geschäften",
     "linkedContactsHeading": "Verknüpfte Kontakte",
     "linkedContactsEmpty": "Keine Kontakte mit diesem Geschäft verknüpft."
+  },
+  "pipeline": {
+    "pageTitle": "Pipeline-Board",
+    "loading": "Pipeline wird geladen…",
+    "totalValue": "Gesamt: {{value}}"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

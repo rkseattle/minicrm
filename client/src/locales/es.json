@@ -4,6 +4,7 @@
     "contacts": "Contactos",
     "accounts": "Cuentas",
     "deals": "Oportunidades",
+    "pipeline": "Canal",
     "users": "Usuarios",
     "logout": "Cerrar sesión"
   },
@@ -171,6 +172,11 @@
     "backToDeals": "Volver a oportunidades",
     "linkedContactsHeading": "Contactos vinculados",
     "linkedContactsEmpty": "No hay contactos vinculados a esta oportunidad."
+  },
+  "pipeline": {
+    "pageTitle": "Panel de canal",
+    "loading": "Cargando canal…",
+    "totalValue": "Total: {{value}}"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

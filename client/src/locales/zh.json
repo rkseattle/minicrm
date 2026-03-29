@@ -4,6 +4,7 @@
     "contacts": "联系人",
     "accounts": "客户",
     "deals": "商机",
+    "pipeline": "管道看板",
     "users": "用户",
     "logout": "退出登录"
   },
@@ -171,6 +172,11 @@
     "backToDeals": "返回商机列表",
     "linkedContactsHeading": "关联联系人",
     "linkedContactsEmpty": "此商机暂无关联联系人。"
+  },
+  "pipeline": {
+    "pageTitle": "管道看板",
+    "loading": "正在加载管道…",
+    "totalValue": "合计：{{value}}"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

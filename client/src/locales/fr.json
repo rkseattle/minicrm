@@ -4,6 +4,7 @@
     "contacts": "Contacts",
     "accounts": "Comptes",
     "deals": "Opportunités",
+    "pipeline": "Pipeline",
     "users": "Utilisateurs",
     "logout": "Se déconnecter"
   },
@@ -171,6 +172,11 @@
     "backToDeals": "Retour aux opportunités",
     "linkedContactsHeading": "Contacts associés",
     "linkedContactsEmpty": "Aucun contact associé à cette opportunité."
+  },
+  "pipeline": {
+    "pageTitle": "Tableau de pipeline",
+    "loading": "Chargement du pipeline…",
+    "totalValue": "Total : {{value}}"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",
