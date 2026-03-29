@@ -145,6 +145,18 @@ npm run migrate --workspace=minicrm-server
 - Linked contacts listed on the account detail page
 - Full CRUD REST API at `/api/accounts`
 
+### Deals (MINCRM-15)
+
+- List all deals in a table with stage, value, close date, linked account, and owner columns
+- Create, edit, and delete deals via inline forms
+- Deal detail page with full field display including resolved owner name and linked account
+- Filter deals by owner (all vs. mine) via `?owner=me` query parameter
+- Owner defaults to the creating user; can be reassigned to any active user from the edit form
+- Linked contacts listed on the deal detail page (populated via `deal_contacts` join table)
+- Pipeline stages (fixed): Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
+- Full CRUD REST API at `/api/deals`
+- Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
+
 ### Ownership (MINCRM-14)
 
 - Every contact and account has a single `owner_id` that defaults to the creating user
