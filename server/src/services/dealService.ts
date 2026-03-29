@@ -109,6 +109,11 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
     ALLOWED_UPDATE_FIELDS.has(field),
   );
 
+  // Guard against empty field list — would produce invalid SQL
+  if (fields.length === 0) {
+    return findDealById(id);
+  }
+
   // Build dynamic SET clause: name = $2, stage = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
 

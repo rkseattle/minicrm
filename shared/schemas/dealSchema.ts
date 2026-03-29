@@ -43,9 +43,19 @@ export const createDealSchema = z.object({
 export const updateDealSchema = createDealSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
-    loss_reason: z.string().trim().optional(),
+    loss_reason: z.string().trim().nullable().optional(),
   })
   .partial()
+  .extend({
+    // Allow null to explicitly clear these nullable columns
+    value: z.number().nonnegative('Value must be 0 or greater').nullable().optional(),
+    close_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Close date must be in YYYY-MM-DD format')
+      .nullable()
+      .optional(),
+    account_id: z.string().uuid('Account must be a valid UUID').nullable().optional(),
+  })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
   });

@@ -74,7 +74,7 @@ export default function DealsPage() {
       createDeal({
         name: values.name,
         stage: values.stage as DealResponse['stage'],
-        value: values.value ? parseFloat(values.value) : undefined,
+        value: values.value !== '' ? parseFloat(values.value) : undefined,
         close_date: values.close_date || undefined,
         account_id: values.account_id || undefined,
       }),

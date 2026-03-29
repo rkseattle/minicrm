@@ -94,6 +94,10 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   }
 
   const deal = await updateDeal(id, parsed.data);
+  if (!deal) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
   res.status(200).json({ deal });
 }
 

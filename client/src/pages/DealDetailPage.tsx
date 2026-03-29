@@ -70,9 +70,9 @@ export default function DealDetailPage() {
       updateDeal(id!, {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
-        value: values.value ? parseFloat(values.value) : undefined,
-        close_date: values.close_date || undefined,
-        account_id: values.account_id || undefined,
+        value: values.value !== '' ? parseFloat(values.value) : null,
+        close_date: values.close_date || null,
+        account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
       }),
     onSuccess: () => {
