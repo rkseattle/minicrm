@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -62,6 +63,20 @@ export const CONTACT_1: ContactResponse = {
   phone: '+1-555-0100',
   title: 'VP Sales',
   department: 'Sales',
+  account_id: '00000000-0000-0000-0000-000000000201',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a deal record */
+export const DEAL_1: DealResponse = {
+  id: '00000000-0000-0000-0000-000000000301',
+  name: 'Acme Enterprise Deal',
+  stage: 'Prospecting',
+  value: '50000.00',
+  close_date: '2026-12-31',
+  loss_reason: null,
   account_id: '00000000-0000-0000-0000-000000000201',
   owner_id: '00000000-0000-0000-0000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
@@ -250,6 +265,58 @@ export const handlers = [
 
   /** Accounts: DELETE /api/accounts/:id */
   http.delete('/api/accounts/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Deals: GET /api/deals — supports ?owner=me filter */
+  http.get('/api/deals', ({ request }) => {
+    const url = new URL(request.url);
+    const owner = url.searchParams.get('owner');
+    let deals = [DEAL_1];
+    if (owner === 'me') deals = deals.filter((d) => d.owner_id === ADMIN_USER.id);
+    return HttpResponse.json({ deals });
+  }),
+
+  /** Deals: POST /api/deals */
+  http.post('/api/deals', async ({ request }) => {
+    const body = (await request.json()) as Partial<DealResponse>;
+    return HttpResponse.json(
+      {
+        deal: {
+          ...DEAL_1,
+          id: '00000000-0000-0000-0000-000000000302',
+          name: body.name ?? 'New Deal',
+          stage: body.stage ?? 'Prospecting',
+          value: body.value != null ? String(body.value) : null,
+          close_date: body.close_date ?? null,
+          account_id: body.account_id !== undefined ? body.account_id : null,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Deals: GET /api/deals/:id */
+  http.get('/api/deals/:id', ({ params }) => {
+    if (params.id === DEAL_1.id) {
+      return HttpResponse.json({ deal: DEAL_1, contacts: [] });
+    }
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Deal not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Deals: PATCH /api/deals/:id */
+  http.patch('/api/deals/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<DealResponse>;
+    return HttpResponse.json({
+      deal: { ...DEAL_1, ...body, id: params.id as string },
+    });
+  }),
+
+  /** Deals: DELETE /api/deals/:id */
+  http.delete('/api/deals/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 ];

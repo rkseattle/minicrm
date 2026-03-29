@@ -12,6 +12,8 @@ import ContactsPage from '@/pages/ContactsPage.js';
 import ContactDetailPage from '@/pages/ContactDetailPage.js';
 import AccountsPage from '@/pages/AccountsPage.js';
 import AccountDetailPage from '@/pages/AccountDetailPage.js';
+import DealsPage from '@/pages/DealsPage.js';
+import DealDetailPage from '@/pages/DealDetailPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 
 /**
@@ -30,6 +32,8 @@ export default function App() {
         <Route path="/contacts/:id" element={<ContactDetailPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/accounts/:id" element={<AccountDetailPage />} />
+        <Route path="/deals" element={<DealsPage />} />
+        <Route path="/deals/:id" element={<DealDetailPage />} />
       </Route>
 
       {/* Admin-only routes */}
