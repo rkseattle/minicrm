@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
-import { getContact, updateContact, deleteContact } from '@/api/contacts.js';
+import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -48,9 +48,16 @@ export default function ContactDetailPage() {
     queryFn: listActiveUsers,
   });
 
+  const { data: contactDealsData } = useQuery({
+    queryKey: ['contacts', id, 'deals'],
+    queryFn: () => listContactDeals(id!),
+    enabled: Boolean(id),
+  });
+
   const accounts = accountsData?.accounts ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+  const linkedDeals = contactDealsData?.deals ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (values: ContactFormValues) =>
@@ -246,6 +253,41 @@ export default function ContactDetailPage() {
               testId="detail-owner"
             />
           </div>
+        )}
+
+        {/* Linked deals */}
+        {!isEditing && (
+          <section className="mt-8" aria-labelledby="linked-deals-heading">
+            <h2
+              id="linked-deals-heading"
+              className="text-sm font-semibold text-gray-900 mb-3"
+              data-testid="linked-deals-heading"
+            >
+              {t('contacts.linkedDealsHeading')}
+            </h2>
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              {linkedDeals.length === 0 ? (
+                <p className="px-6 py-4 text-sm text-gray-400" data-testid="linked-deals-empty">
+                  {t('contacts.linkedDealsEmpty')}
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100" data-testid="linked-deals-list">
+                  {linkedDeals.map((deal) => (
+                    <li key={deal.id} className="px-6 py-3 flex items-center gap-3">
+                      <Link
+                        to={`/deals/${deal.id}`}
+                        data-testid={`linked-deal-${deal.id}`}
+                        className="text-sm font-medium text-indigo-600 hover:underline"
+                      >
+                        {deal.name}
+                      </Link>
+                      <span className="text-sm text-gray-500">{deal.stage}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         )}
       </main>
     </div>

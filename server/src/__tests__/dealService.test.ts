@@ -16,6 +16,9 @@ import {
   updateDeal,
   deleteDeal,
   listDealContacts,
+  linkContactToDeal,
+  unlinkContactFromDeal,
+  listContactDeals,
 } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -248,6 +251,103 @@ describe('deleteDeal', () => {
   it('returns null for a non-existent deal', async () => {
     const result = await deleteDeal('00000000-0000-0000-0000-000000000000');
     expect(result).toBeNull();
+  });
+});
+
+// ── linkContactToDeal / unlinkContactFromDeal ───────────────────────────────────
+
+describe('linkContactToDeal', () => {
+  it('creates a deal_contacts row and returns the contact via listDealContacts', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Bob', 'Builder', 'bob-link@example.com', $1)
+       RETURNING id`,
+      [ownerId],
+    );
+    const contactId = contactResult.rows[0].id;
+
+    await linkContactToDeal(deal.id, contactId);
+
+    const contacts = await listDealContacts(deal.id);
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0].id).toBe(contactId);
+  });
+
+  it('is idempotent — linking the same contact twice does not throw', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Ida', 'Mpotent', 'ida-link@example.com', $1)
+       RETURNING id`,
+      [ownerId],
+    );
+    const contactId = contactResult.rows[0].id;
+
+    await linkContactToDeal(deal.id, contactId);
+    await expect(linkContactToDeal(deal.id, contactId)).resolves.toBeUndefined();
+
+    const contacts = await listDealContacts(deal.id);
+    expect(contacts).toHaveLength(1);
+  });
+});
+
+describe('unlinkContactFromDeal', () => {
+  it('removes the deal_contacts row', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Carol', 'Unlink', 'carol-unlink@example.com', $1)
+       RETURNING id`,
+      [ownerId],
+    );
+    const contactId = contactResult.rows[0].id;
+
+    await linkContactToDeal(deal.id, contactId);
+    await unlinkContactFromDeal(deal.id, contactId);
+
+    const contacts = await listDealContacts(deal.id);
+    expect(contacts).toHaveLength(0);
+  });
+
+  it('is a no-op when the link does not exist', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    await expect(
+      unlinkContactFromDeal(deal.id, '00000000-0000-0000-0000-000000000000'),
+    ).resolves.toBeUndefined();
+  });
+});
+
+// ── listContactDeals ────────────────────────────────────────────────────────────
+
+describe('listContactDeals', () => {
+  it('returns an empty array when no deals are linked to the contact', async () => {
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Empty', 'Contact', 'empty-cd@example.com', $1)
+       RETURNING id`,
+      [ownerId],
+    );
+    const deals = await listContactDeals(contactResult.rows[0].id);
+    expect(deals).toEqual([]);
+  });
+
+  it('returns deals linked to the contact', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, name: 'CD Deal', owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Dave', 'Deals', 'dave-cd@example.com', $1)
+       RETURNING id`,
+      [ownerId],
+    );
+    const contactId = contactResult.rows[0].id;
+
+    await linkContactToDeal(deal.id, contactId);
+
+    const deals = await listContactDeals(contactId);
+    expect(deals).toHaveLength(1);
+    expect(deals[0].id).toBe(deal.id);
+    expect(deals[0].name).toBe('CD Deal');
   });
 });
 

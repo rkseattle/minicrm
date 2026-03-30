@@ -69,6 +69,21 @@ export const CONTACT_1: ContactResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
 };
 
+/** Reusable fixture: a second contact record for link/unlink tests */
+export const CONTACT_2: ContactResponse = {
+  id: '00000000-0000-0000-0000-000000000102',
+  first_name: 'Bob',
+  last_name: 'Jones',
+  email: 'bob@example.com',
+  phone: null,
+  title: 'Engineer',
+  department: 'Engineering',
+  account_id: null,
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
 /** Reusable fixture: a deal record */
 export const DEAL_1: DealResponse = {
   id: '00000000-0000-0000-0000-000000000301',
@@ -169,7 +184,7 @@ export const handlers = [
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account');
     const owner = url.searchParams.get('owner');
-    let contacts = [CONTACT_1];
+    let contacts = [CONTACT_1, CONTACT_2];
     if (accountId) contacts = contacts.filter((c) => c.account_id === accountId);
     if (owner === 'me') contacts = contacts.filter((c) => c.owner_id === ADMIN_USER.id);
     return HttpResponse.json({ contacts });
@@ -218,6 +233,15 @@ export const handlers = [
   /** Contacts: DELETE /api/contacts/:id */
   http.delete('/api/contacts/:id', () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Contacts: GET /api/contacts/:id/deals — returns deals linked to a contact */
+  http.get('/api/contacts/:id/deals', ({ params }) => {
+    // By default return DEAL_1 when fetching CONTACT_1's deals; empty for others
+    if (params.id === CONTACT_1.id) {
+      return HttpResponse.json({ deals: [DEAL_1] });
+    }
+    return HttpResponse.json({ deals: [] });
   }),
 
   /** Accounts: GET /api/accounts */
@@ -318,5 +342,23 @@ export const handlers = [
   /** Deals: DELETE /api/deals/:id */
   http.delete('/api/deals/:id', () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Deals: POST /api/deals/:id/contacts/:contactId — link a contact to a deal */
+  http.post('/api/deals/:id/contacts/:contactId', ({ params }) => {
+    // Return CONTACT_1 as a linked contact by default
+    const linkedContact = {
+      id: params.contactId as string,
+      first_name: 'Alice',
+      last_name: 'Smith',
+      email: 'alice@example.com',
+      title: 'VP Sales',
+    };
+    return HttpResponse.json({ contacts: [linkedContact] });
+  }),
+
+  /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
+  http.delete('/api/deals/:id/contacts/:contactId', () => {
+    return HttpResponse.json({ contacts: [] });
   }),
 ];

@@ -94,7 +94,9 @@
     "createSuccess": "Contact created",
     "updateSuccess": "Contact updated",
     "notFound": "Contact not found.",
-    "backToContacts": "Back to contacts"
+    "backToContacts": "Back to contacts",
+    "linkedDealsHeading": "Linked Deals",
+    "linkedDealsEmpty": "No deals linked to this contact."
   },
   "accounts": {
     "pageTitle": "Accounts",
@@ -171,7 +173,12 @@
     "notFound": "Deal not found.",
     "backToDeals": "Back to deals",
     "linkedContactsHeading": "Linked Contacts",
-    "linkedContactsEmpty": "No contacts linked to this deal."
+    "linkedContactsEmpty": "No contacts linked to this deal.",
+    "linkContact": "Link contact",
+    "linking": "Linking…",
+    "unlink": "Unlink",
+    "unlinking": "Unlinking…",
+    "selectContactToLink": "— Select a contact —"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",

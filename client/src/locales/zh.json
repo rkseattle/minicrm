@@ -94,7 +94,9 @@
     "createSuccess": "联系人已创建",
     "updateSuccess": "联系人已更新",
     "notFound": "未找到联系人。",
-    "backToContacts": "返回联系人列表"
+    "backToContacts": "返回联系人列表",
+    "linkedDealsHeading": "关联商机",
+    "linkedDealsEmpty": "此联系人暂无关联商机。"
   },
   "accounts": {
     "pageTitle": "客户",
@@ -171,7 +173,12 @@
     "notFound": "未找到商机。",
     "backToDeals": "返回商机列表",
     "linkedContactsHeading": "关联联系人",
-    "linkedContactsEmpty": "此商机暂无关联联系人。"
+    "linkedContactsEmpty": "此商机暂无关联联系人。",
+    "linkContact": "关联联系人",
+    "linking": "关联中…",
+    "unlink": "取消关联",
+    "unlinking": "取消关联中…",
+    "selectContactToLink": "— 选择联系人 —"
   },
   "pipeline": {
     "pageTitle": "管道看板",

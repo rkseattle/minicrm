@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1, ACCOUNT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import { CONTACT_1, ACCOUNT_1, ADMIN_USER, REP_USER, DEAL_1 } from '../test/msw/handlers.js';
 
 describe('ContactDetailPage', () => {
   it('renders the contact name', async () => {
@@ -325,6 +325,53 @@ describe('ContactDetailPage', () => {
     await waitFor(() => {
       expect(patchedBody.owner_id).toBe(REP_USER.id);
     });
+  });
+
+  it('renders the linked deals section heading', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('linked-deals-heading')).toBeInTheDocument();
+    });
+  });
+
+  it('shows linked deal with name and stage', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`linked-deal-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`linked-deal-${DEAL_1.id}`)).toHaveTextContent(DEAL_1.name);
+    expect(screen.getByText(DEAL_1.stage)).toBeInTheDocument();
+  });
+
+  it('shows empty state when no deals are linked', async () => {
+    server.use(http.get('/api/contacts/:id/deals', () => HttpResponse.json({ deals: [] })));
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('linked-deals-empty')).toBeInTheDocument();
+    });
+  });
+
+  it('linked deal name links to the deal detail page', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`linked-deal-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`linked-deal-${DEAL_1.id}`)).toHaveAttribute(
+      'href',
+      `/deals/${DEAL_1.id}`,
+    );
   });
 
   it('does not delete when confirm is cancelled', async () => {

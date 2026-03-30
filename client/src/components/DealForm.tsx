@@ -35,6 +35,11 @@ interface DealFormProps {
    */
   accounts?: AccountResponse[];
   /**
+   * When true, the account selector requires a selection (no empty option rendered).
+   * Defaults to false.
+   */
+  accountRequired?: boolean;
+  /**
    * When provided, an owner selector is rendered.
    * Omit on the create form (ownership defaults to the creating user server-side).
    */
@@ -73,6 +78,7 @@ function buildInitialState(initial?: Partial<DealResponse>): DealFormValues {
 export default function DealForm({
   initialValues,
   accounts,
+  accountRequired = false,
   users,
   onSubmit,
   onCancel,
@@ -168,8 +174,9 @@ export default function DealForm({
             value={formData.account_id}
             onChange={handleSelectChange}
             disabled={isSubmitting}
+            required={accountRequired}
           >
-            <option value="">{t('deals.accountNone')}</option>
+            {!accountRequired && <option value="">{t('deals.accountNone')}</option>}
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name}

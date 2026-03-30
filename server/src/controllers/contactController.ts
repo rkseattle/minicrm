@@ -13,6 +13,7 @@ import {
   updateContact,
   deleteContact,
 } from '../services/contactService.js';
+import { listContactDeals } from '../services/dealService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -107,6 +108,23 @@ export async function updateContactHandler(req: Request, res: Response): Promise
 
   const contact = await updateContact(id, parsed.data);
   res.status(200).json({ contact });
+}
+
+/**
+ * GET /api/contacts/:id/deals
+ * Returns all deals linked to a contact via the deal_contacts join table.
+ */
+export async function listContactDealsHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const contact = await findContactById(id);
+
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  const deals = await listContactDeals(id);
+  res.status(200).json({ deals });
 }
 
 /**
