@@ -8,6 +8,7 @@
     "myTasks": "我的任务",
     "users": "用户",
     "adminSettings": "管理设置",
+    "languageSelector": "语言",
     "logout": "退出登录"
   },
   "login": {

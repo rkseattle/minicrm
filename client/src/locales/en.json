@@ -8,6 +8,7 @@
     "myTasks": "My Tasks",
     "users": "Users",
     "adminSettings": "Admin Settings",
+    "languageSelector": "Language",
     "logout": "Log out"
   },
   "login": {

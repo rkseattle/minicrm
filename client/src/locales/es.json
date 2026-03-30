@@ -8,6 +8,7 @@
     "myTasks": "Mis tareas",
     "users": "Usuarios",
     "adminSettings": "Configuración de administrador",
+    "languageSelector": "Idioma",
     "logout": "Cerrar sesión"
   },
   "login": {

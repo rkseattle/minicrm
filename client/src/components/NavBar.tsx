@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { Button } from '@/components/ui/Button.js';
+import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
 
 /**
  * Returns Tailwind classes for a navigation link based on its active state.
@@ -29,7 +30,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
  * Top-level navigation bar.
  */
 export default function NavBar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -87,6 +88,19 @@ export default function NavBar() {
 
         <div className="flex items-center gap-3">
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
+          <select
+            aria-label={t('nav.languageSelector')}
+            data-testid="nav-language-select"
+            value={i18n.language}
+            onChange={(e) => void i18n.changeLanguage(e.target.value)}
+            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
+          >
+            {SUPPORTED_LOCALES.map((locale) => (
+              <option key={locale} value={locale}>
+                {t(`settings.languages.${locale}`)}
+              </option>
+            ))}
+          </select>
           <Button
             type="button"
             variant="ghost"
