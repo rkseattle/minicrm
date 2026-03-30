@@ -176,7 +176,8 @@
   "pipeline": {
     "pageTitle": "管道看板",
     "loading": "正在加载管道…",
-    "totalValue": "合计：{{value}}"
+    "totalValue": "合计：{{value}}",
+    "stageUpdateError": "阶段更新失败，请重试。"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

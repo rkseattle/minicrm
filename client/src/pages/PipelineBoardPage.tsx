@@ -31,6 +31,9 @@ export default function PipelineBoardPage() {
   /** Set of deal IDs whose stage updates are currently in flight */
   const [updatingDealIds, setUpdatingDealIds] = useState<Set<string>>(new Set());
 
+  /** Error message from the most recent failed stage change, or null */
+  const [stageError, setStageError] = useState<string | null>(null);
+
   const {
     data: dealsData,
     isLoading,
@@ -67,12 +70,15 @@ export default function PipelineBoardPage() {
 
   const stageMutation = useMutation({
     mutationFn: ({ id, stage }: { id: string; stage: PipelineStage }) => updateDeal(id, { stage }),
-    onMutate: ({ id }) =>
+    onMutate: ({ id }) => {
+      setStageError(null);
       setUpdatingDealIds((prev) => {
         const next = new Set(prev);
         next.add(id);
         return next;
-      }),
+      });
+    },
+    onError: () => setStageError(t('pipeline.stageUpdateError')),
     onSettled: (_data, _error, { id }) => {
       setUpdatingDealIds((prev) => {
         const next = new Set(prev);
@@ -98,6 +104,16 @@ export default function PipelineBoardPage() {
       <NavBar />
       <main className="px-6 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('pipeline.pageTitle')}</h1>
+
+        {stageError && (
+          <div
+            role="alert"
+            data-testid="stage-update-error"
+            className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+          >
+            {stageError}
+          </div>
+        )}
 
         {isLoading && (
           <div className="text-center py-12">

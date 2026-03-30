@@ -176,7 +176,8 @@
   "pipeline": {
     "pageTitle": "Pipeline-Board",
     "loading": "Pipeline wird geladen…",
-    "totalValue": "Gesamt: {{value}}"
+    "totalValue": "Gesamt: {{value}}",
+    "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

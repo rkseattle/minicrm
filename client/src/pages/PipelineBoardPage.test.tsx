@@ -140,6 +140,69 @@ describe('PipelineBoardPage', () => {
     });
   });
 
+  it('shows an inline error banner when a stage change fails', async () => {
+    server.use(
+      http.patch('/api/deals/:id', () =>
+        HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Qualification',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-update-error')).toBeInTheDocument();
+    });
+  });
+
+  it('clears the stage error banner when a subsequent change succeeds', async () => {
+    let failNext = true;
+    server.use(
+      http.patch('/api/deals/:id', async ({ request }) => {
+        const body = (await request.json()) as { stage: string };
+        if (failNext) {
+          failNext = false;
+          return HttpResponse.json(
+            { error: { code: 'INTERNAL_ERROR', message: 'fail' } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    // First change — fails, shows error
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Qualification',
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-update-error')).toBeInTheDocument();
+    });
+
+    // Second change — succeeds, error clears
+    await user.selectOptions(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`), 'Proposal');
+    await waitFor(() => {
+      expect(screen.queryByTestId('stage-update-error')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders Closed Won and Closed Lost columns with distinct test IDs', async () => {
     renderWithProviders(<PipelineBoardPage />);
     await waitFor(() => {

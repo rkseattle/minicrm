@@ -176,7 +176,8 @@
   "pipeline": {
     "pageTitle": "Panel de canal",
     "loading": "Cargando canal…",
-    "totalValue": "Total: {{value}}"
+    "totalValue": "Total: {{value}}",
+    "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

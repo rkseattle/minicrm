@@ -176,7 +176,8 @@
   "pipeline": {
     "pageTitle": "Pipeline Board",
     "loading": "Loading pipeline…",
-    "totalValue": "Total: {{value}}"
+    "totalValue": "Total: {{value}}",
+    "stageUpdateError": "Failed to update stage. Please try again."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
