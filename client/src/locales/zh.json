@@ -82,7 +82,20 @@
   "dashboard": {
     "welcome": "欢迎，{{name}}",
     "subtitle": "以下是您的销售流程概览。",
-    "emptyState": "一旦创建联系人和交易，您的销售流程将显示在此处。"
+    "emptyState": "一旦创建联系人和交易，您的销售流程将显示在此处。",
+    "loading": "正在加载仪表板…",
+    "errorLoad": "加载仪表板失败，请重试。",
+    "overdueTasks": "已逾期任务",
+    "tasksDueToday": "今日到期",
+    "openDeals": "进行中的商机",
+    "pipelineValue": "管道金额",
+    "teamScope": "团队",
+    "myScope": "我的",
+    "stageBreakdownHeading": "按阶段划分的管道",
+    "columnStage": "阶段",
+    "columnDealCount": "商机数",
+    "columnValue": "金额",
+    "noDeals": "暂无进行中的商机。"
   },
   "contacts": {
     "pageTitle": "联系人",

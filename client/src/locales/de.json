@@ -82,7 +82,20 @@
   "dashboard": {
     "welcome": "Willkommen, {{name}}",
     "subtitle": "Hier ist eine Übersicht Ihrer Pipeline.",
-    "emptyState": "Ihre Pipeline wird hier angezeigt, sobald Kontakte und Geschäfte erstellt wurden."
+    "emptyState": "Ihre Pipeline wird hier angezeigt, sobald Kontakte und Geschäfte erstellt wurden.",
+    "loading": "Dashboard wird geladen…",
+    "errorLoad": "Dashboard konnte nicht geladen werden. Bitte erneut versuchen.",
+    "overdueTasks": "Überfällige Aufgaben",
+    "tasksDueToday": "Heute fällig",
+    "openDeals": "Offene Geschäfte",
+    "pipelineValue": "Pipeline-Wert",
+    "teamScope": "Team",
+    "myScope": "Ihre",
+    "stageBreakdownHeading": "Pipeline nach Phase",
+    "columnStage": "Phase",
+    "columnDealCount": "Geschäfte",
+    "columnValue": "Wert",
+    "noDeals": "Noch keine offenen Geschäfte."
   },
   "contacts": {
     "pageTitle": "Kontakte",
