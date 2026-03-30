@@ -1,0 +1,60 @@
+# .claudeignore for minicrm (React/Next.js + Python/FastAPI)
+
+# --- Frontend (React / Next.js) ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.cache/
+.vercel/
+*.tsbuildinfo
+
+# --- Backend (Python / FastAPI) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Database & Logs ---
+# minicrm likely uses a local sqlite or dev logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
+*.sql
+
+# --- System & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Environment & Secrets ---
+# Crucial to ignore to prevent Claude from reading/leaking keys
+.env
+.env.*
+!.env.example
+
+# --- Large Assets ---
+public/assets/
+public/images/
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+
+# --- SDET Stuff ---
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
