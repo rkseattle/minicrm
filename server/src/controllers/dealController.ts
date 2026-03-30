@@ -15,6 +15,7 @@ import {
   linkContactToDeal,
   unlinkContactFromDeal,
 } from '../services/dealService.js';
+import { findContactById } from '../services/contactService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -118,6 +119,17 @@ export async function linkContactHandler(req: Request, res: Response): Promise<v
     return;
   }
 
+  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  const contact = await findContactById(contactId);
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
   await linkContactToDeal(dealId, contactId);
   const contacts = await listDealContacts(dealId);
   res.status(200).json({ contacts });
@@ -135,6 +147,11 @@ export async function unlinkContactHandler(req: Request, res: Response): Promise
   const deal = await findDealById(dealId);
   if (!deal) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
+
+  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
     return;
   }
 
