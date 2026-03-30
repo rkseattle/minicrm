@@ -21,8 +21,10 @@ import { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import type { ActivityType } from '@shared/schemas/activitySchema.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 
-/** Today's date string in YYYY-MM-DD format, used for overdue comparison */
-const TODAY = new Date().toISOString().slice(0, 10);
+/** Returns today's date string in YYYY-MM-DD format, recomputed on each call so overnight sessions stay accurate */
+function getToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 /** Badge variant for each activity type */
 const TYPE_BADGE_VARIANT: Record<ActivityType, BadgeProps['variant']> = {
@@ -39,7 +41,7 @@ const TYPE_BADGE_VARIANT: Record<ActivityType, BadgeProps['variant']> = {
  * @param task - Task row from the API
  */
 function isOverdue(task: MyTaskResponse): boolean {
-  return task.status === 'open' && task.due_date !== null && task.due_date < TODAY;
+  return task.status === 'open' && task.due_date !== null && task.due_date < getToday();
 }
 
 /**
@@ -127,7 +129,7 @@ export default function MyTasksPage() {
               <p className="text-sm text-gray-400" data-testid="my-tasks-empty">
                 {t('myTasks.empty')}
               </p>
-            ) : (
+            ) : visibleTasks.length > 0 ? (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200" data-testid="my-tasks-table">
                   <thead className="bg-gray-50">
@@ -271,7 +273,7 @@ export default function MyTasksPage() {
                   </tbody>
                 </table>
               </div>
-            )}
+            ) : null}
 
             {/* Completed tasks empty state when toggle is on */}
             {showCompleted && completedTasks.length === 0 && (
