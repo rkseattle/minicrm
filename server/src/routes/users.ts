@@ -14,6 +14,7 @@ import {
   deactivateUser,
   reactivateUser,
   setPassword,
+  adminSetPassword,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -49,5 +50,8 @@ router.patch('/:id/deactivate', asyncHandler(deactivateUser));
 
 /** PATCH /api/users/:id/reactivate — reactivate a user */
 router.patch('/:id/reactivate', asyncHandler(reactivateUser));
+
+/** POST /api/users/:id/admin-set-password — admin sets a user's password directly */
+router.post('/:id/admin-set-password', asyncHandler(adminSetPassword));
 
 export default router;

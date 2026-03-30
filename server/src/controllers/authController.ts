@@ -90,7 +90,10 @@ export async function login(req: Request, res: Response): Promise<void> {
     maxAge: COOKIE_MAX_AGE_MS,
   });
 
-  res.status(200).json({ user: sanitizeUser(user) });
+  res.status(200).json({
+    user: sanitizeUser(user),
+    mustChangePassword: user.must_change_password,
+  });
 }
 
 /**
@@ -120,4 +123,62 @@ export async function me(req: Request, res: Response): Promise<void> {
     return;
   }
   res.status(200).json({ user: sanitizeUser(user) });
+}
+
+/** Minimum password length constant — must match shared schema */
+const PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * POST /api/auth/change-password
+ * Allows an authenticated user to change their own password.
+ * Clears the must_change_password flag on success.
+ */
+export async function changePassword(req: Request, res: Response): Promise<void> {
+  const { currentPassword, newPassword } = req.body as {
+    currentPassword?: unknown;
+    newPassword?: unknown;
+  };
+
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'currentPassword and newPassword are required' },
+    });
+    return;
+  }
+
+  if (
+    newPassword.length < PASSWORD_MIN_LENGTH ||
+    !/[a-zA-Z]/.test(newPassword) ||
+    !/[0-9]/.test(newPassword)
+  ) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters and contain at least one letter and one number`,
+      },
+    });
+    return;
+  }
+
+  const user = await userService.findUserById(req.user!.id);
+  if (!user || !user.password_hash) {
+    res.status(401).json({
+      error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid credentials' },
+    });
+    return;
+  }
+
+  const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!passwordMatch) {
+    res.status(401).json({
+      error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Current password is incorrect' },
+    });
+    return;
+  }
+
+  await userService.setUserPasswordFromPlaintext(user.id, newPassword);
+  // Clear the must_change_password flag now that the user has chosen their own password
+  await userService.clearMustChangePassword(user.id);
+
+  res.status(200).json({ message: 'Password changed successfully' });
 }
