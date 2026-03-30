@@ -30,7 +30,7 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true }}>
         <I18nextProvider i18n={i18n}>
           <App />
         </I18nextProvider>
