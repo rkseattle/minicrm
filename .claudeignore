@@ -10,15 +10,9 @@ dist/
 *.tsbuildinfo
 
 # --- Backend (Python / FastAPI) ---
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-env/
-ENV/
-.pytest_cache/
-.mypy_cache/
+# --- Backend (Node.js / Express / TypeScript) ---
+coverage/
+*.tsbuildinfo
 .ruff_cache/
 
 # --- Database & Logs ---
