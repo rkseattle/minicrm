@@ -10,7 +10,16 @@ import { useTranslation } from 'react-i18next';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { Button } from '@/components/ui/Button.js';
-import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
+
+/** Flag emoji and short label shown in the compact selector trigger */
+const LOCALE_FLAG: Record<SupportedLocale, string> = {
+  en: '🇺🇸',
+  zh: '🇨🇳',
+  es: '🇪🇸',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+};
 
 /**
  * Returns Tailwind classes for a navigation link based on its active state.
@@ -93,11 +102,11 @@ export default function NavBar() {
             data-testid="nav-language-select"
             value={i18n.language}
             onChange={(e) => void i18n.changeLanguage(e.target.value)}
-            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
+            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer w-20"
           >
             {SUPPORTED_LOCALES.map((locale) => (
               <option key={locale} value={locale}>
-                {t(`settings.languages.${locale}`)}
+                {`${LOCALE_FLAG[locale]} ${locale.toUpperCase()}`}
               </option>
             ))}
           </select>
