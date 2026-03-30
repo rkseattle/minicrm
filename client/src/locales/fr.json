@@ -94,7 +94,9 @@
     "createSuccess": "Contact créé",
     "updateSuccess": "Contact mis à jour",
     "notFound": "Contact introuvable.",
-    "backToContacts": "Retour aux contacts"
+    "backToContacts": "Retour aux contacts",
+    "linkedDealsHeading": "Opportunités associées",
+    "linkedDealsEmpty": "Aucune opportunité associée à ce contact."
   },
   "accounts": {
     "pageTitle": "Comptes",
@@ -171,7 +173,12 @@
     "notFound": "Opportunité introuvable.",
     "backToDeals": "Retour aux opportunités",
     "linkedContactsHeading": "Contacts associés",
-    "linkedContactsEmpty": "Aucun contact associé à cette opportunité."
+    "linkedContactsEmpty": "Aucun contact associé à cette opportunité.",
+    "linkContact": "Associer un contact",
+    "linking": "Association…",
+    "unlink": "Dissocier",
+    "unlinking": "Dissociation…",
+    "selectContactToLink": "— Sélectionner un contact —"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",

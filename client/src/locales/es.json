@@ -94,7 +94,9 @@
     "createSuccess": "Contacto creado",
     "updateSuccess": "Contacto actualizado",
     "notFound": "Contacto no encontrado.",
-    "backToContacts": "Volver a contactos"
+    "backToContacts": "Volver a contactos",
+    "linkedDealsHeading": "Oportunidades vinculadas",
+    "linkedDealsEmpty": "No hay oportunidades vinculadas a este contacto."
   },
   "accounts": {
     "pageTitle": "Cuentas",
@@ -171,7 +173,12 @@
     "notFound": "Oportunidad no encontrada.",
     "backToDeals": "Volver a oportunidades",
     "linkedContactsHeading": "Contactos vinculados",
-    "linkedContactsEmpty": "No hay contactos vinculados a esta oportunidad."
+    "linkedContactsEmpty": "No hay contactos vinculados a esta oportunidad.",
+    "linkContact": "Vincular contacto",
+    "linking": "Vinculando…",
+    "unlink": "Desvincular",
+    "unlinking": "Desvinculando…",
+    "selectContactToLink": "— Seleccionar un contacto —"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

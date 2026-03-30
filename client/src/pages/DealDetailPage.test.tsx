@@ -4,12 +4,12 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import DealDetailPage from './DealDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { DEAL_1, CONTACT_1 } from '../test/msw/handlers.js';
+import { DEAL_1, CONTACT_1, CONTACT_2 } from '../test/msw/handlers.js';
 
 /** Renders DealDetailPage with DEAL_1 id in route params. */
 function renderDealDetail() {
@@ -132,5 +132,105 @@ describe('DealDetailPage', () => {
     );
     renderDealDetail();
     expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('shows an unlink button next to each linked contact', async () => {
+    server.use(
+      http.get('/api/deals/:id', ({ params }) => {
+        if (params.id === DEAL_1.id) {
+          return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId(`unlink-contact-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+  });
+
+  it('calls unlink API and refreshes when unlink button is clicked', async () => {
+    const unlinkSpy = vi.fn();
+    server.use(
+      http.get('/api/deals/:id', ({ params }) => {
+        if (params.id === DEAL_1.id) {
+          return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Not found' } },
+          { status: 404 },
+        );
+      }),
+      http.delete('/api/deals/:id/contacts/:contactId', ({ params }) => {
+        unlinkSpy(params.id, params.contactId);
+        return HttpResponse.json({ contacts: [] });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`unlink-contact-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId(`unlink-contact-${CONTACT_1.id}`));
+
+    await waitFor(() => {
+      expect(unlinkSpy).toHaveBeenCalledWith(DEAL_1.id, CONTACT_1.id);
+    });
+  });
+
+  it('shows link contact select when there are linkable contacts', async () => {
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('link-contact-select')).toBeInTheDocument();
+    });
+  });
+
+  it('calls link API when a contact is selected and Link button is clicked', async () => {
+    const linkSpy = vi.fn();
+    server.use(
+      http.post('/api/deals/:id/contacts/:contactId', ({ params }) => {
+        linkSpy(params.id, params.contactId);
+        return HttpResponse.json({ contacts: [CONTACT_1] });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('link-contact-select')).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('link-contact-select'), CONTACT_1.id);
+    await user.click(screen.getByTestId('link-contact-button'));
+
+    await waitFor(() => {
+      expect(linkSpy).toHaveBeenCalledWith(DEAL_1.id, CONTACT_1.id);
+    });
+  });
+
+  it('hides link select when all contacts are already linked', async () => {
+    server.use(
+      http.get('/api/deals/:id', ({ params }) => {
+        if (params.id === DEAL_1.id) {
+          // All contacts (CONTACT_1, CONTACT_2) are linked
+          return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1, CONTACT_2] });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Not found' } },
+          { status: 404 },
+        );
+      }),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId(`linked-contact-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('link-contact-form')).not.toBeInTheDocument();
   });
 });

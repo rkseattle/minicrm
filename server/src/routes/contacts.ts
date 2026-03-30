@@ -12,6 +12,7 @@ import {
   getContactHandler,
   updateContactHandler,
   deleteContactHandler,
+  listContactDealsHandler,
 } from '../controllers/contactController.js';
 
 const router = Router();
@@ -21,5 +22,6 @@ router.post('/', authenticate, asyncHandler(createContactHandler));
 router.get('/:id', authenticate, asyncHandler(getContactHandler));
 router.patch('/:id', authenticate, asyncHandler(updateContactHandler));
 router.delete('/:id', authenticate, asyncHandler(deleteContactHandler));
+router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
 
 export default router;

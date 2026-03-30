@@ -9,6 +9,7 @@ import type {
   CreateContactInput,
   UpdateContactInput,
 } from '@shared/schemas/contactSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 
 interface ContactsResponse {
   contacts: ContactResponse[];
@@ -76,4 +77,14 @@ export async function updateContact(
  */
 export async function deleteContact(id: string): Promise<void> {
   await apiClient.delete(`/contacts/${id}`);
+}
+
+/**
+ * Returns all deals linked to a contact via the deal_contacts join table.
+ *
+ * @param id - Contact UUID
+ */
+export async function listContactDeals(id: string): Promise<{ deals: DealResponse[] }> {
+  const response = await apiClient.get<{ deals: DealResponse[] }>(`/contacts/${id}/deals`);
+  return response.data;
 }

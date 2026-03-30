@@ -112,6 +112,7 @@ export default function DealsPage() {
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('deals.newDeal')}</h2>
             <DealForm
               accounts={accounts}
+              accountRequired
               onSubmit={(values) => {
                 setCreateError(null);
                 createMutation.mutate(values);

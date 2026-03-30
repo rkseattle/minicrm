@@ -3,6 +3,7 @@
  * Displays all fields and metadata for a single deal.
  * Shows linked contacts and the associated account.
  * Supports toggling to an edit form (including owner reassignment) and deleting the deal.
+ * Supports linking and unlinking contacts from the deal.
  */
 
 import { useState } from 'react';
@@ -12,13 +13,23 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import { Button } from '@/components/ui/Button.js';
-import { getDeal, updateDeal, deleteDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { Select } from '@/components/ui/Select.js';
+import {
+  getDeal,
+  updateDeal,
+  deleteDeal,
+  linkContactToDeal,
+  unlinkContactFromDeal,
+  DEALS_QUERY_KEY,
+} from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
+import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { DealContact } from '@/api/deals.js';
 
 /**
  * Formats a deal value string for display.
@@ -32,7 +43,7 @@ function formatDealValue(value: string | null): string {
 }
 
 /**
- * Single deal detail page with view/edit/delete.
+ * Single deal detail page with view/edit/delete and contact link/unlink.
  */
 export default function DealDetailPage() {
   const { t } = useTranslation();
@@ -42,6 +53,8 @@ export default function DealDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState('');
 
   const dealQueryKey = ['deals', id] as const;
 
@@ -59,6 +72,11 @@ export default function DealDetailPage() {
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
+  });
+
+  const { data: allContactsData } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: () => listContacts(),
   });
 
   const accounts: AccountResponse[] = accountsData?.accounts ?? [];
@@ -93,6 +111,29 @@ export default function DealDetailPage() {
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: (contactId: string) => linkContactToDeal(id!, contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dealQueryKey });
+      setSelectedContactId('');
+      setLinkError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setLinkError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (contactId: string) => unlinkContactFromDeal(id!, contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dealQueryKey });
+      setLinkError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setLinkError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -133,7 +174,15 @@ export default function DealDetailPage() {
   }
 
   const deal = data.deal;
-  const linkedContacts = data.contacts ?? [];
+  const linkedContacts: DealContact[] = data.contacts ?? [];
+
+  /** Set of contact IDs already linked to this deal */
+  const linkedContactIds = new Set(linkedContacts.map((c) => c.id));
+
+  /** Contacts available to link (exclude already-linked ones) */
+  const linkableContacts = (allContactsData?.contacts ?? []).filter(
+    (c) => !linkedContactIds.has(c.id),
+  );
 
   /** Resolves an account_id to its display name */
   function resolveAccountName(accountId: string | null): string {
@@ -269,22 +318,79 @@ export default function DealDetailPage() {
                 ) : (
                   <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
                     {linkedContacts.map((contact) => (
-                      <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
-                        <Link
-                          to={`/contacts/${contact.id}`}
-                          data-testid={`linked-contact-${contact.id}`}
-                          className="text-sm font-medium text-indigo-600 hover:underline"
+                      <li
+                        key={contact.id}
+                        className="px-6 py-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Link
+                            to={`/contacts/${contact.id}`}
+                            data-testid={`linked-contact-${contact.id}`}
+                            className="text-sm font-medium text-indigo-600 hover:underline"
+                          >
+                            {contact.first_name} {contact.last_name}
+                          </Link>
+                          {contact.title && (
+                            <span className="text-sm text-gray-500">{contact.title}</span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`unlink-contact-${contact.id}`}
+                          onClick={() => unlinkMutation.mutate(contact.id)}
+                          disabled={unlinkMutation.isPending}
                         >
-                          {contact.first_name} {contact.last_name}
-                        </Link>
-                        {contact.title && (
-                          <span className="text-sm text-gray-500">{contact.title}</span>
-                        )}
+                          {t('deals.unlink')}
+                        </Button>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
+
+              {/* Link contact form */}
+              {linkableContacts.length > 0 && (
+                <div className="mt-3 flex items-center gap-2" data-testid="link-contact-form">
+                  <Select
+                    id="link-contact-select"
+                    data-testid="link-contact-select"
+                    value={selectedContactId}
+                    onChange={(e) => setSelectedContactId(e.target.value)}
+                    className="flex-1"
+                  >
+                    <option value="">{t('deals.selectContactToLink')}</option>
+                    {linkableContacts.map((contact) => (
+                      <option key={contact.id} value={contact.id}>
+                        {contact.first_name} {contact.last_name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="link-contact-button"
+                    disabled={!selectedContactId || linkMutation.isPending}
+                    onClick={() => {
+                      if (selectedContactId) linkMutation.mutate(selectedContactId);
+                    }}
+                  >
+                    {linkMutation.isPending ? t('deals.linking') : t('deals.linkContact')}
+                  </Button>
+                </div>
+              )}
+
+              {linkError && (
+                <p
+                  role="alert"
+                  className="mt-2 text-xs text-red-600"
+                  data-testid="link-contact-error"
+                >
+                  {linkError}
+                </p>
+              )}
             </section>
           </>
         )}

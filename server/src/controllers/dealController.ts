@@ -12,6 +12,8 @@ import {
   updateDeal,
   deleteDeal,
   listDealContacts,
+  linkContactToDeal,
+  unlinkContactFromDeal,
 } from '../services/dealService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
@@ -99,6 +101,46 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
   res.status(200).json({ deal });
+}
+
+/**
+ * POST /api/deals/:id/contacts/:contactId
+ * Links a contact to a deal.
+ * Returns the updated contacts list for the deal.
+ */
+export async function linkContactHandler(req: Request, res: Response): Promise<void> {
+  const dealId = String(req.params['id']);
+  const contactId = String(req.params['contactId']);
+
+  const deal = await findDealById(dealId);
+  if (!deal) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
+
+  await linkContactToDeal(dealId, contactId);
+  const contacts = await listDealContacts(dealId);
+  res.status(200).json({ contacts });
+}
+
+/**
+ * DELETE /api/deals/:id/contacts/:contactId
+ * Unlinks a contact from a deal without deleting either record.
+ * Returns the updated contacts list for the deal.
+ */
+export async function unlinkContactHandler(req: Request, res: Response): Promise<void> {
+  const dealId = String(req.params['id']);
+  const contactId = String(req.params['contactId']);
+
+  const deal = await findDealById(dealId);
+  if (!deal) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
+
+  await unlinkContactFromDeal(dealId, contactId);
+  const contacts = await listDealContacts(dealId);
+  res.status(200).json({ contacts });
 }
 
 /**

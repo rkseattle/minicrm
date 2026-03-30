@@ -173,3 +173,49 @@ export async function listDealContacts(dealId: string): Promise<DealContactRow[]
   );
   return result.rows;
 }
+
+/**
+ * Links a contact to a deal via the deal_contacts join table.
+ * If the link already exists, this is a no-op (ON CONFLICT DO NOTHING).
+ *
+ * @param dealId - Deal UUID
+ * @param contactId - Contact UUID
+ */
+export async function linkContactToDeal(dealId: string, contactId: string): Promise<void> {
+  await pool.query(
+    'INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [dealId, contactId],
+  );
+}
+
+/**
+ * Removes the link between a contact and a deal.
+ * If the link does not exist, this is a no-op.
+ *
+ * @param dealId - Deal UUID
+ * @param contactId - Contact UUID
+ */
+export async function unlinkContactFromDeal(dealId: string, contactId: string): Promise<void> {
+  await pool.query('DELETE FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2', [
+    dealId,
+    contactId,
+  ]);
+}
+
+/**
+ * Returns all deals linked to a contact via the deal_contacts join table.
+ *
+ * @param contactId - Contact UUID
+ * @returns Array of deal rows ordered by created_at ascending
+ */
+export async function listContactDeals(contactId: string): Promise<DealRow[]> {
+  const result = await pool.query<DealRow>(
+    `SELECT d.id, d.name, d.stage, d.value, d.close_date::text, d.loss_reason, d.account_id, d.owner_id, d.created_at, d.updated_at
+     FROM deals d
+     INNER JOIN deal_contacts dc ON dc.deal_id = d.id
+     WHERE dc.contact_id = $1
+     ORDER BY d.created_at ASC`,
+    [contactId],
+  );
+  return result.rows;
+}

@@ -12,6 +12,8 @@ import {
   getDealHandler,
   updateDealHandler,
   deleteDealHandler,
+  linkContactHandler,
+  unlinkContactHandler,
 } from '../controllers/dealController.js';
 
 const router = Router();
@@ -21,5 +23,7 @@ router.post('/', authenticate, asyncHandler(createDealHandler));
 router.get('/:id', authenticate, asyncHandler(getDealHandler));
 router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
 router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
+router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHandler));
+router.delete('/:id/contacts/:contactId', authenticate, asyncHandler(unlinkContactHandler));
 
 export default router;

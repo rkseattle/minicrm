@@ -84,3 +84,42 @@ export async function updateDeal(
 export async function deleteDeal(id: string): Promise<void> {
   await apiClient.delete(`/deals/${id}`);
 }
+
+/** Response shape returned by link/unlink contact endpoints */
+interface DealContactsResponse {
+  contacts: DealContact[];
+}
+
+/**
+ * Links a contact to a deal.
+ * Returns the updated list of contacts linked to the deal.
+ *
+ * @param dealId - Deal UUID
+ * @param contactId - Contact UUID
+ */
+export async function linkContactToDeal(
+  dealId: string,
+  contactId: string,
+): Promise<DealContactsResponse> {
+  const response = await apiClient.post<DealContactsResponse>(
+    `/deals/${dealId}/contacts/${contactId}`,
+  );
+  return response.data;
+}
+
+/**
+ * Unlinks a contact from a deal without deleting either record.
+ * Returns the updated list of contacts linked to the deal.
+ *
+ * @param dealId - Deal UUID
+ * @param contactId - Contact UUID
+ */
+export async function unlinkContactFromDeal(
+  dealId: string,
+  contactId: string,
+): Promise<DealContactsResponse> {
+  const response = await apiClient.delete<DealContactsResponse>(
+    `/deals/${dealId}/contacts/${contactId}`,
+  );
+  return response.data;
+}

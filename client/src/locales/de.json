@@ -94,7 +94,9 @@
     "createSuccess": "Kontakt erstellt",
     "updateSuccess": "Kontakt aktualisiert",
     "notFound": "Kontakt nicht gefunden.",
-    "backToContacts": "Zurück zu Kontakten"
+    "backToContacts": "Zurück zu Kontakten",
+    "linkedDealsHeading": "Verknüpfte Geschäfte",
+    "linkedDealsEmpty": "Keine Geschäfte mit diesem Kontakt verknüpft."
   },
   "accounts": {
     "pageTitle": "Konten",
@@ -171,7 +173,12 @@
     "notFound": "Geschäft nicht gefunden.",
     "backToDeals": "Zurück zu Geschäften",
     "linkedContactsHeading": "Verknüpfte Kontakte",
-    "linkedContactsEmpty": "Keine Kontakte mit diesem Geschäft verknüpft."
+    "linkedContactsEmpty": "Keine Kontakte mit diesem Geschäft verknüpft.",
+    "linkContact": "Kontakt verknüpfen",
+    "linking": "Wird verknüpft…",
+    "unlink": "Verknüpfung aufheben",
+    "unlinking": "Verknüpfung wird aufgehoben…",
+    "selectContactToLink": "— Kontakt auswählen —"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",
