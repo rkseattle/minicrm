@@ -2,8 +2,7 @@
 
 # --- Frontend (React / Next.js) ---
 node_modules/
-.next/
-out/
+# --- Frontend (React / Vite) ---
 build/
 dist/
 .cache/
