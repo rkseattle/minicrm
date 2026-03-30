@@ -29,8 +29,8 @@ export default function PipelineBoardPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  /** ID of the deal whose stage update is currently in flight */
-  const [updatingDealId, setUpdatingDealId] = useState<string | null>(null);
+  /** Set of deal IDs whose stage updates are currently in flight */
+  const [updatingDealIds, setUpdatingDealIds] = useState<Set<string>>(new Set());
 
   const {
     data: dealsData,
@@ -68,9 +68,18 @@ export default function PipelineBoardPage() {
 
   const stageMutation = useMutation({
     mutationFn: ({ id, stage }: { id: string; stage: PipelineStage }) => updateDeal(id, { stage }),
-    onMutate: ({ id }) => setUpdatingDealId(id),
-    onSettled: () => {
-      setUpdatingDealId(null);
+    onMutate: ({ id }) =>
+      setUpdatingDealIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      }),
+    onSettled: (_data, _error, { id }) => {
+      setUpdatingDealIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: PIPELINE_QUERY_KEY });
     },
   });
@@ -117,7 +126,7 @@ export default function PipelineBoardPage() {
                 deals={dealsByStage.get(stage) ?? []}
                 accountNames={accountNames}
                 onStageChange={handleStageChange}
-                updatingDealId={updatingDealId}
+                updatingDealIds={updatingDealIds}
               />
             ))}
           </div>

@@ -18,8 +18,8 @@ interface StageColumnProps {
   accountNames: Map<string, string>;
   /** Called when a deal card's stage selector changes */
   onStageChange: (dealId: string, stage: PipelineStage) => void;
-  /** ID of the deal currently being updated, or null */
-  updatingDealId: string | null;
+  /** Set of deal IDs whose stage updates are currently in flight */
+  updatingDealIds: Set<string>;
 }
 
 /** CSS classes for the column border and background */
@@ -62,7 +62,7 @@ function columnHeaderClass(stage: PipelineStage): string {
  */
 function sumValues(deals: DealResponse[]): string {
   const total = deals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
-  return total.toLocaleString();
+  return `$${total.toLocaleString()}`;
 }
 
 /** Kebab-case version of a stage name used in data-testid attributes */
@@ -77,14 +77,14 @@ function stageSlug(stage: PipelineStage): string {
  * @param deals - Deals in this stage
  * @param accountNames - Lookup map for account names
  * @param onStageChange - Stage change callback
- * @param updatingDealId - Deal whose stage update is in flight
+ * @param updatingDealIds - Set of deal IDs whose stage updates are in flight
  */
 export default function StageColumn({
   stage,
   deals,
   accountNames,
   onStageChange,
-  updatingDealId,
+  updatingDealIds,
 }: StageColumnProps) {
   const { t } = useTranslation();
   const slug = stageSlug(stage);
@@ -118,7 +118,7 @@ export default function StageColumn({
             deal={deal}
             accountName={accountNames.get(deal.account_id ?? '') ?? '—'}
             onStageChange={onStageChange}
-            isUpdating={updatingDealId === deal.id}
+            isUpdating={updatingDealIds.has(deal.id)}
           />
         ))}
       </div>

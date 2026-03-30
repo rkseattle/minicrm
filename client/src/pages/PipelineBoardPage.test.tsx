@@ -84,7 +84,7 @@ describe('PipelineBoardPage', () => {
     renderWithProviders(<PipelineBoardPage />);
     await waitFor(() => {
       // DEAL_1.value = '50000.00'
-      expect(screen.getByTestId('stage-column-total-prospecting')).toHaveTextContent('50,000');
+      expect(screen.getByTestId('stage-column-total-prospecting')).toHaveTextContent('$50,000');
     });
   });
 
