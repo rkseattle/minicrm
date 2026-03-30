@@ -1,0 +1,53 @@
+# .claudeignore for minicrm (React/Vite + Node.js/Express/TypeScript)
+
+# --- Frontend (React / Next.js) ---
+node_modules/
+# --- Frontend (React / Vite) ---
+build/
+dist/
+.cache/
+.vercel/
+*.tsbuildinfo
+
+# --- Backend (Python / FastAPI) ---
+# --- Backend (Node.js / Express / TypeScript) ---
+coverage/
+*.tsbuildinfo
+.ruff_cache/
+
+# --- Database & Logs ---
+# minicrm likely uses a local sqlite or dev logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
+*.sql
+
+# --- System & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Environment & Secrets ---
+# Crucial to ignore to prevent Claude from reading/leaking keys
+.env
+.env.*
+!.env.example
+
+# --- Large Assets ---
+public/assets/
+public/images/
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+
+# --- SDET Stuff ---
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
