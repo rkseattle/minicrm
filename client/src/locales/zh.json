@@ -47,7 +47,37 @@
     "inviteTokenLabel": "设置密码链接",
     "copyLink": "复制链接",
     "loading": "正在加载用户…",
-    "empty": "暂无用户。"
+    "empty": "暂无用户。",
+    "cancel": "取消",
+    "actionSetPassword": "设置密码",
+    "setPassword": {
+      "passwordLabel": "新密码",
+      "passwordPlaceholder": "新密码",
+      "confirmLabel": "确认密码",
+      "confirmPlaceholder": "确认密码",
+      "hint": "至少 {{min}} 个字符，包含至少一个字母和一个数字。用户下次登录时将被提示修改密码。",
+      "submit": "设置密码",
+      "submitting": "保存中…",
+      "success": "密码已设置。用户下次登录时将被提示修改密码。",
+      "mismatch": "两次输入的密码不一致。",
+      "complexity": "密码必须至少包含 {{min}} 个字符，且包含至少一个字母和一个数字。"
+    }
+  },
+  "changePassword": {
+    "title": "修改密码",
+    "subtitle": "管理员已为您设置了临时密码。请在继续使用前设置新密码。",
+    "currentPasswordLabel": "当前密码",
+    "currentPasswordPlaceholder": "您的当前密码",
+    "newPasswordLabel": "新密码",
+    "newPasswordPlaceholder": "新密码",
+    "confirmPasswordLabel": "确认新密码",
+    "confirmPasswordPlaceholder": "确认新密码",
+    "passwordHint": "至少 {{min}} 个字符，包含至少一个字母和一个数字。",
+    "submitButton": "修改密码",
+    "submitting": "保存中…",
+    "passwordMismatch": "两次输入的密码不一致。",
+    "passwordTooShort": "密码必须至少包含 {{min}} 个字符。",
+    "passwordComplexity": "密码必须包含至少一个字母和一个数字。"
   },
   "dashboard": {
     "welcome": "欢迎，{{name}}",

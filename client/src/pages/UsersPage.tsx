@@ -18,8 +18,10 @@ import {
   updateUserRole,
   deactivateUser,
   reactivateUser,
+  adminSetPassword,
 } from '@/api/users.js';
 import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
+import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
 
 /** React Query cache key for the users list */
 const USERS_QUERY_KEY = ['users'] as const;
@@ -168,12 +170,145 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   );
 }
 
+interface SetPasswordFormProps {
+  userId: string;
+  onClose: () => void;
+}
+
+/**
+ * Inline form that lets an admin set a user's password directly.
+ * Renders inside the user row expansion area.
+ */
+function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => adminSetPassword(userId, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      setPassword('');
+      setConfirmPassword('');
+      onClose();
+    },
+  });
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    setLocalError(null);
+
+    if (password !== confirmPassword) {
+      setLocalError(t('users.setPassword.mismatch'));
+      return;
+    }
+
+    if (
+      password.length < PASSWORD_MIN_LENGTH ||
+      !/[a-zA-Z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+      setLocalError(t('users.setPassword.complexity', { min: PASSWORD_MIN_LENGTH }));
+      return;
+    }
+
+    mutation.mutate();
+  };
+
+  const serverError =
+    (
+      mutation.error as {
+        response?: { data?: { error?: { message?: string } } };
+      } | null
+    )?.response?.data?.error?.message ?? (mutation.isError ? t('errors.generic') : null);
+
+  const displayError = localError ?? serverError;
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-lg"
+      data-testid={`set-password-form-${userId}`}
+    >
+      <p className="text-xs text-gray-500 mb-3">
+        {t('users.setPassword.hint', { min: PASSWORD_MIN_LENGTH })}
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-40">
+          <Input
+            id={`set-password-${userId}`}
+            data-testid={`set-password-input-${userId}`}
+            type="password"
+            autoComplete="new-password"
+            required
+            label={t('users.setPassword.passwordLabel')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t('users.setPassword.passwordPlaceholder')}
+          />
+        </div>
+        <div className="min-w-40">
+          <Input
+            id={`set-password-confirm-${userId}`}
+            data-testid={`set-password-confirm-${userId}`}
+            type="password"
+            autoComplete="new-password"
+            required
+            label={t('users.setPassword.confirmLabel')}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder={t('users.setPassword.confirmPlaceholder')}
+          />
+        </div>
+        <Button
+          type="submit"
+          size="sm"
+          data-testid={`set-password-submit-${userId}`}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? t('users.setPassword.submitting') : t('users.setPassword.submit')}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          data-testid={`set-password-cancel-${userId}`}
+          onClick={onClose}
+        >
+          {t('users.cancel')}
+        </Button>
+      </div>
+      {displayError && (
+        <div
+          role="alert"
+          className="mt-3 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+        >
+          {displayError}
+        </div>
+      )}
+      {mutation.isSuccess && (
+        <div
+          role="status"
+          className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-800"
+        >
+          {t('users.setPassword.success')}
+        </div>
+      )}
+    </form>
+  );
+}
+
 /**
  * Users management page — lists users and provides admin actions.
  */
 export default function UsersPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: USERS_QUERY_KEY,
@@ -254,73 +389,101 @@ export default function UsersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                          {user.status === 'active'
-                            ? t('users.statusActive')
-                            : user.status === 'invited'
-                              ? t('users.statusInvited')
-                              : t('users.statusInactive')}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {user.role === 'rep' ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              data-testid={`make-admin-${user.id}`}
-                              onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
-                              disabled={roleMutation.isPending}
-                            >
-                              {t('users.actionMakeAdmin')}
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              data-testid={`make-rep-${user.id}`}
-                              onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
-                              disabled={roleMutation.isPending}
-                            >
-                              {t('users.actionMakeRep')}
-                            </Button>
-                          )}
+                    <>
+                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
+                        <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                            {user.status === 'active'
+                              ? t('users.statusActive')
+                              : user.status === 'invited'
+                                ? t('users.statusInvited')
+                                : t('users.statusInactive')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {user.role === 'rep' ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`make-admin-${user.id}`}
+                                onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
+                                disabled={roleMutation.isPending}
+                              >
+                                {t('users.actionMakeAdmin')}
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`make-rep-${user.id}`}
+                                onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
+                                disabled={roleMutation.isPending}
+                              >
+                                {t('users.actionMakeRep')}
+                              </Button>
+                            )}
 
-                          {user.status === 'inactive' ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              data-testid={`reactivate-${user.id}`}
-                              onClick={() => reactivateMutation.mutate(user.id)}
-                              disabled={reactivateMutation.isPending}
-                            >
-                              {t('users.actionReactivate')}
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="danger"
-                              size="sm"
-                              data-testid={`deactivate-${user.id}`}
-                              onClick={() => deactivateMutation.mutate(user.id)}
-                              disabled={deactivateMutation.isPending}
-                            >
-                              {t('users.actionDeactivate')}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            {user.status !== 'inactive' && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`set-password-toggle-${user.id}`}
+                                onClick={() =>
+                                  setSetPasswordUserId(
+                                    setPasswordUserId === user.id ? null : user.id,
+                                  )
+                                }
+                              >
+                                {t('users.actionSetPassword')}
+                              </Button>
+                            )}
+
+                            {user.status === 'inactive' ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`reactivate-${user.id}`}
+                                onClick={() => reactivateMutation.mutate(user.id)}
+                                disabled={reactivateMutation.isPending}
+                              >
+                                {t('users.actionReactivate')}
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="danger"
+                                size="sm"
+                                data-testid={`deactivate-${user.id}`}
+                                onClick={() => deactivateMutation.mutate(user.id)}
+                                disabled={deactivateMutation.isPending}
+                              >
+                                {t('users.actionDeactivate')}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {setPasswordUserId === user.id && (
+                        <tr key={`${user.id}-set-password`}>
+                          <td colSpan={5} className="px-4 pb-4">
+                            <SetPasswordForm
+                              userId={user.id}
+                              onClose={() => setSetPasswordUserId(null)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>

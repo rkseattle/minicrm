@@ -8,6 +8,7 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 interface AuthResponse {
   user: UserResponse;
+  mustChangePassword?: boolean;
 }
 
 interface LogoutResponse {

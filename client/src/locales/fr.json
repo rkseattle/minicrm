@@ -47,7 +47,37 @@
     "inviteTokenLabel": "Lien de définition du mot de passe",
     "copyLink": "Copier le lien",
     "loading": "Chargement des utilisateurs…",
-    "empty": "Aucun utilisateur pour l'instant."
+    "empty": "Aucun utilisateur pour l'instant.",
+    "cancel": "Annuler",
+    "actionSetPassword": "Définir le mot de passe",
+    "setPassword": {
+      "passwordLabel": "Nouveau mot de passe",
+      "passwordPlaceholder": "Nouveau mot de passe",
+      "confirmLabel": "Confirmer le mot de passe",
+      "confirmPlaceholder": "Confirmer le mot de passe",
+      "hint": "Au moins {{min}} caractères, une lettre et un chiffre. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
+      "submit": "Définir le mot de passe",
+      "submitting": "Enregistrement…",
+      "success": "Mot de passe défini. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "complexity": "Le mot de passe doit comporter au moins {{min}} caractères et contenir au moins une lettre et un chiffre."
+    }
+  },
+  "changePassword": {
+    "title": "Changer votre mot de passe",
+    "subtitle": "Votre administrateur a défini un mot de passe temporaire. Veuillez en choisir un nouveau avant de continuer.",
+    "currentPasswordLabel": "Mot de passe actuel",
+    "currentPasswordPlaceholder": "Votre mot de passe actuel",
+    "newPasswordLabel": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "Nouveau mot de passe",
+    "confirmPasswordLabel": "Confirmer le nouveau mot de passe",
+    "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
+    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "submitButton": "Changer le mot de passe",
+    "submitting": "Enregistrement…",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordTooShort": "Le mot de passe doit comporter au moins {{min}} caractères.",
+    "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre."
   },
   "dashboard": {
     "welcome": "Bienvenue, {{name}}",

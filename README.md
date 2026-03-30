@@ -119,12 +119,16 @@ npm run migrate --workspace=minicrm-server
 
 ## Implemented Features
 
-### Auth (MINCRM-21–23)
+### Auth (MINCRM-21–23, MINCRM-29)
 
 - Email/password login and logout
 - Admin can invite users (generates a set-password link)
+- Admin can set a user's password directly from the Users page (no email invite required); the user is prompted to change it on their next login
+- Users prompted to change their password are redirected to `/change-password` immediately after login
 - Admin can assign roles (admin / rep) and deactivate / reactivate users
 - JWT stored in httpOnly cookie; sessions expire after 8 hours
+- Password requirements: at least 8 characters, at least one letter, and at least one number (validated on both client and server via shared Zod schema)
+- Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
 ### Contacts (MINCRM-8, MINCRM-14)
 

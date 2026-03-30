@@ -50,9 +50,13 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: () => login(email, password),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      navigate('/', { replace: true });
+      if (data.mustChangePassword) {
+        navigate('/change-password', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     },
   });
 
