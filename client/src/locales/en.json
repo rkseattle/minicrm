@@ -82,7 +82,20 @@
   "dashboard": {
     "welcome": "Welcome, {{name}}",
     "subtitle": "Here's an overview of your pipeline.",
-    "emptyState": "Your pipeline will appear here once contacts and deals are created."
+    "emptyState": "Your pipeline will appear here once contacts and deals are created.",
+    "loading": "Loading dashboard…",
+    "errorLoad": "Failed to load dashboard. Please try again.",
+    "overdueTasks": "Overdue tasks",
+    "tasksDueToday": "Due today",
+    "openDeals": "Open deals",
+    "pipelineValue": "Pipeline value",
+    "teamScope": "Team",
+    "myScope": "Your",
+    "stageBreakdownHeading": "Pipeline by stage",
+    "columnStage": "Stage",
+    "columnDealCount": "Deals",
+    "columnValue": "Value",
+    "noDeals": "No open deals yet."
   },
   "contacts": {
     "pageTitle": "Contacts",

@@ -82,7 +82,20 @@
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",
     "subtitle": "Aquí tienes un resumen de tu pipeline.",
-    "emptyState": "Tu pipeline aparecerá aquí una vez que se creen contactos y tratos."
+    "emptyState": "Tu pipeline aparecerá aquí una vez que se creen contactos y tratos.",
+    "loading": "Cargando panel…",
+    "errorLoad": "Error al cargar el panel. Por favor, inténtalo de nuevo.",
+    "overdueTasks": "Tareas vencidas",
+    "tasksDueToday": "Con vencimiento hoy",
+    "openDeals": "Oportunidades abiertas",
+    "pipelineValue": "Valor del pipeline",
+    "teamScope": "Equipo",
+    "myScope": "Tus",
+    "stageBreakdownHeading": "Pipeline por etapa",
+    "columnStage": "Etapa",
+    "columnDealCount": "Oportunidades",
+    "columnValue": "Valor",
+    "noDeals": "Aún no hay oportunidades abiertas."
   },
   "contacts": {
     "pageTitle": "Contactos",

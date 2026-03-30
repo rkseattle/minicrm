@@ -82,7 +82,20 @@
   "dashboard": {
     "welcome": "Bienvenue, {{name}}",
     "subtitle": "Voici un aperçu de votre pipeline.",
-    "emptyState": "Votre pipeline apparaîtra ici une fois les contacts et les offres créés."
+    "emptyState": "Votre pipeline apparaîtra ici une fois les contacts et les offres créés.",
+    "loading": "Chargement du tableau de bord…",
+    "errorLoad": "Échec du chargement du tableau de bord. Veuillez réessayer.",
+    "overdueTasks": "Tâches en retard",
+    "tasksDueToday": "À rendre aujourd'hui",
+    "openDeals": "Opportunités ouvertes",
+    "pipelineValue": "Valeur du pipeline",
+    "teamScope": "Équipe",
+    "myScope": "Vos",
+    "stageBreakdownHeading": "Pipeline par étape",
+    "columnStage": "Étape",
+    "columnDealCount": "Opportunités",
+    "columnValue": "Valeur",
+    "noDeals": "Aucune opportunité ouverte pour l'instant."
   },
   "contacts": {
     "pageTitle": "Contacts",

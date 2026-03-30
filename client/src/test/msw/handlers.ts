@@ -12,6 +12,19 @@ import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import type { MyTaskResponse } from '@/api/activities.js';
+import type { DashboardSummaryResponse } from '@/api/dashboard.js';
+
+/** Reusable fixture: dashboard summary response */
+export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
+  overdueTasks: 2,
+  tasksDueToday: 1,
+  openDealCount: 3,
+  openPipelineValue: '150000.00',
+  stageBreakdown: [
+    { stage: 'Prospecting', count: 1, value: '50000.00' },
+    { stage: 'Qualification', count: 2, value: '100000.00' },
+  ],
+};
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -464,6 +477,11 @@ export const handlers = [
   /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
   http.delete('/api/deals/:id/contacts/:contactId', () => {
     return HttpResponse.json({ contacts: [] });
+  }),
+
+  /** Dashboard: GET /api/dashboard/summary — returns dashboard summary metrics */
+  http.get('/api/dashboard/summary', () => {
+    return HttpResponse.json(DASHBOARD_SUMMARY);
   }),
 
   /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */

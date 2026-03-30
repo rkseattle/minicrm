@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -68,6 +68,9 @@ function linkedRecordPath(task: MyTaskResponse): string | null {
 export default function MyTasksPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  /** When navigated from the dashboard overdue link, pre-filter to overdue tasks only */
+  const overdueFilter = searchParams.get('filter') === 'overdue';
   const [showCompleted, setShowCompleted] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
 
@@ -91,7 +94,9 @@ export default function MyTasksPage() {
   const openTasks = allTasks.filter((task) => task.status === 'open');
   const completedTasks = allTasks.filter((task) => task.status === 'complete');
 
-  const visibleTasks = showCompleted ? allTasks : openTasks;
+  // When the overdue filter is active (navigated from dashboard), show only overdue open tasks
+  const overdueTasks = openTasks.filter(isOverdue);
+  const visibleTasks = overdueFilter ? overdueTasks : showCompleted ? allTasks : openTasks;
 
   return (
     <>
@@ -125,7 +130,7 @@ export default function MyTasksPage() {
             )}
 
             {/* Open tasks table */}
-            {openTasks.length === 0 && !showCompleted ? (
+            {visibleTasks.length === 0 && !showCompleted ? (
               <p className="text-sm text-gray-400" data-testid="my-tasks-empty">
                 {t('myTasks.empty')}
               </p>
