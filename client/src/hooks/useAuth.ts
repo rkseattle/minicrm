@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { AxiosError } from 'axios';
 import { getMe } from '@/api/auth.js';
 import { applyResolvedLanguage } from '@/i18n.js';
@@ -37,11 +37,13 @@ export function useAuth(): UseAuthResult {
     throwOnError: false,
   });
 
-  // Apply the resolved language whenever auth state is loaded.
-  // preferredLanguage is the personal preference stored on the user record;
-  // applyResolvedLanguage falls through to the system default when it is null.
+  // Apply the resolved language exactly once — when auth data first becomes available.
+  // Using a ref prevents re-applying on subsequent React Query refetches (which would
+  // reset a language the user has already changed in this session).
+  const languageApplied = useRef(false);
   useEffect(() => {
-    if (data !== undefined) {
+    if (data !== undefined && !languageApplied.current) {
+      languageApplied.current = true;
       void applyResolvedLanguage(data?.preferredLanguage ?? null);
     }
   }, [data]);
