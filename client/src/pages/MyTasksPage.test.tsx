@@ -232,5 +232,23 @@ describe('MyTasksPage', () => {
         expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
       });
     });
+
+    it('hides the "Show completed" toggle when the overdue filter is active', async () => {
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('toggle-completed-button')).not.toBeInTheDocument();
+    });
+
+    it('shows the "Show completed" toggle when no overdue filter is active', async () => {
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('toggle-completed-button')).toBeInTheDocument();
+      });
+    });
   });
 });

@@ -102,11 +102,21 @@ describe('DashboardPage', () => {
       });
     });
 
-    it('overdue task card links to My Tasks filtered to overdue', async () => {
+    it('overdue task card links to My Tasks filtered to overdue for reps', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
         const link = screen.getByTestId('stat-overdue-tasks-link');
         expect(link).toHaveAttribute('href', '/my-tasks?filter=overdue');
+      });
+    });
+
+    it('overdue task card is not a link for admins (team count vs personal destination mismatch)', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        // Admin sees a non-navigable value element, not a link
+        expect(screen.getByTestId('stat-overdue-tasks-value')).toBeInTheDocument();
+        expect(screen.queryByTestId('stat-overdue-tasks-link')).not.toBeInTheDocument();
       });
     });
   });

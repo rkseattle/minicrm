@@ -125,7 +125,7 @@ export default function DashboardPage() {
                 label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.overdueTasks')}`}
                 value={data.overdueTasks}
                 variant={data.overdueTasks > 0 ? 'warning' : 'default'}
-                linkTo="/my-tasks?filter=overdue"
+                linkTo={isAdmin ? undefined : '/my-tasks?filter=overdue'}
               />
               <StatCard
                 testId="stat-tasks-due-today"

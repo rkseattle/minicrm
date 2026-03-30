@@ -106,15 +106,19 @@ export default function MyTasksPage() {
           <h1 className="text-xl font-semibold text-gray-900" data-testid="my-tasks-heading">
             {t('myTasks.pageTitle')}
           </h1>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            data-testid="toggle-completed-button"
-            onClick={() => setShowCompleted((prev) => !prev)}
-          >
-            {showCompleted ? t('myTasks.hideCompleted') : t('myTasks.showCompleted')}
-          </Button>
+          {/* Hide the completed toggle when the overdue filter is active — it has no
+              effect in that mode and would confuse users navigating from the dashboard */}
+          {!overdueFilter && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="toggle-completed-button"
+              onClick={() => setShowCompleted((prev) => !prev)}
+            >
+              {showCompleted ? t('myTasks.hideCompleted') : t('myTasks.showCompleted')}
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
