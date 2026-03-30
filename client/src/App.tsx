@@ -19,6 +19,7 @@ import PipelineBoardPage from '@/pages/PipelineBoardPage.js';
 import MyTasksPage from '@/pages/MyTasksPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
+import ProfileSettingsPage from '@/pages/ProfileSettingsPage.js';
 
 /**
  * Root application component with route definitions.
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/deals/:id" element={<DealDetailPage />} />
         <Route path="/pipeline" element={<PipelineBoardPage />} />
         <Route path="/tasks" element={<MyTasksPage />} />
+        <Route path="/settings/profile" element={<ProfileSettingsPage />} />
       </Route>
 
       {/* Admin-only routes */}

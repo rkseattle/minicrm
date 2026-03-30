@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { SUPPORTED_LOCALES } from './settingsSchema.js';
 
 /** Allowed user roles */
 export const USER_ROLES = ['admin', 'rep'] as const;
@@ -81,6 +82,21 @@ export const updateRoleSchema = z.object({
 });
 
 /**
+ * Schema for the PATCH /api/users/me/language request body.
+ * Passing null clears the preference and falls back to the system default.
+ */
+export const updatePreferredLanguageSchema = z.object({
+  language: z
+    .enum(SUPPORTED_LOCALES, {
+      errorMap: (issue) =>
+        issue.code === 'invalid_type' && issue.received === 'undefined'
+          ? { message: 'Language is required' }
+          : { message: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}` },
+    })
+    .nullable(),
+});
+
+/**
  * Schema for the safe user response shape returned to API consumers.
  * Never includes password_hash.
  */
@@ -91,6 +107,7 @@ export const userResponseSchema = z.object({
   role: z.enum(USER_ROLES),
   status: z.enum(USER_STATUSES),
   must_change_password: z.boolean(),
+  preferred_language: z.enum(SUPPORTED_LOCALES).nullable().optional(),
   created_at: z.string().or(z.date()),
 });
 
@@ -103,4 +120,5 @@ export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 export type AdminSetPasswordInput = z.infer<typeof adminSetPasswordSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+export type UpdatePreferredLanguageInput = z.infer<typeof updatePreferredLanguageSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;

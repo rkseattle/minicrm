@@ -7,6 +7,8 @@ import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logger from '../logger.js';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
+import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** Number of bcrypt salt rounds for password hashing */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -20,6 +22,7 @@ export interface UserRow {
   role: UserRole;
   status: UserStatus;
   must_change_password: boolean;
+  preferred_language: SupportedLocale | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -210,6 +213,49 @@ export async function clearMustChangePassword(id: string): Promise<void> {
     `UPDATE users SET must_change_password = false, updated_at = now() WHERE id = $1`,
     [id],
   );
+}
+
+/**
+ * Returns the stored preferred language for a user, or null if none is set.
+ *
+ * @param id - The user UUID.
+ * @returns The stored locale code, or null if the user has no preference.
+ */
+export async function getUserPreferredLanguage(id: string): Promise<SupportedLocale | null> {
+  const result = await pool.query<Pick<UserRow, 'preferred_language'>>(
+    `SELECT preferred_language FROM users WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  if (!result.rows[0]) return null;
+  const stored = result.rows[0].preferred_language;
+  if (stored === null) return null;
+  // Validate at runtime in case the DB contains a stale / unsupported code
+  if ((SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
+    return stored as SupportedLocale;
+  }
+  logger.warn(`User ${id} has unsupported preferred_language '${stored}' — treating as null`);
+  return null;
+}
+
+/**
+ * Persists a user's preferred language. Pass null to clear the preference.
+ *
+ * @param id - The user UUID.
+ * @param language - The locale code to store, or null to clear.
+ * @returns The updated user row, or null if the user was not found.
+ */
+export async function setUserPreferredLanguage(
+  id: string,
+  language: SupportedLocale | null,
+): Promise<UserRow | null> {
+  const result = await pool.query<UserRow>(
+    `UPDATE users
+     SET preferred_language = $2, updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [id, language],
+  );
+  return result.rows[0] ?? null;
 }
 
 /**

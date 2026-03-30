@@ -6,6 +6,7 @@
 
 import apiClient from './axiosInstance.js';
 import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
+import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
 
 /** Minimal user shape returned by the /active endpoint — sufficient for owner dropdowns */
 export interface ActiveUser {
@@ -139,6 +140,37 @@ export async function setPassword(token: string, password: string): Promise<Mess
 export async function adminSetPassword(id: string, password: string): Promise<UserSingleResponse> {
   const response = await apiClient.post<UserSingleResponse>(`/users/${id}/admin-set-password`, {
     password,
+  });
+  return response.data;
+}
+
+/** Shape returned by the language preference endpoints */
+export interface LanguagePreferenceResponse {
+  language: SupportedLocale | null;
+}
+
+/** React Query cache key for the current user's language preference */
+export const MY_LANGUAGE_QUERY_KEY = ['users', 'me', 'language'] as const;
+
+/**
+ * Returns the authenticated user's stored language preference, or null if not set.
+ */
+export async function getMyLanguage(): Promise<LanguagePreferenceResponse> {
+  const response = await apiClient.get<LanguagePreferenceResponse>('/users/me/language');
+  return response.data;
+}
+
+/**
+ * Persists the authenticated user's language preference.
+ * Pass null to clear the preference and fall back to the system default.
+ *
+ * @param language - The locale code to store, or null to clear.
+ */
+export async function setMyLanguage(
+  language: SupportedLocale | null,
+): Promise<LanguagePreferenceResponse> {
+  const response = await apiClient.patch<LanguagePreferenceResponse>('/users/me/language', {
+    language,
   });
   return response.data;
 }

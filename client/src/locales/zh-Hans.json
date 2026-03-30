@@ -8,6 +8,7 @@
     "myTasks": "我的任务",
     "users": "用户",
     "adminSettings": "管理设置",
+    "profileSettings": "个人设置",
     "languageSelector": "语言",
     "logout": "退出登录"
   },
@@ -305,6 +306,18 @@
       "fr": "法语",
       "de": "德语"
     }
+  },
+  "profileSettings": {
+    "pageTitle": "个人设置",
+    "languageLabel": "首选语言",
+    "languageHint": "覆盖系统默认设置。选择「使用系统默认」以使用管理员配置的语言。",
+    "systemDefault": "使用系统默认",
+    "saveButton": "保存",
+    "saving": "保存中…",
+    "saveSuccess": "偏好设置已保存。",
+    "saveError": "保存失败，请重试。",
+    "loadError": "加载设置失败，请重试。",
+    "loading": "加载中…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

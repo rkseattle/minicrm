@@ -187,12 +187,22 @@ npm run migrate --workspace=minicrm-server
 - New `/admin/settings` route and **Admin Settings** nav link (visible to admins only)
 - Admin can set a system-wide default language from a dropdown populated with all supported locales
 - Selected default persists across restarts via the `system_settings` table (key/value store)
-- On app load, `i18n.ts` fetches `/api/settings/default-language` and applies it when the browser locale is not already one of the supported languages
 - API endpoints:
   - `GET /api/settings/default-language` — public, returns `{ language }` (used on app load)
   - `PATCH /api/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
 - Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
+
+### User Language Preference (MINCRM-31)
+
+- Any authenticated user can set a personal preferred language from the **Profile Settings** page (`/settings/profile`) or by using the language dropdown in the nav bar
+- Personal preference overrides the system-wide default at all times; setting it to "Use system default" clears the preference and falls back to the admin-configured default
+- The language dropdown in the nav bar now persists the selection to the server (previously session-only)
+- On login, the user's stored preference is returned with the `/api/auth/me` response and applied immediately — no language flash
+- API endpoints:
+  - `GET /api/users/me/language` — auth required, returns `{ language: SupportedLocale | null }`
+  - `PATCH /api/users/me/language` — auth required, body `{ language: SupportedLocale | null }`, returns `{ language }`
+- Database migration: `009_add_user_preferred_language.js` adds the nullable `preferred_language` column to the `users` table
 
 ### Home Dashboard (MINCRM-25)
 
@@ -228,7 +238,7 @@ Supported locale codes (BCP 47): `en`, `zh-Hans`, `es`, `fr`, `de`
 
 The active language is resolved in this order (highest precedence first):
 
-1. Browser/OS locale — resolved against the supported locale list; `zh`, `zh-CN`, and other Simplified Chinese tags all map to `zh-Hans`
+1. User's stored personal preference (set via Profile Settings or the nav bar language dropdown)
 2. System-wide default set by an admin via Admin Settings
 3. English (hard-coded fallback)
 

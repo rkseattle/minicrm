@@ -8,6 +8,7 @@
     "myTasks": "Mis tareas",
     "users": "Usuarios",
     "adminSettings": "Configuración de administrador",
+    "profileSettings": "Configuración de perfil",
     "languageSelector": "Idioma",
     "logout": "Cerrar sesión"
   },
@@ -305,6 +306,18 @@
       "fr": "Francés",
       "de": "Alemán"
     }
+  },
+  "profileSettings": {
+    "pageTitle": "Configuración de perfil",
+    "languageLabel": "Idioma preferido",
+    "languageHint": "Reemplaza el idioma predeterminado del sistema. Selecciona 'Usar predeterminado del sistema' para seguir el idioma configurado por el administrador.",
+    "systemDefault": "Usar predeterminado del sistema",
+    "saveButton": "Guardar",
+    "saving": "Guardando…",
+    "saveSuccess": "Preferencias guardadas.",
+    "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
+    "loadError": "Error al cargar la configuración. Por favor, inténtalo de nuevo.",
+    "loading": "Cargando…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

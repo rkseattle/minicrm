@@ -8,6 +8,7 @@
     "myTasks": "My Tasks",
     "users": "Users",
     "adminSettings": "Admin Settings",
+    "profileSettings": "Profile Settings",
     "languageSelector": "Language",
     "logout": "Log out"
   },
@@ -305,6 +306,18 @@
       "fr": "French",
       "de": "German"
     }
+  },
+  "profileSettings": {
+    "pageTitle": "Profile Settings",
+    "languageLabel": "Preferred language",
+    "languageHint": "Overrides the system default. Select 'Use system default' to follow the admin-configured language.",
+    "systemDefault": "Use system default",
+    "saveButton": "Save",
+    "saving": "Saving…",
+    "saveSuccess": "Preferences saved.",
+    "saveError": "Failed to save. Please try again.",
+    "loadError": "Failed to load settings. Please try again.",
+    "loading": "Loading…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

@@ -8,6 +8,7 @@
     "myTasks": "Mes tâches",
     "users": "Utilisateurs",
     "adminSettings": "Paramètres administrateur",
+    "profileSettings": "Paramètres du profil",
     "languageSelector": "Langue",
     "logout": "Se déconnecter"
   },
@@ -305,6 +306,18 @@
       "fr": "Français",
       "de": "Allemand"
     }
+  },
+  "profileSettings": {
+    "pageTitle": "Paramètres du profil",
+    "languageLabel": "Langue préférée",
+    "languageHint": "Remplace la langue par defaut du systeme. Selectionnez 'Utiliser la langue par defaut du systeme' pour suivre la langue configuree par l'administrateur.",
+    "systemDefault": "Utiliser la langue par défaut du système",
+    "saveButton": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saveSuccess": "Préférences enregistrées.",
+    "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+    "loadError": "Échec du chargement des paramètres. Veuillez réessayer.",
+    "loading": "Chargement…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

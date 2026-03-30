@@ -7,8 +7,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
+import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 
@@ -56,6 +58,37 @@ export default function NavBar() {
     },
   });
 
+  /** Tracks the locale active before the most recent optimistic change, for rollback on error */
+  const previousLocaleRef = useRef<string | null>(null);
+
+  const languageMutation = useMutation({
+    mutationFn: (locale: SupportedLocale) => setMyLanguage(locale),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
+      previousLocaleRef.current = null;
+    },
+    onError: () => {
+      // Revert the optimistic language change so the UI stays in sync with the server
+      if (previousLocaleRef.current) {
+        void i18n.changeLanguage(previousLocaleRef.current);
+        previousLocaleRef.current = null;
+      }
+    },
+  });
+
+  /**
+   * Handles language selection from the NavBar dropdown.
+   * Applies the change optimistically and persists it to the server.
+   * Reverts to the previous locale if the save fails.
+   *
+   * @param locale - The selected locale code.
+   */
+  function handleLanguageChange(locale: SupportedLocale): void {
+    previousLocaleRef.current = i18n.language;
+    void i18n.changeLanguage(locale);
+    languageMutation.mutate(locale);
+  }
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
@@ -100,12 +133,21 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {user && (
+            <NavLink
+              to="/settings/profile"
+              className={navLinkClass}
+              data-testid="nav-profile-settings"
+            >
+              {t('nav.profileSettings')}
+            </NavLink>
+          )}
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
           <select
             aria-label={t('nav.languageSelector')}
             data-testid="nav-language-select"
             value={i18n.language}
-            onChange={(e) => void i18n.changeLanguage(e.target.value)}
+            onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
             className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
           >
             {SUPPORTED_LOCALES.map((locale) => (

@@ -15,6 +15,8 @@ import {
   reactivateUser,
   setPassword,
   adminSetPassword,
+  getMyPreferredLanguage,
+  setMyPreferredLanguage,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -32,6 +34,20 @@ router.post('/set-password', asyncHandler(setPassword));
  * subject to the requireRole('admin') check. Requires authentication only.
  */
 router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
+
+/**
+ * GET /api/users/me/language
+ * Returns the authenticated user's stored language preference (or null).
+ * Must be declared before the admin-gated router.use() block.
+ */
+router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
+
+/**
+ * PATCH /api/users/me/language
+ * Persists the authenticated user's language preference. null clears it.
+ * Must be declared before the admin-gated router.use() block.
+ */
+router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage));
 
 /** All routes below require authentication + admin role */
 router.use(authenticate, requireRole('admin'));

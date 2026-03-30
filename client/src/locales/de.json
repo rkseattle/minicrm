@@ -8,6 +8,7 @@
     "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
     "adminSettings": "Admin-Einstellungen",
+    "profileSettings": "Profileinstellungen",
     "languageSelector": "Sprache",
     "logout": "Abmelden"
   },
@@ -305,6 +306,18 @@
       "fr": "Französisch",
       "de": "Deutsch"
     }
+  },
+  "profileSettings": {
+    "pageTitle": "Profileinstellungen",
+    "languageLabel": "Bevorzugte Sprache",
+    "languageHint": "Uberschreibt die systemweite Standardsprache. Wahlen Sie 'Systemstandard verwenden', um der vom Administrator konfigurierten Sprache zu folgen.",
+    "systemDefault": "Systemstandard verwenden",
+    "saveButton": "Speichern",
+    "saving": "Speichern…",
+    "saveSuccess": "Einstellungen gespeichert.",
+    "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "loadError": "Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "loading": "Laden…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

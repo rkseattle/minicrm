@@ -11,6 +11,7 @@ import {
   setPasswordSchema,
   adminSetPasswordSchema,
   updateRoleSchema,
+  updatePreferredLanguageSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import type { ActiveUserRow } from '../services/userService.js';
@@ -218,6 +219,45 @@ export async function setPassword(req: Request, res: Response): Promise<void> {
   await userService.updateUserStatus(user.id, 'active');
 
   res.status(200).json({ message: 'Password set successfully. You may now log in.' });
+}
+
+/**
+ * GET /api/users/me/language
+ * Returns the authenticated user's stored language preference, or null if not set.
+ */
+export async function getMyPreferredLanguage(req: Request, res: Response): Promise<void> {
+  const language = await userService.getUserPreferredLanguage(req.user!.id);
+  res.status(200).json({ language });
+}
+
+/**
+ * PATCH /api/users/me/language
+ * Persists the authenticated user's language preference.
+ * Accepts { language: SupportedLocale | null } — null clears the preference.
+ */
+export async function setMyPreferredLanguage(req: Request, res: Response): Promise<void> {
+  const parseResult = updatePreferredLanguageSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const { language } = parseResult.data;
+
+  const user = await userService.setUserPreferredLanguage(req.user!.id, language);
+  if (!user) {
+    res.status(404).json({
+      error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+    });
+    return;
+  }
+
+  res.status(200).json({ language: user.preferred_language });
 }
 
 /**
