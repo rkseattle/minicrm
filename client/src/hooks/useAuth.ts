@@ -5,11 +5,18 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { AxiosError } from 'axios';
 import { getMe } from '@/api/auth.js';
 import { applyResolvedLanguage } from '@/i18n.js';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
+
+/**
+ * Module-level flag — survives component remounts across navigations.
+ * Ensures applyResolvedLanguage runs at most once per page load/session,
+ * even though useAuth is called by multiple components (NavBar, ProtectedRoute, etc.).
+ */
+let languageApplied = false;
 
 /** React Query cache key for the current user */
 export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
@@ -37,13 +44,12 @@ export function useAuth(): UseAuthResult {
     throwOnError: false,
   });
 
-  // Apply the resolved language exactly once — when auth data first becomes available.
-  // Using a ref prevents re-applying on subsequent React Query refetches (which would
-  // reset a language the user has already changed in this session).
-  const languageApplied = useRef(false);
+  // Apply the resolved language exactly once per session — when auth data first loads.
+  // The module-level flag (not a ref) survives component remounts on navigation,
+  // preventing subsequent refetches from resetting a language the user already changed.
   useEffect(() => {
-    if (data !== undefined && !languageApplied.current) {
-      languageApplied.current = true;
+    if (data !== undefined && !languageApplied) {
+      languageApplied = true;
       void applyResolvedLanguage(data?.preferredLanguage ?? null);
     }
   }, [data]);
