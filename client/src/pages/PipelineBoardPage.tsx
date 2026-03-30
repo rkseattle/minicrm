@@ -11,12 +11,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import StageColumn from '@/components/StageColumn.js';
-import { listDeals, updateDeal } from '@/api/deals.js';
+import { listDeals, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
-import { DEALS_QUERY_KEY } from '@/pages/DealsPage.js';
 
 /** React Query cache key for the pipeline board — shares the deals list cache */
 export const PIPELINE_QUERY_KEY = DEALS_QUERY_KEY;
