@@ -1,4 +1,4 @@
-# .claudeignore for minicrm (React/Next.js + Python/FastAPI)
+# .claudeignore for minicrm (React/Vite + Node.js/Express/TypeScript)
 
 # --- Frontend (React / Next.js) ---
 node_modules/
