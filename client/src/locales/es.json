@@ -232,12 +232,12 @@
     "totalValue": "Total: {{value}}",
     "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo.",
     "stages": {
-      "Prospecting": "Prospección",
-      "Qualification": "Calificación",
-      "Proposal": "Propuesta",
-      "Negotiation": "Negociación",
-      "Closed Won": "Ganado",
-      "Closed Lost": "Perdido"
+      "prospecting": "Prospección",
+      "qualification": "Calificación",
+      "proposal": "Propuesta",
+      "negotiation": "Negociación",
+      "closedWon": "Ganado",
+      "closedLost": "Perdido"
     }
   },
   "activities": {
@@ -300,7 +300,7 @@
     "loading": "Cargando configuración…",
     "languages": {
       "en": "Inglés",
-      "zh": "Chino (mandarín)",
+      "zh-Hans": "Chino (simplificado)",
       "es": "Español",
       "fr": "Francés",
       "de": "Alemán"

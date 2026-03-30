@@ -232,12 +232,12 @@
     "totalValue": "Gesamt: {{value}}",
     "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
     "stages": {
-      "Prospecting": "Akquise",
-      "Qualification": "Qualifizierung",
-      "Proposal": "Angebot",
-      "Negotiation": "Verhandlung",
-      "Closed Won": "Gewonnen",
-      "Closed Lost": "Verloren"
+      "prospecting": "Akquise",
+      "qualification": "Qualifizierung",
+      "proposal": "Angebot",
+      "negotiation": "Verhandlung",
+      "closedWon": "Gewonnen",
+      "closedLost": "Verloren"
     }
   },
   "activities": {
@@ -300,7 +300,7 @@
     "loading": "Einstellungen werden geladen…",
     "languages": {
       "en": "Englisch",
-      "zh": "Chinesisch (Mandarin)",
+      "zh-Hans": "Chinesisch (Vereinfacht)",
       "es": "Spanisch",
       "fr": "Französisch",
       "de": "Deutsch"

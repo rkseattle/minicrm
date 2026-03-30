@@ -7,6 +7,7 @@
 
 import { useTranslation } from 'react-i18next';
 import DealCard from '@/components/DealCard.js';
+import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
 interface StageColumnProps {
@@ -55,14 +56,16 @@ function columnHeaderClass(stage: PipelineStage): string {
 }
 
 /**
- * Computes the sum of deal values for a list of deals.
+ * Computes the sum of deal values and formats it as a USD currency string
+ * using the active locale for number formatting.
  *
  * @param deals - Deals to sum
- * @returns Total as a formatted locale string
+ * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
+ * @returns Locale-formatted USD currency string
  */
-function sumValues(deals: DealResponse[]): string {
+function sumValues(deals: DealResponse[], locale: string): string {
   const total = deals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
-  return `$${total.toLocaleString()}`;
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
 }
 
 /** Kebab-case version of a stage name used in data-testid attributes */
@@ -86,7 +89,7 @@ export default function StageColumn({
   onStageChange,
   updatingDealIds,
 }: StageColumnProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const slug = stageSlug(stage);
 
   return (
@@ -97,7 +100,9 @@ export default function StageColumn({
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold truncate">{t(`pipeline.stages.${stage}`)}</h3>
+          <h3 className="text-sm font-semibold truncate">
+            {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+          </h3>
           <span
             data-testid={`stage-column-count-${slug}`}
             className="ml-2 shrink-0 text-xs font-medium"
@@ -106,7 +111,7 @@ export default function StageColumn({
           </span>
         </div>
         <p data-testid={`stage-column-total-${slug}`} className="text-xs opacity-75 mt-0.5">
-          {t('pipeline.totalValue', { value: sumValues(deals) })}
+          {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
         </p>
       </div>
 

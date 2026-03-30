@@ -45,11 +45,11 @@ describe('getDefaultLanguage', () => {
 
 describe('setDefaultLanguage', () => {
   it('persists and returns the new language', async () => {
-    const result = await setDefaultLanguage('zh');
-    expect(result).toBe('zh');
+    const result = await setDefaultLanguage('zh-Hans');
+    expect(result).toBe('zh-Hans');
 
     const fetched = await getDefaultLanguage();
-    expect(fetched).toBe('zh');
+    expect(fetched).toBe('zh-Hans');
   });
 
   it('overwrites a previously set language', async () => {
@@ -60,7 +60,7 @@ describe('setDefaultLanguage', () => {
   });
 
   it('handles all supported locales without error', async () => {
-    const locales = ['en', 'zh', 'es', 'fr', 'de'] as const;
+    const locales = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
     for (const locale of locales) {
       await expect(setDefaultLanguage(locale)).resolves.toBe(locale);
     }

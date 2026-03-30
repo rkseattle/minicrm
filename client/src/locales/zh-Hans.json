@@ -232,12 +232,12 @@
     "totalValue": "合计：{{value}}",
     "stageUpdateError": "阶段更新失败，请重试。",
     "stages": {
-      "Prospecting": "初步接触",
-      "Qualification": "资质评估",
-      "Proposal": "方案提案",
-      "Negotiation": "商务谈判",
-      "Closed Won": "成交",
-      "Closed Lost": "未成交"
+      "prospecting": "初步接触",
+      "qualification": "资质评估",
+      "proposal": "方案提案",
+      "negotiation": "商务谈判",
+      "closedWon": "成交",
+      "closedLost": "未成交"
     }
   },
   "activities": {
@@ -300,7 +300,7 @@
     "loading": "加载设置中…",
     "languages": {
       "en": "英语",
-      "zh": "中文（普通话）",
+      "zh-Hans": "中文（简体）",
       "es": "西班牙语",
       "fr": "法语",
       "de": "德语"

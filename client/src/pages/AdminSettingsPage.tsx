@@ -95,6 +95,9 @@ export default function AdminSettingsPage() {
               >
                 {t('settings.defaultLanguageLabel')}
               </label>
+              {/* Translator note: this hint describes the scope of the system-wide default language
+                  setting. It appears below the language dropdown label on the Admin Settings page.
+                  It is a noun phrase / explanatory sentence — not a button label. */}
               <p className="text-xs text-gray-500 mb-3">{t('settings.defaultLanguageHint')}</p>
               <Select
                 id="default-language"

@@ -222,10 +222,16 @@ Prospecting → Qualification → Proposal → Negotiation → Closed Won / Clos
 
 ## Internationalization
 
-All user-facing text supports English, Mandarin Chinese, Spanish, French, and German via `i18next`.
+All user-facing text supports English, Mandarin Chinese Simplified (`zh-Hans`), Spanish, French, and German via `i18next`.
+
+Supported locale codes (BCP 47): `en`, `zh-Hans`, `es`, `fr`, `de`
 
 The active language is resolved in this order (highest precedence first):
 
-1. Browser/OS locale (if it matches a supported language code)
+1. Browser/OS locale — resolved against the supported locale list; `zh`, `zh-CN`, and other Simplified Chinese tags all map to `zh-Hans`
 2. System-wide default set by an admin via Admin Settings
 3. English (hard-coded fallback)
+
+The document `dir` attribute is updated automatically when the language changes to support RTL layouts. Adding an RTL locale (e.g. `ar`) to `SUPPORTED_LOCALES` and the `RTL_LOCALES` set in `i18n.ts` is all that is required to enable full RTL support.
+
+Pipeline stage names and currency values are formatted using the active locale (`Intl.NumberFormat` with `style: 'currency'`). i18n keys for pipeline stages use camelCase (e.g. `pipeline.stages.closedWon`) to remain compatible with TMS static-extraction tooling.

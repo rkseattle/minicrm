@@ -6,7 +6,7 @@
 import { z } from 'zod';
 
 /** All language codes supported by the application */
-export const SUPPORTED_LOCALES = ['en', 'zh', 'es', 'fr', 'de'] as const;
+export const SUPPORTED_LOCALES = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
 
 /**
  * Schema for the PATCH /api/settings/default-language request body.

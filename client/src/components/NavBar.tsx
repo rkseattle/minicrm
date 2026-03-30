@@ -12,13 +12,17 @@ import { logout } from '@/api/auth.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 
-/** Flag emoji and short label shown in the compact selector trigger */
-const LOCALE_FLAG: Record<SupportedLocale, string> = {
-  en: '🇺🇸',
-  zh: '🇨🇳',
-  es: '🇪🇸',
-  fr: '🇫🇷',
-  de: '🇩🇪',
+/**
+ * Native name for each supported locale, displayed in the language selector.
+ * Using the language's own script avoids depending on the active translation
+ * and ensures users can always identify their language regardless of the current UI language.
+ */
+const LOCALE_NATIVE_NAME: Record<SupportedLocale, string> = {
+  en: 'English',
+  'zh-Hans': '中文（简体）',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
 };
 
 /**
@@ -102,11 +106,11 @@ export default function NavBar() {
             data-testid="nav-language-select"
             value={i18n.language}
             onChange={(e) => void i18n.changeLanguage(e.target.value)}
-            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer w-20"
+            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
           >
             {SUPPORTED_LOCALES.map((locale) => (
               <option key={locale} value={locale}>
-                {`${LOCALE_FLAG[locale]} ${locale.toUpperCase()}`}
+                {LOCALE_NATIVE_NAME[locale]}
               </option>
             ))}
           </select>

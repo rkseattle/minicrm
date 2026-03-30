@@ -232,12 +232,12 @@
     "totalValue": "Total: {{value}}",
     "stageUpdateError": "Failed to update stage. Please try again.",
     "stages": {
-      "Prospecting": "Prospecting",
-      "Qualification": "Qualification",
-      "Proposal": "Proposal",
-      "Negotiation": "Negotiation",
-      "Closed Won": "Closed Won",
-      "Closed Lost": "Closed Lost"
+      "prospecting": "Prospecting",
+      "qualification": "Qualification",
+      "proposal": "Proposal",
+      "negotiation": "Negotiation",
+      "closedWon": "Closed Won",
+      "closedLost": "Closed Lost"
     }
   },
   "activities": {
@@ -291,7 +291,7 @@
   "settings": {
     "pageTitle": "Admin Settings",
     "defaultLanguageLabel": "Default language",
-    "defaultLanguageHint": "Sets the language for all users who have not configured a personal preference.",
+    "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
     "saveButton": "Save",
     "saving": "Saving…",
     "saveSuccess": "Default language updated.",
@@ -300,7 +300,7 @@
     "loading": "Loading settings…",
     "languages": {
       "en": "English",
-      "zh": "Chinese (Mandarin)",
+      "zh-Hans": "Chinese (Simplified)",
       "es": "Spanish",
       "fr": "French",
       "de": "German"
