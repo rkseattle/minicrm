@@ -4,7 +4,7 @@
  * change roles, and deactivate/reactivate accounts.
  */
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -389,8 +389,8 @@ export default function UsersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {users.map((user) => (
-                    <>
-                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <Fragment key={user.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
                         <td className="px-4 py-3 text-gray-500">{user.email}</td>
                         <td className="px-4 py-3 text-gray-700">
@@ -474,7 +474,7 @@ export default function UsersPage() {
                         </td>
                       </tr>
                       {setPasswordUserId === user.id && (
-                        <tr key={`${user.id}-set-password`}>
+                        <tr>
                           <td colSpan={5} className="px-4 pb-4">
                             <SetPasswordForm
                               userId={user.id}
@@ -483,7 +483,7 @@ export default function UsersPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
