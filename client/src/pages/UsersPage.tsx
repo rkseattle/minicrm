@@ -187,13 +187,17 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const [succeeded, setSucceeded] = useState(false);
+
   const mutation = useMutation({
     mutationFn: () => adminSetPassword(userId, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       setPassword('');
       setConfirmPassword('');
-      onClose();
+      setSucceeded(true);
+      // Delay closing so the success banner is visible before the form unmounts
+      setTimeout(onClose, 1500);
     },
   });
 
@@ -289,7 +293,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
           {displayError}
         </div>
       )}
-      {mutation.isSuccess && (
+      {succeeded && (
         <div
           role="status"
           className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-800"

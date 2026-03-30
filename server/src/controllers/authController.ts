@@ -6,7 +6,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
-import { loginSchema } from '@minicrm/shared/schemas/userSchema.js';
+import { loginSchema, PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { sanitizeUser } from '../utils/userUtils.js';
@@ -125,9 +125,6 @@ export async function me(req: Request, res: Response): Promise<void> {
   res.status(200).json({ user: sanitizeUser(user) });
 }
 
-/** Minimum password length constant — must match shared schema */
-const PASSWORD_MIN_LENGTH = 8;
-
 /**
  * POST /api/auth/change-password
  * Allows an authenticated user to change their own password.
@@ -176,9 +173,9 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     return;
   }
 
+  // setUserPasswordFromPlaintext calls setUserPassword with mustChangePassword=false (default),
+  // which already clears the flag in the same UPDATE — no second query needed.
   await userService.setUserPasswordFromPlaintext(user.id, newPassword);
-  // Clear the must_change_password flag now that the user has chosen their own password
-  await userService.clearMustChangePassword(user.id);
 
   res.status(200).json({ message: 'Password changed successfully' });
 }
