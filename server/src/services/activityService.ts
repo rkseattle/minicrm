@@ -167,6 +167,59 @@ export async function updateActivity(
   return result.rows[0] ?? null;
 }
 
+/** Shape of a task row enriched with the linked record name and type */
+export interface MyTaskRow extends ActivityRow {
+  /** Display name of the linked contact, account, or deal */
+  linked_record_name: string | null;
+  /** Which type of record this task is linked to */
+  linked_record_type: 'contact' | 'account' | 'deal' | null;
+}
+
+/**
+ * Returns all open and completed Task-type activities owned by the given user,
+ * sorted by due_date ascending (nulls last), enriched with the linked record name.
+ *
+ * @param ownerId - UUID of the authenticated user
+ * @returns Array of task rows ordered by due_date ASC NULLS LAST
+ */
+export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
+  const result = await pool.query<MyTaskRow>(
+    `SELECT
+       a.id,
+       a.type,
+       a.subject,
+       a.notes,
+       a.due_date::text,
+       a.status,
+       a.contact_id,
+       a.account_id,
+       a.deal_id,
+       a.owner_id,
+       a.created_at,
+       a.updated_at,
+       CASE
+         WHEN a.contact_id IS NOT NULL THEN (c.first_name || ' ' || c.last_name)
+         WHEN a.account_id IS NOT NULL THEN ac.name
+         WHEN a.deal_id   IS NOT NULL THEN d.name
+       END AS linked_record_name,
+       CASE
+         WHEN a.contact_id IS NOT NULL THEN 'contact'
+         WHEN a.account_id IS NOT NULL THEN 'account'
+         WHEN a.deal_id   IS NOT NULL THEN 'deal'
+       END AS linked_record_type
+     FROM activities a
+     LEFT JOIN contacts c  ON c.id  = a.contact_id
+     LEFT JOIN accounts ac ON ac.id = a.account_id
+     LEFT JOIN deals d     ON d.id  = a.deal_id
+     WHERE a.owner_id = $1
+       AND a.type = 'Task'
+     ORDER BY a.due_date ASC NULLS LAST, a.created_at ASC`,
+    [ownerId],
+  );
+
+  return result.rows;
+}
+
 /**
  * Deletes an activity by its UUID.
  *

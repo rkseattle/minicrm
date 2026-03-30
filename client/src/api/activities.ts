@@ -13,12 +13,27 @@ import type {
 /** React Query cache key for the activities list */
 export const ACTIVITIES_QUERY_KEY = ['activities'] as const;
 
+/** React Query cache key for the my-tasks list */
+export const MY_TASKS_QUERY_KEY = ['my-tasks'] as const;
+
 interface ActivitiesResponse {
   activities: ActivityResponse[];
 }
 
 interface ActivitySingleResponse {
   activity: ActivityResponse;
+}
+
+/** An activity task row enriched with the linked record's name and type */
+export interface MyTaskResponse extends ActivityResponse {
+  /** Display name of the linked contact, account, or deal */
+  linked_record_name: string | null;
+  /** Which record type this task is linked to */
+  linked_record_type: 'contact' | 'account' | 'deal' | null;
+}
+
+interface MyTasksResponse {
+  tasks: MyTaskResponse[];
 }
 
 /** Filters supported by the list endpoint */
@@ -92,4 +107,13 @@ export async function updateActivity(
  */
 export async function deleteActivity(id: string): Promise<void> {
   await apiClient.delete(`/activities/${id}`);
+}
+
+/**
+ * Returns all Task-type activities owned by the current user, sorted by due date ascending.
+ * Each task includes the linked record name and type for display.
+ */
+export async function listMyTasks(): Promise<MyTasksResponse> {
+  const response = await apiClient.get<MyTasksResponse>('/activities/my-tasks');
+  return response.data;
 }

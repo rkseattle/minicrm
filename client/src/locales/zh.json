@@ -5,6 +5,7 @@
     "accounts": "客户",
     "deals": "商机",
     "pipeline": "管道看板",
+    "myTasks": "我的任务",
     "users": "用户",
     "logout": "退出登录"
   },
@@ -214,6 +215,25 @@
     "typeEmail": "邮件",
     "typeMeeting": "会议",
     "typeTask": "任务"
+  },
+  "myTasks": {
+    "pageTitle": "我的任务",
+    "loading": "正在加载任务…",
+    "empty": "您没有未完成的任务。",
+    "emptyCompleted": "没有已完成的任务。",
+    "showCompleted": "显示已完成",
+    "hideCompleted": "隐藏已完成",
+    "columnSubject": "主题",
+    "columnType": "类型",
+    "columnDueDate": "截止日期",
+    "columnRecord": "关联记录",
+    "columnActions": "操作",
+    "overdue": "已逾期",
+    "noDueDate": "无截止日期",
+    "noRecord": "—",
+    "markComplete": "标记完成",
+    "markingComplete": "标记中…",
+    "completeError": "标记任务完成失败，请重试。"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

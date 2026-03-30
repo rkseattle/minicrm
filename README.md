@@ -157,7 +157,7 @@ npm run migrate --workspace=minicrm-server
 - Full CRUD REST API at `/api/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
 
-### Activities & Tasks (MINCRM-19)
+### Activities & Tasks (MINCRM-19, MINCRM-20)
 
 - Unified activity model with types: Note, Call, Email, Meeting, Task
 - Activities can be attached to a contact, account, or deal (at least one required)
@@ -167,6 +167,16 @@ npm run migrate --workspace=minicrm-server
 - `ActivityTimeline` is a shared component embedded in Contact, Account, and Deal detail pages
 - Full CRUD REST API at `/api/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
 - Database migration: `006_create_activities.js`
+
+#### My Tasks view (MINCRM-20)
+
+- Dedicated `/tasks` page (linked in the nav bar as **My Tasks**) listing all Task-type activities owned by the current user
+- Tasks sorted by due date ascending (no due date appears last)
+- Overdue tasks (past due date, still open) show the due date in red with an "Overdue" badge
+- Each row shows subject, type badge, due date, and the name of the linked record (contact, account, or deal) as a clickable link
+- User can mark any open task complete directly from the list — no navigation to the parent record needed
+- Completed tasks are hidden by default; a **Show completed** toggle reveals them
+- API endpoint: `GET /api/activities/my-tasks` — returns Task-type activities for the authenticated user, with `linked_record_name` and `linked_record_type` fields joined from the parent record
 
 ### Ownership (MINCRM-14)
 

@@ -9,6 +9,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createActivityHandler,
   listActivitiesHandler,
+  listMyTasksHandler,
   getActivityHandler,
   updateActivityHandler,
   deleteActivityHandler,
@@ -17,6 +18,7 @@ import {
 const router = Router();
 
 router.get('/', authenticate, asyncHandler(listActivitiesHandler));
+router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
 router.post('/', authenticate, asyncHandler(createActivityHandler));
 router.get('/:id', authenticate, asyncHandler(getActivityHandler));
 router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));

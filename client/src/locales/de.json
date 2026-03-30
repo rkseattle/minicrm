@@ -5,6 +5,7 @@
     "accounts": "Konten",
     "deals": "Geschäfte",
     "pipeline": "Pipeline",
+    "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
     "logout": "Abmelden"
   },
@@ -214,6 +215,25 @@
     "typeEmail": "E-Mail",
     "typeMeeting": "Besprechung",
     "typeTask": "Aufgabe"
+  },
+  "myTasks": {
+    "pageTitle": "Meine Aufgaben",
+    "loading": "Aufgaben werden geladen…",
+    "empty": "Sie haben keine offenen Aufgaben.",
+    "emptyCompleted": "Keine erledigten Aufgaben.",
+    "showCompleted": "Erledigte anzeigen",
+    "hideCompleted": "Erledigte ausblenden",
+    "columnSubject": "Betreff",
+    "columnType": "Typ",
+    "columnDueDate": "Fälligkeitsdatum",
+    "columnRecord": "Datensatz",
+    "columnActions": "Aktionen",
+    "overdue": "Überfällig",
+    "noDueDate": "Kein Datum",
+    "noRecord": "—",
+    "markComplete": "Als erledigt markieren",
+    "markingComplete": "Markieren…",
+    "completeError": "Aufgabe konnte nicht als erledigt markiert werden. Bitte erneut versuchen."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

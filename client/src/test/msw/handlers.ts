@@ -11,6 +11,7 @@ import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
+import type { MyTaskResponse } from '@/api/activities.js';
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -97,6 +98,60 @@ export const DEAL_1: DealResponse = {
   owner_id: '00000000-0000-0000-0000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: an open task for My Tasks view, linked to DEAL_1 */
+export const MY_TASK_1: MyTaskResponse = {
+  id: '00000000-0000-0000-0000-000000000501',
+  type: 'Task',
+  subject: 'Send proposal to client',
+  notes: null,
+  due_date: '2026-06-15',
+  status: 'open',
+  contact_id: null,
+  account_id: null,
+  deal_id: '00000000-0000-0000-0000-000000000301',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+  linked_record_name: 'Acme Enterprise Deal',
+  linked_record_type: 'deal',
+};
+
+/** Reusable fixture: an overdue open task for My Tasks view, linked to CONTACT_1 */
+export const MY_TASK_OVERDUE: MyTaskResponse = {
+  id: '00000000-0000-0000-0000-000000000502',
+  type: 'Task',
+  subject: 'Call Alice about renewal',
+  notes: null,
+  due_date: '2020-01-01',
+  status: 'open',
+  contact_id: '00000000-0000-0000-0000-000000000101',
+  account_id: null,
+  deal_id: null,
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+  linked_record_name: 'Alice Smith',
+  linked_record_type: 'contact',
+};
+
+/** Reusable fixture: a completed task for My Tasks view */
+export const MY_TASK_COMPLETE: MyTaskResponse = {
+  id: '00000000-0000-0000-0000-000000000503',
+  type: 'Task',
+  subject: 'Submit contract',
+  notes: null,
+  due_date: '2025-12-01',
+  status: 'complete',
+  contact_id: null,
+  account_id: '00000000-0000-0000-0000-000000000201',
+  deal_id: null,
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+  linked_record_name: 'Acme Corp',
+  linked_record_type: 'account',
 };
 
 /** Reusable fixture: an open task activity linked to DEAL_1 */
@@ -393,6 +448,11 @@ export const handlers = [
   /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
   http.delete('/api/deals/:id/contacts/:contactId', () => {
     return HttpResponse.json({ contacts: [] });
+  }),
+
+  /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */
+  http.get('/api/activities/my-tasks', () => {
+    return HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_OVERDUE] });
   }),
 
   /** Activities: GET /api/activities — supports ?contact, ?account, ?deal, ?owner=me filters */

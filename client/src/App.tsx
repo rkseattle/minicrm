@@ -15,6 +15,7 @@ import AccountDetailPage from '@/pages/AccountDetailPage.js';
 import DealsPage from '@/pages/DealsPage.js';
 import DealDetailPage from '@/pages/DealDetailPage.js';
 import PipelineBoardPage from '@/pages/PipelineBoardPage.js';
+import MyTasksPage from '@/pages/MyTasksPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 
 /**
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/deals" element={<DealsPage />} />
         <Route path="/deals/:id" element={<DealDetailPage />} />
         <Route path="/pipeline" element={<PipelineBoardPage />} />
+        <Route path="/tasks" element={<MyTasksPage />} />
       </Route>
 
       {/* Admin-only routes */}

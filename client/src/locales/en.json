@@ -5,6 +5,7 @@
     "accounts": "Accounts",
     "deals": "Deals",
     "pipeline": "Pipeline",
+    "myTasks": "My Tasks",
     "users": "Users",
     "logout": "Log out"
   },
@@ -214,6 +215,25 @@
     "typeEmail": "Email",
     "typeMeeting": "Meeting",
     "typeTask": "Task"
+  },
+  "myTasks": {
+    "pageTitle": "My Tasks",
+    "loading": "Loading tasks…",
+    "empty": "You have no open tasks.",
+    "emptyCompleted": "No completed tasks.",
+    "showCompleted": "Show completed",
+    "hideCompleted": "Hide completed",
+    "columnSubject": "Subject",
+    "columnType": "Type",
+    "columnDueDate": "Due date",
+    "columnRecord": "Record",
+    "columnActions": "Actions",
+    "overdue": "Overdue",
+    "noDueDate": "No due date",
+    "noRecord": "—",
+    "markComplete": "Mark complete",
+    "markingComplete": "Marking…",
+    "completeError": "Failed to mark task complete. Please try again."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
