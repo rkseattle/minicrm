@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import NavBar from '@/components/NavBar.js';
 import {
   getDefaultLanguage,
   setDefaultLanguage,
@@ -62,82 +63,79 @@ export default function AdminSettingsPage() {
     mutation.mutate(selectedLanguage);
   }
 
-  if (isLoading) {
-    return (
-      <main className="max-w-2xl mx-auto px-6 py-10">
-        <p className="text-sm text-gray-500" data-testid="settings-loading">
-          {t('settings.loading')}
-        </p>
-      </main>
-    );
-  }
-
-  if (isError) {
-    return (
-      <main className="max-w-2xl mx-auto px-6 py-10">
-        <p role="alert" className="text-sm text-red-600" data-testid="settings-load-error">
-          {t('settings.loadError')}
-        </p>
-      </main>
-    );
-  }
-
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-8" data-testid="settings-heading">
-        {t('settings.pageTitle')}
-      </h1>
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6" data-testid="settings-heading">
+          {t('settings.pageTitle')}
+        </h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-6"
-      >
-        <div>
-          <label
-            htmlFor="default-language"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            {t('settings.defaultLanguageLabel')}
-          </label>
-          <p className="text-xs text-gray-500 mb-3">{t('settings.defaultLanguageHint')}</p>
-          <Select
-            id="default-language"
-            data-testid="default-language-select"
-            value={selectedLanguage}
-            onChange={(e) => setPendingLanguage(e.target.value as SupportedLocale)}
-          >
-            {SUPPORTED_LOCALES.map((locale) => (
-              <option key={locale} value={locale}>
-                {t(`settings.languages.${locale}`)}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {successMessage && (
-          <p role="status" className="text-sm text-green-700" data-testid="settings-success">
-            {successMessage}
+        {isLoading && (
+          <p className="text-sm text-gray-500" data-testid="settings-loading">
+            {t('settings.loading')}
           </p>
         )}
 
-        {errorMessage && (
-          <p role="alert" className="text-sm text-red-600" data-testid="settings-error">
-            {errorMessage}
+        {isError && (
+          <p role="alert" className="text-sm text-red-600" data-testid="settings-load-error">
+            {t('settings.loadError')}
           </p>
         )}
 
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            data-testid="settings-save"
-            disabled={mutation.isPending}
+        {!isLoading && !isError && (
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-6 max-w-2xl"
           >
-            {mutation.isPending ? t('settings.saving') : t('settings.saveButton')}
-          </Button>
-        </div>
-      </form>
-    </main>
+            <div>
+              <label
+                htmlFor="default-language"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.defaultLanguageLabel')}
+              </label>
+              <p className="text-xs text-gray-500 mb-3">{t('settings.defaultLanguageHint')}</p>
+              <Select
+                id="default-language"
+                data-testid="default-language-select"
+                value={selectedLanguage}
+                onChange={(e) => setPendingLanguage(e.target.value as SupportedLocale)}
+              >
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {t(`settings.languages.${locale}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {successMessage && (
+              <p role="status" className="text-sm text-green-700" data-testid="settings-success">
+                {successMessage}
+              </p>
+            )}
+
+            {errorMessage && (
+              <p role="alert" className="text-sm text-red-600" data-testid="settings-error">
+                {errorMessage}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                data-testid="settings-save"
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? t('settings.saving') : t('settings.saveButton')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </main>
+    </div>
   );
 }
