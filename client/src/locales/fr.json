@@ -7,6 +7,8 @@
     "pipeline": "Pipeline",
     "myTasks": "Mes tâches",
     "users": "Utilisateurs",
+    "adminSettings": "Paramètres administrateur",
+    "languageSelector": "Langue",
     "logout": "Se déconnecter"
   },
   "login": {
@@ -228,7 +230,15 @@
     "pageTitle": "Tableau de pipeline",
     "loading": "Chargement du pipeline…",
     "totalValue": "Total : {{value}}",
-    "stageUpdateError": "Échec de la mise à jour de l'étape. Veuillez réessayer."
+    "stageUpdateError": "Échec de la mise à jour de l'étape. Veuillez réessayer.",
+    "stages": {
+      "prospecting": "Prospection",
+      "qualification": "Qualification",
+      "proposal": "Proposition",
+      "negotiation": "Négociation",
+      "closedWon": "Gagné",
+      "closedLost": "Perdu"
+    }
   },
   "activities": {
     "timelineHeading": "Activité",
@@ -277,6 +287,24 @@
     "markComplete": "Marquer comme terminée",
     "markingComplete": "Marquage…",
     "completeError": "Échec du marquage de la tâche. Veuillez réessayer."
+  },
+  "settings": {
+    "pageTitle": "Paramètres administrateur",
+    "defaultLanguageLabel": "Langue par défaut",
+    "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
+    "saveButton": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saveSuccess": "Langue par défaut mise à jour.",
+    "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+    "loadError": "Échec du chargement des paramètres. Veuillez réessayer.",
+    "loading": "Chargement des paramètres…",
+    "languages": {
+      "en": "Anglais",
+      "zh-Hans": "Chinois (simplifié)",
+      "es": "Espagnol",
+      "fr": "Français",
+      "de": "Allemand"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

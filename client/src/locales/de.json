@@ -7,6 +7,8 @@
     "pipeline": "Pipeline",
     "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
+    "adminSettings": "Admin-Einstellungen",
+    "languageSelector": "Sprache",
     "logout": "Abmelden"
   },
   "login": {
@@ -228,7 +230,15 @@
     "pageTitle": "Pipeline-Board",
     "loading": "Pipeline wird geladen…",
     "totalValue": "Gesamt: {{value}}",
-    "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+    "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "stages": {
+      "prospecting": "Akquise",
+      "qualification": "Qualifizierung",
+      "proposal": "Angebot",
+      "negotiation": "Verhandlung",
+      "closedWon": "Gewonnen",
+      "closedLost": "Verloren"
+    }
   },
   "activities": {
     "timelineHeading": "Aktivität",
@@ -277,6 +287,24 @@
     "markComplete": "Als erledigt markieren",
     "markingComplete": "Markieren…",
     "completeError": "Aufgabe konnte nicht als erledigt markiert werden. Bitte erneut versuchen."
+  },
+  "settings": {
+    "pageTitle": "Admin-Einstellungen",
+    "defaultLanguageLabel": "Standardsprache",
+    "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
+    "saveButton": "Speichern",
+    "saving": "Speichern…",
+    "saveSuccess": "Standardsprache aktualisiert.",
+    "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "loadError": "Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "loading": "Einstellungen werden geladen…",
+    "languages": {
+      "en": "Englisch",
+      "zh-Hans": "Chinesisch (Vereinfacht)",
+      "es": "Spanisch",
+      "fr": "Französisch",
+      "de": "Deutsch"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

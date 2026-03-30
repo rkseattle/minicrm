@@ -18,6 +18,7 @@ import DealDetailPage from '@/pages/DealDetailPage.js';
 import PipelineBoardPage from '@/pages/PipelineBoardPage.js';
 import MyTasksPage from '@/pages/MyTasksPage.js';
 import UsersPage from '@/pages/UsersPage.js';
+import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
 
 /**
  * Root application component with route definitions.
@@ -45,6 +46,7 @@ export default function App() {
       {/* Admin-only routes */}
       <Route element={<AdminRoute />}>
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
       </Route>
 
       {/* Catch-all: redirect unknown paths to the dashboard */}

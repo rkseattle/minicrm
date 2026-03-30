@@ -7,6 +7,8 @@
     "pipeline": "Canal",
     "myTasks": "Mis tareas",
     "users": "Usuarios",
+    "adminSettings": "Configuración de administrador",
+    "languageSelector": "Idioma",
     "logout": "Cerrar sesión"
   },
   "login": {
@@ -228,7 +230,15 @@
     "pageTitle": "Panel de canal",
     "loading": "Cargando canal…",
     "totalValue": "Total: {{value}}",
-    "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo."
+    "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo.",
+    "stages": {
+      "prospecting": "Prospección",
+      "qualification": "Calificación",
+      "proposal": "Propuesta",
+      "negotiation": "Negociación",
+      "closedWon": "Ganado",
+      "closedLost": "Perdido"
+    }
   },
   "activities": {
     "timelineHeading": "Actividad",
@@ -277,6 +287,24 @@
     "markComplete": "Marcar como completada",
     "markingComplete": "Marcando…",
     "completeError": "No se pudo marcar la tarea como completada. Inténtalo de nuevo."
+  },
+  "settings": {
+    "pageTitle": "Configuración de administrador",
+    "defaultLanguageLabel": "Idioma predeterminado",
+    "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
+    "saveButton": "Guardar",
+    "saving": "Guardando…",
+    "saveSuccess": "Idioma predeterminado actualizado.",
+    "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
+    "loadError": "Error al cargar la configuración. Por favor, inténtalo de nuevo.",
+    "loading": "Cargando configuración…",
+    "languages": {
+      "en": "Inglés",
+      "zh-Hans": "Chino (simplificado)",
+      "es": "Español",
+      "fr": "Francés",
+      "de": "Alemán"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

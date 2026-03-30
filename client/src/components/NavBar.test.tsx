@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { Routes, Route } from 'react-router-dom';
+import i18n from '../i18n.js';
 import NavBar from './NavBar.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
@@ -55,6 +56,40 @@ describe('NavBar', () => {
     renderWithProviders(<NavBar />);
     await waitFor(() => {
       expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+    });
+  });
+
+  describe('language selector', () => {
+    it('renders the language selector', async () => {
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
+      });
+    });
+
+    it('reflects the current i18n language', async () => {
+      await i18n.changeLanguage('fr');
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        const select = screen.getByTestId('nav-language-select') as HTMLSelectElement;
+        expect(select.value).toBe('fr');
+      });
+      await i18n.changeLanguage('en');
+    });
+
+    it('changes the active language when a new option is selected', async () => {
+      await i18n.changeLanguage('en');
+      const user = userEvent.setup();
+      renderWithProviders(<NavBar />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('nav-language-select'), 'de');
+
+      expect(i18n.language).toBe('de');
+      await i18n.changeLanguage('en');
     });
   });
 

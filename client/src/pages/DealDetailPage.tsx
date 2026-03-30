@@ -28,26 +28,31 @@ import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
-import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
+import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 
 /**
- * Formats a deal value string for display.
+ * Formats a deal value as a USD currency string using the active locale.
  *
  * @param value - Numeric string from the API, or null
+ * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
+ * @returns Locale-formatted USD currency string, or '—' when value is absent
  */
-function formatDealValue(value: string | null): string {
+function formatDealValue(value: string | null, locale: string): string {
   if (!value) return '—';
   const num = parseFloat(value);
-  return isNaN(num) ? '—' : num.toLocaleString();
+  return isNaN(num)
+    ? '—'
+    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
 }
 
 /**
  * Single deal detail page with view/edit/delete and contact link/unlink.
  */
 export default function DealDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -265,10 +270,14 @@ export default function DealDetailPage() {
         ) : (
           <>
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-              <DetailRow label={t('deals.stageLabel')} value={deal.stage} testId="detail-stage" />
+              <DetailRow
+                label={t('deals.stageLabel')}
+                value={t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`)}
+                testId="detail-stage"
+              />
               <DetailRow
                 label={t('deals.valueLabel')}
-                value={formatDealValue(deal.value)}
+                value={formatDealValue(deal.value, i18n.language)}
                 testId="detail-value"
               />
               <DetailRow

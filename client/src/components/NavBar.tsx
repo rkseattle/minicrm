@@ -10,6 +10,20 @@ import { useTranslation } from 'react-i18next';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { Button } from '@/components/ui/Button.js';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
+
+/**
+ * Native name for each supported locale, displayed in the language selector.
+ * Using the language's own script avoids depending on the active translation
+ * and ensures users can always identify their language regardless of the current UI language.
+ */
+const LOCALE_NATIVE_NAME: Record<SupportedLocale, string> = {
+  en: 'English',
+  'zh-Hans': '中文（简体）',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+};
 
 /**
  * Returns Tailwind classes for a navigation link based on its active state.
@@ -29,7 +43,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
  * Top-level navigation bar.
  */
 export default function NavBar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -73,11 +87,33 @@ export default function NavBar() {
                 {t('nav.users')}
               </NavLink>
             )}
+            {user?.role === 'admin' && (
+              <NavLink
+                to="/admin/settings"
+                className={navLinkClass}
+                data-testid="nav-admin-settings"
+              >
+                {t('nav.adminSettings')}
+              </NavLink>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
+          <select
+            aria-label={t('nav.languageSelector')}
+            data-testid="nav-language-select"
+            value={i18n.language}
+            onChange={(e) => void i18n.changeLanguage(e.target.value)}
+            className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
+          >
+            {SUPPORTED_LOCALES.map((locale) => (
+              <option key={locale} value={locale}>
+                {LOCALE_NATIVE_NAME[locale]}
+              </option>
+            ))}
+          </select>
           <Button
             type="button"
             variant="ghost"

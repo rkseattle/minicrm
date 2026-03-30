@@ -7,6 +7,8 @@
     "pipeline": "Pipeline",
     "myTasks": "My Tasks",
     "users": "Users",
+    "adminSettings": "Admin Settings",
+    "languageSelector": "Language",
     "logout": "Log out"
   },
   "login": {
@@ -228,7 +230,15 @@
     "pageTitle": "Pipeline Board",
     "loading": "Loading pipeline…",
     "totalValue": "Total: {{value}}",
-    "stageUpdateError": "Failed to update stage. Please try again."
+    "stageUpdateError": "Failed to update stage. Please try again.",
+    "stages": {
+      "prospecting": "Prospecting",
+      "qualification": "Qualification",
+      "proposal": "Proposal",
+      "negotiation": "Negotiation",
+      "closedWon": "Closed Won",
+      "closedLost": "Closed Lost"
+    }
   },
   "activities": {
     "timelineHeading": "Activity",
@@ -277,6 +287,24 @@
     "markComplete": "Mark complete",
     "markingComplete": "Marking…",
     "completeError": "Failed to mark task complete. Please try again."
+  },
+  "settings": {
+    "pageTitle": "Admin Settings",
+    "defaultLanguageLabel": "Default language",
+    "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
+    "saveButton": "Save",
+    "saving": "Saving…",
+    "saveSuccess": "Default language updated.",
+    "saveError": "Failed to save. Please try again.",
+    "loadError": "Failed to load settings. Please try again.",
+    "loading": "Loading settings…",
+    "languages": {
+      "en": "English",
+      "zh-Hans": "Chinese (Simplified)",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

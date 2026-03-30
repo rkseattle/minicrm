@@ -6,8 +6,10 @@
  */
 
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/Select.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
+import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
 interface DealCardProps {
@@ -22,15 +24,18 @@ interface DealCardProps {
 }
 
 /**
- * Formats a deal value for display.
+ * Formats a deal value as a USD currency string using the active locale.
  *
  * @param value - Numeric string from the API (pg returns numeric as string)
- * @returns Formatted string or '—' when value is absent
+ * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
+ * @returns Locale-formatted USD currency string, or '—' when value is absent
  */
-function formatValue(value: string | null): string {
+function formatValue(value: string | null, locale: string): string {
   if (!value) return '—';
   const num = parseFloat(value);
-  return isNaN(num) ? '—' : `$${num.toLocaleString()}`;
+  return isNaN(num)
+    ? '—'
+    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
 }
 
 /**
@@ -42,6 +47,7 @@ function formatValue(value: string | null): string {
  * @param isUpdating - Whether a stage update is in flight for this card
  */
 export default function DealCard({ deal, accountName, onStageChange, isUpdating }: DealCardProps) {
+  const { t, i18n } = useTranslation();
   return (
     <div
       data-testid={`deal-card-${deal.id}`}
@@ -65,7 +71,9 @@ export default function DealCard({ deal, accountName, onStageChange, isUpdating 
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-        <span data-testid={`deal-card-value-${deal.id}`}>{formatValue(deal.value)}</span>
+        <span data-testid={`deal-card-value-${deal.id}`}>
+          {formatValue(deal.value, i18n.language)}
+        </span>
         <span data-testid={`deal-card-close-date-${deal.id}`}>{deal.close_date ?? '—'}</span>
       </div>
 
@@ -79,7 +87,7 @@ export default function DealCard({ deal, accountName, onStageChange, isUpdating 
       >
         {PIPELINE_STAGES.map((stage) => (
           <option key={stage} value={stage}>
-            {stage}
+            {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
           </option>
         ))}
       </Select>

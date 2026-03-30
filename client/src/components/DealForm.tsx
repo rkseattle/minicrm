@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
+import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -135,7 +136,7 @@ export default function DealForm({
         >
           {PIPELINE_STAGES.map((stage) => (
             <option key={stage} value={stage}>
-              {stage}
+              {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
             </option>
           ))}
         </Select>

@@ -20,26 +20,32 @@ import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import type { PipelineStage } from '@shared/schemas/dealSchema.js';
 
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
 type OwnerFilter = 'all' | 'me';
 
 /**
- * Formats a deal value for display. Returns '—' when null or empty.
+ * Formats a deal value as a USD currency string using the active locale.
  *
  * @param value - Numeric string from the API (pg returns numeric as string)
+ * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
+ * @returns Locale-formatted USD currency string, or '—' when value is absent
  */
-function formatDealValue(value: string | null): string {
+function formatDealValue(value: string | null, locale: string): string {
   if (!value) return '—';
   const num = parseFloat(value);
-  return isNaN(num) ? '—' : num.toLocaleString();
+  return isNaN(num)
+    ? '—'
+    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
 }
 
 /**
  * Deals list page with owner filter and inline create form.
  */
 export default function DealsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -204,8 +210,14 @@ export default function DealsPage() {
                           {deal.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-700">{deal.stage}</td>
-                      <td className="px-4 py-3 text-gray-500">{formatDealValue(deal.value)}</td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {t(
+                          `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {formatDealValue(deal.value, i18n.language)}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{deal.close_date ?? '—'}</td>
                       <td className="px-4 py-3 text-gray-500">
                         {resolveAccountName(deal.account_id)}
