@@ -54,6 +54,7 @@ export default function DealDetailPage() {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState('');
 
   const dealQueryKey = ['deals', id] as const;
@@ -130,10 +131,10 @@ export default function DealDetailPage() {
     mutationFn: (contactId: string) => unlinkContactFromDeal(id!, contactId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
-      setLinkError(null);
+      setUnlinkError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setLinkError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setUnlinkError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -342,13 +343,23 @@ export default function DealDetailPage() {
                           onClick={() => unlinkMutation.mutate(contact.id)}
                           disabled={unlinkMutation.isPending}
                         >
-                          {t('deals.unlink')}
+                          {unlinkMutation.isPending ? t('deals.unlinking') : t('deals.unlink')}
                         </Button>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
+
+              {unlinkError && (
+                <p
+                  role="alert"
+                  className="mt-2 text-xs text-red-600"
+                  data-testid="unlink-contact-error"
+                >
+                  {unlinkError}
+                </p>
+              )}
 
               {/* Link contact form */}
               {linkableContacts.length > 0 && (
