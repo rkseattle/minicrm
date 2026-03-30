@@ -197,4 +197,40 @@ describe('MyTasksPage', () => {
 
     expect(screen.getByTestId('toggle-completed-button')).toHaveTextContent('Hide completed');
   });
+
+  describe('?filter=overdue query param', () => {
+    it('shows only overdue tasks when filter=overdue is in the URL', async () => {
+      // MY_TASK_1 has a future due date (not overdue); MY_TASK_OVERDUE is overdue
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId(`task-row-${MY_TASK_1.id}`)).not.toBeInTheDocument();
+    });
+
+    it('shows the empty state when filter=overdue but no tasks are overdue', async () => {
+      server.use(
+        http.get('/api/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_1] })),
+      );
+
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('my-tasks-empty')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId(`task-row-${MY_TASK_1.id}`)).not.toBeInTheDocument();
+    });
+
+    it('shows all open tasks when no filter param is present', async () => {
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`task-row-${MY_TASK_1.id}`)).toBeInTheDocument();
+        expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
+      });
+    });
+  });
 });

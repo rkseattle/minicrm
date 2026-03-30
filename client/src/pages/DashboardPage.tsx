@@ -18,11 +18,17 @@ import NavBar from '@/components/NavBar.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { getDashboardSummary, DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
 
-/** Formats a numeric string as a dollar amount with commas and two decimal places. */
-function formatCurrency(value: string): string {
+/**
+ * Formats a numeric string as a currency amount using the active i18next locale.
+ * Currency is always USD for this alpha; the locale controls separators and symbol placement.
+ *
+ * @param value - Numeric string from the API (e.g. "150000.00")
+ * @param locale - BCP 47 language tag from i18next (e.g. "en", "de", "zh")
+ */
+function formatCurrency(value: string, locale: string): string {
   const number = parseFloat(value);
   if (isNaN(number)) return '$0.00';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(number);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(number);
 }
 
 /** A single summary stat card. */
@@ -73,7 +79,7 @@ function StatCard({ label, value, linkTo, testId, variant = 'default' }: StatCar
  * Dashboard landing page.
  */
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -134,7 +140,7 @@ export default function DashboardPage() {
               <StatCard
                 testId="stat-pipeline-value"
                 label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.pipelineValue')}`}
-                value={formatCurrency(data.openPipelineValue)}
+                value={formatCurrency(data.openPipelineValue, i18n.language)}
               />
             </div>
 
@@ -197,7 +203,7 @@ export default function DashboardPage() {
                           className="px-6 py-4 text-sm text-gray-600 text-right"
                           data-testid={`stage-value-${row.stage}`}
                         >
-                          {formatCurrency(row.value)}
+                          {formatCurrency(row.value, i18n.language)}
                         </td>
                       </tr>
                     ))}
