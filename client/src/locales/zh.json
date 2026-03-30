@@ -230,7 +230,15 @@
     "pageTitle": "管道看板",
     "loading": "正在加载管道…",
     "totalValue": "合计：{{value}}",
-    "stageUpdateError": "阶段更新失败，请重试。"
+    "stageUpdateError": "阶段更新失败，请重试。",
+    "stages": {
+      "Prospecting": "初步接触",
+      "Qualification": "资质评估",
+      "Proposal": "方案提案",
+      "Negotiation": "商务谈判",
+      "Closed Won": "成交",
+      "Closed Lost": "未成交"
+    }
   },
   "activities": {
     "timelineHeading": "活动记录",

@@ -97,7 +97,7 @@ export default function StageColumn({
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold truncate">{stage}</h3>
+          <h3 className="text-sm font-semibold truncate">{t(`pipeline.stages.${stage}`)}</h3>
           <span
             data-testid={`stage-column-count-${slug}`}
             className="ml-2 shrink-0 text-xs font-medium"

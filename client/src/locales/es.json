@@ -230,7 +230,15 @@
     "pageTitle": "Panel de canal",
     "loading": "Cargando canal…",
     "totalValue": "Total: {{value}}",
-    "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo."
+    "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo.",
+    "stages": {
+      "Prospecting": "Prospección",
+      "Qualification": "Calificación",
+      "Proposal": "Propuesta",
+      "Negotiation": "Negociación",
+      "Closed Won": "Ganado",
+      "Closed Lost": "Perdido"
+    }
   },
   "activities": {
     "timelineHeading": "Actividad",

@@ -230,7 +230,15 @@
     "pageTitle": "Pipeline-Board",
     "loading": "Pipeline wird geladen…",
     "totalValue": "Gesamt: {{value}}",
-    "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+    "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "stages": {
+      "Prospecting": "Akquise",
+      "Qualification": "Qualifizierung",
+      "Proposal": "Angebot",
+      "Negotiation": "Verhandlung",
+      "Closed Won": "Gewonnen",
+      "Closed Lost": "Verloren"
+    }
   },
   "activities": {
     "timelineHeading": "Aktivität",

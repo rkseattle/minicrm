@@ -230,7 +230,15 @@
     "pageTitle": "Tableau de pipeline",
     "loading": "Chargement du pipeline…",
     "totalValue": "Total : {{value}}",
-    "stageUpdateError": "Échec de la mise à jour de l'étape. Veuillez réessayer."
+    "stageUpdateError": "Échec de la mise à jour de l'étape. Veuillez réessayer.",
+    "stages": {
+      "Prospecting": "Prospection",
+      "Qualification": "Qualification",
+      "Proposal": "Proposition",
+      "Negotiation": "Négociation",
+      "Closed Won": "Gagné",
+      "Closed Lost": "Perdu"
+    }
   },
   "activities": {
     "timelineHeading": "Activité",

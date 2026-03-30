@@ -6,6 +6,7 @@
  */
 
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/Select.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
@@ -42,6 +43,7 @@ function formatValue(value: string | null): string {
  * @param isUpdating - Whether a stage update is in flight for this card
  */
 export default function DealCard({ deal, accountName, onStageChange, isUpdating }: DealCardProps) {
+  const { t } = useTranslation();
   return (
     <div
       data-testid={`deal-card-${deal.id}`}
@@ -79,7 +81,7 @@ export default function DealCard({ deal, accountName, onStageChange, isUpdating 
       >
         {PIPELINE_STAGES.map((stage) => (
           <option key={stage} value={stage}>
-            {stage}
+            {t(`pipeline.stages.${stage}`)}
           </option>
         ))}
       </Select>

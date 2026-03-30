@@ -230,7 +230,15 @@
     "pageTitle": "Pipeline Board",
     "loading": "Loading pipeline…",
     "totalValue": "Total: {{value}}",
-    "stageUpdateError": "Failed to update stage. Please try again."
+    "stageUpdateError": "Failed to update stage. Please try again.",
+    "stages": {
+      "Prospecting": "Prospecting",
+      "Qualification": "Qualification",
+      "Proposal": "Proposal",
+      "Negotiation": "Negotiation",
+      "Closed Won": "Closed Won",
+      "Closed Lost": "Closed Lost"
+    }
   },
   "activities": {
     "timelineHeading": "Activity",

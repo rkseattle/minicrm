@@ -135,7 +135,7 @@ export default function DealForm({
         >
           {PIPELINE_STAGES.map((stage) => (
             <option key={stage} value={stage}>
-              {stage}
+              {t(`pipeline.stages.${stage}`)}
             </option>
           ))}
         </Select>
