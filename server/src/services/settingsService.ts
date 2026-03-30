@@ -5,6 +5,7 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
+import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** A row from the system_settings table */
@@ -32,7 +33,12 @@ export async function getDefaultLanguage(): Promise<SupportedLocale> {
     logger.warn('system_settings row for default_language is missing — falling back to en');
     return 'en';
   }
-  return result.rows[0].value as SupportedLocale;
+  const raw = result.rows[0].value;
+  if (!(SUPPORTED_LOCALES as readonly string[]).includes(raw)) {
+    logger.warn(`system_settings default_language '${raw}' is unsupported — falling back to en`);
+    return 'en';
+  }
+  return raw as SupportedLocale;
 }
 
 /**

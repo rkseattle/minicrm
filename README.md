@@ -191,7 +191,7 @@ npm run migrate --workspace=minicrm-server
 - API endpoints:
   - `GET /api/settings/default-language` — public, returns `{ language }` (used on app load)
   - `PATCH /api/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
-- Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES`, `LOCALE_DISPLAY_NAMES`, and the request/response schemas
+- Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
 
 ### Home Dashboard (MINCRM-25)

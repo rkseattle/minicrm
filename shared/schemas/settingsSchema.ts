@@ -13,8 +13,10 @@ export const SUPPORTED_LOCALES = ['en', 'zh', 'es', 'fr', 'de'] as const;
  */
 export const setDefaultLanguageSchema = z.object({
   language: z.enum(SUPPORTED_LOCALES, {
-    required_error: 'Language is required',
-    invalid_type_error: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}`,
+    errorMap: (issue) =>
+      issue.code === 'invalid_type' && issue.received === 'undefined'
+        ? { message: 'Language is required' }
+        : { message: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}` },
   }),
 });
 
