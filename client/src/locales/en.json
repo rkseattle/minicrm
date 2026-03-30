@@ -4,6 +4,7 @@
     "contacts": "Contacts",
     "accounts": "Accounts",
     "deals": "Deals",
+    "pipeline": "Pipeline",
     "users": "Users",
     "logout": "Log out"
   },
@@ -171,6 +172,12 @@
     "backToDeals": "Back to deals",
     "linkedContactsHeading": "Linked Contacts",
     "linkedContactsEmpty": "No contacts linked to this deal."
+  },
+  "pipeline": {
+    "pageTitle": "Pipeline Board",
+    "loading": "Loading pipeline…",
+    "totalValue": "Total: {{value}}",
+    "stageUpdateError": "Failed to update stage. Please try again."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

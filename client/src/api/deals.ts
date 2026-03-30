@@ -6,6 +6,9 @@
 import apiClient from './axiosInstance.js';
 import type { DealResponse, CreateDealInput, UpdateDealInput } from '@shared/schemas/dealSchema.js';
 
+/** React Query cache key for the deals list */
+export const DEALS_QUERY_KEY = ['deals'] as const;
+
 interface DealsResponse {
   deals: DealResponse[];
 }

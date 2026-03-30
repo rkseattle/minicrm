@@ -13,16 +13,13 @@ import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
-import { listDeals, createDeal } from '@/api/deals.js';
+import { listDeals, createDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
-
-/** React Query cache key for the deals list */
-export const DEALS_QUERY_KEY = ['deals'] as const;
 
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
 type OwnerFilter = 'all' | 'me';
