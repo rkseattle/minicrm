@@ -3,9 +3,13 @@
  * Loads translation resources for all supported locales and initializes the
  * i18next instance used throughout the React application via react-i18next.
  *
- * On initialization the system-wide default language is fetched from the API.
- * If the fetch succeeds and the user has not overridden the language via the
- * browser locale, the system default is applied as the active language.
+ * Language resolution order (highest precedence first):
+ *  1. User's stored personal preference (from /api/auth/me, applied after auth resolves)
+ *  2. System-wide default set by an admin (from /api/settings/default-language)
+ *  3. English (hard-coded fallback)
+ *
+ * The user preference is fetched alongside the auth session, so it is applied
+ * before the first meaningful render — no language flash.
  *
  * Supported languages: English (en), Mandarin Chinese Simplified (zh-Hans),
  *                      Spanish (es), French (fr), German (de)
@@ -30,32 +34,11 @@ const resources = {
   de: { translation: de },
 };
 
-/**
- * Maps a raw browser locale (from navigator.language) to a supported locale code.
- * Handles both full BCP 47 tags (e.g. "zh-CN", "zh-Hans-CN") and bare subtags.
- *
- * @param rawLocale - The raw locale string from navigator.language
- * @returns The matching supported locale, or undefined if none matches
- */
-function resolveBrowserLocale(rawLocale: string): string | undefined {
-  // Exact match first (e.g. "zh-Hans", "en", "fr")
-  if ((SUPPORTED_LOCALES as readonly string[]).includes(rawLocale)) return rawLocale;
-  // zh family: zh, zh-CN, zh-Hans-CN, zh-SG → zh-Hans
-  if (rawLocale === 'zh' || rawLocale.startsWith('zh-')) return 'zh-Hans';
-  // Bare language subtag match (e.g. "en-US" → "en", "fr-CA" → "fr")
-  const bare = rawLocale.split('-')[0];
-  return (SUPPORTED_LOCALES as readonly string[]).includes(bare) ? bare : undefined;
-}
-
-/** Resolved supported locale for the browser's configured language, or undefined */
-const browserLocale = resolveBrowserLocale(navigator.language);
-
 i18n.use(initReactI18next).init({
   resources,
-  /** Default language — fall back to English when the detected locale is missing */
+  /** Default language — fall back to English while the resolved language is being fetched */
   fallbackLng: 'en',
-  /** Start with the browser locale when it's supported; system default applied below otherwise */
-  lng: browserLocale ?? 'en',
+  lng: 'en',
   interpolation: {
     /** React already escapes values, so disable i18next's own escaping */
     escapeValue: false,
@@ -63,31 +46,32 @@ i18n.use(initReactI18next).init({
 });
 
 /**
- * Fetch the system-wide default language and apply it unless the browser
- * locale is already a supported language (meaning the user has an OS/browser
- * preference that should take precedence).
+ * Applies the resolved language to the i18next instance if it is supported.
+ * Called once on app load after the auth session is available.
  *
- * NOTE: This fetch runs asynchronously after the first React render, which can
- * produce a brief flash of the fallback language before the system default is
- * applied. MINCRM-31 will introduce user-level language preferences stored
- * server-side; once that lands, the resolved language should be returned
- * alongside the auth session on the /api/auth/me response, eliminating the
- * flash entirely. Hook into this logic at the TODO below when implementing
- * MINCRM-31.
+ * Priority:
+ *  1. userPreference — stored on the user record (MINCRM-31)
+ *  2. systemDefault  — fetched from /api/settings/default-language
+ *  3. Stays on 'en' (the init default above)
+ *
+ * @param userPreference - The user's stored locale code, or null.
  */
-if (!browserLocale) {
-  // TODO MINCRM-31: before applying the system default, check whether the
-  // authenticated user has a personal language preference and prefer that.
-  fetch('/api/settings/default-language')
-    .then((res) => res.json() as Promise<{ language: string }>)
-    .then(({ language }) => {
-      if ((SUPPORTED_LOCALES as readonly string[]).includes(language)) {
-        void i18n.changeLanguage(language);
-      }
-    })
-    .catch(() => {
-      // Network failure on app load — silently stay on fallback English
-    });
+export async function applyResolvedLanguage(userPreference: string | null): Promise<void> {
+  if (userPreference && (SUPPORTED_LOCALES as readonly string[]).includes(userPreference)) {
+    void i18n.changeLanguage(userPreference);
+    return;
+  }
+
+  // Fall through to system default
+  try {
+    const response = await fetch('/api/settings/default-language');
+    const data = (await response.json()) as { language: string };
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(data.language)) {
+      void i18n.changeLanguage(data.language);
+    }
+  } catch {
+    // Network failure on app load — silently stay on fallback English
+  }
 }
 
 /**
@@ -108,7 +92,7 @@ function applyDocumentDirection(locale: string): void {
   document.documentElement.dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 }
 
-// Set initial direction from the resolved browser/fallback locale
+// Set initial direction from the fallback locale
 applyDocumentDirection(i18n.language);
 
 // Keep direction in sync when the user switches languages at runtime

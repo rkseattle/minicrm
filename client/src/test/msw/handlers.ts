@@ -556,4 +556,15 @@ export const handlers = [
     const body = (await request.json()) as { language: string };
     return HttpResponse.json({ language: body.language });
   }),
+
+  /** Users: GET /api/users/me/language — returns null preference by default */
+  http.get('/api/users/me/language', () => {
+    return HttpResponse.json({ language: null });
+  }),
+
+  /** Users: PATCH /api/users/me/language — echoes back the saved language */
+  http.patch('/api/users/me/language', async ({ request }) => {
+    const body = (await request.json()) as { language: string | null };
+    return HttpResponse.json({ language: body.language });
+  }),
 ];

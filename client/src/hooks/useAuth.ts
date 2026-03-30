@@ -5,8 +5,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import type { AxiosError } from 'axios';
 import { getMe } from '@/api/auth.js';
+import { applyResolvedLanguage } from '@/i18n.js';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 /** React Query cache key for the current user */
@@ -34,6 +36,15 @@ export function useAuth(): UseAuthResult {
     // Treat 401 as a successful "no user" response rather than an error state
     throwOnError: false,
   });
+
+  // Apply the resolved language whenever auth state is loaded.
+  // preferredLanguage is the personal preference stored on the user record;
+  // applyResolvedLanguage falls through to the system default when it is null.
+  useEffect(() => {
+    if (data !== undefined) {
+      void applyResolvedLanguage(data?.preferredLanguage ?? null);
+    }
+  }, [data]);
 
   const user = data?.user ?? null;
 

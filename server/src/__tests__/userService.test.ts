@@ -20,6 +20,8 @@ import {
   setUserPassword,
   adminSetUserPassword,
   clearMustChangePassword,
+  getUserPreferredLanguage,
+  setUserPreferredLanguage,
 } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -309,5 +311,74 @@ describe('clearMustChangePassword', () => {
 
     const updated = await findUserById(user.id);
     expect(updated!.must_change_password).toBe(false);
+  });
+});
+
+// ── getUserPreferredLanguage ───────────────────────────────────────────────────
+
+describe('getUserPreferredLanguage', () => {
+  it('returns null when no preference has been set', async () => {
+    const user = await createUser(BASE_USER);
+    const language = await getUserPreferredLanguage(user.id);
+    expect(language).toBeNull();
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const language = await getUserPreferredLanguage('00000000-0000-0000-0000-000000000000');
+    expect(language).toBeNull();
+  });
+
+  it('returns the language after it has been set', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserPreferredLanguage(user.id, 'fr');
+    const language = await getUserPreferredLanguage(user.id);
+    expect(language).toBe('fr');
+  });
+
+  it('returns null after preference has been cleared', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserPreferredLanguage(user.id, 'de');
+    await setUserPreferredLanguage(user.id, null);
+    const language = await getUserPreferredLanguage(user.id);
+    expect(language).toBeNull();
+  });
+});
+
+// ── setUserPreferredLanguage ───────────────────────────────────────────────────
+
+describe('setUserPreferredLanguage', () => {
+  it('persists the language and returns the updated row', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await setUserPreferredLanguage(user.id, 'zh-Hans');
+    expect(updated).not.toBeNull();
+    expect(updated!.preferred_language).toBe('zh-Hans');
+  });
+
+  it('overwrites a previously set language', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserPreferredLanguage(user.id, 'es');
+    const updated = await setUserPreferredLanguage(user.id, 'de');
+    expect(updated!.preferred_language).toBe('de');
+  });
+
+  it('clears the preference when null is passed', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserPreferredLanguage(user.id, 'fr');
+    const updated = await setUserPreferredLanguage(user.id, null);
+    expect(updated!.preferred_language).toBeNull();
+  });
+
+  it('handles all supported locales without error', async () => {
+    const user = await createUser(BASE_USER);
+    const locales = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
+    for (const locale of locales) {
+      const updated = await setUserPreferredLanguage(user.id, locale);
+      expect(updated!.preferred_language).toBe(locale);
+    }
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const result = await setUserPreferredLanguage('00000000-0000-0000-0000-000000000000', 'en');
+    expect(result).toBeNull();
   });
 });

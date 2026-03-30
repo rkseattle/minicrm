@@ -9,6 +9,7 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 interface AuthResponse {
   user: UserResponse;
   mustChangePassword?: boolean;
+  preferredLanguage?: string | null;
 }
 
 interface LogoutResponse {
