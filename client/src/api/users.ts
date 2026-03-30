@@ -128,3 +128,17 @@ export async function setPassword(token: string, password: string): Promise<Mess
   });
   return response.data;
 }
+
+/**
+ * Admin sets a user's password directly. The user will be prompted to change
+ * it on their next login. Admin only.
+ *
+ * @param id - Target user UUID
+ * @param password - New password set on behalf of the user
+ */
+export async function adminSetPassword(id: string, password: string): Promise<UserSingleResponse> {
+  const response = await apiClient.post<UserSingleResponse>(`/users/${id}/admin-set-password`, {
+    password,
+  });
+  return response.data;
+}

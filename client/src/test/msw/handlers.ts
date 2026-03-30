@@ -20,6 +20,7 @@ export const ADMIN_USER: UserResponse = {
   name: 'Test Admin',
   role: 'admin',
   status: 'active',
+  must_change_password: false,
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
@@ -30,6 +31,7 @@ export const REP_USER: UserResponse = {
   name: 'Test Rep',
   role: 'rep',
   status: 'active',
+  must_change_password: false,
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
@@ -40,6 +42,7 @@ export const INVITED_USER: UserResponse = {
   name: 'Invited User',
   role: 'rep',
   status: 'invited',
+  must_change_password: false,
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
@@ -236,6 +239,7 @@ export const handlers = [
           name: body.name,
           role: body.role,
           status: 'invited',
+          must_change_password: false,
           created_at: new Date().toISOString(),
         },
         inviteToken: 'test-invite-token',
@@ -265,6 +269,18 @@ export const handlers = [
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'active' },
     });
+  }),
+
+  /** Users: POST /api/users/:id/admin-set-password — admin sets a user's password */
+  http.post('/api/users/:id/admin-set-password', ({ params }) => {
+    return HttpResponse.json({
+      user: { ...REP_USER, id: params.id as string, must_change_password: true },
+    });
+  }),
+
+  /** Auth: POST /api/auth/change-password */
+  http.post('/api/auth/change-password', () => {
+    return HttpResponse.json({ message: 'Password changed successfully' });
   }),
 
   /** Contacts: GET /api/contacts — supports ?account=<id> and ?owner=me filters */

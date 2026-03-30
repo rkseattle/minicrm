@@ -47,7 +47,37 @@
     "inviteTokenLabel": "Enlace para establecer contraseña",
     "copyLink": "Copiar enlace",
     "loading": "Cargando usuarios…",
-    "empty": "Aún no hay usuarios."
+    "empty": "Aún no hay usuarios.",
+    "cancel": "Cancelar",
+    "actionSetPassword": "Establecer contraseña",
+    "setPassword": {
+      "passwordLabel": "Nueva contraseña",
+      "passwordPlaceholder": "Nueva contraseña",
+      "confirmLabel": "Confirmar contraseña",
+      "confirmPlaceholder": "Confirmar contraseña",
+      "hint": "Al menos {{min}} caracteres, una letra y un número. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
+      "submit": "Establecer contraseña",
+      "submitting": "Guardando…",
+      "success": "Contraseña establecida. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
+      "mismatch": "Las contraseñas no coinciden.",
+      "complexity": "La contraseña debe tener al menos {{min}} caracteres y contener al menos una letra y un número."
+    }
+  },
+  "changePassword": {
+    "title": "Cambia tu contraseña",
+    "subtitle": "Tu administrador ha establecido una contraseña temporal. Por favor elige una nueva antes de continuar.",
+    "currentPasswordLabel": "Contraseña actual",
+    "currentPasswordPlaceholder": "Tu contraseña actual",
+    "newPasswordLabel": "Nueva contraseña",
+    "newPasswordPlaceholder": "Nueva contraseña",
+    "confirmPasswordLabel": "Confirmar nueva contraseña",
+    "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
+    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "submitButton": "Cambiar contraseña",
+    "submitting": "Guardando…",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+    "passwordComplexity": "La contraseña debe contener al menos una letra y un número."
   },
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",

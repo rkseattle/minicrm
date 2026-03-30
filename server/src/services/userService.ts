@@ -19,6 +19,7 @@ export interface UserRow {
   name: string;
   role: UserRole;
   status: UserStatus;
+  must_change_password: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -162,18 +163,24 @@ export async function seedDefaultAdmin(): Promise<void> {
 }
 
 /**
- * Sets (or resets) a user's password hash. Used in the invite-acceptance flow.
+ * Sets (or resets) a user's password hash.
+ * Optionally marks the user as needing to change their password on next login.
  *
  * @param id - The user UUID.
  * @param passwordHash - The bcrypt hash of the new password.
+ * @param mustChangePassword - Whether the user must change password on next login.
  */
-export async function setUserPassword(id: string, passwordHash: string): Promise<UserRow | null> {
+export async function setUserPassword(
+  id: string,
+  passwordHash: string,
+  mustChangePassword = false,
+): Promise<UserRow | null> {
   const result = await pool.query<UserRow>(
     `UPDATE users
-     SET password_hash = $2, updated_at = now()
+     SET password_hash = $2, must_change_password = $3, updated_at = now()
      WHERE id = $1
      RETURNING *`,
-    [id, passwordHash],
+    [id, passwordHash, mustChangePassword],
   );
   return result.rows[0] ?? null;
 }
@@ -191,4 +198,46 @@ export async function setUserPasswordFromPlaintext(
 ): Promise<UserRow | null> {
   const passwordHash = await bcrypt.hash(plaintext, BCRYPT_SALT_ROUNDS);
   return setUserPassword(id, passwordHash);
+}
+
+/**
+ * Clears the must_change_password flag after a user successfully changes their own password.
+ *
+ * @param id - The user UUID.
+ */
+export async function clearMustChangePassword(id: string): Promise<void> {
+  await pool.query(
+    `UPDATE users SET must_change_password = false, updated_at = now() WHERE id = $1`,
+    [id],
+  );
+}
+
+/**
+ * Allows an admin to set another user's password directly, bypassing the invite flow.
+ * Sets must_change_password = true so the user is prompted to choose a new one on login.
+ * Also activates the user if they were in invited status.
+ *
+ * @param targetUserId - The UUID of the user whose password will be set.
+ * @param plaintext - The new plaintext password chosen by the admin.
+ */
+export async function adminSetUserPassword(
+  targetUserId: string,
+  plaintext: string,
+): Promise<UserRow | null> {
+  const user = await findUserById(targetUserId);
+  if (!user) return null;
+
+  const passwordHash = await bcrypt.hash(plaintext, BCRYPT_SALT_ROUNDS);
+
+  const result = await pool.query<UserRow>(
+    `UPDATE users
+     SET password_hash = $2,
+         must_change_password = true,
+         status = CASE WHEN status = 'invited' THEN 'active'::varchar ELSE status END,
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [targetUserId, passwordHash],
+  );
+  return result.rows[0] ?? null;
 }

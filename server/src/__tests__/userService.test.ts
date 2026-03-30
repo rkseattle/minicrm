@@ -18,6 +18,8 @@ import {
   listUsers,
   listActiveUsers,
   setUserPassword,
+  adminSetUserPassword,
+  clearMustChangePassword,
 } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -242,8 +244,70 @@ describe('setUserPassword', () => {
     expect(updated!.password_hash).toBe(newHash);
   });
 
+  it('defaults must_change_password to false', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await setUserPassword(user.id, '$2b$12$new_hash');
+    expect(updated!.must_change_password).toBe(false);
+  });
+
+  it('sets must_change_password to true when requested', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await setUserPassword(user.id, '$2b$12$new_hash', true);
+    expect(updated!.must_change_password).toBe(true);
+  });
+
   it('returns null for a non-existent user', async () => {
     const result = await setUserPassword('00000000-0000-0000-0000-000000000000', 'hash');
     expect(result).toBeNull();
+  });
+});
+
+// ── adminSetUserPassword ───────────────────────────────────────────────────────
+
+describe('adminSetUserPassword', () => {
+  it('hashes and stores the password', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await adminSetUserPassword(user.id, 'NewPass1');
+
+    expect(updated).not.toBeNull();
+    expect(updated!.password_hash).not.toBe('NewPass1');
+    expect(updated!.password_hash).toMatch(/^\$2[aby]\$/);
+  });
+
+  it('sets must_change_password to true', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await adminSetUserPassword(user.id, 'NewPass1');
+    expect(updated!.must_change_password).toBe(true);
+  });
+
+  it('activates an invited user', async () => {
+    const user = await createUser({ ...BASE_USER, passwordHash: null, status: 'invited' });
+    const updated = await adminSetUserPassword(user.id, 'NewPass1');
+    expect(updated!.status).toBe('active');
+  });
+
+  it('leaves an active user still active', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await adminSetUserPassword(user.id, 'NewPass1');
+    expect(updated!.status).toBe('active');
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const result = await adminSetUserPassword('00000000-0000-0000-0000-000000000000', 'NewPass1');
+    expect(result).toBeNull();
+  });
+});
+
+// ── clearMustChangePassword ────────────────────────────────────────────────────
+
+describe('clearMustChangePassword', () => {
+  it('clears the must_change_password flag', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserPassword(user.id, '$2b$12$hash', true);
+
+    await clearMustChangePassword(user.id);
+
+    const updated = await findUserById(user.id);
+    expect(updated!.must_change_password).toBe(false);
   });
 });

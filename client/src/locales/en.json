@@ -47,7 +47,37 @@
     "inviteTokenLabel": "Set-password link",
     "copyLink": "Copy link",
     "loading": "Loading users…",
-    "empty": "No users yet."
+    "empty": "No users yet.",
+    "cancel": "Cancel",
+    "actionSetPassword": "Set password",
+    "setPassword": {
+      "passwordLabel": "New password",
+      "passwordPlaceholder": "New password",
+      "confirmLabel": "Confirm password",
+      "confirmPlaceholder": "Confirm password",
+      "hint": "At least {{min}} characters, one letter, and one number. The user will be prompted to change it on next login.",
+      "submit": "Set password",
+      "submitting": "Saving…",
+      "success": "Password set. The user will be prompted to change it on next login.",
+      "mismatch": "Passwords do not match.",
+      "complexity": "Password must be at least {{min}} characters and contain at least one letter and one number."
+    }
+  },
+  "changePassword": {
+    "title": "Change your password",
+    "subtitle": "Your administrator has set a temporary password for you. Please choose a new one before continuing.",
+    "currentPasswordLabel": "Current password",
+    "currentPasswordPlaceholder": "Your current password",
+    "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "New password",
+    "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "submitButton": "Change password",
+    "submitting": "Saving…",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "Password must be at least {{min}} characters.",
+    "passwordComplexity": "Password must contain at least one letter and one number."
   },
   "dashboard": {
     "welcome": "Welcome, {{name}}",

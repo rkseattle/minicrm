@@ -47,7 +47,37 @@
     "inviteTokenLabel": "Passwort-Setzen-Link",
     "copyLink": "Link kopieren",
     "loading": "Benutzer werden geladen…",
-    "empty": "Noch keine Benutzer."
+    "empty": "Noch keine Benutzer.",
+    "cancel": "Abbrechen",
+    "actionSetPassword": "Passwort setzen",
+    "setPassword": {
+      "passwordLabel": "Neues Passwort",
+      "passwordPlaceholder": "Neues Passwort",
+      "confirmLabel": "Passwort bestätigen",
+      "confirmPlaceholder": "Passwort bestätigen",
+      "hint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
+      "submit": "Passwort setzen",
+      "submitting": "Speichern…",
+      "success": "Passwort gesetzt. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
+      "mismatch": "Die Passwörter stimmen nicht überein.",
+      "complexity": "Das Passwort muss mindestens {{min}} Zeichen enthalten und mindestens einen Buchstaben und eine Zahl."
+    }
+  },
+  "changePassword": {
+    "title": "Passwort ändern",
+    "subtitle": "Ihr Administrator hat ein temporäres Passwort für Sie festgelegt. Bitte wählen Sie ein neues, bevor Sie fortfahren.",
+    "currentPasswordLabel": "Aktuelles Passwort",
+    "currentPasswordPlaceholder": "Ihr aktuelles Passwort",
+    "newPasswordLabel": "Neues Passwort",
+    "newPasswordPlaceholder": "Neues Passwort",
+    "confirmPasswordLabel": "Neues Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "submitButton": "Passwort ändern",
+    "submitting": "Speichern…",
+    "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen enthalten.",
+    "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten."
   },
   "dashboard": {
     "welcome": "Willkommen, {{name}}",

@@ -41,14 +41,33 @@ export const inviteUserSchema = z.object({
   }),
 });
 
+/** Minimum password length */
+export const PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * Validates that a password meets the minimum complexity requirements:
+ * at least 8 characters, at least one letter, and at least one number.
+ */
+export const passwordComplexitySchema = z
+  .string({ required_error: 'Password is required' })
+  .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
+  .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
+  .regex(/[0-9]/, 'Password must contain at least one number');
+
 /**
  * Schema for the set-password request body (used in the invite acceptance flow).
  */
 export const setPasswordSchema = z.object({
   token: z.string({ required_error: 'Token is required' }).min(1),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters'),
+  password: passwordComplexitySchema,
+});
+
+/**
+ * Schema for the admin-set-password request body.
+ * Used when an admin sets another user's password directly (no invite token required).
+ */
+export const adminSetPasswordSchema = z.object({
+  password: passwordComplexitySchema,
 });
 
 /**
@@ -71,6 +90,7 @@ export const userResponseSchema = z.object({
   name: z.string(),
   role: z.enum(USER_ROLES),
   status: z.enum(USER_STATUSES),
+  must_change_password: z.boolean(),
   created_at: z.string().or(z.date()),
 });
 
@@ -81,5 +101,6 @@ export type UserStatus = (typeof USER_STATUSES)[number];
 export type LoginInput = z.infer<typeof loginSchema>;
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+export type AdminSetPasswordInput = z.infer<typeof adminSetPasswordSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;

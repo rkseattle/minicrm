@@ -7,6 +7,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
 import LoginPage from '@/pages/LoginPage.js';
+import ChangePasswordPage from '@/pages/ChangePasswordPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
 import ContactsPage from '@/pages/ContactsPage.js';
 import ContactDetailPage from '@/pages/ContactDetailPage.js';
@@ -26,6 +27,7 @@ export default function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
 
       {/* Authenticated routes */}
       <Route element={<ProtectedRoute />}>

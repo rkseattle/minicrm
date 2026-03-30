@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth.js';
  * Redirects to /login otherwise.
  */
 export default function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <div aria-busy="true">Loading…</div>;
@@ -20,6 +20,10 @@ export default function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user?.must_change_password) {
+    return <Navigate to="/change-password" replace />;
   }
 
   return <Outlet />;

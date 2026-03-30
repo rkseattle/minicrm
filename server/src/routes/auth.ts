@@ -4,7 +4,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { login, logout, me } from '../controllers/authController.js';
+import { login, logout, me, changePassword } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
@@ -17,5 +17,8 @@ router.post('/logout', logout);
 
 /** GET /api/auth/me — return the currently authenticated user */
 router.get('/me', authenticate, asyncHandler(me));
+
+/** POST /api/auth/change-password — change the authenticated user's own password */
+router.post('/change-password', authenticate, asyncHandler(changePassword));
 
 export default router;

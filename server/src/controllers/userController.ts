@@ -9,6 +9,7 @@ import type { Request, Response } from 'express';
 import {
   inviteUserSchema,
   setPasswordSchema,
+  adminSetPasswordSchema,
   updateRoleSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
@@ -217,4 +218,54 @@ export async function setPassword(req: Request, res: Response): Promise<void> {
   await userService.updateUserStatus(user.id, 'active');
 
   res.status(200).json({ message: 'Password set successfully. You may now log in.' });
+}
+
+/**
+ * POST /api/users/:id/admin-set-password
+ * Admin sets a user's password directly, without requiring an invite token.
+ * The target user will be prompted to change their password on next login.
+ * Admin only.
+ */
+export async function adminSetPassword(req: Request, res: Response): Promise<void> {
+  const parseResult = adminSetPasswordSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const targetUserId = String(req.params['id']);
+  const { password } = parseResult.data;
+
+  const targetUser = await userService.findUserById(targetUserId);
+  if (!targetUser) {
+    res.status(404).json({
+      error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+    });
+    return;
+  }
+
+  if (targetUser.status === 'inactive') {
+    res.status(409).json({
+      error: {
+        code: 'USER_INACTIVE',
+        message: 'Cannot set password for a deactivated user',
+      },
+    });
+    return;
+  }
+
+  const updated = await userService.adminSetUserPassword(targetUserId, password);
+  if (!updated) {
+    res.status(404).json({
+      error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+    });
+    return;
+  }
+
+  res.status(200).json({ user: sanitizeUser(updated) });
 }
