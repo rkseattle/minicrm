@@ -16,6 +16,7 @@ import {
   createActivity,
   findActivityById,
   listActivities,
+  listMyTasks,
   updateActivity,
   deleteActivity,
 } from '../services/activityService.js';
@@ -38,6 +39,16 @@ export async function createActivityHandler(req: Request, res: Response): Promis
 
   const activity = await createActivity({ ...parsed.data, owner_id: req.user!.id });
   res.status(201).json({ activity });
+}
+
+/**
+ * GET /api/activities/my-tasks
+ * Returns all Task-type activities owned by the authenticated user, sorted by due date ascending.
+ * Includes the linked record name and type for display.
+ */
+export async function listMyTasksHandler(req: Request, res: Response): Promise<void> {
+  const tasks = await listMyTasks(req.user!.id);
+  res.status(200).json({ tasks });
 }
 
 /**

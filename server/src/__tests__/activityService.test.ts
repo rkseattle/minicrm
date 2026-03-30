@@ -13,6 +13,7 @@ import {
   createActivity,
   findActivityById,
   listActivities,
+  listMyTasks,
   updateActivity,
   deleteActivity,
 } from '../services/activityService.js';
@@ -269,6 +270,144 @@ describe('listActivities', () => {
     const mine = await listActivities({ ownerId });
     expect(mine).toHaveLength(1);
     expect(mine[0].subject).toBe('My note');
+  });
+});
+
+// ── listMyTasks ─────────────────────────────────────────────────────────────────
+
+describe('listMyTasks', () => {
+  it('returns only Task-type activities for the given owner', async () => {
+    await createActivity({
+      type: 'Note',
+      subject: 'Not a task',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Task',
+      subject: 'My task',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].subject).toBe('My task');
+    expect(tasks[0].type).toBe('Task');
+  });
+
+  it('excludes tasks owned by other users', async () => {
+    const other = await createUser({ ...OWNER_USER, email: 'other-tasks-owner@example.com' });
+    await createActivity({
+      type: 'Task',
+      subject: 'Their task',
+      contact_id: contactId,
+      owner_id: other.id,
+    });
+    await createActivity({
+      type: 'Task',
+      subject: 'My task',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].subject).toBe('My task');
+  });
+
+  it('includes both open and complete tasks', async () => {
+    const openTask = await createActivity({
+      type: 'Task',
+      subject: 'Open task',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await updateActivity(openTask.id, { status: 'complete' });
+    await createActivity({
+      type: 'Task',
+      subject: 'Another open task',
+      deal_id: dealId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks).toHaveLength(2);
+    const statuses = tasks.map((t) => t.status);
+    expect(statuses).toContain('open');
+    expect(statuses).toContain('complete');
+  });
+
+  it('sorts tasks by due_date ascending with nulls last', async () => {
+    await createActivity({
+      type: 'Task',
+      subject: 'Later',
+      due_date: '2026-12-01',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Task',
+      subject: 'No date',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Task',
+      subject: 'Earlier',
+      due_date: '2026-06-01',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks[0].subject).toBe('Earlier');
+    expect(tasks[1].subject).toBe('Later');
+    expect(tasks[2].subject).toBe('No date');
+  });
+
+  it('includes linked_record_name and linked_record_type for contact tasks', async () => {
+    await createActivity({
+      type: 'Task',
+      subject: 'Contact task',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks[0].linked_record_type).toBe('contact');
+    expect(tasks[0].linked_record_name).toBe('Test Contact');
+  });
+
+  it('includes linked_record_name and linked_record_type for account tasks', async () => {
+    await createActivity({
+      type: 'Task',
+      subject: 'Account task',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks[0].linked_record_type).toBe('account');
+    expect(tasks[0].linked_record_name).toBe('Test Account');
+  });
+
+  it('includes linked_record_name and linked_record_type for deal tasks', async () => {
+    await createActivity({
+      type: 'Task',
+      subject: 'Deal task',
+      deal_id: dealId,
+      owner_id: ownerId,
+    });
+
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks[0].linked_record_type).toBe('deal');
+    expect(tasks[0].linked_record_name).toBe('Test Deal');
+  });
+
+  it('returns an empty array when the owner has no tasks', async () => {
+    const tasks = await listMyTasks(ownerId);
+    expect(tasks).toEqual([]);
   });
 });
 

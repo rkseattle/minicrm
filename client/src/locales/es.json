@@ -5,6 +5,7 @@
     "accounts": "Cuentas",
     "deals": "Oportunidades",
     "pipeline": "Canal",
+    "myTasks": "Mis tareas",
     "users": "Usuarios",
     "logout": "Cerrar sesión"
   },
@@ -214,6 +215,25 @@
     "typeEmail": "Correo",
     "typeMeeting": "Reunión",
     "typeTask": "Tarea"
+  },
+  "myTasks": {
+    "pageTitle": "Mis tareas",
+    "loading": "Cargando tareas…",
+    "empty": "No tienes tareas abiertas.",
+    "emptyCompleted": "Sin tareas completadas.",
+    "showCompleted": "Mostrar completadas",
+    "hideCompleted": "Ocultar completadas",
+    "columnSubject": "Asunto",
+    "columnType": "Tipo",
+    "columnDueDate": "Fecha de vencimiento",
+    "columnRecord": "Registro",
+    "columnActions": "Acciones",
+    "overdue": "Vencida",
+    "noDueDate": "Sin fecha",
+    "noRecord": "—",
+    "markComplete": "Marcar como completada",
+    "markingComplete": "Marcando…",
+    "completeError": "No se pudo marcar la tarea como completada. Inténtalo de nuevo."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

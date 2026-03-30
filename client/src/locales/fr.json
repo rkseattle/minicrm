@@ -5,6 +5,7 @@
     "accounts": "Comptes",
     "deals": "Opportunités",
     "pipeline": "Pipeline",
+    "myTasks": "Mes tâches",
     "users": "Utilisateurs",
     "logout": "Se déconnecter"
   },
@@ -214,6 +215,25 @@
     "typeEmail": "E-mail",
     "typeMeeting": "Réunion",
     "typeTask": "Tâche"
+  },
+  "myTasks": {
+    "pageTitle": "Mes tâches",
+    "loading": "Chargement des tâches…",
+    "empty": "Vous n'avez aucune tâche ouverte.",
+    "emptyCompleted": "Aucune tâche terminée.",
+    "showCompleted": "Afficher les terminées",
+    "hideCompleted": "Masquer les terminées",
+    "columnSubject": "Objet",
+    "columnType": "Type",
+    "columnDueDate": "Date d'échéance",
+    "columnRecord": "Enregistrement",
+    "columnActions": "Actions",
+    "overdue": "En retard",
+    "noDueDate": "Pas de date",
+    "noRecord": "—",
+    "markComplete": "Marquer comme terminée",
+    "markingComplete": "Marquage…",
+    "completeError": "Échec du marquage de la tâche. Veuillez réessayer."
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

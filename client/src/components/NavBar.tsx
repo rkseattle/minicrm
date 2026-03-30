@@ -65,6 +65,9 @@ export default function NavBar() {
             <NavLink to="/pipeline" className={navLinkClass} data-testid="nav-pipeline">
               {t('nav.pipeline')}
             </NavLink>
+            <NavLink to="/tasks" className={navLinkClass} data-testid="nav-my-tasks">
+              {t('nav.myTasks')}
+            </NavLink>
             {user?.role === 'admin' && (
               <NavLink to="/users" className={navLinkClass} data-testid="nav-users">
                 {t('nav.users')}
