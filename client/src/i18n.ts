@@ -49,10 +49,20 @@ i18n.use(initReactI18next).init({
  * Fetch the system-wide default language and apply it unless the browser
  * locale is already a supported language (meaning the user has an OS/browser
  * preference that should take precedence).
+ *
+ * NOTE: This fetch runs asynchronously after the first React render, which can
+ * produce a brief flash of the fallback language before the system default is
+ * applied. MINCRM-31 will introduce user-level language preferences stored
+ * server-side; once that lands, the resolved language should be returned
+ * alongside the auth session on the /api/auth/me response, eliminating the
+ * flash entirely. Hook into this logic at the TODO below when implementing
+ * MINCRM-31.
  */
 const browserLocaleIsSupported = (SUPPORTED_LOCALES as readonly string[]).includes(browserLocale);
 
 if (!browserLocaleIsSupported) {
+  // TODO MINCRM-31: before applying the system default, check whether the
+  // authenticated user has a personal language preference and prefer that.
   fetch('/api/settings/default-language')
     .then((res) => res.json() as Promise<{ language: string }>)
     .then(({ language }) => {

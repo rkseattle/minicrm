@@ -287,6 +287,7 @@
     "saving": "Speichern…",
     "saveSuccess": "Standardsprache aktualisiert.",
     "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "loadError": "Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
     "loading": "Einstellungen werden geladen…",
     "languages": {
       "en": "Englisch",

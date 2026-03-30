@@ -4,6 +4,7 @@
  */
 
 import pool from '../db.js';
+import logger from '../logger.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** A row from the system_settings table */
@@ -27,7 +28,11 @@ export async function getDefaultLanguage(): Promise<SupportedLocale> {
     'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
     [DEFAULT_LANGUAGE_KEY],
   );
-  return (result.rows[0]?.value ?? 'en') as SupportedLocale;
+  if (!result.rows[0]) {
+    logger.warn('system_settings row for default_language is missing — falling back to en');
+    return 'en';
+  }
+  return result.rows[0].value as SupportedLocale;
 }
 
 /**

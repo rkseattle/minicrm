@@ -24,7 +24,7 @@ export default function AdminSettingsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: DEFAULT_LANGUAGE_QUERY_KEY,
     queryFn: getDefaultLanguage,
   });
@@ -67,6 +67,16 @@ export default function AdminSettingsPage() {
       <main className="max-w-2xl mx-auto px-6 py-10">
         <p className="text-sm text-gray-500" data-testid="settings-loading">
           {t('settings.loading')}
+        </p>
+      </main>
+    );
+  }
+
+  if (isError) {
+    return (
+      <main className="max-w-2xl mx-auto px-6 py-10">
+        <p role="alert" className="text-sm text-red-600" data-testid="settings-load-error">
+          {t('settings.loadError')}
         </p>
       </main>
     );

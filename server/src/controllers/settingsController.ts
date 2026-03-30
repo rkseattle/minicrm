@@ -31,7 +31,10 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
   const parsed = setDefaultLanguageSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]?.message },
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
     });
     return;
   }

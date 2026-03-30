@@ -8,15 +8,6 @@ import { z } from 'zod';
 /** All language codes supported by the application */
 export const SUPPORTED_LOCALES = ['en', 'zh', 'es', 'fr', 'de'] as const;
 
-/** Human-readable display names for each supported locale */
-export const LOCALE_DISPLAY_NAMES: Record<SupportedLocale, string> = {
-  en: 'English',
-  zh: '中文',
-  es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
-};
-
 /**
  * Schema for the PATCH /api/settings/default-language request body.
  */

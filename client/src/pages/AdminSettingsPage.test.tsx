@@ -1,6 +1,7 @@
 /**
  * Tests for the AdminSettingsPage component.
- * Covers: loading state, default language display, save action, success/error feedback.
+ * Covers: loading state, load error state, default language display, save action,
+ * validation rejection (400), success/error feedback.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -17,6 +18,33 @@ describe('AdminSettingsPage', () => {
       server.use(http.get('/api/settings/default-language', () => new Promise(() => {})));
       renderWithProviders(<AdminSettingsPage />);
       expect(screen.getByTestId('settings-loading')).toBeInTheDocument();
+    });
+  });
+
+  describe('load error state', () => {
+    it('shows an error alert when the settings API fails on load', async () => {
+      server.use(
+        http.get('/api/settings/default-language', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('settings-load-error')).toBeInTheDocument();
+      });
+    });
+
+    it('does not render the form when the settings API fails on load', async () => {
+      server.use(
+        http.get('/api/settings/default-language', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('settings-load-error')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('settings-save')).not.toBeInTheDocument();
     });
   });
 
@@ -99,6 +127,31 @@ describe('AdminSettingsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('settings-error')).toBeInTheDocument();
       });
+    });
+
+    it('shows an error message when the server rejects the language value (400)', async () => {
+      server.use(
+        http.patch('/api/settings/default-language', () =>
+          HttpResponse.json(
+            { error: { code: 'VALIDATION_ERROR', message: 'Invalid request' } },
+            { status: 400 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('default-language-select')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('settings-save'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('settings-error')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('settings-success')).not.toBeInTheDocument();
     });
 
     it('disables the save button while the mutation is pending', async () => {

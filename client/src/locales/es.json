@@ -287,6 +287,7 @@
     "saving": "Guardando…",
     "saveSuccess": "Idioma predeterminado actualizado.",
     "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
+    "loadError": "Error al cargar la configuración. Por favor, inténtalo de nuevo.",
     "loading": "Cargando configuración…",
     "languages": {
       "en": "Inglés",
