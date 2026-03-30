@@ -7,6 +7,7 @@
     "pipeline": "Pipeline",
     "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
+    "adminSettings": "Admin-Einstellungen",
     "logout": "Abmelden"
   },
   "login": {
@@ -277,6 +278,23 @@
     "markComplete": "Als erledigt markieren",
     "markingComplete": "Markieren…",
     "completeError": "Aufgabe konnte nicht als erledigt markiert werden. Bitte erneut versuchen."
+  },
+  "settings": {
+    "pageTitle": "Admin-Einstellungen",
+    "defaultLanguageLabel": "Standardsprache",
+    "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
+    "saveButton": "Speichern",
+    "saving": "Speichern…",
+    "saveSuccess": "Standardsprache aktualisiert.",
+    "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "loading": "Einstellungen werden geladen…",
+    "languages": {
+      "en": "Englisch",
+      "zh": "Chinesisch (Mandarin)",
+      "es": "Spanisch",
+      "fr": "Französisch",
+      "de": "Deutsch"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

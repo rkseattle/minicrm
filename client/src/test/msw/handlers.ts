@@ -545,4 +545,15 @@ export const handlers = [
   http.delete('/api/activities/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  /** Settings: GET /api/settings/default-language */
+  http.get('/api/settings/default-language', () => {
+    return HttpResponse.json({ language: 'en' });
+  }),
+
+  /** Settings: PATCH /api/settings/default-language */
+  http.patch('/api/settings/default-language', async ({ request }) => {
+    const body = (await request.json()) as { language: string };
+    return HttpResponse.json({ language: body.language });
+  }),
 ];

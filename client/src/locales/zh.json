@@ -7,6 +7,7 @@
     "pipeline": "管道看板",
     "myTasks": "我的任务",
     "users": "用户",
+    "adminSettings": "管理设置",
     "logout": "退出登录"
   },
   "login": {
@@ -277,6 +278,23 @@
     "markComplete": "标记完成",
     "markingComplete": "标记中…",
     "completeError": "标记任务完成失败，请重试。"
+  },
+  "settings": {
+    "pageTitle": "管理设置",
+    "defaultLanguageLabel": "默认语言",
+    "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
+    "saveButton": "保存",
+    "saving": "保存中…",
+    "saveSuccess": "默认语言已更新。",
+    "saveError": "保存失败，请重试。",
+    "loading": "加载设置中…",
+    "languages": {
+      "en": "英语",
+      "zh": "中文（普通话）",
+      "es": "西班牙语",
+      "fr": "法语",
+      "de": "德语"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

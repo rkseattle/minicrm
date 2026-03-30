@@ -73,6 +73,15 @@ export default function NavBar() {
                 {t('nav.users')}
               </NavLink>
             )}
+            {user?.role === 'admin' && (
+              <NavLink
+                to="/admin/settings"
+                className={navLinkClass}
+                data-testid="nav-admin-settings"
+              >
+                {t('nav.adminSettings')}
+              </NavLink>
+            )}
           </div>
         </div>
 

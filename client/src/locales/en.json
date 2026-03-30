@@ -7,6 +7,7 @@
     "pipeline": "Pipeline",
     "myTasks": "My Tasks",
     "users": "Users",
+    "adminSettings": "Admin Settings",
     "logout": "Log out"
   },
   "login": {
@@ -277,6 +278,23 @@
     "markComplete": "Mark complete",
     "markingComplete": "Marking…",
     "completeError": "Failed to mark task complete. Please try again."
+  },
+  "settings": {
+    "pageTitle": "Admin Settings",
+    "defaultLanguageLabel": "Default language",
+    "defaultLanguageHint": "Sets the language for all users who have not configured a personal preference.",
+    "saveButton": "Save",
+    "saving": "Saving…",
+    "saveSuccess": "Default language updated.",
+    "saveError": "Failed to save. Please try again.",
+    "loading": "Loading settings…",
+    "languages": {
+      "en": "English",
+      "zh": "Chinese (Mandarin)",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

@@ -182,6 +182,18 @@ npm run migrate --workspace=minicrm-server
 - Completed tasks are hidden by default; a **Show completed** toggle reveals them
 - API endpoint: `GET /api/activities/my-tasks` — returns Task-type activities for the authenticated user, with `linked_record_name` and `linked_record_type` fields joined from the parent record
 
+### Admin Settings (MINCRM-30)
+
+- New `/admin/settings` route and **Admin Settings** nav link (visible to admins only)
+- Admin can set a system-wide default language from a dropdown populated with all supported locales
+- Selected default persists across restarts via the `system_settings` table (key/value store)
+- On app load, `i18n.ts` fetches `/api/settings/default-language` and applies it when the browser locale is not already one of the supported languages
+- API endpoints:
+  - `GET /api/settings/default-language` — public, returns `{ language }` (used on app load)
+  - `PATCH /api/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
+- Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES`, `LOCALE_DISPLAY_NAMES`, and the request/response schemas
+- Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
+
 ### Home Dashboard (MINCRM-25)
 
 - Stat cards on the dashboard home page: overdue tasks, tasks due today, open deal count, and total open pipeline value
@@ -211,3 +223,9 @@ Prospecting → Qualification → Proposal → Negotiation → Closed Won / Clos
 ## Internationalization
 
 All user-facing text supports English, Mandarin Chinese, Spanish, French, and German via `i18next`.
+
+The active language is resolved in this order (highest precedence first):
+
+1. Browser/OS locale (if it matches a supported language code)
+2. System-wide default set by an admin via Admin Settings
+3. English (hard-coded fallback)

@@ -7,6 +7,7 @@
     "pipeline": "Canal",
     "myTasks": "Mis tareas",
     "users": "Usuarios",
+    "adminSettings": "Configuración de administrador",
     "logout": "Cerrar sesión"
   },
   "login": {
@@ -277,6 +278,23 @@
     "markComplete": "Marcar como completada",
     "markingComplete": "Marcando…",
     "completeError": "No se pudo marcar la tarea como completada. Inténtalo de nuevo."
+  },
+  "settings": {
+    "pageTitle": "Configuración de administrador",
+    "defaultLanguageLabel": "Idioma predeterminado",
+    "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
+    "saveButton": "Guardar",
+    "saving": "Guardando…",
+    "saveSuccess": "Idioma predeterminado actualizado.",
+    "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
+    "loading": "Cargando configuración…",
+    "languages": {
+      "en": "Inglés",
+      "zh": "Chino (mandarín)",
+      "es": "Español",
+      "fr": "Francés",
+      "de": "Alemán"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",
