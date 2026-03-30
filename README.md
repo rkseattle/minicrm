@@ -157,6 +157,17 @@ npm run migrate --workspace=minicrm-server
 - Full CRUD REST API at `/api/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
 
+### Activities & Tasks (MINCRM-19)
+
+- Unified activity model with types: Note, Call, Email, Meeting, Task
+- Activities can be attached to a contact, account, or deal (at least one required)
+- Activity type auto-defaults to "Task" when a due date is provided; "Note" otherwise
+- Task completion — mark a task as complete from the timeline; completed tasks are visually distinguished (strikethrough subject, "Complete" badge)
+- Edit and delete activities from the timeline (owners and admins only)
+- `ActivityTimeline` is a shared component embedded in Contact, Account, and Deal detail pages
+- Full CRUD REST API at `/api/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
+- Database migration: `006_create_activities.js`
+
 ### Ownership (MINCRM-14)
 
 - Every contact and account has a single `owner_id` that defaults to the creating user

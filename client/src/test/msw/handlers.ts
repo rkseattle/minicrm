@@ -10,6 +10,7 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
@@ -96,6 +97,38 @@ export const DEAL_1: DealResponse = {
   owner_id: '00000000-0000-0000-0000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: an open task activity linked to DEAL_1 */
+export const ACTIVITY_1: ActivityResponse = {
+  id: '00000000-0000-0000-0000-000000000401',
+  type: 'Task',
+  subject: 'Follow up with decision maker',
+  notes: 'Discuss pricing options',
+  due_date: '2026-06-30',
+  status: 'open',
+  contact_id: null,
+  account_id: null,
+  deal_id: '00000000-0000-0000-0000-000000000301',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a completed note activity linked to CONTACT_1 */
+export const ACTIVITY_2: ActivityResponse = {
+  id: '00000000-0000-0000-0000-000000000402',
+  type: 'Note',
+  subject: 'Initial discovery call notes',
+  notes: null,
+  due_date: null,
+  status: 'complete',
+  contact_id: '00000000-0000-0000-0000-000000000101',
+  account_id: null,
+  deal_id: null,
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-02T00:00:00.000Z',
+  updated_at: '2025-01-02T00:00:00.000Z',
 };
 
 /** Default handlers — can be overridden in individual tests with server.use() */
@@ -360,5 +393,62 @@ export const handlers = [
   /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
   http.delete('/api/deals/:id/contacts/:contactId', () => {
     return HttpResponse.json({ contacts: [] });
+  }),
+
+  /** Activities: GET /api/activities — supports ?contact, ?account, ?deal, ?owner=me filters */
+  http.get('/api/activities', ({ request }) => {
+    const url = new URL(request.url);
+    const contactId = url.searchParams.get('contact');
+    const accountId = url.searchParams.get('account');
+    const dealId = url.searchParams.get('deal');
+    let activities = [ACTIVITY_1, ACTIVITY_2];
+    if (contactId) activities = activities.filter((a) => a.contact_id === contactId);
+    if (accountId) activities = activities.filter((a) => a.account_id === accountId);
+    if (dealId) activities = activities.filter((a) => a.deal_id === dealId);
+    return HttpResponse.json({ activities });
+  }),
+
+  /** Activities: POST /api/activities */
+  http.post('/api/activities', async ({ request }) => {
+    const body = (await request.json()) as Partial<ActivityResponse>;
+    return HttpResponse.json(
+      {
+        activity: {
+          ...ACTIVITY_1,
+          id: '00000000-0000-0000-0000-000000000403',
+          type: body.type ?? 'Note',
+          subject: body.subject ?? 'New activity',
+          notes: body.notes ?? null,
+          due_date: body.due_date ?? null,
+          contact_id: body.contact_id ?? null,
+          account_id: body.account_id ?? null,
+          deal_id: body.deal_id ?? null,
+          status: 'open',
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Activities: GET /api/activities/:id */
+  http.get('/api/activities/:id', ({ params }) => {
+    if (params.id === ACTIVITY_1.id) return HttpResponse.json({ activity: ACTIVITY_1 });
+    if (params.id === ACTIVITY_2.id) return HttpResponse.json({ activity: ACTIVITY_2 });
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Activity not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Activities: PATCH /api/activities/:id */
+  http.patch('/api/activities/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<ActivityResponse>;
+    const base = params.id === ACTIVITY_2.id ? ACTIVITY_2 : ACTIVITY_1;
+    return HttpResponse.json({ activity: { ...base, ...body, id: params.id as string } });
+  }),
+
+  /** Activities: DELETE /api/activities/:id */
+  http.delete('/api/activities/:id', () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

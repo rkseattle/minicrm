@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
+import ActivityTimeline from '@/components/ActivityTimeline.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
@@ -230,6 +231,9 @@ export default function AccountDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {/* Activity timeline */}
+            <ActivityTimeline accountId={id} />
 
             {/* Linked contacts */}
             <section className="mt-8" aria-labelledby="linked-contacts-heading">

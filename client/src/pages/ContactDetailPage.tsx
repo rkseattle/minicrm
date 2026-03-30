@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
+import ActivityTimeline from '@/components/ActivityTimeline.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
@@ -254,6 +255,9 @@ export default function ContactDetailPage() {
             />
           </div>
         )}
+
+        {/* Activity timeline */}
+        {!isEditing && <ActivityTimeline contactId={id} />}
 
         {/* Linked deals */}
         {!isEditing && (

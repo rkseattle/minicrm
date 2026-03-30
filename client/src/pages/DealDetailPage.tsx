@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
+import ActivityTimeline from '@/components/ActivityTimeline.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import {
@@ -298,6 +299,9 @@ export default function DealDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {/* Activity timeline */}
+            <ActivityTimeline dealId={id} />
 
             {/* Linked contacts */}
             <section className="mt-8" aria-labelledby="linked-contacts-heading">
