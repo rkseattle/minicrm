@@ -39,7 +39,10 @@ export default function AdminSettingsPage() {
 
   const mutation = useMutation({
     mutationFn: setDefaultLanguage,
-    onSuccess: () => {
+    onSuccess: (savedLanguage) => {
+      // Write the saved value into the cache before clearing pendingLanguage so
+      // the select never reverts to a stale value while the background refetch runs.
+      queryClient.setQueryData(DEFAULT_LANGUAGE_QUERY_KEY, { language: savedLanguage });
       void queryClient.invalidateQueries({ queryKey: DEFAULT_LANGUAGE_QUERY_KEY });
       setPendingLanguage(null);
       setSuccessMessage(t('settings.saveSuccess'));

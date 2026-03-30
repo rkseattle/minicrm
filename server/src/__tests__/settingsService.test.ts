@@ -41,6 +41,12 @@ describe('getDefaultLanguage', () => {
     const language = await getDefaultLanguage();
     expect(language).toBe('en');
   });
+
+  it('falls back to "en" when the stored value is an unsupported locale', async () => {
+    await pool.query(`UPDATE system_settings SET value = 'xx' WHERE key = 'default_language'`);
+    const language = await getDefaultLanguage();
+    expect(language).toBe('en');
+  });
 });
 
 describe('setDefaultLanguage', () => {
