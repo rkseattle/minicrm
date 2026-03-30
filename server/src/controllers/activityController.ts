@@ -4,10 +4,14 @@
  */
 
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import {
   createActivitySchema,
   updateActivitySchema,
 } from '@minicrm/shared/schemas/activitySchema.js';
+
+/** Zod schema used to validate UUID-typed query params */
+const uuidQuerySchema = z.string().uuid();
 import {
   createActivity,
   findActivityById,
@@ -41,14 +45,38 @@ export async function createActivityHandler(req: Request, res: Response): Promis
  * Lists activities. Supports ?contact=<uuid>, ?account=<uuid>, ?deal=<uuid>, ?owner=me filters.
  */
 export async function listActivitiesHandler(req: Request, res: Response): Promise<void> {
-  const contactId =
-    typeof req.query.contact === 'string' && req.query.contact ? req.query.contact : undefined;
-  const accountId =
-    typeof req.query.account === 'string' && req.query.account ? req.query.account : undefined;
-  const dealId = typeof req.query.deal === 'string' && req.query.deal ? req.query.deal : undefined;
+  // Validate UUID-typed filters; return 400 instead of letting PostgreSQL throw a 500
+  const rawContact = typeof req.query.contact === 'string' ? req.query.contact : undefined;
+  const rawAccount = typeof req.query.account === 'string' ? req.query.account : undefined;
+  const rawDeal = typeof req.query.deal === 'string' ? req.query.deal : undefined;
+
+  if (rawContact && !uuidQuerySchema.safeParse(rawContact).success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'contact must be a valid UUID' } });
+    return;
+  }
+  if (rawAccount && !uuidQuerySchema.safeParse(rawAccount).success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' } });
+    return;
+  }
+  if (rawDeal && !uuidQuerySchema.safeParse(rawDeal).success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'deal must be a valid UUID' } });
+    return;
+  }
+
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
 
-  const activities = await listActivities({ contactId, accountId, dealId, ownerId });
+  const activities = await listActivities({
+    contactId: rawContact,
+    accountId: rawAccount,
+    dealId: rawDeal,
+    ownerId,
+  });
   res.status(200).json({ activities });
 }
 

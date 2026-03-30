@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
-import ActivityForm from '@/components/ActivityForm.js';
+import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import {
   listActivities,
   createActivity,
@@ -41,15 +41,6 @@ const TYPE_BADGE_VARIANT: Record<ActivityType, BadgeProps['variant']> = {
   Task: 'error',
 };
 
-/** Map of type values to their i18n key suffixes */
-const TYPE_KEY_MAP: Record<ActivityType, string> = {
-  Note: 'typeNote',
-  Call: 'typeCall',
-  Email: 'typeEmail',
-  Meeting: 'typeMeeting',
-  Task: 'typeTask',
-};
-
 /**
  * Timeline of activities for a parent record.
  * Displays each activity as a card with type badge, subject, notes, and due date.
@@ -65,6 +56,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [editingId, setEditingId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const queryKey = [...ACTIVITIES_QUERY_KEY, { contactId, accountId, dealId }] as const;
 
@@ -116,6 +109,10 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     mutationFn: (id: string) => updateActivity(id, { status: 'complete' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      setCompleteError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setCompleteError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -123,6 +120,10 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     mutationFn: (id: string) => deleteActivity(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      setDeleteError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -312,6 +313,17 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
           </ul>
         )}
       </div>
+
+      {completeError && (
+        <p role="alert" className="mt-2 text-xs text-red-600" data-testid="complete-error">
+          {completeError}
+        </p>
+      )}
+      {deleteError && (
+        <p role="alert" className="mt-2 text-xs text-red-600" data-testid="delete-error">
+          {deleteError}
+        </p>
+      )}
     </section>
   );
 }

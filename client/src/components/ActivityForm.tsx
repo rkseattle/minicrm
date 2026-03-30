@@ -36,8 +36,8 @@ export interface ActivityFormProps {
   error?: string;
 }
 
-/** Map of type values to their i18n key suffixes */
-const TYPE_KEY_MAP: Record<ActivityType, string> = {
+/** Map of activity type values to their i18n key suffixes. Exported for use in ActivityTimeline. */
+export const TYPE_KEY_MAP: Record<ActivityType, string> = {
   Note: 'typeNote',
   Call: 'typeCall',
   Email: 'typeEmail',
