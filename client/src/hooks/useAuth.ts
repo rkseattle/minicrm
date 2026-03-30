@@ -50,7 +50,7 @@ export function useAuth(): UseAuthResult {
   useEffect(() => {
     if (data !== undefined && !languageApplied) {
       languageApplied = true;
-      void applyResolvedLanguage(data?.preferredLanguage ?? null);
+      void applyResolvedLanguage(data?.user?.preferred_language ?? null);
     }
   }, [data]);
 

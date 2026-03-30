@@ -7,6 +7,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
@@ -57,20 +58,33 @@ export default function NavBar() {
     },
   });
 
+  /** Tracks the locale active before the most recent optimistic change, for rollback on error */
+  const previousLocaleRef = useRef<string | null>(null);
+
   const languageMutation = useMutation({
     mutationFn: (locale: SupportedLocale) => setMyLanguage(locale),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
+      previousLocaleRef.current = null;
+    },
+    onError: () => {
+      // Revert the optimistic language change so the UI stays in sync with the server
+      if (previousLocaleRef.current) {
+        void i18n.changeLanguage(previousLocaleRef.current);
+        previousLocaleRef.current = null;
+      }
     },
   });
 
   /**
    * Handles language selection from the NavBar dropdown.
-   * Applies the change immediately to the UI and persists it to the server.
+   * Applies the change optimistically and persists it to the server.
+   * Reverts to the previous locale if the save fails.
    *
    * @param locale - The selected locale code.
    */
   function handleLanguageChange(locale: SupportedLocale): void {
+    previousLocaleRef.current = i18n.language;
     void i18n.changeLanguage(locale);
     languageMutation.mutate(locale);
   }

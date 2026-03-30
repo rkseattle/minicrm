@@ -122,10 +122,7 @@ export async function me(req: Request, res: Response): Promise<void> {
     });
     return;
   }
-  res.status(200).json({
-    user: sanitizeUser(user),
-    preferredLanguage: user.preferred_language ?? null,
-  });
+  res.status(200).json({ user: sanitizeUser(user) });
 }
 
 /**

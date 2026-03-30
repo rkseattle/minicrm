@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { getMyLanguage, setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
+import { applyResolvedLanguage } from '@/i18n.js';
 import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { Button } from '@/components/ui/Button.js';
@@ -52,9 +53,12 @@ export default function ProfileSettingsPage() {
       setPendingLanguage(null);
       setSuccessMessage(t('profileSettings.saveSuccess'));
       setErrorMessage(null);
-      // Apply immediately — no page reload required
+      // Apply immediately — no page reload required.
+      // When clearing (null), fetch and apply the system default.
       if (saved.language) {
         void i18n.changeLanguage(saved.language);
+      } else {
+        void applyResolvedLanguage(null);
       }
     },
     onError: () => {
