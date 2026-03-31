@@ -237,6 +237,13 @@
     "loading": "正在加载管道…",
     "totalValue": "合计：{{value}}",
     "stageUpdateError": "阶段更新失败，请重试。",
+    "closeDeal": {
+      "title": "标记为{{stage}}",
+      "closeDateLabel": "成交日期",
+      "confirm": "确认关闭",
+      "hideClosed": "隐藏已关闭商机",
+      "showClosed": "显示已关闭商机"
+    },
     "stages": {
       "prospecting": "初步接触",
       "qualification": "资质评估",

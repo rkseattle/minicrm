@@ -210,4 +210,159 @@ describe('PipelineBoardPage', () => {
       expect(screen.getByTestId('stage-column-closed-lost')).toBeInTheDocument();
     });
   });
+
+  it('renders the hide/show closed deals toggle button', async () => {
+    renderWithProviders(<PipelineBoardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();
+    });
+  });
+
+  it('opens the close deal modal instead of immediately patching when Closed Won is selected', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = (await request.json()) as { stage: string };
+        patchSpy(params.id, body.stage);
+        return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Won',
+    );
+
+    // Modal should open — patch should NOT have fired yet
+    expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows the loss reason field when Closed Lost is selected', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Lost',
+    );
+
+    expect(screen.getByTestId('close-deal-loss-reason-input')).toBeInTheDocument();
+  });
+
+  it('calls PATCH with stage and close_date when close modal is confirmed', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = await request.json();
+        patchSpy(params.id, body);
+        return HttpResponse.json({ deal: { ...DEAL_1, ...(body as object) } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Won',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('close-deal-confirm'));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalledWith(
+        DEAL_1.id,
+        expect.objectContaining({ stage: 'Closed Won' }),
+      );
+    });
+  });
+
+  it('calls PATCH with loss_reason when Closed Lost is confirmed with a reason', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = await request.json();
+        patchSpy(params.id, body);
+        return HttpResponse.json({ deal: { ...DEAL_1, ...(body as object) } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Lost',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('close-deal-loss-reason-input'), 'Budget constraints');
+    await user.click(screen.getByTestId('close-deal-confirm'));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalledWith(
+        DEAL_1.id,
+        expect.objectContaining({ stage: 'Closed Lost', loss_reason: 'Budget constraints' }),
+      );
+    });
+  });
+
+  it('does not call PATCH when the close modal is cancelled', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = (await request.json()) as { stage: string };
+        patchSpy(params.id, body.stage);
+        return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Won',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('close-deal-cancel'));
+
+    expect(screen.queryByTestId('close-deal-modal')).not.toBeInTheDocument();
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
 });

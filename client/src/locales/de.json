@@ -237,6 +237,13 @@
     "loading": "Pipeline wird geladen…",
     "totalValue": "Gesamt: {{value}}",
     "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "closeDeal": {
+      "title": "Als {{stage}} abschließen",
+      "closeDateLabel": "Abschlussdatum",
+      "confirm": "Abschluss bestätigen",
+      "hideClosed": "Abgeschlossene ausblenden",
+      "showClosed": "Abgeschlossene anzeigen"
+    },
     "stages": {
       "prospecting": "Akquise",
       "qualification": "Qualifizierung",

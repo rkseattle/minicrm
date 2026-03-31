@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/Select.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
 interface DealCardProps {
@@ -17,8 +18,13 @@ interface DealCardProps {
   deal: DealResponse;
   /** Resolved account display name, or '—' when no account is linked */
   accountName: string;
-  /** Called when the user selects a different stage */
+  /** Called when the user selects a non-terminal stage */
   onStageChange: (dealId: string, stage: PipelineStage) => void;
+  /**
+   * Called when the user selects a terminal stage (Closed Won / Closed Lost).
+   * The parent is responsible for opening the close deal modal.
+   */
+  onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
   /** When true, the stage selector is disabled */
   isUpdating: boolean;
 }
@@ -43,10 +49,17 @@ function formatValue(value: string | null, locale: string): string {
  *
  * @param deal - Deal record
  * @param accountName - Resolved account name
- * @param onStageChange - Stage change handler
+ * @param onStageChange - Handler for non-terminal stage changes
+ * @param onCloseRequested - Handler for terminal stage selections (opens close modal)
  * @param isUpdating - Whether a stage update is in flight for this card
  */
-export default function DealCard({ deal, accountName, onStageChange, isUpdating }: DealCardProps) {
+export default function DealCard({
+  deal,
+  accountName,
+  onStageChange,
+  onCloseRequested,
+  isUpdating,
+}: DealCardProps) {
   const { t, i18n } = useTranslation();
   return (
     <div
@@ -81,7 +94,14 @@ export default function DealCard({ deal, accountName, onStageChange, isUpdating 
         id={`deal-stage-select-${deal.id}`}
         data-testid={`deal-card-stage-select-${deal.id}`}
         value={deal.stage}
-        onChange={(e) => onStageChange(deal.id, e.target.value as PipelineStage)}
+        onChange={(e) => {
+          const selected = e.target.value as PipelineStage;
+          if ((CLOSED_STAGES as PipelineStage[]).includes(selected)) {
+            onCloseRequested(deal.id, selected as 'Closed Won' | 'Closed Lost');
+          } else {
+            onStageChange(deal.id, selected);
+          }
+        }}
         disabled={isUpdating}
         className="text-xs"
       >

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
+import CloseDealModal from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import {
@@ -62,6 +63,12 @@ export default function DealDetailPage() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState('');
+
+  /** Close deal modal state — null when closed */
+  const [pendingClose, setPendingClose] = useState<{
+    stage: 'Closed Won' | 'Closed Lost';
+  } | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   const dealQueryKey = ['deals', id] as const;
 
@@ -141,6 +148,28 @@ export default function DealDetailPage() {
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setUnlinkError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: ({
+      stage,
+      close_date,
+      loss_reason,
+    }: {
+      stage: 'Closed Won' | 'Closed Lost';
+      close_date: string | null;
+      loss_reason: string | null;
+    }) => updateDeal(id!, { stage, close_date, loss_reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dealQueryKey });
+      queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      setPendingClose(null);
+      setCloseError(null);
+      setIsEditing(false);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setCloseError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -254,6 +283,10 @@ export default function DealDetailPage() {
               initialValues={deal}
               accounts={accounts}
               users={activeUsers}
+              onCloseRequested={(stage) => {
+                setCloseError(null);
+                setPendingClose({ stage });
+              }}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);
@@ -419,6 +452,27 @@ export default function DealDetailPage() {
           </>
         )}
       </main>
+
+      {pendingClose && (
+        <CloseDealModal
+          isOpen={true}
+          targetStage={pendingClose.stage}
+          initialCloseDate={new Date().toISOString().split('T')[0]}
+          isSubmitting={closeMutation.isPending}
+          error={closeError ?? undefined}
+          onConfirm={(closeDate, lossReason) => {
+            closeMutation.mutate({
+              stage: pendingClose.stage,
+              close_date: closeDate || null,
+              loss_reason: lossReason || null,
+            });
+          }}
+          onCancel={() => {
+            setPendingClose(null);
+            setCloseError(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,9 @@
  * Deals are grouped into columns by stage; each column shows the deal count
  * and total value. Users can move a deal to a different stage via the inline
  * stage selector on each deal card.
+ * Selecting a terminal stage (Closed Won / Closed Lost) opens the CloseDealModal
+ * to capture an optional close date and loss reason before submitting.
+ * A header toggle allows filtering out closed deals from the active view.
  */
 
 import { useMemo, useState } from 'react';
@@ -11,14 +14,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import StageColumn from '@/components/StageColumn.js';
+import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
+import { Button } from '@/components/ui/Button.js';
 import { listDeals, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
-import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 
 /** React Query cache key for the pipeline board — shares the deals list cache */
 export const PIPELINE_QUERY_KEY = DEALS_QUERY_KEY;
+
+/** Today's date in YYYY-MM-DD format, used as default close date */
+function todayIso(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/** State captured while the user has selected a terminal stage but not yet confirmed */
+interface PendingClose {
+  dealId: string;
+  stage: 'Closed Won' | 'Closed Lost';
+}
 
 /**
  * Pipeline board page.
@@ -34,6 +49,15 @@ export default function PipelineBoardPage() {
   /** Error message from the most recent failed stage change, or null */
   const [stageError, setStageError] = useState<string | null>(null);
 
+  /** Close deal modal state — null when the modal is closed */
+  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null);
+
+  /** Error from a failed close-deal attempt, shown inside the modal */
+  const [closeError, setCloseError] = useState<string | null>(null);
+
+  /** Whether to show Closed Won / Closed Lost deals in the board */
+  const [showClosed, setShowClosed] = useState(true);
+
   const {
     data: dealsData,
     isLoading,
@@ -48,28 +72,40 @@ export default function PipelineBoardPage() {
     queryFn: () => listAccounts(),
   });
 
-  const deals: DealResponse[] = dealsData?.deals ?? [];
-  const accounts: AccountResponse[] = accountsData?.accounts ?? [];
-
   /** Map of account_id → name for O(1) lookup in deal cards */
   const accountNames = useMemo(() => {
     const map = new Map<string, string>();
-    accounts.forEach((a) => map.set(a.id, a.name));
+    (accountsData?.accounts ?? []).forEach((a) => map.set(a.id, a.name));
     return map;
-  }, [accounts]);
+  }, [accountsData?.accounts]);
 
-  /** Deals grouped by stage, preserving PIPELINE_STAGES order */
+  /**
+   * Deals grouped by stage, preserving PIPELINE_STAGES order.
+   * When showClosed is false, terminal-stage deals are omitted from their columns.
+   */
   const dealsByStage = useMemo(() => {
     const grouped = new Map<PipelineStage, DealResponse[]>();
     PIPELINE_STAGES.forEach((stage) => grouped.set(stage, []));
-    deals.forEach((deal) => {
+    (dealsData?.deals ?? []).forEach((deal) => {
+      if (!showClosed && (CLOSED_STAGES as PipelineStage[]).includes(deal.stage)) return;
       grouped.get(deal.stage)?.push(deal);
     });
     return grouped;
-  }, [deals]);
+  }, [dealsData?.deals, showClosed]);
 
   const stageMutation = useMutation({
-    mutationFn: ({ id, stage }: { id: string; stage: PipelineStage }) => updateDeal(id, { stage }),
+    mutationFn: ({
+      id,
+      stage,
+      close_date,
+      loss_reason,
+    }: {
+      id: string;
+      stage: PipelineStage;
+      close_date?: string;
+      loss_reason?: string;
+    }) =>
+      updateDeal(id, { stage, close_date: close_date ?? null, loss_reason: loss_reason ?? null }),
     onMutate: ({ id }) => {
       setStageError(null);
       setUpdatingDealIds((prev) => {
@@ -78,7 +114,19 @@ export default function PipelineBoardPage() {
         return next;
       });
     },
-    onError: () => setStageError(t('pipeline.stageUpdateError')),
+    onError: (_error, variables) => {
+      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+        setCloseError(t('pipeline.stageUpdateError'));
+      } else {
+        setStageError(t('pipeline.stageUpdateError'));
+      }
+    },
+    onSuccess: (_data, variables) => {
+      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+        setPendingClose(null);
+        setCloseError(null);
+      }
+    },
     onSettled: (_data, _error, { id }) => {
       setUpdatingDealIds((prev) => {
         const next = new Set(prev);
@@ -90,20 +138,59 @@ export default function PipelineBoardPage() {
   });
 
   /**
-   * Handles a stage change request from a deal card.
+   * Handles a non-terminal stage change request from a deal card.
    *
    * @param dealId - UUID of the deal to update
    * @param stage - Target pipeline stage
    */
-  function handleStageChange(dealId: string, stage: PipelineStage) {
+  function handleStageChange(dealId: string, stage: PipelineStage): void {
     stageMutation.mutate({ id: dealId, stage });
   }
+
+  /**
+   * Opens the close deal modal when a terminal stage is selected on a deal card.
+   *
+   * @param dealId - UUID of the deal to close
+   * @param stage - Terminal stage selected ('Closed Won' | 'Closed Lost')
+   */
+  function handleCloseRequested(dealId: string, stage: 'Closed Won' | 'Closed Lost'): void {
+    setCloseError(null);
+    setPendingClose({ dealId, stage });
+  }
+
+  /**
+   * Called when the user confirms the close deal modal.
+   *
+   * @param closeDate - YYYY-MM-DD close date
+   * @param lossReason - Free-text loss reason (empty when not applicable)
+   */
+  function handleCloseConfirm(closeDate: string, lossReason: string): void {
+    if (!pendingClose) return;
+    stageMutation.mutate({
+      id: pendingClose.dealId,
+      stage: pendingClose.stage,
+      close_date: closeDate || undefined,
+      loss_reason: lossReason || undefined,
+    });
+  }
+
+  const isClosing = stageMutation.isPending && pendingClose !== null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="px-6 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('pipeline.pageTitle')}</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">{t('pipeline.pageTitle')}</h1>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="toggle-closed-deals"
+            onClick={() => setShowClosed((prev) => !prev)}
+          >
+            {showClosed ? t('pipeline.closeDeal.hideClosed') : t('pipeline.closeDeal.showClosed')}
+          </Button>
+        </div>
 
         {stageError && (
           <div
@@ -141,12 +228,28 @@ export default function PipelineBoardPage() {
                 deals={dealsByStage.get(stage) ?? []}
                 accountNames={accountNames}
                 onStageChange={handleStageChange}
+                onCloseRequested={handleCloseRequested}
                 updatingDealIds={updatingDealIds}
               />
             ))}
           </div>
         )}
       </main>
+
+      {pendingClose && (
+        <CloseDealModal
+          isOpen={true}
+          targetStage={pendingClose.stage}
+          initialCloseDate={todayIso()}
+          isSubmitting={isClosing}
+          error={closeError ?? undefined}
+          onConfirm={handleCloseConfirm}
+          onCancel={() => {
+            setPendingClose(null);
+            setCloseError(null);
+          }}
+        />
+      )}
     </div>
   );
 }
