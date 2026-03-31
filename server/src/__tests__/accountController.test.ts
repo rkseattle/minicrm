@@ -10,18 +10,11 @@
 
 import 'dotenv/config';
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import app from '../app.js';
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
-
-/** Signs a JWT with the test secret for the given user payload. */
-function makeAuthCookie(payload: { id: string; email: string; name: string; role: string }) {
-  const token = jwt.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '1h' });
-  return `${AUTH_COOKIE_NAME}=${token}`;
-}
+import { makeAuthCookie } from './testUtils.js';
 
 const BASE_ACCOUNT = {
   name: 'Test Corp',

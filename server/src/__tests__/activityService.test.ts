@@ -142,6 +142,41 @@ describe('createActivity', () => {
   });
 });
 
+// ── DB constraints ─────────────────────────────────────────────────────────────
+
+describe('DB constraints — activities', () => {
+  it('rejects an activity with a null subject (NOT NULL)', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO activities (type, subject, contact_id, owner_id)
+         VALUES ('Note', NULL, $1, $2)`,
+        [contactId, ownerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects an activity with an invalid type value', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO activities (type, subject, contact_id, owner_id)
+         VALUES ('Invalid', 'Subject', $1, $2)`,
+        [contactId, ownerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects an activity whose contact_id references a non-existent contact (FK)', async () => {
+    await expect(
+      createActivity({
+        type: 'Note',
+        subject: 'Bad FK activity',
+        contact_id: '00000000-0000-0000-0000-000000000000',
+        owner_id: ownerId,
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 // ── findActivityById ────────────────────────────────────────────────────────────
 
 describe('findActivityById', () => {

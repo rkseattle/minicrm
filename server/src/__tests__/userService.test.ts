@@ -18,10 +18,12 @@ import {
   listUsers,
   listActiveUsers,
   setUserPassword,
+  setUserPasswordFromPlaintext,
   adminSetUserPassword,
   clearMustChangePassword,
   getUserPreferredLanguage,
   setUserPreferredLanguage,
+  seedDefaultAdmin,
 } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -155,6 +157,26 @@ describe('updateUserRole', () => {
   it('returns null for a non-existent user', async () => {
     const result = await updateUserRole('00000000-0000-0000-0000-000000000000', 'admin');
     expect(result).toBeNull();
+  });
+});
+
+// ── DB constraints ─────────────────────────────────────────────────────────────
+
+describe('DB constraints — users', () => {
+  it('rejects a user with a null email (NOT NULL)', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO users (email, name, role, status) VALUES (NULL, 'Name', 'rep', 'active')`,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a user with a null name (NOT NULL)', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO users (email, name, role, status) VALUES ('x@x.com', NULL, 'rep', 'active')`,
+      ),
+    ).rejects.toThrow();
   });
 });
 
@@ -314,6 +336,79 @@ describe('clearMustChangePassword', () => {
   });
 });
 
+// ── setUserPasswordFromPlaintext ───────────────────────────────────────────────
+
+describe('setUserPasswordFromPlaintext', () => {
+  it('hashes the plaintext and stores the hash', async () => {
+    const user = await createUser({ ...BASE_USER, passwordHash: null, status: 'invited' });
+    const updated = await setUserPasswordFromPlaintext(user.id, 'MyP@ssword1');
+
+    expect(updated).not.toBeNull();
+    expect(updated!.password_hash).not.toBe('MyP@ssword1');
+    expect(updated!.password_hash).toMatch(/^\$2[aby]\$/);
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const result = await setUserPasswordFromPlaintext(
+      '00000000-0000-0000-0000-000000000000',
+      'pass',
+    );
+    expect(result).toBeNull();
+  });
+});
+
+// ── seedDefaultAdmin ───────────────────────────────────────────────────────────
+
+describe('seedDefaultAdmin', () => {
+  const savedEnv: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    savedEnv['ADMIN_EMAIL'] = process.env.ADMIN_EMAIL;
+    savedEnv['ADMIN_NAME'] = process.env.ADMIN_NAME;
+    savedEnv['ADMIN_PASSWORD'] = process.env.ADMIN_PASSWORD;
+  });
+
+  afterEach(() => {
+    for (const key of ['ADMIN_EMAIL', 'ADMIN_NAME', 'ADMIN_PASSWORD'] as const) {
+      if (savedEnv[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = savedEnv[key];
+      }
+    }
+  });
+
+  it('creates an admin user when the table is empty and env vars are set', async () => {
+    process.env.ADMIN_EMAIL = 'seed-admin@example.com';
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await seedDefaultAdmin();
+
+    const user = await findUserByEmail('seed-admin@example.com');
+    expect(user).not.toBeNull();
+    expect(user!.role).toBe('admin');
+    expect(user!.status).toBe('active');
+  });
+
+  it('is a no-op when users already exist', async () => {
+    await createUser(BASE_USER);
+    process.env.ADMIN_EMAIL = 'should-not-exist@example.com';
+    process.env.ADMIN_NAME = 'Ghost';
+    process.env.ADMIN_PASSWORD = 'GhostPass1';
+
+    await seedDefaultAdmin();
+
+    const ghost = await findUserByEmail('should-not-exist@example.com');
+    expect(ghost).toBeNull();
+  });
+
+  it('is a no-op when ADMIN_EMAIL is not set', async () => {
+    delete process.env.ADMIN_EMAIL;
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+  });
+});
+
 // ── getUserPreferredLanguage ───────────────────────────────────────────────────
 
 describe('getUserPreferredLanguage', () => {
@@ -339,6 +434,14 @@ describe('getUserPreferredLanguage', () => {
     const user = await createUser(BASE_USER);
     await setUserPreferredLanguage(user.id, 'de');
     await setUserPreferredLanguage(user.id, null);
+    const language = await getUserPreferredLanguage(user.id);
+    expect(language).toBeNull();
+  });
+
+  it('returns null when the stored value is an unsupported locale', async () => {
+    const user = await createUser(BASE_USER);
+    // Inject an unsupported code directly to simulate a stale DB value
+    await pool.query(`UPDATE users SET preferred_language = 'xx' WHERE id = $1`, [user.id]);
     const language = await getUserPreferredLanguage(user.id);
     expect(language).toBeNull();
   });
