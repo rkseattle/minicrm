@@ -11,20 +11,12 @@
 
 import 'dotenv/config';
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
-
-/** Signs a JWT with the test secret for the given user payload. */
-function makeAuthCookie(payload: { id: string; email: string; name: string; role: string }) {
-  const token = jwt.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '1h' });
-  return `${AUTH_COOKIE_NAME}=${token}`;
-}
+import { makeAuthCookie } from './testUtils.js';
 
 const BASE_USER = {
-  email: 'user-ctrl-base@example.com',
   name: 'Base User',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -37,7 +29,7 @@ let repId: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE '%user-ctrl%'");
+  await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
 
   const admin = await createUser({
     ...BASE_USER,
@@ -67,7 +59,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE '%user-ctrl%'");
+  await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
   await pool.end();
 });
 
@@ -136,6 +128,10 @@ describe('POST /api/users/invite', () => {
 // ── PATCH /api/users/:id/role ───────────────────────────────────────────────────
 
 describe('PATCH /api/users/:id/role', () => {
+  afterEach(async () => {
+    await pool.query(`UPDATE users SET role = 'rep' WHERE id = $1`, [repId]);
+  });
+
   it('promotes a rep to admin and never exposes password_hash', async () => {
     const res = await request(app)
       .patch(`/api/users/${repId}/role`)
@@ -145,12 +141,6 @@ describe('PATCH /api/users/:id/role', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.role).toBe('admin');
     expect(res.body.user).not.toHaveProperty('password_hash');
-
-    // Restore rep role for other tests
-    await request(app)
-      .patch(`/api/users/${repId}/role`)
-      .set('Cookie', adminCookie)
-      .send({ role: 'rep' });
   });
 
   it('returns 404 for a non-existent user', async () => {

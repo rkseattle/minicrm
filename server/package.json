@@ -11,7 +11,7 @@
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "typecheck": "tsc --noEmit",
     "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand",
-    "test:coverage": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand --coverage"
+    "test:coverage": "npm test -- --coverage"
   },
   "dependencies": {
     "@minicrm/shared": "*",

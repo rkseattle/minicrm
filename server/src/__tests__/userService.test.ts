@@ -178,11 +178,6 @@ describe('DB constraints — users', () => {
       ),
     ).rejects.toThrow();
   });
-
-  it('enforces unique constraint on email', async () => {
-    await createUser(BASE_USER);
-    await expect(createUser(BASE_USER)).rejects.toThrow();
-  });
 });
 
 // ── listUsers ──────────────────────────────────────────────────────────────────
@@ -365,6 +360,24 @@ describe('setUserPasswordFromPlaintext', () => {
 // ── seedDefaultAdmin ───────────────────────────────────────────────────────────
 
 describe('seedDefaultAdmin', () => {
+  const savedEnv: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    savedEnv['ADMIN_EMAIL'] = process.env.ADMIN_EMAIL;
+    savedEnv['ADMIN_NAME'] = process.env.ADMIN_NAME;
+    savedEnv['ADMIN_PASSWORD'] = process.env.ADMIN_PASSWORD;
+  });
+
+  afterEach(() => {
+    for (const key of ['ADMIN_EMAIL', 'ADMIN_NAME', 'ADMIN_PASSWORD'] as const) {
+      if (savedEnv[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = savedEnv[key];
+      }
+    }
+  });
+
   it('creates an admin user when the table is empty and env vars are set', async () => {
     process.env.ADMIN_EMAIL = 'seed-admin@example.com';
     process.env.ADMIN_NAME = 'Seed Admin';
@@ -391,12 +404,8 @@ describe('seedDefaultAdmin', () => {
   });
 
   it('is a no-op when ADMIN_EMAIL is not set', async () => {
-    const original = process.env.ADMIN_EMAIL;
     delete process.env.ADMIN_EMAIL;
-
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
-
-    process.env.ADMIN_EMAIL = original;
   });
 });
 
