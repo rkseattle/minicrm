@@ -17,8 +17,13 @@ interface StageColumnProps {
   deals: DealResponse[];
   /** Map of account_id → account name for O(1) lookup */
   accountNames: Map<string, string>;
-  /** Called when a deal card's stage selector changes */
+  /** Called when a deal card's stage selector changes to a non-terminal stage */
   onStageChange: (dealId: string, stage: PipelineStage) => void;
+  /**
+   * Called when the user selects a terminal stage on a deal card.
+   * The parent opens the close deal modal.
+   */
+  onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
   /** Set of deal IDs whose stage updates are currently in flight */
   updatingDealIds: Set<string>;
 }
@@ -79,7 +84,8 @@ function stageSlug(stage: PipelineStage): string {
  * @param stage - The pipeline stage
  * @param deals - Deals in this stage
  * @param accountNames - Lookup map for account names
- * @param onStageChange - Stage change callback
+ * @param onStageChange - Non-terminal stage change callback
+ * @param onCloseRequested - Terminal stage selection callback
  * @param updatingDealIds - Set of deal IDs whose stage updates are in flight
  */
 export default function StageColumn({
@@ -87,6 +93,7 @@ export default function StageColumn({
   deals,
   accountNames,
   onStageChange,
+  onCloseRequested,
   updatingDealIds,
 }: StageColumnProps) {
   const { t, i18n } = useTranslation();
@@ -123,6 +130,7 @@ export default function StageColumn({
             deal={deal}
             accountName={accountNames.get(deal.account_id ?? '') ?? '—'}
             onStageChange={onStageChange}
+            onCloseRequested={onCloseRequested}
             isUpdating={updatingDealIds.has(deal.id)}
           />
         ))}

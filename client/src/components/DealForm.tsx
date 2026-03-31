@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
-import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import { CLOSED_STAGES } from '@/components/CloseDealModal.js';
+import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 
@@ -45,6 +46,15 @@ interface DealFormProps {
    * Omit on the create form (ownership defaults to the creating user server-side).
    */
   users?: ActiveUser[];
+  /**
+   * When provided, fires instead of updating formData.stage when the user picks
+   * a terminal stage (Closed Won / Closed Lost). The parent is responsible for
+   * opening the close deal modal. The current form values are passed so the
+   * parent can persist all in-progress edits alongside the close fields.
+   * If omitted, terminal stages update formData as any other stage would
+   * (backward-compatible create flow).
+   */
+  onCloseRequested?: (stage: 'Closed Won' | 'Closed Lost', formValues: DealFormValues) => void;
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: DealFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -81,6 +91,7 @@ export default function DealForm({
   accounts,
   accountRequired = false,
   users,
+  onCloseRequested,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -130,7 +141,14 @@ export default function DealForm({
           name="stage"
           label={t('deals.stageLabel')}
           value={formData.stage}
-          onChange={handleSelectChange}
+          onChange={(e) => {
+            const selected = e.target.value as PipelineStage;
+            if (onCloseRequested && (CLOSED_STAGES as PipelineStage[]).includes(selected)) {
+              onCloseRequested(selected as 'Closed Won' | 'Closed Lost', formData);
+            } else {
+              handleSelectChange(e);
+            }
+          }}
           disabled={isSubmitting}
           required
         >

@@ -214,6 +214,116 @@ describe('DealDetailPage', () => {
     });
   });
 
+  it('opens the close deal modal when Closed Won is selected in the edit form', async () => {
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-stage-select')).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('deal-stage-select'), 'Closed Won');
+
+    expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    expect(screen.queryByTestId('close-deal-loss-reason-input')).not.toBeInTheDocument();
+  });
+
+  it('shows loss reason field when Closed Lost is selected in the edit form', async () => {
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-stage-select')).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('deal-stage-select'), 'Closed Lost');
+
+    expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('close-deal-loss-reason-input')).toBeInTheDocument();
+  });
+
+  it('calls PATCH with correct stage payload when close modal is confirmed', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = await request.json();
+        patchSpy(params.id, body);
+        return HttpResponse.json({ deal: { ...DEAL_1, ...(body as object) } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-stage-select')).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('deal-stage-select'), 'Closed Won');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('close-deal-confirm'));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalledWith(
+        DEAL_1.id,
+        expect.objectContaining({ stage: 'Closed Won' }),
+      );
+    });
+  });
+
+  it('closes the modal without saving when cancel is clicked', async () => {
+    const patchSpy = vi.fn();
+    server.use(
+      http.patch('/api/deals/:id', async ({ params, request }) => {
+        const body = (await request.json()) as { stage: string };
+        patchSpy(params.id, body.stage);
+        return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderDealDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-stage-select')).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByTestId('deal-stage-select'), 'Closed Lost');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('close-deal-cancel'));
+
+    expect(screen.queryByTestId('close-deal-modal')).not.toBeInTheDocument();
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
+
   it('hides link select when all contacts are already linked', async () => {
     server.use(
       http.get('/api/deals/:id', ({ params }) => {

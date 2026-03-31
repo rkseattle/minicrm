@@ -237,6 +237,13 @@
     "loading": "Loading pipeline…",
     "totalValue": "Total: {{value}}",
     "stageUpdateError": "Failed to update stage. Please try again.",
+    "closeDeal": {
+      "title": "Close as {{stage}}",
+      "closeDateLabel": "Close date",
+      "confirm": "Confirm close",
+      "hideClosed": "Hide closed deals",
+      "showClosed": "Show closed deals"
+    },
     "stages": {
       "prospecting": "Prospecting",
       "qualification": "Qualification",
