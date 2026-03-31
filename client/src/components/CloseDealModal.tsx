@@ -5,7 +5,7 @@
  * an optional loss reason before the deal update is submitted.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
@@ -61,6 +61,11 @@ export default function CloseDealModal({
   const [closeDate, setCloseDate] = useState(initialCloseDate);
   const [lossReason, setLossReason] = useState('');
 
+  /** Keep closeDate in sync if initialCloseDate changes (e.g. day rolls over between opens) */
+  useEffect(() => {
+    setCloseDate(initialCloseDate);
+  }, [initialCloseDate]);
+
   const isClosedLost = targetStage === 'Closed Lost';
 
   if (!isOpen) return null;
@@ -76,78 +81,88 @@ export default function CloseDealModal({
   }
 
   return (
+    // Backdrop — clicking outside the dialog (or pressing Escape) dismisses the modal
+    // role="presentation" because the dialog element itself is the interactive landmark
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       data-testid="close-deal-modal-overlay"
+      onClick={isSubmitting ? undefined : onCancel}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && !isSubmitting) onCancel();
+      }}
     >
-      <dialog
-        open
-        data-testid="close-deal-modal"
-        className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
-      >
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
-          {t('pipeline.closeDeal.title', { stage: targetStage })}
-        </h2>
+      <dialog open data-testid="close-deal-modal" className="relative w-full max-w-md p-0">
+        {/* Inner wrapper stops backdrop clicks from propagating through the dialog */}
+        <div
+          role="presentation"
+          className="rounded-lg bg-white p-6 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className="text-base font-semibold text-gray-900 mb-4">
+            {t('pipeline.closeDeal.title', { stage: targetStage })}
+          </h2>
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-4 mb-4">
-            <Input
-              id="close-deal-date"
-              data-testid="close-deal-date-input"
-              type="date"
-              label={t('pipeline.closeDeal.closeDateLabel')}
-              value={closeDate}
-              onChange={(e) => setCloseDate(e.target.value)}
-              disabled={isSubmitting}
-            />
+          <form onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-4 mb-4">
+              <Input
+                id="close-deal-date"
+                data-testid="close-deal-date-input"
+                type="date"
+                label={t('pipeline.closeDeal.closeDateLabel')}
+                value={closeDate}
+                onChange={(e) => setCloseDate(e.target.value)}
+                disabled={isSubmitting}
+              />
 
-            {isClosedLost && (
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="close-deal-loss-reason"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  {t('deals.lossReasonLabel')}
-                </label>
-                <textarea
-                  id="close-deal-loss-reason"
-                  data-testid="close-deal-loss-reason-input"
-                  value={lossReason}
-                  onChange={(e) => setLossReason(e.target.value)}
-                  disabled={isSubmitting}
-                  rows={3}
-                  placeholder=""
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
-                />
+              {isClosedLost && (
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="close-deal-loss-reason"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    {t('deals.lossReasonLabel')}
+                  </label>
+                  <textarea
+                    id="close-deal-loss-reason"
+                    data-testid="close-deal-loss-reason-input"
+                    value={lossReason}
+                    onChange={(e) => setLossReason(e.target.value)}
+                    disabled={isSubmitting}
+                    rows={3}
+                    placeholder=""
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div
+                role="alert"
+                data-testid="close-deal-error"
+                className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+              >
+                {error}
               </div>
             )}
-          </div>
 
-          {error && (
-            <div
-              role="alert"
-              data-testid="close-deal-error"
-              className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
-            >
-              {error}
+            <div className="flex items-center gap-3">
+              <Button type="submit" data-testid="close-deal-confirm" disabled={isSubmitting}>
+                {t('pipeline.closeDeal.confirm')}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                data-testid="close-deal-cancel"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                {t('deals.cancel')}
+              </Button>
             </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" data-testid="close-deal-confirm" disabled={isSubmitting}>
-              {t('pipeline.closeDeal.confirm')}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              data-testid="close-deal-cancel"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
-              {t('deals.cancel')}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
       </dialog>
     </div>
   );

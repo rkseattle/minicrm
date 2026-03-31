@@ -67,6 +67,8 @@ export default function DealDetailPage() {
   /** Close deal modal state — null when closed */
   const [pendingClose, setPendingClose] = useState<{
     stage: 'Closed Won' | 'Closed Lost';
+    /** Form values captured at the moment the terminal stage was selected */
+    formValues: DealFormValues;
   } | null>(null);
   const [closeError, setCloseError] = useState<string | null>(null);
 
@@ -156,11 +158,22 @@ export default function DealDetailPage() {
       stage,
       close_date,
       loss_reason,
+      formValues,
     }: {
       stage: 'Closed Won' | 'Closed Lost';
       close_date: string | null;
       loss_reason: string | null;
-    }) => updateDeal(id!, { stage, close_date, loss_reason }),
+      formValues: DealFormValues;
+    }) =>
+      updateDeal(id!, {
+        name: formValues.name,
+        stage,
+        value: formValues.value !== '' ? parseFloat(formValues.value) : null,
+        close_date,
+        loss_reason,
+        account_id: formValues.account_id || null,
+        owner_id: formValues.owner_id || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
@@ -283,9 +296,9 @@ export default function DealDetailPage() {
               initialValues={deal}
               accounts={accounts}
               users={activeUsers}
-              onCloseRequested={(stage) => {
+              onCloseRequested={(stage, formValues) => {
                 setCloseError(null);
-                setPendingClose({ stage });
+                setPendingClose({ stage, formValues });
               }}
               onSubmit={(values) => {
                 setUpdateError(null);
@@ -465,6 +478,7 @@ export default function DealDetailPage() {
               stage: pendingClose.stage,
               close_date: closeDate || null,
               loss_reason: lossReason || null,
+              formValues: pendingClose.formValues,
             });
           }}
           onCancel={() => {

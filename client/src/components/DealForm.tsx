@@ -49,10 +49,12 @@ interface DealFormProps {
   /**
    * When provided, fires instead of updating formData.stage when the user picks
    * a terminal stage (Closed Won / Closed Lost). The parent is responsible for
-   * opening the close deal modal. If omitted, terminal stages update formData as
-   * any other stage would (backward-compatible create flow).
+   * opening the close deal modal. The current form values are passed so the
+   * parent can persist all in-progress edits alongside the close fields.
+   * If omitted, terminal stages update formData as any other stage would
+   * (backward-compatible create flow).
    */
-  onCloseRequested?: (stage: 'Closed Won' | 'Closed Lost') => void;
+  onCloseRequested?: (stage: 'Closed Won' | 'Closed Lost', formValues: DealFormValues) => void;
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: DealFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -142,7 +144,7 @@ export default function DealForm({
           onChange={(e) => {
             const selected = e.target.value as PipelineStage;
             if (onCloseRequested && (CLOSED_STAGES as PipelineStage[]).includes(selected)) {
-              onCloseRequested(selected as 'Closed Won' | 'Closed Lost');
+              onCloseRequested(selected as 'Closed Won' | 'Closed Lost', formData);
             } else {
               handleSelectChange(e);
             }
