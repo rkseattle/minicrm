@@ -23,6 +23,7 @@ const router = Router();
  * /api/deals:
  *   get:
  *     tags: [Deals]
+ *     operationId: listDeals
  *     summary: List deals
  *     description: >
  *       Returns all deals. Pass `?owner=me` to scope results to the authenticated
@@ -48,12 +49,38 @@ const router = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Deal'
+ *             example:
+ *               deals:
+ *                 - id: d1e2f3a4-0000-0000-0000-000000000001
+ *                   name: Acme Renewal
+ *                   stage: Proposal
+ *                   value: '12500.00'
+ *                   close_date: '2025-12-31'
+ *                   loss_reason: null
+ *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *                   updated_at: '2025-03-15T09:00:00.000Z'
+ *       400:
+ *         description: Invalid query parameter (e.g., unrecognized filter value)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Invalid query parameter
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listDealsHandler));
 
@@ -62,6 +89,7 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  * /api/deals:
  *   post:
  *     tags: [Deals]
+ *     operationId: createDeal
  *     summary: Create a deal
  *     description: Creates a new deal owned by the authenticated user.
  *     security:
@@ -72,6 +100,12 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateDealRequest'
+ *           example:
+ *             name: Acme Renewal
+ *             stage: Proposal
+ *             value: 12500
+ *             close_date: '2025-12-31'
+ *             account_id: a1b2c3d4-0000-0000-0000-000000000001
  *     responses:
  *       201:
  *         description: Deal created
@@ -82,18 +116,38 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *               properties:
  *                 deal:
  *                   $ref: '#/components/schemas/Deal'
+ *             example:
+ *               deal:
+ *                 id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 name: Acme Renewal
+ *                 stage: Proposal
+ *                 value: '12500.00'
+ *                 close_date: '2025-12-31'
+ *                 loss_reason: null
+ *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: stage must be one of the allowed pipeline values
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.post('/', authenticate, asyncHandler(createDealHandler));
 
@@ -102,6 +156,7 @@ router.post('/', authenticate, asyncHandler(createDealHandler));
  * /api/deals/{id}:
  *   get:
  *     tags: [Deals]
+ *     operationId: getDeal
  *     summary: Get a deal by ID
  *     security:
  *       - cookieAuth: []
@@ -123,18 +178,38 @@ router.post('/', authenticate, asyncHandler(createDealHandler));
  *               properties:
  *                 deal:
  *                   $ref: '#/components/schemas/Deal'
+ *             example:
+ *               deal:
+ *                 id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 name: Acme Renewal
+ *                 stage: Proposal
+ *                 value: '12500.00'
+ *                 close_date: '2025-12-31'
+ *                 loss_reason: null
+ *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       404:
  *         description: Deal not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Deal not found
  */
 router.get('/:id', authenticate, asyncHandler(getDealHandler));
 
@@ -143,6 +218,7 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  * /api/deals/{id}:
  *   patch:
  *     tags: [Deals]
+ *     operationId: updateDeal
  *     summary: Update a deal
  *     description: >
  *       Updates one or more fields of an existing deal.
@@ -163,6 +239,9 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateDealRequest'
+ *           example:
+ *             stage: Negotiation
+ *             value: 12500
  *     responses:
  *       200:
  *         description: Deal updated
@@ -173,30 +252,58 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *               properties:
  *                 deal:
  *                   $ref: '#/components/schemas/Deal'
+ *             example:
+ *               deal:
+ *                 id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 name: Acme Renewal
+ *                 stage: Negotiation
+ *                 value: '12500.00'
+ *                 close_date: '2025-12-31'
+ *                 loss_reason: null
+ *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: stage must be one of the allowed pipeline values
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update a deal they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to update this deal
  *       404:
  *         description: Deal not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Deal not found
  */
 router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
 
@@ -205,6 +312,7 @@ router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
  * /api/deals/{id}:
  *   delete:
  *     tags: [Deals]
+ *     operationId: deleteDeal
  *     summary: Delete a deal
  *     description: >
  *       Deletes a deal. Reps may only delete deals they own; admins may delete any deal.
@@ -227,18 +335,30 @@ router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete a deal they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to delete this deal
  *       404:
  *         description: Deal not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Deal not found
  */
 router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
 
@@ -247,10 +367,12 @@ router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
  * /api/deals/{id}/contacts/{contactId}:
  *   post:
  *     tags: [Deals]
+ *     operationId: linkContactToDeal
  *     summary: Link a contact to a deal
  *     description: >
  *       Associates the specified contact with the deal via the deal_contacts join table.
- *       The relationship is many-to-many.
+ *       The relationship is many-to-many. If the link already exists, the call is a
+ *       no-op and still returns 200 (idempotent).
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -270,7 +392,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
  *         description: Contact ID
  *     responses:
  *       200:
- *         description: Contact linked to deal
+ *         description: Contact linked to deal (or link already existed — both return 200)
  *         content:
  *           application/json:
  *             schema:
@@ -279,18 +401,28 @@ router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
  *                 message:
  *                   type: string
  *                   example: Contact linked to deal
+ *             example:
+ *               message: Contact linked to deal
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       404:
  *         description: Deal or contact not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Deal not found
  */
 router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHandler));
 
@@ -299,8 +431,11 @@ router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHa
  * /api/deals/{id}/contacts/{contactId}:
  *   delete:
  *     tags: [Deals]
+ *     operationId: unlinkContactFromDeal
  *     summary: Unlink a contact from a deal
- *     description: Removes the association between the contact and the deal.
+ *     description: >
+ *       Removes the association between the contact and the deal. If the link does
+ *       not exist, the call is a no-op and still returns 204 (idempotent).
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -320,19 +455,27 @@ router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHa
  *         description: Contact ID
  *     responses:
  *       204:
- *         description: Contact unlinked (no content)
+ *         description: Contact unlinked (no content); also returned when link did not exist
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       404:
  *         description: Deal or contact not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Deal not found
  */
 router.delete('/:id/contacts/:contactId', authenticate, asyncHandler(unlinkContactHandler));
 

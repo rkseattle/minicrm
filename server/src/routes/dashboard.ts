@@ -14,6 +14,7 @@ const router = Router();
  * /api/dashboard/summary:
  *   get:
  *     tags: [Dashboard]
+ *     operationId: getDashboardSummary
  *     summary: Get the dashboard summary
  *     description: >
  *       Returns a summary of the pipeline (deal counts and total values per stage)
@@ -27,12 +28,39 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/DashboardSummary'
+ *             example:
+ *               pipeline:
+ *                 Prospecting:
+ *                   count: 3
+ *                   total_value: 45000
+ *                 Qualification:
+ *                   count: 2
+ *                   total_value: 28500
+ *                 Proposal:
+ *                   count: 1
+ *                   total_value: 12500
+ *                 Negotiation:
+ *                   count: 0
+ *                   total_value: 0
+ *                 Closed Won:
+ *                   count: 5
+ *                   total_value: 87000
+ *                 Closed Lost:
+ *                   count: 1
+ *                   total_value: 10000
+ *               tasks:
+ *                 open_count: 4
+ *                 overdue_count: 1
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/summary', authenticate, asyncHandler(getDashboardSummaryHandler));
 

@@ -6,8 +6,6 @@ apis:
     root: ./openapi.json
 
 rules:
-  # operationId is useful but not required for a valid spec — turn off until IDs are added
-  operation-operationId: off
   # Public endpoints (logout, GET /settings/default-language) have no 4xx by design
   operation-4xx-response: off
   # The localhost server URL is intentional for local dev

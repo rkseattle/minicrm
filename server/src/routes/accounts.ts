@@ -21,6 +21,7 @@ const router = Router();
  * /api/accounts:
  *   get:
  *     tags: [Accounts]
+ *     operationId: listAccounts
  *     summary: List accounts
  *     description: >
  *       Returns all accounts. Pass `?owner=me` to scope results to the authenticated
@@ -46,12 +47,37 @@ const router = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Account'
+ *             example:
+ *               accounts:
+ *                 - id: a1b2c3d4-0000-0000-0000-000000000001
+ *                   name: Acme Corp
+ *                   industry: Technology
+ *                   website: https://www.acme.com
+ *                   employee_range: 51-200
+ *                   revenue_range: $10M-$50M
+ *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *                   updated_at: '2025-03-15T09:00:00.000Z'
+ *       400:
+ *         description: Invalid query parameter (e.g., unrecognized filter value)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Invalid query parameter
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listAccountsHandler));
 
@@ -60,6 +86,7 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  * /api/accounts:
  *   post:
  *     tags: [Accounts]
+ *     operationId: createAccount
  *     summary: Create an account
  *     description: Creates a new account owned by the authenticated user.
  *     security:
@@ -70,6 +97,12 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateAccountRequest'
+ *           example:
+ *             name: Acme Corp
+ *             industry: Technology
+ *             website: https://www.acme.com
+ *             employee_range: 51-200
+ *             revenue_range: $10M-$50M
  *     responses:
  *       201:
  *         description: Account created
@@ -80,18 +113,37 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  *               properties:
  *                 account:
  *                   $ref: '#/components/schemas/Account'
+ *             example:
+ *               account:
+ *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 name: Acme Corp
+ *                 industry: Technology
+ *                 website: https://www.acme.com
+ *                 employee_range: 51-200
+ *                 revenue_range: $10M-$50M
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Name is required
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.post('/', authenticate, asyncHandler(createAccountHandler));
 
@@ -100,6 +152,7 @@ router.post('/', authenticate, asyncHandler(createAccountHandler));
  * /api/accounts/{id}:
  *   get:
  *     tags: [Accounts]
+ *     operationId: getAccount
  *     summary: Get an account by ID
  *     security:
  *       - cookieAuth: []
@@ -121,18 +174,37 @@ router.post('/', authenticate, asyncHandler(createAccountHandler));
  *               properties:
  *                 account:
  *                   $ref: '#/components/schemas/Account'
+ *             example:
+ *               account:
+ *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 name: Acme Corp
+ *                 industry: Technology
+ *                 website: https://www.acme.com
+ *                 employee_range: 51-200
+ *                 revenue_range: $10M-$50M
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       404:
  *         description: Account not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Account not found
  */
 router.get('/:id', authenticate, asyncHandler(getAccountHandler));
 
@@ -141,6 +213,7 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  * /api/accounts/{id}:
  *   patch:
  *     tags: [Accounts]
+ *     operationId: updateAccount
  *     summary: Update an account
  *     description: >
  *       Updates one or more fields of an existing account.
@@ -161,6 +234,9 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateAccountRequest'
+ *           example:
+ *             industry: SaaS
+ *             employee_range: 201-500
  *     responses:
  *       200:
  *         description: Account updated
@@ -171,30 +247,57 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  *               properties:
  *                 account:
  *                   $ref: '#/components/schemas/Account'
+ *             example:
+ *               account:
+ *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 name: Acme Corp
+ *                 industry: SaaS
+ *                 website: https://www.acme.com
+ *                 employee_range: 201-500
+ *                 revenue_range: $10M-$50M
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Name must not be empty
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update an account they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to update this account
  *       404:
  *         description: Account not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Account not found
  */
 router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
 
@@ -203,6 +306,7 @@ router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
  * /api/accounts/{id}:
  *   delete:
  *     tags: [Accounts]
+ *     operationId: deleteAccount
  *     summary: Delete an account
  *     description: >
  *       Deletes an account. Reps may only delete accounts they own; admins may
@@ -226,18 +330,30 @@ router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete an account they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to delete this account
  *       404:
  *         description: Account not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Account not found
  */
 router.delete('/:id', authenticate, asyncHandler(deleteAccountHandler));
 

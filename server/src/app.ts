@@ -17,6 +17,7 @@ import dealRoutes from './routes/deals.js';
 import activityRoutes from './routes/activities.js';
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
+import { setupSwagger } from './swagger.js';
 
 const app = express();
 
@@ -63,6 +64,13 @@ app.use('/api/settings', settingsRoutes);
 app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// ── API docs (development + staging only) ─────────────────────────────────────
+// Mounted before the 404 handler so /api-docs routes are reachable.
+// swagger-jsdoc is a production dependency so this import is always safe.
+if (process.env.NODE_ENV !== 'production') {
+  setupSwagger(app);
+}
 
 // ── 404 handler ────────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
