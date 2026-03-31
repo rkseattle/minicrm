@@ -31,8 +31,6 @@ jobs:
       - name: Validate OpenAPI spec
         run: npm run lint:api --workspace=minicrm-server
         env:
-          # swagger-jsdoc resolves route file paths relative to cwd
-          # ensure the working directory is the server package
           NODE_ENV: development
 
   server-tests:

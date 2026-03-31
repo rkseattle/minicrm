@@ -17,7 +17,6 @@ import dealRoutes from './routes/deals.js';
 import activityRoutes from './routes/activities.js';
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
-import { setupSwagger } from './swagger.js';
 
 const app = express();
 
@@ -59,13 +58,6 @@ app.use('/api/deals', dealRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
-
-// ── API docs (development + staging only) ─────────────────────────────────────
-// Swagger UI is served at /api-docs when NODE_ENV is not 'production'.
-// The raw spec is available at /api-docs.json.
-if (process.env.NODE_ENV !== 'production') {
-  setupSwagger(app);
-}
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req: Request, res: Response) => {
