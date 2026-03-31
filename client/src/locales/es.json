@@ -273,7 +273,8 @@
     "typeCall": "Llamada",
     "typeEmail": "Correo",
     "typeMeeting": "Reunión",
-    "typeTask": "Tarea"
+    "typeTask": "Tarea",
+    "meta": "{{author}} · {{timestamp}}"
   },
   "myTasks": {
     "pageTitle": "Mis tareas",

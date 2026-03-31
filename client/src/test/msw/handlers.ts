@@ -182,6 +182,7 @@ export const ACTIVITY_1: ActivityResponse = {
   account_id: null,
   deal_id: '00000000-0000-0000-0000-000000000301',
   owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
@@ -198,6 +199,7 @@ export const ACTIVITY_2: ActivityResponse = {
   account_id: null,
   deal_id: null,
   owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_name: 'Admin User',
   created_at: '2025-01-02T00:00:00.000Z',
   updated_at: '2025-01-02T00:00:00.000Z',
 };

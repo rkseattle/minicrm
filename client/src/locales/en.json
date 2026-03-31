@@ -273,7 +273,8 @@
     "typeCall": "Call",
     "typeEmail": "Email",
     "typeMeeting": "Meeting",
-    "typeTask": "Task"
+    "typeTask": "Task",
+    "meta": "{{author}} · {{timestamp}}"
   },
   "myTasks": {
     "pageTitle": "My Tasks",

@@ -44,6 +44,18 @@ describe('ActivityTimeline', () => {
     );
   });
 
+  it('renders the author name and timestamp in the meta line', async () => {
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`)).toHaveTextContent(
+      ACTIVITY_1.owner_name,
+    );
+  });
+
   it('shows "Mark complete" button for open tasks', async () => {
     renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
 

@@ -30,6 +30,7 @@ export interface ActivityRow {
   account_id: string | null;
   deal_id: string | null;
   owner_id: string;
+  owner_name: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -46,9 +47,9 @@ interface ListActivitiesOptions {
   ownerId?: string;
 }
 
-/** Columns selected in every activity query */
-const SELECT_COLS =
-  'id, type, subject, notes, due_date::text, status, contact_id, account_id, deal_id, owner_id, created_at, updated_at';
+/** Columns selected when JOINing users for owner_name */
+const SELECT_COLS_WITH_OWNER =
+  'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at';
 
 /**
  * Creates a new activity record.
@@ -61,10 +62,10 @@ export async function createActivity(
 ): Promise<ActivityRow> {
   const { type, subject, notes, due_date, contact_id, account_id, deal_id, owner_id } = params;
 
-  const result = await pool.query<ActivityRow>(
+  const insertResult = await pool.query<{ id: string }>(
     `INSERT INTO activities (type, subject, notes, due_date, contact_id, account_id, deal_id, owner_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING ${SELECT_COLS}`,
+     RETURNING id`,
     [
       type,
       subject,
@@ -77,7 +78,7 @@ export async function createActivity(
     ],
   );
 
-  return result.rows[0];
+  return (await findActivityById(insertResult.rows[0].id))!;
 }
 
 /**
@@ -88,7 +89,11 @@ export async function createActivity(
  */
 export async function findActivityById(id: string): Promise<ActivityRow | null> {
   const result = await pool.query<ActivityRow>(
-    `SELECT ${SELECT_COLS} FROM activities WHERE id = $1 LIMIT 1`,
+    `SELECT ${SELECT_COLS_WITH_OWNER}
+     FROM activities a
+     JOIN users u ON u.id = a.owner_id
+     WHERE a.id = $1
+     LIMIT 1`,
     [id],
   );
   return result.rows[0] ?? null;
@@ -106,28 +111,32 @@ export async function listActivities(options: ListActivitiesOptions = {}): Promi
 
   if (options.contactId) {
     values.push(options.contactId);
-    conditions.push(`contact_id = $${values.length}`);
+    conditions.push(`a.contact_id = $${values.length}`);
   }
 
   if (options.accountId) {
     values.push(options.accountId);
-    conditions.push(`account_id = $${values.length}`);
+    conditions.push(`a.account_id = $${values.length}`);
   }
 
   if (options.dealId) {
     values.push(options.dealId);
-    conditions.push(`deal_id = $${values.length}`);
+    conditions.push(`a.deal_id = $${values.length}`);
   }
 
   if (options.ownerId) {
     values.push(options.ownerId);
-    conditions.push(`owner_id = $${values.length}`);
+    conditions.push(`a.owner_id = $${values.length}`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const result = await pool.query<ActivityRow>(
-    `SELECT ${SELECT_COLS} FROM activities ${where} ORDER BY created_at DESC`,
+    `SELECT ${SELECT_COLS_WITH_OWNER}
+     FROM activities a
+     JOIN users u ON u.id = a.owner_id
+     ${where}
+     ORDER BY a.created_at DESC`,
     values,
   );
 
@@ -156,15 +165,16 @@ export async function updateActivity(
 
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
 
-  const result = await pool.query<ActivityRow>(
+  const updateResult = await pool.query<{ id: string }>(
     `UPDATE activities
      SET ${setClauses}, updated_at = now()
      WHERE id = $1
-     RETURNING ${SELECT_COLS}`,
+     RETURNING id`,
     [id, ...fields.map((f) => params[f])],
   );
 
-  return result.rows[0] ?? null;
+  if (!updateResult.rows[0]) return null;
+  return findActivityById(updateResult.rows[0].id);
 }
 
 /** Shape of a task row enriched with the linked record name and type */
@@ -195,6 +205,7 @@ export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
        a.account_id,
        a.deal_id,
        a.owner_id,
+       u.name AS owner_name,
        a.created_at,
        a.updated_at,
        CASE
@@ -208,6 +219,7 @@ export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
          WHEN a.deal_id   IS NOT NULL THEN 'deal'
        END AS linked_record_type
      FROM activities a
+     JOIN users u          ON u.id  = a.owner_id
      LEFT JOIN contacts c  ON c.id  = a.contact_id
      LEFT JOIN accounts ac ON ac.id = a.account_id
      LEFT JOIN deals d     ON d.id  = a.deal_id
@@ -227,9 +239,9 @@ export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
  * @returns The deleted activity row, or null if not found
  */
 export async function deleteActivity(id: string): Promise<ActivityRow | null> {
-  const result = await pool.query<ActivityRow>(
-    `DELETE FROM activities WHERE id = $1 RETURNING ${SELECT_COLS}`,
-    [id],
-  );
-  return result.rows[0] ?? null;
+  const existing = await findActivityById(id);
+  if (!existing) return null;
+
+  await pool.query(`DELETE FROM activities WHERE id = $1`, [id]);
+  return existing;
 }

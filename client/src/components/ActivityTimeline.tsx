@@ -262,6 +262,15 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           {t('activities.dueDateLabel')}: {activity.due_date}
                         </p>
                       )}
+                      <p
+                        className="mt-1 text-xs text-gray-400"
+                        data-testid={`activity-meta-${activity.id}`}
+                      >
+                        {t('activities.meta', {
+                          author: activity.owner_name,
+                          timestamp: new Date(activity.created_at).toLocaleString(),
+                        })}
+                      </p>
                     </div>
 
                     {/* Actions */}

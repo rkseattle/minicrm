@@ -72,6 +72,7 @@ export const activityResponseSchema = z.object({
   account_id: z.string().uuid().nullable(),
   deal_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
+  owner_name: z.string(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });

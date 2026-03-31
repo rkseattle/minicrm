@@ -100,6 +100,7 @@ describe('createActivity', () => {
     expect(activity.notes).toBeNull();
     expect(activity.due_date).toBeNull();
     expect(activity.owner_id).toBe(ownerId);
+    expect(activity.owner_name).toBe(OWNER_USER.name);
     expect(activity.created_at).toBeInstanceOf(Date);
   });
 
@@ -192,6 +193,7 @@ describe('findActivityById', () => {
     expect(found).not.toBeNull();
     expect(found!.id).toBe(created.id);
     expect(found!.subject).toBe('Proposal sent');
+    expect(found!.owner_name).toBe(OWNER_USER.name);
   });
 
   it('returns null for a non-existent UUID', async () => {
@@ -227,6 +229,8 @@ describe('listActivities', () => {
     // Newest first
     expect(activities[0].subject).toBe('Second');
     expect(activities[1].subject).toBe('First');
+    // Each row includes owner_name
+    expect(activities[0].owner_name).toBe(OWNER_USER.name);
   });
 
   it('filters by contactId when provided', async () => {

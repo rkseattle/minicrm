@@ -273,7 +273,8 @@
     "typeCall": "Anruf",
     "typeEmail": "E-Mail",
     "typeMeeting": "Besprechung",
-    "typeTask": "Aufgabe"
+    "typeTask": "Aufgabe",
+    "meta": "{{author}} · {{timestamp}}"
   },
   "myTasks": {
     "pageTitle": "Meine Aufgaben",
