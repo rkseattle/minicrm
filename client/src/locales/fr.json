@@ -144,7 +144,9 @@
     "notFound": "Contact introuvable.",
     "backToContacts": "Retour aux contacts",
     "linkedDealsHeading": "Opportunités associées",
-    "linkedDealsEmpty": "Aucune opportunité associée à ce contact."
+    "linkedDealsEmpty": "Aucune opportunité associée à ce contact.",
+    "searchPlaceholder": "Rechercher par nom ou e-mail…",
+    "accountSearchPlaceholder": "Filtrer par nom de compte…"
   },
   "accounts": {
     "pageTitle": "Comptes",
@@ -183,7 +185,9 @@
     "notFound": "Compte introuvable.",
     "backToAccounts": "Retour aux comptes",
     "linkedContactsHeading": "Contacts associés",
-    "linkedContactsEmpty": "Aucun contact associé à ce compte."
+    "linkedContactsEmpty": "Aucun contact associé à ce compte.",
+    "searchPlaceholder": "Rechercher par nom d'entreprise…",
+    "industryFilterPlaceholder": "Filtrer par secteur…"
   },
   "deals": {
     "pageTitle": "Opportunités",

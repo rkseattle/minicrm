@@ -41,7 +41,11 @@ export async function createContactHandler(req: Request, res: Response): Promise
 
 /**
  * GET /api/contacts
- * Lists contacts. Pass ?owner=me to scope to the authenticated user's contacts.
+ * Lists contacts with optional filters:
+ *   ?owner=me          — scope to the authenticated user's contacts
+ *   ?account=<uuid>    — scope to a specific account UUID
+ *   ?search=<text>     — case-insensitive substring match on name/email
+ *   ?accountSearch=<text> — case-insensitive substring match on linked account name
  */
 export async function listContactsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
@@ -58,7 +62,17 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     accountId = parsed.data;
   }
 
-  const contacts = await listContacts({ ownerId, accountId });
+  const search =
+    typeof req.query.search === 'string' && req.query.search.trim().length > 0
+      ? req.query.search.trim()
+      : undefined;
+
+  const accountSearch =
+    typeof req.query.accountSearch === 'string' && req.query.accountSearch.trim().length > 0
+      ? req.query.accountSearch.trim()
+      : undefined;
+
+  const contacts = await listContacts({ ownerId, accountId, search, accountSearch });
   res.status(200).json({ contacts });
 }
 

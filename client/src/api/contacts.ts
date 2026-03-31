@@ -19,19 +19,31 @@ interface ContactSingleResponse {
   contact: ContactResponse;
 }
 
+/** Parameters for filtering the contacts list */
+export interface ListContactsParams {
+  /** When 'me', only the current user's contacts are returned */
+  owner?: 'me';
+  /** When provided, only contacts linked to this account UUID are returned */
+  accountId?: string;
+  /** Case-insensitive substring match on first name, last name, or email */
+  search?: string;
+  /** Case-insensitive substring match on the linked account name */
+  accountSearch?: string;
+}
+
 /**
- * Returns all contacts. Pass owner='me' to scope to the current user,
- * or accountId to scope to contacts linked to a specific account.
+ * Returns all contacts with optional filtering.
  *
- * @param owner - When 'me', only the current user's contacts are returned
- * @param accountId - When provided, only contacts linked to this account are returned
+ * @param params - Optional filter parameters
  */
-export async function listContacts(owner?: 'me', accountId?: string): Promise<ContactsResponse> {
-  const params: Record<string, string> = {};
-  if (owner) params.owner = owner;
-  if (accountId) params.account = accountId;
+export async function listContacts(params: ListContactsParams = {}): Promise<ContactsResponse> {
+  const queryParams: Record<string, string> = {};
+  if (params.owner) queryParams.owner = params.owner;
+  if (params.accountId) queryParams.account = params.accountId;
+  if (params.search) queryParams.search = params.search;
+  if (params.accountSearch) queryParams.accountSearch = params.accountSearch;
   const response = await apiClient.get<ContactsResponse>('/contacts', {
-    params: Object.keys(params).length > 0 ? params : undefined,
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });
   return response.data;
 }

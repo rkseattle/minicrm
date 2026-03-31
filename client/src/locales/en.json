@@ -144,7 +144,9 @@
     "notFound": "Contact not found.",
     "backToContacts": "Back to contacts",
     "linkedDealsHeading": "Linked Deals",
-    "linkedDealsEmpty": "No deals linked to this contact."
+    "linkedDealsEmpty": "No deals linked to this contact.",
+    "searchPlaceholder": "Search by name or email…",
+    "accountSearchPlaceholder": "Filter by account name…"
   },
   "accounts": {
     "pageTitle": "Accounts",
@@ -183,7 +185,9 @@
     "notFound": "Account not found.",
     "backToAccounts": "Back to accounts",
     "linkedContactsHeading": "Linked Contacts",
-    "linkedContactsEmpty": "No contacts linked to this account."
+    "linkedContactsEmpty": "No contacts linked to this account.",
+    "searchPlaceholder": "Search by company name…",
+    "industryFilterPlaceholder": "Filter by industry…"
   },
   "deals": {
     "pageTitle": "Deals",

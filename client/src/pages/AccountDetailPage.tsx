@@ -42,7 +42,7 @@ export default function AccountDetailPage() {
 
   const { data: linkedContactsData, isLoading: linkedContactsLoading } = useQuery({
     queryKey: linkedContactsQueryKey,
-    queryFn: () => listContacts(undefined, id!),
+    queryFn: () => listContacts({ accountId: id! }),
     enabled: Boolean(id),
   });
 

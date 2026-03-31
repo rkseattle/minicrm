@@ -13,6 +13,7 @@ import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
+import { Input } from '@/components/ui/Input.js';
 import { listContacts, createContact } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -20,6 +21,7 @@ import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+import { useDebounce } from '@/hooks/useDebounce.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
@@ -36,13 +38,29 @@ export default function ContactsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [accountSearchInput, setAccountSearchInput] = useState('');
 
-  const contactsQueryKey =
-    ownerFilter === 'me' ? ([...CONTACTS_QUERY_KEY, { owner: 'me' }] as const) : CONTACTS_QUERY_KEY;
+  const debouncedSearch = useDebounce(searchInput);
+  const debouncedAccountSearch = useDebounce(accountSearchInput);
+
+  const contactsQueryKey = [
+    ...CONTACTS_QUERY_KEY,
+    {
+      owner: ownerFilter === 'me' ? 'me' : undefined,
+      search: debouncedSearch || undefined,
+      accountSearch: debouncedAccountSearch || undefined,
+    },
+  ] as const;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: contactsQueryKey,
-    queryFn: () => listContacts(ownerFilter === 'me' ? 'me' : undefined),
+    queryFn: () =>
+      listContacts({
+        owner: ownerFilter === 'me' ? 'me' : undefined,
+        search: debouncedSearch || undefined,
+        accountSearch: debouncedAccountSearch || undefined,
+      }),
   });
 
   const { data: accountsData } = useQuery({
@@ -119,8 +137,26 @@ export default function ContactsPage() {
           </section>
         )}
 
-        {/* Owner filter */}
-        <div className="mb-4 flex items-center gap-3">
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Input
+            id="contacts-search"
+            data-testid="contacts-search"
+            type="search"
+            placeholder={t('contacts.searchPlaceholder')}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-56"
+          />
+          <Input
+            id="contacts-account-search"
+            data-testid="contacts-account-search"
+            type="search"
+            placeholder={t('contacts.accountSearchPlaceholder')}
+            value={accountSearchInput}
+            onChange={(e) => setAccountSearchInput(e.target.value)}
+            className="w-56"
+          />
           <Select
             id="contacts-owner-filter"
             data-testid="contacts-owner-filter"

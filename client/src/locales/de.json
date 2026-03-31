@@ -144,7 +144,9 @@
     "notFound": "Kontakt nicht gefunden.",
     "backToContacts": "Zurück zu Kontakten",
     "linkedDealsHeading": "Verknüpfte Geschäfte",
-    "linkedDealsEmpty": "Keine Geschäfte mit diesem Kontakt verknüpft."
+    "linkedDealsEmpty": "Keine Geschäfte mit diesem Kontakt verknüpft.",
+    "searchPlaceholder": "Nach Name oder E-Mail suchen…",
+    "accountSearchPlaceholder": "Nach Kontoname filtern…"
   },
   "accounts": {
     "pageTitle": "Konten",
@@ -183,7 +185,9 @@
     "notFound": "Konto nicht gefunden.",
     "backToAccounts": "Zurück zu Konten",
     "linkedContactsHeading": "Verknüpfte Kontakte",
-    "linkedContactsEmpty": "Keine Kontakte mit diesem Konto verknüpft."
+    "linkedContactsEmpty": "Keine Kontakte mit diesem Konto verknüpft.",
+    "searchPlaceholder": "Nach Firmenname suchen…",
+    "industryFilterPlaceholder": "Nach Branche filtern…"
   },
   "deals": {
     "pageTitle": "Geschäfte",

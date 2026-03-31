@@ -138,6 +138,66 @@ describe('AccountsPage', () => {
     });
   });
 
+  it('renders the account name search input', async () => {
+    renderWithProviders(<AccountsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('accounts-search')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the industry filter input', async () => {
+    renderWithProviders(<AccountsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('accounts-industry-filter')).toBeInTheDocument();
+    });
+  });
+
+  it('passes the search param to the API when the search input changes', async () => {
+    let capturedSearch: string | null = null;
+    server.use(
+      http.get('/api/accounts', ({ request }) => {
+        capturedSearch = new URL(request.url).searchParams.get('search');
+        return HttpResponse.json({ accounts: [] });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderWithProviders(<AccountsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accounts-search')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('accounts-search'), 'acme');
+
+    await waitFor(() => {
+      expect(capturedSearch).toBe('acme');
+    });
+  });
+
+  it('passes the industry param to the API when the industry input changes', async () => {
+    let capturedIndustry: string | null = null;
+    server.use(
+      http.get('/api/accounts', ({ request }) => {
+        capturedIndustry = new URL(request.url).searchParams.get('industry');
+        return HttpResponse.json({ accounts: [] });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderWithProviders(<AccountsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accounts-industry-filter')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('accounts-industry-filter'), 'Technology');
+
+    await waitFor(() => {
+      expect(capturedIndustry).toBe('Technology');
+    });
+  });
+
   it('submits the create form and hides it on success', async () => {
     const user = userEvent.setup();
     renderWithProviders(<AccountsPage />);

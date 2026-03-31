@@ -36,6 +36,16 @@ export interface AccountRow {
 interface ListAccountsOptions {
   /** When provided, only accounts with this owner_id are returned */
   ownerId?: string;
+  /**
+   * When provided, accounts are filtered by a case-insensitive substring match
+   * on the account name.
+   */
+  search?: string;
+  /**
+   * When provided, only accounts with an exactly matching industry value are
+   * returned (case-insensitive).
+   */
+  industry?: string;
 }
 
 /**
@@ -79,21 +89,37 @@ export async function findAccountById(id: string): Promise<AccountRow | null> {
 }
 
 /**
- * Returns all accounts, optionally scoped to a single owner.
+ * Returns all accounts, optionally filtered by owner, name search, or industry.
  *
- * @param options - Optional filter; ownerId restricts results to that owner
+ * @param options - Optional filters; all provided filters are combined with AND
  * @returns Array of account rows ordered by created_at ascending
  */
 export async function listAccounts(options: ListAccountsOptions = {}): Promise<AccountRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
   if (options.ownerId) {
-    const result = await pool.query<AccountRow>(
-      'SELECT * FROM accounts WHERE owner_id = $1 ORDER BY created_at ASC',
-      [options.ownerId],
-    );
-    return result.rows;
+    values.push(options.ownerId);
+    conditions.push(`owner_id = $${values.length}`);
   }
 
-  const result = await pool.query<AccountRow>('SELECT * FROM accounts ORDER BY created_at ASC');
+  if (options.search) {
+    values.push(`%${options.search}%`);
+    conditions.push(`name ILIKE $${values.length}`);
+  }
+
+  if (options.industry) {
+    values.push(options.industry);
+    conditions.push(`industry ILIKE $${values.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query<AccountRow>(
+    `SELECT * FROM accounts ${whereClause} ORDER BY created_at ASC`,
+    values,
+  );
+
   return result.rows;
 }
 
