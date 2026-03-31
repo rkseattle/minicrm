@@ -32,8 +32,8 @@ export default function AdminSettingsPage() {
 
   // pendingLanguage tracks user selection before saving; null means "use the server value"
   const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
 
   const selectedLanguage: SupportedLocale = pendingLanguage ?? data?.language ?? 'en';
 
@@ -45,12 +45,12 @@ export default function AdminSettingsPage() {
       queryClient.setQueryData(DEFAULT_LANGUAGE_QUERY_KEY, savedLanguage);
       void queryClient.invalidateQueries({ queryKey: DEFAULT_LANGUAGE_QUERY_KEY });
       setPendingLanguage(null);
-      setSuccessMessage(t('settings.saveSuccess'));
-      setErrorMessage(null);
+      setShowSuccess(true);
+      setShowError(false);
     },
     onError: () => {
-      setErrorMessage(t('settings.saveError'));
-      setSuccessMessage(null);
+      setShowError(true);
+      setShowSuccess(false);
     },
   });
 
@@ -61,8 +61,8 @@ export default function AdminSettingsPage() {
    */
   function handleSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
-    setSuccessMessage(null);
-    setErrorMessage(null);
+    setShowSuccess(false);
+    setShowError(false);
     mutation.mutate(selectedLanguage);
   }
 
@@ -116,15 +116,15 @@ export default function AdminSettingsPage() {
               </Select>
             </div>
 
-            {successMessage && (
+            {showSuccess && (
               <p role="status" className="text-sm text-green-700" data-testid="settings-success">
-                {successMessage}
+                {t('settings.saveSuccess')}
               </p>
             )}
 
-            {errorMessage && (
+            {showError && (
               <p role="alert" className="text-sm text-red-600" data-testid="settings-error">
-                {errorMessage}
+                {t('settings.saveError')}
               </p>
             )}
 

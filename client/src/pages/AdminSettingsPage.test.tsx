@@ -4,10 +4,11 @@
  * validation rejection (400), success/error feedback.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import i18n from 'i18next';
 import AdminSettingsPage from './AdminSettingsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
@@ -152,6 +153,40 @@ describe('AdminSettingsPage', () => {
         expect(screen.getByTestId('settings-error')).toBeInTheDocument();
       });
       expect(screen.queryByTestId('settings-success')).not.toBeInTheDocument();
+    });
+
+    it('success message re-translates when the active language changes', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('default-language-select')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('default-language-select'), 'fr');
+      await user.click(screen.getByTestId('settings-save'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('settings-success')).toBeInTheDocument();
+      });
+
+      // Verify the message is in English before switching
+      expect(screen.getByTestId('settings-success')).toHaveTextContent('Default language updated.');
+
+      // Switch the active language to French
+      await act(async () => {
+        await i18n.changeLanguage('fr');
+      });
+
+      // The success message should now reflect the French translation
+      expect(screen.getByTestId('settings-success')).toHaveTextContent(
+        'Langue par défaut mise à jour.',
+      );
+    });
+
+    afterEach(async () => {
+      // Reset language to English after any test that may change it
+      await i18n.changeLanguage('en');
     });
 
     it('disables the save button while the mutation is pending', async () => {
