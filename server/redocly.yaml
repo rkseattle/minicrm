@@ -1,0 +1,16 @@
+# Redocly CLI configuration for MiniCRM API spec validation.
+# Run via: npm run lint:api --workspace=minicrm-server
+
+apis:
+  main:
+    root: ./openapi.json
+
+rules:
+  # operationId is useful but not required for a valid spec — turn off until IDs are added
+  operation-operationId: off
+  # Public endpoints (logout, GET /settings/default-language) have no 4xx by design
+  operation-4xx-response: off
+  # The localhost server URL is intentional for local dev
+  no-server-example.com: off
+  # License is not required for an internal API
+  info-license: off

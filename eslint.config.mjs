@@ -10,6 +10,7 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import nodePlugin from 'eslint-plugin-n';
+import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 
 /** Files covered by TypeScript rules */
@@ -82,6 +83,36 @@ const serverConfig = {
   },
 };
 
+// ── Route files — require @openapi JSDoc on every route handler ───────────────
+// Uses eslint-plugin-jsdoc to enforce that each router.get/post/patch/delete
+// call site has a preceding JSDoc block containing an @openapi tag.
+const routeJsdocConfig = {
+  files: ['server/src/routes/**/*.ts'],
+  plugins: {
+    jsdoc: jsdocPlugin,
+  },
+  rules: {
+    'jsdoc/require-jsdoc': [
+      'error',
+      {
+        // Require JSDoc on function expressions passed as arguments (route handlers)
+        require: {
+          FunctionExpression: true,
+          ArrowFunctionExpression: true,
+        },
+        // Also require JSDoc on the router.* call expression itself via checkConstructors
+        contexts: [
+          // Match the arrow-function callback in router.get('/', ..., asyncHandler(...))
+          'ExpressionStatement > CallExpression[callee.property.name=/^(get|post|patch|delete|put)$/] > ArrowFunctionExpression',
+        ],
+        enableFixer: false,
+      },
+    ],
+    // Ensure every JSDoc block on a route has an @openapi tag
+    'jsdoc/check-tag-names': ['error', { definedTags: ['openapi'] }],
+  },
+};
+
 // ── Test files (devDependency imports are valid) ───────────────────────────────
 const testConfig = {
   files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
@@ -95,6 +126,7 @@ export default [
   baseConfig,
   clientConfig,
   serverConfig,
+  routeJsdocConfig,
   testConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,
