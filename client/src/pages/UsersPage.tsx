@@ -377,7 +377,7 @@ export default function UsersPage() {
 
         {/* Users table */}
         {!isLoading && !isError && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
             {users.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="text-sm text-gray-400">{t('users.empty')}</p>
@@ -386,7 +386,7 @@ export default function UsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tl-lg">
                       {t('users.columnName')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -398,7 +398,7 @@ export default function UsersPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('users.columnStatus')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tr-lg">
                       {t('users.columnActions')}
                     </th>
                   </tr>
