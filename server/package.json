@@ -10,7 +10,8 @@
     "migrate": "node-pg-migrate -m ../db/migrations up",
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "typecheck": "tsc --noEmit",
-    "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand"
+    "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand",
+    "test:coverage": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand --coverage"
   },
   "dependencies": {
     "@minicrm/shared": "*",
@@ -68,6 +69,17 @@
       "^(\\.{1,2}/.*)\\.js$": "$1",
       "^@minicrm/shared/schemas/(.*)\\.js$": "<rootDir>/../shared/schemas/$1",
       "^@minicrm/shared/schemas/(.*)$": "<rootDir>/../shared/schemas/$1"
+    },
+    "collectCoverageFrom": [
+      "src/services/**/*.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 80,
+        "statements": 80
+      }
     }
   }
 }

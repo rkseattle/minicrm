@@ -121,6 +121,41 @@ describe('createContact', () => {
   });
 });
 
+// ── DB constraints ─────────────────────────────────────────────────────────────
+
+describe('DB constraints — contacts', () => {
+  it('rejects a contact with a null first_name (NOT NULL)', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO contacts (first_name, last_name, email, owner_id)
+         VALUES (NULL, 'Smith', 'null-fn@example.com', $1)`,
+        [ownerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a contact with a null last_name (NOT NULL)', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO contacts (first_name, last_name, email, owner_id)
+         VALUES ('Alice', NULL, 'null-ln@example.com', $1)`,
+        [ownerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a contact whose account_id references a non-existent account (FK)', async () => {
+    await expect(
+      createContact({
+        ...BASE_CONTACT,
+        email: 'bad-fk@example.com',
+        account_id: '00000000-0000-0000-0000-000000000000',
+        owner_id: ownerId,
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 // ── findContactById ─────────────────────────────────────────────────────────────
 
 describe('findContactById', () => {

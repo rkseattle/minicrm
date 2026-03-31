@@ -115,6 +115,37 @@ describe('createDeal', () => {
   });
 });
 
+// ── DB constraints ─────────────────────────────────────────────────────────────
+
+describe('DB constraints — deals', () => {
+  it('rejects a deal with a null name (NOT NULL)', async () => {
+    await expect(
+      pool.query(`INSERT INTO deals (name, stage, owner_id) VALUES (NULL, 'Prospecting', $1)`, [
+        ownerId,
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a deal with an invalid stage value', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO deals (name, stage, owner_id) VALUES ('Bad Stage Deal', 'NotAStage', $1)`,
+        [ownerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('rejects a deal whose account_id references a non-existent account (FK)', async () => {
+    await expect(
+      createDeal({
+        ...BASE_DEAL,
+        account_id: '00000000-0000-0000-0000-000000000000',
+        owner_id: ownerId,
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 // ── findDealById ────────────────────────────────────────────────────────────────
 
 describe('findDealById', () => {
