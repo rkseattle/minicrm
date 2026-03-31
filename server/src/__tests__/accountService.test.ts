@@ -191,6 +191,25 @@ describe('listAccounts — industry filter', () => {
     expect(results[0].name).toBe('Tech Co');
   });
 
+  it('returns accounts matching a partial industry substring', async () => {
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Tech Co',
+      industry: 'Technology',
+      owner_id: ownerId,
+    });
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Finance Co',
+      industry: 'Finance',
+      owner_id: ownerId,
+    });
+
+    const results = await listAccounts({ industry: 'tech' });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Tech Co');
+  });
+
   it('returns empty array when industry matches nothing', async () => {
     await createAccount({ ...BASE_ACCOUNT, industry: 'Technology', owner_id: ownerId });
     const results = await listAccounts({ industry: 'zzznomatch' });

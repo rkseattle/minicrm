@@ -126,7 +126,7 @@ export async function listContacts(options: ListContactsOptions = {}): Promise<C
     );
   }
 
-  const needsAccountJoin = options.accountSearch !== undefined;
+  const needsAccountJoin = Boolean(options.accountSearch);
 
   if (options.accountSearch) {
     const pattern = `%${options.accountSearch}%`;

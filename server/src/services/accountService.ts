@@ -42,8 +42,8 @@ interface ListAccountsOptions {
    */
   search?: string;
   /**
-   * When provided, only accounts with an exactly matching industry value are
-   * returned (case-insensitive).
+   * When provided, only accounts whose industry contains this string
+   * (case-insensitive substring match) are returned.
    */
   industry?: string;
 }
@@ -109,7 +109,7 @@ export async function listAccounts(options: ListAccountsOptions = {}): Promise<A
   }
 
   if (options.industry) {
-    values.push(options.industry);
+    values.push(`%${options.industry}%`);
     conditions.push(`industry ILIKE $${values.length}`);
   }
 
