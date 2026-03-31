@@ -581,9 +581,10 @@ const swaggerOptions: swaggerJsdoc.Options = {
 
 Request and response bodies use \`snake_case\` field names throughout the API (e.g., \`first_name\`, \`owner_id\`, \`close_date\`).
 
-**Exception:** The auth endpoints use \`camelCase\` for three fields:
+**Exception:** The following fields use \`camelCase\` rather than \`snake_case\`:
 - \`POST /api/auth/login\` response: \`mustChangePassword\`
 - \`POST /api/auth/change-password\` request: \`currentPassword\`, \`newPassword\`
+- \`POST /api/users/invite\` response: \`inviteToken\`, \`setPasswordPath\`
 
 These are intentional exceptions and will not be changed to snake_case.
 

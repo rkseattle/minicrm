@@ -56,25 +56,26 @@ const router = Router();
  *             example:
  *               message: Password set successfully
  *       400:
- *         description: Validation error or password does not meet complexity requirements
+ *         description: >
+ *           Validation error, password does not meet complexity requirements,
+ *           or invite token is missing, malformed, or expired (returns AUTH_INVALID_TOKEN)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: VALIDATION_ERROR
- *                 message: Password must be at least 8 characters
- *       401:
- *         description: Invalid or expired invite token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Invite token is invalid or has expired
+ *             examples:
+ *               validationError:
+ *                 summary: Password too weak
+ *                 value:
+ *                   error:
+ *                     code: VALIDATION_ERROR
+ *                     message: Password must be at least 8 characters
+ *               invalidToken:
+ *                 summary: Invalid or expired invite token
+ *                 value:
+ *                   error:
+ *                     code: AUTH_INVALID_TOKEN
+ *                     message: Invite token is invalid or has expired
  */
 router.post('/set-password', asyncHandler(setPassword));
 
@@ -334,7 +335,14 @@ router.get('/', asyncHandler(listUsers));
  *                   $ref: '#/components/schemas/User'
  *                 inviteToken:
  *                   type: string
- *                   description: JWT invite token to send to the user
+ *                   description: >
+ *                     JWT invite token to send to the user. Intentional camelCase
+ *                     exception — all other response fields use snake_case.
+ *                 setPasswordPath:
+ *                   type: string
+ *                   description: >
+ *                     Convenience path for constructing the set-password URL
+ *                     (e.g. /set-password?token=<inviteToken>). Intentional camelCase exception.
  *             example:
  *               user:
  *                 id: u1b2c3d4-0000-0000-0000-000000000001
@@ -346,16 +354,27 @@ router.get('/', asyncHandler(listUsers));
  *                 preferred_language: null
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *               inviteToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *               setPasswordPath: /set-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       400:
- *         description: Validation error or email already in use
+ *         description: Validation error (missing or invalid fields)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               error:
- *                 code: CONFLICT
- *                 message: A user with this email already exists
+ *                 code: VALIDATION_ERROR
+ *                 message: Email is required
+ *       409:
+ *         description: A user with that email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: USER_EMAIL_CONFLICT
+ *                 message: A user with that email already exists
  *       401:
  *         description: Not authenticated
  *         content:
@@ -642,17 +661,24 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
  *             password: TempPass123
  *     responses:
  *       200:
- *         description: Password set successfully
+ *         description: Password set and must_change_password flag enabled
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: Password updated successfully
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *             example:
- *               message: Password updated successfully
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: rep
+ *                 status: active
+ *                 must_change_password: true
+ *                 preferred_language: en
+ *                 created_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error or password does not meet complexity requirements
  *         content:
