@@ -44,6 +44,7 @@
     "statusInactive": "Inaktiv",
     "actionDeactivate": "Deaktivieren",
     "actionReactivate": "Reaktivieren",
+    "actionsMenuLabel": "Aktionen für {{name}}",
     "actionMakeAdmin": "Zum Administrator machen",
     "actionMakeRep": "Zum Vertreter machen",
     "inviteSuccess": "Benutzer eingeladen. Teilen Sie den Passwort-Setzen-Link mit ihm.",

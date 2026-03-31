@@ -44,6 +44,7 @@
     "statusInactive": "未激活",
     "actionDeactivate": "停用",
     "actionReactivate": "重新激活",
+    "actionsMenuLabel": "{{name}} 的操作",
     "actionMakeAdmin": "设为管理员",
     "actionMakeRep": "设为销售代表",
     "inviteSuccess": "用户已邀请。请将设置密码链接分享给他们。",

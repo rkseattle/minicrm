@@ -133,15 +133,6 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
-          {user && (
-            <NavLink
-              to="/settings/profile"
-              className={navLinkClass}
-              data-testid="nav-profile-settings"
-            >
-              {t('nav.profileSettings')}
-            </NavLink>
-          )}
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
           <select
             aria-label={t('nav.languageSelector')}

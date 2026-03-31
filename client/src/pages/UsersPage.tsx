@@ -4,7 +4,7 @@
  * change roles, and deactivate/reactivate accounts.
  */
 
-import { useState, Fragment } from 'react';
+import { useState, Fragment, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Badge } from '@/components/ui/Badge.js';
+import { UserActionsMenu } from '@/components/ui/UserActionsMenu.js';
 import {
   listUsers,
   inviteUser,
@@ -313,6 +314,17 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
 
   const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
+  const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+
+  /**
+   * Toggles the action menu for the given user.
+   * Closes the currently open menu if a different one is opened.
+   *
+   * @param id - The user ID whose menu to toggle.
+   */
+  const handleMenuToggle = useCallback((id: string): void => {
+    setOpenMenuUserId((current) => (current === id ? null : id));
+  }, []);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: USERS_QUERY_KEY,
@@ -365,7 +377,7 @@ export default function UsersPage() {
 
         {/* Users table */}
         {!isLoading && !isError && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
             {users.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="text-sm text-gray-400">{t('users.empty')}</p>
@@ -374,7 +386,7 @@ export default function UsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tl-lg">
                       {t('users.columnName')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -386,7 +398,7 @@ export default function UsersPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('users.columnStatus')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tr-lg">
                       {t('users.columnActions')}
                     </th>
                   </tr>
@@ -410,71 +422,22 @@ export default function UsersPage() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {user.role === 'rep' ? (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`make-admin-${user.id}`}
-                                onClick={() => roleMutation.mutate({ id: user.id, role: 'admin' })}
-                                disabled={roleMutation.isPending}
-                              >
-                                {t('users.actionMakeAdmin')}
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`make-rep-${user.id}`}
-                                onClick={() => roleMutation.mutate({ id: user.id, role: 'rep' })}
-                                disabled={roleMutation.isPending}
-                              >
-                                {t('users.actionMakeRep')}
-                              </Button>
-                            )}
-
-                            {user.status !== 'inactive' && (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`set-password-toggle-${user.id}`}
-                                onClick={() =>
-                                  setSetPasswordUserId(
-                                    setPasswordUserId === user.id ? null : user.id,
-                                  )
-                                }
-                              >
-                                {t('users.actionSetPassword')}
-                              </Button>
-                            )}
-
-                            {user.status === 'inactive' ? (
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                data-testid={`reactivate-${user.id}`}
-                                onClick={() => reactivateMutation.mutate(user.id)}
-                                disabled={reactivateMutation.isPending}
-                              >
-                                {t('users.actionReactivate')}
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="danger"
-                                size="sm"
-                                data-testid={`deactivate-${user.id}`}
-                                onClick={() => deactivateMutation.mutate(user.id)}
-                                disabled={deactivateMutation.isPending}
-                              >
-                                {t('users.actionDeactivate')}
-                              </Button>
-                            )}
-                          </div>
+                          <UserActionsMenu
+                            user={user}
+                            isPending={
+                              roleMutation.isPending ||
+                              deactivateMutation.isPending ||
+                              reactivateMutation.isPending
+                            }
+                            isOpen={openMenuUserId === user.id}
+                            onToggle={handleMenuToggle}
+                            onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                            onSetPassword={(id) =>
+                              setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                            }
+                            onDeactivate={(id) => deactivateMutation.mutate(id)}
+                            onReactivate={(id) => reactivateMutation.mutate(id)}
+                          />
                         </td>
                       </tr>
                       {setPasswordUserId === user.id && (
