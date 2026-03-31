@@ -44,6 +44,7 @@
     "statusInactive": "Inactif",
     "actionDeactivate": "Désactiver",
     "actionReactivate": "Réactiver",
+    "actionsMenuLabel": "Actions pour {{name}}",
     "actionMakeAdmin": "Rendre administrateur",
     "actionMakeRep": "Rendre représentant",
     "inviteSuccess": "Utilisateur invité. Partagez le lien de définition du mot de passe.",

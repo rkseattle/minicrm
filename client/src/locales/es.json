@@ -44,6 +44,7 @@
     "statusInactive": "Inactivo",
     "actionDeactivate": "Desactivar",
     "actionReactivate": "Reactivar",
+    "actionsMenuLabel": "Acciones para {{name}}",
     "actionMakeAdmin": "Hacer administrador",
     "actionMakeRep": "Hacer representante",
     "inviteSuccess": "Usuario invitado. Comparte el enlace de configuración de contraseña.",

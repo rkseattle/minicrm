@@ -1,5 +1,5 @@
 /**
- * Hook that calls a handler when a click or touch event occurs outside the given element.
+ * Hook that calls a handler when a mousedown event occurs outside the given element.
  */
 
 import { useEffect } from 'react';

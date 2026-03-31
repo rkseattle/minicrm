@@ -75,8 +75,9 @@ export function UserActionsMenu({
         data-testid={`user-actions-${user.id}`}
         disabled={isPending}
         onClick={() => onToggle(user.id)}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label={t('users.actionsMenuLabel', { name: user.name })}
       >
         ⋯
       </Button>
@@ -85,6 +86,12 @@ export function UserActionsMenu({
         <div
           className="absolute right-0 z-50 mt-1 w-44 rounded-md bg-white shadow-md border border-gray-200 divide-y divide-gray-100"
           role="menu"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              onToggle(user.id);
+            }
+          }}
         >
           {/* Non-destructive actions */}
           <div className="py-1">

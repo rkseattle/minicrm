@@ -44,6 +44,7 @@
     "statusInactive": "Inactive",
     "actionDeactivate": "Deactivate",
     "actionReactivate": "Reactivate",
+    "actionsMenuLabel": "Actions for {{name}}",
     "actionMakeAdmin": "Make admin",
     "actionMakeRep": "Make rep",
     "inviteSuccess": "User invited. Share the set-password link with them.",
