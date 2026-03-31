@@ -26,6 +26,7 @@ const router = Router();
  * /api/users/set-password:
  *   post:
  *     tags: [Users]
+ *     operationId: setPassword
  *     summary: Activate an invited account by setting a password
  *     description: >
  *       Used by invited users to activate their account. Accepts the invite JWT
@@ -38,6 +39,9 @@ const router = Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/SetPasswordRequest'
+ *           example:
+ *             token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *             password: MySecurePass1
  *     responses:
  *       200:
  *         description: Password set successfully; account is now active
@@ -49,18 +53,29 @@ const router = Router();
  *                 message:
  *                   type: string
  *                   example: Password set successfully
+ *             example:
+ *               message: Password set successfully
  *       400:
- *         description: Validation error or password does not meet complexity requirements
+ *         description: >
+ *           Validation error, password does not meet complexity requirements,
+ *           or invite token is missing, malformed, or expired (returns AUTH_INVALID_TOKEN)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *       401:
- *         description: Invalid or expired invite token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               validationError:
+ *                 summary: Password too weak
+ *                 value:
+ *                   error:
+ *                     code: VALIDATION_ERROR
+ *                     message: Password must be at least 8 characters
+ *               invalidToken:
+ *                 summary: Invalid or expired invite token
+ *                 value:
+ *                   error:
+ *                     code: AUTH_INVALID_TOKEN
+ *                     message: Invite token is invalid or has expired
  */
 router.post('/set-password', asyncHandler(setPassword));
 
@@ -69,6 +84,7 @@ router.post('/set-password', asyncHandler(setPassword));
  * /api/users/active:
  *   get:
  *     tags: [Users]
+ *     operationId: listActiveUsers
  *     summary: List all active users
  *     description: >
  *       Returns all users with status 'active'. Used to populate owner-assignment
@@ -87,12 +103,36 @@ router.post('/set-password', asyncHandler(setPassword));
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/User'
+ *             example:
+ *               users:
+ *                 - id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   email: jane.smith@acme.com
+ *                   name: Jane Smith
+ *                   role: rep
+ *                   status: active
+ *                   must_change_password: false
+ *                   preferred_language: en
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *       400:
+ *         description: Invalid query parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Invalid query parameter
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
 
@@ -101,6 +141,7 @@ router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
  * /api/users/me/language:
  *   get:
  *     tags: [Users]
+ *     operationId: getMyLanguage
  *     summary: Get the authenticated user's language preference
  *     description: >
  *       Returns the user's stored preferred language, or null if none is set
@@ -119,12 +160,18 @@ router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
  *                   type: string
  *                   enum: [en, zh-Hans, es, fr, de]
  *                   nullable: true
+ *             example:
+ *               language: en
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
 
@@ -133,6 +180,7 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
  * /api/users/me/language:
  *   patch:
  *     tags: [Users]
+ *     operationId: setMyLanguage
  *     summary: Set the authenticated user's language preference
  *     description: >
  *       Persists the user's preferred language. Pass null to clear the preference
@@ -145,6 +193,8 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateLanguageRequest'
+ *           example:
+ *             language: fr
  *     responses:
  *       200:
  *         description: Language preference updated
@@ -157,18 +207,28 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
  *                   type: string
  *                   enum: [en, zh-Hans, es, fr, de]
  *                   nullable: true
+ *             example:
+ *               language: fr
  *       400:
  *         description: Invalid language value
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: language must be one of en, zh-Hans, es, fr, de
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage));
 
@@ -180,6 +240,7 @@ router.use(authenticate, requireRole('admin'));
  * /api/users:
  *   get:
  *     tags: [Users]
+ *     operationId: listUsers
  *     summary: List all users (admin only)
  *     description: Returns all users regardless of status. Requires admin role.
  *     security:
@@ -196,18 +257,46 @@ router.use(authenticate, requireRole('admin'));
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/User'
+ *             example:
+ *               users:
+ *                 - id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   email: jane.smith@acme.com
+ *                   name: Jane Smith
+ *                   role: rep
+ *                   status: active
+ *                   must_change_password: false
+ *                   preferred_language: en
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *       400:
+ *         description: Invalid query parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Invalid query parameter
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  */
 router.get('/', asyncHandler(listUsers));
 
@@ -216,6 +305,7 @@ router.get('/', asyncHandler(listUsers));
  * /api/users/invite:
  *   post:
  *     tags: [Users]
+ *     operationId: inviteUser
  *     summary: Invite a new user (admin only)
  *     description: >
  *       Creates a user with status 'invited' and returns an invite token. The
@@ -229,6 +319,10 @@ router.get('/', asyncHandler(listUsers));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/InviteUserRequest'
+ *           example:
+ *             email: jane.smith@acme.com
+ *             name: Jane Smith
+ *             role: rep
  *     responses:
  *       201:
  *         description: User invited successfully
@@ -241,25 +335,66 @@ router.get('/', asyncHandler(listUsers));
  *                   $ref: '#/components/schemas/User'
  *                 inviteToken:
  *                   type: string
- *                   description: JWT invite token to send to the user
+ *                   description: >
+ *                     JWT invite token to send to the user. Intentional camelCase
+ *                     exception — all other response fields use snake_case.
+ *                 setPasswordPath:
+ *                   type: string
+ *                   description: >
+ *                     Convenience path for constructing the set-password URL
+ *                     (e.g. /set-password?token=<inviteToken>). Intentional camelCase exception.
+ *             example:
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: rep
+ *                 status: invited
+ *                 must_change_password: true
+ *                 preferred_language: null
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *               inviteToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *               setPasswordPath: /set-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       400:
- *         description: Validation error or email already in use
+ *         description: Validation error (missing or invalid fields)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Email is required
+ *       409:
+ *         description: A user with that email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: USER_EMAIL_CONFLICT
+ *                 message: A user with that email already exists
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  */
 router.post('/invite', asyncHandler(inviteUser));
 
@@ -268,6 +403,7 @@ router.post('/invite', asyncHandler(inviteUser));
  * /api/users/{id}/role:
  *   patch:
  *     tags: [Users]
+ *     operationId: updateUserRole
  *     summary: Change a user's role (admin only)
  *     description: Updates the role of the specified user. Requires admin role.
  *     security:
@@ -286,6 +422,8 @@ router.post('/invite', asyncHandler(inviteUser));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateRoleRequest'
+ *           example:
+ *             role: admin
  *     responses:
  *       200:
  *         description: Role updated
@@ -296,30 +434,56 @@ router.post('/invite', asyncHandler(inviteUser));
  *               properties:
  *                 user:
  *                   $ref: '#/components/schemas/User'
+ *             example:
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: admin
+ *                 status: active
+ *                 must_change_password: false
+ *                 preferred_language: en
+ *                 created_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: role must be admin or rep
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  *       404:
  *         description: User not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: User not found
  */
 router.patch('/:id/role', asyncHandler(updateUserRole));
 
@@ -328,6 +492,7 @@ router.patch('/:id/role', asyncHandler(updateUserRole));
  * /api/users/{id}/deactivate:
  *   patch:
  *     tags: [Users]
+ *     operationId: deactivateUser
  *     summary: Deactivate a user (admin only)
  *     description: >
  *       Sets the user's status to 'inactive'. Deactivated users cannot log in but
@@ -352,24 +517,46 @@ router.patch('/:id/role', asyncHandler(updateUserRole));
  *               properties:
  *                 user:
  *                   $ref: '#/components/schemas/User'
+ *             example:
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: rep
+ *                 status: inactive
+ *                 must_change_password: false
+ *                 preferred_language: en
+ *                 created_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  *       404:
  *         description: User not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: User not found
  */
 router.patch('/:id/deactivate', asyncHandler(deactivateUser));
 
@@ -378,6 +565,7 @@ router.patch('/:id/deactivate', asyncHandler(deactivateUser));
  * /api/users/{id}/reactivate:
  *   patch:
  *     tags: [Users]
+ *     operationId: reactivateUser
  *     summary: Reactivate a deactivated user (admin only)
  *     description: Sets the user's status back to 'active'. Requires admin role.
  *     security:
@@ -400,24 +588,46 @@ router.patch('/:id/deactivate', asyncHandler(deactivateUser));
  *               properties:
  *                 user:
  *                   $ref: '#/components/schemas/User'
+ *             example:
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: rep
+ *                 status: active
+ *                 must_change_password: false
+ *                 preferred_language: en
+ *                 created_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  *       404:
  *         description: User not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: User not found
  */
 router.patch('/:id/reactivate', asyncHandler(reactivateUser));
 
@@ -426,6 +636,7 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
  * /api/users/{id}/admin-set-password:
  *   post:
  *     tags: [Users]
+ *     operationId: adminSetPassword
  *     summary: Admin sets a user's password directly (admin only)
  *     description: >
  *       Allows an admin to set another user's password without knowing the current
@@ -446,41 +657,68 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/AdminSetPasswordRequest'
+ *           example:
+ *             password: TempPass123
  *     responses:
  *       200:
- *         description: Password set successfully
+ *         description: Password set and must_change_password flag enabled
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: Password updated successfully
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *             example:
+ *               user:
+ *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 email: jane.smith@acme.com
+ *                 name: Jane Smith
+ *                 role: rep
+ *                 status: active
+ *                 must_change_password: true
+ *                 preferred_language: en
+ *                 created_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error or password does not meet complexity requirements
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Password must be at least 8 characters
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Insufficient role (admin required)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: Admin role required
  *       404:
  *         description: User not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: User not found
  */
 router.post('/:id/admin-set-password', asyncHandler(adminSetPassword));
 

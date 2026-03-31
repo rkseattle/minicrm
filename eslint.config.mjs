@@ -83,14 +83,14 @@ const serverConfig = {
   },
 };
 
-// ── Swagger/docs files (devDependency imports are valid) ──────────────────────
-// swagger-jsdoc and swagger-ui-express are devDependencies (never loaded in
-// production), so n/no-unpublished-import must be suppressed for these files.
+// ── Swagger/docs files ────────────────────────────────────────────────────────
+// swagger-jsdoc and swagger-ui-express are production dependencies (needed at
+// runtime in non-production Docker environments), so no import suppression is
+// required. This config remains as a placeholder in case doc-only packages are
+// added in future.
 const swaggerDevConfig = {
   files: ['server/src/swagger.ts', 'server/src/scripts/generateSpec.ts'],
-  rules: {
-    'n/no-unpublished-import': 'off',
-  },
+  rules: {},
 };
 
 // ── Route files — require @openapi JSDoc on every route handler ───────────────

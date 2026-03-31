@@ -22,6 +22,7 @@ const router = Router();
  * /api/activities:
  *   get:
  *     tags: [Activities]
+ *     operationId: listActivities
  *     summary: List activities
  *     description: >
  *       Returns all activities. Supports filtering by parent record:
@@ -66,12 +67,40 @@ const router = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Activity'
+ *             example:
+ *               activities:
+ *                 - id: ac1b2c3d-0000-0000-0000-000000000001
+ *                   type: Call
+ *                   subject: Discovery Call
+ *                   notes: Discussed renewal pricing options.
+ *                   due_date: '2025-04-01'
+ *                   status: open
+ *                   contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                   deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *                   updated_at: '2025-03-15T09:00:00.000Z'
+ *       400:
+ *         description: Invalid query parameter (e.g., malformed UUID for ?contact=, ?account=, or ?deal=)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: contact must be a valid UUID
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listActivitiesHandler));
 
@@ -80,6 +109,7 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
  * /api/activities/my-tasks:
  *   get:
  *     tags: [Activities]
+ *     operationId: listMyTasks
  *     summary: List the authenticated user's open tasks
  *     description: >
  *       Returns all open activities of type 'Task' owned by the authenticated user,
@@ -99,12 +129,30 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Activity'
+ *             example:
+ *               tasks:
+ *                 - id: ac1b2c3d-0000-0000-0000-000000000001
+ *                   type: Task
+ *                   subject: Send revised proposal to Acme
+ *                   notes: null
+ *                   due_date: '2025-04-01'
+ *                   status: open
+ *                   contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                   deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   created_at: '2025-03-15T09:00:00.000Z'
+ *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
 
@@ -113,6 +161,7 @@ router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
  * /api/activities:
  *   post:
  *     tags: [Activities]
+ *     operationId: createActivity
  *     summary: Create an activity
  *     description: >
  *       Creates a new activity owned by the authenticated user. At least one of
@@ -125,6 +174,13 @@ router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateActivityRequest'
+ *           example:
+ *             type: Call
+ *             subject: Discovery Call
+ *             notes: Discussed renewal pricing options.
+ *             due_date: '2025-04-01'
+ *             contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *             deal_id: d1e2f3a4-0000-0000-0000-000000000001
  *     responses:
  *       201:
  *         description: Activity created
@@ -135,18 +191,40 @@ router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
  *               properties:
  *                 activity:
  *                   $ref: '#/components/schemas/Activity'
+ *             example:
+ *               activity:
+ *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 type: Call
+ *                 subject: Discovery Call
+ *                 notes: Discussed renewal pricing options.
+ *                 due_date: '2025-04-01'
+ *                 status: open
+ *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 account_id: null
+ *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: At least one of contact_id, account_id, or deal_id is required
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  */
 router.post('/', authenticate, asyncHandler(createActivityHandler));
 
@@ -155,6 +233,7 @@ router.post('/', authenticate, asyncHandler(createActivityHandler));
  * /api/activities/{id}:
  *   get:
  *     tags: [Activities]
+ *     operationId: getActivity
  *     summary: Get an activity by ID
  *     security:
  *       - cookieAuth: []
@@ -176,18 +255,40 @@ router.post('/', authenticate, asyncHandler(createActivityHandler));
  *               properties:
  *                 activity:
  *                   $ref: '#/components/schemas/Activity'
+ *             example:
+ *               activity:
+ *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 type: Call
+ *                 subject: Discovery Call
+ *                 notes: Discussed renewal pricing options.
+ *                 due_date: '2025-04-01'
+ *                 status: open
+ *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       404:
  *         description: Activity not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Activity not found
  */
 router.get('/:id', authenticate, asyncHandler(getActivityHandler));
 
@@ -196,6 +297,7 @@ router.get('/:id', authenticate, asyncHandler(getActivityHandler));
  * /api/activities/{id}:
  *   patch:
  *     tags: [Activities]
+ *     operationId: updateActivity
  *     summary: Update an activity
  *     description: >
  *       Updates one or more fields of an existing activity. Parent record IDs
@@ -217,6 +319,9 @@ router.get('/:id', authenticate, asyncHandler(getActivityHandler));
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateActivityRequest'
+ *           example:
+ *             status: complete
+ *             notes: Sent revised pricing proposal after the call.
  *     responses:
  *       200:
  *         description: Activity updated
@@ -227,30 +332,60 @@ router.get('/:id', authenticate, asyncHandler(getActivityHandler));
  *               properties:
  *                 activity:
  *                   $ref: '#/components/schemas/Activity'
+ *             example:
+ *               activity:
+ *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 type: Call
+ *                 subject: Discovery Call
+ *                 notes: Sent revised pricing proposal after the call.
+ *                 due_date: '2025-04-01'
+ *                 status: complete
+ *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 created_at: '2025-03-15T09:00:00.000Z'
+ *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: status must be open or complete
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update an activity they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to update this activity
  *       404:
  *         description: Activity not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Activity not found
  */
 router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
 
@@ -259,6 +394,7 @@ router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
  * /api/activities/{id}:
  *   delete:
  *     tags: [Activities]
+ *     operationId: deleteActivity
  *     summary: Delete an activity
  *     description: >
  *       Deletes an activity. Reps may only delete activities they own; admins may
@@ -282,18 +418,30 @@ router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: UNAUTHORIZED
+ *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete an activity they do not own
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have permission to delete this activity
  *       404:
  *         description: Activity not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: NOT_FOUND
+ *                 message: Activity not found
  */
 router.delete('/:id', authenticate, asyncHandler(deleteActivityHandler));
 
