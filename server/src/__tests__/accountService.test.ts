@@ -142,6 +142,101 @@ describe('listAccounts', () => {
   });
 });
 
+// ── listAccounts — search and industry filters ──────────────────────────────────
+
+describe('listAccounts — search filter', () => {
+  it('returns accounts whose name matches the search term (case-insensitive)', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: 'Acme Corp', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Beta Inc', owner_id: ownerId });
+
+    const results = await listAccounts({ search: 'acme' });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Acme Corp');
+  });
+
+  it('returns empty array when search matches nothing', async () => {
+    await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
+    const results = await listAccounts({ search: 'zzznomatch' });
+    expect(results).toHaveLength(0);
+  });
+
+  it('combines search with ownerId filter', async () => {
+    const other = await createUser({ ...OWNER_USER, email: 'acct-search-other@example.com' });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: other.id });
+
+    const results = await listAccounts({ ownerId, search: 'Mine' });
+    expect(results).toHaveLength(1);
+    expect(results[0].owner_id).toBe(ownerId);
+  });
+});
+
+describe('listAccounts — industry filter', () => {
+  it('returns only accounts with a matching industry (case-insensitive)', async () => {
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Tech Co',
+      industry: 'Technology',
+      owner_id: ownerId,
+    });
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Finance Co',
+      industry: 'Finance',
+      owner_id: ownerId,
+    });
+
+    const results = await listAccounts({ industry: 'technology' });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Tech Co');
+  });
+
+  it('returns accounts matching a partial industry substring', async () => {
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Tech Co',
+      industry: 'Technology',
+      owner_id: ownerId,
+    });
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Finance Co',
+      industry: 'Finance',
+      owner_id: ownerId,
+    });
+
+    const results = await listAccounts({ industry: 'tech' });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Tech Co');
+  });
+
+  it('returns empty array when industry matches nothing', async () => {
+    await createAccount({ ...BASE_ACCOUNT, industry: 'Technology', owner_id: ownerId });
+    const results = await listAccounts({ industry: 'zzznomatch' });
+    expect(results).toHaveLength(0);
+  });
+
+  it('combines industry filter with ownerId filter', async () => {
+    const other = await createUser({ ...OWNER_USER, email: 'industry-other@example.com' });
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Mine Tech',
+      industry: 'Technology',
+      owner_id: ownerId,
+    });
+    await createAccount({
+      ...BASE_ACCOUNT,
+      name: 'Theirs Tech',
+      industry: 'Technology',
+      owner_id: other.id,
+    });
+
+    const results = await listAccounts({ ownerId, industry: 'Technology' });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Mine Tech');
+  });
+});
+
 // ── updateAccount ───────────────────────────────────────────────────────────────
 
 describe('updateAccount', () => {

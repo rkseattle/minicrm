@@ -222,6 +222,111 @@ describe('listContacts', () => {
   });
 });
 
+// ── listContacts — search filters ───────────────────────────────────────────────
+
+describe('listContacts — search filter', () => {
+  it('returns contacts whose first_name matches the search term (case-insensitive)', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Alice',
+      email: 'a@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Bob',
+      email: 'b@example.com',
+      owner_id: ownerId,
+    });
+
+    const results = await listContacts({ search: 'ali' });
+    expect(results).toHaveLength(1);
+    expect(results[0].first_name).toBe('Alice');
+  });
+
+  it('returns contacts whose last_name matches the search term (case-insensitive)', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      last_name: 'Smith',
+      email: 'smith@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      last_name: 'Jones',
+      email: 'jones@example.com',
+      owner_id: ownerId,
+    });
+
+    const results = await listContacts({ search: 'SMITH' });
+    expect(results).toHaveLength(1);
+    expect(results[0].last_name).toBe('Smith');
+  });
+
+  it('returns contacts whose email matches the search term', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'find.me@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'other@example.com', owner_id: ownerId });
+
+    const results = await listContacts({ search: 'find.me' });
+    expect(results).toHaveLength(1);
+    expect(results[0].email).toBe('find.me@example.com');
+  });
+
+  it('returns empty array when search matches nothing', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const results = await listContacts({ search: 'zzznomatch' });
+    expect(results).toHaveLength(0);
+  });
+
+  it('combines search with ownerId filter', async () => {
+    const other = await createUser({ ...OWNER_USER, email: 'search-other@example.com' });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Alice',
+      email: 'mine-alice@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Alice',
+      email: 'theirs-alice@example.com',
+      owner_id: other.id,
+    });
+
+    const results = await listContacts({ ownerId, search: 'Alice' });
+    expect(results).toHaveLength(1);
+    expect(results[0].email).toBe('mine-alice@example.com');
+  });
+});
+
+describe('listContacts — accountSearch filter', () => {
+  it('returns only contacts linked to accounts matching the name substring', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      email: 'linked@example.com',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+    await createContact({ ...BASE_CONTACT, email: 'unlinked@example.com', owner_id: ownerId });
+
+    // accountId was created with name 'Test Account'
+    const results = await listContacts({ accountSearch: 'Test' });
+    expect(results).toHaveLength(1);
+    expect(results[0].email).toBe('linked@example.com');
+  });
+
+  it('returns empty array when account name search matches nothing', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      email: 'x@example.com',
+      account_id: accountId,
+      owner_id: ownerId,
+    });
+    const results = await listContacts({ accountSearch: 'zzznomatch' });
+    expect(results).toHaveLength(0);
+  });
+});
+
 // ── updateContact ───────────────────────────────────────────────────────────────
 
 describe('updateContact', () => {

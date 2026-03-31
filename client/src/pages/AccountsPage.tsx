@@ -13,11 +13,13 @@ import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
+import { Input } from '@/components/ui/Input.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import { useDebounce } from '@/hooks/useDebounce.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -34,13 +36,29 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [industryInput, setIndustryInput] = useState('');
 
-  const accountsQueryKey =
-    ownerFilter === 'me' ? ([...ACCOUNTS_QUERY_KEY, { owner: 'me' }] as const) : ACCOUNTS_QUERY_KEY;
+  const debouncedSearch = useDebounce(searchInput);
+  const debouncedIndustry = useDebounce(industryInput);
+
+  const accountsQueryKey = [
+    ...ACCOUNTS_QUERY_KEY,
+    {
+      owner: ownerFilter === 'me' ? 'me' : undefined,
+      search: debouncedSearch || undefined,
+      industry: debouncedIndustry || undefined,
+    },
+  ] as const;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: accountsQueryKey,
-    queryFn: () => listAccounts(ownerFilter === 'me' ? 'me' : undefined),
+    queryFn: () =>
+      listAccounts({
+        owner: ownerFilter === 'me' ? 'me' : undefined,
+        search: debouncedSearch || undefined,
+        industry: debouncedIndustry || undefined,
+      }),
   });
 
   const { data: activeUsersData } = useQuery({
@@ -108,8 +126,26 @@ export default function AccountsPage() {
           </section>
         )}
 
-        {/* Owner filter */}
-        <div className="mb-4 flex items-center gap-3">
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Input
+            id="accounts-search"
+            data-testid="accounts-search"
+            type="search"
+            placeholder={t('accounts.searchPlaceholder')}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-56"
+          />
+          <Input
+            id="accounts-industry-filter"
+            data-testid="accounts-industry-filter"
+            type="search"
+            placeholder={t('accounts.industryFilterPlaceholder')}
+            value={industryInput}
+            onChange={(e) => setIndustryInput(e.target.value)}
+            className="w-48"
+          />
           <Select
             id="accounts-owner-filter"
             data-testid="accounts-owner-filter"

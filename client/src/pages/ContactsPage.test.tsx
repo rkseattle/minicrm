@@ -145,6 +145,66 @@ describe('ContactsPage', () => {
     });
   });
 
+  it('renders the name/email search input', async () => {
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-search')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the account name search input', async () => {
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-account-search')).toBeInTheDocument();
+    });
+  });
+
+  it('passes the search param to the API when the search input changes', async () => {
+    let capturedSearch: string | null = null;
+    server.use(
+      http.get('/api/contacts', ({ request }) => {
+        capturedSearch = new URL(request.url).searchParams.get('search');
+        return HttpResponse.json({ contacts: [] });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderWithProviders(<ContactsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-search')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('contacts-search'), 'alice');
+
+    await waitFor(() => {
+      expect(capturedSearch).toBe('alice');
+    });
+  });
+
+  it('passes the accountSearch param to the API when the account search input changes', async () => {
+    let capturedAccountSearch: string | null = null;
+    server.use(
+      http.get('/api/contacts', ({ request }) => {
+        capturedAccountSearch = new URL(request.url).searchParams.get('accountSearch');
+        return HttpResponse.json({ contacts: [] });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderWithProviders(<ContactsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-account-search')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('contacts-account-search'), 'Acme');
+
+    await waitFor(() => {
+      expect(capturedAccountSearch).toBe('Acme');
+    });
+  });
+
   it('submits the create form and hides it on success', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ContactsPage />);

@@ -222,6 +222,56 @@ describe('DELETE /api/accounts/:id — ownership', () => {
   });
 });
 
+// ── GET /api/accounts — ?search filter ───────────────────────────────────────
+
+describe('GET /api/accounts — ?search filter', () => {
+  it('returns only accounts matching the search term', async () => {
+    await createAccount({ name: 'Alpha Corp', industry: 'Technology', owner_id: repId });
+    await createAccount({ name: 'Beta Inc', industry: 'Finance', owner_id: repId });
+
+    const res = await request(app).get('/api/accounts?search=alpha').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.accounts).toHaveLength(1);
+    expect(res.body.accounts[0].name).toBe('Alpha Corp');
+  });
+
+  it('returns empty array when search matches nothing', async () => {
+    await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+
+    const res = await request(app).get('/api/accounts?search=zzznomatch').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.accounts).toEqual([]);
+  });
+});
+
+// ── GET /api/accounts — ?industry filter ─────────────────────────────────────
+
+describe('GET /api/accounts — ?industry filter', () => {
+  it('returns only accounts in the specified industry', async () => {
+    await createAccount({ name: 'Tech Co', industry: 'Technology', owner_id: repId });
+    await createAccount({ name: 'Finance Co', industry: 'Finance', owner_id: repId });
+
+    const res = await request(app)
+      .get('/api/accounts?industry=Technology')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.accounts).toHaveLength(1);
+    expect(res.body.accounts[0].name).toBe('Tech Co');
+  });
+
+  it('ignores whitespace-only industry param', async () => {
+    await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+
+    const res = await request(app).get('/api/accounts?industry=%20').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.accounts.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 // ── GET /api/accounts/:id — visibility ───────────────────────────────────────
 
 describe('GET /api/accounts/:id — visibility', () => {

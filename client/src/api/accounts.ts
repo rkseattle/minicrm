@@ -18,14 +18,29 @@ interface AccountSingleResponse {
   account: AccountResponse;
 }
 
+/** Parameters for filtering the accounts list */
+export interface ListAccountsParams {
+  /** When 'me', only the current user's accounts are returned */
+  owner?: 'me';
+  /** Case-insensitive substring match on account name */
+  search?: string;
+  /** Case-insensitive match on industry field */
+  industry?: string;
+}
+
 /**
- * Returns all accounts. Pass owner='me' to scope to the current user.
+ * Returns all accounts with optional filtering.
  *
- * @param owner - When 'me', only the current user's accounts are returned
+ * @param params - Optional filter parameters
  */
-export async function listAccounts(owner?: 'me'): Promise<AccountsResponse> {
-  const params = owner ? { owner } : undefined;
-  const response = await apiClient.get<AccountsResponse>('/accounts', { params });
+export async function listAccounts(params: ListAccountsParams = {}): Promise<AccountsResponse> {
+  const queryParams: Record<string, string> = {};
+  if (params.owner) queryParams.owner = params.owner;
+  if (params.search) queryParams.search = params.search;
+  if (params.industry) queryParams.industry = params.industry;
+  const response = await apiClient.get<AccountsResponse>('/accounts', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+  });
   return response.data;
 }
 

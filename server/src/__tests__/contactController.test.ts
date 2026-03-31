@@ -188,6 +188,54 @@ describe('GET /api/contacts — ?account filter', () => {
   });
 });
 
+// ── GET /api/contacts — ?search filter ──────────────────────────────────────
+
+describe('GET /api/contacts — ?search filter', () => {
+  it('returns only contacts matching the search term', async () => {
+    await createContact({
+      first_name: 'Alice',
+      last_name: 'Smith',
+      email: 'alice@example.com',
+      owner_id: repId,
+    });
+    await createContact({
+      first_name: 'Bob',
+      last_name: 'Jones',
+      email: 'bob@example.com',
+      owner_id: repId,
+    });
+
+    const res = await request(app).get('/api/contacts?search=alice').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.contacts).toHaveLength(1);
+    expect(res.body.contacts[0].first_name).toBe('Alice');
+  });
+
+  it('returns empty array when search matches no contacts', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app).get('/api/contacts?search=zzznomatch').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.contacts).toEqual([]);
+  });
+});
+
+// ── GET /api/contacts — ?accountSearch filter ────────────────────────────────
+
+describe('GET /api/contacts — ?accountSearch filter', () => {
+  it('ignores whitespace-only accountSearch', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app).get('/api/contacts?accountSearch=%20').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    // whitespace-only should be treated as no filter — all contacts returned
+    expect(res.body.contacts.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 // ── GET /api/contacts/:id ────────────────────────────────────────────────────
 
 describe('GET /api/contacts/:id — visibility', () => {

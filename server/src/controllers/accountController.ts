@@ -35,11 +35,25 @@ export async function createAccountHandler(req: Request, res: Response): Promise
 
 /**
  * GET /api/accounts
- * Lists accounts. Pass ?owner=me to scope to the authenticated user's accounts.
+ * Lists accounts with optional filters:
+ *   ?owner=me        — scope to the authenticated user's accounts
+ *   ?search=<text>   — case-insensitive substring match on account name
+ *   ?industry=<text> — case-insensitive match on industry field
  */
 export async function listAccountsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
-  const accounts = await listAccounts({ ownerId });
+
+  const search =
+    typeof req.query.search === 'string' && req.query.search.trim().length > 0
+      ? req.query.search.trim()
+      : undefined;
+
+  const industry =
+    typeof req.query.industry === 'string' && req.query.industry.trim().length > 0
+      ? req.query.industry.trim()
+      : undefined;
+
+  const accounts = await listAccounts({ ownerId, search, industry });
   res.status(200).json({ accounts });
 }
 

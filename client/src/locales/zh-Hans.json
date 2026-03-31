@@ -144,7 +144,9 @@
     "notFound": "未找到联系人。",
     "backToContacts": "返回联系人列表",
     "linkedDealsHeading": "关联商机",
-    "linkedDealsEmpty": "此联系人暂无关联商机。"
+    "linkedDealsEmpty": "此联系人暂无关联商机。",
+    "searchPlaceholder": "按姓名或电子邮件搜索…",
+    "accountSearchPlaceholder": "按客户名称筛选…"
   },
   "accounts": {
     "pageTitle": "客户",
@@ -183,7 +185,9 @@
     "notFound": "未找到客户。",
     "backToAccounts": "返回客户列表",
     "linkedContactsHeading": "关联联系人",
-    "linkedContactsEmpty": "此客户暂无关联联系人。"
+    "linkedContactsEmpty": "此客户暂无关联联系人。",
+    "searchPlaceholder": "按公司名称搜索…",
+    "industryFilterPlaceholder": "按行业筛选…"
   },
   "deals": {
     "pageTitle": "商机",

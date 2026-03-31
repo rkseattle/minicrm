@@ -42,6 +42,16 @@ interface ListContactsOptions {
   ownerId?: string;
   /** When provided, only contacts linked to this account_id are returned */
   accountId?: string;
+  /**
+   * When provided, contacts are filtered by a case-insensitive substring match
+   * across first_name, last_name, and email.
+   */
+  search?: string;
+  /**
+   * When provided, only contacts whose linked account name contains this
+   * string (case-insensitive) are returned.
+   */
+  accountSearch?: string;
 }
 
 /**
@@ -87,37 +97,56 @@ export async function findContactById(id: string): Promise<ContactRow | null> {
 }
 
 /**
- * Returns all contacts, optionally scoped to a single owner.
+ * Returns all contacts, optionally filtered by owner, account UUID, name/email
+ * search, or account name substring.
  *
- * @param options - Optional filter; ownerId restricts results to that owner
+ * @param options - Optional filters; all provided filters are combined with AND
  * @returns Array of contact rows ordered by created_at ascending
  */
 export async function listContacts(options: ListContactsOptions = {}): Promise<ContactRow[]> {
-  if (options.ownerId && options.accountId) {
-    const result = await pool.query<ContactRow>(
-      'SELECT * FROM contacts WHERE owner_id = $1 AND account_id = $2 ORDER BY created_at ASC',
-      [options.ownerId, options.accountId],
-    );
-    return result.rows;
-  }
+  const conditions: string[] = [];
+  const values: unknown[] = [];
 
   if (options.ownerId) {
-    const result = await pool.query<ContactRow>(
-      'SELECT * FROM contacts WHERE owner_id = $1 ORDER BY created_at ASC',
-      [options.ownerId],
-    );
-    return result.rows;
+    values.push(options.ownerId);
+    conditions.push(`c.owner_id = $${values.length}`);
   }
 
   if (options.accountId) {
-    const result = await pool.query<ContactRow>(
-      'SELECT * FROM contacts WHERE account_id = $1 ORDER BY created_at ASC',
-      [options.accountId],
-    );
-    return result.rows;
+    values.push(options.accountId);
+    conditions.push(`c.account_id = $${values.length}`);
   }
 
-  const result = await pool.query<ContactRow>('SELECT * FROM contacts ORDER BY created_at ASC');
+  if (options.search) {
+    const pattern = `%${options.search}%`;
+    values.push(pattern);
+    const idx = values.length;
+    conditions.push(
+      `(c.first_name ILIKE $${idx} OR c.last_name ILIKE $${idx} OR c.email ILIKE $${idx})`,
+    );
+  }
+
+  const needsAccountJoin = Boolean(options.accountSearch);
+
+  if (options.accountSearch) {
+    const pattern = `%${options.accountSearch}%`;
+    values.push(pattern);
+    conditions.push(`a.name ILIKE $${values.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const fromClause = needsAccountJoin
+    ? 'FROM contacts c LEFT JOIN accounts a ON c.account_id = a.id'
+    : 'FROM contacts c';
+
+  const selectClause = 'SELECT c.*';
+
+  const result = await pool.query<ContactRow>(
+    `${selectClause} ${fromClause} ${whereClause} ORDER BY c.created_at ASC`,
+    values,
+  );
+
   return result.rows;
 }
 
