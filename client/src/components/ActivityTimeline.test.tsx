@@ -51,9 +51,9 @@ describe('ActivityTimeline', () => {
       expect(screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`)).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`)).toHaveTextContent(
-      ACTIVITY_1.owner_name,
-    );
+    const meta = screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`);
+    expect(meta).toHaveTextContent(ACTIVITY_1.owner_name);
+    expect(meta).toHaveTextContent(new Date(ACTIVITY_1.created_at).toLocaleString('en'));
   });
 
   it('shows "Mark complete" button for open tasks', async () => {

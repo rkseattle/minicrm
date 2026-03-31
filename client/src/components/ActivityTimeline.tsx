@@ -48,7 +48,7 @@ const TYPE_BADGE_VARIANT: Record<ActivityType, BadgeProps['variant']> = {
  * Shows a "Mark complete" button on open tasks.
  */
 export default function ActivityTimeline({ contactId, accountId, dealId }: ActivityTimelineProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -268,7 +268,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                       >
                         {t('activities.meta', {
                           author: activity.owner_name,
-                          timestamp: new Date(activity.created_at).toLocaleString(),
+                          timestamp: new Date(activity.created_at).toLocaleString(i18n.language),
                         })}
                       </p>
                     </div>

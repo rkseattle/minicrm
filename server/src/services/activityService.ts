@@ -242,6 +242,10 @@ export async function deleteActivity(id: string): Promise<ActivityRow | null> {
   const existing = await findActivityById(id);
   if (!existing) return null;
 
-  await pool.query(`DELETE FROM activities WHERE id = $1`, [id]);
+  const deleteResult = await pool.query<{ id: string }>(
+    `DELETE FROM activities WHERE id = $1 RETURNING id`,
+    [id],
+  );
+  if (!deleteResult.rows[0]) return null; // deleted by a concurrent request
   return existing;
 }
