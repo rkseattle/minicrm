@@ -273,7 +273,8 @@
     "typeCall": "电话",
     "typeEmail": "邮件",
     "typeMeeting": "会议",
-    "typeTask": "任务"
+    "typeTask": "任务",
+    "meta": "{{author}} · {{timestamp}}"
   },
   "myTasks": {
     "pageTitle": "我的任务",
