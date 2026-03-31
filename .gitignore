@@ -24,6 +24,9 @@ client/build/
 # ─── Server build output ──────────────────────────────────────────────────────
 server/dist/
 
+# ─── Generated API spec (produced by npm run generate-spec) ───────────────────
+server/openapi.json
+
 # ─── Docker ───────────────────────────────────────────────────────────────────
 # Ignore local override files but keep the base compose files
 docker-compose.override.yml

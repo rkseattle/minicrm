@@ -14,6 +14,14 @@ const DEFAULT_PORT = 3001;
 
 const port = Number(process.env.PORT) || DEFAULT_PORT;
 
+// ── API docs (development + staging only) ─────────────────────────────────────
+// Dynamically imported so swagger-jsdoc is never loaded in production.
+// Swagger UI is served at /api-docs; raw spec at /api-docs.json.
+if (process.env.NODE_ENV !== 'production') {
+  const { setupSwagger } = await import('./swagger.js');
+  setupSwagger(app);
+}
+
 app.listen(port, async () => {
   logger.info(`MiniCRM API server listening on port ${port}`);
   await runMigrations();

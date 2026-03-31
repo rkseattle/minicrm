@@ -10,6 +10,7 @@ import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import nodePlugin from 'eslint-plugin-n';
+import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 
 /** Files covered by TypeScript rules */
@@ -82,6 +83,42 @@ const serverConfig = {
   },
 };
 
+// ── Swagger/docs files (devDependency imports are valid) ──────────────────────
+// swagger-jsdoc and swagger-ui-express are devDependencies (never loaded in
+// production), so n/no-unpublished-import must be suppressed for these files.
+const swaggerDevConfig = {
+  files: ['server/src/swagger.ts', 'server/src/scripts/generateSpec.ts'],
+  rules: {
+    'n/no-unpublished-import': 'off',
+  },
+};
+
+// ── Route files — require @openapi JSDoc on every route handler ───────────────
+// Uses eslint-plugin-jsdoc to enforce that each router.get/post/patch/delete
+// call site has a preceding JSDoc block containing an @openapi tag.
+const routeJsdocConfig = {
+  files: ['server/src/routes/**/*.ts'],
+  plugins: {
+    jsdoc: jsdocPlugin,
+  },
+  rules: {
+    'jsdoc/require-jsdoc': [
+      'error',
+      {
+        // Require a JSDoc block on every router.get/post/patch/delete/put call statement.
+        // Routes use named function refs (e.g. asyncHandler(login)), not inline arrow
+        // functions, so we target the ExpressionStatement wrapping the router call itself.
+        contexts: [
+          'ExpressionStatement > CallExpression[callee.property.name=/^(get|post|patch|delete|put)$/]',
+        ],
+        enableFixer: false,
+      },
+    ],
+    // Ensure every JSDoc block on a route contains an @openapi tag
+    'jsdoc/check-tag-names': ['error', { definedTags: ['openapi'] }],
+  },
+};
+
 // ── Test files (devDependency imports are valid) ───────────────────────────────
 const testConfig = {
   files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
@@ -95,6 +132,8 @@ export default [
   baseConfig,
   clientConfig,
   serverConfig,
+  swaggerDevConfig,
+  routeJsdocConfig,
   testConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,
