@@ -7,6 +7,7 @@
     "pipeline": "Pipeline",
     "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
+    "winLossReport": "Gewinn-/Verlustbericht",
     "adminSettings": "Admin-Einstellungen",
     "profileSettings": "Profileinstellungen",
     "languageSelector": "Sprache",
@@ -345,6 +346,31 @@
     "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "loadError": "Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
     "loading": "Laden…"
+  },
+  "reports": {
+    "winLoss": {
+      "pageTitle": "Gewinn-/Verlustbericht",
+      "subtitle": "Abgeschlossene Geschäfte für den ausgewählten Zeitraum.",
+      "dateRangeLabel": "Zeitraum",
+      "presetCurrentMonth": "Dieser Monat",
+      "presetCurrentQuarter": "Dieses Quartal",
+      "presetCustom": "Benutzerdefinierter Zeitraum",
+      "startDateLabel": "Startdatum",
+      "endDateLabel": "Enddatum",
+      "dateRangeInvalid": "Das Startdatum darf nicht nach dem Enddatum liegen.",
+      "ownerFilterLabel": "Verantwortlicher",
+      "ownerFilterAll": "Alle Vertriebsmitarbeiter",
+      "loading": "Bericht wird geladen…",
+      "errorLoad": "Bericht konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "wonCountLabel": "Gewonnene Geschäfte",
+      "wonValueLabel": "Gewonnener Wert",
+      "lostCountLabel": "Verlorene Geschäfte",
+      "winRateLabel": "Gewinnrate",
+      "lossReasonHeading": "Aufschlüsselung der Verlustgründe",
+      "lossReasonEmpty": "Keine Verlustgründe für diesen Zeitraum erfasst.",
+      "columnReason": "Grund",
+      "columnCount": "Anzahl"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

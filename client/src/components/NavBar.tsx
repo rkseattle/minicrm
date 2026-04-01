@@ -122,6 +122,15 @@ export default function NavBar() {
             )}
             {user?.role === 'admin' && (
               <NavLink
+                to="/reports/win-loss"
+                className={navLinkClass}
+                data-testid="nav-win-loss-report"
+              >
+                {t('nav.winLossReport')}
+              </NavLink>
+            )}
+            {user?.role === 'admin' && (
+              <NavLink
                 to="/admin/settings"
                 className={navLinkClass}
                 data-testid="nav-admin-settings"

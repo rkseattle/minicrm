@@ -7,6 +7,7 @@
     "pipeline": "Pipeline",
     "myTasks": "Mes tâches",
     "users": "Utilisateurs",
+    "winLossReport": "Rapport victoires/défaites",
     "adminSettings": "Paramètres administrateur",
     "profileSettings": "Paramètres du profil",
     "languageSelector": "Langue",
@@ -345,6 +346,31 @@
     "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
     "loadError": "Échec du chargement des paramètres. Veuillez réessayer.",
     "loading": "Chargement…"
+  },
+  "reports": {
+    "winLoss": {
+      "pageTitle": "Rapport victoires/défaites",
+      "subtitle": "Performance des affaires clôturées pour la période sélectionnée.",
+      "dateRangeLabel": "Période",
+      "presetCurrentMonth": "Ce mois-ci",
+      "presetCurrentQuarter": "Ce trimestre",
+      "presetCustom": "Période personnalisée",
+      "startDateLabel": "Date de début",
+      "endDateLabel": "Date de fin",
+      "dateRangeInvalid": "La date de début ne peut pas être postérieure à la date de fin.",
+      "ownerFilterLabel": "Responsable",
+      "ownerFilterAll": "Tous les commerciaux",
+      "loading": "Chargement du rapport…",
+      "errorLoad": "Échec du chargement du rapport. Veuillez réessayer.",
+      "wonCountLabel": "Affaires gagnées",
+      "wonValueLabel": "Valeur gagnée",
+      "lostCountLabel": "Affaires perdues",
+      "winRateLabel": "Taux de réussite",
+      "lossReasonHeading": "Répartition des raisons de perte",
+      "lossReasonEmpty": "Aucune raison de perte enregistrée pour cette période.",
+      "columnReason": "Raison",
+      "columnCount": "Nombre"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

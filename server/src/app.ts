@@ -16,6 +16,7 @@ import accountRoutes from './routes/accounts.js';
 import dealRoutes from './routes/deals.js';
 import activityRoutes from './routes/activities.js';
 import dashboardRoutes from './routes/dashboard.js';
+import reportRoutes from './routes/reports.js';
 import settingsRoutes from './routes/settings.js';
 import { setupSwagger } from './swagger.js';
 
@@ -58,6 +59,7 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
