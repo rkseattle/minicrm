@@ -25,10 +25,11 @@ interface RenderOptions {
 
 /**
  * Renders a React element inside QueryClientProvider + MemoryRouter.
- * Creates a fresh QueryClient per call with retries disabled to keep tests fast.
+ * Creates a fresh QueryClient per call with retries disabled to keep tests fast,
+ * unless a pre-configured QueryClient is provided via options.queryClient.
  *
  * @param ui - The React element to render
- * @param options - Optional router configuration
+ * @param options - Optional router and query client configuration
  * @returns RTL render result
  */
 export function renderWithProviders(

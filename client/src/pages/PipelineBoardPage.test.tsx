@@ -337,7 +337,7 @@ describe('PipelineBoardPage', () => {
     });
   });
 
-  it('invalidates dashboard and win/loss report cache entries after a stage change', async () => {
+  it('invalidates dashboard cache on any stage change and win/loss cache only on terminal stage', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
     });
@@ -357,10 +357,33 @@ describe('PipelineBoardPage', () => {
       expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
     });
 
+    // Non-terminal stage change — dashboard invalidated, win/loss not
     await user.selectOptions(
       screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
       'Qualification',
     );
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(DASHBOARD_QUERY_KEY);
+      expect(invalidatedKeys).not.toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
+
+    invalidateSpy.mockClear();
+
+    // Terminal stage change — both dashboard and win/loss invalidated
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Won',
+    );
+
+    // Confirm the close deal modal
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('close-deal-confirm'));
 
     await waitFor(() => {
       const invalidatedKeys = invalidateSpy.mock.calls.map(

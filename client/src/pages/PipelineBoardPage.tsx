@@ -129,7 +129,7 @@ export default function PipelineBoardPage() {
         setCloseError(null);
       }
     },
-    onSettled: (_data, _error, { id }) => {
+    onSettled: (_data, _error, { id, stage }) => {
       setUpdatingDealIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -137,7 +137,9 @@ export default function PipelineBoardPage() {
       });
       queryClient.invalidateQueries({ queryKey: PIPELINE_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
+      if ((CLOSED_STAGES as PipelineStage[]).includes(stage)) {
+        queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
+      }
     },
   });
 
