@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { ACTIVITY_TYPES } from './activitySchema.js';
+import { PIPELINE_STAGES } from './dealSchema.js';
 
 // ── Trigger types ──────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ export type AutomationAssigneeType = (typeof AUTOMATION_ASSIGNEE_TYPES)[number];
 
 /** Config for the deal_stage_changed trigger. */
 export const dealStageChangedConfigSchema = z.object({
-  stage: z.string().min(1, 'Stage is required'),
+  stage: z.enum(PIPELINE_STAGES, { required_error: 'Stage is required' }),
 });
 
 /** Config for triggers with no extra parameters. */

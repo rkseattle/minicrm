@@ -54,8 +54,7 @@ exports.up = (pgm) => {
     },
   });
 
-  pgm.createIndex('automation_rule_logs', 'rule_id');
-  pgm.createIndex('automation_rule_logs', 'triggered_at');
+  pgm.createIndex('automation_rule_logs', ['rule_id', 'triggered_at']);
 };
 
 /**

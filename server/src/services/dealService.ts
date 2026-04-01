@@ -127,6 +127,9 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
     return findDealById(id);
   }
 
+  // Capture the current stage before updating so we can detect an actual change
+  const previousStage = params.stage !== undefined ? (await findDealById(id))?.stage : undefined;
+
   // Build dynamic SET clause: name = $2, stage = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
 
@@ -140,8 +143,8 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
 
   const deal = result.rows[0] ?? null;
 
-  // Fire the deal_stage_changed automation trigger if stage was updated
-  if (deal && params.stage !== undefined) {
+  // Fire the deal_stage_changed automation trigger only when the stage genuinely changed
+  if (deal && params.stage !== undefined && deal.stage !== previousStage) {
     await fireAutomationTrigger('deal_stage_changed', {
       recordId: deal.id,
       recordType: 'deal',
