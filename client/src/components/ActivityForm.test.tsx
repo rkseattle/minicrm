@@ -82,6 +82,8 @@ describe('ActivityForm', () => {
       subject: 'Test subject',
       notes: 'Some notes',
       due_date: '',
+      direction: '',
+      outcome: '',
     });
   });
 

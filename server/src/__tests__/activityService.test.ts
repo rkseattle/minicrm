@@ -18,6 +18,10 @@ import {
   deleteActivity,
 } from '../services/activityService.js';
 import { createUser } from '../services/userService.js';
+import {
+  createActivitySchema,
+  updateActivitySchema,
+} from '@minicrm/shared/schemas/activitySchema.js';
 import pool from '../db.js';
 
 /** Minimal user fixture used as activity owner */
@@ -216,6 +220,56 @@ describe('DB constraints — activities', () => {
         owner_id: ownerId,
       }),
     ).rejects.toThrow();
+  });
+});
+
+// ── Schema validation — direction/type rules ────────────────────────────────────
+
+describe('createActivitySchema — direction validation', () => {
+  const base = { subject: 'S', contact_id: '00000000-0000-0000-0000-000000000001' };
+
+  it('rejects a Call without direction', () => {
+    const result = createActivitySchema.safeParse({ ...base, type: 'Call' });
+    expect(result.success).toBe(false);
+    expect(result.error?.errors[0].message).toMatch(/direction is required/i);
+  });
+
+  it('rejects an Email without direction', () => {
+    const result = createActivitySchema.safeParse({ ...base, type: 'Email' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a Call with direction', () => {
+    const result = createActivitySchema.safeParse({ ...base, type: 'Call', direction: 'Outbound' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a Note without direction', () => {
+    const result = createActivitySchema.safeParse({ ...base, type: 'Note' });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('updateActivitySchema — direction validation', () => {
+  it('rejects a type change to Call without direction', () => {
+    const result = updateActivitySchema.safeParse({ type: 'Call' });
+    expect(result.success).toBe(false);
+    expect(result.error?.errors[0].message).toMatch(/direction is required/i);
+  });
+
+  it('rejects a type change to Email without direction', () => {
+    const result = updateActivitySchema.safeParse({ type: 'Email' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a type change to Call with direction provided', () => {
+    const result = updateActivitySchema.safeParse({ type: 'Call', direction: 'Inbound' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a subject-only patch (type not changing)', () => {
+    const result = updateActivitySchema.safeParse({ subject: 'Updated' });
+    expect(result.success).toBe(true);
   });
 });
 

@@ -71,7 +71,18 @@ export const updateActivitySchema = z
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
-  });
+  })
+  .refine(
+    (data) => {
+      // Only enforced when the patch explicitly sets type to a communication type.
+      // If type is absent from the patch, the stored type is unknown at schema
+      // validation time; the controller handles that cross-field check.
+      const isCommunicationType = data.type === 'Call' || data.type === 'Email';
+      if (!isCommunicationType) return true;
+      return data.direction !== null && data.direction !== undefined;
+    },
+    { message: 'Direction is required for Call and Email activities', path: ['direction'] },
+  );
 
 /**
  * Schema for the safe activity response shape returned to API consumers.
