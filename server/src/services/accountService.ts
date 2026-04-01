@@ -74,11 +74,14 @@ export async function setAccountContacts(
   );
 
   if (contactIds.length > 0) {
-    // Link the specified contacts to this account
+    // Link the specified contacts to this account.
+    // Only contacts that are currently unlinked or already linked to this account
+    // are updated — contacts owned by a different account are left untouched.
     await client.query(
       `UPDATE contacts
        SET account_id = $1, updated_at = now()
-       WHERE id = ANY($2::uuid[])`,
+       WHERE id = ANY($2::uuid[])
+         AND (account_id IS NULL OR account_id = $1)`,
       [accountId, contactIds],
     );
   }

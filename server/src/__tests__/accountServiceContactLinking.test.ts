@@ -168,6 +168,35 @@ describe('setAccountContacts', () => {
     // contactForB should still be linked to accountB
     expect(await getContactAccountId(contactForB)).toBe(accountB.id);
   });
+
+  it('does not steal a contact that is already linked to a different account', async () => {
+    const accountA = await createAccount({ name: 'Account A', owner_id: ownerId });
+    const accountB = await createAccount({ name: 'Account B', owner_id: ownerId });
+    const contactForB = await insertContact('steal-test@example.com');
+
+    // Link contactForB to accountB
+    const client1: PoolClient = await pool.connect();
+    try {
+      await client1.query('BEGIN');
+      await setAccountContacts(accountB.id, [contactForB], client1);
+      await client1.query('COMMIT');
+    } finally {
+      client1.release();
+    }
+
+    // Try to link the same contact to accountA
+    const client2: PoolClient = await pool.connect();
+    try {
+      await client2.query('BEGIN');
+      await setAccountContacts(accountA.id, [contactForB], client2);
+      await client2.query('COMMIT');
+    } finally {
+      client2.release();
+    }
+
+    // Contact remains with accountB — accountA cannot steal it
+    expect(await getContactAccountId(contactForB)).toBe(accountB.id);
+  });
 });
 
 // ── createAccount with contact_ids ─────────────────────────────────────────────

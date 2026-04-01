@@ -53,7 +53,7 @@ export default function ContactSelector({
 
   // Fetch the selected contacts by searching without a filter so we can show their names
   const { data: selectedData } = useQuery({
-    queryKey: ['contacts', 'selector-selected', selectedIds.join(',')],
+    queryKey: ['contacts', 'selector-selected-all'],
     queryFn: () => listContacts(),
     enabled: selectedIds.length > 0,
     staleTime: 60_000,

@@ -155,6 +155,7 @@ export default function AccountDetailPage() {
                   size="sm"
                   data-testid="edit-account-button"
                   onClick={() => setIsEditing(true)}
+                  disabled={linkedContactsLoading}
                 >
                   {t('accounts.edit')}
                 </Button>
