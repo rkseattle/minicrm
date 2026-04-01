@@ -18,6 +18,8 @@ export const createAccountSchema = z.object({
   website: z.string().trim().url('Website must be a valid URL').optional(),
   employee_range: z.string().trim().optional(),
   revenue_range: z.string().trim().optional(),
+  /** UUIDs of contacts to link to this account */
+  contact_ids: z.array(z.string().uuid('Each contact ID must be a valid UUID')).optional(),
 });
 
 /**

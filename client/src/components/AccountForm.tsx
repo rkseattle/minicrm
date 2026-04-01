@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
+import ContactSelector from '@/components/ContactSelector.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 
@@ -21,11 +22,15 @@ export interface AccountFormValues {
   revenue_range: string;
   /** UUID of the owner; populated only when users prop is provided (edit mode) */
   owner_id: string;
+  /** UUIDs of contacts linked to this account */
+  contact_ids: string[];
 }
 
 interface AccountFormProps {
   /** Pre-populate fields when editing an existing account */
   initialValues?: Partial<AccountResponse>;
+  /** Pre-populate the contact selector with already-linked contact UUIDs */
+  initialContactIds?: string[];
   /**
    * When provided, an owner selector is rendered.
    * Omit on the create form (ownership defaults to the creating user server-side).
@@ -47,8 +52,12 @@ interface AccountFormProps {
  * Returns the initial state for the form, optionally seeded from an existing account.
  *
  * @param initial - Optional existing account values to pre-populate
+ * @param initialContactIds - Optional pre-selected contact UUIDs
  */
-function buildInitialState(initial?: Partial<AccountResponse>): AccountFormValues {
+function buildInitialState(
+  initial?: Partial<AccountResponse>,
+  initialContactIds?: string[],
+): AccountFormValues {
   return {
     name: initial?.name ?? '',
     industry: initial?.industry ?? '',
@@ -56,6 +65,7 @@ function buildInitialState(initial?: Partial<AccountResponse>): AccountFormValue
     employee_range: initial?.employee_range ?? '',
     revenue_range: initial?.revenue_range ?? '',
     owner_id: initial?.owner_id ?? '',
+    contact_ids: initialContactIds ?? [],
   };
 }
 
@@ -64,6 +74,7 @@ function buildInitialState(initial?: Partial<AccountResponse>): AccountFormValue
  */
 export default function AccountForm({
   initialValues,
+  initialContactIds,
   users,
   onSubmit,
   onCancel,
@@ -74,7 +85,7 @@ export default function AccountForm({
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState<AccountFormValues>(() =>
-    buildInitialState(initialValues),
+    buildInitialState(initialValues, initialContactIds),
   );
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -85,6 +96,15 @@ export default function AccountForm({
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  /**
+   * Updates the selected contact IDs in form state.
+   *
+   * @param ids - New array of selected contact UUIDs
+   */
+  const handleContactIdsChange = (ids: string[]): void => {
+    setFormData((previous) => ({ ...previous, contact_ids: ids }));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
@@ -171,6 +191,16 @@ export default function AccountForm({
             disabled={isSubmitting}
           />
         )}
+      </div>
+
+      {/* Contact selector spans full width */}
+      <div className="mb-4">
+        <ContactSelector
+          id="account-contact-selector"
+          selectedIds={formData.contact_ids}
+          onChange={handleContactIdsChange}
+          disabled={isSubmitting}
+        />
       </div>
 
       {error && (

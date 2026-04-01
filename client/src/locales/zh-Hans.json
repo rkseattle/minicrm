@@ -190,6 +190,11 @@
     "backToAccounts": "返回客户列表",
     "linkedContactsHeading": "关联联系人",
     "linkedContactsEmpty": "此客户暂无关联联系人。",
+    "contactsLabel": "联系人",
+    "contactsSearchPlaceholder": "按姓名或电子邮件搜索联系人…",
+    "contactsSelected": "已选 {{count}} 个联系人",
+    "contactsSelected_other": "已选 {{count}} 个联系人",
+    "contactsNone": "未选择联系人",
     "searchPlaceholder": "按公司名称搜索…",
     "industryFilterPlaceholder": "按行业筛选…"
   },

@@ -62,10 +62,12 @@ export default function AccountDetailPage() {
         employee_range: values.employee_range || undefined,
         revenue_range: values.revenue_range || undefined,
         owner_id: values.owner_id || undefined,
+        contact_ids: values.contact_ids,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: linkedContactsQueryKey });
       setIsEditing(false);
       setUpdateError(null);
     },
@@ -183,6 +185,7 @@ export default function AccountDetailPage() {
             </h2>
             <AccountForm
               initialValues={account}
+              initialContactIds={linkedContactsData?.contacts.map((c) => c.id) ?? []}
               users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
