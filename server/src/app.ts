@@ -18,6 +18,7 @@ import activityRoutes from './routes/activities.js';
 import dashboardRoutes from './routes/dashboard.js';
 import reportRoutes from './routes/reports.js';
 import settingsRoutes from './routes/settings.js';
+import automationRoutes from './routes/automation.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/automation/rules', automationRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req: Request, res: Response) => {

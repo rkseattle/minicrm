@@ -14,6 +14,41 @@ import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import type { MyTaskResponse } from '@/api/activities.js';
 import type { DashboardSummaryResponse } from '@/api/dashboard.js';
 import type { WinLossReportResponse } from '@/api/reports.js';
+import type {
+  AutomationRuleResponse,
+  AutomationRuleLogResponse,
+} from '@shared/schemas/automationSchema.js';
+
+/** Reusable fixture: an automation rule */
+export const AUTOMATION_RULE_1: AutomationRuleResponse = {
+  id: '00000000-0000-0000-0000-000000000601',
+  name: 'New deal follow-up task',
+  enabled: true,
+  trigger_type: 'deal_created',
+  trigger_config: {},
+  action_type: 'create_task',
+  action_config: {
+    subject: 'Follow up with new lead',
+    task_type: 'Task',
+    assignee_type: 'owner',
+    due_date_offset_days: 1,
+  },
+  created_by: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: an automation rule execution log entry */
+export const AUTOMATION_LOG_1: AutomationRuleLogResponse = {
+  id: '00000000-0000-0000-0000-000000000701',
+  rule_id: AUTOMATION_RULE_1.id,
+  rule_name: AUTOMATION_RULE_1.name,
+  triggered_at: '2025-01-02T10:00:00.000Z',
+  triggering_record_type: 'deal',
+  triggering_record_id: '00000000-0000-0000-0000-000000000301',
+  outcome: 'success',
+  error_message: null,
+};
 
 /** Reusable fixture: win/loss report response */
 export const WIN_LOSS_REPORT: WinLossReportResponse = {
@@ -600,5 +635,62 @@ export const handlers = [
   http.patch('/api/users/me/language', async ({ request }) => {
     const body = (await request.json()) as { language: string | null };
     return HttpResponse.json({ language: body.language });
+  }),
+
+  /** Automation: GET /api/automation/rules */
+  http.get('/api/automation/rules', () => {
+    return HttpResponse.json({ rules: [AUTOMATION_RULE_1] });
+  }),
+
+  /** Automation: POST /api/automation/rules */
+  http.post('/api/automation/rules', async ({ request }) => {
+    const body = (await request.json()) as Partial<AutomationRuleResponse>;
+    return HttpResponse.json(
+      {
+        rule: {
+          ...AUTOMATION_RULE_1,
+          id: '00000000-0000-0000-0000-000000000602',
+          name: body.name ?? 'New Rule',
+          enabled: body.enabled ?? true,
+          trigger_type: body.trigger_type ?? 'deal_created',
+          trigger_config: body.trigger_config ?? {},
+          action_type: body.action_type ?? 'create_task',
+          action_config: body.action_config ?? {},
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Automation: GET /api/automation/rules/:id */
+  http.get('/api/automation/rules/:id', ({ params }) => {
+    if (params.id === AUTOMATION_RULE_1.id) {
+      return HttpResponse.json({ rule: AUTOMATION_RULE_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Automation rule not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Automation: PATCH /api/automation/rules/:id */
+  http.patch('/api/automation/rules/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<AutomationRuleResponse>;
+    return HttpResponse.json({
+      rule: { ...AUTOMATION_RULE_1, ...body, id: params.id as string },
+    });
+  }),
+
+  /** Automation: DELETE /api/automation/rules/:id */
+  http.delete('/api/automation/rules/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Automation: GET /api/automation/rules/:id/logs */
+  http.get('/api/automation/rules/:id/logs', ({ params }) => {
+    if (params.id === AUTOMATION_RULE_1.id) {
+      return HttpResponse.json({ logs: [AUTOMATION_LOG_1] });
+    }
+    return HttpResponse.json({ logs: [] });
   }),
 ];

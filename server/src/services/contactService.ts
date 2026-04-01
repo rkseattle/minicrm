@@ -8,6 +8,7 @@ import type {
   CreateContactInput,
   UpdateContactInput,
 } from '@minicrm/shared/schemas/contactSchema.js';
+import { fireAutomationTrigger } from './automationService.js';
 
 /** Columns that may be updated via updateContact — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
@@ -81,7 +82,16 @@ export async function createContact(
     ],
   );
 
-  return result.rows[0];
+  const contact = result.rows[0];
+
+  // Fire the contact_created automation trigger after successful insert
+  await fireAutomationTrigger('contact_created', {
+    recordId: contact.id,
+    recordType: 'contact',
+    ownerId: owner_id,
+  });
+
+  return contact;
 }
 
 /**

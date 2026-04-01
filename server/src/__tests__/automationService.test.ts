@@ -1,0 +1,507 @@
+/**
+ * Integration tests for automationService.
+ *
+ * Runs against a real PostgreSQL test database.
+ * A single admin user is created in beforeAll and reused.
+ * Automation rules and logs tables are truncated before each test.
+ *
+ * Run: npm test (from /server)
+ */
+
+import 'dotenv/config';
+import {
+  createAutomationRule,
+  findAutomationRuleById,
+  listAutomationRules,
+  updateAutomationRule,
+  deleteAutomationRule,
+  listRuleLogs,
+  fireAutomationTrigger,
+} from '../services/automationService.js';
+import { createUser } from '../services/userService.js';
+import pool from '../db.js';
+
+/** Minimal admin user fixture */
+const ADMIN_USER = {
+  email: 'automation-admin@example.com',
+  name: 'Automation Admin',
+  role: 'admin' as const,
+  passwordHash: '$2b$12$placeholder_hash',
+  status: 'active' as const,
+};
+
+/** Minimal rep user fixture (used as task assignee) */
+const REP_USER = {
+  email: 'automation-rep@example.com',
+  name: 'Automation Rep',
+  role: 'rep' as const,
+  passwordHash: '$2b$12$placeholder_hash',
+  status: 'active' as const,
+};
+
+/** Base rule fixture — create_task action on deal_created */
+const BASE_RULE = {
+  name: 'New deal follow-up task',
+  enabled: true,
+  trigger_type: 'deal_created' as const,
+  trigger_config: {},
+  action_type: 'create_task' as const,
+  action_config: {
+    subject: 'Follow up with new lead',
+    task_type: 'Task',
+    assignee_type: 'owner',
+    due_date_offset_days: 1,
+  },
+};
+
+let adminId: string;
+let repId: string;
+let dealId: string;
+let contactId: string;
+
+beforeAll(async () => {
+  // Clean up any leftovers from prior runs
+  await pool.query('DELETE FROM automation_rule_logs');
+  await pool.query('DELETE FROM automation_rules');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_USER.email, REP_USER.email]]);
+
+  const admin = await createUser(ADMIN_USER);
+  adminId = admin.id;
+
+  const rep = await createUser(REP_USER);
+  repId = rep.id;
+
+  // Create a deal and a contact for trigger execution tests
+  const dealResult = await pool.query<{ id: string }>(
+    `INSERT INTO deals (name, stage, owner_id) VALUES ($1, $2, $3) RETURNING id`,
+    ['Trigger Test Deal', 'Prospecting', adminId],
+  );
+  dealId = dealResult.rows[0].id;
+
+  const contactResult = await pool.query<{ id: string }>(
+    `INSERT INTO contacts (first_name, last_name, email, owner_id)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    ['Trigger', 'Contact', 'trigger-contact@example.com', adminId],
+  );
+  contactId = contactResult.rows[0].id;
+});
+
+beforeEach(async () => {
+  await pool.query('DELETE FROM automation_rule_logs');
+  await pool.query('DELETE FROM automation_rules');
+  await pool.query('DELETE FROM activities');
+});
+
+afterAll(async () => {
+  await pool.query('DELETE FROM automation_rule_logs');
+  await pool.query('DELETE FROM automation_rules');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
+  await pool.query('DELETE FROM contacts WHERE id = $1', [contactId]);
+  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_USER.email, REP_USER.email]]);
+  await pool.end();
+});
+
+// ── createAutomationRule ────────────────────────────────────────────────────────
+
+describe('createAutomationRule', () => {
+  it('inserts a rule and returns the full row', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    expect(rule.id).toBeDefined();
+    expect(rule.name).toBe(BASE_RULE.name);
+    expect(rule.enabled).toBe(true);
+    expect(rule.trigger_type).toBe('deal_created');
+    expect(rule.action_type).toBe('create_task');
+    expect(rule.created_by).toBe(adminId);
+    expect(rule.created_at).toBeInstanceOf(Date);
+  });
+
+  it('stores trigger_config and action_config as objects', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    expect(rule.trigger_config).toEqual({});
+    expect(rule.action_config).toMatchObject({ subject: 'Follow up with new lead' });
+  });
+
+  it('creates a disabled rule when enabled is false', async () => {
+    const rule = await createAutomationRule({
+      ...BASE_RULE,
+      enabled: false,
+      created_by: adminId,
+    });
+    expect(rule.enabled).toBe(false);
+  });
+
+  it('creates a deal_stage_changed rule with trigger_config', async () => {
+    const rule = await createAutomationRule({
+      name: 'Stage change rule',
+      enabled: true,
+      trigger_type: 'deal_stage_changed',
+      trigger_config: { stage: 'Proposal' },
+      action_type: 'send_notification',
+      action_config: { message: 'Deal moved to Proposal!' },
+      created_by: adminId,
+    });
+
+    expect(rule.trigger_type).toBe('deal_stage_changed');
+    expect(rule.trigger_config).toEqual({ stage: 'Proposal' });
+  });
+});
+
+// ── findAutomationRuleById ──────────────────────────────────────────────────────
+
+describe('findAutomationRuleById', () => {
+  it('returns the rule when found', async () => {
+    const created = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+    const found = await findAutomationRuleById(created.id);
+
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(created.id);
+    expect(found!.name).toBe(BASE_RULE.name);
+  });
+
+  it('returns null for a non-existent UUID', async () => {
+    const found = await findAutomationRuleById('00000000-0000-0000-0000-000000000000');
+    expect(found).toBeNull();
+  });
+});
+
+// ── listAutomationRules ─────────────────────────────────────────────────────────
+
+describe('listAutomationRules', () => {
+  it('returns an empty array when no rules exist', async () => {
+    const rules = await listAutomationRules();
+    expect(rules).toEqual([]);
+  });
+
+  it('returns all rules ordered by created_at descending', async () => {
+    await createAutomationRule({ ...BASE_RULE, name: 'Alpha Rule', created_by: adminId });
+    await createAutomationRule({ ...BASE_RULE, name: 'Beta Rule', created_by: adminId });
+
+    const rules = await listAutomationRules();
+    expect(rules).toHaveLength(2);
+    // Most recently created rule should be first
+    expect(rules[0].name).toBe('Beta Rule');
+    expect(rules[1].name).toBe('Alpha Rule');
+  });
+});
+
+// ── updateAutomationRule ────────────────────────────────────────────────────────
+
+describe('updateAutomationRule', () => {
+  it('updates the name field', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+    const updated = await updateAutomationRule(rule.id, { name: 'Renamed Rule' });
+
+    expect(updated!.name).toBe('Renamed Rule');
+    expect(updated!.trigger_type).toBe('deal_created'); // unchanged
+  });
+
+  it('toggles enabled to false', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+    const updated = await updateAutomationRule(rule.id, { enabled: false });
+
+    expect(updated!.enabled).toBe(false);
+  });
+
+  it('updates action_config', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+    const newConfig = {
+      subject: 'Updated subject',
+      task_type: 'Call',
+      assignee_type: 'owner',
+      due_date_offset_days: 3,
+    };
+    const updated = await updateAutomationRule(rule.id, { action_config: newConfig });
+
+    expect(updated!.action_config).toMatchObject({ subject: 'Updated subject' });
+  });
+
+  it('returns null for a non-existent rule', async () => {
+    const result = await updateAutomationRule('00000000-0000-0000-0000-000000000000', {
+      name: 'Ghost',
+    });
+    expect(result).toBeNull();
+  });
+});
+
+// ── deleteAutomationRule ────────────────────────────────────────────────────────
+
+describe('deleteAutomationRule', () => {
+  it('removes the rule and returns the deleted row', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    const deleted = await deleteAutomationRule(rule.id);
+    expect(deleted!.id).toBe(rule.id);
+
+    const found = await findAutomationRuleById(rule.id);
+    expect(found).toBeNull();
+  });
+
+  it('returns null for a non-existent rule', async () => {
+    const result = await deleteAutomationRule('00000000-0000-0000-0000-000000000000');
+    expect(result).toBeNull();
+  });
+});
+
+// ── listRuleLogs ────────────────────────────────────────────────────────────────
+
+describe('listRuleLogs', () => {
+  it('returns an empty array when no logs exist', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toEqual([]);
+  });
+
+  it('returns logs with rule_name joined from automation_rules', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    // Insert a log directly
+    await pool.query(
+      `INSERT INTO automation_rule_logs
+         (rule_id, triggering_record_type, triggering_record_id, outcome)
+       VALUES ($1, $2, $3, $4)`,
+      [rule.id, 'deal', dealId, 'success'],
+    );
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].rule_id).toBe(rule.id);
+    expect(logs[0].rule_name).toBe(BASE_RULE.name);
+    expect(logs[0].outcome).toBe('success');
+    expect(logs[0].error_message).toBeNull();
+  });
+
+  it('caps results at 20 most recent entries', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    // Insert 25 logs
+    for (let i = 0; i < 25; i++) {
+      await pool.query(
+        `INSERT INTO automation_rule_logs
+           (rule_id, triggering_record_type, triggering_record_id, outcome)
+         VALUES ($1, $2, $3, $4)`,
+        [rule.id, 'deal', dealId, 'success'],
+      );
+    }
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(20);
+  });
+});
+
+// ── fireAutomationTrigger — create_task action ─────────────────────────────────
+
+describe('fireAutomationTrigger — create_task action', () => {
+  it('creates a task activity when deal_created fires and a matching rule is enabled', async () => {
+    await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND type = 'Task'`,
+      [dealId],
+    );
+    expect(tasks.rows).toHaveLength(1);
+    expect(tasks.rows[0].subject).toBe('Follow up with new lead');
+    expect(tasks.rows[0].owner_id).toBe(adminId); // assignee_type = 'owner'
+  });
+
+  it('assigns to a specific user when assignee_type is specific', async () => {
+    await createAutomationRule({
+      ...BASE_RULE,
+      action_config: {
+        subject: 'Specific assignee task',
+        task_type: 'Task',
+        assignee_type: 'specific',
+        assignee_id: repId,
+        due_date_offset_days: 0,
+      },
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND subject = 'Specific assignee task'`,
+      [dealId],
+    );
+    expect(tasks.rows).toHaveLength(1);
+    expect(tasks.rows[0].owner_id).toBe(repId);
+  });
+
+  it('writes a success log entry', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].outcome).toBe('success');
+  });
+
+  it('does not fire disabled rules', async () => {
+    await createAutomationRule({ ...BASE_RULE, enabled: false, created_by: adminId });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND type = 'Task'`,
+      [dealId],
+    );
+    expect(tasks.rows).toHaveLength(0);
+  });
+
+  it('writes an error log when action_config is invalid', async () => {
+    const rule = await createAutomationRule({
+      ...BASE_RULE,
+      action_config: { subject: '' }, // missing required fields
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].outcome).toBe('error');
+    expect(logs[0].error_message).not.toBeNull();
+  });
+});
+
+// ── fireAutomationTrigger — deal_stage_changed ─────────────────────────────────
+
+describe('fireAutomationTrigger — deal_stage_changed', () => {
+  it('fires only when the stage matches trigger_config.stage', async () => {
+    await createAutomationRule({
+      name: 'Proposal stage rule',
+      enabled: true,
+      trigger_type: 'deal_stage_changed',
+      trigger_config: { stage: 'Proposal' },
+      action_type: 'create_task',
+      action_config: {
+        subject: 'Prepare proposal document',
+        task_type: 'Task',
+        assignee_type: 'owner',
+        due_date_offset_days: 2,
+      },
+      created_by: adminId,
+    });
+
+    // Fire with a non-matching stage — no task should be created
+    await fireAutomationTrigger('deal_stage_changed', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+      newStage: 'Qualification',
+    });
+
+    const noTasksResult = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND subject = 'Prepare proposal document'`,
+      [dealId],
+    );
+    expect(noTasksResult.rows).toHaveLength(0);
+
+    // Fire with the matching stage — task should be created
+    await fireAutomationTrigger('deal_stage_changed', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+      newStage: 'Proposal',
+    });
+
+    const tasksResult = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND subject = 'Prepare proposal document'`,
+      [dealId],
+    );
+    expect(tasksResult.rows).toHaveLength(1);
+  });
+});
+
+// ── fireAutomationTrigger — contact_created ────────────────────────────────────
+
+describe('fireAutomationTrigger — contact_created', () => {
+  it('creates a task linked to the contact', async () => {
+    await createAutomationRule({
+      name: 'New contact task',
+      enabled: true,
+      trigger_type: 'contact_created',
+      trigger_config: {},
+      action_type: 'create_task',
+      action_config: {
+        subject: 'Welcome new contact',
+        task_type: 'Task',
+        assignee_type: 'owner',
+        due_date_offset_days: 0,
+      },
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('contact_created', {
+      recordId: contactId,
+      recordType: 'contact',
+      ownerId: adminId,
+    });
+
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE contact_id = $1 AND subject = 'Welcome new contact'`,
+      [contactId],
+    );
+    expect(tasks.rows).toHaveLength(1);
+  });
+});
+
+// ── fireAutomationTrigger — send_notification ──────────────────────────────────
+
+describe('fireAutomationTrigger — send_notification', () => {
+  it('writes a success log without creating an activity', async () => {
+    const rule = await createAutomationRule({
+      name: 'Notification rule',
+      enabled: true,
+      trigger_type: 'deal_created',
+      trigger_config: {},
+      action_type: 'send_notification',
+      action_config: { message: 'A new deal was created!' },
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].outcome).toBe('success');
+
+    // No activities should be created
+    const activities = await pool.query(`SELECT * FROM activities WHERE deal_id = $1`, [dealId]);
+    expect(activities.rows).toHaveLength(0);
+  });
+});

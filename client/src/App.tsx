@@ -20,6 +20,7 @@ import MyTasksPage from '@/pages/MyTasksPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
 import WinLossReportPage from '@/pages/WinLossReportPage.js';
+import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
 
 /**
  * Root application component with route definitions.
@@ -48,6 +49,7 @@ export default function App() {
       <Route element={<AdminRoute />}>
         <Route path="/users" element={<UsersPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/automation" element={<AutomationRulesPage />} />
         <Route path="/reports/win-loss" element={<WinLossReportPage />} />
       </Route>
 
