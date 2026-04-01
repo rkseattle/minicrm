@@ -39,6 +39,10 @@ export async function createContactHandler(req: Request, res: Response): Promise
   const force = req.query.force === 'true';
 
   if (!force) {
+    // Note: there is a narrow TOCTOU window — two concurrent requests with the
+    // same email can both pass this check and both insert. The consequence is a
+    // silent duplicate rather than a missed warning, which is acceptable for alpha
+    // scope. A unique index + ON CONFLICT would close the gap if needed later.
     const duplicate = await findContactByEmail(parsed.data.email);
     if (duplicate) {
       res.status(409).json({

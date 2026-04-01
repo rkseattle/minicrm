@@ -5,7 +5,7 @@
  * Each row links to the ContactDetailPage.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +38,14 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [pendingValues, setPendingValues] = useState<ContactFormValues | null>(null);
   const [duplicateContact, setDuplicateContact] = useState<DuplicateContactInfo | null>(null);
+  /**
+   * When true, the next form submit will bypass the duplicate check.
+   * Set by "Create anyway" so the form re-submits with its current (live) values.
+   */
+  const forceNextSubmit = useRef(false);
+  /** Ref to the ContactForm's underlying <form> element for programmatic submit. */
+  const formRef = useRef<HTMLFormElement>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
@@ -99,23 +105,19 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
-      setPendingValues(null);
       setDuplicateContact(null);
+      forceNextSubmit.current = false;
     },
-    onError: (
-      error: {
-        response?: {
-          status?: number;
-          data?: {
-            error?: { message?: string };
-            duplicate?: DuplicateContactInfo;
-          };
+    onError: (error: {
+      response?: {
+        status?: number;
+        data?: {
+          error?: { message?: string };
+          duplicate?: DuplicateContactInfo;
         };
-      },
-      variables,
-    ) => {
+      };
+    }) => {
       if (error.response?.status === 409 && error.response.data?.duplicate) {
-        setPendingValues(variables.values);
         setDuplicateContact(error.response.data.duplicate);
         setCreateError(null);
       } else {
@@ -174,9 +176,10 @@ export default function ContactsPage() {
                     data-testid="duplicate-create-anyway"
                     className="inline-flex items-center px-3 py-1.5 rounded-md bg-yellow-600 text-white text-xs font-medium hover:bg-yellow-700 transition-colors"
                     onClick={() => {
-                      if (pendingValues) {
-                        createMutation.mutate({ values: pendingValues, force: true });
-                      }
+                      // Set the flag so the next form submit carries force=true,
+                      // then programmatically submit the form to use its live values.
+                      forceNextSubmit.current = true;
+                      formRef.current?.requestSubmit();
                     }}
                     disabled={createMutation.isPending}
                   >
@@ -187,18 +190,20 @@ export default function ContactsPage() {
             )}
 
             <ContactForm
+              formRef={formRef}
               accounts={accountOptions}
               onSubmit={(values) => {
                 setCreateError(null);
                 setDuplicateContact(null);
-                setPendingValues(null);
-                createMutation.mutate({ values, force: false });
+                const force = forceNextSubmit.current;
+                forceNextSubmit.current = false;
+                createMutation.mutate({ values, force });
               }}
               onCancel={() => {
                 setShowForm(false);
                 setCreateError(null);
                 setDuplicateContact(null);
-                setPendingValues(null);
+                forceNextSubmit.current = false;
               }}
               isSubmitting={createMutation.isPending}
               submitLabel={t('contacts.save')}
