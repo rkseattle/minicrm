@@ -16,26 +16,34 @@ interface RenderOptions {
    * so that useParams() resolves correctly.
    */
   path?: string;
+  /**
+   * Optional pre-configured QueryClient to use instead of creating a new one.
+   * Useful for tests that need to spy on queryClient methods or inspect the cache.
+   */
+  queryClient?: QueryClient;
 }
 
 /**
  * Renders a React element inside QueryClientProvider + MemoryRouter.
- * Creates a fresh QueryClient per call with retries disabled to keep tests fast.
+ * Creates a fresh QueryClient per call with retries disabled to keep tests fast,
+ * unless a pre-configured QueryClient is provided via options.queryClient.
  *
  * @param ui - The React element to render
- * @param options - Optional router configuration
+ * @param options - Optional router and query client configuration
  * @returns RTL render result
  */
 export function renderWithProviders(
   ui: React.ReactElement,
-  { initialEntries = ['/'], path }: RenderOptions = {},
+  { initialEntries = ['/'], path, queryClient: providedQueryClient }: RenderOptions = {},
 ): RenderResult {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  });
+  const queryClient =
+    providedQueryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
 
   const content = path ? (
     <Routes>

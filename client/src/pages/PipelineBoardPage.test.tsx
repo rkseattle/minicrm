@@ -6,11 +6,14 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { QueryClient } from '@tanstack/react-query';
 import PipelineBoardPage from './PipelineBoardPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { DEAL_1, ACCOUNT_1 } from '../test/msw/handlers.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
+import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
+import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 
 describe('PipelineBoardPage', () => {
   it('renders the pipeline board heading', async () => {
@@ -331,6 +334,63 @@ describe('PipelineBoardPage', () => {
         DEAL_1.id,
         expect.objectContaining({ stage: 'Closed Lost', loss_reason: 'Budget constraints' }),
       );
+    });
+  });
+
+  it('invalidates dashboard cache on any stage change and win/loss cache only on terminal stage', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    server.use(
+      http.patch('/api/deals/:id', async ({ request }) => {
+        const body = (await request.json()) as { stage: string };
+        return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PipelineBoardPage />, { queryClient });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    // Non-terminal stage change — dashboard invalidated, win/loss not
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Qualification',
+    );
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(DASHBOARD_QUERY_KEY);
+      expect(invalidatedKeys).not.toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
+
+    invalidateSpy.mockClear();
+
+    // Terminal stage change — both dashboard and win/loss invalidated
+    await user.selectOptions(
+      screen.getByTestId(`deal-card-stage-select-${DEAL_1.id}`),
+      'Closed Won',
+    );
+
+    // Confirm the close deal modal
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('close-deal-confirm'));
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(DASHBOARD_QUERY_KEY);
+      expect(invalidatedKeys).toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
     });
   });
 

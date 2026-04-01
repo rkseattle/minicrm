@@ -18,6 +18,8 @@ import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { listDeals, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
+import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
+import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
@@ -127,13 +129,17 @@ export default function PipelineBoardPage() {
         setCloseError(null);
       }
     },
-    onSettled: (_data, _error, { id }) => {
+    onSettled: (_data, _error, { id, stage }) => {
       setUpdatingDealIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
       queryClient.invalidateQueries({ queryKey: PIPELINE_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
+      if ((CLOSED_STAGES as PipelineStage[]).includes(stage)) {
+        queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
+      }
     },
   });
 
