@@ -220,6 +220,26 @@ npm run migrate --workspace=minicrm-server
 - Data is always fresh on page load (React Query `staleTime: 0`)
 - API endpoint: `GET /api/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
 
+### Automation Rules (MINCRM-27)
+
+- Admin-only page at `/admin/automation`, accessible from the **Automation** nav link (visible to admins only)
+- Admins can create automation rules that pair a **trigger** with an **action**
+- **Triggers:** Deal stage changes to a specific stage, Deal is created, Contact is created
+- **Actions:** Create task (with configurable subject, type, assignee, and due date offset in days), Send notification (logs message to the server; full delivery via MINCRM-5)
+- Rules have a name and an enable/disable toggle; disabled rules do not fire
+- Rule execution is synchronous — fires inline after the triggering database operation
+- For `create_task` actions, the assignee can be the record owner or a specific user
+- A **logs drawer** shows the 20 most recent executions per rule: timestamp, triggering record, and outcome (Success / Error with error message on failure)
+- API endpoints (admin-only):
+  - `GET /api/automation/rules` — list all rules
+  - `POST /api/automation/rules` — create a rule
+  - `GET /api/automation/rules/:id` — get a rule
+  - `PATCH /api/automation/rules/:id` — update a rule (supports partial updates including toggling `enabled`)
+  - `DELETE /api/automation/rules/:id` — delete a rule and its logs (CASCADE)
+  - `GET /api/automation/rules/:id/logs` — 20 most recent execution logs
+- Database migrations: `011_create_automation_rules.js`, `012_create_automation_rule_logs.js`
+- Shared Zod schemas in `shared/schemas/automationSchema.ts`
+
 ### Win/Loss Report (MINCRM-26)
 
 - Admin-only report page at `/reports/win-loss`, accessible from the navigation bar

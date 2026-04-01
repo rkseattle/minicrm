@@ -5,6 +5,7 @@
 
 import pool from '../db.js';
 import type { CreateDealInput, UpdateDealInput } from '@minicrm/shared/schemas/dealSchema.js';
+import { fireAutomationTrigger } from './automationService.js';
 
 /** Columns that may be updated via updateDeal — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
@@ -55,7 +56,16 @@ export async function createDeal(params: CreateDealInput & { owner_id: string })
     [name, stage, value ?? null, close_date ?? null, account_id ?? null, owner_id],
   );
 
-  return result.rows[0];
+  const deal = result.rows[0];
+
+  // Fire the deal_created automation trigger after successful insert
+  await fireAutomationTrigger('deal_created', {
+    recordId: deal.id,
+    recordType: 'deal',
+    ownerId: owner_id,
+  });
+
+  return deal;
 }
 
 /**
@@ -128,7 +138,19 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
     [id, ...fields.map((f) => params[f])],
   );
 
-  return result.rows[0] ?? null;
+  const deal = result.rows[0] ?? null;
+
+  // Fire the deal_stage_changed automation trigger if stage was updated
+  if (deal && params.stage !== undefined) {
+    await fireAutomationTrigger('deal_stage_changed', {
+      recordId: deal.id,
+      recordType: 'deal',
+      ownerId: deal.owner_id,
+      newStage: deal.stage,
+    });
+  }
+
+  return deal;
 }
 
 /**
