@@ -19,7 +19,11 @@ import {
   ACTIVITIES_QUERY_KEY,
 } from '@/api/activities.js';
 import { useAuth } from '@/hooks/useAuth.js';
-import type { ActivityResponse, ActivityType } from '@shared/schemas/activitySchema.js';
+import type {
+  ActivityResponse,
+  ActivityType,
+  ActivityDirection,
+} from '@shared/schemas/activitySchema.js';
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 
@@ -73,6 +77,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         subject: values.subject,
         notes: values.notes || undefined,
         due_date: values.due_date || undefined,
+        direction: (values.direction || undefined) as ActivityDirection | undefined,
+        outcome: values.outcome || undefined,
         contact_id: contactId,
         account_id: accountId,
         deal_id: dealId,
@@ -94,6 +100,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         subject: values.subject,
         notes: values.notes || null,
         due_date: values.due_date || null,
+        direction: (values.direction || null) as ActivityDirection | null,
+        outcome: values.outcome || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -211,6 +219,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                       subject: activity.subject,
                       notes: activity.notes ?? '',
                       due_date: activity.due_date ?? '',
+                      direction: (activity.direction ?? '') as ActivityDirection | '',
+                      outcome: activity.outcome ?? '',
                     }}
                     onSubmit={(values) => updateMutation.mutate({ id: activity.id, values })}
                     onCancel={() => {
@@ -223,11 +233,19 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                   />
                 ) : (
                   <div className="flex items-start gap-3">
-                    {/* Type badge + status */}
+                    {/* Type badge + direction + status */}
                     <div className="flex flex-col items-start gap-1 shrink-0 pt-0.5">
                       <Badge variant={TYPE_BADGE_VARIANT[activity.type as ActivityType]}>
                         {t(`activities.${TYPE_KEY_MAP[activity.type as ActivityType]}`)}
                       </Badge>
+                      {activity.direction && (
+                        <span
+                          className="text-xs text-gray-500"
+                          data-testid={`activity-direction-${activity.id}`}
+                        >
+                          {t(`activities.direction${activity.direction}`)}
+                        </span>
+                      )}
                       {activity.status === 'complete' && (
                         <span data-testid={`activity-complete-badge-${activity.id}`}>
                           <Badge variant="success">{t('activities.statusComplete')}</Badge>
@@ -252,6 +270,14 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           data-testid={`activity-notes-${activity.id}`}
                         >
                           {activity.notes}
+                        </p>
+                      )}
+                      {activity.outcome && (
+                        <p
+                          className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
+                          data-testid={`activity-outcome-${activity.id}`}
+                        >
+                          {activity.outcome}
                         </p>
                       )}
                       {activity.due_date && (

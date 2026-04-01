@@ -16,6 +16,8 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
   'notes',
   'due_date',
   'status',
+  'direction',
+  'outcome',
 ]);
 
 /** Shape of an activity row returned from the database */
@@ -26,6 +28,8 @@ export interface ActivityRow {
   notes: string | null;
   due_date: string | null;
   status: string;
+  direction: string | null;
+  outcome: string | null;
   contact_id: string | null;
   account_id: string | null;
   deal_id: string | null;
@@ -49,7 +53,7 @@ interface ListActivitiesOptions {
 
 /** Columns selected when JOINing users for owner_name */
 const SELECT_COLS_WITH_OWNER =
-  'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at';
+  'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.direction, a.outcome, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at';
 
 /**
  * Creates a new activity record.
@@ -60,17 +64,30 @@ const SELECT_COLS_WITH_OWNER =
 export async function createActivity(
   params: CreateActivityInput & { owner_id: string },
 ): Promise<ActivityRow> {
-  const { type, subject, notes, due_date, contact_id, account_id, deal_id, owner_id } = params;
+  const {
+    type,
+    subject,
+    notes,
+    due_date,
+    direction,
+    outcome,
+    contact_id,
+    account_id,
+    deal_id,
+    owner_id,
+  } = params;
 
   const insertResult = await pool.query<{ id: string }>(
-    `INSERT INTO activities (type, subject, notes, due_date, contact_id, account_id, deal_id, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
     [
       type,
       subject,
       notes ?? null,
       due_date ?? null,
+      direction ?? null,
+      outcome ?? null,
       contact_id ?? null,
       account_id ?? null,
       deal_id ?? null,
@@ -201,6 +218,8 @@ export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
        a.notes,
        a.due_date::text,
        a.status,
+       a.direction,
+       a.outcome,
        a.contact_id,
        a.account_id,
        a.deal_id,

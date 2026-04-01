@@ -13,6 +13,10 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export const ACTIVITY_STATUSES = ['open', 'complete'] as const;
 export type ActivityStatus = (typeof ACTIVITY_STATUSES)[number];
 
+/** Direction values for Call and Email activities. */
+export const ACTIVITY_DIRECTIONS = ['Inbound', 'Outbound'] as const;
+export type ActivityDirection = (typeof ACTIVITY_DIRECTIONS)[number];
+
 /**
  * Schema for creating a new activity.
  * type and subject are required. At least one parent ID (contact, account, or deal) must be set.
@@ -29,13 +33,22 @@ export const createActivitySchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be in YYYY-MM-DD format')
       .optional(),
+    direction: z.enum(ACTIVITY_DIRECTIONS).optional(),
+    outcome: z.string().trim().optional(),
     contact_id: z.string().uuid('contact_id must be a valid UUID').optional(),
     account_id: z.string().uuid('account_id must be a valid UUID').optional(),
     deal_id: z.string().uuid('deal_id must be a valid UUID').optional(),
   })
   .refine((data) => Boolean(data.contact_id ?? data.account_id ?? data.deal_id), {
     message: 'At least one of contact_id, account_id, or deal_id must be provided',
-  });
+  })
+  .refine(
+    (data) => {
+      const isCommunication = data.type === 'Call' || data.type === 'Email';
+      return !isCommunication || Boolean(data.direction);
+    },
+    { message: 'Direction is required for Call and Email activities', path: ['direction'] },
+  );
 
 /**
  * Schema for updating an existing activity.
@@ -53,10 +66,23 @@ export const updateActivitySchema = z
       .nullable()
       .optional(),
     status: z.enum(ACTIVITY_STATUSES).optional(),
+    direction: z.enum(ACTIVITY_DIRECTIONS).nullable().optional(),
+    outcome: z.string().trim().nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
-  });
+  })
+  .refine(
+    (data) => {
+      // Only enforced when the patch explicitly sets type to a communication type.
+      // If type is absent from the patch, the stored type is unknown at schema
+      // validation time; the controller handles that cross-field check.
+      const isCommunicationType = data.type === 'Call' || data.type === 'Email';
+      if (!isCommunicationType) return true;
+      return data.direction !== null && data.direction !== undefined;
+    },
+    { message: 'Direction is required for Call and Email activities', path: ['direction'] },
+  );
 
 /**
  * Schema for the safe activity response shape returned to API consumers.
@@ -68,6 +94,8 @@ export const activityResponseSchema = z.object({
   notes: z.string().nullable(),
   due_date: z.string().nullable(),
   status: z.enum(ACTIVITY_STATUSES),
+  direction: z.enum(ACTIVITY_DIRECTIONS).nullable(),
+  outcome: z.string().nullable(),
   contact_id: z.string().uuid().nullable(),
   account_id: z.string().uuid().nullable(),
   deal_id: z.string().uuid().nullable(),

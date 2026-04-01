@@ -172,6 +172,13 @@ npm run migrate --workspace=minicrm-server
 - Full CRUD REST API at `/api/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
 - Database migration: `006_create_activities.js`
 
+#### Structured communication logging (MINCRM-24)
+
+- Call and Email activities support two additional fields: **direction** (Inbound / Outbound, required) and **outcome** (free text, optional)
+- The `ActivityForm` conditionally shows direction and outcome fields when the selected type is Call or Email; direction is required before the form can be submitted
+- The `ActivityTimeline` displays the direction label below the type badge and the outcome text in the card body
+- Database migration: `010_add_communication_fields_to_activities.js` (adds `direction activity_direction` and `outcome text` columns, both nullable)
+
 #### My Tasks view (MINCRM-20)
 
 - Dedicated `/tasks` page (linked in the nav bar as **My Tasks**) listing all Task-type activities owned by the current user
