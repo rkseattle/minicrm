@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
-import { ACTIVITY_TYPES } from '@shared/schemas/activitySchema.js';
-import type { ActivityType } from '@shared/schemas/activitySchema.js';
+import { ACTIVITY_TYPES, ACTIVITY_DIRECTIONS } from '@shared/schemas/activitySchema.js';
+import type { ActivityType, ActivityDirection } from '@shared/schemas/activitySchema.js';
 
 /** Values managed by the activity form */
 export interface ActivityFormValues {
@@ -19,6 +19,8 @@ export interface ActivityFormValues {
   subject: string;
   notes: string;
   due_date: string;
+  direction: ActivityDirection | '';
+  outcome: string;
 }
 
 export interface ActivityFormProps {
@@ -74,17 +76,29 @@ export default function ActivityForm({
   const [subject, setSubject] = useState(initialValues?.subject ?? '');
   const [notes, setNotes] = useState(initialValues?.notes ?? '');
   const [dueDate, setDueDate] = useState(initialValues?.due_date ?? '');
+  const [direction, setDirection] = useState<ActivityDirection | ''>(
+    initialValues?.direction ?? '',
+  );
+  const [outcome, setOutcome] = useState(initialValues?.outcome ?? '');
 
   // Derive the current type without synchronizing state in an effect
   const type: ActivityType = manualType ?? defaultTypeForDueDate(dueDate);
 
+  /** Whether the selected type requires direction (Call or Email) */
+  const isCommunicationType = type === 'Call' || type === 'Email';
+
   const handleTypeChange = (value: ActivityType): void => {
     setManualType(value);
+    // Clear direction when switching away from a communication type
+    if (value !== 'Call' && value !== 'Email') {
+      setDirection('');
+      setOutcome('');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    onSubmit({ type, subject, notes, due_date: dueDate });
+    onSubmit({ type, subject, notes, due_date: dueDate, direction, outcome });
   };
 
   return (
@@ -126,6 +140,51 @@ export default function ActivityForm({
           />
         </div>
       </div>
+
+      {/* Direction + Outcome — shown only for Call and Email types */}
+      {isCommunicationType && (
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <label
+              htmlFor="activity-direction"
+              className="block text-xs font-medium text-gray-700 mb-1"
+            >
+              {t('activities.directionLabel')} <span aria-hidden="true">*</span>
+            </label>
+            <Select
+              id="activity-direction"
+              data-testid="activity-direction-select"
+              value={direction}
+              onChange={(e) => setDirection(e.target.value as ActivityDirection | '')}
+              required
+            >
+              <option value="">— {t('activities.directionLabel')} —</option>
+              {ACTIVITY_DIRECTIONS.map((dir) => (
+                <option key={dir} value={dir}>
+                  {t(`activities.direction${dir}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="activity-outcome"
+              className="block text-xs font-medium text-gray-700 mb-1"
+            >
+              {t('activities.outcomeLabel')}
+            </label>
+            <Input
+              id="activity-outcome"
+              type="text"
+              data-testid="activity-outcome"
+              placeholder={t('activities.outcomePlaceholder')}
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Subject */}
       <div className="mt-4">
@@ -173,7 +232,7 @@ export default function ActivityForm({
           variant="primary"
           size="sm"
           data-testid="activity-form-submit"
-          disabled={isSubmitting || !subject.trim()}
+          disabled={isSubmitting || !subject.trim() || (isCommunicationType && !direction)}
         >
           {isSubmitting ? t('activities.saving') : submitLabel}
         </Button>

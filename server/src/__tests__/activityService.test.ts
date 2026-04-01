@@ -126,9 +126,50 @@ describe('createActivity', () => {
       subject: 'Account check-in',
       account_id: accountId,
       owner_id: ownerId,
+      direction: 'Outbound',
     });
 
     expect(activity.account_id).toBe(accountId);
+  });
+
+  it('stores direction and outcome for a Call activity', async () => {
+    const activity = await createActivity({
+      type: 'Call',
+      subject: 'Intro call',
+      direction: 'Outbound',
+      outcome: 'Left voicemail',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    expect(activity.type).toBe('Call');
+    expect(activity.direction).toBe('Outbound');
+    expect(activity.outcome).toBe('Left voicemail');
+  });
+
+  it('stores direction for an Email activity with no outcome', async () => {
+    const activity = await createActivity({
+      type: 'Email',
+      subject: 'Follow-up email',
+      direction: 'Inbound',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    expect(activity.direction).toBe('Inbound');
+    expect(activity.outcome).toBeNull();
+  });
+
+  it('stores null direction and outcome for a Note activity', async () => {
+    const activity = await createActivity({
+      type: 'Note',
+      subject: 'Just a note',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    expect(activity.direction).toBeNull();
+    expect(activity.outcome).toBeNull();
   });
 
   it('throws when owner_id does not reference a real user', async () => {
@@ -499,6 +540,27 @@ describe('updateActivity', () => {
       subject: 'Ghost',
     });
     expect(result).toBeNull();
+  });
+
+  it('updates direction and outcome fields', async () => {
+    const activity = await createActivity({
+      type: 'Call',
+      subject: 'Initial call',
+      direction: 'Outbound',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    expect(activity.direction).toBe('Outbound');
+    expect(activity.outcome).toBeNull();
+
+    const updated = await updateActivity(activity.id, {
+      direction: 'Inbound',
+      outcome: 'Agreed to demo',
+    });
+
+    expect(updated!.direction).toBe('Inbound');
+    expect(updated!.outcome).toBe('Agreed to demo');
   });
 });
 
