@@ -7,6 +7,7 @@
     "pipeline": "Canal",
     "myTasks": "Mis tareas",
     "users": "Usuarios",
+    "winLossReport": "Informe de victorias/pérdidas",
     "adminSettings": "Configuración de administrador",
     "profileSettings": "Configuración de perfil",
     "languageSelector": "Idioma",
@@ -345,6 +346,32 @@
     "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
     "loadError": "Error al cargar la configuración. Por favor, inténtalo de nuevo.",
     "loading": "Cargando…"
+  },
+  "reports": {
+    "winLoss": {
+      "pageTitle": "Informe de victorias/pérdidas",
+      "subtitle": "Rendimiento de tratos cerrados para el período seleccionado.",
+      "dateRangeLabel": "Rango de fechas",
+      "presetCurrentMonth": "Este mes",
+      "presetCurrentQuarter": "Este trimestre",
+      "presetCustom": "Rango personalizado",
+      "startDateLabel": "Fecha de inicio",
+      "endDateLabel": "Fecha de fin",
+      "dateRangeInvalid": "La fecha de inicio no puede ser posterior a la fecha de fin.",
+      "ownerFilterLabel": "Responsable",
+      "ownerFilterAll": "Todos los representantes",
+      "loading": "Cargando informe…",
+      "errorLoad": "Error al cargar el informe. Por favor, inténtalo de nuevo.",
+      "wonCountLabel": "Oportunidades ganadas",
+      "wonValueLabel": "Valor ganado",
+      "lostCountLabel": "Oportunidades perdidas",
+      "lostValueLabel": "Valor perdido",
+      "winRateLabel": "Tasa de éxito",
+      "lossReasonHeading": "Desglose de razones de pérdida",
+      "lossReasonEmpty": "No hay razones de pérdida registradas para este período.",
+      "columnReason": "Razón",
+      "columnCount": "Cantidad"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

@@ -7,6 +7,7 @@
     "pipeline": "Pipeline",
     "myTasks": "My Tasks",
     "users": "Users",
+    "winLossReport": "Win/Loss Report",
     "adminSettings": "Admin Settings",
     "profileSettings": "Profile Settings",
     "languageSelector": "Language",
@@ -345,6 +346,32 @@
     "saveError": "Failed to save. Please try again.",
     "loadError": "Failed to load settings. Please try again.",
     "loading": "Loading…"
+  },
+  "reports": {
+    "winLoss": {
+      "pageTitle": "Win/Loss Report",
+      "subtitle": "Closed deal performance for the selected date range.",
+      "dateRangeLabel": "Date range",
+      "presetCurrentMonth": "This month",
+      "presetCurrentQuarter": "This quarter",
+      "presetCustom": "Custom range",
+      "startDateLabel": "Start date",
+      "endDateLabel": "End date",
+      "dateRangeInvalid": "Start date must not be after end date.",
+      "ownerFilterLabel": "Owner",
+      "ownerFilterAll": "All reps",
+      "loading": "Loading report…",
+      "errorLoad": "Failed to load report. Please try again.",
+      "wonCountLabel": "Closed Won",
+      "wonValueLabel": "Won value",
+      "lostCountLabel": "Closed Lost",
+      "lostValueLabel": "Lost value",
+      "winRateLabel": "Win rate",
+      "lossReasonHeading": "Loss reason breakdown",
+      "lossReasonEmpty": "No loss reasons recorded for this period.",
+      "columnReason": "Reason",
+      "columnCount": "Count"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

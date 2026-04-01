@@ -7,6 +7,7 @@
     "pipeline": "管道看板",
     "myTasks": "我的任务",
     "users": "用户",
+    "winLossReport": "赢/输报告",
     "adminSettings": "管理设置",
     "profileSettings": "个人设置",
     "languageSelector": "语言",
@@ -345,6 +346,32 @@
     "saveError": "保存失败，请重试。",
     "loadError": "加载设置失败，请重试。",
     "loading": "加载中…"
+  },
+  "reports": {
+    "winLoss": {
+      "pageTitle": "赢/输报告",
+      "subtitle": "所选日期范围内的成交业绩。",
+      "dateRangeLabel": "日期范围",
+      "presetCurrentMonth": "本月",
+      "presetCurrentQuarter": "本季度",
+      "presetCustom": "自定义范围",
+      "startDateLabel": "开始日期",
+      "endDateLabel": "结束日期",
+      "dateRangeInvalid": "开始日期不能晚于结束日期。",
+      "ownerFilterLabel": "负责人",
+      "ownerFilterAll": "所有销售代表",
+      "loading": "加载报告中…",
+      "errorLoad": "加载报告失败，请重试。",
+      "wonCountLabel": "已赢得",
+      "wonValueLabel": "赢得金额",
+      "lostCountLabel": "已失去",
+      "lostValueLabel": "失去金额",
+      "winRateLabel": "赢单率",
+      "lossReasonHeading": "失单原因分析",
+      "lossReasonEmpty": "本时段没有记录失单原因。",
+      "columnReason": "原因",
+      "columnCount": "数量"
+    }
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

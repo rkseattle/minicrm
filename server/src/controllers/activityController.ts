@@ -135,6 +135,21 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
+  // When the patch omits `type`, the existing type determines the direction requirement.
+  // This catches the case where a client explicitly sets direction: null on an existing
+  // Call or Email activity without also changing the type.
+  const effectiveType = parsed.data.type ?? existing.type;
+  const isCommunicationType = effectiveType === 'Call' || effectiveType === 'Email';
+  if (isCommunicationType && parsed.data.direction === null) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Direction is required for Call and Email activities',
+      },
+    });
+    return;
+  }
+
   const activity = await updateActivity(id, parsed.data);
   if (!activity) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Activity not found' } });

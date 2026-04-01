@@ -13,6 +13,20 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import type { MyTaskResponse } from '@/api/activities.js';
 import type { DashboardSummaryResponse } from '@/api/dashboard.js';
+import type { WinLossReportResponse } from '@/api/reports.js';
+
+/** Reusable fixture: win/loss report response */
+export const WIN_LOSS_REPORT: WinLossReportResponse = {
+  wonCount: 5,
+  wonValue: '87000.00',
+  lostCount: 2,
+  lostValue: '30000.00',
+  winRate: 5 / 7,
+  lossReasonBreakdown: [
+    { reason: 'Price too high', count: 1 },
+    { reason: 'Lost to competitor', count: 1 },
+  ],
+};
 
 /** Reusable fixture: dashboard summary response */
 export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
@@ -497,6 +511,11 @@ export const handlers = [
   /** Dashboard: GET /api/dashboard/summary — returns dashboard summary metrics */
   http.get('/api/dashboard/summary', () => {
     return HttpResponse.json(DASHBOARD_SUMMARY);
+  }),
+
+  /** Reports: GET /api/reports/win-loss — returns win/loss report */
+  http.get('/api/reports/win-loss', () => {
+    return HttpResponse.json(WIN_LOSS_REPORT);
   }),
 
   /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */

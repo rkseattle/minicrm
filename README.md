@@ -220,6 +220,16 @@ npm run migrate --workspace=minicrm-server
 - Data is always fresh on page load (React Query `staleTime: 0`)
 - API endpoint: `GET /api/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
 
+### Win/Loss Report (MINCRM-26)
+
+- Admin-only report page at `/reports/win-loss`, accessible from the navigation bar
+- Displays Closed Won count and total value, Closed Lost count and total value, and win rate (Won / Total Closed) for a selected date range
+- Date range defaults to the current month; presets for "this quarter" and a custom date range are also available
+- Admins can filter the report by owner (rep); reps always see only their own deals
+- Loss reason breakdown table shows top loss reasons by count when loss reasons were captured
+- Report data is filtered by `close_date` (not `created_at`)
+- API endpoint: `GET /api/reports/win-loss?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns `{ wonCount, wonValue, lostCount, lostValue, winRate, lossReasonBreakdown }` (auth required)
+
 ### Ownership (MINCRM-14)
 
 - Every contact and account has a single `owner_id` that defaults to the creating user
