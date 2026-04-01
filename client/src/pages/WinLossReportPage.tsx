@@ -297,6 +297,19 @@ export default function WinLossReportPage() {
                 </p>
               </div>
 
+              {/* Closed Lost value */}
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+                data-testid="stat-lost-value"
+              >
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                  {t('reports.winLoss.lostValueLabel')}
+                </p>
+                <p className="text-3xl font-bold text-red-600" data-testid="stat-lost-value-value">
+                  {formatCurrency(report.lostValue, i18n.language)}
+                </p>
+              </div>
+
               {/* Win rate */}
               <div
                 className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"

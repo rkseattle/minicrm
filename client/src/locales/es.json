@@ -365,6 +365,7 @@
       "wonCountLabel": "Oportunidades ganadas",
       "wonValueLabel": "Valor ganado",
       "lostCountLabel": "Oportunidades perdidas",
+      "lostValueLabel": "Valor perdido",
       "winRateLabel": "Tasa de éxito",
       "lossReasonHeading": "Desglose de razones de pérdida",
       "lossReasonEmpty": "No hay razones de pérdida registradas para este período.",

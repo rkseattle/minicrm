@@ -365,6 +365,7 @@
       "wonCountLabel": "Gewonnene Geschäfte",
       "wonValueLabel": "Gewonnener Wert",
       "lostCountLabel": "Verlorene Geschäfte",
+      "lostValueLabel": "Verlorener Wert",
       "winRateLabel": "Gewinnrate",
       "lossReasonHeading": "Aufschlüsselung der Verlustgründe",
       "lossReasonEmpty": "Keine Verlustgründe für diesen Zeitraum erfasst.",

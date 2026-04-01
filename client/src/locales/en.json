@@ -365,6 +365,7 @@
       "wonCountLabel": "Closed Won",
       "wonValueLabel": "Won value",
       "lostCountLabel": "Closed Lost",
+      "lostValueLabel": "Lost value",
       "winRateLabel": "Win rate",
       "lossReasonHeading": "Loss reason breakdown",
       "lossReasonEmpty": "No loss reasons recorded for this period.",

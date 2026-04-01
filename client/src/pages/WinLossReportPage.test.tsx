@@ -55,12 +55,13 @@ describe('WinLossReportPage', () => {
   });
 
   describe('stat cards', () => {
-    it('renders all four stat cards after data loads', async () => {
+    it('renders all five stat cards after data loads', async () => {
       renderWithProviders(<WinLossReportPage />);
       await waitFor(() => {
         expect(screen.getByTestId('stat-won-count')).toBeInTheDocument();
         expect(screen.getByTestId('stat-won-value')).toBeInTheDocument();
         expect(screen.getByTestId('stat-lost-count')).toBeInTheDocument();
+        expect(screen.getByTestId('stat-lost-value')).toBeInTheDocument();
         expect(screen.getByTestId('stat-win-rate')).toBeInTheDocument();
       });
     });
@@ -87,6 +88,13 @@ describe('WinLossReportPage', () => {
         expect(screen.getByTestId('stat-lost-count-value')).toHaveTextContent(
           String(WIN_LOSS_REPORT.lostCount),
         );
+      });
+    });
+
+    it('displays formatted lost value', async () => {
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('stat-lost-value-value')).toHaveTextContent('$30,000.00');
       });
     });
 

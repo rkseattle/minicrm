@@ -365,6 +365,7 @@
       "wonCountLabel": "已赢得",
       "wonValueLabel": "赢得金额",
       "lostCountLabel": "已失去",
+      "lostValueLabel": "失去金额",
       "winRateLabel": "赢单率",
       "lossReasonHeading": "失单原因分析",
       "lossReasonEmpty": "本时段没有记录失单原因。",
