@@ -16,6 +16,11 @@ interface RenderOptions {
    * so that useParams() resolves correctly.
    */
   path?: string;
+  /**
+   * Optional pre-configured QueryClient to use instead of creating a new one.
+   * Useful for tests that need to spy on queryClient methods or inspect the cache.
+   */
+  queryClient?: QueryClient;
 }
 
 /**
@@ -28,14 +33,16 @@ interface RenderOptions {
  */
 export function renderWithProviders(
   ui: React.ReactElement,
-  { initialEntries = ['/'], path }: RenderOptions = {},
+  { initialEntries = ['/'], path, queryClient: providedQueryClient }: RenderOptions = {},
 ): RenderResult {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  });
+  const queryClient =
+    providedQueryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
 
   const content = path ? (
     <Routes>
