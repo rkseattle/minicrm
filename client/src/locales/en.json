@@ -146,7 +146,11 @@
     "linkedDealsHeading": "Linked Deals",
     "linkedDealsEmpty": "No deals linked to this contact.",
     "searchPlaceholder": "Search by name or email…",
-    "accountSearchPlaceholder": "Filter by account name…"
+    "accountSearchPlaceholder": "Filter by account name…",
+    "duplicateWarningTitle": "Possible duplicate",
+    "duplicateWarningMessage": "A contact with this email already exists: {{name}}.",
+    "duplicateGoToExisting": "Go to existing contact",
+    "duplicateCreateAnyway": "Create anyway"
   },
   "accounts": {
     "pageTitle": "Accounts",

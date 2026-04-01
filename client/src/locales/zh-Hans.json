@@ -146,7 +146,11 @@
     "linkedDealsHeading": "关联商机",
     "linkedDealsEmpty": "此联系人暂无关联商机。",
     "searchPlaceholder": "按姓名或电子邮件搜索…",
-    "accountSearchPlaceholder": "按客户名称筛选…"
+    "accountSearchPlaceholder": "按客户名称筛选…",
+    "duplicateWarningTitle": "可能存在重复",
+    "duplicateWarningMessage": "已存在使用此邮箱的联系人：{{name}}。",
+    "duplicateGoToExisting": "前往已有联系人",
+    "duplicateCreateAnyway": "仍然创建"
   },
   "accounts": {
     "pageTitle": "客户",

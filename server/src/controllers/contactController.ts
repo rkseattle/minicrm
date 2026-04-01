@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createContactSchema, updateContactSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import {
   createContact,
+  findContactByEmail,
   findContactById,
   listContacts,
   updateContact,
@@ -20,6 +21,10 @@ const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 /**
  * POST /api/contacts
  * Creates a new contact owned by the authenticated user.
+ *
+ * If a contact with the same email already exists, returns 409 with the
+ * duplicate contact's id, first_name, and last_name unless the request
+ * includes ?force=true, which bypasses the duplicate check.
  */
 export async function createContactHandler(req: Request, res: Response): Promise<void> {
   const parsed = createContactSchema.safeParse(req.body);
@@ -29,6 +34,24 @@ export async function createContactHandler(req: Request, res: Response): Promise
       error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
     });
     return;
+  }
+
+  const force = req.query.force === 'true';
+
+  if (!force) {
+    const duplicate = await findContactByEmail(parsed.data.email);
+    if (duplicate) {
+      res.status(409).json({
+        error: { code: 'DUPLICATE_EMAIL', message: 'A contact with this email already exists' },
+        duplicate: {
+          id: duplicate.id,
+          first_name: duplicate.first_name,
+          last_name: duplicate.last_name,
+          email: duplicate.email,
+        },
+      });
+      return;
+    }
   }
 
   const contact = await createContact({

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { Input } from '@/components/ui/Input.js';
 import { listContacts, createContact } from '@/api/contacts.js';
+import type { DuplicateContactInfo } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -37,6 +38,8 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [pendingValues, setPendingValues] = useState<ContactFormValues | null>(null);
+  const [duplicateContact, setDuplicateContact] = useState<DuplicateContactInfo | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
@@ -76,24 +79,48 @@ export default function ContactsPage() {
   const accountOptions = (accountsData?.accounts ?? []).map((a) => ({ id: a.id, name: a.name }));
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
+  /** Converts ContactFormValues to the API shape */
+  function toCreateInput(values: ContactFormValues) {
+    return {
+      first_name: values.first_name,
+      last_name: values.last_name,
+      email: values.email,
+      phone: values.phone || undefined,
+      title: values.title || undefined,
+      department: values.department || undefined,
+      account_id: values.account_id || null,
+    };
+  }
+
   const createMutation = useMutation({
-    mutationFn: (values: ContactFormValues) =>
-      createContact({
-        first_name: values.first_name,
-        last_name: values.last_name,
-        email: values.email,
-        phone: values.phone || undefined,
-        title: values.title || undefined,
-        department: values.department || undefined,
-        account_id: values.account_id || null,
-      }),
+    mutationFn: ({ values, force }: { values: ContactFormValues; force: boolean }) =>
+      createContact(toCreateInput(values), force),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
+      setPendingValues(null);
+      setDuplicateContact(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+    onError: (
+      error: {
+        response?: {
+          status?: number;
+          data?: {
+            error?: { message?: string };
+            duplicate?: DuplicateContactInfo;
+          };
+        };
+      },
+      variables,
+    ) => {
+      if (error.response?.status === 409 && error.response.data?.duplicate) {
+        setPendingValues(variables.values);
+        setDuplicateContact(error.response.data.duplicate);
+        setCreateError(null);
+      } else {
+        setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      }
     },
   });
 
@@ -120,15 +147,58 @@ export default function ContactsPage() {
         {showForm && (
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('contacts.newContact')}</h2>
+
+            {/* Duplicate warning — shown after a 409 response */}
+            {duplicateContact && (
+              <div
+                role="alert"
+                data-testid="duplicate-contact-warning"
+                className="mb-4 rounded-md bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm text-yellow-800"
+              >
+                <p className="font-semibold mb-1">{t('contacts.duplicateWarningTitle')}</p>
+                <p className="mb-3">
+                  {t('contacts.duplicateWarningMessage', {
+                    name: `${duplicateContact.first_name} ${duplicateContact.last_name}`,
+                  })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={`/contacts/${duplicateContact.id}`}
+                    data-testid="duplicate-go-to-existing"
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
+                  >
+                    {t('contacts.duplicateGoToExisting')}
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="duplicate-create-anyway"
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-yellow-600 text-white text-xs font-medium hover:bg-yellow-700 transition-colors"
+                    onClick={() => {
+                      if (pendingValues) {
+                        createMutation.mutate({ values: pendingValues, force: true });
+                      }
+                    }}
+                    disabled={createMutation.isPending}
+                  >
+                    {t('contacts.duplicateCreateAnyway')}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <ContactForm
               accounts={accountOptions}
               onSubmit={(values) => {
                 setCreateError(null);
-                createMutation.mutate(values);
+                setDuplicateContact(null);
+                setPendingValues(null);
+                createMutation.mutate({ values, force: false });
               }}
               onCancel={() => {
                 setShowForm(false);
                 setCreateError(null);
+                setDuplicateContact(null);
+                setPendingValues(null);
               }}
               isSubmitting={createMutation.isPending}
               submitLabel={t('contacts.save')}
