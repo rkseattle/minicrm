@@ -190,6 +190,11 @@
     "backToAccounts": "Zurück zu Konten",
     "linkedContactsHeading": "Verknüpfte Kontakte",
     "linkedContactsEmpty": "Keine Kontakte mit diesem Konto verknüpft.",
+    "contactsLabel": "Kontakte",
+    "contactsSearchPlaceholder": "Kontakte nach Name oder E-Mail suchen…",
+    "contactsSelected": "{{count}} Kontakt ausgewählt",
+    "contactsSelected_other": "{{count}} Kontakte ausgewählt",
+    "contactsNone": "Keine Kontakte ausgewählt",
     "searchPlaceholder": "Nach Firmenname suchen…",
     "industryFilterPlaceholder": "Nach Branche filtern…"
   },

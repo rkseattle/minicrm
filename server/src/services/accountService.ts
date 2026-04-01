@@ -4,13 +4,14 @@
  */
 
 import pool from '../db.js';
+import type { PoolClient } from 'pg';
 import type {
   CreateAccountInput,
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
 
 /** Columns that may be updated via updateAccount — guards against SQL injection from dynamic field names */
-const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAccountInput> = new Set([
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof Omit<UpdateAccountInput, 'contact_ids'>> = new Set([
   'name',
   'industry',
   'website',
@@ -49,31 +50,86 @@ interface ListAccountsOptions {
 }
 
 /**
- * Creates a new account record.
+ * Atomically sets the contacts linked to an account.
+ * Contacts in contactIds have their account_id set to accountId.
+ * Contacts previously linked to accountId but not in contactIds are unlinked (account_id = NULL).
+ * Must be called within a transaction (client must be provided).
  *
- * @param params - Account fields plus the owner's user ID
+ * @param accountId - Account UUID
+ * @param contactIds - Array of contact UUIDs to link; empty array unlinks all
+ * @param client - Active pg PoolClient from the caller's transaction
+ */
+export async function setAccountContacts(
+  accountId: string,
+  contactIds: string[],
+  client: PoolClient,
+): Promise<void> {
+  // Unlink any contacts currently linked to this account that are not in contactIds
+  await client.query(
+    `UPDATE contacts
+     SET account_id = NULL, updated_at = now()
+     WHERE account_id = $1
+       AND id != ALL($2::uuid[])`,
+    [accountId, contactIds],
+  );
+
+  if (contactIds.length > 0) {
+    // Link the specified contacts to this account.
+    // Only contacts that are currently unlinked or already linked to this account
+    // are updated — contacts owned by a different account are left untouched.
+    await client.query(
+      `UPDATE contacts
+       SET account_id = $1, updated_at = now()
+       WHERE id = ANY($2::uuid[])
+         AND (account_id IS NULL OR account_id = $1)`,
+      [accountId, contactIds],
+    );
+  }
+}
+
+/**
+ * Creates a new account record, optionally linking contacts atomically.
+ *
+ * @param params - Account fields plus the owner's user ID and optional contact_ids
  * @returns The inserted account row
  */
 export async function createAccount(
   params: CreateAccountInput & { owner_id: string },
 ): Promise<AccountRow> {
-  const { name, industry, website, employee_range, revenue_range, owner_id } = params;
+  const { name, industry, website, employee_range, revenue_range, owner_id, contact_ids } = params;
 
-  const result = await pool.query<AccountRow>(
-    `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [
-      name,
-      industry ?? null,
-      website ?? null,
-      employee_range ?? null,
-      revenue_range ?? null,
-      owner_id,
-    ],
-  );
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  return result.rows[0];
+    const result = await client.query<AccountRow>(
+      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        name,
+        industry ?? null,
+        website ?? null,
+        employee_range ?? null,
+        revenue_range ?? null,
+        owner_id,
+      ],
+    );
+
+    const account = result.rows[0];
+
+    if (contact_ids && contact_ids.length > 0) {
+      await setAccountContacts(account.id, contact_ids, client);
+    }
+
+    await client.query('COMMIT');
+    return account;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -124,32 +180,62 @@ export async function listAccounts(options: ListAccountsOptions = {}): Promise<A
 }
 
 /**
- * Updates one or more fields on an existing account.
+ * Updates one or more fields on an existing account, optionally updating linked contacts atomically.
  *
  * @param id - Account UUID
- * @param params - Fields to update (at least one required)
+ * @param params - Fields to update (at least one required); optional contact_ids replaces current links
  * @returns The updated account row, or null if not found
  */
 export async function updateAccount(
   id: string,
   params: UpdateAccountInput,
 ): Promise<AccountRow | null> {
-  const fields = (Object.keys(params) as (keyof UpdateAccountInput)[]).filter((field) =>
-    ALLOWED_UPDATE_FIELDS.has(field),
+  const { contact_ids, ...accountParams } = params;
+
+  const fields = (Object.keys(accountParams) as (keyof typeof accountParams)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field as keyof Omit<UpdateAccountInput, 'contact_ids'>),
   );
 
-  // Build dynamic SET clause: name = $2, industry = $3, ...
-  const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const result = await pool.query<AccountRow>(
-    `UPDATE accounts
-     SET ${setClauses}, updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [id, ...fields.map((f) => params[f])],
-  );
+    let account: AccountRow | null = null;
 
-  return result.rows[0] ?? null;
+    if (fields.length > 0) {
+      // Build dynamic SET clause: name = $2, industry = $3, ...
+      const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+
+      const result = await client.query<AccountRow>(
+        `UPDATE accounts
+         SET ${setClauses}, updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [id, ...fields.map((f) => accountParams[f as keyof typeof accountParams])],
+      );
+
+      account = result.rows[0] ?? null;
+    } else {
+      // No account fields to update — just fetch the existing row
+      const result = await client.query<AccountRow>(
+        'SELECT * FROM accounts WHERE id = $1 LIMIT 1',
+        [id],
+      );
+      account = result.rows[0] ?? null;
+    }
+
+    if (account && contact_ids !== undefined) {
+      await setAccountContacts(account.id, contact_ids, client);
+    }
+
+    await client.query('COMMIT');
+    return account;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

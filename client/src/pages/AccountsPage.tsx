@@ -76,6 +76,7 @@ export default function AccountsPage() {
         website: values.website || undefined,
         employee_range: values.employee_range || undefined,
         revenue_range: values.revenue_range || undefined,
+        contact_ids: values.contact_ids.length > 0 ? values.contact_ids : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
