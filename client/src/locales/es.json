@@ -146,7 +146,11 @@
     "linkedDealsHeading": "Oportunidades vinculadas",
     "linkedDealsEmpty": "No hay oportunidades vinculadas a este contacto.",
     "searchPlaceholder": "Buscar por nombre o correo…",
-    "accountSearchPlaceholder": "Filtrar por nombre de cuenta…"
+    "accountSearchPlaceholder": "Filtrar por nombre de cuenta…",
+    "duplicateWarningTitle": "Posible duplicado",
+    "duplicateWarningMessage": "Ya existe un contacto con este correo electrónico: {{name}}.",
+    "duplicateGoToExisting": "Ir al contacto existente",
+    "duplicateCreateAnyway": "Crear de todas formas"
   },
   "accounts": {
     "pageTitle": "Cuentas",

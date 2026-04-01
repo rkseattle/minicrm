@@ -85,6 +85,33 @@ export async function createContact(
 }
 
 /**
+ * Finds a contact by email address (case-insensitive).
+ * Used for duplicate detection on contact creation.
+ *
+ * @param email - Email address to search for
+ * @param excludeId - Optional contact UUID to exclude (e.g. the contact being updated)
+ * @returns The matching contact row, or null if not found
+ */
+export async function findContactByEmail(
+  email: string,
+  excludeId?: string,
+): Promise<ContactRow | null> {
+  if (excludeId) {
+    const result = await pool.query<ContactRow>(
+      'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
+      [email, excludeId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  const result = await pool.query<ContactRow>(
+    'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [email],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
  * Finds a contact by its UUID.
  *
  * @param id - Contact UUID

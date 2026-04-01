@@ -236,6 +236,50 @@ describe('GET /api/contacts — ?accountSearch filter', () => {
   });
 });
 
+// ── POST /api/contacts — duplicate detection ─────────────────────────────────
+
+describe('POST /api/contacts — duplicate detection', () => {
+  it('returns 409 with duplicate info when a contact with the same email exists', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post('/api/contacts')
+      .set('Cookie', repCookie)
+      .send({ first_name: 'Other', last_name: 'Person', email: BASE_CONTACT.email });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
+    expect(res.body.duplicate).toMatchObject({
+      first_name: BASE_CONTACT.first_name,
+      last_name: BASE_CONTACT.last_name,
+      email: BASE_CONTACT.email,
+    });
+    expect(res.body.duplicate.id).toBeDefined();
+  });
+
+  it('creates the contact when ?force=true bypasses the duplicate check', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post('/api/contacts?force=true')
+      .set('Cookie', repCookie)
+      .send({ first_name: 'Other', last_name: 'Person', email: BASE_CONTACT.email });
+
+    expect(res.status).toBe(201);
+    expect(res.body.contact.first_name).toBe('Other');
+  });
+
+  it('creates a contact without a warning when no duplicate email exists', async () => {
+    const res = await request(app)
+      .post('/api/contacts')
+      .set('Cookie', repCookie)
+      .send({ first_name: 'New', last_name: 'User', email: 'brandnew@example.com' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.contact.email).toBe('brandnew@example.com');
+  });
+});
+
 // ── GET /api/contacts/:id ────────────────────────────────────────────────────
 
 describe('GET /api/contacts/:id — visibility', () => {

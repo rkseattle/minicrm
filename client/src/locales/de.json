@@ -146,7 +146,11 @@
     "linkedDealsHeading": "Verknüpfte Geschäfte",
     "linkedDealsEmpty": "Keine Geschäfte mit diesem Kontakt verknüpft.",
     "searchPlaceholder": "Nach Name oder E-Mail suchen…",
-    "accountSearchPlaceholder": "Nach Kontoname filtern…"
+    "accountSearchPlaceholder": "Nach Kontoname filtern…",
+    "duplicateWarningTitle": "Mögliches Duplikat",
+    "duplicateWarningMessage": "Ein Kontakt mit dieser E-Mail-Adresse existiert bereits: {{name}}.",
+    "duplicateGoToExisting": "Zum vorhandenen Kontakt",
+    "duplicateCreateAnyway": "Trotzdem erstellen"
   },
   "accounts": {
     "pageTitle": "Konten",

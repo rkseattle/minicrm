@@ -19,6 +19,14 @@ interface ContactSingleResponse {
   contact: ContactResponse;
 }
 
+/** Shape of the duplicate info returned in a 409 response */
+export interface DuplicateContactInfo {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 /** Parameters for filtering the contacts list */
 export interface ListContactsParams {
   /** When 'me', only the current user's contacts are returned */
@@ -62,9 +70,17 @@ export async function getContact(id: string): Promise<ContactSingleResponse> {
  * Creates a new contact.
  *
  * @param data - Contact fields (first_name and email are required)
+ * @param force - When true, bypasses the duplicate email check
  */
-export async function createContact(data: CreateContactInput): Promise<ContactSingleResponse> {
-  const response = await apiClient.post<ContactSingleResponse>('/contacts', data);
+export async function createContact(
+  data: CreateContactInput,
+  force = false,
+): Promise<ContactSingleResponse> {
+  const response = await apiClient.post<ContactSingleResponse>(
+    '/contacts',
+    data,
+    force ? { params: { force: 'true' } } : undefined,
+  );
   return response.data;
 }
 

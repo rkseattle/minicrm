@@ -53,6 +53,8 @@ interface ContactFormProps {
   submitLabel?: string;
   /** Error message to display below the form */
   error?: string;
+  /** Optional ref forwarded to the underlying <form> element for programmatic submit */
+  formRef?: React.RefObject<HTMLFormElement | null>;
 }
 
 /**
@@ -85,6 +87,7 @@ export default function ContactForm({
   isSubmitting = false,
   submitLabel,
   error,
+  formRef,
 }: ContactFormProps) {
   const { t } = useTranslation();
 
@@ -110,7 +113,7 @@ export default function ContactForm({
   const resolvedSubmitLabel = submitLabel ?? t('contacts.save');
 
   return (
-    <form onSubmit={handleSubmit} data-testid="contact-form">
+    <form ref={formRef} onSubmit={handleSubmit} data-testid="contact-form">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <Input
           id="contact-first-name"

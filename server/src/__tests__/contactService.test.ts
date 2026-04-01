@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import {
   createContact,
+  findContactByEmail,
   findContactById,
   listContacts,
   updateContact,
@@ -153,6 +154,50 @@ describe('DB constraints — contacts', () => {
         owner_id: ownerId,
       }),
     ).rejects.toThrow();
+  });
+});
+
+// ── findContactByEmail ───────────────────────────────────────────────────────────
+
+describe('findContactByEmail', () => {
+  it('returns the contact row when the email matches (case-insensitive)', async () => {
+    const created = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const found = await findContactByEmail('ALICE@EXAMPLE.COM');
+
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(created.id);
+  });
+
+  it('returns null when no contact matches the email', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const found = await findContactByEmail('nobody@example.com');
+
+    expect(found).toBeNull();
+  });
+
+  it('excludes the contact with the given excludeId', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const found = await findContactByEmail(BASE_CONTACT.email, contact.id);
+
+    expect(found).toBeNull();
+  });
+
+  it('returns the contact when a different contact shares the email and excludeId does not match', async () => {
+    const first = await createContact({
+      ...BASE_CONTACT,
+      email: 'shared@example.com',
+      owner_id: ownerId,
+    });
+    const second = await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Bob',
+      email: 'other@example.com',
+      owner_id: ownerId,
+    });
+    const found = await findContactByEmail('shared@example.com', second.id);
+
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(first.id);
   });
 });
 
