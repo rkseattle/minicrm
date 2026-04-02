@@ -75,6 +75,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
     expect(res.status).not.toBe(500);
   });
 
@@ -84,6 +85,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
       .query({ dir: dirPayload })
       .set('Cookie', authCookie);
 
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
     expect(res.status).not.toBe(500);
   });
 
@@ -107,6 +109,17 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
+    expect(res.status).not.toBe(500);
+  });
+
+  it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
+    const res = await request(app)
+      .get('/api/accounts')
+      .query({ dir: dirPayload })
+      .set('Cookie', authCookie);
+
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
     expect(res.status).not.toBe(500);
   });
 
@@ -130,6 +143,17 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
+    expect(res.status).not.toBe(500);
+  });
+
+  it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
+    const res = await request(app)
+      .get('/api/deals')
+      .query({ dir: dirPayload })
+      .set('Cookie', authCookie);
+
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
     expect(res.status).not.toBe(500);
   });
 
@@ -153,6 +177,17 @@ describe('MINCRM-73 — GET /api/activities sort injection', () => {
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
+    expect(res.status).not.toBe(500);
+  });
+
+  it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
+    const res = await request(app)
+      .get('/api/activities')
+      .query({ dir: dirPayload })
+      .set('Cookie', authCookie);
+
+    // A 500 would indicate a DB error from injected SQL; 400/422 for validation is acceptable
     expect(res.status).not.toBe(500);
   });
 
