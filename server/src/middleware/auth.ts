@@ -41,8 +41,16 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  // Live DB check — token may still be cryptographically valid after deactivation
-  const user = await findUserById(decoded.id);
+  // Live DB check — token may still be cryptographically valid after deactivation.
+  // Wrapped in try/catch so a transient DB error returns 500 rather than hanging the request.
+  let user: Awaited<ReturnType<typeof findUserById>>;
+  try {
+    user = await findUserById(decoded.id);
+  } catch {
+    next(new Error('Database error during authentication'));
+    return;
+  }
+
   if (!user || user.status !== 'active') {
     res.status(401).json({
       error: { code: 'USER_INACTIVE', message: 'Account is inactive' },
@@ -50,8 +58,9 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  // Enforce password change — all routes except change-password itself are blocked
-  if (user.must_change_password && req.path !== '/change-password') {
+  // Enforce password change — all routes except change-password itself are blocked.
+  // Use req.originalUrl so the check is path-prefix-agnostic.
+  if (user.must_change_password && !req.originalUrl.includes('/change-password')) {
     res.status(403).json({
       error: {
         code: 'PASSWORD_CHANGE_REQUIRED',

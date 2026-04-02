@@ -131,7 +131,7 @@ describe('MINCRM-74 — must_change_password enforcement', () => {
       .send({ currentPassword: 'wrong', newPassword: 'NewPass1' });
 
     // 401 means the route was reached (middleware passed); a 403 would mean it was blocked
-    expect(res.status).not.toBe(403);
+    expect(res.status).toBe(401);
   });
 });
 
