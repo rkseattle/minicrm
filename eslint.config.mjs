@@ -12,6 +12,7 @@ import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import nodePlugin from 'eslint-plugin-n';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
+import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
 
 /** Files covered by TypeScript rules */
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
@@ -56,6 +57,7 @@ const clientConfig = {
     react: reactPlugin,
     'react-hooks': reactHooksPlugin,
     'jsx-a11y': jsxA11yPlugin,
+    'local': { rules: { 'require-data-testid': requireDataTestid } },
   },
   settings: {
     react: { version: 'detect' },
@@ -66,6 +68,15 @@ const clientConfig = {
     ...jsxA11yPlugin.configs.recommended.rules,
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
+    'local/require-data-testid': 'error',
+  },
+};
+
+// ── Client test files — disable data-testid requirement inside tests ───────────
+const clientTestConfig = {
+  files: ['client/src/**/*.test.tsx', 'client/src/**/*.test.ts'],
+  rules: {
+    'local/require-data-testid': 'off',
   },
 };
 
@@ -131,6 +142,7 @@ export default [
   { ignores: IGNORED },
   baseConfig,
   clientConfig,
+  clientTestConfig,
   serverConfig,
   swaggerDevConfig,
   routeJsdocConfig,
