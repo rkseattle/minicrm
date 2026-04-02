@@ -316,7 +316,8 @@
     "noRecord": "—",
     "markComplete": "Mark complete",
     "markingComplete": "Marking…",
-    "completeError": "Failed to mark task complete. Please try again."
+    "completeError": "Failed to mark task complete. Please try again.",
+    "filterChipOverdue": "Filtering: Overdue"
   },
   "settings": {
     "pageTitle": "Admin Settings",

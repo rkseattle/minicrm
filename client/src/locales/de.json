@@ -316,7 +316,8 @@
     "noRecord": "—",
     "markComplete": "Als erledigt markieren",
     "markingComplete": "Markieren…",
-    "completeError": "Aufgabe konnte nicht als erledigt markiert werden. Bitte erneut versuchen."
+    "completeError": "Aufgabe konnte nicht als erledigt markiert werden. Bitte erneut versuchen.",
+    "filterChipOverdue": "Filter: Überfällig"
   },
   "settings": {
     "pageTitle": "Admin-Einstellungen",

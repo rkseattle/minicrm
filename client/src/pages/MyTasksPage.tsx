@@ -106,9 +106,17 @@ export default function MyTasksPage() {
           <h1 className="text-xl font-semibold text-gray-900" data-testid="my-tasks-heading">
             {t('myTasks.pageTitle')}
           </h1>
-          {/* Hide the completed toggle when the overdue filter is active — it has no
-              effect in that mode and would confuse users navigating from the dashboard */}
-          {!overdueFilter && (
+          {/* When the overdue filter is active, show a chip so the user knows why they
+              see a subset of tasks. Hide the completed toggle — it has no effect in
+              this mode and would confuse users navigating from the dashboard. */}
+          {overdueFilter ? (
+            <span
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700"
+              data-testid="filter-chip-overdue"
+            >
+              {t('myTasks.filterChipOverdue')}
+            </span>
+          ) : (
             <Button
               type="button"
               variant="secondary"

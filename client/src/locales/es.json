@@ -316,7 +316,8 @@
     "noRecord": "—",
     "markComplete": "Marcar como completada",
     "markingComplete": "Marcando…",
-    "completeError": "No se pudo marcar la tarea como completada. Inténtalo de nuevo."
+    "completeError": "No se pudo marcar la tarea como completada. Inténtalo de nuevo.",
+    "filterChipOverdue": "Filtro: Vencida"
   },
   "settings": {
     "pageTitle": "Configuración de administrador",

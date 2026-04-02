@@ -222,6 +222,8 @@ describe('MyTasksPage', () => {
       });
 
       expect(screen.queryByTestId(`task-row-${MY_TASK_1.id}`)).not.toBeInTheDocument();
+      // Chip must still be visible so the user knows why the list is empty
+      expect(screen.getByTestId('filter-chip-overdue')).toBeInTheDocument();
     });
 
     it('shows all open tasks when no filter param is present', async () => {
@@ -241,6 +243,26 @@ describe('MyTasksPage', () => {
       });
 
       expect(screen.queryByTestId('toggle-completed-button')).not.toBeInTheDocument();
+    });
+
+    it('shows the overdue filter chip when filter=overdue is active', async () => {
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-chip-overdue')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('filter-chip-overdue')).toHaveTextContent('Filtering: Overdue');
+    });
+
+    it('does not show the overdue filter chip when no filter param is present', async () => {
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('my-tasks-heading')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('filter-chip-overdue')).not.toBeInTheDocument();
     });
 
     it('shows the "Show completed" toggle when no overdue filter is active', async () => {
