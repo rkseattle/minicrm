@@ -422,6 +422,7 @@
     "disableRule": "Regel {{name}} deaktivieren",
     "viewLogs": "Protokolle anzeigen",
     "logsDrawerTitle": "Ausführungsprotokolle",
+    "logsDrawerClose": "Ausführungsprotokolle schließen",
     "logsLoading": "Protokolle werden geladen…",
     "logsError": "Protokolle konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
     "logsEmpty": "Noch keine Ausführungen.",

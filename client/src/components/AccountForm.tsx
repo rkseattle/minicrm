@@ -4,7 +4,7 @@
  * Used by AccountsPage (create) and AccountDetailPage (edit).
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
@@ -46,6 +46,8 @@ interface AccountFormProps {
   submitLabel?: string;
   /** Error message to display below the form */
   error?: string;
+  /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -81,12 +83,24 @@ export default function AccountForm({
   isSubmitting = false,
   submitLabel,
   error,
+  triggerRef,
 }: AccountFormProps) {
   const { t } = useTranslation();
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<AccountFormValues>(() =>
     buildInitialState(initialValues, initialContactIds),
   );
+
+  // Move focus to the first input when the form mounts (WCAG 2.4.3)
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
+
+  /** Returns focus to the trigger element when the form closes. */
+  function returnFocus(): void {
+    triggerRef?.current?.focus();
+  }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = event.target;
@@ -118,6 +132,7 @@ export default function AccountForm({
     <form onSubmit={handleSubmit} data-testid="account-form">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <Input
+          ref={firstInputRef}
           id="account-name"
           data-testid="account-name-input"
           name="name"
@@ -221,7 +236,10 @@ export default function AccountForm({
             type="button"
             variant="ghost"
             data-testid="account-form-cancel"
-            onClick={onCancel}
+            onClick={() => {
+              returnFocus();
+              onCancel();
+            }}
             disabled={isSubmitting}
           >
             {t('accounts.cancel')}

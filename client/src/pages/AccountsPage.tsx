@@ -5,7 +5,7 @@
  * Each row links to the AccountDetailPage.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -35,9 +35,18 @@ export default function AccountsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
+
+  type SortDir = 'ascending' | 'descending';
+  const [sortDir, setSortDir] = useState<SortDir>('ascending');
+
+  /** Toggles the name sort direction. */
+  function handleSortName(): void {
+    setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
+  }
 
   const debouncedSearch = useDebounce(searchInput);
   const debouncedIndustry = useDebounce(industryInput);
@@ -82,13 +91,17 @@ export default function AccountsPage() {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
+      newAccountButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
-  const accounts: AccountResponse[] = data?.accounts ?? [];
+  const accounts: AccountResponse[] = [...(data?.accounts ?? [])].sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name);
+    return sortDir === 'ascending' ? cmp : -cmp;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -98,6 +111,7 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('accounts.pageTitle')}</h1>
           {!showForm && (
             <Button
+              ref={newAccountButtonRef}
               type="button"
               data-testid="new-account-button"
               onClick={() => setShowForm(true)}
@@ -112,6 +126,7 @@ export default function AccountsPage() {
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('accounts.newAccount')}</h2>
             <AccountForm
+              triggerRef={newAccountButtonRef}
               onSubmit={(values) => {
                 setCreateError(null);
                 createMutation.mutate(values);
@@ -189,8 +204,19 @@ export default function AccountsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnName')}
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      aria-sort={sortDir}
+                    >
+                      <button
+                        type="button"
+                        onClick={handleSortName}
+                        className="inline-flex items-center gap-1 hover:text-gray-700"
+                        data-testid="accounts-sort-name"
+                      >
+                        {t('accounts.columnName')}
+                        {sortDir === 'ascending' ? ' ↑' : ' ↓'}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnIndustry')}

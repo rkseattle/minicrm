@@ -422,6 +422,7 @@
     "disableRule": "Desactivar regla {{name}}",
     "viewLogs": "Ver registros",
     "logsDrawerTitle": "Registros de ejecución",
+    "logsDrawerClose": "Cerrar registros de ejecución",
     "logsLoading": "Cargando registros…",
     "logsError": "No se pudieron cargar los registros. Por favor, inténtalo de nuevo.",
     "logsEmpty": "Aún no hay ejecuciones.",

@@ -422,6 +422,7 @@
     "disableRule": "Désactiver la règle {{name}}",
     "viewLogs": "Voir les journaux",
     "logsDrawerTitle": "Journaux d'exécution",
+    "logsDrawerClose": "Fermer les journaux d'exécution",
     "logsLoading": "Chargement des journaux…",
     "logsError": "Impossible de charger les journaux. Veuillez réessayer.",
     "logsEmpty": "Aucune exécution pour l'instant.",

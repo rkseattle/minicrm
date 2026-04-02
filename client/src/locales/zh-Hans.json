@@ -422,6 +422,7 @@
     "disableRule": "停用规则 {{name}}",
     "viewLogs": "查看日志",
     "logsDrawerTitle": "执行日志",
+    "logsDrawerClose": "关闭执行日志",
     "logsLoading": "正在加载日志…",
     "logsError": "无法加载日志，请重试。",
     "logsEmpty": "暂无执行记录。",

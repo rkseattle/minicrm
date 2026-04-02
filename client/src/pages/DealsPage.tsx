@@ -5,7 +5,7 @@
  * Each row links to the DealDetailPage.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,27 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const newDealButtonRef = useRef<HTMLButtonElement>(null);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+
+  type SortColumn = 'name' | 'close_date';
+  type SortDir = 'ascending' | 'descending';
+  const [sortCol, setSortCol] = useState<SortColumn>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('ascending');
+
+  /**
+   * Toggles sort column/direction.
+   *
+   * @param col - The column header that was clicked
+   */
+  function handleSort(col: SortColumn): void {
+    if (col === sortCol) {
+      setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
+    } else {
+      setSortCol(col);
+      setSortDir('ascending');
+    }
+  }
 
   const dealsQueryKey =
     ownerFilter === 'me' ? ([...DEALS_QUERY_KEY, { owner: 'me' }] as const) : DEALS_QUERY_KEY;
@@ -85,13 +105,25 @@ export default function DealsPage() {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
+      newDealButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
-  const deals: DealResponse[] = data?.deals ?? [];
+  const deals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
+    if (sortCol === 'name') {
+      const cmp = a.name.localeCompare(b.name);
+      return sortDir === 'ascending' ? cmp : -cmp;
+    }
+    // ISO YYYY-MM-DD strings sort correctly with relational operators
+    const aDate = a.close_date ?? '';
+    const bDate = b.close_date ?? '';
+    if (aDate === bDate) return 0;
+    const cmp = aDate < bDate ? -1 : 1;
+    return sortDir === 'ascending' ? cmp : -cmp;
+  });
 
   /** Resolves an account_id to its display name */
   function resolveAccountName(accountId: string | null): string {
@@ -106,7 +138,12 @@ export default function DealsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
           {!showForm && (
-            <Button type="button" data-testid="new-deal-button" onClick={() => setShowForm(true)}>
+            <Button
+              ref={newDealButtonRef}
+              type="button"
+              data-testid="new-deal-button"
+              onClick={() => setShowForm(true)}
+            >
               {t('deals.newDeal')}
             </Button>
           )}
@@ -117,6 +154,7 @@ export default function DealsPage() {
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('deals.newDeal')}</h2>
             <DealForm
+              triggerRef={newDealButtonRef}
               accounts={accounts}
               accountRequired
               onSubmit={(values) => {
@@ -178,8 +216,19 @@ export default function DealsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnName')}
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSort('name')}
+                        className="inline-flex items-center gap-1 hover:text-gray-700"
+                        data-testid="deals-sort-name"
+                      >
+                        {t('deals.columnName')}
+                        {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('deals.columnStage')}
@@ -187,8 +236,19 @@ export default function DealsPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('deals.columnValue')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnCloseDate')}
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSort('close_date')}
+                        className="inline-flex items-center gap-1 hover:text-gray-700"
+                        data-testid="deals-sort-close-date"
+                      >
+                        {t('deals.columnCloseDate')}
+                        {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('deals.columnAccount')}
