@@ -16,7 +16,11 @@ const DEFAULT_PORT = 3001;
 const WEAK_JWT_SECRETS = new Set(['changeme', 'secret', 'password', '']);
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
-if (WEAK_JWT_SECRETS.has(jwtSecret) || jwtSecret.length < 32) {
+if (
+  WEAK_JWT_SECRETS.has(jwtSecret) ||
+  jwtSecret.startsWith('REPLACE_WITH_') ||
+  jwtSecret.length < 32
+) {
   throw new Error(
     'JWT_SECRET is not set or is using a known-weak value. ' +
       'Set a cryptographically random secret of at least 32 characters before starting. ' +
