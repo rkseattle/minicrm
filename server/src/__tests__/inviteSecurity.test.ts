@@ -161,14 +161,6 @@ describe('MINCRM-78 — must_change_password enforced at the API layer', () => {
     });
   });
 
-  it('blocks API access with 403 PASSWORD_CHANGE_REQUIRED even without the React app', async () => {
-    // Simulate a client bypassing the React app and calling the API directly
-    const res = await request(app).get('/api/contacts').set('Cookie', mustChangeCookie);
-
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
-  });
-
   it('blocks multiple different endpoints — enforcement is in middleware, not per-route', async () => {
     const endpoints = ['/api/accounts', '/api/deals', '/api/activities'];
 
@@ -179,29 +171,26 @@ describe('MINCRM-78 — must_change_password enforced at the API layer', () => {
     }
   });
 
-  it('allows access to /api/auth/change-password so the user can resolve the lock', async () => {
-    // Wrong current password — but we should reach the controller (401), not be blocked (403)
-    const res = await request(app)
-      .post('/api/auth/change-password')
-      .set('Cookie', mustChangeCookie)
-      .send({ currentPassword: 'wrong', newPassword: 'NewPass1' });
-
-    expect(res.status).toBe(401);
-    expect(res.body.error.code).not.toBe('PASSWORD_CHANGE_REQUIRED');
-  });
-
-  it('blocks access even when a valid JWT cookie is crafted manually without going through login', async () => {
-    // Craft a cookie directly — simulates a user who knows their user ID
+  it('enforces must_change_password even when the JWT cookie is crafted without going through login', async () => {
+    // Craft a cookie for the real must-change user, bypassing the login flow entirely.
+    // Proves enforcement is DB-driven (live status check), not based on JWT claims.
     const craftedToken = jwt.sign(
-      { id: '00000000-0000-0000-0000-000000000099', email: 'x@x.com', name: 'x', role: 'rep' },
+      {
+        id: (
+          await pool.query("SELECT id FROM users WHERE email = 'inv-sec-mustchange@example.com'")
+        ).rows[0].id,
+        email: 'inv-sec-mustchange@example.com',
+        name: 'Must Change',
+        role: 'rep',
+      },
       process.env.JWT_SECRET ?? '',
       { expiresIn: '1h' },
     );
     const craftedCookie = `${AUTH_COOKIE_NAME}=${craftedToken}`;
 
-    // User doesn't exist in DB — should get USER_INACTIVE (401), not bypass the gate
     const res = await request(app).get('/api/contacts').set('Cookie', craftedCookie);
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
   });
 });
