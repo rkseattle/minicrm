@@ -11,7 +11,7 @@
 /** @type {import('eslint').Rule.RuleModule} */
 const requireDataTestid = {
   meta: {
-    type: 'suggestion',
+    type: 'problem',
     docs: {
       description: 'Require data-testid on interactable JSX elements',
       recommended: false,
