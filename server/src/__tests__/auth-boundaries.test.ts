@@ -46,6 +46,9 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
+  await pool.query(
+    "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
+  );
   await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
 
   const repA = await createUser({
@@ -101,7 +104,7 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
-  await pool.query("DELETE FROM accounts WHERE name = 'Bounds Test Co'");
+  await pool.query('DELETE FROM accounts WHERE id = $1', [sharedAccountId]);
   await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
   await pool.end();
 });
@@ -239,7 +242,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
 // ── Ownership from req.user, not request body ─────────────────────────────────
 
 describe('MINCRM-88 — ownership check uses req.user, not request body', () => {
-  it('ignores owner_id in PATCH body — rep B cannot escalate by sending rep A ID as owner_id', async () => {
+  it('ignores owner_id in PATCH body for deals — rep B cannot escalate by sending rep A ID', async () => {
     const deal = await createDeal({
       name: 'Ownership Body Test Deal',
       stage: 'Prospecting',
@@ -251,6 +254,24 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
       .patch(`/api/deals/${deal.id}`)
       .set('Cookie', repBCookie)
       .send({ name: 'Hijacked', owner_id: repAId });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('ignores owner_id in PATCH body for activities — rep B cannot escalate by sending rep A ID', async () => {
+    const activity = await createActivity({
+      type: 'Task',
+      subject: 'Body Injection Test Task',
+      account_id: sharedAccountId,
+      owner_id: repAId,
+    });
+
+    // Rep B sends a PATCH with owner_id set to rep A's ID — should still be blocked
+    const res = await request(app)
+      .patch(`/api/activities/${activity.id}`)
+      .set('Cookie', repBCookie)
+      .send({ subject: 'Hijacked Task', owner_id: repAId });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
