@@ -33,6 +33,11 @@ jobs:
         env:
           NODE_ENV: development
 
+      - name: Audit dependencies for high/critical vulnerabilities
+        run: |
+          npm audit --audit-level=high --workspace=minicrm-server
+          npm audit --audit-level=high --workspace=minicrm-client
+
   server-tests:
     name: Server Tests
     needs: lint-and-typecheck
