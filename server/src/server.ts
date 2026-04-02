@@ -12,6 +12,22 @@ import { seedDefaultAdmin } from './services/userService.js';
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
 
+/** Known-weak JWT_SECRET values that must be rejected at startup */
+const WEAK_JWT_SECRETS = new Set(['changeme', 'secret', 'password', '']);
+
+const jwtSecret = process.env.JWT_SECRET ?? '';
+if (
+  WEAK_JWT_SECRETS.has(jwtSecret) ||
+  jwtSecret.startsWith('REPLACE_WITH_') ||
+  jwtSecret.length < 32
+) {
+  throw new Error(
+    'JWT_SECRET is not set or is using a known-weak value. ' +
+      'Set a cryptographically random secret of at least 32 characters before starting. ' +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+  );
+}
+
 const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 app.listen(port, async () => {

@@ -71,7 +71,8 @@ npm run dev --workspace=minicrm-client
 
 ```bash
 cp .env.test.example .env.test
-# Edit .env.test with your test database credentials
+# Fill in DB_PASSWORD and JWT_SECRET — see comments in .env.test.example for generation instructions.
+# Never commit .env.test — it is excluded by .gitignore.
 npm test --workspace=minicrm-server
 ```
 
