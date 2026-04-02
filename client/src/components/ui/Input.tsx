@@ -2,6 +2,7 @@
  * Shared text input component with label and error state support.
  */
 
+import { forwardRef } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -22,7 +23,10 @@ const BASE_INPUT_CLASSES =
  * @param label - Label text rendered above the input
  * @param error - Error message rendered below the input
  */
-export function Input({ label, error, id, className = '', ...props }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { label, error, id, className = '', ...props },
+  ref,
+) {
   const inputClasses = [
     BASE_INPUT_CLASSES,
     error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500',
@@ -36,8 +40,8 @@ export function Input({ label, error, id, className = '', ...props }: InputProps
           {label}
         </label>
       )}
-      <input id={id} className={inputClasses} {...props} />
+      <input ref={ref} id={id} className={inputClasses} {...props} />
       {error !== undefined && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
-}
+});

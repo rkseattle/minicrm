@@ -2,6 +2,7 @@
  * Shared button component with consistent variants and sizes.
  */
 
+import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes } from 'react';
 
 /** Visual style of the button */
@@ -44,14 +45,10 @@ const BASE_CLASSES =
  * @param size - Button size (default: md)
  * @param fullWidth - Span full container width
  */
-export function Button({
-  variant = 'primary',
-  size = 'md',
-  fullWidth = false,
-  className = '',
-  children,
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = 'primary', size = 'md', fullWidth = false, className = '', children, ...props },
+  ref,
+) {
   const classes = [
     BASE_CLASSES,
     VARIANT_CLASSES[variant],
@@ -63,8 +60,8 @@ export function Button({
     .join(' ');
 
   return (
-    <button type="button" className={classes} {...props}>
+    <button ref={ref} type="button" className={classes} {...props}>
       {children}
     </button>
   );
-}
+});

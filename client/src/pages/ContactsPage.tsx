@@ -38,6 +38,7 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const newContactButtonRef = useRef<HTMLButtonElement>(null);
   const [duplicateContact, setDuplicateContact] = useState<DuplicateContactInfo | null>(null);
   /**
    * When true, the next form submit will bypass the duplicate check.
@@ -49,6 +50,25 @@ export default function ContactsPage() {
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
+
+  type SortColumn = 'name' | 'email';
+  type SortDir = 'ascending' | 'descending';
+  const [sortCol, setSortCol] = useState<SortColumn>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('ascending');
+
+  /**
+   * Toggles sort column/direction and returns the new state.
+   *
+   * @param col - The column header that was clicked
+   */
+  function handleSort(col: SortColumn): void {
+    if (col === sortCol) {
+      setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
+    } else {
+      setSortCol(col);
+      setSortDir('ascending');
+    }
+  }
 
   const debouncedSearch = useDebounce(searchInput);
   const debouncedAccountSearch = useDebounce(accountSearchInput);
@@ -126,7 +146,12 @@ export default function ContactsPage() {
     },
   });
 
-  const contacts: ContactResponse[] = data?.contacts ?? [];
+  const contacts: ContactResponse[] = [...(data?.contacts ?? [])].sort((a, b) => {
+    const aVal = sortCol === 'name' ? `${a.first_name} ${a.last_name}` : (a.email ?? '');
+    const bVal = sortCol === 'name' ? `${b.first_name} ${b.last_name}` : (b.email ?? '');
+    const cmp = aVal.localeCompare(bVal);
+    return sortDir === 'ascending' ? cmp : -cmp;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -136,6 +161,7 @@ export default function ContactsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t('contacts.pageTitle')}</h1>
           {!showForm && (
             <Button
+              ref={newContactButtonRef}
               type="button"
               data-testid="new-contact-button"
               onClick={() => setShowForm(true)}
@@ -191,6 +217,7 @@ export default function ContactsPage() {
 
             <ContactForm
               formRef={formRef}
+              triggerRef={newContactButtonRef}
               accounts={accountOptions}
               onSubmit={(values) => {
                 setCreateError(null);
@@ -274,11 +301,33 @@ export default function ContactsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnName')}
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSort('name')}
+                        className="inline-flex items-center gap-1 hover:text-gray-700"
+                        data-testid="contacts-sort-name"
+                      >
+                        {t('contacts.columnName')}
+                        {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                      </button>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnEmail')}
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      aria-sort={sortCol === 'email' ? sortDir : 'none'}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSort('email')}
+                        className="inline-flex items-center gap-1 hover:text-gray-700"
+                        data-testid="contacts-sort-email"
+                      >
+                        {t('contacts.columnEmail')}
+                        {sortCol === 'email' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnPhone')}

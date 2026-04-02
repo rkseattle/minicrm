@@ -4,7 +4,7 @@
  * Used by ContactsPage (create) and ContactDetailPage (edit).
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
@@ -55,6 +55,8 @@ interface ContactFormProps {
   error?: string;
   /** Optional ref forwarded to the underlying <form> element for programmatic submit */
   formRef?: React.RefObject<HTMLFormElement | null>;
+  /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -88,12 +90,24 @@ export default function ContactForm({
   submitLabel,
   error,
   formRef,
+  triggerRef,
 }: ContactFormProps) {
   const { t } = useTranslation();
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ContactFormValues>(() =>
     buildInitialState(initialValues),
   );
+
+  // Move focus to the first input when the form mounts (WCAG 2.4.3)
+  useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
+
+  /** Returns focus to the trigger element when the form closes. */
+  function returnFocus(): void {
+    triggerRef?.current?.focus();
+  }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = event.target;
@@ -107,6 +121,7 @@ export default function ContactForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+    returnFocus();
     onSubmit(formData);
   };
 
@@ -116,6 +131,7 @@ export default function ContactForm({
     <form ref={formRef} onSubmit={handleSubmit} data-testid="contact-form">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <Input
+          ref={firstInputRef}
           id="contact-first-name"
           data-testid="contact-first-name"
           name="first_name"
@@ -239,7 +255,10 @@ export default function ContactForm({
             type="button"
             variant="ghost"
             data-testid="contact-form-cancel"
-            onClick={onCancel}
+            onClick={() => {
+              returnFocus();
+              onCancel();
+            }}
             disabled={isSubmitting}
           >
             {t('contacts.cancel')}

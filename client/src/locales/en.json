@@ -422,6 +422,7 @@
     "disableRule": "Disable rule {{name}}",
     "viewLogs": "View logs",
     "logsDrawerTitle": "Execution logs",
+    "logsDrawerClose": "Close execution logs",
     "logsLoading": "Loading logs…",
     "logsError": "Failed to load logs. Please try again.",
     "logsEmpty": "No executions yet.",

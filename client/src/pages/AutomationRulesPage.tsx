@@ -11,7 +11,7 @@
  * Implements MINCRM-27.
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -110,39 +110,58 @@ function buildActionConfig(form: RuleFormState): Record<string, unknown> {
 interface RuleLogsDrawerProps {
   rule: AutomationRuleResponse;
   onClose: () => void;
+  /** Ref to the "View logs" button that opened the drawer; focus returns here on close */
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /**
  * Displays the execution logs for a single automation rule.
  */
-function RuleLogsDrawer({ rule, onClose }: RuleLogsDrawerProps) {
+function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
   const { t } = useTranslation();
+  const headingId = `logs-drawer-title-${rule.id}`;
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus to the close button when the drawer mounts (WCAG 2.4.3)
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [...AUTOMATION_RULES_QUERY_KEY, rule.id, 'logs'],
     queryFn: () => listRuleLogs(rule.id),
   });
 
+  /** Closes the drawer and returns focus to the trigger button. */
+  function handleClose(): void {
+    onClose();
+    triggerRef.current?.focus();
+  }
+
   return (
+    // Backdrop — clicking the overlay background (not the panel) dismisses the drawer
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      role="presentation"
       className="fixed inset-0 bg-black/30 z-20 flex justify-end"
       data-testid="logs-drawer-overlay"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div
-        role="presentation"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
         className="bg-white w-full max-w-lg h-full overflow-y-auto shadow-xl"
         data-testid="logs-drawer"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h2 className="text-base font-semibold text-gray-900" data-testid="logs-drawer-title">
+            <h2
+              id={headingId}
+              className="text-base font-semibold text-gray-900"
+              data-testid="logs-drawer-title"
+            >
               {t('automation.logsDrawerTitle')}
             </h2>
             <p className="text-sm text-gray-500 mt-0.5" data-testid="logs-drawer-rule-name">
@@ -150,7 +169,12 @@ function RuleLogsDrawer({ rule, onClose }: RuleLogsDrawerProps) {
             </p>
           </div>
           <button
-            onClick={onClose}
+            ref={closeButtonRef}
+            onClick={handleClose}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') handleClose();
+            }}
+            aria-label={t('automation.logsDrawerClose')}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none"
             data-testid="logs-drawer-close"
           >
@@ -246,6 +270,8 @@ export default function AutomationRulesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedLogsRule, setSelectedLogsRule] = useState<AutomationRuleResponse | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  /** Ref to the "View logs" button that last opened the drawer, for focus restoration on close */
+  const logsButtonRef = useRef<HTMLButtonElement>(null);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -733,7 +759,12 @@ export default function AutomationRulesPage() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedLogsRule(rule)}
+                    ref={selectedLogsRule?.id === rule.id ? logsButtonRef : undefined}
+                    onClick={(e) => {
+                      (logsButtonRef as React.MutableRefObject<HTMLButtonElement>).current =
+                        e.currentTarget;
+                      setSelectedLogsRule(rule);
+                    }}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                     data-testid={`view-logs-${rule.id}`}
                   >
@@ -779,7 +810,11 @@ export default function AutomationRulesPage() {
 
       {/* Execution logs drawer */}
       {selectedLogsRule && (
-        <RuleLogsDrawer rule={selectedLogsRule} onClose={() => setSelectedLogsRule(null)} />
+        <RuleLogsDrawer
+          rule={selectedLogsRule}
+          onClose={() => setSelectedLogsRule(null)}
+          triggerRef={logsButtonRef}
+        />
       )}
     </div>
   );
