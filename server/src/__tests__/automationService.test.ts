@@ -476,6 +476,89 @@ describe('fireAutomationTrigger — contact_created', () => {
   });
 });
 
+// ── MINCRM-83: Failure isolation ───────────────────────────────────────────────
+
+describe('MINCRM-83 — failing rule does not abort the triggering operation', () => {
+  it('does not throw when a rule action fails, and writes an error log', async () => {
+    await createAutomationRule({
+      ...BASE_RULE,
+      // Omitting required action_config fields causes execution to throw internally
+      action_config: { subject: '' },
+      created_by: adminId,
+    });
+
+    // fireAutomationTrigger must resolve without throwing even when all rules fail
+    await expect(
+      fireAutomationTrigger('deal_created', {
+        recordId: dealId,
+        recordType: 'deal',
+        ownerId: adminId,
+      }),
+    ).resolves.toBeUndefined();
+
+    // The DB should show no tasks were created (action failed)
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND type = 'Task'`,
+      [dealId],
+    );
+    expect(tasks.rows).toHaveLength(0);
+  });
+
+  it('runs rule 2 and logs success even when rule 1 throws', async () => {
+    // Rule 1: bad config → will throw during execution
+    const failingRule = await createAutomationRule({
+      name: 'Failing contact rule',
+      enabled: true,
+      trigger_type: 'contact_created',
+      trigger_config: {},
+      action_type: 'create_task',
+      action_config: { subject: '' }, // missing required fields → throws
+      created_by: adminId,
+    });
+
+    // Rule 2: valid config → should succeed regardless of rule 1
+    const succeedingRule = await createAutomationRule({
+      name: 'Succeeding contact rule',
+      enabled: true,
+      trigger_type: 'contact_created',
+      trigger_config: {},
+      action_type: 'create_task',
+      action_config: {
+        subject: 'Welcome new contact',
+        task_type: 'Task',
+        assignee_type: 'owner',
+        due_date_offset_days: 0,
+      },
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('contact_created', {
+      recordId: contactId,
+      recordType: 'contact',
+      ownerId: adminId,
+    });
+
+    const failingLogs = await listRuleLogs(failingRule.id);
+    expect(failingLogs).toHaveLength(1);
+    expect(failingLogs[0].outcome).toBe('error');
+    expect(failingLogs[0].error_message).not.toBeNull();
+
+    const succeedingLogs = await listRuleLogs(succeedingRule.id);
+    expect(succeedingLogs).toHaveLength(1);
+    expect(succeedingLogs[0].outcome).toBe('success');
+
+    // Verify the task from rule 2 was actually created
+    const tasks = await pool.query(
+      `SELECT * FROM activities WHERE contact_id = $1 AND subject = 'Welcome new contact'`,
+      [contactId],
+    );
+    expect(tasks.rows).toHaveLength(1);
+  });
+});
+
+// Note: MINCRM-83 Scenario 2 (disabled rule does not fire) is covered by
+// the 'does not fire disabled rules' test in the create_task section above.
+
 // ── fireAutomationTrigger — send_notification ──────────────────────────────────
 
 describe('fireAutomationTrigger — send_notification', () => {
