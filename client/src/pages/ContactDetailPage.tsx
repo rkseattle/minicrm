@@ -17,6 +17,7 @@ import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import type { PipelineStage } from '@shared/schemas/dealSchema.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
@@ -26,7 +27,7 @@ import type { ContactFormValues } from '@/components/ContactForm.js';
  * Single contact detail page with view/edit/delete.
  */
 export default function ContactDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -247,7 +248,7 @@ export default function ContactDetailPage() {
             </div>
             <DetailRow
               label={t('contacts.createdLabel')}
-              value={new Date(contact.created_at).toLocaleDateString()}
+              value={formatLocalDate(contact.created_at, i18n.language)}
               testId="detail-created"
             />
             <DetailRow

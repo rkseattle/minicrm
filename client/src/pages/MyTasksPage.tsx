@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge.js';
 import { listMyTasks, updateActivity, MY_TASKS_QUERY_KEY } from '@/api/activities.js';
 import type { MyTaskResponse } from '@/api/activities.js';
 import { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import type { ActivityType } from '@shared/schemas/activitySchema.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 
@@ -66,7 +67,7 @@ function linkedRecordPath(task: MyTaskResponse): string | null {
  * My Tasks page — shows all tasks for the current user.
  */
 export default function MyTasksPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   /** When navigated from the dashboard overdue link, pre-filter to overdue tasks only */
@@ -223,7 +224,7 @@ export default function MyTasksPage() {
                                 data-testid={`task-due-date-${task.id}`}
                                 className={overdue ? 'text-red-600 font-medium' : 'text-gray-600'}
                               >
-                                {task.due_date}
+                                {formatLocalDate(task.due_date, i18n.language)}
                                 {overdue && (
                                   <span
                                     className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"

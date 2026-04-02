@@ -18,12 +18,13 @@ import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api
 import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
  * Single account detail page with view/edit/delete.
  */
 export default function AccountDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -226,7 +227,7 @@ export default function AccountDetailPage() {
               />
               <DetailRow
                 label={t('accounts.createdLabel')}
-                value={new Date(account.created_at).toLocaleDateString()}
+                value={formatLocalDate(account.created_at, i18n.language)}
                 testId="detail-created"
               />
               <DetailRow

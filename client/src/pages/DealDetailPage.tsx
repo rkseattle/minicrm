@@ -33,6 +33,7 @@ import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js'
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
  * Formats a deal value as a USD currency string using the active locale.
@@ -328,7 +329,7 @@ export default function DealDetailPage() {
               />
               <DetailRow
                 label={t('deals.closeDateLabel')}
-                value={deal.close_date ?? '—'}
+                value={formatLocalDate(deal.close_date, i18n.language)}
                 testId="detail-close-date"
               />
               <DetailRow
@@ -345,7 +346,7 @@ export default function DealDetailPage() {
               )}
               <DetailRow
                 label={t('deals.createdLabel')}
-                value={new Date(deal.created_at).toLocaleDateString()}
+                value={formatLocalDate(deal.created_at, i18n.language)}
                 testId="detail-created"
               />
               <DetailRow
