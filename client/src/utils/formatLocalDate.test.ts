@@ -13,11 +13,35 @@ describe('formatLocalDate', () => {
   });
 
   it('formats a YYYY-MM-DD string in German', () => {
-    expect(formatLocalDate('2026-12-31', 'de')).toBe('31. Dez. 2026');
+    // Derive the expected string at runtime so the test stays in sync with the ICU
+    // data bundled in the current Node.js version rather than encoding a hardcoded string.
+    const expected = new Intl.DateTimeFormat('de', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date('2026-12-31T00:00:00Z'));
+    expect(formatLocalDate('2026-12-31', 'de')).toBe(expected);
   });
 
   it('formats a YYYY-MM-DD string in French', () => {
-    expect(formatLocalDate('2026-12-31', 'fr')).toBe('31 déc. 2026');
+    const expected = new Intl.DateTimeFormat('fr', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date('2026-12-31T00:00:00Z'));
+    expect(formatLocalDate('2026-12-31', 'fr')).toBe(expected);
+  });
+
+  it('formats a YYYY-MM-DD string in zh-Hans without falling back to default locale', () => {
+    const expected = new Intl.DateTimeFormat('zh-Hans', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date('2026-12-31T00:00:00Z'));
+    expect(formatLocalDate('2026-12-31', 'zh-Hans')).toBe(expected);
   });
 
   it('does not shift the day due to local timezone offset for date-only strings', () => {
