@@ -100,11 +100,19 @@ export default function ChangePasswordPage() {
           <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">MiniCRM</h1>
         </div>
 
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 mb-4 text-sm text-blue-800"
+          data-testid="change-password-context-banner"
+        >
+          {t('changePassword.contextBanner')}
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <h2 className="text-base font-semibold text-gray-900 mb-2">
+          <h2 className="text-base font-semibold text-gray-900 mb-6">
             {t('changePassword.title')}
           </h2>
-          <p className="text-sm text-gray-500 mb-6">{t('changePassword.subtitle')}</p>
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
             <Input
