@@ -83,9 +83,9 @@ Column names from client query params cannot be parameterized. Validate against 
 
 ```ts
 const ALLOWED_SORT = ['first_name', 'created_at'] as const;
-const col = ALLOWED_SORT.includes(req.query.sort) ? req.query.sort : 'created_at';
+const sortParam = typeof req.query.sort === 'string' ? req.query.sort : '';
+const col = (ALLOWED_SORT as readonly string[]).includes(sortParam) ? sortParam : 'created_at';
 const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
-```
 
 ### Cookie config (auth):
 
