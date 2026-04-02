@@ -316,7 +316,8 @@
     "noRecord": "—",
     "markComplete": "Marquer comme terminée",
     "markingComplete": "Marquage…",
-    "completeError": "Échec du marquage de la tâche. Veuillez réessayer."
+    "completeError": "Échec du marquage de la tâche. Veuillez réessayer.",
+    "filterChipOverdue": "Filtre : En retard"
   },
   "settings": {
     "pageTitle": "Paramètres administrateur",

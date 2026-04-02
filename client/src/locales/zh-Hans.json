@@ -316,7 +316,8 @@
     "noRecord": "—",
     "markComplete": "标记完成",
     "markingComplete": "标记中…",
-    "completeError": "标记任务完成失败，请重试。"
+    "completeError": "标记任务完成失败，请重试。",
+    "filterChipOverdue": "筛选：已逾期"
   },
   "settings": {
     "pageTitle": "管理设置",
