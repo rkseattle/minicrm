@@ -34,9 +34,7 @@ jobs:
           NODE_ENV: development
 
       - name: Audit dependencies for high/critical vulnerabilities
-        run: |
-          npm audit --audit-level=high --workspace=minicrm-server
-          npm audit --audit-level=high --workspace=minicrm-client
+        run: npm audit --audit-level=high
 
   server-tests:
     name: Server Tests
