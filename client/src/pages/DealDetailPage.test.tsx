@@ -32,7 +32,7 @@ describe('DealDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('detail-stage')).toHaveTextContent(DEAL_1.stage);
     });
-    expect(screen.getByTestId('detail-close-date')).toHaveTextContent(DEAL_1.close_date!);
+    expect(screen.getByTestId('detail-close-date')).toHaveTextContent('Dec 31, 2026');
   });
 
   it('renders the back to deals link', async () => {

@@ -21,6 +21,7 @@ import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import type { PipelineStage } from '@shared/schemas/dealSchema.js';
 
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
@@ -288,7 +289,9 @@ export default function DealsPage() {
                       <td className="px-4 py-3 text-gray-500">
                         {formatDealValue(deal.value, i18n.language)}
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{deal.close_date ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {formatLocalDate(deal.close_date, i18n.language)}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">
                         {resolveAccountName(deal.account_id)}
                       </td>
