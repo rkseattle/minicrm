@@ -1,186 +1,220 @@
-# MiniCRM — Project Context for Claude Code
+# MiniCRM — Claude Code Context
 
-## What This Is
+Minimal CRM validating the core sales loop: contact → deal → activity → pipeline.
+Jira: MINCRM · edwardaspendesigns.atlassian.net · Cloud ID: b292d89b-f5d6-45b9-b1c1-bb44dd14b067
 
-A minimal viable CRM (alpha / proof of concept). The goal is to validate the core
-sales workflow loop: create a contact → attach them to a deal → log activity → move
-the deal through a pipeline. Nothing beyond that loop is in scope for alpha.
+## Stack
 
-## Tech Stack
+- Client: React + Vite, TanStack Query, React Router, Tailwind CSS, i18next
+- Server: Node.js + Express + TypeScript, REST, Zod validation
+- DB: PostgreSQL 16, node-pg-migrate
+- Auth: JWT in httpOnly cookie
+- Infra: Docker + Docker Compose, npm workspaces (/client, /server, /shared)
+- Docs: OpenAPI 3.0 via swagger-jsdoc, served at /api-docs (dev/staging only)
 
-- **Frontend:** React (Vite), React Query (TanStack) for server state, React Router
-- **Backend:** Node.js + Express, REST API
-- **Database:** PostgreSQL 16
-- **Validation:** Zod (shared schemas used on both client and server)
-- **Auth:** JWT stored in httpOnly cookies
-- **Infrastructure:** Docker + Docker Compose (one container each for db, server, client)
-  - `docker-compose.yml` — production-ready base (no source mounts)
-  - `docker-compose.dev.yml` — dev override (source mounts + hot-reload); run with `-f docker-compose.yml -f docker-compose.dev.yml`
-- **Monorepo layout:** /client, /server, /db — all in one repo
+## Project Layout
 
-## Project Structure
+```
+server/src/routes/       → route definitions + @openapi JSDoc only
+server/src/controllers/  → request/response shaping only
+server/src/services/     → all business logic + DB queries
+server/src/middleware/   → auth.ts (JWT verify + status check), requireRole.ts
+client/src/api/          → one Axios wrapper file per resource
+client/src/pages/        → full page components
+client/src/components/   → reusable UI pieces
+shared/schemas/          → Zod schemas (imported by both client and server)
+db/migrations/           → sequential node-pg-migrate files (001–013+)
+e2e/                     → Playwright tests (MINCRM-42)
+```
 
-See the repo layout. Key conventions:
+## Core Tables
 
-- server/src/routes/ → route definitions only (no logic)
-- server/src/controllers/ → request/response handling
-- server/src/services/ → business logic (db queries live here)
-- server/src/middleware/ → auth.js (JWT verify), requireRole.js (admin gating)
-- client/src/api/ → one file per resource (axios wrappers)
-- client/src/pages/ → full page components
-- client/src/components/ → reusable UI pieces
-- db/migrations/ → sequential SQL files (001*, 002*, etc.)
+```
+users          id, email, password_hash, name, role(admin|rep), status, must_change_password, preferred_language
+accounts       id, name, industry, website, employee_range, revenue_range, owner_id
+contacts       id, first_name, last_name, email, phone, title, department, account_id, owner_id
+deals          id, name, stage, value, close_date, loss_reason, account_id, owner_id
+deal_contacts  deal_id, contact_id  ← composite PK required
+activities     id, type, subject, notes, due_date, status, direction, outcome, contact_id, account_id, deal_id, owner_id
+               CHECK: contact_id IS NOT NULL OR account_id IS NOT NULL OR deal_id IS NOT NULL
+automation_rules  id, name, trigger, action, enabled
+automation_rule_logs  id, rule_id, triggered_at, outcome, error_message
+system_settings  key, value
+```
 
-## Database Schema (Core Tables)
+Pipeline stages (fixed): Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
 
-- users → id, email, password_hash, name, role (admin|rep), status
-- accounts → id, name, industry, website, employee_range, revenue_range, owner_id
-- contacts → id, first_name, last_name, email, phone, title, department, account_id, owner_id
-- deals → id, name, stage, value, close_date, loss_reason, account_id, owner_id
-- deal_contacts → deal_id, contact_id (join table)
-- activities → id, type, subject, notes, due_date, status, contact_id, account_id, deal_id, owner_id
+## Current State
 
-## Auth Rules
+Alpha (MINCRM-1–4) and all post-alpha work (MINCRM-24–33) are fully implemented.
+Active work phases (see Jira for full ticket descriptions):
 
-- Two roles only: admin and rep
-- Reps can create/edit their own records and view all records
-- Admins can do everything including user management
-- Role gating is enforced at the API layer (not just hidden in the UI)
-- Sessions expire after 8 hours of inactivity
+| Phase | Focus                  | Key tickets                   |
+| ----- | ---------------------- | ----------------------------- |
+| A     | Security hygiene       | MINCRM-64, 72, 84, 85, 86     |
+| B     | Security verification  | MINCRM-73, 74, 76, 78, 87, 88 |
+| C     | CI + test infra        | MINCRM-65, 66, 67, 90         |
+| D     | Security test coverage | MINCRM-80, 81, 83             |
+| E     | E2E foundation         | MINCRM-63, 71, 77             |
+| F     | Playwright E2E suite   | MINCRM-42                     |
+| G     | UX + accessibility     | MINCRM-53–63, 82              |
+| H     | Tooling + scalability  | MINCRM-55, 56, 68, 69, 70     |
 
-## Pipeline Stages (fixed for alpha)
+Work outside these phases requires explicit authorization.
+MINCRM-5 (comms), MINCRM-6 (reporting epics beyond implemented), MINCRM-7 (automation epics beyond implemented) remain out of scope.
 
-Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
+## Security Patterns — Required
 
-## Must-Have Epics (Alpha Scope)
+### Auth middleware must verify on every authenticated request:
 
-These four epics are in scope. Everything else is post-alpha.
+1. JWT signature + expiry
+2. `user.status === 'active'` (deactivated users must not pass)
+3. If `user.must_change_password`, return 403 `{ error: { code: 'PASSWORD_CHANGE_REQUIRED' } }` for all routes except `/api/auth/change-password`
 
-### EPIC 1: Contact & Account Management (MINCRM-1)
+### Ownership on PATCH/DELETE:
 
-Stories: MINCRM-8 through MINCRM-14
+All PATCH and DELETE on contacts, accounts, deals, activities must enforce:
+`WHERE id = $1 AND (owner_id = $2 OR $3 = 'admin')`
+Never trust `owner_id` from the request body — use `req.user.id` from middleware.
 
-- Full CRUD for contacts and accounts
-- Contact ↔ Account linking (one account per contact)
-- Search by name, filter by owner
-- Activity timeline on each record
-- Duplicate detection on contact create (email match → warn, don't block)
-- Owner assignment (defaults to creator)
+### SQL injection (ORDER BY):
 
-### EPIC 2: Lead & Opportunity Tracking (MINCRM-2)
+Column names from client query params cannot be parameterized. Validate against an explicit allowlist:
 
-Stories: MINCRM-15 through MINCRM-18
+```ts
+const ALLOWED_SORT = ['first_name', 'created_at'] as const;
+const sortParam = typeof req.query.sort === 'string' ? req.query.sort : '';
+const col = (ALLOWED_SORT as readonly string[]).includes(sortParam) ? sortParam : 'created_at';
+const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
 
-- Full CRUD for deals
-- Kanban pipeline board (deals as cards, stages as columns)
-- Each stage column shows deal count + total value
-- Link contacts to deals (many-to-many)
-- Close Won / Close Lost with optional loss reason
-- Closed deals filterable from active pipeline view
+### Cookie config (auth):
 
-### EPIC 3: Activity & Task Management (MINCRM-3)
+```ts
+res.cookie('token', jwt, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 8 * 60 * 60 * 1000,
+});
+```
 
-Stories: MINCRM-19 through MINCRM-20
+### Startup guard:
 
-- Unified activity model: type field = Note | Call | Email | Meeting | Task
-- Activities can be attached to a contact, account, or deal
-- Due date + status (open/complete) for tasks
-- "My Tasks" view: all open tasks for current user, sorted by due date, overdue highlighted
-- Mark complete directly from the list
-- Activity timeline is a shared component reused across Contact, Account, Deal detail pages
+Reject weak JWT_SECRET values ('changeme', 'secret', 'password', '') at process start.
 
-### EPIC 4: User Roles & Permissions (MINCRM-4)
+### Rate limiting:
 
-Stories: MINCRM-21 through MINCRM-23
+`POST /api/auth/login` must use `express-rate-limit` (10 attempts / 15 min / IP).
 
-- Login/logout with email + password
-- Admin can invite users (email invite → set password flow)
-- Admin can assign/change roles
-- Admin can deactivate/reactivate users
-- Deactivated users' records remain intact
+## Architecture Rules
 
-## Scope Guard
+- Business logic in services only — never in routes or controllers
+- Controllers: request/response shaping only, no `pool.query()` calls
+- All Zod validation in controllers before calling services
+- ORDER BY column names: allowlist-validate before SQL interpolation (see Security above)
+- Async route handlers: wrap in `try/catch` or `asyncHandler` — no unhandled rejections
+- Error shape: `{ error: { code: string, message: string } }` on all failures
+- HTTP status codes: 400 validation, 401 unauth, 403 forbidden, 404 not found, 409 conflict
+- Automation rule execution: wrap each rule in isolated try/catch — a failing rule must not abort the triggering operation; log failure to `automation_rule_logs` and continue
+- Do not add new unbounded list queries — pagination is tracked in MINCRM-68
 
-The alpha scope is defined by epics MINCRM-1 through MINCRM-4 only.
-Do not implement, scaffold, or plan anything from MINCRM-5, MINCRM-6, or MINCRM-7
-unless explicitly instructed. If a feature request seems out of scope, say so.
+## New Endpoint Checklist
 
-## Post-Alpha Epics (DO NOT BUILD FOR NOW)
+Before marking any endpoint complete:
 
-- MINCRM-5: Communication Tools (email/call integration)
-- MINCRM-6: Reporting & Dashboards
-- MINCRM-7: Workflow Automation
+- [ ] Route file: definition + @openapi JSDoc only
+- [ ] Zod schema validates all inputs before service call
+- [ ] Sort/filter params allowlist-validated
+- [ ] Admin-only routes have `requireRole('admin')`
+- [ ] PATCH/DELETE verify ownership or admin role
+- [ ] Handler wrapped in try/catch or asyncHandler
+- [ ] Error response uses standard shape
+- [ ] At least one service test covers the new function
+- [ ] README.md updated
 
-## Recommended Build Order
+## Testing
 
-1. **Phase 1 — Auth foundation** (users table, login/logout, JWT middleware, role gating)
-2. **Phase 2 — Contact & Account** (CRUD, linking, search, timeline stub)
-3. **Phase 3 — Deals & Pipeline** (CRUD, Kanban board, close flow)
-4. **Phase 4 — Activities & Tasks** (activities table, timeline component, My Tasks page)
-5. **Phase 5 — Polish** (duplicate detection, validation, error/empty states)
+### Server (server/src/tests/)
 
-## Key Implementation Decisions
+- Framework: Vitest against real Postgres (`minicrm_test` DB)
+- DB reset + seed helpers must run before each test — no cross-test state
+- Coverage threshold: 80% on `server/src/services/` (enforced in CI)
+- File naming: `[domain].service.test.js`
+- Required test files beyond core CRUD:
+  - `auth-boundaries.test.js` — rep → admin endpoints → 403; rep A → rep B's records → 403/404
+  - `automation.service.test.js` — rule fires, disabled rule no-ops, failing rule does not abort triggering operation
 
-- Use `node-pg-migrate` for migrations — do NOT rely on docker-entrypoint-initdb.d
-- React Query for all server state on the frontend — no raw useEffect for data fetching
-- Zod schemas live in a shared location and are imported by both client and server
-- httpOnly cookie for JWT — not localStorage
-- API always returns consistent error shape: { error: { code, message } }
-- All list endpoints support ?owner=me filter for scoping to current user
+### Client (client/src/)
 
-## Jira Project
+- Framework: Vitest + React Testing Library + MSW (Mock Service Worker) for API mocking
+- Co-locate tests: `Component.test.jsx` alongside `Component.jsx`
+- Coverage threshold: 70% on `components/` and `pages/` (enforced in CI)
+- All conditional render branches require dedicated tests (e.g., ActivityForm direction field: visible for Call/Email, absent for Note/Task/Meeting)
 
-Project key: MINCRM
-Instance: edwardaspendesigns.atlassian.net
-All user stories have acceptance criteria in their descriptions.
-Reference story keys when implementing features (e.g., "implements MINCRM-8").
+### data-testid
 
-## Rules for Claude Code
+Every interactable element requires a unique `data-testid`. Row-scoped format: `data-testid="[action]-[entity]-[id]"`. This is required for MINCRM-42 (Playwright). Missing attributes will cause E2E failures.
 
-### General Behavior
+### E2E (e2e/, MINCRM-42)
 
-- Always ask before deleting or overwriting existing files
-- Never scaffold placeholder / "coming soon" code — implement it or leave it out
-- If a task would take more than ~200 lines of new code, pause and confirm the approach first
-- Prefer editing existing files over creating new ones when both options are valid
+- Playwright, `playwright.config.ts` at repo root
+- `data-testid` selectors only — no CSS class or positional selectors
+- Dedicated `minicrm_e2e` DB, reset between runs
+- Five required journeys: auth, contact CRUD, deal pipeline (2+ stage moves → close Won), task flow, user management
+- Separate CI job, runs after unit and service jobs pass
 
-### Code Style
+## Internationalization
 
-- Use async/await — never raw .then() chains
-- All functions must have JSDoc comments for parameters and return type
-- No magic numbers — use named constants
-- Never use `any` in TypeScript or skip Zod validation
-- Coding must pass all relevant linters
-- All interactable frontend UI elements must have a unique data-testid attribute
-- Always update the README.md with architecture and functionality changes
+- All user-facing strings use `t('key')` — no hardcoded English in JSX
+- Locales: `en`, `zh-Hans`, `es`, `fr`, `de`
+- Pipeline stage keys: camelCase (e.g., `pipeline.stages.closedWon`)
+- Currency: `Intl.NumberFormat` with active locale
+- `eslint-plugin-i18next` enforces the above (MINCRM-70)
+- RTL: `document.dir` is set on locale change but Tailwind directional classes (`pl-`, `pr-`, `ml-`, `mr-`, `text-left`, `text-right`, etc.) do NOT auto-mirror. Use logical property utilities (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`) for all new UI work. Existing classes are being audited in MINCRM-69.
 
-### Architecture Rules
+## Database
 
-- Business logic belongs in /server/src/services — never in routes or controllers
-- Controllers only handle request/response shaping — no db calls directly
-- All db access goes through the service layer
-- New API endpoints must follow the existing REST conventions in CLAUDE.md
-- All user-facing text must support internationalization and localization for: English, Mandarin Chinese, Spanish, French, and German
-- All functionality must be accurately documented in the project
-- Implement frontend in reusable components, to minimize code churn during refactors
+- All schema changes require a migration file — no DDL in application code
+- Next migration: 013
+- Every migration has both `up` and `down`
+- Business integrity rules must be enforced at DB level (CHECK constraints) in addition to Zod (e.g., activities linked-record constraint — MINCRM-65)
+- `deal_contacts` requires composite PK: `PRIMARY KEY (deal_id, contact_id)`
 
-### Testing
+## Known Architectural Debt (do not worsen)
 
-- Write at least one test for every new service function
-- Do not modify existing passing tests to make new code pass
-- Do not commit with failing tests
+- No pagination on list endpoints (MINCRM-68) — do not add new unbounded queries
+- Synchronous automation rule execution (MINCRM-67) — do not add new synchronous side effects to write operations
+- `GET /api/users/active` called frequently — set `staleTime: 5 * 60 * 1000` on this query
+- `staleTime: 0` on dashboard is intentional — do not apply globally
 
-### Git
+## Code Style
 
-- Commit messages must follow conventional commits: feat:, fix:, chore:, etc.
-- Never commit directly to main — always use a feature branch
-- Branch names must include the related Jira work item ID as a prefix after the type (e.g. `feat/MINCRM-8-contact-crud`, `fix/MINCRM-15-deal-stage`)
-- One logical change per commit — do not bundle unrelated changes
-- All pre commit linters must pass
+- `async/await` only — no `.then()` chains
+- JSDoc on all functions (params + return type)
+- Named constants — no magic numbers
+- `no-explicit-any` enforced by ESLint — fix the type, don't suppress
+- Never use `// @ts-ignore`
 
-### What NOT to Do
+## Git
 
-- Do not install new npm packages without confirming first
-- Do not modify the database schema without creating a migration file
-- Do not build anything from the post-alpha epics (MINCRM-5, 6, 7)
-- Do not hardcode credentials or secrets — always use environment variables
+- Conventional commits: `feat:`, `fix:`, `chore:`, `test:`, `docs:`
+- Branch name: `feat/MINCRM-{n}-short-description`
+- Never commit to main — always use a feature branch
+- One logical change per commit
+- Pre-commit linters must pass (husky + lint-staged)
+- Never commit `.env` or `.env.test` — both are in `.gitignore`
+
+## Starting a Phase Ticket
+
+1. Read the full Jira ticket description before writing any code
+2. If the ticket says "verify" or "requires code inspection" — inspect and report first; only implement if the problem is confirmed
+3. After fixing, add or update a test that would have caught the bug
+4. Phase B/C/D tickets often have security implications — implement the correct pattern, not a workaround
+
+## General Behavior
+
+- Ask before deleting or overwriting files
+- No placeholder / "coming soon" code — implement it or leave it out
+- Tasks >200 lines of new code: pause and confirm approach first
+- Prefer editing existing files over creating new ones
+- Do not install npm packages without confirming first
