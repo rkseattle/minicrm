@@ -280,7 +280,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.wonValueLabel')}
                 </p>
                 <p
-                  className="text-2xl font-bold text-green-600 break-all"
+                  className="text-2xl font-bold text-green-600 break-words"
                   data-testid="stat-won-value-value"
                 >
                   {formatCurrency(report.wonValue, i18n.language)}
@@ -309,7 +309,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.lostValueLabel')}
                 </p>
                 <p
-                  className="text-2xl font-bold text-red-600 break-all"
+                  className="text-2xl font-bold text-red-600 break-words"
                   data-testid="stat-lost-value-value"
                 >
                   {formatCurrency(report.lostValue, i18n.language)}
