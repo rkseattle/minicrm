@@ -72,6 +72,7 @@
   "changePassword": {
     "title": "Change your password",
     "subtitle": "Your administrator has set a temporary password for you. Please choose a new one before continuing.",
+    "contextBanner": "Your admin has set a temporary password for your account. Please choose a new password to continue.",
     "currentPasswordLabel": "Current password",
     "currentPasswordPlaceholder": "Your current password",
     "newPasswordLabel": "New password",

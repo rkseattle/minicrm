@@ -5,7 +5,7 @@
  * Each row links to the DealDetailPage.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +50,7 @@ export default function DealsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newDealButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
 
   type SortColumn = 'name' | 'close_date';
@@ -70,6 +71,14 @@ export default function DealsPage() {
       setSortDir('ascending');
     }
   }
+
+  // Restore focus to the "New Deal" button after the form closes (button re-mounts on next render)
+  useEffect(() => {
+    if (!showForm && shouldRestoreFocusRef.current) {
+      newDealButtonRef.current?.focus();
+      shouldRestoreFocusRef.current = false;
+    }
+  }, [showForm]);
 
   const dealsQueryKey =
     ownerFilter === 'me' ? ([...DEALS_QUERY_KEY, { owner: 'me' }] as const) : DEALS_QUERY_KEY;
@@ -103,9 +112,9 @@ export default function DealsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      shouldRestoreFocusRef.current = true;
       setShowForm(false);
       setCreateError(null);
-      newDealButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
@@ -162,6 +171,7 @@ export default function DealsPage() {
                 createMutation.mutate(values);
               }}
               onCancel={() => {
+                shouldRestoreFocusRef.current = true;
                 setShowForm(false);
                 setCreateError(null);
               }}

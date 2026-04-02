@@ -72,6 +72,7 @@
   "changePassword": {
     "title": "修改密码",
     "subtitle": "管理员已为您设置了临时密码。请在继续使用前设置新密码。",
+    "contextBanner": "管理员已为您的账户设置了临时密码。请选择新密码以继续。",
     "currentPasswordLabel": "当前密码",
     "currentPasswordPlaceholder": "您的当前密码",
     "newPasswordLabel": "新密码",
