@@ -222,6 +222,8 @@ describe('MyTasksPage', () => {
       });
 
       expect(screen.queryByTestId(`task-row-${MY_TASK_1.id}`)).not.toBeInTheDocument();
+      // Chip must still be visible so the user knows why the list is empty
+      expect(screen.getByTestId('filter-chip-overdue')).toBeInTheDocument();
     });
 
     it('shows all open tasks when no filter param is present', async () => {
