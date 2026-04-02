@@ -24,13 +24,15 @@ import { setupSwagger } from './swagger.js';
 
 const app = express();
 
+// Trust the first proxy hop (nginx/ALB) so req.ip reflects the real client IP.
+// Required for rate limiting to key on individual clients rather than the proxy.
+app.set('trust proxy', 1);
+
 // ── Security headers ───────────────────────────────────────────────────────────
 // In non-production, disable CSP so Swagger UI (inline scripts) renders correctly.
 // Production keeps the full helmet defaults including a strict CSP.
 app.use(
-  helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === 'production',
-  }),
+  process.env.NODE_ENV === 'production' ? helmet() : helmet({ contentSecurityPolicy: false }),
 );
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
