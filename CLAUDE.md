@@ -205,6 +205,12 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 - Pre-commit linters must pass (husky + lint-staged)
 - Never commit `.env` or `.env.test` — both are in `.gitignore`
 
+## Jira Workflow
+
+- Set ticket status to **In Progress** when starting work on it
+- Set ticket status to **In Review** once the PR is posted
+- When a PR covers multiple tickets, include all full Jira IDs in the PR title (e.g. `MINCRM-74, MINCRM-76` — not just one)
+
 ## Starting a Phase Ticket
 
 1. Read the full Jira ticket description before writing any code
