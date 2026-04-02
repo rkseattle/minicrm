@@ -5,7 +5,7 @@
  * Each row links to the ContactDetailPage.
  */
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +39,7 @@ export default function ContactsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newContactButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const [duplicateContact, setDuplicateContact] = useState<DuplicateContactInfo | null>(null);
   /**
    * When true, the next form submit will bypass the duplicate check.
@@ -69,6 +70,14 @@ export default function ContactsPage() {
       setSortDir('ascending');
     }
   }
+
+  // Restore focus to the "New Contact" button after the form closes (button re-mounts on next render)
+  useEffect(() => {
+    if (!showForm && shouldRestoreFocusRef.current) {
+      newContactButtonRef.current?.focus();
+      shouldRestoreFocusRef.current = false;
+    }
+  }, [showForm]);
 
   const debouncedSearch = useDebounce(searchInput);
   const debouncedAccountSearch = useDebounce(accountSearchInput);
@@ -123,11 +132,11 @@ export default function ContactsPage() {
       createContact(toCreateInput(values), force),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
+      shouldRestoreFocusRef.current = true;
       setShowForm(false);
       setCreateError(null);
       setDuplicateContact(null);
       forceNextSubmit.current = false;
-      newContactButtonRef.current?.focus();
     },
     onError: (error: {
       response?: {
@@ -228,6 +237,7 @@ export default function ContactsPage() {
                 createMutation.mutate({ values, force });
               }}
               onCancel={() => {
+                shouldRestoreFocusRef.current = true;
                 setShowForm(false);
                 setCreateError(null);
                 setDuplicateContact(null);

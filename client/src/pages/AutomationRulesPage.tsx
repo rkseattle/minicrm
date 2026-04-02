@@ -122,11 +122,6 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
   const headingId = `logs-drawer-title-${rule.id}`;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Move focus to the close button when the drawer mounts (WCAG 2.4.3)
-  useEffect(() => {
-    closeButtonRef.current?.focus();
-  }, []);
-
   const { data, isLoading, isError } = useQuery({
     queryKey: [...AUTOMATION_RULES_QUERY_KEY, rule.id, 'logs'],
     queryFn: () => listRuleLogs(rule.id),
@@ -137,6 +132,20 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
     triggerRef.current?.focus();
     onClose();
   }
+
+  // Move focus to the close button when the drawer mounts (WCAG 2.4.3)
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  // Close the drawer when Escape is pressed from any focused child (WCAG 2.1 SC 1.4.13)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleClose();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  });
 
   return (
     // Backdrop — clicking the overlay background (not the panel) dismisses the drawer
@@ -171,9 +180,6 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
           <button
             ref={closeButtonRef}
             onClick={handleClose}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') handleClose();
-            }}
             aria-label={t('automation.logsDrawerClose')}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none"
             data-testid="logs-drawer-close"

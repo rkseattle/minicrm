@@ -101,8 +101,7 @@ export default function ChangePasswordPage() {
         </div>
 
         <div
-          role="status"
-          aria-live="polite"
+          role="note"
           className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 mb-4 text-sm text-blue-800"
           data-testid="change-password-context-banner"
         >

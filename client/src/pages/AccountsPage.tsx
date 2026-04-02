@@ -5,7 +5,7 @@
  * Each row links to the AccountDetailPage.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +36,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
@@ -47,6 +48,14 @@ export default function AccountsPage() {
   function handleSortName(): void {
     setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
   }
+
+  // Restore focus to the "New Account" button after the form closes (button re-mounts on next render)
+  useEffect(() => {
+    if (!showForm && shouldRestoreFocusRef.current) {
+      newAccountButtonRef.current?.focus();
+      shouldRestoreFocusRef.current = false;
+    }
+  }, [showForm]);
 
   const debouncedSearch = useDebounce(searchInput);
   const debouncedIndustry = useDebounce(industryInput);
@@ -89,9 +98,9 @@ export default function AccountsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+      shouldRestoreFocusRef.current = true;
       setShowForm(false);
       setCreateError(null);
-      newAccountButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
@@ -132,6 +141,7 @@ export default function AccountsPage() {
                 createMutation.mutate(values);
               }}
               onCancel={() => {
+                shouldRestoreFocusRef.current = true;
                 setShowForm(false);
                 setCreateError(null);
               }}
