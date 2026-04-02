@@ -1,15 +1,19 @@
 /**
- * Horizontal privilege escalation tests (MINCRM-88).
+ * Auth boundary tests (MINCRM-80, MINCRM-81, MINCRM-88).
  *
- * Verifies that PATCH and DELETE endpoints for contacts, accounts, deals, and
- * activities enforce record ownership:
- *   - A rep cannot modify or delete another rep's records (→ 403 FORBIDDEN)
- *   - An admin can modify or delete any rep's records (→ 200/204)
- *   - Ownership check uses req.user from the auth middleware, not a body field
+ * MINCRM-80 — Role boundary enforcement:
+ *   Verifies that reps receive 403 FORBIDDEN on all admin-only endpoints.
  *
- * Contacts and accounts have existing coverage in their own controller test files.
- * This file adds the missing coverage for deals and activities, then provides a
- * consolidated cross-entity summary for MINCRM-88 verification.
+ * MINCRM-81 — Horizontal privilege enforcement (contacts + accounts):
+ *   Verifies that Rep A cannot modify or delete records owned by Rep B.
+ *   Deals and activities are covered here as well (originally from MINCRM-88).
+ *
+ * MINCRM-88 — Horizontal privilege enforcement (deals + activities):
+ *   Verifies that PATCH and DELETE endpoints for deals and activities enforce
+ *   record ownership:
+ *     - A rep cannot modify or delete another rep's records (→ 403 FORBIDDEN)
+ *     - An admin can modify or delete any rep's records (→ 200/204)
+ *     - Ownership check uses req.user from the auth middleware, not a body field
  *
  * Runs against a real PostgreSQL test database via supertest.
  */
@@ -18,6 +22,8 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
+import { createContact } from '../services/contactService.js';
+import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
 import pool from '../db.js';
@@ -45,6 +51,13 @@ beforeAll(async () => {
   );
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
+  );
+  // Contacts before accounts (FK: contacts.account_id → accounts.id).
+  // Also clean by email pattern to catch rows from partial prior runs where users
+  // were deleted before contacts, making the owner_id subquery return zero rows.
+  await pool.query("DELETE FROM contacts WHERE email LIKE 'bounds-contact-%'");
+  await pool.query(
+    "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
   await pool.query(
     "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
@@ -104,7 +117,16 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
+  // Contacts must be deleted before accounts (FK constraint: contacts.account_id → accounts.id).
+  // Also clean by email pattern in case of partial prior run failure.
+  await pool.query("DELETE FROM contacts WHERE email LIKE 'bounds-contact-%'");
+  await pool.query(
+    "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
+  );
   await pool.query('DELETE FROM accounts WHERE id = $1', [sharedAccountId]);
+  await pool.query(
+    "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
+  );
   await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
   await pool.end();
 });
@@ -234,6 +256,186 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     const res = await request(app)
       .delete(`/api/activities/${activity.id}`)
       .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(204);
+  });
+});
+
+// ── MINCRM-80: Role boundary enforcement ─────────────────────────────────────
+
+describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
+  it('returns 403 FORBIDDEN when rep POSTs to automation rules', async () => {
+    const res = await request(app)
+      .post('/api/automation/rules')
+      .set('Cookie', repBCookie)
+      .send({
+        name: 'Test Rule',
+        enabled: true,
+        trigger_type: 'deal_created',
+        trigger_config: {},
+        action_type: 'send_notification',
+        action_config: { message: 'Hello' },
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 FORBIDDEN when rep PATCHes the default language setting', async () => {
+    const res = await request(app)
+      .patch('/api/settings/default-language')
+      .set('Cookie', repBCookie)
+      .send({ language: 'es' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 FORBIDDEN when rep attempts to change another user role', async () => {
+    // PATCH /api/users/:id/role is admin-only; rep should be blocked
+    const res = await request(app)
+      .patch(`/api/users/${repAId}/role`)
+      .set('Cookie', repBCookie)
+      .send({ role: 'admin' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 FORBIDDEN when rep attempts to list all automation rules', async () => {
+    const res = await request(app).get('/api/automation/rules').set('Cookie', repBCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 200 scoped to rep own data when rep accesses win/loss report', async () => {
+    // Note: GET /api/reports/win-loss is intentionally accessible to reps.
+    // Reps receive their own deals only (scoped by owner_id = req.user.id).
+    // This is by design — the endpoint is NOT admin-only.
+    const res = await request(app)
+      .get('/api/reports/win-loss?start=2026-01-01&end=2026-12-31')
+      .set('Cookie', repBCookie);
+
+    expect(res.status).toBe(200);
+  });
+});
+
+// ── MINCRM-81: Horizontal privilege enforcement (contacts + accounts) ──────────
+
+describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
+  it("returns 403 FORBIDDEN when rep B patches rep A's contact", async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Contact',
+      email: 'bounds-contact-a@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .patch(`/api/contacts/${contact.id}`)
+      .set('Cookie', repBCookie)
+      .send({ first_name: 'Hacked' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it("returns 403 FORBIDDEN when rep B deletes rep A's contact", async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Contact Delete',
+      email: 'bounds-contact-a-del@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', repBCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it("allows admin to patch rep A's contact", async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Contact Admin',
+      email: 'bounds-contact-admin-patch@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .patch(`/api/contacts/${contact.id}`)
+      .set('Cookie', adminCookie)
+      .send({ first_name: 'Admin Updated' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.contact.first_name).toBe('Admin Updated');
+  });
+
+  it("allows admin to delete rep A's contact", async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Contact Admin Delete',
+      email: 'bounds-contact-admin-del@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', adminCookie);
+
+    expect(res.status).toBe(204);
+  });
+});
+
+describe("MINCRM-81 — rep cannot modify another rep's account", () => {
+  it("returns 403 FORBIDDEN when rep B patches rep A's account", async () => {
+    const account = await createAccount({
+      name: 'Rep A Account Patch',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .patch(`/api/accounts/${account.id}`)
+      .set('Cookie', repBCookie)
+      .send({ name: 'Hacked Account' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it("returns 403 FORBIDDEN when rep B deletes rep A's account", async () => {
+    const account = await createAccount({
+      name: 'Rep A Account Delete',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', repBCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it("allows admin to patch rep A's account", async () => {
+    const account = await createAccount({
+      name: 'Rep A Account Admin Patch',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .patch(`/api/accounts/${account.id}`)
+      .set('Cookie', adminCookie)
+      .send({ name: 'Admin Updated Account' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.account.name).toBe('Admin Updated Account');
+  });
+
+  it("allows admin to delete rep A's account", async () => {
+    const account = await createAccount({
+      name: 'Rep A Account Admin Delete',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
