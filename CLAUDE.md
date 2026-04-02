@@ -81,7 +81,7 @@ Never trust `owner_id` from the request body — use `req.user.id` from middlewa
 
 Column names from client query params cannot be parameterized. Validate against an explicit allowlist:
 
-```ts
+````ts
 const ALLOWED_SORT = ['first_name', 'created_at'] as const;
 const sortParam = typeof req.query.sort === 'string' ? req.query.sort : '';
 const col = (ALLOWED_SORT as readonly string[]).includes(sortParam) ? sortParam : 'created_at';
@@ -96,7 +96,7 @@ res.cookie('token', jwt, {
   sameSite: 'lax',
   maxAge: 8 * 60 * 60 * 1000,
 });
-```
+````
 
 ### Startup guard:
 
@@ -113,6 +113,7 @@ Reject weak JWT_SECRET values ('changeme', 'secret', 'password', '') at process 
 - All Zod validation in controllers before calling services
 - ORDER BY column names: allowlist-validate before SQL interpolation (see Security above)
 - Async route handlers: wrap in `try/catch` or `asyncHandler` — no unhandled rejections
+- Async middleware (e.g. `authenticate`): must also wrap every `await` in `try/catch` and call `next(err)` on failure — `asyncHandler` only covers route handlers, not middleware
 - Error shape: `{ error: { code: string, message: string } }` on all failures
 - HTTP status codes: 400 validation, 401 unauth, 403 forbidden, 404 not found, 409 conflict
 - Automation rule execution: wrap each rule in isolated try/catch — a failing rule must not abort the triggering operation; log failure to `automation_rule_logs` and continue
