@@ -279,7 +279,10 @@ export default function WinLossReportPage() {
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {t('reports.winLoss.wonValueLabel')}
                 </p>
-                <p className="text-3xl font-bold text-green-600" data-testid="stat-won-value-value">
+                <p
+                  className="text-2xl font-bold text-green-600 break-all"
+                  data-testid="stat-won-value-value"
+                >
                   {formatCurrency(report.wonValue, i18n.language)}
                 </p>
               </div>
@@ -305,7 +308,10 @@ export default function WinLossReportPage() {
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {t('reports.winLoss.lostValueLabel')}
                 </p>
-                <p className="text-3xl font-bold text-red-600" data-testid="stat-lost-value-value">
+                <p
+                  className="text-2xl font-bold text-red-600 break-all"
+                  data-testid="stat-lost-value-value"
+                >
                   {formatCurrency(report.lostValue, i18n.language)}
                 </p>
               </div>

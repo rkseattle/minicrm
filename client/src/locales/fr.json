@@ -340,7 +340,7 @@
   "profileSettings": {
     "pageTitle": "Paramètres du profil",
     "languageLabel": "Langue préférée",
-    "languageHint": "Remplace la langue par defaut du systeme. Selectionnez 'Utiliser la langue par defaut du systeme' pour suivre la langue configuree par l'administrateur.",
+    "languageHint": "Remplace la langue par défaut du système. Sélectionnez 'Utiliser la langue par défaut du système' pour suivre la langue configurée par l'administrateur.",
     "systemDefault": "Utiliser la langue par défaut du système",
     "saveButton": "Enregistrer",
     "saving": "Enregistrement…",

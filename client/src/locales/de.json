@@ -340,7 +340,7 @@
   "profileSettings": {
     "pageTitle": "Profileinstellungen",
     "languageLabel": "Bevorzugte Sprache",
-    "languageHint": "Uberschreibt die systemweite Standardsprache. Wahlen Sie 'Systemstandard verwenden', um der vom Administrator konfigurierten Sprache zu folgen.",
+    "languageHint": "Überschreibt die systemweite Standardsprache. Wählen Sie 'Systemstandard verwenden', um der vom Administrator konfigurierten Sprache zu folgen.",
     "systemDefault": "Systemstandard verwenden",
     "saveButton": "Speichern",
     "saving": "Speichern…",

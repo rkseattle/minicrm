@@ -107,7 +107,10 @@ export default function StageColumn({
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold truncate">
+          <h3
+            className="text-sm font-semibold truncate"
+            title={t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+          >
             {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
           </h3>
           <span
