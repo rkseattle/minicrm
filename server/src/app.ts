@@ -4,6 +4,7 @@
  */
 
 import express, { type Request, type Response, type NextFunction } from 'express';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -22,6 +23,15 @@ import automationRoutes from './routes/automation.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
+
+// ── Security headers ───────────────────────────────────────────────────────────
+// In non-production, disable CSP so Swagger UI (inline scripts) renders correctly.
+// Production keeps the full helmet defaults including a strict CSP.
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === 'production',
+  }),
+);
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
 // Allow the Vite dev server to make credentialed requests

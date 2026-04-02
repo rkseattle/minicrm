@@ -3,9 +3,24 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
 import { login, logout, me, changePassword } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+
+/** 10 login attempts per IP per 15-minute window */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Too many login attempts, please try again later.',
+    },
+  },
+});
 
 const router = Router();
 
@@ -78,7 +93,7 @@ const router = Router();
  *                 code: ACCOUNT_INACTIVE
  *                 message: Your account has been deactivated
  */
-router.post('/login', asyncHandler(login));
+router.post('/login', loginLimiter, asyncHandler(login));
 
 /**
  * @openapi
