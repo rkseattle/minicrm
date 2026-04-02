@@ -1,20 +1,27 @@
 /**
  * Authentication middleware.
- * Verifies the JWT stored in the httpOnly cookie and attaches the decoded
- * user payload to req.user. Returns 401 if the token is missing or invalid.
+ * Verifies the JWT stored in the httpOnly cookie, then performs a live DB
+ * lookup to confirm the user is still active and does not have a forced
+ * password-change pending (MINCRM-74).
  */
 
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import type { JwtTokenPayload } from '../types/express.js';
+import { findUserById } from '../services/userService.js';
 
 /** Name of the cookie that holds the JWT */
 export const AUTH_COOKIE_NAME = 'minicrm_token';
 
 /**
- * Express middleware that validates the JWT from the httpOnly cookie.
+ * Express middleware that validates the JWT from the httpOnly cookie and
+ * checks the user's current status in the database.
+ *
+ * Returns 401 if the token is missing, invalid, or the user has been deactivated.
+ * Returns 403 with code PASSWORD_CHANGE_REQUIRED if must_change_password is set,
+ * except when the request targets /api/auth/change-password.
  */
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
   if (!token) {
@@ -24,13 +31,53 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     return;
   }
 
+  let decoded: JwtTokenPayload;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET ?? '') as JwtTokenPayload;
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET ?? '') as JwtTokenPayload;
   } catch {
     res.status(401).json({
       error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid or expired token' },
     });
+    return;
   }
+
+  // Live DB check — token may still be cryptographically valid after deactivation.
+  // Wrapped in try/catch so a transient DB error returns 500 rather than hanging the request.
+  let user: Awaited<ReturnType<typeof findUserById>>;
+  try {
+    user = await findUserById(decoded.id);
+  } catch {
+    next(new Error('Database error during authentication'));
+    return;
+  }
+
+  if (!user || user.status !== 'active') {
+    res.status(401).json({
+      error: { code: 'USER_INACTIVE', message: 'Account is inactive' },
+    });
+    return;
+  }
+
+  // Enforce password change — all routes except change-password itself are blocked.
+  // Use req.originalUrl so the check is path-prefix-agnostic.
+  // Strip query string before comparing — .includes() on the full originalUrl is bypassable
+  // via crafted query params (e.g. ?redirect=/change-password).
+  if (user.must_change_password && req.originalUrl.split('?')[0] !== '/api/auth/change-password') {
+    res.status(403).json({
+      error: {
+        code: 'PASSWORD_CHANGE_REQUIRED',
+        message: 'You must change your password before continuing',
+      },
+    });
+    return;
+  }
+
+  req.user = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+  };
+  next();
 }
