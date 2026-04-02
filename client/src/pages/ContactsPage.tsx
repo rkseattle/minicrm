@@ -127,6 +127,7 @@ export default function ContactsPage() {
       setCreateError(null);
       setDuplicateContact(null);
       forceNextSubmit.current = false;
+      newContactButtonRef.current?.focus();
     },
     onError: (error: {
       response?: {

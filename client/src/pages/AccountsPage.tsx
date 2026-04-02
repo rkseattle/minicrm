@@ -91,6 +91,7 @@ export default function AccountsPage() {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
+      newAccountButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));

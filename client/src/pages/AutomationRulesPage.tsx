@@ -134,8 +134,8 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
 
   /** Closes the drawer and returns focus to the trigger button. */
   function handleClose(): void {
-    onClose();
     triggerRef.current?.focus();
+    onClose();
   }
 
   return (
@@ -271,7 +271,7 @@ export default function AutomationRulesPage() {
   const [selectedLogsRule, setSelectedLogsRule] = useState<AutomationRuleResponse | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   /** Ref to the "View logs" button that last opened the drawer, for focus restoration on close */
-  const logsButtonRef = useRef<HTMLButtonElement>(null);
+  const logsButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -759,10 +759,8 @@ export default function AutomationRulesPage() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     type="button"
-                    ref={selectedLogsRule?.id === rule.id ? logsButtonRef : undefined}
                     onClick={(e) => {
-                      (logsButtonRef as React.MutableRefObject<HTMLButtonElement>).current =
-                        e.currentTarget;
+                      logsButtonRef.current = e.currentTarget;
                       setSelectedLogsRule(rule);
                     }}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"

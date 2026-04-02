@@ -123,7 +123,6 @@ export default function AccountForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    returnFocus();
     onSubmit(formData);
   };
 

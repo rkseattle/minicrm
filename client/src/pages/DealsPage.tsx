@@ -105,6 +105,7 @@ export default function DealsPage() {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       setShowForm(false);
       setCreateError(null);
+      newDealButtonRef.current?.focus();
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
@@ -112,9 +113,15 @@ export default function DealsPage() {
   });
 
   const deals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
-    const aVal = sortCol === 'name' ? a.name : (a.close_date ?? '');
-    const bVal = sortCol === 'name' ? b.name : (b.close_date ?? '');
-    const cmp = aVal.localeCompare(bVal);
+    if (sortCol === 'name') {
+      const cmp = a.name.localeCompare(b.name);
+      return sortDir === 'ascending' ? cmp : -cmp;
+    }
+    // ISO YYYY-MM-DD strings sort correctly with relational operators
+    const aDate = a.close_date ?? '';
+    const bDate = b.close_date ?? '';
+    if (aDate === bDate) return 0;
+    const cmp = aDate < bDate ? -1 : 1;
     return sortDir === 'ascending' ? cmp : -cmp;
   });
 

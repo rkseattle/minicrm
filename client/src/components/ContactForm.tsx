@@ -121,7 +121,6 @@ export default function ContactForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    returnFocus();
     onSubmit(formData);
   };
 

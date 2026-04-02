@@ -128,7 +128,6 @@ export default function DealForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    returnFocus();
     onSubmit(formData);
   };
 
