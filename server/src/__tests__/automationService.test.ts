@@ -480,7 +480,7 @@ describe('fireAutomationTrigger — contact_created', () => {
 
 describe('MINCRM-83 — failing rule does not abort the triggering operation', () => {
   it('does not throw when a rule action fails, and writes an error log', async () => {
-    await createAutomationRule({
+    const failingRule = await createAutomationRule({
       ...BASE_RULE,
       // Omitting required action_config fields causes execution to throw internally
       action_config: { subject: '' },
@@ -495,6 +495,12 @@ describe('MINCRM-83 — failing rule does not abort the triggering operation', (
         ownerId: adminId,
       }),
     ).resolves.toBeUndefined();
+
+    // The error log must have been written
+    const logs = await listRuleLogs(failingRule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].outcome).toBe('error');
+    expect(logs[0].error_message).not.toBeNull();
 
     // The DB should show no tasks were created (action failed)
     const tasks = await pool.query(

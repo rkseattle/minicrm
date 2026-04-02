@@ -52,7 +52,10 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
-  // Contacts before accounts (FK: contacts.account_id → accounts.id)
+  // Contacts before accounts (FK: contacts.account_id → accounts.id).
+  // Also clean by email pattern to catch rows from partial prior runs where users
+  // were deleted before contacts, making the owner_id subquery return zero rows.
+  await pool.query("DELETE FROM contacts WHERE email LIKE 'bounds-contact-%'");
   await pool.query(
     "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
@@ -114,7 +117,9 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
-  // Contacts must be deleted before accounts (FK constraint: contacts.account_id → accounts.id)
+  // Contacts must be deleted before accounts (FK constraint: contacts.account_id → accounts.id).
+  // Also clean by email pattern in case of partial prior run failure.
+  await pool.query("DELETE FROM contacts WHERE email LIKE 'bounds-contact-%'");
   await pool.query(
     "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
@@ -354,7 +359,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     const contact = await createContact({
       first_name: 'Rep',
       last_name: 'A Contact Admin',
-      email: 'bounds-contact-admin@example.com',
+      email: 'bounds-contact-admin-patch@example.com',
       owner_id: repAId,
     });
 
@@ -365,6 +370,19 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.contact.first_name).toBe('Admin Updated');
+  });
+
+  it("allows admin to delete rep A's contact", async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Contact Admin Delete',
+      email: 'bounds-contact-admin-del@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', adminCookie);
+
+    expect(res.status).toBe(204);
   });
 });
 
@@ -398,7 +416,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
 
   it("allows admin to patch rep A's account", async () => {
     const account = await createAccount({
-      name: 'Rep A Account Admin',
+      name: 'Rep A Account Admin Patch',
       owner_id: repAId,
     });
 
@@ -409,6 +427,17 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.account.name).toBe('Admin Updated Account');
+  });
+
+  it("allows admin to delete rep A's account", async () => {
+    const account = await createAccount({
+      name: 'Rep A Account Admin Delete',
+      owner_id: repAId,
+    });
+
+    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', adminCookie);
+
+    expect(res.status).toBe(204);
   });
 });
 
