@@ -33,6 +33,9 @@ jobs:
         env:
           NODE_ENV: development
 
+      - name: Audit dependencies for high/critical vulnerabilities
+        run: npm audit --audit-level=high
+
   server-tests:
     name: Server Tests
     needs: lint-and-typecheck
