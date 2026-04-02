@@ -70,6 +70,7 @@ export default function DealCard({
         to={`/deals/${deal.id}`}
         data-testid={`deal-card-link-${deal.id}`}
         className="font-medium text-sm text-indigo-600 hover:underline block mb-1 truncate"
+        title={deal.name}
       >
         {deal.name}
       </Link>
@@ -78,6 +79,7 @@ export default function DealCard({
         <p
           data-testid={`deal-card-account-${deal.id}`}
           className="text-xs text-gray-500 truncate mb-2"
+          title={accountName}
         >
           {accountName}
         </p>
