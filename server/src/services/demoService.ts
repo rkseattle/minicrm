@@ -602,13 +602,16 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
 export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> {
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    // Idempotency check runs inside the transaction to prevent TOCTOU races
+    // where two concurrent requests both pass the guard and double-insert.
     const already = await hasDemoData(client);
     if (already) {
+      await client.query('ROLLBACK');
       return { seeded: false, reason: 'already_exists' };
     }
 
     const adminId = await getAdminUserId(client);
-    await client.query('BEGIN');
     await insertDemoData(client, adminId);
     await client.query('COMMIT');
     return { seeded: true };
@@ -627,12 +630,14 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
 export async function removeDemo(): Promise<{ removed: boolean; reason?: string }> {
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    // Check runs inside the transaction so concurrent requests cannot both pass the guard.
     const active = await hasDemoData(client);
     if (!active) {
+      await client.query('ROLLBACK');
       return { removed: false, reason: 'not_present' };
     }
 
-    await client.query('BEGIN');
     await removeDemoData(client);
     await client.query('COMMIT');
     return { removed: true };
@@ -650,8 +655,9 @@ export async function removeDemo(): Promise<{ removed: boolean; reason?: string 
 export async function resetDemo(): Promise<{ reset: boolean }> {
   const client = await pool.connect();
   try {
-    const adminId = await getAdminUserId(client);
     await client.query('BEGIN');
+    // getAdminUserId runs inside the transaction so any error triggers a clean ROLLBACK.
+    const adminId = await getAdminUserId(client);
     await removeDemoData(client);
     await insertDemoData(client, adminId);
     await client.query('COMMIT');

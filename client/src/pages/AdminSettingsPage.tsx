@@ -4,7 +4,7 @@
  * Sections: system default language, demo data management (MINCRM-103).
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -92,16 +92,16 @@ export default function AdminSettingsPage() {
     key: string;
   } | null>(null);
 
-  // Ref for the trigger button — used to restore focus after dialog closes
-  const seedButtonRef = useRef<HTMLButtonElement>(null);
-  const resetButtonRef = useRef<HTMLButtonElement>(null);
-  const removeButtonRef = useRef<HTMLButtonElement>(null);
+  // Ref for the feedback paragraph — focused after a mutation settles so keyboard users
+  // land on a live region rather than a now-disabled trigger button.
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
 
-  const triggerRefMap: Record<DemoAction, React.RefObject<HTMLButtonElement | null>> = {
-    seed: seedButtonRef,
-    reset: resetButtonRef,
-    remove: removeButtonRef,
-  };
+  // Move focus to the feedback message whenever it appears.
+  useEffect(() => {
+    if (demoFeedback) {
+      feedbackRef.current?.focus();
+    }
+  }, [demoFeedback]);
 
   const seedMutation = useMutation({
     mutationFn: seedDemoData,
@@ -150,24 +150,21 @@ export default function AdminSettingsPage() {
   }
 
   /**
-   * Closes the confirmation dialog and restores focus to the trigger button.
+   * Closes the confirmation dialog without acting.
+   * Focus returns to the document naturally as the dialog unmounts.
    */
   function closeConfirm(): void {
-    const action = pendingAction;
     setPendingAction(null);
-    if (action) {
-      triggerRefMap[action].current?.focus();
-    }
   }
 
   /**
    * Executes the confirmed demo action.
+   * Focus is moved to the feedback paragraph once the mutation settles (via useEffect).
    */
   function executeAction(): void {
     if (!pendingAction) return;
     const action = pendingAction;
     setPendingAction(null);
-    triggerRefMap[action].current?.focus();
     if (action === 'seed') seedMutation.mutate();
     else if (action === 'reset') resetMutation.mutate();
     else removeMutation.mutate();
@@ -287,7 +284,6 @@ export default function AdminSettingsPage() {
           {/* Action buttons */}
           <div className="flex flex-wrap gap-3">
             <Button
-              ref={seedButtonRef}
               type="button"
               variant="secondary"
               size="md"
@@ -299,7 +295,6 @@ export default function AdminSettingsPage() {
             </Button>
 
             <Button
-              ref={resetButtonRef}
               type="button"
               variant="secondary"
               size="md"
@@ -311,7 +306,6 @@ export default function AdminSettingsPage() {
             </Button>
 
             <Button
-              ref={removeButtonRef}
               type="button"
               variant="danger"
               size="md"
@@ -323,9 +317,11 @@ export default function AdminSettingsPage() {
             </Button>
           </div>
 
-          {/* Feedback message */}
+          {/* Feedback message — tabIndex=-1 allows programmatic focus from useEffect */}
           {demoFeedback && (
             <p
+              ref={feedbackRef}
+              tabIndex={-1}
               role={demoFeedback.type === 'error' ? 'alert' : 'status'}
               className={`mt-4 text-sm ${demoFeedback.type === 'success' ? 'text-green-700' : 'text-red-600'}`}
               data-testid="demo-feedback"
