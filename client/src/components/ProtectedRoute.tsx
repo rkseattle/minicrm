@@ -5,6 +5,7 @@
  */
 
 import { Navigate, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth.js';
 
 /**
@@ -12,10 +13,11 @@ import { useAuth } from '@/hooks/useAuth.js';
  * Redirects to /login otherwise.
  */
 export default function ProtectedRoute() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div aria-busy="true">Loading…</div>;
+    return <div aria-busy="true">{t('common.loading')}</div>;
   }
 
   if (!isAuthenticated) {

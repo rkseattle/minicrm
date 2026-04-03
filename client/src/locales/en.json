@@ -438,7 +438,8 @@
       "label": "Filter by owner",
       "all": "All",
       "mine": "Mine"
-    }
+    },
+    "loading": "Loading…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

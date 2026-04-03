@@ -438,7 +438,8 @@
       "label": "Filtrer par propriétaire",
       "all": "Tous",
       "mine": "Les miens"
-    }
+    },
+    "loading": "Chargement…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

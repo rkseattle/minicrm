@@ -13,6 +13,7 @@ import nodePlugin from 'eslint-plugin-n';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
+import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
@@ -58,6 +59,7 @@ const clientConfig = {
     'react-hooks': reactHooksPlugin,
     'jsx-a11y': jsxA11yPlugin,
     'local': { rules: { 'require-data-testid': requireDataTestid } },
+    i18next: i18nextPlugin,
   },
   settings: {
     react: { version: 'detect' },
@@ -69,14 +71,47 @@ const clientConfig = {
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
     'local/require-data-testid': 'error',
+    'i18next/no-literal-string': [
+      'error',
+      {
+        // Allow non-translatable content in JSX:
+        // MiniCRM  — product brand name, intentionally not translated
+        // ⋯        — meatball menu icon (horizontal ellipsis)
+        // ×        — close/remove button symbol
+        // ←        — back-navigation arrow
+        // ·        — separator dot
+        // …        — ellipsis placeholder (e.g. empty state spans)
+        // —        — em dash used as empty-value placeholder
+        // *        — required-field indicator (aria-hidden)
+        // :        — punctuation after a translated label
+        // —...—    — em dashes wrapping a translated select placeholder
+        words: {
+          exclude: [
+            '^MiniCRM$',
+            '^⋯$',
+            '^×$',
+            '^←$',
+            '^·$',
+            '^…$',
+            '^—$',
+            '^\\*$',
+            '^:$',
+            '^—\\s',
+            '\\s—$',
+          ],
+        },
+      },
+    ],
   },
 };
 
-// ── Client test files — disable data-testid requirement inside tests ───────────
+// ── Client test files — disable data-testid and i18n literal requirements inside tests ──────────
+// Test fixture strings (e.g. "Click me", "Active") are intentional and should not be translated.
 const clientTestConfig = {
   files: ['client/src/**/*.test.tsx', 'client/src/**/*.test.ts'],
   rules: {
     'local/require-data-testid': 'off',
+    'i18next/no-literal-string': 'off',
   },
 };
 

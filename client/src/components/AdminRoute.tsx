@@ -6,16 +6,18 @@
  */
 
 import { Navigate, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth.js';
 
 /**
  * Guards routes that require the admin role.
  */
 export default function AdminRoute() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div aria-busy="true">Loading…</div>;
+    return <div aria-busy="true">{t('common.loading')}</div>;
   }
 
   if (!isAuthenticated) {
