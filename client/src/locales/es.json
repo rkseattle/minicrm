@@ -333,6 +333,31 @@
       "es": "Español",
       "fr": "Francés",
       "de": "Alemán"
+    },
+    "demo": {
+      "sectionTitle": "Datos de demostración",
+      "sectionHint": "Inserta, restablece o elimina registros de demostración para presentaciones y pruebas. Solo se afectan los registros marcados como demo — los datos reales nunca se tocan.",
+      "statusActive": "Datos de demostración activos",
+      "statusInactive": "Sin datos de demostración",
+      "statusLoading": "Comprobando estado de demo…",
+      "statusError": "No se pudo cargar el estado de demo.",
+      "seedButton": "Insertar datos de demo",
+      "seedConfirmTitle": "¿Insertar datos de demo?",
+      "seedConfirmMessage": "Se insertarán cuentas, contactos, tratos y actividades de demostración.",
+      "resetButton": "Restablecer datos de demo",
+      "resetConfirmTitle": "¿Restablecer datos de demo?",
+      "resetConfirmMessage": "Se eliminarán todos los datos de demo existentes y se volverán a insertar desde cero. Esta acción no se puede deshacer.",
+      "removeButton": "Eliminar datos de demo",
+      "removeConfirmTitle": "¿Eliminar datos de demo?",
+      "removeConfirmMessage": "Se eliminarán permanentemente todos los registros marcados como demo. Esta acción no se puede deshacer.",
+      "confirmAction": "Confirmar",
+      "cancelAction": "Cancelar",
+      "seedSuccess": "Datos de demo insertados correctamente.",
+      "resetSuccess": "Datos de demo restablecidos correctamente.",
+      "removeSuccess": "Datos de demo eliminados correctamente.",
+      "seedError": "No se pudieron insertar los datos de demo. Por favor, inténtalo de nuevo.",
+      "resetError": "No se pudieron restablecer los datos de demo. Por favor, inténtalo de nuevo.",
+      "removeError": "No se pudieron eliminar los datos de demo. Por favor, inténtalo de nuevo."
     }
   },
   "profileSettings": {

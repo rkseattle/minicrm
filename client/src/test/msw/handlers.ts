@@ -694,4 +694,24 @@ export const handlers = [
     }
     return HttpResponse.json({ logs: [] });
   }),
+
+  /** Admin: GET /api/admin/demo/status — no demo data by default */
+  http.get('/api/admin/demo/status', () => {
+    return HttpResponse.json({ active: false });
+  }),
+
+  /** Admin: POST /api/admin/demo/seed */
+  http.post('/api/admin/demo/seed', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  /** Admin: POST /api/admin/demo/reset */
+  http.post('/api/admin/demo/reset', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  /** Admin: DELETE /api/admin/demo */
+  http.delete('/api/admin/demo', () => {
+    return HttpResponse.json({ success: true });
+  }),
 ];
