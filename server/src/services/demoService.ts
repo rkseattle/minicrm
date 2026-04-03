@@ -192,43 +192,85 @@ const DEMO_CONTACTS = [
   },
 ];
 
+/**
+ * Returns a YYYY-MM-DD string for a date offset by the given number of days from today.
+ * Used to keep demo closed-deal dates within the current month so the Win/Loss report
+ * shows data without the user needing to change the date filter.
+ *
+ * @param offsetDays - Positive = future, negative = past.
+ */
+function relativeDate(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Returns a fixed YYYY-MM-DD string for a date a given number of months in the future.
+ * Used for open-deal close dates so the pipeline board looks realistic.
+ *
+ * @param monthsAhead - Number of months ahead of today.
+ */
+function futureMonths(monthsAhead: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + monthsAhead);
+  return d.toISOString().slice(0, 10);
+}
+
 const DEMO_DEALS = [
   {
     name: 'Acme — Enterprise Platform',
     stage: 'Qualification',
     value: 120000,
-    close_date: '2026-06-30',
+    close_date: futureMonths(3),
   },
-  { name: 'Acme — Security Upgrade', stage: 'Proposal', value: 45000, close_date: '2026-05-15' },
-  { name: 'Acme — Analytics Add-on', stage: 'Negotiation', value: 28000, close_date: '2026-04-30' },
-  { name: 'Acme — Training Package', stage: 'Prospecting', value: 15000, close_date: '2026-08-01' },
+  { name: 'Acme — Security Upgrade', stage: 'Proposal', value: 45000, close_date: futureMonths(2) },
+  {
+    name: 'Acme — Analytics Add-on',
+    stage: 'Negotiation',
+    value: 28000,
+    close_date: futureMonths(1),
+  },
+  {
+    name: 'Acme — Training Package',
+    stage: 'Prospecting',
+    value: 15000,
+    close_date: futureMonths(4),
+  },
   {
     name: 'Acme — Support Contract',
     stage: 'Closed Won',
     value: 36000,
-    close_date: '2026-03-01',
+    // Closed earlier this month — visible in Win/Loss report with default "current month" filter
+    close_date: relativeDate(-5),
     loss_reason: null,
   },
-  { name: 'Globex — ERP Migration', stage: 'Proposal', value: 200000, close_date: '2026-07-31' },
+  { name: 'Globex — ERP Migration', stage: 'Proposal', value: 200000, close_date: futureMonths(4) },
   {
     name: 'Globex — Cloud Infrastructure',
     stage: 'Qualification',
     value: 85000,
-    close_date: '2026-06-15',
+    close_date: futureMonths(3),
   },
-  { name: 'Globex — Data Warehouse', stage: 'Prospecting', value: 60000, close_date: '2026-09-01' },
+  {
+    name: 'Globex — Data Warehouse',
+    stage: 'Prospecting',
+    value: 60000,
+    close_date: futureMonths(5),
+  },
   {
     name: 'Globex — Mobile App',
     stage: 'Closed Lost',
     value: 40000,
-    close_date: '2026-02-28',
+    // Closed earlier this month — visible in Win/Loss report with default "current month" filter
+    close_date: relativeDate(-2),
     loss_reason: 'Lost to competitor',
   },
   {
     name: 'Globex — IoT Integration',
     stage: 'Negotiation',
     value: 95000,
-    close_date: '2026-05-30',
+    close_date: futureMonths(2),
   },
 ];
 
