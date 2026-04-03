@@ -242,7 +242,9 @@
     "linking": "Vinculando…",
     "unlink": "Desvincular",
     "unlinking": "Desvinculando…",
-    "selectContactToLink": "— Seleccionar un contacto —"
+    "selectContactToLink": "— Seleccionar un contacto —",
+    "viewBoard": "Vista tablero",
+    "viewList": "Vista lista"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

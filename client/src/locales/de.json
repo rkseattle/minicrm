@@ -242,7 +242,9 @@
     "linking": "Wird verknüpft…",
     "unlink": "Verknüpfung aufheben",
     "unlinking": "Verknüpfung wird aufgehoben…",
-    "selectContactToLink": "— Kontakt auswählen —"
+    "selectContactToLink": "— Kontakt auswählen —",
+    "viewBoard": "Board-Ansicht",
+    "viewList": "Listenansicht"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",
