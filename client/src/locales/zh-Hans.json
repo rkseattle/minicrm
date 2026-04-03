@@ -438,7 +438,8 @@
       "label": "按负责人筛选",
       "all": "全部",
       "mine": "我的"
-    }
+    },
+    "loading": "加载中…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

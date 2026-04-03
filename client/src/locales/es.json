@@ -438,7 +438,8 @@
       "label": "Filtrar por propietario",
       "all": "Todos",
       "mine": "Míos"
-    }
+    },
+    "loading": "Cargando…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",

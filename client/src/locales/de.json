@@ -438,7 +438,8 @@
       "label": "Nach Inhaber filtern",
       "all": "Alle",
       "mine": "Meine"
-    }
+    },
+    "loading": "Laden…"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",
