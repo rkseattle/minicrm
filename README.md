@@ -157,20 +157,25 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Password requirements: at least 8 characters, at least one letter, and at least one number (validated on both client and server via shared Zod schema)
 - Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
-### Contacts (MINCRM-8, MINCRM-14)
+### Contacts (MINCRM-8, MINCRM-11, MINCRM-14)
 
 - List all contacts in a sortable table with owner column
 - Create, edit, and delete contacts via inline forms
 - Contact detail page with full field display including resolved owner name
+- Search contacts by name or email via the search input (passes `?search=<text>` to the API; case-insensitive substring match across `first_name`, `last_name`, and `email`)
+- Search contacts by linked account name via the account search input (`?accountSearch=<text>`)
 - Filter contacts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
+- Duplicate email detection on create: returns a persistent inline warning banner with a link to the existing contact; rep can still proceed by clicking "Create anyway" (MINCRM-13)
 - Full CRUD REST API at `/api/contacts`
 
-### Accounts (MINCRM-9, MINCRM-10, MINCRM-14)
+### Accounts (MINCRM-9, MINCRM-10, MINCRM-11, MINCRM-14)
 
 - List all accounts in a sortable table with owner column
 - Create, edit, and delete accounts via inline forms
 - Account detail page with full field display including resolved owner name
+- Search accounts by company name via the search input (passes `?search=<text>` to the API; case-insensitive substring match on `name`)
+- Filter accounts by industry via `?industry=<text>`
 - Filter accounts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
 - Linked contacts listed on the account detail page

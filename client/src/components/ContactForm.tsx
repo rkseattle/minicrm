@@ -53,6 +53,8 @@ interface ContactFormProps {
   submitLabel?: string;
   /** Error message to display below the form */
   error?: string;
+  /** When true, highlights the email field with a warning border (e.g. duplicate detected) */
+  emailWarning?: boolean;
   /** Optional ref forwarded to the underlying <form> element for programmatic submit */
   formRef?: React.RefObject<HTMLFormElement | null>;
   /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
@@ -89,6 +91,7 @@ export default function ContactForm({
   isSubmitting = false,
   submitLabel,
   error,
+  emailWarning = false,
   formRef,
   triggerRef,
 }: ContactFormProps) {
@@ -166,6 +169,7 @@ export default function ContactForm({
           value={formData.email}
           onChange={handleChange}
           disabled={isSubmitting}
+          warning={emailWarning}
         />
 
         <Input

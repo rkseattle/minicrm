@@ -10,6 +10,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   /** Error message rendered below the input */
   error?: string;
+  /** When true, applies a yellow warning border (e.g. duplicate detected) */
+  warning?: boolean;
 }
 
 const BASE_INPUT_CLASSES =
@@ -24,12 +26,16 @@ const BASE_INPUT_CLASSES =
  * @param error - Error message rendered below the input
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, id, className = '', ...props },
+  { label, error, warning, id, className = '', ...props },
   ref,
 ) {
   const inputClasses = [
     BASE_INPUT_CLASSES,
-    error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500',
+    error
+      ? 'border-red-300 focus:ring-red-500'
+      : warning
+        ? 'border-yellow-400 focus:ring-yellow-400'
+        : 'border-gray-300 focus:ring-indigo-500',
     className,
   ].join(' ');
 

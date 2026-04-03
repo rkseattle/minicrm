@@ -256,6 +256,7 @@ export default function ContactsPage() {
               formRef={formRef}
               triggerRef={newContactButtonRef}
               accounts={accountOptions}
+              emailWarning={duplicateContact !== null}
               onSubmit={(values) => {
                 setCreateError(null);
                 setDuplicateContact(null);
