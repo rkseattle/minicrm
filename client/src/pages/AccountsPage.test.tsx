@@ -85,15 +85,21 @@ describe('AccountsPage', () => {
     });
   });
 
-  it('shows the owner filter select defaulting to all', async () => {
+  it('shows the owner toggle defaulting to All', async () => {
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {
-      const filter = screen.getByTestId<HTMLSelectElement>('accounts-owner-filter');
-      expect(filter.value).toBe('all');
+      expect(screen.getByTestId('accounts-owner-filter-all')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByTestId('accounts-owner-filter-mine')).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
     });
   });
 
-  it('filters accounts to current user when owner filter is set to me', async () => {
+  it('filters accounts to current user when Mine toggle is clicked', async () => {
     const repAccount = {
       ...ACCOUNT_1,
       id: '00000000-0000-0000-0000-000000000203',
@@ -116,7 +122,7 @@ describe('AccountsPage', () => {
       expect(screen.getByText(repAccount.name)).toBeInTheDocument();
     });
 
-    await user.selectOptions(screen.getByTestId('accounts-owner-filter'), 'me');
+    await user.click(screen.getByTestId('accounts-owner-filter-mine'));
 
     await waitFor(() => {
       expect(screen.queryByText(repAccount.name)).not.toBeInTheDocument();

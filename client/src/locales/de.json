@@ -438,6 +438,13 @@
     "validationAssigneeRequired": "Bitte wählen Sie einen bestimmten Benutzer für die Aufgabenzuweisung aus.",
     "validationMessageRequired": "Benachrichtigungsnachricht ist erforderlich."
   },
+  "common": {
+    "ownerToggle": {
+      "label": "Nach Inhaber filtern",
+      "all": "Alle",
+      "mine": "Meine"
+    }
+  },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",
     "AUTH_ACCOUNT_DEACTIVATED": "Ihr Konto wurde deaktiviert. Wenden Sie sich an einen Administrator.",

@@ -87,15 +87,21 @@ describe('ContactsPage', () => {
     });
   });
 
-  it('shows the owner filter select defaulting to all', async () => {
+  it('shows the owner toggle defaulting to All', async () => {
     renderWithProviders(<ContactsPage />);
     await waitFor(() => {
-      const filter = screen.getByTestId<HTMLSelectElement>('contacts-owner-filter');
-      expect(filter.value).toBe('all');
+      expect(screen.getByTestId('contacts-owner-filter-all')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByTestId('contacts-owner-filter-mine')).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
     });
   });
 
-  it('filters contacts to current user when owner filter is set to me', async () => {
+  it('filters contacts to current user when Mine toggle is clicked', async () => {
     const repContact = {
       ...CONTACT_1,
       id: '00000000-0000-0000-0000-000000000103',
@@ -121,7 +127,7 @@ describe('ContactsPage', () => {
       ).toBeInTheDocument();
     });
 
-    await user.selectOptions(screen.getByTestId('contacts-owner-filter'), 'me');
+    await user.click(screen.getByTestId('contacts-owner-filter-mine'));
 
     await waitFor(() => {
       expect(

@@ -438,6 +438,13 @@
     "validationAssigneeRequired": "Please select a specific user to assign the task to.",
     "validationMessageRequired": "Notification message is required."
   },
+  "common": {
+    "ownerToggle": {
+      "label": "Filter by owner",
+      "all": "All",
+      "mine": "Mine"
+    }
+  },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
     "AUTH_ACCOUNT_DEACTIVATED": "Your account has been deactivated. Contact an administrator.",

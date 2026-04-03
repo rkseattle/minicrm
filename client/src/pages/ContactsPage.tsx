@@ -6,13 +6,14 @@
  */
 
 import { useRef, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
-import { Select } from '@/components/ui/Select.js';
+import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
+import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { listContacts, createContact } from '@/api/contacts.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
@@ -26,9 +27,6 @@ import { useDebounce } from '@/hooks/useDebounce.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
-
-/** Owner filter value — 'all' means no filter, 'me' means current user only */
-type OwnerFilter = 'all' | 'me';
 
 /**
  * Contacts list page with owner filter and inline create form.
@@ -48,7 +46,29 @@ export default function ContactsPage() {
   const forceNextSubmit = useRef(false);
   /** Ref to the ContactForm's underlying <form> element for programmatic submit. */
   const formRef = useRef<HTMLFormElement>(null);
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+
+  /**
+   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   *
+   * @param value - New owner filter value
+   */
+  function setOwnerFilter(value: OwnerFilter): void {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === 'me') {
+          next.set('owner', 'me');
+        } else {
+          next.delete('owner');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
 
@@ -270,16 +290,11 @@ export default function ContactsPage() {
             onChange={(e) => setAccountSearchInput(e.target.value)}
             className="w-56"
           />
-          <Select
-            id="contacts-owner-filter"
-            data-testid="contacts-owner-filter"
+          <OwnerToggle
             value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
-            className="w-48"
-          >
-            <option value="all">{t('contacts.ownerFilterAll')}</option>
-            <option value="me">{t('contacts.ownerFilterMe')}</option>
-          </Select>
+            onChange={setOwnerFilter}
+            testIdPrefix="contacts-owner-filter"
+          />
         </div>
 
         {/* Loading state */}

@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -15,7 +15,8 @@ import DealForm from '@/components/DealForm.js';
 import StageColumn from '@/components/StageColumn.js';
 import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
-import { Select } from '@/components/ui/Select.js';
+import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
+import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { listDeals, createDeal, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -28,9 +29,6 @@ import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js'
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-
-/** Owner filter value — 'all' means no filter, 'me' means current user only */
-type OwnerFilter = 'all' | 'me';
 
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
@@ -80,7 +78,28 @@ export default function DealsPage() {
   const shouldRestoreFocusRef = useRef(false);
 
   // ── List view state ────────────────────────────────────────────────────────
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+
+  /**
+   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   *
+   * @param value - New owner filter value
+   */
+  function setOwnerFilter(value: OwnerFilter): void {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === 'me') {
+          next.set('owner', 'me');
+        } else {
+          next.delete('owner');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   type SortColumn = 'name' | 'close_date';
   type SortDir = 'ascending' | 'descending';
@@ -309,9 +328,18 @@ export default function DealsPage() {
               size="sm"
               data-testid="deals-view-toggle"
               onClick={() => {
-                // Reset owner filter when returning to board so the board always shows all deals
                 setViewMode((m) => {
-                  if (m === 'list') setOwnerFilter('all');
+                  // Reset owner filter when returning to board so the board always shows all deals
+                  if (m === 'list') {
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.delete('owner');
+                        return next;
+                      },
+                      { replace: true },
+                    );
+                  }
                   return m === 'board' ? 'list' : 'board';
                 });
               }}
@@ -424,16 +452,11 @@ export default function DealsPage() {
           <>
             {/* Owner filter */}
             <div className="mb-4 flex items-center gap-3">
-              <Select
-                id="deals-owner-filter"
-                data-testid="deals-owner-filter"
+              <OwnerToggle
                 value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
-                className="w-48"
-              >
-                <option value="all">{t('deals.ownerFilterAll')}</option>
-                <option value="me">{t('deals.ownerFilterMe')}</option>
-              </Select>
+                onChange={setOwnerFilter}
+                testIdPrefix="deals-owner-filter"
+              />
             </div>
 
             {isLoading && (

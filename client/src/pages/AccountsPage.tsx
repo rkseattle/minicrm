@@ -6,13 +6,14 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
-import { Select } from '@/components/ui/Select.js';
+import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
+import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -24,9 +25,6 @@ import { useDebounce } from '@/hooks/useDebounce.js';
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
 
-/** Owner filter value — 'all' means no filter, 'me' means current user only */
-type OwnerFilter = 'all' | 'me';
-
 /**
  * Accounts list page with owner filter and inline create form.
  */
@@ -37,7 +35,29 @@ export default function AccountsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+
+  /**
+   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   *
+   * @param value - New owner filter value
+   */
+  function setOwnerFilter(value: OwnerFilter): void {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === 'me') {
+          next.set('owner', 'me');
+        } else {
+          next.delete('owner');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
 
@@ -172,16 +192,11 @@ export default function AccountsPage() {
             onChange={(e) => setIndustryInput(e.target.value)}
             className="w-48"
           />
-          <Select
-            id="accounts-owner-filter"
-            data-testid="accounts-owner-filter"
+          <OwnerToggle
             value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
-            className="w-48"
-          >
-            <option value="all">{t('accounts.ownerFilterAll')}</option>
-            <option value="me">{t('accounts.ownerFilterMe')}</option>
-          </Select>
+            onChange={setOwnerFilter}
+            testIdPrefix="accounts-owner-filter"
+          />
         </div>
 
         {/* Loading state */}
