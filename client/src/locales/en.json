@@ -238,7 +238,8 @@
     "unlinking": "Unlinking…",
     "selectContactToLink": "— Select a contact —",
     "viewBoard": "Board view",
-    "viewList": "List view"
+    "viewList": "List view",
+    "pipelineSummaryLabel": "Pipeline summary"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",

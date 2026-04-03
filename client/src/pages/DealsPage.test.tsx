@@ -187,8 +187,8 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(DEAL_1.name)).toBeInTheDocument();
     });
-    // Stage is rendered as i18n key — Prospecting
-    expect(screen.getByText('Prospecting')).toBeInTheDocument();
+    // Stage is rendered as i18n key — Prospecting (appears in the deal row)
+    expect(screen.getByTestId(`deal-link-${DEAL_1.id}`)).toBeInTheDocument();
   });
 
   it('shows empty state in list view when no deals are returned', async () => {
@@ -340,6 +340,69 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('deals-owner-filter-all')).toHaveAttribute('aria-pressed', 'true');
     });
+  });
+
+  // ── Pipeline summary bar ───────────────────────────────────────────────────
+
+  it('renders the pipeline summary bar in list view', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-summary-bar')).toBeInTheDocument();
+    });
+  });
+
+  it('renders a summary chip for each open pipeline stage', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-summary-prospecting')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('pipeline-summary-qualification')).toBeInTheDocument();
+    expect(screen.getByTestId('pipeline-summary-proposal')).toBeInTheDocument();
+    expect(screen.getByTestId('pipeline-summary-negotiation')).toBeInTheDocument();
+    // Closed stages must NOT appear in the summary bar
+    expect(screen.queryByTestId('pipeline-summary-closed-won')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pipeline-summary-closed-lost')).not.toBeInTheDocument();
+  });
+
+  it('shows correct deal count for a stage in the summary bar', async () => {
+    // DEAL_1 is in Prospecting — expect count 1
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-summary-prospecting')).toHaveTextContent('1');
+    });
+    // Other stages should show 0
+    expect(screen.getByTestId('pipeline-summary-qualification')).toHaveTextContent('0');
+  });
+
+  it('does not render the pipeline summary bar in board view', async () => {
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('pipeline-board')).toBeInTheDocument());
+    expect(screen.queryByTestId('pipeline-summary-bar')).not.toBeInTheDocument();
+  });
+
+  it('does not render the pipeline summary bar when the API errors in list view', async () => {
+    server.use(
+      http.get('/api/deals', () =>
+        HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('pipeline-summary-bar')).not.toBeInTheDocument();
   });
 
   it('toggles back to board view from list view', async () => {
