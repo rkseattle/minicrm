@@ -115,7 +115,7 @@ export default function StageColumn({
           </h3>
           <span
             data-testid={`stage-column-count-${slug}`}
-            className="ml-2 shrink-0 text-xs font-medium"
+            className="ms-2 shrink-0 text-xs font-medium"
           >
             {deals.length}
           </span>

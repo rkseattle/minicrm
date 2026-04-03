@@ -391,19 +391,19 @@ export default function UsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tl-lg">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
                       {t('users.columnName')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('users.columnEmail')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('users.columnRole')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('users.columnStatus')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-tr-lg">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
                       {t('users.columnActions')}
                     </th>
                   </tr>

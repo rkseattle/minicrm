@@ -322,6 +322,6 @@ The active language is resolved in this order (highest precedence first):
 2. System-wide default set by an admin via Admin Settings
 3. English (hard-coded fallback)
 
-The document `dir` attribute is updated automatically when the language changes to support RTL layouts. Adding an RTL locale (e.g. `ar`) to `SUPPORTED_LOCALES` and the `RTL_LOCALES` set in `i18n.ts` is all that is required to enable full RTL support.
+The document `dir` attribute is updated automatically when the language changes. All layout classes in the client use Tailwind logical property utilities (`ps-`/`pe-`, `ms-`/`me-`, `text-start`/`text-end`, `rounded-s-`/`rounded-e-`, etc.) so layout mirrors correctly under `dir="rtl"`. To add an RTL locale (e.g. `ar`), add the locale to `SUPPORTED_LOCALES` in `shared/schemas/settingsSchema.ts` and to the `RTL_LOCALES` set in `client/src/i18n.ts`. Any new UI work must use logical property utilities — physical directional classes (`pl-`, `pr-`, `ml-`, `mr-`, `text-left`, `text-right`, etc.) are not permitted (see MINCRM-69).
 
 Pipeline stage names and currency values are formatted using the active locale (`Intl.NumberFormat` with `style: 'currency'`). i18n keys for pipeline stages use camelCase (e.g. `pipeline.stages.closedWon`) to remain compatible with TMS static-extraction tooling.

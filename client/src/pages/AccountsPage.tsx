@@ -245,7 +245,7 @@ export default function AccountsPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                       aria-sort={sortDir}
                     >
                       <button
@@ -258,19 +258,19 @@ export default function AccountsPage() {
                         {sortDir === 'ascending' ? ' ↑' : ' ↓'}
                       </button>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnIndustry')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnWebsite')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnEmployeeRange')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnRevenueRange')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('accounts.columnOwner')}
                     </th>
                   </tr>
