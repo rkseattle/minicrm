@@ -218,6 +218,26 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 3. After fixing, add or update a test that would have caught the bug
 4. Phase B/C/D tickets often have security implications — implement the correct pattern, not a workaround
 
+## Pre-PR Self-Review
+
+Before opening a PR, review the full `git diff main` with these checks. Each bullet targets a pattern that has appeared in past review findings on this repo.
+
+- **Consistency across siblings** — if a pattern is applied to one instance, apply it to all. Check: i18n keys added to one locale file but not all five; a fix applied to ContactsPage but not AccountsPage/DealsPage; a new `data-testid` on one button but missing on its sibling.
+
+- **Dead code and dead keys** — when replacing a UI element, remove what it consumed. Check: old i18n keys no longer referenced by any component; unused imports left after a refactor; variables declared but never read.
+
+- **Pure updater functions** — React `setState(updater)` functions must be pure (no side effects). A side effect inside an updater will fire twice in StrictMode. If you need to call `setA` and `setB` together, do both at the call site, not inside one's updater.
+
+- **No-op guard on interactive controls** — a toggle/tab/button that is already in the active state should not re-fire its handler. Add an early-return or inline guard (`value !== x && onChange(x)`) to prevent redundant state updates and history entries.
+
+- **Existing patterns first** — before adding a new hook, helper, or component, read the surrounding files to check if the pattern already exists. Prefer extending what is there over introducing a parallel approach.
+
+- **Test branch completeness** — for any conditional render or behavior, check that every branch has a dedicated test. If CLAUDE.md names specific branches (e.g., ActivityForm direction field for Call/Email/Note/Task/Meeting), all of them are required, not just the ones touched in the current diff.
+
+- **Accessibility and focus** — any element that is shown/hidden (inline forms, modals, drawers) must manage focus correctly: move focus in on open, restore focus to the trigger on close. Verify the trigger ref is mounted when focus restoration fires.
+
+- **RTL safety** — new Tailwind layout classes must use logical properties (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`) not physical ones (`pl-`, `pr-`, `ml-`, `mr-`, `left-`, `right-`).
+
 ## General Behavior
 
 - Ask before deleting or overwriting files
