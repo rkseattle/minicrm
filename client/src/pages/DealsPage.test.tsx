@@ -4,7 +4,7 @@
  * MINCRM-51: board view is now the default; list view is toggled.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -187,8 +187,9 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(DEAL_1.name)).toBeInTheDocument();
     });
-    // Stage is rendered as i18n key — Prospecting (appears in the deal row)
-    expect(screen.getByTestId(`deal-link-${DEAL_1.id}`)).toBeInTheDocument();
+    // Stage label is rendered inside the deal row (scoped to avoid matching the summary bar chip)
+    const row = screen.getByTestId(`deal-link-${DEAL_1.id}`).closest('tr')!;
+    expect(within(row).getByText(/prospecting/i)).toBeInTheDocument();
   });
 
   it('shows empty state in list view when no deals are returned', async () => {

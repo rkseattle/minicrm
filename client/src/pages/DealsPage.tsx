@@ -179,13 +179,14 @@ export default function DealsPage() {
    * Respects the active ownerFilter since it derives from `data.deals`.
    */
   const pipelineSummary = useMemo(() => {
+    if (viewMode !== 'list') return [];
     const deals = data?.deals ?? [];
     return OPEN_PIPELINE_STAGES.map((stage) => {
       const stageDeals = deals.filter((d) => d.stage === stage);
       const total = stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
       return { stage, count: stageDeals.length, total };
     });
-  }, [data?.deals]);
+  }, [data?.deals, viewMode]);
 
   const sortedDeals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
     if (sortCol === 'name') {
@@ -481,6 +482,7 @@ export default function DealsPage() {
             {!isLoading && !isError && (
               <div
                 data-testid="pipeline-summary-bar"
+                role="region"
                 aria-label={t('deals.pipelineSummaryLabel')}
                 className="mb-4 flex flex-wrap gap-2"
               >
