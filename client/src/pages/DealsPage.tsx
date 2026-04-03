@@ -1,31 +1,45 @@
 /**
  * DealsPage component.
- * Lists all deal records with stage, value, close date, linked account, and owner.
- * Provides an inline form for creating new deals.
- * Each row links to the DealDetailPage.
+ * Displays deals as either a Kanban pipeline board (default) or a list/table view.
+ * The board view satisfies MINCRM-16 AC: deals as cards organised into stage columns,
+ * each column showing deal count and total value.
+ * The list view provides the original tabular layout for scanning and bulk review.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
+import StageColumn from '@/components/StageColumn.js';
+import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
-import { listDeals, createDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { listDeals, createDeal, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
+import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
+import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
-import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-import type { PipelineStage } from '@shared/schemas/dealSchema.js';
 
 /** Owner filter value — 'all' means no filter, 'me' means current user only */
 type OwnerFilter = 'all' | 'me';
+
+/** Which view is active on the Deals page */
+type ViewMode = 'board' | 'list';
+
+/** State captured while the user has selected a terminal stage but not yet confirmed */
+interface PendingClose {
+  dealId: string;
+  stage: 'Closed Won' | 'Closed Lost';
+}
 
 /**
  * Formats a deal value as a USD currency string using the active locale.
@@ -42,16 +56,30 @@ function formatDealValue(value: string | null, locale: string): string {
     : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
 }
 
+/** Today's date in YYYY-MM-DD format, used as default close date in the close modal */
+function todayIso(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 /**
- * Deals list page with owner filter and inline create form.
+ * Deals page with board/list view toggle.
+ * Board view (default) renders a Kanban pipeline board satisfying MINCRM-16 AC.
+ * List view renders the original sortable table.
  */
 export default function DealsPage() {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+
+  // ── View mode ──────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<ViewMode>('board');
+
+  // ── Create form ────────────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newDealButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
+
+  // ── List view state ────────────────────────────────────────────────────────
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
 
   type SortColumn = 'name' | 'close_date';
@@ -59,21 +87,15 @@ export default function DealsPage() {
   const [sortCol, setSortCol] = useState<SortColumn>('name');
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
 
-  /**
-   * Toggles sort column/direction.
-   *
-   * @param col - The column header that was clicked
-   */
-  function handleSort(col: SortColumn): void {
-    if (col === sortCol) {
-      setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
-    } else {
-      setSortCol(col);
-      setSortDir('ascending');
-    }
-  }
+  // ── Board view state ───────────────────────────────────────────────────────
+  /** Set of deal IDs whose stage updates are currently in flight */
+  const [updatingDealIds, setUpdatingDealIds] = useState<Set<string>>(new Set());
+  const [stageError, setStageError] = useState<string | null>(null);
+  const [pendingClose, setPendingClose] = useState<PendingClose | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [showClosed, setShowClosed] = useState(true);
 
-  // Restore focus to the "New Deal" button after the form closes (button re-mounts on next render)
+  // ── Restore focus after form closes ───────────────────────────────────────
   useEffect(() => {
     if (!showForm && shouldRestoreFocusRef.current) {
       newDealButtonRef.current?.focus();
@@ -81,6 +103,7 @@ export default function DealsPage() {
     }
   }, [showForm]);
 
+  // ── Data fetching ──────────────────────────────────────────────────────────
   const dealsQueryKey =
     ownerFilter === 'me' ? ([...DEALS_QUERY_KEY, { owner: 'me' }] as const) : DEALS_QUERY_KEY;
 
@@ -102,6 +125,44 @@ export default function DealsPage() {
   const accounts: AccountResponse[] = accountsData?.accounts ?? [];
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
+  /** Map of account_id → name for O(1) lookup in deal cards */
+  const accountNames = useMemo(() => {
+    const map = new Map<string, string>();
+    accounts.forEach((a) => map.set(a.id, a.name));
+    return map;
+  }, [accounts]);
+
+  // ── Deals derived state ────────────────────────────────────────────────────
+
+  /**
+   * Deals grouped by stage, preserving PIPELINE_STAGES order.
+   * When showClosed is false, terminal-stage deals are omitted from their columns.
+   */
+  const dealsByStage = useMemo(() => {
+    const grouped = new Map<PipelineStage, DealResponse[]>();
+    PIPELINE_STAGES.forEach((stage) => grouped.set(stage, []));
+    (data?.deals ?? []).forEach((deal) => {
+      if (!showClosed && (CLOSED_STAGES as PipelineStage[]).includes(deal.stage)) return;
+      grouped.get(deal.stage)?.push(deal);
+    });
+    return grouped;
+  }, [data?.deals, showClosed]);
+
+  const sortedDeals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
+    if (sortCol === 'name') {
+      const cmp = a.name.localeCompare(b.name);
+      return sortDir === 'ascending' ? cmp : -cmp;
+    }
+    // ISO YYYY-MM-DD strings sort correctly with relational operators
+    const aDate = a.close_date ?? '';
+    const bDate = b.close_date ?? '';
+    if (aDate === bDate) return 0;
+    const cmp = aDate < bDate ? -1 : 1;
+    return sortDir === 'ascending' ? cmp : -cmp;
+  });
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
+
   const createMutation = useMutation({
     mutationFn: (values: DealFormValues) =>
       createDeal({
@@ -122,18 +183,108 @@ export default function DealsPage() {
     },
   });
 
-  const deals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
-    if (sortCol === 'name') {
-      const cmp = a.name.localeCompare(b.name);
-      return sortDir === 'ascending' ? cmp : -cmp;
-    }
-    // ISO YYYY-MM-DD strings sort correctly with relational operators
-    const aDate = a.close_date ?? '';
-    const bDate = b.close_date ?? '';
-    if (aDate === bDate) return 0;
-    const cmp = aDate < bDate ? -1 : 1;
-    return sortDir === 'ascending' ? cmp : -cmp;
+  const stageMutation = useMutation({
+    mutationFn: ({
+      id,
+      stage,
+      close_date,
+      loss_reason,
+    }: {
+      id: string;
+      stage: PipelineStage;
+      close_date?: string;
+      loss_reason?: string;
+    }) =>
+      updateDeal(id, { stage, close_date: close_date ?? null, loss_reason: loss_reason ?? null }),
+    onMutate: ({ id }) => {
+      setStageError(null);
+      setUpdatingDealIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    },
+    onError: (_error, variables) => {
+      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+        setCloseError(t('pipeline.stageUpdateError'));
+      } else {
+        setStageError(t('pipeline.stageUpdateError'));
+      }
+    },
+    onSuccess: (_data, variables) => {
+      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+        setPendingClose(null);
+        setCloseError(null);
+      }
+    },
+    onSettled: (_data, _error, { id, stage }) => {
+      setUpdatingDealIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
+      if ((CLOSED_STAGES as PipelineStage[]).includes(stage)) {
+        queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
+      }
+    },
   });
+
+  // ── Board event handlers ───────────────────────────────────────────────────
+
+  /**
+   * Handles a non-terminal stage change from a deal card.
+   *
+   * @param dealId - UUID of the deal to update
+   * @param stage - Target pipeline stage
+   */
+  function handleStageChange(dealId: string, stage: PipelineStage): void {
+    stageMutation.mutate({ id: dealId, stage });
+  }
+
+  /**
+   * Opens the close deal modal when a terminal stage is selected on a deal card.
+   *
+   * @param dealId - UUID of the deal to close
+   * @param stage - Terminal stage selected ('Closed Won' | 'Closed Lost')
+   */
+  function handleCloseRequested(dealId: string, stage: 'Closed Won' | 'Closed Lost'): void {
+    setCloseError(null);
+    setPendingClose({ dealId, stage });
+  }
+
+  /**
+   * Called when the user confirms the close deal modal.
+   *
+   * @param closeDate - YYYY-MM-DD close date
+   * @param lossReason - Free-text loss reason (empty when not applicable)
+   */
+  function handleCloseConfirm(closeDate: string, lossReason: string): void {
+    if (!pendingClose) return;
+    stageMutation.mutate({
+      id: pendingClose.dealId,
+      stage: pendingClose.stage,
+      close_date: closeDate || undefined,
+      loss_reason: lossReason || undefined,
+    });
+  }
+
+  // ── List sort handler ──────────────────────────────────────────────────────
+
+  /**
+   * Toggles sort column/direction.
+   *
+   * @param col - The column header that was clicked
+   */
+  function handleSort(col: SortColumn): void {
+    if (col === sortCol) {
+      setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
+    } else {
+      setSortCol(col);
+      setSortDir('ascending');
+    }
+  }
 
   /** Resolves an account_id to its display name */
   function resolveAccountName(accountId: string | null): string {
@@ -141,22 +292,38 @@ export default function DealsPage() {
     return accounts.find((a) => a.id === accountId)?.name ?? '—';
   }
 
+  const isClosing = stageMutation.isPending && pendingClose !== null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className={viewMode === 'board' ? 'px-6 py-8' : 'max-w-7xl mx-auto px-6 py-8'}>
+        {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
-          {!showForm && (
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
             <Button
-              ref={newDealButtonRef}
               type="button"
-              data-testid="new-deal-button"
-              onClick={() => setShowForm(true)}
+              variant="secondary"
+              size="sm"
+              data-testid="deals-view-toggle"
+              onClick={() => setViewMode((m) => (m === 'board' ? 'list' : 'board'))}
             >
-              {t('deals.newDeal')}
+              {viewMode === 'board' ? t('deals.viewList') : t('deals.viewBoard')}
             </Button>
-          )}
+            {/* New Deal button — only shown when form is not open */}
+            {!showForm && (
+              <Button
+                ref={newDealButtonRef}
+                type="button"
+                data-testid="new-deal-button"
+                onClick={() => setShowForm(true)}
+              >
+                {t('deals.newDeal')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Inline create form */}
@@ -183,129 +350,213 @@ export default function DealsPage() {
           </section>
         )}
 
-        {/* Owner filter */}
-        <div className="mb-4 flex items-center gap-3">
-          <Select
-            id="deals-owner-filter"
-            data-testid="deals-owner-filter"
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
-            className="w-48"
-          >
-            <option value="all">{t('deals.ownerFilterAll')}</option>
-            <option value="me">{t('deals.ownerFilterMe')}</option>
-          </Select>
-        </div>
+        {/* ── Board view ──────────────────────────────────────────────────── */}
+        {viewMode === 'board' && (
+          <>
+            {/* Board toolbar */}
+            <div className="flex items-center justify-between mb-4">
+              <div>{/* spacer */}</div>
+              <Button
+                variant="secondary"
+                size="sm"
+                data-testid="toggle-closed-deals"
+                onClick={() => setShowClosed((prev) => !prev)}
+              >
+                {showClosed
+                  ? t('pipeline.closeDeal.hideClosed')
+                  : t('pipeline.closeDeal.showClosed')}
+              </Button>
+            </div>
 
-        {/* Loading state */}
-        {isLoading && (
-          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <p aria-busy="true" className="text-sm text-gray-400">
-              {t('deals.loading')}
-            </p>
-          </div>
-        )}
-
-        {/* Error state */}
-        {isError && (
-          <div
-            role="alert"
-            className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
-          >
-            {t('errors.generic')}
-          </div>
-        )}
-
-        {/* Deals table */}
-        {!isLoading && !isError && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            {deals.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-sm text-gray-400">{t('deals.empty')}</p>
+            {stageError && (
+              <div
+                role="alert"
+                data-testid="stage-update-error"
+                className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+              >
+                {stageError}
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortCol === 'name' ? sortDir : 'none'}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSort('name')}
-                        className="inline-flex items-center gap-1 hover:text-gray-700"
-                        data-testid="deals-sort-name"
-                      >
-                        {t('deals.columnName')}
-                        {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnStage')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnValue')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSort('close_date')}
-                        className="inline-flex items-center gap-1 hover:text-gray-700"
-                        data-testid="deals-sort-close-date"
-                      >
-                        {t('deals.columnCloseDate')}
-                        {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnAccount')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('deals.columnOwner')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {deals.map((deal) => (
-                    <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-indigo-600">
-                        <Link
-                          to={`/deals/${deal.id}`}
-                          data-testid={`deal-link-${deal.id}`}
-                          className="hover:underline"
-                        >
-                          {deal.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {t(
-                          `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {formatDealValue(deal.value, i18n.language)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {formatLocalDate(deal.close_date, i18n.language)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {resolveAccountName(deal.account_id)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500" data-testid={`deal-owner-${deal.id}`}>
-                        {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             )}
-          </div>
+
+            {isLoading && (
+              <div className="text-center py-12">
+                <p aria-busy="true" className="text-sm text-gray-400">
+                  {t('pipeline.loading')}
+                </p>
+              </div>
+            )}
+
+            {isError && (
+              <div
+                role="alert"
+                className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+              >
+                {t('errors.generic')}
+              </div>
+            )}
+
+            {!isLoading && !isError && (
+              <div data-testid="pipeline-board" className="flex gap-4 overflow-x-auto pb-4">
+                {PIPELINE_STAGES.map((stage) => (
+                  <StageColumn
+                    key={stage}
+                    stage={stage}
+                    deals={dealsByStage.get(stage) ?? []}
+                    accountNames={accountNames}
+                    onStageChange={handleStageChange}
+                    onCloseRequested={handleCloseRequested}
+                    updatingDealIds={updatingDealIds}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── List view ───────────────────────────────────────────────────── */}
+        {viewMode === 'list' && (
+          <>
+            {/* Owner filter */}
+            <div className="mb-4 flex items-center gap-3">
+              <Select
+                id="deals-owner-filter"
+                data-testid="deals-owner-filter"
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
+                className="w-48"
+              >
+                <option value="all">{t('deals.ownerFilterAll')}</option>
+                <option value="me">{t('deals.ownerFilterMe')}</option>
+              </Select>
+            </div>
+
+            {isLoading && (
+              <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+                <p aria-busy="true" className="text-sm text-gray-400">
+                  {t('deals.loading')}
+                </p>
+              </div>
+            )}
+
+            {isError && (
+              <div
+                role="alert"
+                className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+              >
+                {t('errors.generic')}
+              </div>
+            )}
+
+            {!isLoading && !isError && (
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {sortedDeals.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-sm text-gray-400">{t('deals.empty')}</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                          aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSort('name')}
+                            className="inline-flex items-center gap-1 hover:text-gray-700"
+                            data-testid="deals-sort-name"
+                          >
+                            {t('deals.columnName')}
+                            {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('deals.columnStage')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('deals.columnValue')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                          aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSort('close_date')}
+                            className="inline-flex items-center gap-1 hover:text-gray-700"
+                            data-testid="deals-sort-close-date"
+                          >
+                            {t('deals.columnCloseDate')}
+                            {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('deals.columnAccount')}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('deals.columnOwner')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {sortedDeals.map((deal) => (
+                        <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-indigo-600">
+                            <Link
+                              to={`/deals/${deal.id}`}
+                              data-testid={`deal-link-${deal.id}`}
+                              className="hover:underline"
+                            >
+                              {deal.name}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {t(
+                              `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {formatDealValue(deal.value, i18n.language)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {formatLocalDate(deal.close_date, i18n.language)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {resolveAccountName(deal.account_id)}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-gray-500"
+                            data-testid={`deal-owner-${deal.id}`}
+                          >
+                            {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </>
         )}
       </main>
+
+      {/* Close deal modal — used by board view */}
+      {pendingClose && (
+        <CloseDealModal
+          isOpen={true}
+          targetStage={pendingClose.stage}
+          initialCloseDate={todayIso()}
+          isSubmitting={isClosing}
+          error={closeError ?? undefined}
+          onConfirm={handleCloseConfirm}
+          onCancel={() => {
+            setPendingClose(null);
+            setCloseError(null);
+          }}
+        />
+      )}
     </div>
   );
 }

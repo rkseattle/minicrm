@@ -109,9 +109,6 @@ export default function NavBar() {
             <NavLink to="/deals" className={navLinkClass} data-testid="nav-deals">
               {t('nav.deals')}
             </NavLink>
-            <NavLink to="/pipeline" className={navLinkClass} data-testid="nav-pipeline">
-              {t('nav.pipeline')}
-            </NavLink>
             <NavLink to="/tasks" className={navLinkClass} data-testid="nav-my-tasks">
               {t('nav.myTasks')}
             </NavLink>

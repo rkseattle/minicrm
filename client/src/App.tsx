@@ -15,7 +15,6 @@ import AccountsPage from '@/pages/AccountsPage.js';
 import AccountDetailPage from '@/pages/AccountDetailPage.js';
 import DealsPage from '@/pages/DealsPage.js';
 import DealDetailPage from '@/pages/DealDetailPage.js';
-import PipelineBoardPage from '@/pages/PipelineBoardPage.js';
 import MyTasksPage from '@/pages/MyTasksPage.js';
 import UsersPage from '@/pages/UsersPage.js';
 import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
@@ -41,7 +40,8 @@ export default function App() {
         <Route path="/accounts/:id" element={<AccountDetailPage />} />
         <Route path="/deals" element={<DealsPage />} />
         <Route path="/deals/:id" element={<DealDetailPage />} />
-        <Route path="/pipeline" element={<PipelineBoardPage />} />
+        {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
+        <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
         <Route path="/tasks" element={<MyTasksPage />} />
       </Route>
 
