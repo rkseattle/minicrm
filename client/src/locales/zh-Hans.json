@@ -333,6 +333,31 @@
       "es": "西班牙语",
       "fr": "法语",
       "de": "德语"
+    },
+    "demo": {
+      "sectionTitle": "演示数据",
+      "sectionHint": "为演示和测试填充、重置或删除演示记录。仅影响标记为演示的记录 — 真实数据不受影响。",
+      "statusActive": "演示数据已激活",
+      "statusInactive": "无演示数据",
+      "statusLoading": "正在检查演示状态…",
+      "statusError": "加载演示状态失败。",
+      "seedButton": "填充演示数据",
+      "seedConfirmTitle": "填充演示数据？",
+      "seedConfirmMessage": "将插入演示用的客户、联系人、商机和活动。",
+      "resetButton": "重置演示数据",
+      "resetConfirmTitle": "重置演示数据？",
+      "resetConfirmMessage": "将删除所有现有演示数据并重新填充。此操作不可撤销。",
+      "removeButton": "删除演示数据",
+      "removeConfirmTitle": "删除演示数据？",
+      "removeConfirmMessage": "所有标记为演示的记录将被永久删除。此操作不可撤销。",
+      "confirmAction": "确认",
+      "cancelAction": "取消",
+      "seedSuccess": "演示数据填充成功。",
+      "resetSuccess": "演示数据重置成功。",
+      "removeSuccess": "演示数据删除成功。",
+      "seedError": "演示数据填充失败，请重试。",
+      "resetError": "演示数据重置失败，请重试。",
+      "removeError": "演示数据删除失败，请重试。"
     }
   },
   "profileSettings": {

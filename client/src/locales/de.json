@@ -333,6 +333,31 @@
       "es": "Spanisch",
       "fr": "Französisch",
       "de": "Deutsch"
+    },
+    "demo": {
+      "sectionTitle": "Demodaten",
+      "sectionHint": "Demodatensätze für Präsentationen und Tests einfügen, zurücksetzen oder entfernen. Nur als Demo markierte Datensätze sind betroffen — echte Daten werden nie berührt.",
+      "statusActive": "Demodaten aktiv",
+      "statusInactive": "Keine Demodaten",
+      "statusLoading": "Demostatus wird geprüft…",
+      "statusError": "Demostatus konnte nicht geladen werden.",
+      "seedButton": "Demodaten einfügen",
+      "seedConfirmTitle": "Demodaten einfügen?",
+      "seedConfirmMessage": "Es werden Demo-Konten, Kontakte, Deals und Aktivitäten eingefügt.",
+      "resetButton": "Demodaten zurücksetzen",
+      "resetConfirmTitle": "Demodaten zurücksetzen?",
+      "resetConfirmMessage": "Alle vorhandenen Demodaten werden entfernt und neu eingefügt. Dies kann nicht rückgängig gemacht werden.",
+      "removeButton": "Demodaten entfernen",
+      "removeConfirmTitle": "Demodaten entfernen?",
+      "removeConfirmMessage": "Alle als Demo markierten Datensätze werden dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "confirmAction": "Bestätigen",
+      "cancelAction": "Abbrechen",
+      "seedSuccess": "Demodaten erfolgreich eingefügt.",
+      "resetSuccess": "Demodaten erfolgreich zurückgesetzt.",
+      "removeSuccess": "Demodaten erfolgreich entfernt.",
+      "seedError": "Demodaten konnten nicht eingefügt werden. Bitte erneut versuchen.",
+      "resetError": "Demodaten konnten nicht zurückgesetzt werden. Bitte erneut versuchen.",
+      "removeError": "Demodaten konnten nicht entfernt werden. Bitte erneut versuchen."
     }
   },
   "profileSettings": {

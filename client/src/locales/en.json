@@ -333,6 +333,31 @@
       "es": "Spanish",
       "fr": "French",
       "de": "German"
+    },
+    "demo": {
+      "sectionTitle": "Demo Data",
+      "sectionHint": "Seed, reset, or remove demo records for presentations and testing. Only demo-flagged records are affected — real data is never touched.",
+      "statusActive": "Demo data active",
+      "statusInactive": "No demo data",
+      "statusLoading": "Checking demo status…",
+      "statusError": "Failed to load demo status.",
+      "seedButton": "Seed demo data",
+      "seedConfirmTitle": "Seed demo data?",
+      "seedConfirmMessage": "This will insert demo accounts, contacts, deals, and activities.",
+      "resetButton": "Reset demo data",
+      "resetConfirmTitle": "Reset demo data?",
+      "resetConfirmMessage": "This will remove all existing demo data and re-seed from scratch. This cannot be undone.",
+      "removeButton": "Remove demo data",
+      "removeConfirmTitle": "Remove demo data?",
+      "removeConfirmMessage": "This will permanently delete all demo-flagged records. This cannot be undone.",
+      "confirmAction": "Confirm",
+      "cancelAction": "Cancel",
+      "seedSuccess": "Demo data seeded successfully.",
+      "resetSuccess": "Demo data reset successfully.",
+      "removeSuccess": "Demo data removed successfully.",
+      "seedError": "Failed to seed demo data. Please try again.",
+      "resetError": "Failed to reset demo data. Please try again.",
+      "removeError": "Failed to remove demo data. Please try again."
     }
   },
   "profileSettings": {

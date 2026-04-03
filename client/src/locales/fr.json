@@ -333,6 +333,31 @@
       "es": "Espagnol",
       "fr": "Français",
       "de": "Allemand"
+    },
+    "demo": {
+      "sectionTitle": "Données de démonstration",
+      "sectionHint": "Insérez, réinitialisez ou supprimez des enregistrements de démonstration pour les présentations et les tests. Seuls les enregistrements marqués comme démo sont affectés — les données réelles ne sont jamais touchées.",
+      "statusActive": "Données de démo actives",
+      "statusInactive": "Aucune donnée de démo",
+      "statusLoading": "Vérification du statut de démo…",
+      "statusError": "Impossible de charger le statut de démo.",
+      "seedButton": "Insérer les données de démo",
+      "seedConfirmTitle": "Insérer les données de démo ?",
+      "seedConfirmMessage": "Des comptes, contacts, affaires et activités de démonstration seront insérés.",
+      "resetButton": "Réinitialiser les données de démo",
+      "resetConfirmTitle": "Réinitialiser les données de démo ?",
+      "resetConfirmMessage": "Toutes les données de démo existantes seront supprimées et réinsérées depuis zéro. Cette action est irréversible.",
+      "removeButton": "Supprimer les données de démo",
+      "removeConfirmTitle": "Supprimer les données de démo ?",
+      "removeConfirmMessage": "Tous les enregistrements marqués comme démo seront définitivement supprimés. Cette action est irréversible.",
+      "confirmAction": "Confirmer",
+      "cancelAction": "Annuler",
+      "seedSuccess": "Données de démo insérées avec succès.",
+      "resetSuccess": "Données de démo réinitialisées avec succès.",
+      "removeSuccess": "Données de démo supprimées avec succès.",
+      "seedError": "Impossible d'insérer les données de démo. Veuillez réessayer.",
+      "resetError": "Impossible de réinitialiser les données de démo. Veuillez réessayer.",
+      "removeError": "Impossible de supprimer les données de démo. Veuillez réessayer."
     }
   },
   "profileSettings": {
