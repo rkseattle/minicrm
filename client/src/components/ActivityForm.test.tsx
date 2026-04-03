@@ -146,6 +146,51 @@ describe('ActivityForm', () => {
     expect((screen.getByTestId('activity-due-date') as HTMLInputElement).value).toBe('2026-03-15');
   });
 
+  // MINCRM-82: direction field conditional rendering tests
+  it('shows direction and outcome fields when type is Call', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
+
+    expect(screen.getByTestId('activity-direction-select')).toBeInTheDocument();
+    expect(screen.getByTestId('activity-outcome')).toBeInTheDocument();
+  });
+
+  it('shows direction and outcome fields when type is Email', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Email' } });
+
+    expect(screen.getByTestId('activity-direction-select')).toBeInTheDocument();
+    expect(screen.getByTestId('activity-outcome')).toBeInTheDocument();
+  });
+
+  it('hides direction and outcome fields when type is Note', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    // Default is Note — direction and outcome should not be in the DOM
+    expect(screen.queryByTestId('activity-direction-select')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('activity-outcome')).not.toBeInTheDocument();
+  });
+
+  it('disables submit when type is Call and direction is not selected', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
+    fireEvent.change(screen.getByTestId('activity-subject'), { target: { value: 'Follow up' } });
+
+    // Direction is still empty — submit must be disabled
+    expect(screen.getByTestId('activity-form-submit')).toBeDisabled();
+  });
+
   it('displays a server-side error message', () => {
     renderWithProviders(
       <ActivityForm
