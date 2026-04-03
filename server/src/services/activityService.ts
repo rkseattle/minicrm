@@ -8,6 +8,7 @@ import type {
   CreateActivityInput,
   UpdateActivityInput,
 } from '@minicrm/shared/schemas/activitySchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -39,7 +40,7 @@ export interface ActivityRow {
   updated_at: Date;
 }
 
-/** Options for filtering the activities list */
+/** Options for filtering and paginating the activities list */
 interface ListActivitiesOptions {
   /** When provided, only activities for this contact are returned */
   contactId?: string;
@@ -49,6 +50,10 @@ interface ListActivitiesOptions {
   dealId?: string;
   /** When provided, only activities owned by this user are returned */
   ownerId?: string;
+  /** 1-based page number; defaults to 1 */
+  page?: number;
+  /** Records per page; defaults to 50 */
+  limit?: number;
 }
 
 /** Columns selected when JOINing users for owner_name */
@@ -117,12 +122,15 @@ export async function findActivityById(id: string): Promise<ActivityRow | null> 
 }
 
 /**
- * Returns activities, optionally filtered by parent record or owner.
+ * Returns a paginated list of activities, optionally filtered by parent record or owner.
+ * Activities are always ordered by created_at descending (newest first).
  *
- * @param options - Optional filters
- * @returns Array of activity rows ordered by created_at descending (newest first)
+ * @param options - Filters and pagination options
+ * @returns Paginated response with activity rows and total count
  */
-export async function listActivities(options: ListActivitiesOptions = {}): Promise<ActivityRow[]> {
+export async function listActivities(
+  options: ListActivitiesOptions = {},
+): Promise<PaginatedResponse<ActivityRow>> {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
@@ -148,16 +156,29 @@ export async function listActivities(options: ListActivitiesOptions = {}): Promi
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const result = await pool.query<ActivityRow>(
-    `SELECT ${SELECT_COLS_WITH_OWNER}
-     FROM activities a
-     JOIN users u ON u.id = a.owner_id
-     ${where}
-     ORDER BY a.created_at DESC`,
-    values,
-  );
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 50;
+  const offset = (page - 1) * limit;
 
-  return result.rows;
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM activities a ${where}`, values),
+    pool.query<ActivityRow>(
+      `SELECT ${SELECT_COLS_WITH_OWNER}
+       FROM activities a
+       JOIN users u ON u.id = a.owner_id
+       ${where}
+       ORDER BY a.created_at DESC
+       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, offset],
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

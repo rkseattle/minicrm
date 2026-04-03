@@ -5,6 +5,7 @@
 
 import pool from '../db.js';
 import type { CreateDealInput, UpdateDealInput } from '@minicrm/shared/schemas/dealSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
 
 /** Columns that may be updated via updateDeal — guards against SQL injection from dynamic field names */
@@ -32,12 +33,24 @@ export interface DealRow {
   updated_at: Date;
 }
 
-/** Options for filtering the deals list */
+/** Columns that may be used for ORDER BY in listDeals */
+export const DEAL_SORT_COLUMNS = ['created_at', 'name', 'close_date', 'value'] as const;
+export type DealSortColumn = (typeof DEAL_SORT_COLUMNS)[number];
+
+/** Options for filtering and paginating the deals list */
 interface ListDealsOptions {
   /** When provided, only deals with this owner_id are returned */
   ownerId?: string;
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
+  /** Column to sort by; defaults to 'created_at' */
+  sort?: DealSortColumn;
+  /** Sort direction; defaults to 'ASC' */
+  dir?: 'ASC' | 'DESC';
+  /** 1-based page number; defaults to 1 */
+  page?: number;
+  /** Records per page; defaults to 50 */
+  limit?: number;
 }
 
 /**
@@ -82,13 +95,19 @@ export async function findDealById(id: string): Promise<DealRow | null> {
   return result.rows[0] ?? null;
 }
 
+/** SELECT columns used in deal list queries */
+const DEAL_SELECT =
+  'id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at';
+
 /**
- * Returns all deals, optionally scoped by owner and/or account.
+ * Returns a paginated list of deals, optionally scoped by owner and/or account.
  *
- * @param options - Optional filters; ownerId and accountId restrict results
- * @returns Array of deal rows ordered by created_at ascending
+ * @param options - Filters, sort, and pagination options
+ * @returns Paginated response with deal rows and total count
  */
-export async function listDeals(options: ListDealsOptions = {}): Promise<DealRow[]> {
+export async function listDeals(
+  options: ListDealsOptions = {},
+): Promise<PaginatedResponse<DealRow>> {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
@@ -103,11 +122,31 @@ export async function listDeals(options: ListDealsOptions = {}): Promise<DealRow
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const result = await pool.query<DealRow>(
-    `SELECT id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at FROM deals ${where} ORDER BY created_at ASC`,
-    values,
-  );
-  return result.rows;
+
+  // Allowlist-validated sort column and direction (MINCRM-68)
+  const sortCol = (DEAL_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
+    ? options.sort!
+    : 'created_at';
+  const sortDir = options.dir === 'DESC' ? 'DESC' : 'ASC';
+
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM deals ${where}`, values),
+    pool.query<DealRow>(
+      `SELECT ${DEAL_SELECT} FROM deals ${where} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, offset],
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

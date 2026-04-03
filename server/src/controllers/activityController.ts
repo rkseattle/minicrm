@@ -9,6 +9,7 @@ import {
   createActivitySchema,
   updateActivitySchema,
 } from '@minicrm/shared/schemas/activitySchema.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Zod schema used to validate UUID-typed query params */
 const uuidQuerySchema = z.string().uuid();
@@ -53,7 +54,13 @@ export async function listMyTasksHandler(req: Request, res: Response): Promise<v
 
 /**
  * GET /api/activities
- * Lists activities. Supports ?contact=<uuid>, ?account=<uuid>, ?deal=<uuid>, ?owner=me filters.
+ * Lists activities with optional filters and pagination:
+ *   ?contact=<uuid> — filter by contact UUID
+ *   ?account=<uuid> — filter by account UUID
+ *   ?deal=<uuid>    — filter by deal UUID
+ *   ?owner=me       — scope to the authenticated user's activities
+ *   ?page=<n>       — 1-based page number (default 1)
+ *   ?limit=<n>      — records per page (default 50, max 100)
  */
 export async function listActivitiesHandler(req: Request, res: Response): Promise<void> {
   // Validate UUID-typed filters; return 400 instead of letting PostgreSQL throw a 500
@@ -82,13 +89,25 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
 
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
 
-  const activities = await listActivities({
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const result = await listActivities({
     contactId: rawContact,
     accountId: rawAccount,
     dealId: rawDeal,
     ownerId,
+    ...paginationParsed.data,
   });
-  res.status(200).json({ activities });
+  res.status(200).json(result);
 }
 
 /**

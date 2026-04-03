@@ -193,7 +193,9 @@ describe('DealsPage', () => {
   });
 
   it('shows empty state in list view when no deals are returned', async () => {
-    server.use(http.get('/api/deals', () => HttpResponse.json({ deals: [] })));
+    server.use(
+      http.get('/api/deals', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 })),
+    );
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
     await waitFor(() => {
@@ -261,7 +263,7 @@ describe('DealsPage', () => {
       http.get('/api/deals', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const deals = owner === 'me' ? [DEAL_1] : [DEAL_1, repDeal];
-        return HttpResponse.json({ deals });
+        return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
       }),
     );
 
@@ -288,7 +290,10 @@ describe('DealsPage', () => {
     server.use(
       http.get('/api/deals', () =>
         HttpResponse.json({
-          deals: [{ ...DEAL_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...DEAL_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          total: 1,
+          page: 1,
+          limit: 50,
         }),
       ),
     );
@@ -314,7 +319,7 @@ describe('DealsPage', () => {
       http.get('/api/deals', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const deals = owner === 'me' ? [DEAL_1] : [DEAL_1, repDeal];
-        return HttpResponse.json({ deals });
+        return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
       }),
     );
 

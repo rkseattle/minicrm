@@ -17,7 +17,11 @@ describe('ActivityTimeline', () => {
   });
 
   it('shows the empty state when there are no activities', async () => {
-    server.use(http.get('/api/activities', () => HttpResponse.json({ activities: [] })));
+    server.use(
+      http.get('/api/activities', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 10 }),
+      ),
+    );
 
     renderWithProviders(<ActivityTimeline dealId="00000000-0000-0000-0000-000000000999" />);
 
@@ -65,7 +69,11 @@ describe('ActivityTimeline', () => {
   });
 
   it('shows completed badge for complete activities', async () => {
-    server.use(http.get('/api/activities', () => HttpResponse.json({ activities: [ACTIVITY_2] })));
+    server.use(
+      http.get('/api/activities', () =>
+        HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+      ),
+    );
 
     renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
 
@@ -75,7 +83,11 @@ describe('ActivityTimeline', () => {
   });
 
   it('applies line-through styling to completed activity subjects', async () => {
-    server.use(http.get('/api/activities', () => HttpResponse.json({ activities: [ACTIVITY_2] })));
+    server.use(
+      http.get('/api/activities', () =>
+        HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+      ),
+    );
 
     renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
 
@@ -142,5 +154,30 @@ describe('ActivityTimeline', () => {
     fireEvent.click(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`));
 
     expect(screen.getByTestId('activity-form')).toBeInTheDocument();
+  });
+
+  it('does not show "Load more" button when all activities are returned', async () => {
+    // Default handler returns 2 activities with total=2, so none are hidden
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`activity-item-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('activity-timeline-load-more')).not.toBeInTheDocument();
+  });
+
+  it('shows "Load more" button when total exceeds currently loaded count', async () => {
+    server.use(
+      http.get('/api/activities', () =>
+        HttpResponse.json({ data: [ACTIVITY_1], total: 5, page: 1, limit: 10 }),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-timeline-load-more')).toBeInTheDocument();
+    });
   });
 });

@@ -223,18 +223,20 @@ describe('findContactById', () => {
 
 describe('listContacts', () => {
   it('returns an empty array when no contacts exist', async () => {
-    const contacts = await listContacts();
-    expect(contacts).toEqual([]);
+    const result = await listContacts();
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('returns all contacts ordered by created_at', async () => {
     await createContact({ ...BASE_CONTACT, email: 'a@example.com', owner_id: ownerId });
     await createContact({ ...BASE_CONTACT, email: 'b@example.com', owner_id: ownerId });
 
-    const contacts = await listContacts();
-    expect(contacts).toHaveLength(2);
-    expect(contacts[0].email).toBe('a@example.com');
-    expect(contacts[1].email).toBe('b@example.com');
+    const result = await listContacts();
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.data[0].email).toBe('a@example.com');
+    expect(result.data[1].email).toBe('b@example.com');
   });
 
   it('filters by ownerId when provided', async () => {
@@ -247,9 +249,9 @@ describe('listContacts', () => {
     await createContact({ ...BASE_CONTACT, email: 'mine@example.com', owner_id: ownerId });
     await createContact({ ...BASE_CONTACT, email: 'theirs@example.com', owner_id: other.id });
 
-    const mine = await listContacts({ ownerId });
-    expect(mine).toHaveLength(1);
-    expect(mine[0].email).toBe('mine@example.com');
+    const result = await listContacts({ ownerId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].email).toBe('mine@example.com');
   });
 
   it('filters by accountId when provided', async () => {
@@ -261,9 +263,9 @@ describe('listContacts', () => {
     });
     await createContact({ ...BASE_CONTACT, email: 'unlinked@example.com', owner_id: ownerId });
 
-    const linked = await listContacts({ accountId });
-    expect(linked).toHaveLength(1);
-    expect(linked[0].email).toBe('linked@example.com');
+    const result = await listContacts({ accountId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].email).toBe('linked@example.com');
   });
 });
 
@@ -285,8 +287,8 @@ describe('listContacts — search filter', () => {
     });
 
     const results = await listContacts({ search: 'ali' });
-    expect(results).toHaveLength(1);
-    expect(results[0].first_name).toBe('Alice');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].first_name).toBe('Alice');
   });
 
   it('returns contacts whose last_name matches the search term (case-insensitive)', async () => {
@@ -304,8 +306,8 @@ describe('listContacts — search filter', () => {
     });
 
     const results = await listContacts({ search: 'SMITH' });
-    expect(results).toHaveLength(1);
-    expect(results[0].last_name).toBe('Smith');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].last_name).toBe('Smith');
   });
 
   it('returns contacts whose email matches the search term', async () => {
@@ -313,14 +315,14 @@ describe('listContacts — search filter', () => {
     await createContact({ ...BASE_CONTACT, email: 'other@example.com', owner_id: ownerId });
 
     const results = await listContacts({ search: 'find.me' });
-    expect(results).toHaveLength(1);
-    expect(results[0].email).toBe('find.me@example.com');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].email).toBe('find.me@example.com');
   });
 
   it('returns empty array when search matches nothing', async () => {
     await createContact({ ...BASE_CONTACT, owner_id: ownerId });
     const results = await listContacts({ search: 'zzznomatch' });
-    expect(results).toHaveLength(0);
+    expect(results.data).toHaveLength(0);
   });
 
   it('combines search with ownerId filter', async () => {
@@ -339,8 +341,8 @@ describe('listContacts — search filter', () => {
     });
 
     const results = await listContacts({ ownerId, search: 'Alice' });
-    expect(results).toHaveLength(1);
-    expect(results[0].email).toBe('mine-alice@example.com');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].email).toBe('mine-alice@example.com');
   });
 });
 
@@ -356,8 +358,8 @@ describe('listContacts — accountSearch filter', () => {
 
     // accountId was created with name 'Test Account'
     const results = await listContacts({ accountSearch: 'Test' });
-    expect(results).toHaveLength(1);
-    expect(results[0].email).toBe('linked@example.com');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].email).toBe('linked@example.com');
   });
 
   it('returns empty array when account name search matches nothing', async () => {
@@ -368,7 +370,89 @@ describe('listContacts — accountSearch filter', () => {
       owner_id: ownerId,
     });
     const results = await listContacts({ accountSearch: 'zzznomatch' });
-    expect(results).toHaveLength(0);
+    expect(results.data).toHaveLength(0);
+  });
+});
+
+// ── listContacts — pagination ───────────────────────────────────────────────────
+
+describe('listContacts — pagination', () => {
+  it('returns correct page and limit metadata', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'p1@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'p2@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'p3@example.com', owner_id: ownerId });
+
+    const result = await listContacts({ page: 1, limit: 2 });
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(2);
+  });
+
+  it('returns the correct slice for page 2', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'first@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'second@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'third@example.com', owner_id: ownerId });
+
+    const result = await listContacts({ page: 2, limit: 2 });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].email).toBe('third@example.com');
+    expect(result.total).toBe(3);
+  });
+
+  it('returns empty data array when page exceeds total', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'only@example.com', owner_id: ownerId });
+
+    const result = await listContacts({ page: 5, limit: 10 });
+    expect(result.data).toHaveLength(0);
+    expect(result.total).toBe(1);
+  });
+
+  it('sorts by first_name ascending when sort=first_name dir=ASC', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Zara',
+      email: 'z@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Alice',
+      email: 'a@example.com',
+      owner_id: ownerId,
+    });
+
+    const result = await listContacts({ sort: 'first_name', dir: 'ASC' });
+    expect(result.data[0].first_name).toBe('Alice');
+    expect(result.data[1].first_name).toBe('Zara');
+  });
+
+  it('sorts by first_name descending when sort=first_name dir=DESC', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Alice',
+      email: 'a@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Zara',
+      email: 'z@example.com',
+      owner_id: ownerId,
+    });
+
+    const result = await listContacts({ sort: 'first_name', dir: 'DESC' });
+    expect(result.data[0].first_name).toBe('Zara');
+  });
+
+  it('falls back to created_at sort for invalid sort column', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'safe@example.com', owner_id: ownerId });
+
+    // Should not throw; falls back to created_at
+    const result = await listContacts({
+      sort: 'invalid_col; DROP TABLE contacts;--' as unknown as 'created_at',
+    });
+    expect(result.data).toHaveLength(1);
   });
 });
 

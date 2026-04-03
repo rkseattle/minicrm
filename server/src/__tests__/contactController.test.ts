@@ -184,7 +184,7 @@ describe('GET /api/contacts — ?account filter', () => {
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.contacts).toEqual([]);
+    expect(res.body.data).toEqual([]);
   });
 });
 
@@ -208,8 +208,8 @@ describe('GET /api/contacts — ?search filter', () => {
     const res = await request(app).get('/api/contacts?search=alice').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.contacts).toHaveLength(1);
-    expect(res.body.contacts[0].first_name).toBe('Alice');
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].first_name).toBe('Alice');
   });
 
   it('returns empty array when search matches no contacts', async () => {
@@ -218,7 +218,7 @@ describe('GET /api/contacts — ?search filter', () => {
     const res = await request(app).get('/api/contacts?search=zzznomatch').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.contacts).toEqual([]);
+    expect(res.body.data).toEqual([]);
   });
 });
 
@@ -232,7 +232,7 @@ describe('GET /api/contacts — ?accountSearch filter', () => {
 
     expect(res.status).toBe(200);
     // whitespace-only should be treated as no filter — all contacts returned
-    expect(res.body.contacts.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
   });
 });
 

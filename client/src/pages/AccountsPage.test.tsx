@@ -35,7 +35,11 @@ describe('AccountsPage', () => {
   });
 
   it('shows empty state when no accounts are returned', async () => {
-    server.use(http.get('/api/accounts', () => HttpResponse.json({ accounts: [] })));
+    server.use(
+      http.get('/api/accounts', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
+      ),
+    );
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {
       expect(screen.getByText('No accounts yet. Add one to get started.')).toBeInTheDocument();
@@ -110,7 +114,7 @@ describe('AccountsPage', () => {
       http.get('/api/accounts', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const accounts = owner === 'me' ? [ACCOUNT_1] : [ACCOUNT_1, repAccount];
-        return HttpResponse.json({ accounts });
+        return HttpResponse.json({ data: accounts, total: accounts.length, page: 1, limit: 50 });
       }),
     );
 
@@ -134,7 +138,10 @@ describe('AccountsPage', () => {
     server.use(
       http.get('/api/accounts', () =>
         HttpResponse.json({
-          accounts: [{ ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          total: 1,
+          page: 1,
+          limit: 50,
         }),
       ),
     );
@@ -163,7 +170,7 @@ describe('AccountsPage', () => {
     server.use(
       http.get('/api/accounts', ({ request }) => {
         capturedSearch = new URL(request.url).searchParams.get('search');
-        return HttpResponse.json({ accounts: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
 
@@ -186,7 +193,7 @@ describe('AccountsPage', () => {
     server.use(
       http.get('/api/accounts', ({ request }) => {
         capturedIndustry = new URL(request.url).searchParams.get('industry');
-        return HttpResponse.json({ accounts: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
 

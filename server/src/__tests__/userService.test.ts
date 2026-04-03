@@ -184,18 +184,47 @@ describe('DB constraints — users', () => {
 
 describe('listUsers', () => {
   it('returns an empty array when no users exist', async () => {
-    const users = await listUsers();
-    expect(users).toEqual([]);
+    const result = await listUsers();
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('returns all users ordered by created_at', async () => {
     await createUser({ ...BASE_USER, email: 'a@example.com' });
     await createUser({ ...BASE_USER, email: 'b@example.com' });
 
-    const users = await listUsers();
-    expect(users).toHaveLength(2);
-    expect(users[0].email).toBe('a@example.com');
-    expect(users[1].email).toBe('b@example.com');
+    const result = await listUsers();
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.data[0].email).toBe('a@example.com');
+    expect(result.data[1].email).toBe('b@example.com');
+  });
+});
+
+// ── listUsers — pagination ─────────────────────────────────────────────────────
+
+describe('listUsers — pagination', () => {
+  it('returns correct page and limit metadata', async () => {
+    await createUser({ ...BASE_USER, email: 'u1@example.com' });
+    await createUser({ ...BASE_USER, email: 'u2@example.com' });
+    await createUser({ ...BASE_USER, email: 'u3@example.com' });
+
+    const result = await listUsers({ page: 1, limit: 2 });
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(2);
+  });
+
+  it('returns the correct slice for page 2', async () => {
+    await createUser({ ...BASE_USER, email: 'first@example.com' });
+    await createUser({ ...BASE_USER, email: 'second@example.com' });
+    await createUser({ ...BASE_USER, email: 'third@example.com' });
+
+    const result = await listUsers({ page: 2, limit: 2 });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].email).toBe('third@example.com');
+    expect(result.total).toBe(3);
   });
 });
 

@@ -9,6 +9,7 @@ import type {
   CreateAccountInput,
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Columns that may be updated via updateAccount — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof Omit<UpdateAccountInput, 'contact_ids'>> = new Set([
@@ -33,7 +34,11 @@ export interface AccountRow {
   updated_at: Date;
 }
 
-/** Options for filtering the accounts list */
+/** Columns that may be used for ORDER BY in listAccounts */
+export const ACCOUNT_SORT_COLUMNS = ['created_at', 'name'] as const;
+export type AccountSortColumn = (typeof ACCOUNT_SORT_COLUMNS)[number];
+
+/** Options for filtering and paginating the accounts list */
 interface ListAccountsOptions {
   /** When provided, only accounts with this owner_id are returned */
   ownerId?: string;
@@ -47,6 +52,14 @@ interface ListAccountsOptions {
    * (case-insensitive substring match) are returned.
    */
   industry?: string;
+  /** Column to sort by; defaults to 'created_at' */
+  sort?: AccountSortColumn;
+  /** Sort direction; defaults to 'ASC' */
+  dir?: 'ASC' | 'DESC';
+  /** 1-based page number; defaults to 1 */
+  page?: number;
+  /** Records per page; defaults to 50 */
+  limit?: number;
 }
 
 /**
@@ -145,12 +158,14 @@ export async function findAccountById(id: string): Promise<AccountRow | null> {
 }
 
 /**
- * Returns all accounts, optionally filtered by owner, name search, or industry.
+ * Returns a paginated list of accounts, optionally filtered and sorted.
  *
- * @param options - Optional filters; all provided filters are combined with AND
- * @returns Array of account rows ordered by created_at ascending
+ * @param options - Filters, sort, and pagination options
+ * @returns Paginated response with account rows and total count
  */
-export async function listAccounts(options: ListAccountsOptions = {}): Promise<AccountRow[]> {
+export async function listAccounts(
+  options: ListAccountsOptions = {},
+): Promise<PaginatedResponse<AccountRow>> {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
@@ -171,12 +186,30 @@ export async function listAccounts(options: ListAccountsOptions = {}): Promise<A
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const result = await pool.query<AccountRow>(
-    `SELECT * FROM accounts ${whereClause} ORDER BY created_at ASC`,
-    values,
-  );
+  // Allowlist-validated sort column and direction (MINCRM-68)
+  const sortCol = (ACCOUNT_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
+    ? options.sort!
+    : 'created_at';
+  const sortDir = options.dir === 'DESC' ? 'DESC' : 'ASC';
 
-  return result.rows;
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM accounts ${whereClause}`, values),
+    pool.query<AccountRow>(
+      `SELECT * FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, offset],
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

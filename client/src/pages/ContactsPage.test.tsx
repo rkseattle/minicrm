@@ -37,7 +37,11 @@ describe('ContactsPage', () => {
   });
 
   it('shows empty state when no contacts are returned', async () => {
-    server.use(http.get('/api/contacts', () => HttpResponse.json({ contacts: [] })));
+    server.use(
+      http.get('/api/contacts', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
+      ),
+    );
     renderWithProviders(<ContactsPage />);
     await waitFor(() => {
       expect(screen.getByText('No contacts yet. Add one to get started.')).toBeInTheDocument();
@@ -113,7 +117,7 @@ describe('ContactsPage', () => {
       http.get('/api/contacts', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const contacts = owner === 'me' ? [CONTACT_1] : [CONTACT_1, repContact];
-        return HttpResponse.json({ contacts });
+        return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 50 });
       }),
     );
 
@@ -141,7 +145,10 @@ describe('ContactsPage', () => {
     server.use(
       http.get('/api/contacts', () =>
         HttpResponse.json({
-          contacts: [{ ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          total: 1,
+          page: 1,
+          limit: 50,
         }),
       ),
     );
@@ -170,7 +177,7 @@ describe('ContactsPage', () => {
     server.use(
       http.get('/api/contacts', ({ request }) => {
         capturedSearch = new URL(request.url).searchParams.get('search');
-        return HttpResponse.json({ contacts: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
 
@@ -193,7 +200,7 @@ describe('ContactsPage', () => {
     server.use(
       http.get('/api/contacts', ({ request }) => {
         capturedAccountSearch = new URL(request.url).searchParams.get('accountSearch');
-        return HttpResponse.json({ contacts: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
 

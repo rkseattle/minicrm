@@ -9,16 +9,13 @@ import type {
   CreateActivityInput,
   UpdateActivityInput,
 } from '@shared/schemas/activitySchema.js';
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the activities list */
 export const ACTIVITIES_QUERY_KEY = ['activities'] as const;
 
 /** React Query cache key for the my-tasks list */
 export const MY_TASKS_QUERY_KEY = ['my-tasks'] as const;
-
-interface ActivitiesResponse {
-  activities: ActivityResponse[];
-}
 
 interface ActivitySingleResponse {
   activity: ActivityResponse;
@@ -36,7 +33,7 @@ interface MyTasksResponse {
   tasks: MyTaskResponse[];
 }
 
-/** Filters supported by the list endpoint */
+/** Filters and pagination options for the activities list endpoint */
 export interface ListActivitiesFilters {
   /** Filter by associated contact UUID */
   contactId?: string;
@@ -46,23 +43,31 @@ export interface ListActivitiesFilters {
   dealId?: string;
   /** When 'me', only the current user's activities are returned */
   owner?: 'me';
+  /** 1-based page number */
+  page?: number;
+  /** Records per page */
+  limit?: number;
 }
 
 /**
- * Returns activities, optionally filtered by parent record or owner.
+ * Returns a paginated list of activities, optionally filtered by parent record or owner.
  *
- * @param filters - Optional filters for the list query
+ * @param filters - Optional filters and pagination for the list query
  */
 export async function listActivities(
   filters: ListActivitiesFilters = {},
-): Promise<ActivitiesResponse> {
+): Promise<PaginatedResponse<ActivityResponse>> {
   const params: Record<string, string> = {};
   if (filters.contactId) params['contact'] = filters.contactId;
   if (filters.accountId) params['account'] = filters.accountId;
   if (filters.dealId) params['deal'] = filters.dealId;
   if (filters.owner) params['owner'] = filters.owner;
+  if (filters.page !== undefined) params['page'] = String(filters.page);
+  if (filters.limit !== undefined) params['limit'] = String(filters.limit);
 
-  const response = await apiClient.get<ActivitiesResponse>('/activities', { params });
+  const response = await apiClient.get<PaginatedResponse<ActivityResponse>>('/activities', {
+    params,
+  });
   return response.data;
 }
 

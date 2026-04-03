@@ -77,9 +77,9 @@ export default function PipelineBoardPage() {
   /** Map of account_id → name for O(1) lookup in deal cards */
   const accountNames = useMemo(() => {
     const map = new Map<string, string>();
-    (accountsData?.accounts ?? []).forEach((a) => map.set(a.id, a.name));
+    (accountsData?.data ?? []).forEach((a) => map.set(a.id, a.name));
     return map;
-  }, [accountsData?.accounts]);
+  }, [accountsData?.data]);
 
   /**
    * Deals grouped by stage, preserving PIPELINE_STAGES order.
@@ -88,12 +88,12 @@ export default function PipelineBoardPage() {
   const dealsByStage = useMemo(() => {
     const grouped = new Map<PipelineStage, DealResponse[]>();
     PIPELINE_STAGES.forEach((stage) => grouped.set(stage, []));
-    (dealsData?.deals ?? []).forEach((deal) => {
+    (dealsData?.data ?? []).forEach((deal) => {
       if (!showClosed && (CLOSED_STAGES as PipelineStage[]).includes(deal.stage)) return;
       grouped.get(deal.stage)?.push(deal);
     });
     return grouped;
-  }, [dealsData?.deals, showClosed]);
+  }, [dealsData?.data, showClosed]);
 
   const stageMutation = useMutation({
     mutationFn: ({

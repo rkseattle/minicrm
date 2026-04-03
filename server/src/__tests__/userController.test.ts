@@ -69,13 +69,13 @@ describe('GET /api/users', () => {
   it('returns 200 and a users array for admin', async () => {
     const res = await request(app).get('/api/users').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.users)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 
   it('never exposes password_hash in the response', async () => {
     const res = await request(app).get('/api/users').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
-    for (const user of res.body.users) {
+    for (const user of res.body.data) {
       expect(user).not.toHaveProperty('password_hash');
     }
   });

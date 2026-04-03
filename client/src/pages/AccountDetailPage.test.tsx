@@ -98,7 +98,7 @@ describe('AccountDetailPage', () => {
   it('renders the empty state when no contacts are linked', async () => {
     server.use(
       http.get('/api/contacts', () => {
-        return HttpResponse.json({ contacts: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
     renderAccountDetail();

@@ -33,9 +33,7 @@ interface ActiveUsersResponse {
   users: ActiveUser[];
 }
 
-interface UsersResponse {
-  users: UserResponse[];
-}
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 interface UserSingleResponse {
   user: UserResponse;
@@ -66,11 +64,28 @@ export async function listActiveUsers(): Promise<ActiveUsersResponse> {
   return response.data;
 }
 
+/** Parameters for paginating the users list */
+export interface ListUsersParams {
+  /** 1-based page number */
+  page?: number;
+  /** Records per page */
+  limit?: number;
+}
+
 /**
- * Returns all users. Admin only.
+ * Returns a paginated list of users. Admin only.
+ *
+ * @param params - Optional pagination parameters
  */
-export async function listUsers(): Promise<UsersResponse> {
-  const response = await apiClient.get<UsersResponse>('/users');
+export async function listUsers(
+  params: ListUsersParams = {},
+): Promise<PaginatedResponse<UserResponse>> {
+  const queryParams: Record<string, string> = {};
+  if (params.page !== undefined) queryParams.page = String(params.page);
+  if (params.limit !== undefined) queryParams.limit = String(params.limit);
+  const response = await apiClient.get<PaginatedResponse<UserResponse>>('/users', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+  });
   return response.data;
 }
 

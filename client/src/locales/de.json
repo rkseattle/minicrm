@@ -446,5 +446,12 @@
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Bitte legen Sie Ihr Passwort fest, bevor Sie sich anmelden.",
     "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+  },
+  "pagination": {
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pageOf": "Seite {{page}} von {{total}}",
+    "showing": "{{from}}–{{to}} von {{total}} angezeigt",
+    "loadMore": "Mehr laden"
   }
 }

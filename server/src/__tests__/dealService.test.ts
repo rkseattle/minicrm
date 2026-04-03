@@ -168,18 +168,20 @@ describe('findDealById', () => {
 
 describe('listDeals', () => {
   it('returns an empty array when no deals exist', async () => {
-    const deals = await listDeals();
-    expect(deals).toEqual([]);
+    const result = await listDeals();
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('returns all deals ordered by created_at', async () => {
     await createDeal({ ...BASE_DEAL, name: 'Alpha Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Beta Deal', owner_id: ownerId });
 
-    const deals = await listDeals();
-    expect(deals).toHaveLength(2);
-    expect(deals[0].name).toBe('Alpha Deal');
-    expect(deals[1].name).toBe('Beta Deal');
+    const result = await listDeals();
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.data[0].name).toBe('Alpha Deal');
+    expect(result.data[1].name).toBe('Beta Deal');
   });
 
   it('filters by ownerId when provided', async () => {
@@ -188,9 +190,9 @@ describe('listDeals', () => {
     await createDeal({ ...BASE_DEAL, name: 'My Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Their Deal', owner_id: other.id });
 
-    const mine = await listDeals({ ownerId });
-    expect(mine).toHaveLength(1);
-    expect(mine[0].name).toBe('My Deal');
+    const result = await listDeals({ ownerId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('My Deal');
   });
 
   it('filters by accountId when provided', async () => {
@@ -202,9 +204,45 @@ describe('listDeals', () => {
     });
     await createDeal({ ...BASE_DEAL, name: 'No Account Deal', owner_id: ownerId });
 
-    const accountDeals = await listDeals({ accountId });
-    expect(accountDeals).toHaveLength(1);
-    expect(accountDeals[0].name).toBe('Account Deal');
+    const result = await listDeals({ accountId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('Account Deal');
+  });
+});
+
+// ── listDeals — pagination ──────────────────────────────────────────────────────
+
+describe('listDeals — pagination', () => {
+  it('returns correct page and limit metadata', async () => {
+    await createDeal({ ...BASE_DEAL, name: 'Deal 1', owner_id: ownerId });
+    await createDeal({ ...BASE_DEAL, name: 'Deal 2', owner_id: ownerId });
+    await createDeal({ ...BASE_DEAL, name: 'Deal 3', owner_id: ownerId });
+
+    const result = await listDeals({ page: 1, limit: 2 });
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(2);
+  });
+
+  it('returns the correct slice for page 2', async () => {
+    await createDeal({ ...BASE_DEAL, name: 'First Deal', owner_id: ownerId });
+    await createDeal({ ...BASE_DEAL, name: 'Second Deal', owner_id: ownerId });
+    await createDeal({ ...BASE_DEAL, name: 'Third Deal', owner_id: ownerId });
+
+    const result = await listDeals({ page: 2, limit: 2 });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('Third Deal');
+    expect(result.total).toBe(3);
+  });
+
+  it('falls back to created_at sort for invalid sort column', async () => {
+    await createDeal({ ...BASE_DEAL, name: 'Safe Deal', owner_id: ownerId });
+
+    const result = await listDeals({
+      sort: 'evil; DROP TABLE deals;--' as unknown as 'created_at',
+    });
+    expect(result.data).toHaveLength(1);
   });
 });
 

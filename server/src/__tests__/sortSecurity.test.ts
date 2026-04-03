@@ -96,7 +96,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
       .set('Cookie', authCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.contacts)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 });
 
@@ -130,7 +130,7 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
       .set('Cookie', authCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.accounts)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 });
 
@@ -164,7 +164,7 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
       .set('Cookie', authCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.deals)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 });
 
@@ -198,6 +198,6 @@ describe('MINCRM-73 — GET /api/activities sort injection', () => {
       .set('Cookie', authCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.activities)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
 });

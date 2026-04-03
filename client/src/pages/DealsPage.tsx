@@ -18,6 +18,14 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { listDeals, createDeal, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { Pagination } from '@/components/ui/Pagination.js';
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  PAGINATION_MAX_LIMIT,
+} from '@shared/schemas/paginationSchema.js';
+
+/** Max records fetched for the board view — fetches all by capping at the server max */
+const PAGINATION_MAX_BOARD_LIMIT = PAGINATION_MAX_LIMIT;
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
@@ -26,7 +34,6 @@ import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
-import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
@@ -85,6 +92,7 @@ export default function DealsPage() {
   // ── List view state ────────────────────────────────────────────────────────
   const [searchParams, setSearchParams] = useSearchParams();
   const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+  const [listPage, setListPage] = useState(1);
 
   /**
    * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
@@ -128,13 +136,54 @@ export default function DealsPage() {
   }, [showForm]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
-  const dealsQueryKey =
-    ownerFilter === 'me' ? ([...DEALS_QUERY_KEY, { owner: 'me' }] as const) : DEALS_QUERY_KEY;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: dealsQueryKey,
-    queryFn: () => listDeals(ownerFilter === 'me' ? 'me' : undefined),
+  // Board view: fetch ALL deals (no pagination — board needs every deal in every column).
+  // List view: fetch one page at a time with server-side sort.
+  const boardQueryKey =
+    ownerFilter === 'me'
+      ? ([...DEALS_QUERY_KEY, 'board', { owner: 'me' }] as const)
+      : ([...DEALS_QUERY_KEY, 'board'] as const);
+
+  const listQueryKey = [
+    ...DEALS_QUERY_KEY,
+    'list',
+    { owner: ownerFilter === 'me' ? 'me' : undefined, sort: sortCol, dir: sortDir, page: listPage },
+  ] as const;
+
+  const {
+    data: boardData,
+    isLoading: boardLoading,
+    isError: boardError,
+  } = useQuery({
+    queryKey: boardQueryKey,
+    queryFn: () =>
+      listDeals({
+        owner: ownerFilter === 'me' ? 'me' : undefined,
+        limit: PAGINATION_MAX_BOARD_LIMIT,
+      }),
+    enabled: viewMode === 'board',
   });
+
+  const {
+    data: listData,
+    isLoading: listLoading,
+    isError: listError,
+  } = useQuery({
+    queryKey: listQueryKey,
+    queryFn: () =>
+      listDeals({
+        owner: ownerFilter === 'me' ? 'me' : undefined,
+        sort: sortCol,
+        dir: sortDir === 'ascending' ? 'asc' : 'desc',
+        page: listPage,
+        limit: PAGINATION_DEFAULT_LIMIT,
+      }),
+    enabled: viewMode === 'list',
+  });
+
+  // Unified aliases used by shared code below
+  const isLoading = viewMode === 'board' ? boardLoading : listLoading;
+  const isError = viewMode === 'board' ? boardError : listError;
 
   const { data: accountsData } = useQuery({
     queryKey: ['accounts'],
@@ -146,7 +195,7 @@ export default function DealsPage() {
     queryFn: listActiveUsers,
   });
 
-  const accounts: AccountResponse[] = accountsData?.accounts ?? [];
+  const accounts = useMemo(() => accountsData?.data ?? [], [accountsData?.data]);
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   /** Map of account_id → name for O(1) lookup in deal cards */
@@ -161,45 +210,36 @@ export default function DealsPage() {
   /**
    * Deals grouped by stage, preserving PIPELINE_STAGES order.
    * When showClosed is false, terminal-stage deals are omitted from their columns.
+   * Uses boardData since the board fetches all deals in a single page.
    */
   const dealsByStage = useMemo(() => {
     const grouped = new Map<PipelineStage, DealResponse[]>();
     PIPELINE_STAGES.forEach((stage) => grouped.set(stage, []));
-    (data?.deals ?? []).forEach((deal) => {
+    (boardData?.data ?? []).forEach((deal) => {
       if (!showClosed && (CLOSED_STAGES as PipelineStage[]).includes(deal.stage)) return;
       grouped.get(deal.stage)?.push(deal);
     });
     return grouped;
-  }, [data?.deals, showClosed]);
+  }, [boardData?.data, showClosed]);
 
   /**
    * Per-stage count and total value for the open pipeline stages.
-   * Computed from the already-fetched deals list — no extra API call needed.
+   * Computed from the already-fetched list page — no extra API call needed.
    * Closed Won and Closed Lost are excluded (not part of the active pipeline).
-   * Respects the active ownerFilter since it derives from `data.deals`.
+   * Note: summary reflects only the current page's deals when paginated.
    */
   const pipelineSummary = useMemo(() => {
     if (viewMode !== 'list') return [];
-    const deals = data?.deals ?? [];
+    const deals = listData?.data ?? [];
     return OPEN_PIPELINE_STAGES.map((stage) => {
       const stageDeals = deals.filter((d) => d.stage === stage);
       const total = stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
       return { stage, count: stageDeals.length, total };
     });
-  }, [data?.deals, viewMode]);
+  }, [listData?.data, viewMode]);
 
-  const sortedDeals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
-    if (sortCol === 'name') {
-      const cmp = a.name.localeCompare(b.name);
-      return sortDir === 'ascending' ? cmp : -cmp;
-    }
-    // ISO YYYY-MM-DD strings sort correctly with relational operators
-    const aDate = a.close_date ?? '';
-    const bDate = b.close_date ?? '';
-    if (aDate === bDate) return 0;
-    const cmp = aDate < bDate ? -1 : 1;
-    return sortDir === 'ascending' ? cmp : -cmp;
-  });
+  // Server handles sorting and pagination — use data as-is
+  const sortedDeals: DealResponse[] = listData?.data ?? [];
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -263,6 +303,7 @@ export default function DealsPage() {
         next.delete(id);
         return next;
       });
+      // Invalidate all deals queries (board and list variants)
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
       if ((CLOSED_STAGES as PipelineStage[]).includes(stage)) {
@@ -313,7 +354,7 @@ export default function DealsPage() {
   // ── List sort handler ──────────────────────────────────────────────────────
 
   /**
-   * Toggles sort column/direction.
+   * Toggles sort column/direction and resets to page 1.
    *
    * @param col - The column header that was clicked
    */
@@ -324,6 +365,7 @@ export default function DealsPage() {
       setSortCol(col);
       setSortDir('ascending');
     }
+    setListPage(1);
   }
 
   /** Resolves an account_id to its display name */
@@ -616,6 +658,14 @@ export default function DealsPage() {
                       ))}
                     </tbody>
                   </table>
+                )}
+                {listData && listData.total > listData.limit && (
+                  <Pagination
+                    page={listData.page}
+                    limit={listData.limit}
+                    total={listData.total}
+                    onPageChange={setListPage}
+                  />
                 )}
               </div>
             )}

@@ -113,18 +113,20 @@ describe('findAccountById', () => {
 
 describe('listAccounts', () => {
   it('returns an empty array when no accounts exist', async () => {
-    const accounts = await listAccounts();
-    expect(accounts).toEqual([]);
+    const result = await listAccounts();
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('returns all accounts ordered by created_at', async () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Alpha Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Beta Corp', owner_id: ownerId });
 
-    const accounts = await listAccounts();
-    expect(accounts).toHaveLength(2);
-    expect(accounts[0].name).toBe('Alpha Corp');
-    expect(accounts[1].name).toBe('Beta Corp');
+    const result = await listAccounts();
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.data[0].name).toBe('Alpha Corp');
+    expect(result.data[1].name).toBe('Beta Corp');
   });
 
   it('filters by ownerId when provided', async () => {
@@ -136,9 +138,9 @@ describe('listAccounts', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine LLC', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Theirs LLC', owner_id: other.id });
 
-    const mine = await listAccounts({ ownerId });
-    expect(mine).toHaveLength(1);
-    expect(mine[0].name).toBe('Mine LLC');
+    const result = await listAccounts({ ownerId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('Mine LLC');
   });
 });
 
@@ -150,14 +152,14 @@ describe('listAccounts — search filter', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Beta Inc', owner_id: ownerId });
 
     const results = await listAccounts({ search: 'acme' });
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Acme Corp');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].name).toBe('Acme Corp');
   });
 
   it('returns empty array when search matches nothing', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
     const results = await listAccounts({ search: 'zzznomatch' });
-    expect(results).toHaveLength(0);
+    expect(results.data).toHaveLength(0);
   });
 
   it('combines search with ownerId filter', async () => {
@@ -166,8 +168,8 @@ describe('listAccounts — search filter', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: other.id });
 
     const results = await listAccounts({ ownerId, search: 'Mine' });
-    expect(results).toHaveLength(1);
-    expect(results[0].owner_id).toBe(ownerId);
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].owner_id).toBe(ownerId);
   });
 });
 
@@ -187,8 +189,8 @@ describe('listAccounts — industry filter', () => {
     });
 
     const results = await listAccounts({ industry: 'technology' });
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Tech Co');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].name).toBe('Tech Co');
   });
 
   it('returns accounts matching a partial industry substring', async () => {
@@ -206,14 +208,14 @@ describe('listAccounts — industry filter', () => {
     });
 
     const results = await listAccounts({ industry: 'tech' });
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Tech Co');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].name).toBe('Tech Co');
   });
 
   it('returns empty array when industry matches nothing', async () => {
     await createAccount({ ...BASE_ACCOUNT, industry: 'Technology', owner_id: ownerId });
     const results = await listAccounts({ industry: 'zzznomatch' });
-    expect(results).toHaveLength(0);
+    expect(results.data).toHaveLength(0);
   });
 
   it('combines industry filter with ownerId filter', async () => {
@@ -232,8 +234,53 @@ describe('listAccounts — industry filter', () => {
     });
 
     const results = await listAccounts({ ownerId, industry: 'Technology' });
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Mine Tech');
+    expect(results.data).toHaveLength(1);
+    expect(results.data[0].name).toBe('Mine Tech');
+  });
+});
+
+// ── listAccounts — pagination ───────────────────────────────────────────────────
+
+describe('listAccounts — pagination', () => {
+  it('returns correct page and limit metadata', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: 'A Corp', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'B Corp', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'C Corp', owner_id: ownerId });
+
+    const result = await listAccounts({ page: 1, limit: 2 });
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(2);
+  });
+
+  it('returns the correct slice for page 2', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: 'First', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Second', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Third', owner_id: ownerId });
+
+    const result = await listAccounts({ page: 2, limit: 2 });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('Third');
+    expect(result.total).toBe(3);
+  });
+
+  it('sorts by name ascending when sort=name dir=ASC', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: 'Zebra Inc', owner_id: ownerId });
+    await createAccount({ ...BASE_ACCOUNT, name: 'Acme Corp', owner_id: ownerId });
+
+    const result = await listAccounts({ sort: 'name', dir: 'ASC' });
+    expect(result.data[0].name).toBe('Acme Corp');
+    expect(result.data[1].name).toBe('Zebra Inc');
+  });
+
+  it('falls back to created_at sort for invalid sort column', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: 'Safe Co', owner_id: ownerId });
+
+    const result = await listAccounts({
+      sort: 'invalid; DROP TABLE accounts;--' as unknown as 'created_at',
+    });
+    expect(result.data).toHaveLength(1);
   });
 });
 

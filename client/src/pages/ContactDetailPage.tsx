@@ -58,7 +58,7 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  const accounts = accountsData?.accounts ?? [];
+  const accounts = accountsData?.data ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
   const linkedDeals = contactDealsData?.deals ?? [];
