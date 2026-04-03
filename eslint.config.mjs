@@ -173,6 +173,18 @@ const testConfig = {
   },
 };
 
+// ── Scripts (seed-demo, remove-demo, etc.) — use scripts tsconfig ─────────────
+const scriptsConfig = {
+  files: ['scripts/**/*.ts'],
+  languageOptions: {
+    parser: tsParser,
+    parserOptions: {
+      project: './tsconfig.scripts.json',
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+};
+
 export default [
   { ignores: IGNORED },
   baseConfig,
@@ -182,6 +194,7 @@ export default [
   swaggerDevConfig,
   routeJsdocConfig,
   testConfig,
+  scriptsConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,
 ];

@@ -11,7 +11,9 @@
     "prepare": "husky || true",
     "typecheck": "npm run typecheck --workspace=minicrm-server && npm run typecheck --workspace=minicrm-client",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "remove:demo": "tsx scripts/remove-demo.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
