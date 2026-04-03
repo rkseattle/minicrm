@@ -158,6 +158,17 @@ describe('ActivityForm', () => {
     expect(screen.getByTestId('activity-outcome')).toBeInTheDocument();
   });
 
+  it('shows direction and outcome fields when type is Email', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Email' } });
+
+    expect(screen.getByTestId('activity-direction-select')).toBeInTheDocument();
+    expect(screen.getByTestId('activity-outcome')).toBeInTheDocument();
+  });
+
   it('hides direction and outcome fields when type is Note', () => {
     renderWithProviders(
       <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
