@@ -308,7 +308,13 @@ export default function DealsPage() {
               variant="secondary"
               size="sm"
               data-testid="deals-view-toggle"
-              onClick={() => setViewMode((m) => (m === 'board' ? 'list' : 'board'))}
+              onClick={() => {
+                // Reset owner filter when returning to board so the board always shows all deals
+                setViewMode((m) => {
+                  if (m === 'list') setOwnerFilter('all');
+                  return m === 'board' ? 'list' : 'board';
+                });
+              }}
             >
               {viewMode === 'board' ? t('deals.viewList') : t('deals.viewBoard')}
             </Button>
