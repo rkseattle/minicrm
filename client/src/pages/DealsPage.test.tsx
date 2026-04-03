@@ -172,8 +172,9 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     expect(screen.queryByTestId('pipeline-board')).not.toBeInTheDocument();
-    // The owner filter select is only visible in list view
-    expect(screen.getByTestId('deals-owner-filter')).toBeInTheDocument();
+    // The owner toggle is only visible in list view
+    expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
+    expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
   });
 
   it('renders a deal row from the API in list view', async () => {
@@ -232,7 +233,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('shows the owner filter select defaulting to all in list view', async () => {
+  it('shows the owner toggle defaulting to All in list view', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
     await waitFor(() => {
@@ -240,12 +241,15 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     await waitFor(() => {
-      const filter = screen.getByTestId<HTMLSelectElement>('deals-owner-filter');
-      expect(filter.value).toBe('all');
+      expect(screen.getByTestId('deals-owner-filter-all')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('deals-owner-filter-mine')).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
     });
   });
 
-  it('filters deals to current user when owner filter is set to me in list view', async () => {
+  it('filters deals to current user when Mine toggle is clicked in list view', async () => {
     const repDeal = {
       ...DEAL_1,
       id: '00000000-0000-0000-0000-000000000303',
@@ -271,7 +275,7 @@ describe('DealsPage', () => {
       expect(screen.getByText(repDeal.name)).toBeInTheDocument();
     });
 
-    await user.selectOptions(screen.getByTestId('deals-owner-filter'), 'me');
+    await user.click(screen.getByTestId('deals-owner-filter-mine'));
 
     await waitFor(() => {
       expect(screen.queryByText(repDeal.name)).not.toBeInTheDocument();
@@ -316,11 +320,11 @@ describe('DealsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
 
-    // Switch to list view and set filter to "me"
+    // Switch to list view and set filter to "mine"
     await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
     await user.click(screen.getByTestId('deals-view-toggle'));
-    await waitFor(() => expect(screen.getByTestId('deals-owner-filter')).toBeInTheDocument());
-    await user.selectOptions(screen.getByTestId('deals-owner-filter'), 'me');
+    await waitFor(() => expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-owner-filter-mine'));
 
     // Switch back to board — filter should be reset to all
     await user.click(screen.getByTestId('deals-view-toggle'));
@@ -334,8 +338,7 @@ describe('DealsPage', () => {
     // Switch to list again to confirm filter was reset
     await user.click(screen.getByTestId('deals-view-toggle'));
     await waitFor(() => {
-      const filter = screen.getByTestId<HTMLSelectElement>('deals-owner-filter');
-      expect(filter.value).toBe('all');
+      expect(screen.getByTestId('deals-owner-filter-all')).toHaveAttribute('aria-pressed', 'true');
     });
   });
 
@@ -353,6 +356,7 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pipeline-board')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('deals-owner-filter')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('deals-owner-filter-all')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('deals-owner-filter-mine')).not.toBeInTheDocument();
   });
 });

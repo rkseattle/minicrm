@@ -438,6 +438,13 @@
     "validationAssigneeRequired": "Veuillez sélectionner un utilisateur spécifique pour assigner la tâche.",
     "validationMessageRequired": "Le message de notification est requis."
   },
+  "common": {
+    "ownerToggle": {
+      "label": "Filtrer par propriétaire",
+      "all": "Tous",
+      "mine": "Les miens"
+    }
+  },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",
     "AUTH_ACCOUNT_DEACTIVATED": "Votre compte a été désactivé. Contactez un administrateur.",

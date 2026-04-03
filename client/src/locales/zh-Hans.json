@@ -438,6 +438,13 @@
     "validationAssigneeRequired": "请选择指定用户来分配任务。",
     "validationMessageRequired": "通知消息为必填项。"
   },
+  "common": {
+    "ownerToggle": {
+      "label": "按负责人筛选",
+      "all": "全部",
+      "mine": "我的"
+    }
+  },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",
     "AUTH_ACCOUNT_DEACTIVATED": "您的帐户已被停用。请联系管理员。",
