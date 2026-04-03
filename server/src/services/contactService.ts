@@ -201,17 +201,17 @@ export async function listContacts(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
-  // Run count and data queries in parallel
-  const countResult = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM contacts c ${needsAccountJoin ? 'LEFT JOIN accounts a ON c.account_id = a.id' : ''} ${whereClause}`,
-    values,
-  );
-
-  values.push(limit, offset);
-  const dataResult = await pool.query<ContactRow>(
-    `SELECT c.* ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length - 1} OFFSET $${values.length}`,
-    values,
-  );
+  // Run count and data queries in parallel (MINCRM-68)
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM contacts c ${needsAccountJoin ? 'LEFT JOIN accounts a ON c.account_id = a.id' : ''} ${whereClause}`,
+      values,
+    ),
+    pool.query<ContactRow>(
+      `SELECT c.* ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, offset],
+    ),
+  ]);
 
   return {
     data: dataResult.rows,
