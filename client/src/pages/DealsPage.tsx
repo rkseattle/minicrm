@@ -328,20 +328,18 @@ export default function DealsPage() {
               size="sm"
               data-testid="deals-view-toggle"
               onClick={() => {
-                setViewMode((m) => {
-                  // Reset owner filter when returning to board so the board always shows all deals
-                  if (m === 'list') {
-                    setSearchParams(
-                      (prev) => {
-                        const next = new URLSearchParams(prev);
-                        next.delete('owner');
-                        return next;
-                      },
-                      { replace: true },
-                    );
-                  }
-                  return m === 'board' ? 'list' : 'board';
-                });
+                // Reset owner filter when returning to board so the board always shows all deals
+                if (viewMode === 'list') {
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete('owner');
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }
+                setViewMode((m) => (m === 'board' ? 'list' : 'board'));
               }}
             >
               {viewMode === 'board' ? t('deals.viewList') : t('deals.viewBoard')}

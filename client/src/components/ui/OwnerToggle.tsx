@@ -42,7 +42,7 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
         type="button"
         data-testid={`${testIdPrefix}-all`}
         aria-pressed={value === 'all'}
-        onClick={() => onChange('all')}
+        onClick={() => value !== 'all' && onChange('all')}
         className={`${BASE} ${value === 'all' ? ACTIVE : INACTIVE} rounded-l-md`}
       >
         {t('common.ownerToggle.all')}
@@ -51,7 +51,7 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
         type="button"
         data-testid={`${testIdPrefix}-mine`}
         aria-pressed={value === 'me'}
-        onClick={() => onChange('me')}
+        onClick={() => value !== 'me' && onChange('me')}
         className={`${BASE} ${value === 'me' ? ACTIVE : INACTIVE} -ms-px rounded-r-md`}
       >
         {t('common.ownerToggle.mine')}
