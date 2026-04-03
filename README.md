@@ -118,6 +118,32 @@ Migrations run automatically on server startup. To run manually:
 npm run migrate --workspace=minicrm-server
 ```
 
+## Demo Data (MINCRM-102)
+
+Seed realistic demo data into any MiniCRM environment for local development or live demos:
+
+```bash
+# Insert demo data (idempotent — safe to check before running)
+npm run seed:demo
+
+# Preview what would be inserted without writing to the DB
+npm run seed:demo -- --dry-run
+
+# Remove all demo data (leaves real data untouched)
+npm run remove:demo
+```
+
+Both scripts read database connection from `.env` (`DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`).
+
+Demo data volume:
+
+- 2 accounts (Acme Corporation, Globex Industries)
+- 20 contacts (10 per account)
+- 10 deals across Prospecting, Qualification, Proposal, Negotiation, Closed Won, and Closed Lost stages
+- 15 activities (calls, emails, notes, meetings, tasks) linked to deals and contacts
+
+All demo records have `is_demo = true`. The remove script deletes **only** rows where `is_demo = true`, so real data is never affected. Running the seed script twice is a no-op if demo data already exists.
+
 ## Implemented Features
 
 ### Auth (MINCRM-21–23, MINCRM-29)
