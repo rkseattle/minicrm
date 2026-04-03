@@ -9,7 +9,7 @@ import { Routes, Route } from 'react-router-dom';
 import AdminRoute from './AdminRoute.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { REP_USER } from '../test/msw/handlers.js';
+import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 /** Renders AdminRoute with a child Outlet, a dashboard fallback, and a login fallback */
 function renderAdminRoute(initialEntries = ['/admin']) {
@@ -26,6 +26,17 @@ function renderAdminRoute(initialEntries = ['/admin']) {
 }
 
 describe('AdminRoute', () => {
+  it('shows a loading indicator while the auth check is in progress', () => {
+    server.use(
+      http.get('/api/auth/me', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return HttpResponse.json({ user: ADMIN_USER });
+      }),
+    );
+    renderAdminRoute();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
+  });
+
   it('renders child routes when user is an admin', async () => {
     renderAdminRoute();
     await waitFor(() => {
