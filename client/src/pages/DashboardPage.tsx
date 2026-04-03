@@ -173,19 +173,19 @@ export default function DashboardPage() {
                     <tr>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('dashboard.columnStage')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('dashboard.columnDealCount')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('dashboard.columnValue')}
                       </th>
@@ -200,13 +200,13 @@ export default function DashboardPage() {
                           )}
                         </td>
                         <td
-                          className="px-6 py-4 text-sm text-gray-600 text-right"
+                          className="px-6 py-4 text-sm text-gray-600 text-end"
                           data-testid={`stage-count-${row.stage}`}
                         >
                           {row.count}
                         </td>
                         <td
-                          className="px-6 py-4 text-sm text-gray-600 text-right"
+                          className="px-6 py-4 text-sm text-gray-600 text-end"
                           data-testid={`stage-value-${row.stage}`}
                         >
                           {formatCurrency(row.value, i18n.language)}

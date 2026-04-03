@@ -469,7 +469,7 @@ export default function AutomationRulesPage() {
 
             {/* Stage selector — only for deal_stage_changed */}
             {form.trigger_type === 'deal_stage_changed' && (
-              <div className="mb-4 ml-4">
+              <div className="mb-4 ms-4">
                 <label
                   htmlFor="trigger-stage"
                   className="block text-sm font-medium text-gray-700 mb-1"
@@ -514,7 +514,7 @@ export default function AutomationRulesPage() {
 
             {/* create_task action fields */}
             {form.action_type === 'create_task' && (
-              <div className="ml-4 space-y-4 mb-4">
+              <div className="ms-4 space-y-4 mb-4">
                 {/* Task subject */}
                 <div>
                   <label
@@ -625,7 +625,7 @@ export default function AutomationRulesPage() {
                     className="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     data-testid="due-date-offset-input"
                   />
-                  <span className="ml-2 text-sm text-gray-500">
+                  <span className="ms-2 text-sm text-gray-500">
                     {t('automation.dueDateOffsetUnit')}
                   </span>
                 </div>
@@ -644,7 +644,7 @@ export default function AutomationRulesPage() {
 
             {/* send_notification action fields */}
             {form.action_type === 'send_notification' && (
-              <div className="ml-4 mb-4">
+              <div className="ms-4 mb-4">
                 <label
                   htmlFor="notification-message"
                   className="block text-sm font-medium text-gray-700 mb-1"

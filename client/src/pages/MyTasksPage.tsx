@@ -154,31 +154,31 @@ export default function MyTasksPage() {
                     <tr>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('myTasks.columnSubject')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('myTasks.columnType')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('myTasks.columnDueDate')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('myTasks.columnRecord')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('myTasks.columnActions')}
                       </th>
@@ -227,7 +227,7 @@ export default function MyTasksPage() {
                                 {formatLocalDate(task.due_date, i18n.language)}
                                 {overdue && (
                                   <span
-                                    className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+                                    className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
                                     data-testid={`task-overdue-badge-${task.id}`}
                                   >
                                     {t('myTasks.overdue')}

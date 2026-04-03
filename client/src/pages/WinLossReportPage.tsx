@@ -357,13 +357,13 @@ export default function WinLossReportPage() {
                     <tr>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('reports.winLoss.columnReason')}
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
                         {t('reports.winLoss.columnCount')}
                       </th>
@@ -376,7 +376,7 @@ export default function WinLossReportPage() {
                           {row.reason}
                         </td>
                         <td
-                          className="px-6 py-4 text-sm text-gray-600 text-right"
+                          className="px-6 py-4 text-sm text-gray-600 text-end"
                           data-testid={`loss-reason-count-${row.reason}`}
                         >
                           {row.count}

@@ -341,7 +341,7 @@ export default function ContactsPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                       aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
                     >
                       <button
@@ -355,7 +355,7 @@ export default function ContactsPage() {
                       </button>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                       aria-sort={sortCol === 'email' ? sortDir : 'none'}
                     >
                       <button
@@ -368,16 +368,16 @@ export default function ContactsPage() {
                         {sortCol === 'email' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
                       </button>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnPhone')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnTitle')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnDepartment')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {t('contacts.columnOwner')}
                     </th>
                   </tr>

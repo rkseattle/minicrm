@@ -100,7 +100,7 @@ export function UserActionsMenu({
                 type="button"
                 role="menuitem"
                 data-testid={`make-admin-${user.id}`}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onRoleChange(user.id, 'admin'))}
               >
                 {t('users.actionMakeAdmin')}
@@ -110,7 +110,7 @@ export function UserActionsMenu({
                 type="button"
                 role="menuitem"
                 data-testid={`make-rep-${user.id}`}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onRoleChange(user.id, 'rep'))}
               >
                 {t('users.actionMakeRep')}
@@ -122,7 +122,7 @@ export function UserActionsMenu({
                 type="button"
                 role="menuitem"
                 data-testid={`set-password-toggle-${user.id}`}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onSetPassword(user.id))}
               >
                 {t('users.actionSetPassword')}
@@ -137,7 +137,7 @@ export function UserActionsMenu({
                 type="button"
                 role="menuitem"
                 data-testid={`reactivate-${user.id}`}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onReactivate(user.id))}
               >
                 {t('users.actionReactivate')}
@@ -147,7 +147,7 @@ export function UserActionsMenu({
                 type="button"
                 role="menuitem"
                 data-testid={`deactivate-${user.id}`}
-                className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-red-50"
                 onClick={() => closeAndRun(() => onDeactivate(user.id))}
               >
                 {t('users.actionDeactivate')}

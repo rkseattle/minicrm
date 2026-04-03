@@ -582,7 +582,7 @@ export default function DealsPage() {
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th
-                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                          className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                           aria-sort={sortCol === 'name' ? sortDir : 'none'}
                         >
                           <button
@@ -595,14 +595,14 @@ export default function DealsPage() {
                             {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
                           </button>
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                           {t('deals.columnStage')}
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                           {t('deals.columnValue')}
                         </th>
                         <th
-                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                          className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                           aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
                         >
                           <button
@@ -615,10 +615,10 @@ export default function DealsPage() {
                             {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
                           </button>
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                           {t('deals.columnAccount')}
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                           {t('deals.columnOwner')}
                         </th>
                       </tr>
