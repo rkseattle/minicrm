@@ -298,6 +298,47 @@ describe('DealsPage', () => {
     });
   });
 
+  it('resets owner filter to all when switching back to board view', async () => {
+    const repDeal = {
+      ...DEAL_1,
+      id: '00000000-0000-0000-0000-000000000303',
+      name: 'Rep Deal',
+      owner_id: '00000000-0000-0000-0000-000000000002',
+    };
+    server.use(
+      http.get('/api/deals', ({ request }) => {
+        const owner = new URL(request.url).searchParams.get('owner');
+        const deals = owner === 'me' ? [DEAL_1] : [DEAL_1, repDeal];
+        return HttpResponse.json({ deals });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+
+    // Switch to list view and set filter to "me"
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => expect(screen.getByTestId('deals-owner-filter')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('deals-owner-filter'), 'me');
+
+    // Switch back to board — filter should be reset to all
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => expect(screen.getByTestId('pipeline-board')).toBeInTheDocument());
+
+    // Both deals should be visible on the board (not just the filtered one)
+    await waitFor(() => {
+      expect(screen.getByTestId(`deal-card-${DEAL_1.id}`)).toBeInTheDocument();
+    });
+
+    // Switch to list again to confirm filter was reset
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      const filter = screen.getByTestId<HTMLSelectElement>('deals-owner-filter');
+      expect(filter.value).toBe('all');
+    });
+  });
+
   it('toggles back to board view from list view', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
