@@ -298,6 +298,32 @@ describe('AutomationRulesPage', () => {
       expect(screen.queryByTestId('task-subject-input')).not.toBeInTheDocument();
     });
 
+    it('shows the server-log-only hint when action type is send_notification', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('new-rule-button')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('new-rule-button'));
+      await userEvent.selectOptions(screen.getByTestId('action-type-select'), 'send_notification');
+
+      expect(screen.getByTestId('send-notification-hint')).toBeInTheDocument();
+    });
+
+    it('does not show the server-log-only hint when action type is create_task', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('new-rule-button')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('new-rule-button'));
+      // Default action_type is create_task
+
+      expect(screen.queryByTestId('send-notification-hint')).not.toBeInTheDocument();
+    });
+
     it('shows stage selector when trigger type is deal_stage_changed', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AutomationRulesPage />);

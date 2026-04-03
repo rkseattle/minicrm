@@ -632,6 +632,16 @@ export default function AutomationRulesPage() {
               </div>
             )}
 
+            {/* send_notification inline hint — MINCRM-54 */}
+            {form.action_type === 'send_notification' && (
+              <p
+                className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+                data-testid="send-notification-hint"
+              >
+                {t('automation.sendNotificationHint')}
+              </p>
+            )}
+
             {/* send_notification action fields */}
             {form.action_type === 'send_notification' && (
               <div className="ml-4 mb-4">
