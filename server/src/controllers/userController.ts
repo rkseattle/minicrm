@@ -313,7 +313,7 @@ export async function adminSetPassword(req: Request, res: Response): Promise<voi
     return;
   }
 
-  const updated = await userService.adminSetUserPassword(targetUserId, password);
+  const updated = await userService.adminSetUserPassword(req.user!.id, targetUserId, password);
   if (!updated) {
     res.status(404).json({
       error: { code: 'USER_NOT_FOUND', message: 'User not found' },
