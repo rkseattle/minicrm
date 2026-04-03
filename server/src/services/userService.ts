@@ -292,11 +292,14 @@ export async function setUserPreferredLanguage(
  * Allows an admin to set another user's password directly, bypassing the invite flow.
  * Sets must_change_password = true so the user is prompted to choose a new one on login.
  * Also activates the user if they were in invited status.
+ * Emits a structured audit log entry so the action is forensically traceable. (MINCRM-89)
  *
+ * @param adminId - The UUID of the admin performing the action.
  * @param targetUserId - The UUID of the user whose password will be set.
  * @param plaintext - The new plaintext password chosen by the admin.
  */
 export async function adminSetUserPassword(
+  adminId: string,
   targetUserId: string,
   plaintext: string,
 ): Promise<UserRow | null> {
@@ -315,5 +318,13 @@ export async function adminSetUserPassword(
      RETURNING *`,
     [targetUserId, passwordHash],
   );
-  return result.rows[0] ?? null;
+
+  const updated = result.rows[0] ?? null;
+  if (updated) {
+    logger.info(
+      { adminId, targetUserId, timestamp: new Date().toISOString() },
+      `[AUDIT] Admin password set: admin_id=${adminId} target_user_id=${targetUserId}`,
+    );
+  }
+  return updated;
 }
