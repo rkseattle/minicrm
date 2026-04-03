@@ -27,6 +27,7 @@ import {
 import { listAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
@@ -93,7 +94,7 @@ export default function DealDetailPage() {
 
   const { data: allContactsData } = useQuery({
     queryKey: ['contacts'],
-    queryFn: () => listContacts(),
+    queryFn: () => listContacts({ limit: PAGINATION_MAX_LIMIT }),
   });
 
   const accounts: AccountResponse[] = accountsData?.data ?? [];

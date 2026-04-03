@@ -18,6 +18,7 @@ import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { listDeals, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { listAccounts } from '@/api/accounts.js';
+import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
@@ -66,7 +67,7 @@ export default function PipelineBoardPage() {
     isError,
   } = useQuery({
     queryKey: PIPELINE_QUERY_KEY,
-    queryFn: () => listDeals(),
+    queryFn: () => listDeals({ limit: PAGINATION_MAX_LIMIT }),
   });
 
   const { data: accountsData } = useQuery({

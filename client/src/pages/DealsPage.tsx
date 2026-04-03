@@ -100,6 +100,7 @@ export default function DealsPage() {
    * @param value - New owner filter value
    */
   function setOwnerFilter(value: OwnerFilter): void {
+    setListPage(1);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
