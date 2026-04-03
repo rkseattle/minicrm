@@ -56,8 +56,15 @@ async function getAdminUserId(client: pg.PoolClient): Promise<string> {
   return result.rows[0].id;
 }
 
+/** Allowlist of tables that carry the is_demo flag — guards against SQL injection. */
+const DEMO_TABLES = ['contacts', 'accounts', 'deals', 'activities'] as const;
+type DemoTable = (typeof DEMO_TABLES)[number];
+
 /** Returns true if any demo records already exist in the given table. */
-async function hasDemoRows(client: pg.PoolClient, table: string): Promise<boolean> {
+async function hasDemoRows(client: pg.PoolClient, table: DemoTable): Promise<boolean> {
+  if (!(DEMO_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`hasDemoRows: unexpected table "${table}"`);
+  }
   const result = await client.query<{ exists: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM ${table} WHERE is_demo = true) AS exists`,
   );
@@ -287,7 +294,7 @@ const DEMO_DEALS = [
 type ActivityFixture = {
   type: string;
   subject: string;
-  notes: string;
+  notes: string | null;
   due_date: string;
   status: string;
   direction: string | null;
@@ -322,7 +329,7 @@ const DEMO_ACTIVITIES: ActivityFixture[] = [
   {
     type: 'Task',
     subject: 'Follow up on deck review',
-    notes: null as unknown as string,
+    notes: null,
     due_date: '2026-04-12',
     status: 'open',
     direction: null,
@@ -372,7 +379,7 @@ const DEMO_ACTIVITIES: ActivityFixture[] = [
   {
     type: 'Task',
     subject: 'Schedule final negotiation call',
-    notes: null as unknown as string,
+    notes: null,
     due_date: '2026-04-14',
     status: 'open',
     direction: null,

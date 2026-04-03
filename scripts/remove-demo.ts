@@ -39,10 +39,13 @@ async function main(): Promise<void> {
     );
     console.log(`[remove-demo] Deleted ${activities.rowCount} activities`);
 
-    // Remove deal_contacts rows for demo deals
-    const dealContacts = await client.query<{ count: string }>(
+    // Remove deal_contacts rows for demo deals AND for demo contacts linked to real deals.
+    // Both sides must be cleaned up: a demo contact manually linked to a real deal via the UI
+    // would otherwise cause the contacts DELETE to fail with a FK violation.
+    const dealContacts = await client.query(
       `DELETE FROM deal_contacts
-       WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)`,
+       WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
+          OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
     );
     console.log(`[remove-demo] Deleted ${dealContacts.rowCount} deal_contact links`);
 
