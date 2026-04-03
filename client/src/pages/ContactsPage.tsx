@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
+import { Pagination } from '@/components/ui/Pagination.js';
 import { listContacts, createContact } from '@/api/contacts.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
@@ -24,6 +25,7 @@ import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
@@ -48,13 +50,17 @@ export default function ContactsPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+  const [searchInput, setSearchInput] = useState('');
+  const [accountSearchInput, setAccountSearchInput] = useState('');
+  const [page, setPage] = useState(1);
 
   /**
-   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   * Updates the ?owner query param and resets to page 1. (MINCRM-55)
    *
    * @param value - New owner filter value
    */
   function setOwnerFilter(value: OwnerFilter): void {
+    setPage(1);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -69,16 +75,13 @@ export default function ContactsPage() {
     );
   }
 
-  const [searchInput, setSearchInput] = useState('');
-  const [accountSearchInput, setAccountSearchInput] = useState('');
-
-  type SortColumn = 'name' | 'email';
+  type SortColumn = 'first_name' | 'email';
   type SortDir = 'ascending' | 'descending';
-  const [sortCol, setSortCol] = useState<SortColumn>('name');
+  const [sortCol, setSortCol] = useState<SortColumn>('first_name');
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
 
   /**
-   * Toggles sort column/direction and returns the new state.
+   * Toggles sort column/direction and resets to page 1.
    *
    * @param col - The column header that was clicked
    */
@@ -89,6 +92,7 @@ export default function ContactsPage() {
       setSortCol(col);
       setSortDir('ascending');
     }
+    setPage(1);
   }
 
   // Restore focus to the "New Contact" button after the form closes (button re-mounts on next render)
@@ -108,6 +112,9 @@ export default function ContactsPage() {
       owner: ownerFilter === 'me' ? 'me' : undefined,
       search: debouncedSearch || undefined,
       accountSearch: debouncedAccountSearch || undefined,
+      sort: sortCol,
+      dir: sortDir === 'ascending' ? 'asc' : 'desc',
+      page,
     },
   ] as const;
 
@@ -118,6 +125,10 @@ export default function ContactsPage() {
         owner: ownerFilter === 'me' ? 'me' : undefined,
         search: debouncedSearch || undefined,
         accountSearch: debouncedAccountSearch || undefined,
+        sort: sortCol,
+        dir: sortDir === 'ascending' ? 'asc' : 'desc',
+        page,
+        limit: PAGINATION_DEFAULT_LIMIT,
       }),
   });
 
@@ -131,7 +142,7 @@ export default function ContactsPage() {
     queryFn: listActiveUsers,
   });
 
-  const accountOptions = (accountsData?.accounts ?? []).map((a) => ({ id: a.id, name: a.name }));
+  const accountOptions = (accountsData?.data ?? []).map((a) => ({ id: a.id, name: a.name }));
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   /** Converts ContactFormValues to the API shape */
@@ -176,12 +187,8 @@ export default function ContactsPage() {
     },
   });
 
-  const contacts: ContactResponse[] = [...(data?.contacts ?? [])].sort((a, b) => {
-    const aVal = sortCol === 'name' ? `${a.first_name} ${a.last_name}` : (a.email ?? '');
-    const bVal = sortCol === 'name' ? `${b.first_name} ${b.last_name}` : (b.email ?? '');
-    const cmp = aVal.localeCompare(bVal);
-    return sortDir === 'ascending' ? cmp : -cmp;
-  });
+  // Server handles sorting and pagination — use data as-is
+  const contacts: ContactResponse[] = data?.data ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -278,7 +285,10 @@ export default function ContactsPage() {
             type="search"
             placeholder={t('contacts.searchPlaceholder')}
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setPage(1);
+            }}
             className="w-56"
           />
           <Input
@@ -287,7 +297,10 @@ export default function ContactsPage() {
             type="search"
             placeholder={t('contacts.accountSearchPlaceholder')}
             value={accountSearchInput}
-            onChange={(e) => setAccountSearchInput(e.target.value)}
+            onChange={(e) => {
+              setAccountSearchInput(e.target.value);
+              setPage(1);
+            }}
             className="w-56"
           />
           <OwnerToggle
@@ -329,16 +342,16 @@ export default function ContactsPage() {
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th
                       className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                      aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
                     >
                       <button
                         type="button"
-                        onClick={() => handleSort('name')}
+                        onClick={() => handleSort('first_name')}
                         className="inline-flex items-center gap-1 hover:text-gray-700"
                         data-testid="contacts-sort-name"
                       >
                         {t('contacts.columnName')}
-                        {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                        {sortCol === 'first_name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
                       </button>
                     </th>
                     <th
@@ -399,6 +412,14 @@ export default function ContactsPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {data && data.total > data.limit && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+              />
             )}
           </div>
         )}

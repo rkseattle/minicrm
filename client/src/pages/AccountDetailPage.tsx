@@ -187,7 +187,7 @@ export default function AccountDetailPage() {
             </h2>
             <AccountForm
               initialValues={account}
-              initialContactIds={linkedContactsData?.contacts.map((c) => c.id) ?? []}
+              initialContactIds={linkedContactsData?.data.map((c) => c.id) ?? []}
               users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
@@ -254,7 +254,7 @@ export default function AccountDetailPage() {
                   <p aria-busy="true" className="px-6 py-4 text-sm text-gray-400">
                     {t('accounts.loading')}
                   </p>
-                ) : !linkedContactsData || linkedContactsData.contacts.length === 0 ? (
+                ) : !linkedContactsData || linkedContactsData.data.length === 0 ? (
                   <p
                     className="px-6 py-4 text-sm text-gray-400"
                     data-testid="linked-contacts-empty"
@@ -263,7 +263,7 @@ export default function AccountDetailPage() {
                   </p>
                 ) : (
                   <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
-                    {linkedContactsData.contacts.map((contact) => (
+                    {linkedContactsData.data.map((contact) => (
                       <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
                         <Link
                           to={`/contacts/${contact.id}`}

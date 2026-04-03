@@ -19,7 +19,7 @@ describe('UsersPage', () => {
       server.use(
         http.get('/api/users', async () => {
           await new Promise((resolve) => setTimeout(resolve, 200));
-          return HttpResponse.json({ users: [] });
+          return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
         }),
       );
       renderWithProviders(<UsersPage />);
@@ -71,7 +71,9 @@ describe('UsersPage', () => {
 
   describe('empty state', () => {
     it('shows empty state message when no users exist', async () => {
-      server.use(http.get('/api/users', () => HttpResponse.json({ users: [] })));
+      server.use(
+        http.get('/api/users', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 })),
+      );
       renderWithProviders(<UsersPage />);
       await waitFor(() => {
         expect(screen.getByText('No users yet.')).toBeInTheDocument();
@@ -296,7 +298,11 @@ describe('UsersPage', () => {
 
     it('Reactivate item triggers the reactivate mutation for inactive users', async () => {
       const INACTIVE_USER = { ...ADMIN_USER, status: 'inactive' as const };
-      server.use(http.get('/api/users', () => HttpResponse.json({ users: [INACTIVE_USER] })));
+      server.use(
+        http.get('/api/users', () =>
+          HttpResponse.json({ data: [INACTIVE_USER], total: 1, page: 1, limit: 50 }),
+        ),
+      );
 
       let reactivateCalled = false;
       server.use(

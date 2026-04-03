@@ -8,6 +8,7 @@ import type {
   CreateContactInput,
   UpdateContactInput,
 } from '@minicrm/shared/schemas/contactSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
 
 /** Columns that may be updated via updateContact — guards against SQL injection from dynamic field names */
@@ -37,7 +38,11 @@ export interface ContactRow {
   updated_at: Date;
 }
 
-/** Options for filtering the contacts list */
+/** Columns that may be used for ORDER BY in listContacts */
+export const CONTACT_SORT_COLUMNS = ['created_at', 'first_name', 'last_name', 'email'] as const;
+export type ContactSortColumn = (typeof CONTACT_SORT_COLUMNS)[number];
+
+/** Options for filtering and paginating the contacts list */
 interface ListContactsOptions {
   /** When provided, only contacts with this owner_id are returned */
   ownerId?: string;
@@ -53,6 +58,14 @@ interface ListContactsOptions {
    * string (case-insensitive) are returned.
    */
   accountSearch?: string;
+  /** Column to sort by; defaults to 'created_at' */
+  sort?: ContactSortColumn;
+  /** Sort direction; defaults to 'ASC' */
+  dir?: 'ASC' | 'DESC';
+  /** 1-based page number; defaults to 1 */
+  page?: number;
+  /** Records per page; defaults to 50 */
+  limit?: number;
 }
 
 /**
@@ -134,13 +147,14 @@ export async function findContactById(id: string): Promise<ContactRow | null> {
 }
 
 /**
- * Returns all contacts, optionally filtered by owner, account UUID, name/email
- * search, or account name substring.
+ * Returns a paginated list of contacts, optionally filtered and sorted.
  *
- * @param options - Optional filters; all provided filters are combined with AND
- * @returns Array of contact rows ordered by created_at ascending
+ * @param options - Filters, sort, and pagination options
+ * @returns Paginated response with contact rows and total count
  */
-export async function listContacts(options: ListContactsOptions = {}): Promise<ContactRow[]> {
+export async function listContacts(
+  options: ListContactsOptions = {},
+): Promise<PaginatedResponse<ContactRow>> {
   const conditions: string[] = [];
   const values: unknown[] = [];
 
@@ -177,14 +191,34 @@ export async function listContacts(options: ListContactsOptions = {}): Promise<C
     ? 'FROM contacts c LEFT JOIN accounts a ON c.account_id = a.id'
     : 'FROM contacts c';
 
-  const selectClause = 'SELECT c.*';
+  // Allowlist-validated sort column and direction (MINCRM-68)
+  const sortCol = (CONTACT_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
+    ? options.sort!
+    : 'created_at';
+  const sortDir = options.dir === 'DESC' ? 'DESC' : 'ASC';
 
-  const result = await pool.query<ContactRow>(
-    `${selectClause} ${fromClause} ${whereClause} ORDER BY c.created_at ASC`,
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  // Run count and data queries in parallel
+  const countResult = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM contacts c ${needsAccountJoin ? 'LEFT JOIN accounts a ON c.account_id = a.id' : ''} ${whereClause}`,
     values,
   );
 
-  return result.rows;
+  values.push(limit, offset);
+  const dataResult = await pool.query<ContactRow>(
+    `SELECT c.* ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
+  );
+
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

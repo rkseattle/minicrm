@@ -11,7 +11,9 @@ import {
   listAccounts,
   updateAccount,
   deleteAccount,
+  ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -35,10 +37,14 @@ export async function createAccountHandler(req: Request, res: Response): Promise
 
 /**
  * GET /api/accounts
- * Lists accounts with optional filters:
+ * Lists accounts with optional filters and pagination:
  *   ?owner=me        — scope to the authenticated user's accounts
  *   ?search=<text>   — case-insensitive substring match on account name
  *   ?industry=<text> — case-insensitive match on industry field
+ *   ?sort=<col>      — sort column (created_at|name)
+ *   ?dir=asc|desc    — sort direction
+ *   ?page=<n>        — 1-based page number (default 1)
+ *   ?limit=<n>       — records per page (default 50, max 100)
  */
 export async function listAccountsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
@@ -53,8 +59,32 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
       ? req.query.industry.trim()
       : undefined;
 
-  const accounts = await listAccounts({ ownerId, search, industry });
-  res.status(200).json({ accounts });
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const sort = (ACCOUNT_SORT_COLUMNS as readonly string[]).includes(sortRaw)
+    ? (sortRaw as (typeof ACCOUNT_SORT_COLUMNS)[number])
+    : undefined;
+  const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
+
+  const result = await listAccounts({
+    ownerId,
+    search,
+    industry,
+    sort,
+    dir,
+    ...paginationParsed.data,
+  });
+  res.status(200).json(result);
 }
 
 /**

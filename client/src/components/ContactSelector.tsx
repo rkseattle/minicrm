@@ -61,10 +61,10 @@ export default function ContactSelector({
 
   /** Map of UUID → ContactResponse for quick lookup */
   const allFetched: Map<string, ContactResponse> = new Map();
-  for (const contact of selectedData?.contacts ?? []) {
+  for (const contact of selectedData?.data ?? []) {
     allFetched.set(contact.id, contact);
   }
-  for (const contact of searchData?.contacts ?? []) {
+  for (const contact of searchData?.data ?? []) {
     allFetched.set(contact.id, contact);
   }
 
@@ -72,7 +72,7 @@ export default function ContactSelector({
     .map((id) => allFetched.get(id))
     .filter((c): c is ContactResponse => c !== undefined);
 
-  const searchResults: ContactResponse[] = (searchData?.contacts ?? []).filter(
+  const searchResults: ContactResponse[] = (searchData?.data ?? []).filter(
     (c) => !selectedIds.includes(c.id),
   );
 

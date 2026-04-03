@@ -96,7 +96,7 @@ export default function DealDetailPage() {
     queryFn: () => listContacts(),
   });
 
-  const accounts: AccountResponse[] = accountsData?.accounts ?? [];
+  const accounts: AccountResponse[] = accountsData?.data ?? [];
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const updateMutation = useMutation({
@@ -230,9 +230,7 @@ export default function DealDetailPage() {
   const linkedContactIds = new Set(linkedContacts.map((c) => c.id));
 
   /** Contacts available to link (exclude already-linked ones) */
-  const linkableContacts = (allContactsData?.contacts ?? []).filter(
-    (c) => !linkedContactIds.has(c.id),
-  );
+  const linkableContacts = (allContactsData?.data ?? []).filter((c) => !linkedContactIds.has(c.id));
 
   /** Resolves an account_id to its display name */
   function resolveAccountName(accountId: string | null): string {

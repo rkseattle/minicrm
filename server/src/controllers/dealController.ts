@@ -14,8 +14,10 @@ import {
   listDealContacts,
   linkContactToDeal,
   unlinkContactFromDeal,
+  DEAL_SORT_COLUMNS,
 } from '../services/dealService.js';
 import { findContactById } from '../services/contactService.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -39,16 +41,38 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
 
 /**
  * GET /api/deals
- * Lists deals. Pass ?owner=me to scope to the authenticated user's deals.
- * Pass ?account=<uuid> to filter by account.
+ * Lists deals with optional filters and pagination:
+ *   ?owner=me      — scope to the authenticated user's deals
+ *   ?account=<uuid> — filter by account UUID
+ *   ?sort=<col>    — sort column (created_at|name|close_date|value)
+ *   ?dir=asc|desc  — sort direction
+ *   ?page=<n>      — 1-based page number (default 1)
+ *   ?limit=<n>     — records per page (default 50, max 100)
  */
 export async function listDealsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
   const accountId =
     typeof req.query.account === 'string' && req.query.account ? req.query.account : undefined;
 
-  const deals = await listDeals({ ownerId, accountId });
-  res.status(200).json({ deals });
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const sort = (DEAL_SORT_COLUMNS as readonly string[]).includes(sortRaw)
+    ? (sortRaw as (typeof DEAL_SORT_COLUMNS)[number])
+    : undefined;
+  const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
+
+  const result = await listDeals({ ownerId, accountId, sort, dir, ...paginationParsed.data });
+  res.status(200).json(result);
 }
 
 /**

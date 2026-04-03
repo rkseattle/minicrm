@@ -446,5 +446,12 @@
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Please set your password before signing in.",
     "VALIDATION_ERROR": "Please check your input and try again.",
     "generic": "Something went wrong. Please try again."
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{total}}",
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "loadMore": "Load more"
   }
 }

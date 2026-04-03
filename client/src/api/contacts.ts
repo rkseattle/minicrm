@@ -10,10 +10,7 @@ import type {
   UpdateContactInput,
 } from '@shared/schemas/contactSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
-
-interface ContactsResponse {
-  contacts: ContactResponse[];
-}
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 interface ContactSingleResponse {
   contact: ContactResponse;
@@ -27,7 +24,7 @@ export interface DuplicateContactInfo {
   email: string;
 }
 
-/** Parameters for filtering the contacts list */
+/** Parameters for filtering and paginating the contacts list */
 export interface ListContactsParams {
   /** When 'me', only the current user's contacts are returned */
   owner?: 'me';
@@ -37,20 +34,34 @@ export interface ListContactsParams {
   search?: string;
   /** Case-insensitive substring match on the linked account name */
   accountSearch?: string;
+  /** Column to sort by */
+  sort?: 'created_at' | 'first_name' | 'last_name' | 'email';
+  /** Sort direction */
+  dir?: 'asc' | 'desc';
+  /** 1-based page number */
+  page?: number;
+  /** Records per page */
+  limit?: number;
 }
 
 /**
- * Returns all contacts with optional filtering.
+ * Returns a paginated list of contacts with optional filtering.
  *
- * @param params - Optional filter parameters
+ * @param params - Optional filter and pagination parameters
  */
-export async function listContacts(params: ListContactsParams = {}): Promise<ContactsResponse> {
+export async function listContacts(
+  params: ListContactsParams = {},
+): Promise<PaginatedResponse<ContactResponse>> {
   const queryParams: Record<string, string> = {};
   if (params.owner) queryParams.owner = params.owner;
   if (params.accountId) queryParams.account = params.accountId;
   if (params.search) queryParams.search = params.search;
   if (params.accountSearch) queryParams.accountSearch = params.accountSearch;
-  const response = await apiClient.get<ContactsResponse>('/contacts', {
+  if (params.sort) queryParams.sort = params.sort;
+  if (params.dir) queryParams.dir = params.dir;
+  if (params.page !== undefined) queryParams.page = String(params.page);
+  if (params.limit !== undefined) queryParams.limit = String(params.limit);
+  const response = await apiClient.get<PaginatedResponse<ContactResponse>>('/contacts', {
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });
   return response.data;

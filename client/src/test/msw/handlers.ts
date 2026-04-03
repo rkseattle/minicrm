@@ -292,7 +292,8 @@ export const handlers = [
 
   /** Users: GET /api/users */
   http.get('/api/users', () => {
-    return HttpResponse.json({ users: [ADMIN_USER, REP_USER, INVITED_USER] });
+    const users = [ADMIN_USER, REP_USER, INVITED_USER];
+    return HttpResponse.json({ data: users, total: users.length, page: 1, limit: 50 });
   }),
 
   /** Users: GET /api/users/active — returns only active users with id+name */
@@ -368,7 +369,7 @@ export const handlers = [
     let contacts = [CONTACT_1, CONTACT_2];
     if (accountId) contacts = contacts.filter((c) => c.account_id === accountId);
     if (owner === 'me') contacts = contacts.filter((c) => c.owner_id === ADMIN_USER.id);
-    return HttpResponse.json({ contacts });
+    return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 50 });
   }),
 
   /** Contacts: POST /api/contacts */
@@ -427,7 +428,7 @@ export const handlers = [
 
   /** Accounts: GET /api/accounts */
   http.get('/api/accounts', () => {
-    return HttpResponse.json({ accounts: [ACCOUNT_1] });
+    return HttpResponse.json({ data: [ACCOUNT_1], total: 1, page: 1, limit: 50 });
   }),
 
   /** Accounts: POST /api/accounts */
@@ -479,7 +480,7 @@ export const handlers = [
     const owner = url.searchParams.get('owner');
     let deals = [DEAL_1];
     if (owner === 'me') deals = deals.filter((d) => d.owner_id === ADMIN_USER.id);
-    return HttpResponse.json({ deals });
+    return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
   }),
 
   /** Deals: POST /api/deals */
@@ -568,7 +569,7 @@ export const handlers = [
     if (contactId) activities = activities.filter((a) => a.contact_id === contactId);
     if (accountId) activities = activities.filter((a) => a.account_id === accountId);
     if (dealId) activities = activities.filter((a) => a.deal_id === dealId);
-    return HttpResponse.json({ activities });
+    return HttpResponse.json({ data: activities, total: activities.length, page: 1, limit: 10 });
   }),
 
   /** Activities: POST /api/activities */

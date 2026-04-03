@@ -9,6 +9,7 @@ import logger from '../logger.js';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Number of bcrypt salt rounds for password hashing */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -110,12 +111,41 @@ export async function updateUserRole(id: string, role: UserRole): Promise<UserRo
   return result.rows[0] ?? null;
 }
 
+/** Options for paginating the users list */
+interface ListUsersOptions {
+  /** 1-based page number; defaults to 1 */
+  page?: number;
+  /** Records per page; defaults to 50 */
+  limit?: number;
+}
+
 /**
- * Returns all users ordered by creation date ascending.
+ * Returns a paginated list of users ordered by creation date ascending.
+ *
+ * @param options - Pagination options
+ * @returns Paginated response with user rows and total count
  */
-export async function listUsers(): Promise<UserRow[]> {
-  const result = await pool.query<UserRow>('SELECT * FROM users ORDER BY created_at ASC');
-  return result.rows;
+export async function listUsers(
+  options: ListUsersOptions = {},
+): Promise<PaginatedResponse<UserRow>> {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM users'),
+    pool.query<UserRow>('SELECT * FROM users ORDER BY created_at ASC LIMIT $1 OFFSET $2', [
+      limit,
+      offset,
+    ]),
+  ]);
+
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /** Minimal user shape returned by listActiveUsers — id and name only */

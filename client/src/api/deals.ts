@@ -5,13 +5,10 @@
 
 import apiClient from './axiosInstance.js';
 import type { DealResponse, CreateDealInput, UpdateDealInput } from '@shared/schemas/dealSchema.js';
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the deals list */
 export const DEALS_QUERY_KEY = ['deals'] as const;
-
-interface DealsResponse {
-  deals: DealResponse[];
-}
 
 interface DealSingleResponse {
   deal: DealResponse;
@@ -27,18 +24,40 @@ export interface DealContact {
   title: string | null;
 }
 
+/** Parameters for filtering and paginating the deals list */
+export interface ListDealsParams {
+  /** When 'me', only the current user's deals are returned */
+  owner?: 'me';
+  /** When provided, only deals for this account are returned */
+  accountId?: string;
+  /** Column to sort by */
+  sort?: 'created_at' | 'name' | 'close_date' | 'value';
+  /** Sort direction */
+  dir?: 'asc' | 'desc';
+  /** 1-based page number */
+  page?: number;
+  /** Records per page */
+  limit?: number;
+}
+
 /**
- * Returns all deals. Pass owner='me' to scope to the current user.
- * Pass accountId to filter by account.
+ * Returns a paginated list of deals with optional filtering.
  *
- * @param owner - When 'me', only the current user's deals are returned
- * @param accountId - When provided, only deals for this account are returned
+ * @param params - Filter and pagination parameters
  */
-export async function listDeals(owner?: 'me', accountId?: string): Promise<DealsResponse> {
-  const params: Record<string, string> = {};
-  if (owner) params['owner'] = owner;
-  if (accountId) params['account'] = accountId;
-  const response = await apiClient.get<DealsResponse>('/deals', { params });
+export async function listDeals(
+  params: ListDealsParams = {},
+): Promise<PaginatedResponse<DealResponse>> {
+  const queryParams: Record<string, string> = {};
+  if (params.owner) queryParams['owner'] = params.owner;
+  if (params.accountId) queryParams['account'] = params.accountId;
+  if (params.sort) queryParams['sort'] = params.sort;
+  if (params.dir) queryParams['dir'] = params.dir;
+  if (params.page !== undefined) queryParams['page'] = String(params.page);
+  if (params.limit !== undefined) queryParams['limit'] = String(params.limit);
+  const response = await apiClient.get<PaginatedResponse<DealResponse>>('/deals', {
+    params: queryParams,
+  });
   return response.data;
 }
 

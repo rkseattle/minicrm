@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Badge } from '@/components/ui/Badge.js';
 import { UserActionsMenu } from '@/components/ui/UserActionsMenu.js';
+import { Pagination } from '@/components/ui/Pagination.js';
 import {
   listUsers,
   inviteUser,
@@ -23,6 +24,7 @@ import {
 } from '@/api/users.js';
 import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the users list */
 const USERS_QUERY_KEY = ['users'] as const;
@@ -315,6 +317,7 @@ export default function UsersPage() {
 
   const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   /**
    * Toggles the action menu for the given user.
@@ -326,9 +329,11 @@ export default function UsersPage() {
     setOpenMenuUserId((current) => (current === id ? null : id));
   }, []);
 
+  const usersQueryKey = [...USERS_QUERY_KEY, { page }] as const;
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: listUsers,
+    queryKey: usersQueryKey,
+    queryFn: () => listUsers({ page, limit: PAGINATION_DEFAULT_LIMIT }),
   });
 
   const roleMutation = useMutation({
@@ -346,7 +351,7 @@ export default function UsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
   });
 
-  const users: UserResponse[] = data?.users ?? [];
+  const users: UserResponse[] = data?.data ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -454,6 +459,14 @@ export default function UsersPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {data && data.total > data.limit && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+              />
             )}
           </div>
         )}

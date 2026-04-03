@@ -121,7 +121,7 @@ describe('GET /api/accounts', () => {
     const res = await request(app).get('/api/accounts').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(1);
+    expect(res.body.data).toHaveLength(1);
   });
 
   it('filters by owner when ?owner=me is passed', async () => {
@@ -130,7 +130,7 @@ describe('GET /api/accounts', () => {
     const res = await request(app).get('/api/accounts?owner=me').set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(0);
+    expect(res.body.data).toHaveLength(0);
   });
 });
 
@@ -232,8 +232,8 @@ describe('GET /api/accounts — ?search filter', () => {
     const res = await request(app).get('/api/accounts?search=alpha').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(1);
-    expect(res.body.accounts[0].name).toBe('Alpha Corp');
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].name).toBe('Alpha Corp');
   });
 
   it('returns empty array when search matches nothing', async () => {
@@ -242,7 +242,7 @@ describe('GET /api/accounts — ?search filter', () => {
     const res = await request(app).get('/api/accounts?search=zzznomatch').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toEqual([]);
+    expect(res.body.data).toEqual([]);
   });
 });
 
@@ -258,8 +258,8 @@ describe('GET /api/accounts — ?industry filter', () => {
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(1);
-    expect(res.body.accounts[0].name).toBe('Tech Co');
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].name).toBe('Tech Co');
   });
 
   it('ignores whitespace-only industry param', async () => {
@@ -268,7 +268,7 @@ describe('GET /api/accounts — ?industry filter', () => {
     const res = await request(app).get('/api/accounts?industry=%20').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
   });
 });
 

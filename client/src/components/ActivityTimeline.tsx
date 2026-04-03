@@ -63,11 +63,18 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const queryKey = [...ACTIVITIES_QUERY_KEY, { contactId, accountId, dealId }] as const;
+  /** Number of activities to show; expanded by ACTIVITY_PAGE_SIZE on each "Load more" click */
+  const ACTIVITY_PAGE_SIZE = 10;
+  const [visibleLimit, setVisibleLimit] = useState(ACTIVITY_PAGE_SIZE);
+
+  const queryKey = [
+    ...ACTIVITIES_QUERY_KEY,
+    { contactId, accountId, dealId, limit: visibleLimit },
+  ] as const;
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => listActivities({ contactId, accountId, dealId }),
+    queryFn: () => listActivities({ contactId, accountId, dealId, limit: visibleLimit }),
   });
 
   const createMutation = useMutation({
@@ -135,7 +142,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     },
   });
 
-  const activities: ActivityResponse[] = data?.activities ?? [];
+  const activities: ActivityResponse[] = data?.data ?? [];
+  const hasMore = data !== undefined && activities.length < data.total;
 
   /**
    * Returns true if the current user may edit or delete the given activity.
@@ -196,7 +204,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        {isLoading ? (
+        {isLoading && activities.length === 0 ? (
           <p className="px-6 py-4 text-sm text-gray-400" data-testid="activity-timeline-loading">
             {t('activities.loading')}
           </p>
@@ -205,147 +213,163 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
             {t('activities.empty')}
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100" data-testid="activity-timeline-list">
-            {activities.map((activity) => (
-              <li
-                key={activity.id}
-                className="px-6 py-4"
-                data-testid={`activity-item-${activity.id}`}
-              >
-                {editingId === activity.id ? (
-                  <ActivityForm
-                    initialValues={{
-                      type: activity.type as ActivityType,
-                      subject: activity.subject,
-                      notes: activity.notes ?? '',
-                      due_date: activity.due_date ?? '',
-                      direction: (activity.direction ?? '') as ActivityDirection | '',
-                      outcome: activity.outcome ?? '',
-                    }}
-                    onSubmit={(values) => updateMutation.mutate({ id: activity.id, values })}
-                    onCancel={() => {
-                      setEditingId(null);
-                      setEditError(null);
-                    }}
-                    isSubmitting={updateMutation.isPending}
-                    submitLabel={t('activities.saveChanges')}
-                    error={editError ?? undefined}
-                  />
-                ) : (
-                  <div className="flex items-start gap-3">
-                    {/* Type badge + direction + status */}
-                    <div className="flex flex-col items-start gap-1 shrink-0 pt-0.5">
-                      <Badge variant={TYPE_BADGE_VARIANT[activity.type as ActivityType]}>
-                        {t(`activities.${TYPE_KEY_MAP[activity.type as ActivityType]}`)}
-                      </Badge>
-                      {activity.direction && (
-                        <span
-                          className="text-xs text-gray-500"
-                          data-testid={`activity-direction-${activity.id}`}
-                        >
-                          {t(`activities.direction${activity.direction}`)}
-                        </span>
-                      )}
-                      {activity.status === 'complete' && (
-                        <span data-testid={`activity-complete-badge-${activity.id}`}>
-                          <Badge variant="success">{t('activities.statusComplete')}</Badge>
-                        </span>
-                      )}
-                    </div>
+          <>
+            <ul className="divide-y divide-gray-100" data-testid="activity-timeline-list">
+              {activities.map((activity) => (
+                <li
+                  key={activity.id}
+                  className="px-6 py-4"
+                  data-testid={`activity-item-${activity.id}`}
+                >
+                  {editingId === activity.id ? (
+                    <ActivityForm
+                      initialValues={{
+                        type: activity.type as ActivityType,
+                        subject: activity.subject,
+                        notes: activity.notes ?? '',
+                        due_date: activity.due_date ?? '',
+                        direction: (activity.direction ?? '') as ActivityDirection | '',
+                        outcome: activity.outcome ?? '',
+                      }}
+                      onSubmit={(values) => updateMutation.mutate({ id: activity.id, values })}
+                      onCancel={() => {
+                        setEditingId(null);
+                        setEditError(null);
+                      }}
+                      isSubmitting={updateMutation.isPending}
+                      submitLabel={t('activities.saveChanges')}
+                      error={editError ?? undefined}
+                    />
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      {/* Type badge + direction + status */}
+                      <div className="flex flex-col items-start gap-1 shrink-0 pt-0.5">
+                        <Badge variant={TYPE_BADGE_VARIANT[activity.type as ActivityType]}>
+                          {t(`activities.${TYPE_KEY_MAP[activity.type as ActivityType]}`)}
+                        </Badge>
+                        {activity.direction && (
+                          <span
+                            className="text-xs text-gray-500"
+                            data-testid={`activity-direction-${activity.id}`}
+                          >
+                            {t(`activities.direction${activity.direction}`)}
+                          </span>
+                        )}
+                        {activity.status === 'complete' && (
+                          <span data-testid={`activity-complete-badge-${activity.id}`}>
+                            <Badge variant="success">{t('activities.statusComplete')}</Badge>
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={[
-                          'text-sm font-medium text-gray-900',
-                          activity.status === 'complete' ? 'line-through text-gray-400' : '',
-                        ].join(' ')}
-                        data-testid={`activity-subject-${activity.id}`}
-                      >
-                        {activity.subject}
-                      </p>
-                      {activity.notes && (
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
                         <p
-                          className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
-                          data-testid={`activity-notes-${activity.id}`}
+                          className={[
+                            'text-sm font-medium text-gray-900',
+                            activity.status === 'complete' ? 'line-through text-gray-400' : '',
+                          ].join(' ')}
+                          data-testid={`activity-subject-${activity.id}`}
                         >
-                          {activity.notes}
+                          {activity.subject}
                         </p>
-                      )}
-                      {activity.outcome && (
-                        <p
-                          className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
-                          data-testid={`activity-outcome-${activity.id}`}
-                        >
-                          {activity.outcome}
-                        </p>
-                      )}
-                      {activity.due_date && (
+                        {activity.notes && (
+                          <p
+                            className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
+                            data-testid={`activity-notes-${activity.id}`}
+                          >
+                            {activity.notes}
+                          </p>
+                        )}
+                        {activity.outcome && (
+                          <p
+                            className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
+                            data-testid={`activity-outcome-${activity.id}`}
+                          >
+                            {activity.outcome}
+                          </p>
+                        )}
+                        {activity.due_date && (
+                          <p
+                            className="mt-1 text-xs text-gray-400"
+                            data-testid={`activity-due-date-${activity.id}`}
+                          >
+                            {t('activities.dueDateLabel')}: {activity.due_date}
+                          </p>
+                        )}
                         <p
                           className="mt-1 text-xs text-gray-400"
-                          data-testid={`activity-due-date-${activity.id}`}
+                          data-testid={`activity-meta-${activity.id}`}
                         >
-                          {t('activities.dueDateLabel')}: {activity.due_date}
+                          {t('activities.meta', {
+                            author: activity.owner_name,
+                            timestamp: new Date(activity.created_at).toLocaleString(i18n.language),
+                          })}
                         </p>
-                      )}
-                      <p
-                        className="mt-1 text-xs text-gray-400"
-                        data-testid={`activity-meta-${activity.id}`}
-                      >
-                        {t('activities.meta', {
-                          author: activity.owner_name,
-                          timestamp: new Date(activity.created_at).toLocaleString(i18n.language),
-                        })}
-                      </p>
-                    </div>
+                      </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Mark complete — only for open tasks */}
-                      {activity.type === 'Task' && activity.status === 'open' && (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          data-testid={`mark-complete-${activity.id}`}
-                          onClick={() => completeMutation.mutate(activity.id)}
-                          disabled={completeMutation.isPending}
-                        >
-                          {completeMutation.isPending && completeMutation.variables === activity.id
-                            ? t('activities.markingComplete')
-                            : t('activities.markComplete')}
-                        </Button>
-                      )}
-
-                      {canModify(activity) && (
-                        <>
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Mark complete — only for open tasks */}
+                        {activity.type === 'Task' && activity.status === 'open' && (
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="secondary"
                             size="sm"
-                            data-testid={`edit-activity-${activity.id}`}
-                            onClick={() => setEditingId(activity.id)}
+                            data-testid={`mark-complete-${activity.id}`}
+                            onClick={() => completeMutation.mutate(activity.id)}
+                            disabled={completeMutation.isPending}
                           >
-                            {t('activities.edit')}
+                            {completeMutation.isPending &&
+                            completeMutation.variables === activity.id
+                              ? t('activities.markingComplete')
+                              : t('activities.markComplete')}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            data-testid={`delete-activity-${activity.id}`}
-                            onClick={() => handleDelete(activity)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            {t('activities.delete')}
-                          </Button>
-                        </>
-                      )}
+                        )}
+
+                        {canModify(activity) && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`edit-activity-${activity.id}`}
+                              onClick={() => setEditingId(activity.id)}
+                            >
+                              {t('activities.edit')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`delete-activity-${activity.id}`}
+                              onClick={() => handleDelete(activity)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              {t('activities.delete')}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {hasMore && (
+              <div className="px-6 py-3 border-t border-gray-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleLimit((prev) => prev + ACTIVITY_PAGE_SIZE)}
+                  disabled={isLoading}
+                  data-testid="activity-timeline-load-more"
+                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
+                >
+                  {isLoading ? t('activities.loading') : t('pagination.loadMore')}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

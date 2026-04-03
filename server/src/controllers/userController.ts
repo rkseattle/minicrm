@@ -17,6 +17,7 @@ import * as userService from '../services/userService.js';
 import type { ActiveUserRow } from '../services/userService.js';
 import type { JwtTokenPayload } from '../types/express.js';
 import { sanitizeUser } from '../utils/userUtils.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Invite token expiry — 72 hours */
 const INVITE_TOKEN_EXPIRY = '72h';
@@ -75,11 +76,24 @@ export async function inviteUser(req: Request, res: Response): Promise<void> {
 
 /**
  * GET /api/users
- * Returns all users. Admin only.
+ * Returns paginated users. Admin only.
+ *   ?page=<n>  — 1-based page number (default 1)
+ *   ?limit=<n> — records per page (default 50, max 100)
  */
-export async function listUsers(_req: Request, res: Response): Promise<void> {
-  const users = await userService.listUsers();
-  res.status(200).json({ users: users.map(sanitizeUser) });
+export async function listUsers(req: Request, res: Response): Promise<void> {
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const result = await userService.listUsers(paginationParsed.data);
+  res.status(200).json({ ...result, data: result.data.map(sanitizeUser) });
 }
 
 /**

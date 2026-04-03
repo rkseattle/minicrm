@@ -15,12 +15,14 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
+import { Pagination } from '@/components/ui/Pagination.js';
 import { listAccounts, createAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -37,13 +39,17 @@ export default function AccountsPage() {
   const shouldRestoreFocusRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+  const [searchInput, setSearchInput] = useState('');
+  const [industryInput, setIndustryInput] = useState('');
+  const [page, setPage] = useState(1);
 
   /**
-   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   * Updates the ?owner query param and resets to page 1. (MINCRM-55)
    *
    * @param value - New owner filter value
    */
   function setOwnerFilter(value: OwnerFilter): void {
+    setPage(1);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -58,15 +64,13 @@ export default function AccountsPage() {
     );
   }
 
-  const [searchInput, setSearchInput] = useState('');
-  const [industryInput, setIndustryInput] = useState('');
-
   type SortDir = 'ascending' | 'descending';
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
 
-  /** Toggles the name sort direction. */
+  /** Toggles the name sort direction and resets to page 1. */
   function handleSortName(): void {
     setSortDir((d) => (d === 'ascending' ? 'descending' : 'ascending'));
+    setPage(1);
   }
 
   // Restore focus to the "New Account" button after the form closes (button re-mounts on next render)
@@ -86,6 +90,9 @@ export default function AccountsPage() {
       owner: ownerFilter === 'me' ? 'me' : undefined,
       search: debouncedSearch || undefined,
       industry: debouncedIndustry || undefined,
+      sort: 'name' as const,
+      dir: sortDir === 'ascending' ? 'asc' : 'desc',
+      page,
     },
   ] as const;
 
@@ -96,6 +103,10 @@ export default function AccountsPage() {
         owner: ownerFilter === 'me' ? 'me' : undefined,
         search: debouncedSearch || undefined,
         industry: debouncedIndustry || undefined,
+        sort: 'name',
+        dir: sortDir === 'ascending' ? 'asc' : 'desc',
+        page,
+        limit: PAGINATION_DEFAULT_LIMIT,
       }),
   });
 
@@ -127,10 +138,8 @@ export default function AccountsPage() {
     },
   });
 
-  const accounts: AccountResponse[] = [...(data?.accounts ?? [])].sort((a, b) => {
-    const cmp = a.name.localeCompare(b.name);
-    return sortDir === 'ascending' ? cmp : -cmp;
-  });
+  // Server handles sorting and pagination — use data as-is
+  const accounts: AccountResponse[] = data?.data ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -180,7 +189,10 @@ export default function AccountsPage() {
             type="search"
             placeholder={t('accounts.searchPlaceholder')}
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setPage(1);
+            }}
             className="w-56"
           />
           <Input
@@ -189,7 +201,10 @@ export default function AccountsPage() {
             type="search"
             placeholder={t('accounts.industryFilterPlaceholder')}
             value={industryInput}
-            onChange={(e) => setIndustryInput(e.target.value)}
+            onChange={(e) => {
+              setIndustryInput(e.target.value);
+              setPage(1);
+            }}
             className="w-48"
           />
           <OwnerToggle
@@ -290,6 +305,14 @@ export default function AccountsPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+            {data && data.total > data.limit && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+              />
             )}
           </div>
         )}

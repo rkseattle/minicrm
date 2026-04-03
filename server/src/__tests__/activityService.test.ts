@@ -301,8 +301,9 @@ describe('findActivityById', () => {
 
 describe('listActivities', () => {
   it('returns an empty array when no activities exist', async () => {
-    const activities = await listActivities();
-    expect(activities).toEqual([]);
+    const result = await listActivities();
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it('returns all activities ordered by created_at descending', async () => {
@@ -319,13 +320,14 @@ describe('listActivities', () => {
       owner_id: ownerId,
     });
 
-    const activities = await listActivities();
-    expect(activities).toHaveLength(2);
+    const result = await listActivities();
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(2);
     // Newest first
-    expect(activities[0].subject).toBe('Second');
-    expect(activities[1].subject).toBe('First');
+    expect(result.data[0].subject).toBe('Second');
+    expect(result.data[1].subject).toBe('First');
     // Each row includes owner_name
-    expect(activities[0].owner_name).toBe(OWNER_USER.name);
+    expect(result.data[0].owner_name).toBe(OWNER_USER.name);
   });
 
   it('filters by contactId when provided', async () => {
@@ -342,9 +344,9 @@ describe('listActivities', () => {
       owner_id: ownerId,
     });
 
-    const activities = await listActivities({ contactId });
-    expect(activities).toHaveLength(1);
-    expect(activities[0].subject).toBe('Contact note');
+    const result = await listActivities({ contactId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].subject).toBe('Contact note');
   });
 
   it('filters by accountId when provided', async () => {
@@ -361,9 +363,9 @@ describe('listActivities', () => {
       owner_id: ownerId,
     });
 
-    const activities = await listActivities({ accountId });
-    expect(activities).toHaveLength(1);
-    expect(activities[0].subject).toBe('Account meeting');
+    const result = await listActivities({ accountId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].subject).toBe('Account meeting');
   });
 
   it('filters by dealId when provided', async () => {
@@ -380,9 +382,9 @@ describe('listActivities', () => {
       owner_id: ownerId,
     });
 
-    const activities = await listActivities({ dealId });
-    expect(activities).toHaveLength(1);
-    expect(activities[0].subject).toBe('Deal task');
+    const result = await listActivities({ dealId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].subject).toBe('Deal task');
   });
 
   it('filters by ownerId when provided', async () => {
@@ -401,9 +403,67 @@ describe('listActivities', () => {
       owner_id: other.id,
     });
 
-    const mine = await listActivities({ ownerId });
-    expect(mine).toHaveLength(1);
-    expect(mine[0].subject).toBe('My note');
+    const result = await listActivities({ ownerId });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].subject).toBe('My note');
+  });
+});
+
+// ── listActivities — pagination ─────────────────────────────────────────────────
+
+describe('listActivities — pagination', () => {
+  it('returns correct page and limit metadata', async () => {
+    await createActivity({
+      type: 'Note',
+      subject: 'Act 1',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Note',
+      subject: 'Act 2',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Note',
+      subject: 'Act 3',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const result = await listActivities({ page: 1, limit: 2 });
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(2);
+  });
+
+  it('returns the correct slice for page 2', async () => {
+    await createActivity({
+      type: 'Note',
+      subject: 'Oldest',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Note',
+      subject: 'Middle',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Note',
+      subject: 'Newest',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    // Activities are ordered newest-first, so page 2 of limit 2 returns the oldest
+    const result = await listActivities({ page: 2, limit: 2 });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].subject).toBe('Oldest');
+    expect(result.total).toBe(3);
   });
 });
 

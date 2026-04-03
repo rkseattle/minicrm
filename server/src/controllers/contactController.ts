@@ -13,8 +13,10 @@ import {
   listContacts,
   updateContact,
   deleteContact,
+  CONTACT_SORT_COLUMNS,
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -68,11 +70,15 @@ export async function createContactHandler(req: Request, res: Response): Promise
 
 /**
  * GET /api/contacts
- * Lists contacts with optional filters:
+ * Lists contacts with optional filters and pagination:
  *   ?owner=me          — scope to the authenticated user's contacts
  *   ?account=<uuid>    — scope to a specific account UUID
  *   ?search=<text>     — case-insensitive substring match on name/email
  *   ?accountSearch=<text> — case-insensitive substring match on linked account name
+ *   ?sort=<col>        — sort column (created_at|first_name|last_name|email)
+ *   ?dir=asc|desc      — sort direction
+ *   ?page=<n>          — 1-based page number (default 1)
+ *   ?limit=<n>         — records per page (default 50, max 100)
  */
 export async function listContactsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
@@ -99,8 +105,33 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
       ? req.query.accountSearch.trim()
       : undefined;
 
-  const contacts = await listContacts({ ownerId, accountId, search, accountSearch });
-  res.status(200).json({ contacts });
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const sort = (CONTACT_SORT_COLUMNS as readonly string[]).includes(sortRaw)
+    ? (sortRaw as (typeof CONTACT_SORT_COLUMNS)[number])
+    : undefined;
+  const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
+
+  const result = await listContacts({
+    ownerId,
+    accountId,
+    search,
+    accountSearch,
+    sort,
+    dir,
+    ...paginationParsed.data,
+  });
+  res.status(200).json(result);
 }
 
 /**
