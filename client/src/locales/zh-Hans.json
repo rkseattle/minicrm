@@ -238,7 +238,8 @@
     "unlinking": "取消关联中…",
     "selectContactToLink": "— 选择联系人 —",
     "viewBoard": "看板视图",
-    "viewList": "列表视图"
+    "viewList": "列表视图",
+    "pipelineSummaryLabel": "管道摘要"
   },
   "pipeline": {
     "pageTitle": "管道看板",

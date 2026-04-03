@@ -238,7 +238,8 @@
     "unlinking": "Desvinculando…",
     "selectContactToLink": "— Seleccionar un contacto —",
     "viewBoard": "Vista tablero",
-    "viewList": "Vista lista"
+    "viewList": "Vista lista",
+    "pipelineSummaryLabel": "Resumen del canal"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

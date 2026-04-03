@@ -30,6 +30,11 @@ import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
+/** Open pipeline stages shown in the summary bar (excludes terminal stages) */
+const OPEN_PIPELINE_STAGES = PIPELINE_STAGES.filter(
+  (s) => s !== 'Closed Won' && s !== 'Closed Lost',
+);
+
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
 
@@ -166,6 +171,21 @@ export default function DealsPage() {
     });
     return grouped;
   }, [data?.deals, showClosed]);
+
+  /**
+   * Per-stage count and total value for the open pipeline stages.
+   * Computed from the already-fetched deals list — no extra API call needed.
+   * Closed Won and Closed Lost are excluded (not part of the active pipeline).
+   * Respects the active ownerFilter since it derives from `data.deals`.
+   */
+  const pipelineSummary = useMemo(() => {
+    const deals = data?.deals ?? [];
+    return OPEN_PIPELINE_STAGES.map((stage) => {
+      const stageDeals = deals.filter((d) => d.stage === stage);
+      const total = stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
+      return { stage, count: stageDeals.length, total };
+    });
+  }, [data?.deals]);
 
   const sortedDeals: DealResponse[] = [...(data?.deals ?? [])].sort((a, b) => {
     if (sortCol === 'name') {
@@ -456,6 +476,38 @@ export default function DealsPage() {
                 testIdPrefix="deals-owner-filter"
               />
             </div>
+
+            {/* Pipeline summary bar — shows open-stage deal counts and totals (MINCRM-56) */}
+            {!isLoading && !isError && (
+              <div
+                data-testid="pipeline-summary-bar"
+                aria-label={t('deals.pipelineSummaryLabel')}
+                className="mb-4 flex flex-wrap gap-2"
+              >
+                {pipelineSummary.map(({ stage, count, total }) => (
+                  <div
+                    key={stage}
+                    data-testid={`pipeline-summary-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
+                  >
+                    <span className="font-semibold">
+                      {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+                    </span>
+                    <span className="text-gray-400">·</span>
+                    <span>{count}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">
+                      {new Intl.NumberFormat(i18n.language, {
+                        style: 'currency',
+                        currency: 'USD',
+                        notation: 'compact',
+                        maximumFractionDigits: 1,
+                      }).format(total)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {isLoading && (
               <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">

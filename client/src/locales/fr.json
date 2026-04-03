@@ -238,7 +238,8 @@
     "unlinking": "Dissociation…",
     "selectContactToLink": "— Sélectionner un contact —",
     "viewBoard": "Vue tableau",
-    "viewList": "Vue liste"
+    "viewList": "Vue liste",
+    "pipelineSummaryLabel": "Résumé du pipeline"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",
