@@ -218,6 +218,141 @@ describe('ContactsPage', () => {
     });
   });
 
+  it('shows the duplicate warning banner when the API returns 409', async () => {
+    const duplicateContact = CONTACT_1;
+    server.use(
+      http.post('/api/contacts', () =>
+        HttpResponse.json(
+          {
+            error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
+            duplicate: {
+              id: duplicateContact.id,
+              first_name: duplicateContact.first_name,
+              last_name: duplicateContact.last_name,
+              email: duplicateContact.email,
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('new-contact-button'));
+    await user.type(screen.getByTestId('contact-first-name'), 'Alice');
+    await user.type(screen.getByTestId('contact-last-name'), 'Smith');
+    await user.type(screen.getByTestId('contact-email'), duplicateContact.email);
+    await user.click(screen.getByTestId('contact-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('duplicate-contact-warning')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        `A contact with this email already exists: ${duplicateContact.first_name} ${duplicateContact.last_name}.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the "Go to existing contact" link in the duplicate warning', async () => {
+    const duplicateContact = CONTACT_1;
+    server.use(
+      http.post('/api/contacts', () =>
+        HttpResponse.json(
+          {
+            error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
+            duplicate: {
+              id: duplicateContact.id,
+              first_name: duplicateContact.first_name,
+              last_name: duplicateContact.last_name,
+              email: duplicateContact.email,
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('new-contact-button'));
+    await user.type(screen.getByTestId('contact-email'), duplicateContact.email);
+    await user.type(screen.getByTestId('contact-first-name'), 'Alice');
+    await user.type(screen.getByTestId('contact-last-name'), 'Smith');
+    await user.click(screen.getByTestId('contact-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('duplicate-go-to-existing')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('duplicate-go-to-existing')).toHaveAttribute(
+      'href',
+      `/contacts/${duplicateContact.id}`,
+    );
+  });
+
+  it('creates the contact when "Create anyway" is clicked after a duplicate warning', async () => {
+    let postCount = 0;
+    let lastForceParam: string | null = null;
+    const duplicateContact = CONTACT_1;
+    server.use(
+      http.post('/api/contacts', ({ request }) => {
+        postCount++;
+        lastForceParam = new URL(request.url).searchParams.get('force');
+        if (postCount === 1) {
+          return HttpResponse.json(
+            {
+              error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
+              duplicate: {
+                id: duplicateContact.id,
+                first_name: duplicateContact.first_name,
+                last_name: duplicateContact.last_name,
+                email: duplicateContact.email,
+              },
+            },
+            { status: 409 },
+          );
+        }
+        return HttpResponse.json(
+          {
+            contact: {
+              ...duplicateContact,
+              id: '00000000-0000-0000-0000-000000000199',
+            },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('new-contact-button'));
+    await user.type(screen.getByTestId('contact-first-name'), 'Alice');
+    await user.type(screen.getByTestId('contact-last-name'), 'Smith');
+    await user.type(screen.getByTestId('contact-email'), duplicateContact.email);
+    await user.click(screen.getByTestId('contact-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('duplicate-create-anyway')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('duplicate-create-anyway'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('contact-form')).not.toBeInTheDocument();
+    });
+    expect(lastForceParam).toBe('true');
+  });
+
   it('submits the create form and hides it on success', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ContactsPage />);
