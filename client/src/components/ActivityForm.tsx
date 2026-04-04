@@ -103,7 +103,7 @@ export default function ActivityForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate data-testid="activity-form">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Type */}
         <div>
           <label htmlFor="activity-type" className="block text-xs font-medium text-gray-700 mb-1">
@@ -143,7 +143,7 @@ export default function ActivityForm({
 
       {/* Direction + Outcome — shown only for Call and Email types */}
       {isCommunicationType && (
-        <div className="grid grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           <div>
             <label
               htmlFor="activity-direction"
@@ -233,6 +233,7 @@ export default function ActivityForm({
           size="sm"
           data-testid="activity-form-submit"
           disabled={isSubmitting || !subject.trim() || (isCommunicationType && !direction)}
+          className="min-h-[44px] sm:min-h-0"
         >
           {isSubmitting ? t('activities.saving') : submitLabel}
         </Button>
@@ -243,6 +244,7 @@ export default function ActivityForm({
           data-testid="activity-form-cancel"
           onClick={onCancel}
           disabled={isSubmitting}
+          className="min-h-[44px] sm:min-h-0"
         >
           {t('activities.cancel')}
         </Button>
