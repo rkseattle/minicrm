@@ -104,7 +104,7 @@ export default function ContactDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
-        <main className="max-w-3xl mx-auto px-6 py-8">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <p aria-busy="true" className="text-sm text-gray-400">
             {t('contacts.loading')}
           </p>
@@ -117,7 +117,7 @@ export default function ContactDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
-        <main className="max-w-3xl mx-auto px-6 py-8">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <p role="alert" className="text-sm text-red-600">
             {t('contacts.notFound')}
           </p>
@@ -140,7 +140,7 @@ export default function ContactDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* Back link */}
         <Link
           to="/contacts"

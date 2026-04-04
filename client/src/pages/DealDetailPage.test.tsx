@@ -5,11 +5,13 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import DealDetailPage from './DealDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { DEAL_1, CONTACT_1, CONTACT_2 } from '../test/msw/handlers.js';
+import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 
 /** Renders DealDetailPage with DEAL_1 id in route params. */
 function renderDealDetail() {
@@ -322,6 +324,114 @@ describe('DealDetailPage', () => {
 
     expect(screen.queryByTestId('close-deal-modal')).not.toBeInTheDocument();
     expect(patchSpy).not.toHaveBeenCalled();
+  });
+
+  it('invalidates win/loss cache on stage update (MINCRM-104)', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    server.use(
+      http.patch('/api/deals/:id', async ({ request }) => {
+        const body = (await request.json()) as object;
+        return HttpResponse.json({ deal: { ...DEAL_1, ...body } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<DealDetailPage />, {
+      initialEntries: [`/deals/${DEAL_1.id}`],
+      path: '/deals/:id',
+      queryClient,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-form-submit')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('deal-form-submit'));
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
+  });
+
+  it('invalidates win/loss cache on close deal (MINCRM-104)', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    server.use(
+      http.patch('/api/deals/:id', async ({ request }) => {
+        const body = (await request.json()) as object;
+        return HttpResponse.json({ deal: { ...DEAL_1, ...body } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<DealDetailPage />, {
+      initialEntries: [`/deals/${DEAL_1.id}`],
+      path: '/deals/:id',
+      queryClient,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('edit-deal-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-stage-select')).toBeInTheDocument();
+    });
+    await user.selectOptions(screen.getByTestId('deal-stage-select'), 'Closed Won');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('close-deal-modal')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('close-deal-confirm'));
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
+  });
+
+  it('invalidates win/loss cache on deal delete (MINCRM-104)', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithProviders(<DealDetailPage />, {
+      initialEntries: [`/deals/${DEAL_1.id}`],
+      path: '/deals/:id',
+      queryClient,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-deal-button'));
+
+    await waitFor(() => {
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(invalidatedKeys).toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
   });
 
   it('hides link select when all contacts are already linked', async () => {
