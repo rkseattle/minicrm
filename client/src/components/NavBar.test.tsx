@@ -50,11 +50,13 @@ describe('NavBar dispatcher', () => {
 
   it('renders NavHamburger when layout is "hamburger"', async () => {
     renderNavBar('hamburger');
+    // Wait until the layout query resolves and NavTop desktop links are gone —
+    // NavHamburger omits desktop nav links (they live only inside the overlay drawer)
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
     });
-    // NavHamburger does not show desktop links directly — only in the overlay
-    expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
+    // The hamburger toggle is the only interactive element visible without opening the overlay
+    expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
     expect(screen.queryByTestId('nav-left-dashboard')).not.toBeInTheDocument();
   });
 

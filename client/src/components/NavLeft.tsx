@@ -13,18 +13,7 @@ import { logout } from '@/api/auth.js';
 import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
-import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
-
-/**
- * Native name for each supported locale, displayed in the language selector.
- */
-const LOCALE_NATIVE_NAME: Record<SupportedLocale, string> = {
-  en: 'English',
-  'zh-Hans': '中文（简体）',
-  es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
-};
+import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
 
 /**
  * Returns Tailwind classes for a sidebar nav link based on its active state.

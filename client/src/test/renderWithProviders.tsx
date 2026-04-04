@@ -6,6 +6,7 @@
 import { render, type RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { NavLayoutProvider } from '@/components/NavLayoutContext.js';
 
 interface RenderOptions {
   /** Initial URL entries for MemoryRouter (default: ['/']) */
@@ -55,7 +56,9 @@ export function renderWithProviders(
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>{content}</MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
+        <NavLayoutProvider>{content}</NavLayoutProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
