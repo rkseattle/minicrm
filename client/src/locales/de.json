@@ -12,7 +12,9 @@
     "adminSettings": "Admin-Einstellungen",
     "profileSettings": "Profileinstellungen",
     "languageSelector": "Sprache",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "menu": "Menü",
+    "close": "Schließen"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",
@@ -246,6 +248,9 @@
     "loading": "Pipeline wird geladen…",
     "totalValue": "Gesamt: {{value}}",
     "stageUpdateError": "Phase konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "prevStage": "Vorherige Phase",
+    "nextStage": "Nächste Phase",
+    "stageOf": "Phase {{current}} von {{total}}",
     "closeDeal": {
       "title": "Als {{stage}} abschließen",
       "closeDateLabel": "Abschlussdatum",

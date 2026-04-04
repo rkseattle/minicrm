@@ -12,7 +12,9 @@
     "adminSettings": "管理设置",
     "profileSettings": "个人设置",
     "languageSelector": "语言",
-    "logout": "退出登录"
+    "logout": "退出登录",
+    "menu": "菜单",
+    "close": "关闭"
   },
   "login": {
     "title": "登录您的账户",
@@ -246,6 +248,9 @@
     "loading": "正在加载管道…",
     "totalValue": "合计：{{value}}",
     "stageUpdateError": "阶段更新失败，请重试。",
+    "prevStage": "上一阶段",
+    "nextStage": "下一阶段",
+    "stageOf": "第 {{current}} 阶段，共 {{total}} 个",
     "closeDeal": {
       "title": "标记为{{stage}}",
       "closeDateLabel": "成交日期",

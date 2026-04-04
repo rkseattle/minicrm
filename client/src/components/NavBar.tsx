@@ -2,12 +2,13 @@
  * NavBar component.
  * Sticky top navigation displayed on all authenticated pages.
  * Shows the app brand, navigation links with active state, and user controls.
+ * On mobile (below lg:) renders a hamburger menu that opens a full-width drawer.
  */
 
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
@@ -28,7 +29,7 @@ const LOCALE_NATIVE_NAME: Record<SupportedLocale, string> = {
 };
 
 /**
- * Returns Tailwind classes for a navigation link based on its active state.
+ * Returns Tailwind classes for a desktop navigation link based on its active state.
  *
  * @param isActive - Whether the link matches the current route
  */
@@ -42,6 +43,20 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
+ * Returns Tailwind classes for a mobile drawer navigation link based on its active state.
+ *
+ * @param isActive - Whether the link matches the current route
+ */
+function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
+  return [
+    'flex items-center w-full px-4 py-3 text-base font-medium rounded-md transition-colors min-h-[44px]',
+    isActive
+      ? 'bg-indigo-50 text-indigo-700'
+      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+  ].join(' ');
+}
+
+/**
  * Top-level navigation bar.
  */
 export default function NavBar() {
@@ -49,6 +64,9 @@ export default function NavBar() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -89,60 +107,96 @@ export default function NavBar() {
     languageMutation.mutate(locale);
   }
 
+  /** Close mobile drawer and restore focus to the hamburger button. */
+  function closeMobileMenu(): void {
+    setMobileMenuOpen(false);
+    hamburgerRef.current?.focus();
+  }
+
+  // Close drawer on outside tap/click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    function handlePointerDown(e: PointerEvent): void {
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
+        closeMobileMenu();
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [mobileMenuOpen]);
+
+  // Move focus into drawer when it opens
+  useEffect(() => {
+    if (mobileMenuOpen && drawerRef.current) {
+      const firstLink = drawerRef.current.querySelector<HTMLElement>('a, button');
+      firstLink?.focus();
+    }
+  }, [mobileMenuOpen]);
+
+  const isAdmin = user?.role === 'admin';
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between min-h-14 gap-y-1 py-2">
-        <div className="flex items-center gap-6">
-          <span className="text-indigo-600 font-bold text-lg tracking-tight select-none">
-            MiniCRM
-          </span>
-          <div className="flex items-center gap-1 flex-wrap">
-            <NavLink to="/" end className={navLinkClass} data-testid="nav-dashboard">
-              {t('nav.dashboard')}
+        {/* Brand */}
+        <span className="text-indigo-600 font-bold text-lg tracking-tight select-none">
+          MiniCRM
+        </span>
+
+        {/* Desktop nav links — hidden below lg */}
+        <div className="hidden lg:flex items-center gap-1 flex-wrap">
+          <NavLink to="/" end className={navLinkClass} data-testid="nav-link-dashboard">
+            {t('nav.dashboard')}
+          </NavLink>
+          <NavLink to="/contacts" className={navLinkClass} data-testid="nav-link-contacts">
+            {t('nav.contacts')}
+          </NavLink>
+          <NavLink to="/accounts" className={navLinkClass} data-testid="nav-link-accounts">
+            {t('nav.accounts')}
+          </NavLink>
+          <NavLink to="/deals" className={navLinkClass} data-testid="nav-link-deals">
+            {t('nav.deals')}
+          </NavLink>
+          <NavLink to="/tasks" className={navLinkClass} data-testid="nav-link-my-tasks">
+            {t('nav.myTasks')}
+          </NavLink>
+          {isAdmin && (
+            <NavLink to="/users" className={navLinkClass} data-testid="nav-link-users">
+              {t('nav.users')}
             </NavLink>
-            <NavLink to="/contacts" className={navLinkClass} data-testid="nav-contacts">
-              {t('nav.contacts')}
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/reports/win-loss"
+              className={navLinkClass}
+              data-testid="nav-link-win-loss-report"
+            >
+              {t('nav.winLossReport')}
             </NavLink>
-            <NavLink to="/accounts" className={navLinkClass} data-testid="nav-accounts">
-              {t('nav.accounts')}
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/admin/automation"
+              className={navLinkClass}
+              data-testid="nav-link-automation"
+            >
+              {t('nav.automation')}
             </NavLink>
-            <NavLink to="/deals" className={navLinkClass} data-testid="nav-deals">
-              {t('nav.deals')}
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/admin/settings"
+              className={navLinkClass}
+              data-testid="nav-link-admin-settings"
+            >
+              {t('nav.adminSettings')}
             </NavLink>
-            <NavLink to="/tasks" className={navLinkClass} data-testid="nav-my-tasks">
-              {t('nav.myTasks')}
-            </NavLink>
-            {user?.role === 'admin' && (
-              <NavLink to="/users" className={navLinkClass} data-testid="nav-users">
-                {t('nav.users')}
-              </NavLink>
-            )}
-            {user?.role === 'admin' && (
-              <NavLink
-                to="/reports/win-loss"
-                className={navLinkClass}
-                data-testid="nav-win-loss-report"
-              >
-                {t('nav.winLossReport')}
-              </NavLink>
-            )}
-            {user?.role === 'admin' && (
-              <NavLink to="/admin/automation" className={navLinkClass} data-testid="nav-automation">
-                {t('nav.automation')}
-              </NavLink>
-            )}
-            {user?.role === 'admin' && (
-              <NavLink
-                to="/admin/settings"
-                className={navLinkClass}
-                data-testid="nav-admin-settings"
-              >
-                {t('nav.adminSettings')}
-              </NavLink>
-            )}
-          </div>
+          )}
         </div>
 
+        {/* Right controls */}
         <div className="flex items-center gap-3">
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
           <select
@@ -165,11 +219,161 @@ export default function NavBar() {
             data-testid="nav-logout"
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
+            className="hidden lg:inline-flex"
           >
             {t('nav.logout')}
           </Button>
+
+          {/* Hamburger button — visible below lg */}
+          <button
+            ref={hamburgerRef}
+            type="button"
+            aria-label={mobileMenuOpen ? t('nav.close') : t('nav.menu')}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav-drawer"
+            data-testid="nav-menu-toggle"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="lg:hidden flex items-center justify-center w-11 h-11 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {mobileMenuOpen ? (
+              // X icon
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              // Hamburger icon
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Mobile nav drawer — visible below lg when open */}
+      {mobileMenuOpen && (
+        <div
+          id="mobile-nav-drawer"
+          ref={drawerRef}
+          role="dialog"
+          aria-label={t('nav.menu')}
+          className="lg:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-1"
+        >
+          <NavLink
+            to="/"
+            end
+            className={mobileNavLinkClass}
+            data-testid="nav-link-dashboard"
+            onClick={closeMobileMenu}
+          >
+            {t('nav.dashboard')}
+          </NavLink>
+          <NavLink
+            to="/contacts"
+            className={mobileNavLinkClass}
+            data-testid="nav-link-contacts"
+            onClick={closeMobileMenu}
+          >
+            {t('nav.contacts')}
+          </NavLink>
+          <NavLink
+            to="/accounts"
+            className={mobileNavLinkClass}
+            data-testid="nav-link-accounts"
+            onClick={closeMobileMenu}
+          >
+            {t('nav.accounts')}
+          </NavLink>
+          <NavLink
+            to="/deals"
+            className={mobileNavLinkClass}
+            data-testid="nav-link-deals"
+            onClick={closeMobileMenu}
+          >
+            {t('nav.deals')}
+          </NavLink>
+          <NavLink
+            to="/tasks"
+            className={mobileNavLinkClass}
+            data-testid="nav-link-my-tasks"
+            onClick={closeMobileMenu}
+          >
+            {t('nav.myTasks')}
+          </NavLink>
+          {isAdmin && (
+            <NavLink
+              to="/users"
+              className={mobileNavLinkClass}
+              data-testid="nav-link-users"
+              onClick={closeMobileMenu}
+            >
+              {t('nav.users')}
+            </NavLink>
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/reports/win-loss"
+              className={mobileNavLinkClass}
+              data-testid="nav-link-win-loss-report"
+              onClick={closeMobileMenu}
+            >
+              {t('nav.winLossReport')}
+            </NavLink>
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/admin/automation"
+              className={mobileNavLinkClass}
+              data-testid="nav-link-automation"
+              onClick={closeMobileMenu}
+            >
+              {t('nav.automation')}
+            </NavLink>
+          )}
+          {isAdmin && (
+            <NavLink
+              to="/admin/settings"
+              className={mobileNavLinkClass}
+              data-testid="nav-link-admin-settings"
+              onClick={closeMobileMenu}
+            >
+              {t('nav.adminSettings')}
+            </NavLink>
+          )}
+          <div className="pt-2 border-t border-gray-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="nav-logout"
+              onClick={() => {
+                closeMobileMenu();
+                logoutMutation.mutate();
+              }}
+              disabled={logoutMutation.isPending}
+              className="w-full justify-start min-h-[44px]"
+            >
+              {t('nav.logout')}
+            </Button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
