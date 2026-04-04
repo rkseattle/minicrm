@@ -78,6 +78,18 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass('text-xs');
   });
 
+  it('applies min-h touch-target class on sm size (MINCRM-98)', () => {
+    render(<Button size="sm">Small</Button>);
+    expect(screen.getByRole('button')).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('button')).toHaveClass('sm:min-h-0');
+  });
+
+  it('applies min-h touch-target class on md size (MINCRM-98)', () => {
+    render(<Button size="md">Medium</Button>);
+    expect(screen.getByRole('button')).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('button')).toHaveClass('sm:min-h-0');
+  });
+
   it('merges extra className', () => {
     render(<Button className="my-custom-class">Styled</Button>);
     expect(screen.getByRole('button')).toHaveClass('my-custom-class');
