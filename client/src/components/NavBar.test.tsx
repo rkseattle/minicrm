@@ -24,7 +24,7 @@ describe('NavBar', () => {
   it('renders the Dashboard nav link', async () => {
     renderWithProviders(<NavBar />);
     await waitFor(() => {
-      expect(screen.getByTestId('nav-dashboard')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-link-dashboard')).toBeInTheDocument();
     });
   });
 
@@ -32,7 +32,7 @@ describe('NavBar', () => {
     // Default handler returns ADMIN_USER
     renderWithProviders(<NavBar />);
     await waitFor(() => {
-      expect(screen.getByTestId('nav-users')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-link-users')).toBeInTheDocument();
     });
   });
 
@@ -40,9 +40,9 @@ describe('NavBar', () => {
     server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
     renderWithProviders(<NavBar />);
     await waitFor(() => {
-      expect(screen.getByTestId('nav-dashboard')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-link-dashboard')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('nav-users')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-link-users')).not.toBeInTheDocument();
   });
 
   it('shows the logged-in user name', async () => {

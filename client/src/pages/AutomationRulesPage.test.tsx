@@ -510,7 +510,7 @@ describe('AutomationRulesPage', () => {
     it('shows the Automation nav link for admin users', async () => {
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-automation')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-link-automation')).toBeInTheDocument();
       });
     });
   });
