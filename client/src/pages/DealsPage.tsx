@@ -582,87 +582,128 @@ export default function DealsPage() {
                     <p className="text-sm text-gray-400">{t('deals.empty')}</p>
                   </div>
                 ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        <th
-                          className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                          aria-sort={sortCol === 'name' ? sortDir : 'none'}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleSort('name')}
-                            className="inline-flex items-center gap-1 hover:text-gray-700"
-                            data-testid="deals-sort-name"
-                          >
-                            {t('deals.columnName')}
-                            {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                          </button>
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('deals.columnStage')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('deals.columnValue')}
-                        </th>
-                        <th
-                          className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                          aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleSort('close_date')}
-                            className="inline-flex items-center gap-1 hover:text-gray-700"
-                            data-testid="deals-sort-close-date"
-                          >
-                            {t('deals.columnCloseDate')}
-                            {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                          </button>
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('deals.columnAccount')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('deals.columnOwner')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
+                  <>
+                    {/* Mobile card view — visible below md */}
+                    <ul className="md:hidden divide-y divide-gray-100">
                       {sortedDeals.map((deal) => (
-                        <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-indigo-600">
-                            <Link
-                              to={`/deals/${deal.id}`}
-                              data-testid={`deal-link-${deal.id}`}
-                              className="hover:underline"
-                            >
-                              {deal.name}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
+                        <li
+                          key={deal.id}
+                          className="px-4 py-3"
+                          data-testid={`deal-card-${deal.id}`}
+                        >
+                          <Link
+                            to={`/deals/${deal.id}`}
+                            data-testid={`deal-link-${deal.id}`}
+                            className="block font-medium text-indigo-600 hover:underline mb-1"
+                          >
+                            {deal.name}
+                          </Link>
+                          <p className="text-sm text-gray-700">
                             {t(
                               `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
+                          </p>
+                          <p className="text-sm text-gray-500">
                             {formatDealValue(deal.value, i18n.language)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {formatLocalDate(deal.close_date, i18n.language)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {resolveAccountName(deal.account_id)}
-                          </td>
-                          <td
-                            className="px-4 py-3 text-gray-500"
+                          </p>
+                          <p
+                            className="text-xs text-gray-400 mt-1"
                             data-testid={`deal-owner-${deal.id}`}
                           >
+                            {t('deals.columnOwner')}:{' '}
                             {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
-                          </td>
-                        </tr>
+                          </p>
+                        </li>
                       ))}
-                    </tbody>
-                  </table>
+                    </ul>
+
+                    {/* Desktop table — hidden below md */}
+                    <table className="hidden md:table w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50">
+                          <th
+                            className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                            aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSort('name')}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                              data-testid="deals-sort-name"
+                            >
+                              {t('deals.columnName')}
+                              {sortCol === 'name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                            </button>
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('deals.columnStage')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('deals.columnValue')}
+                          </th>
+                          <th
+                            className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                            aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSort('close_date')}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                              data-testid="deals-sort-close-date"
+                            >
+                              {t('deals.columnCloseDate')}
+                              {sortCol === 'close_date' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                            </button>
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('deals.columnAccount')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('deals.columnOwner')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sortedDeals.map((deal) => (
+                          <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-indigo-600">
+                              <Link
+                                to={`/deals/${deal.id}`}
+                                data-testid={`deal-link-${deal.id}`}
+                                className="hover:underline"
+                              >
+                                {deal.name}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {t(
+                                `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {formatDealValue(deal.value, i18n.language)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {formatLocalDate(deal.close_date, i18n.language)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {resolveAccountName(deal.account_id)}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-gray-500"
+                              data-testid={`deal-owner-${deal.id}`}
+                            >
+                              {resolveOwnerName(
+                                deal.owner_id,
+                                activeUsers,
+                                t('deals.ownerUnknown'),
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 )}
                 {listData && listData.total > listData.limit && (
                   <Pagination

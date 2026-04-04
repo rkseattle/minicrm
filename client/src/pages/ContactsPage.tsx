@@ -290,7 +290,7 @@ export default function ContactsPage() {
               setSearchInput(e.target.value);
               setPage(1);
             }}
-            className="w-56"
+            className="w-full sm:w-auto"
           />
           <Input
             id="contacts-account-search"
@@ -302,7 +302,7 @@ export default function ContactsPage() {
               setAccountSearchInput(e.target.value);
               setPage(1);
             }}
-            className="w-56"
+            className="w-full sm:w-auto"
           />
           <OwnerToggle
             value={ownerFilter}
@@ -330,7 +330,7 @@ export default function ContactsPage() {
           </div>
         )}
 
-        {/* Contacts table */}
+        {/* Contacts list */}
         {!isLoading && !isError && (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {contacts.length === 0 ? (
@@ -338,81 +338,116 @@ export default function ContactsPage() {
                 <p className="text-sm text-gray-400">{t('contacts.empty')}</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th
-                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSort('first_name')}
-                        className="inline-flex items-center gap-1 hover:text-gray-700"
-                        data-testid="contacts-sort-name"
-                      >
-                        {t('contacts.columnName')}
-                        {sortCol === 'first_name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                      </button>
-                    </th>
-                    <th
-                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortCol === 'email' ? sortDir : 'none'}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSort('email')}
-                        className="inline-flex items-center gap-1 hover:text-gray-700"
-                        data-testid="contacts-sort-email"
-                      >
-                        {t('contacts.columnEmail')}
-                        {sortCol === 'email' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnPhone')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnTitle')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnDepartment')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('contacts.columnOwner')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <>
+                {/* Mobile card view — visible below md */}
+                <ul className="md:hidden divide-y divide-gray-100">
                   {contacts.map((contact) => (
-                    <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-indigo-600">
-                        <Link
-                          to={`/contacts/${contact.id}`}
-                          data-testid={`contact-link-${contact.id}`}
-                          className="hover:underline"
-                        >
-                          {contact.first_name} {contact.last_name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{contact.email}</td>
-                      <td className="px-4 py-3 text-gray-500">{contact.phone ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
-                      <td
-                        className="px-4 py-3 text-gray-500"
+                    <li
+                      key={contact.id}
+                      className="px-4 py-3"
+                      data-testid={`contact-card-${contact.id}`}
+                    >
+                      <Link
+                        to={`/contacts/${contact.id}`}
+                        data-testid={`contact-link-${contact.id}`}
+                        className="block font-medium text-indigo-600 hover:underline mb-1"
+                      >
+                        {contact.first_name} {contact.last_name}
+                      </Link>
+                      <p className="text-sm text-gray-500">{contact.email}</p>
+                      {contact.title && <p className="text-sm text-gray-400">{contact.title}</p>}
+                      <p
+                        className="text-xs text-gray-400 mt-1"
                         data-testid={`contact-owner-${contact.id}`}
                       >
+                        {t('contacts.columnOwner')}:{' '}
                         {resolveOwnerName(
                           contact.owner_id,
                           activeUsers,
                           t('contacts.ownerUnknown'),
                         )}
-                      </td>
-                    </tr>
+                      </p>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+
+                {/* Desktop table — hidden below md */}
+                <table className="hidden md:table w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSort('first_name')}
+                          className="inline-flex items-center gap-1 hover:text-gray-700"
+                          data-testid="contacts-sort-name"
+                        >
+                          {t('contacts.columnName')}
+                          {sortCol === 'first_name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                        </button>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        aria-sort={sortCol === 'email' ? sortDir : 'none'}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSort('email')}
+                          className="inline-flex items-center gap-1 hover:text-gray-700"
+                          data-testid="contacts-sort-email"
+                        >
+                          {t('contacts.columnEmail')}
+                          {sortCol === 'email' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('contacts.columnPhone')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('contacts.columnTitle')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('contacts.columnDepartment')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('contacts.columnOwner')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {contacts.map((contact) => (
+                      <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-indigo-600">
+                          <Link
+                            to={`/contacts/${contact.id}`}
+                            data-testid={`contact-link-${contact.id}`}
+                            className="hover:underline"
+                          >
+                            {contact.first_name} {contact.last_name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{contact.email}</td>
+                        <td className="px-4 py-3 text-gray-500">{contact.phone ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
+                        <td
+                          className="px-4 py-3 text-gray-500"
+                          data-testid={`contact-owner-${contact.id}`}
+                        >
+                          {resolveOwnerName(
+                            contact.owner_id,
+                            activeUsers,
+                            t('contacts.ownerUnknown'),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
             {data && data.total > data.limit && (
               <Pagination
