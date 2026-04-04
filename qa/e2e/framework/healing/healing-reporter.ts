@@ -57,11 +57,13 @@ export class HealingReporter implements Reporter {
    * Merges per-worker files, writes the combined report, and logs a summary.
    */
   onEnd(_result: FullResult): void {
-    // Flush the registry for this reporter process before reading worker files.
-    // In the main process (non-worker), this is typically a no-op since tests
-    // run in worker processes, but it ensures any events recorded in the main
-    // process are also captured. Worker processes flush in their own onEnd call.
-    HealingRegistry.instance.flush();
+    // Only flush in worker processes. PW_WORKER_INDEX is set by Playwright on
+    // worker processes but is unset in the main (reporter) process. Flushing in
+    // the main process would write an empty healing-0.json (the fallback worker
+    // ID), silently overwriting any real events written by worker 0.
+    if (process.env['PW_WORKER_INDEX'] !== undefined) {
+      HealingRegistry.instance.flush();
+    }
 
     const allEvents: HealEvent[] = [];
 
