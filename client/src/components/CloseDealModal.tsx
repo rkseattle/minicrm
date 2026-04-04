@@ -92,7 +92,7 @@ export default function CloseDealModal({
         if (e.key === 'Escape' && !isSubmitting) onCancel();
       }}
     >
-      <dialog open data-testid="close-deal-modal" className="relative w-full max-w-md p-0">
+      <dialog open data-testid="close-deal-modal" className="relative w-full max-w-md mx-4 p-0">
         {/* Inner wrapper stops backdrop clicks from propagating through the dialog */}
         <div
           role="presentation"
