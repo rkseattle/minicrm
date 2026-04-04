@@ -85,6 +85,20 @@ describe('NavBar', () => {
       expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
     });
 
+    it('clicking the hamburger again closes the drawer', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+      // Open
+      await user.click(screen.getByTestId('nav-menu-toggle'));
+      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
+      // Close
+      await user.click(screen.getByTestId('nav-menu-toggle'));
+      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
+    });
+
     it('clicking a drawer link closes the drawer', async () => {
       const user = userEvent.setup();
       renderWithProviders(<NavBar />);
