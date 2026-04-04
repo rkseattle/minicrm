@@ -8,15 +8,20 @@
  */
 
 import 'dotenv/config';
-import { getDefaultLanguage, setDefaultLanguage } from '../services/settingsService.js';
+import {
+  getDefaultLanguage,
+  setDefaultLanguage,
+  getNavLayout,
+  setNavLayout,
+} from '../services/settingsService.js';
 import pool from '../db.js';
 
 beforeEach(async () => {
-  // Reset to the seeded default before each test
+  // Reset to seeded defaults before each test
   await pool.query(
     `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ('default_language', 'en', now())
-     ON CONFLICT (key) DO UPDATE SET value = 'en', updated_at = now()`,
+     VALUES ('default_language', 'en', now()), ('nav_layout', 'top', now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
   );
 });
 
@@ -69,6 +74,59 @@ describe('setDefaultLanguage', () => {
     const locales = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
     for (const locale of locales) {
       await expect(setDefaultLanguage(locale)).resolves.toBe(locale);
+    }
+  });
+});
+
+// ── getNavLayout ─────────────────────────��─────────────────��──────────────────
+
+describe('getNavLayout', () => {
+  it('returns "top" when the default row is present', async () => {
+    const layout = await getNavLayout();
+    expect(layout).toBe('top');
+  });
+
+  it('returns the layout that was last set', async () => {
+    await pool.query(`UPDATE system_settings SET value = 'left' WHERE key = 'nav_layout'`);
+    const layout = await getNavLayout();
+    expect(layout).toBe('left');
+  });
+
+  it('falls back to "top" when the row is missing', async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'nav_layout'`);
+    const layout = await getNavLayout();
+    expect(layout).toBe('top');
+  });
+
+  it('falls back to "top" when the stored value is an unsupported layout', async () => {
+    await pool.query(`UPDATE system_settings SET value = 'unknown' WHERE key = 'nav_layout'`);
+    const layout = await getNavLayout();
+    expect(layout).toBe('top');
+  });
+});
+
+// ── setNavLayout ──────────────────────────────────────────────────────────────
+
+describe('setNavLayout', () => {
+  it('persists and returns the new layout', async () => {
+    const result = await setNavLayout('left');
+    expect(result).toBe('left');
+
+    const fetched = await getNavLayout();
+    expect(fetched).toBe('left');
+  });
+
+  it('overwrites a previously set layout', async () => {
+    await setNavLayout('left');
+    await setNavLayout('hamburger');
+    const fetched = await getNavLayout();
+    expect(fetched).toBe('hamburger');
+  });
+
+  it('handles all supported layouts without error', async () => {
+    const layouts = ['top', 'left', 'hamburger'] as const;
+    for (const layout of layouts) {
+      await expect(setNavLayout(layout)).resolves.toBe(layout);
     }
   });
 });

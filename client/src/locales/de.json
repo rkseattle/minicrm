@@ -14,7 +14,9 @@
     "languageSelector": "Sprache",
     "logout": "Abmelden",
     "menu": "Menü",
-    "close": "Schließen"
+    "close": "Schließen",
+    "collapseSidebar": "Seitenleiste zuklappen",
+    "expandSidebar": "Seitenleiste aufklappen"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",
@@ -338,6 +340,15 @@
       "es": "Spanisch",
       "fr": "Französisch",
       "de": "Deutsch"
+    },
+    "navLayout": {
+      "label": "Navigations-Layout",
+      "hint": "Wählen Sie, wie die Navigation für alle Benutzer angezeigt wird. Änderungen werden sofort wirksam.",
+      "top": "Obere Navigation",
+      "left": "Linke Navigation",
+      "hamburger": "Hamburger-Menü",
+      "saveSuccess": "Navigations-Layout aktualisiert.",
+      "saveError": "Layout konnte nicht gespeichert werden. Bitte erneut versuchen."
     },
     "demo": {
       "sectionTitle": "Demodaten",

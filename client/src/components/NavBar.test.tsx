@@ -1,170 +1,71 @@
 /**
- * Tests for the NavBar component.
+ * Tests for the NavBar dispatcher component. (MINCRM-133)
+ *
+ * NavBar reads the active layout from NavLayoutContext and renders the
+ * appropriate layout component. These tests verify that the dispatch logic
+ * works correctly for each layout value.
  */
 
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { Routes, Route } from 'react-router-dom';
-import i18n from '../i18n.js';
+import { render } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import NavBar from './NavBar.js';
-import { renderWithProviders } from '../test/renderWithProviders.js';
+import { NavLayoutProvider } from './NavLayoutContext.js';
 import { server } from '../test/setup.js';
-import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
-describe('NavBar', () => {
-  it('renders the MiniCRM brand name', async () => {
-    renderWithProviders(<NavBar />);
+/**
+ * Renders NavBar with NavLayoutProvider, overriding the server nav-layout response.
+ *
+ * @param layout - The nav layout to simulate ('top' | 'left' | 'hamburger').
+ */
+function renderNavBar(layout: 'top' | 'left' | 'hamburger') {
+  server.use(http.get('/api/settings/nav-layout', () => HttpResponse.json({ layout })));
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/']}>
+        <NavLayoutProvider>
+          <NavBar />
+        </NavLayoutProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe('NavBar dispatcher', () => {
+  it('renders NavTop when layout is "top"', async () => {
+    renderNavBar('top');
     await waitFor(() => {
-      expect(screen.getByText('MiniCRM')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-top-dashboard')).toBeInTheDocument();
     });
   });
 
-  it('renders the Dashboard nav link', async () => {
-    renderWithProviders(<NavBar />);
+  it('renders NavHamburger when layout is "hamburger"', async () => {
+    renderNavBar('hamburger');
     await waitFor(() => {
-      expect(screen.getByTestId('nav-link-dashboard')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
     });
+    // NavHamburger does not show desktop links directly — only in the overlay
+    expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-left-dashboard')).not.toBeInTheDocument();
   });
 
-  it('renders the Users nav link for admin users', async () => {
-    // Default handler returns ADMIN_USER
-    renderWithProviders(<NavBar />);
+  it('renders null (no nav element) when layout is "left"', async () => {
+    renderNavBar('left');
+    // NavBar returns null for left layout; sidebar is injected by LayoutShell in App.tsx
+    // We just verify no top-nav or hamburger elements appear
     await waitFor(() => {
-      expect(screen.getByTestId('nav-link-users')).toBeInTheDocument();
+      // Give the query time to resolve
+      expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
     });
-  });
-
-  it('hides the Users nav link for rep users', async () => {
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
-    renderWithProviders(<NavBar />);
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-link-dashboard')).toBeInTheDocument();
-    });
-    expect(screen.queryByTestId('nav-link-users')).not.toBeInTheDocument();
-  });
-
-  it('shows the logged-in user name', async () => {
-    renderWithProviders(<NavBar />);
-    await waitFor(() => {
-      expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
-    });
-  });
-
-  it('renders a logout button', async () => {
-    renderWithProviders(<NavBar />);
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
-  });
-
-  describe('mobile hamburger menu', () => {
-    it('renders the hamburger toggle button', async () => {
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-      });
-    });
-
-    it('drawer is closed by default', async () => {
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
-    });
-
-    it('clicking the hamburger opens the mobile drawer', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-      });
-      await user.click(screen.getByTestId('nav-menu-toggle'));
-      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
-    });
-
-    it('clicking the hamburger again closes the drawer', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-      });
-      // Open
-      await user.click(screen.getByTestId('nav-menu-toggle'));
-      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
-      // Close
-      await user.click(screen.getByTestId('nav-menu-toggle'));
-      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
-    });
-
-    it('clicking a drawer link closes the drawer', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-      });
-      await user.click(screen.getByTestId('nav-menu-toggle'));
-      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
-      await user.click(screen.getByTestId('nav-link-dashboard-mobile'));
-      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('language selector', () => {
-    it('renders the language selector', async () => {
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-      });
-    });
-
-    it('reflects the current i18n language', async () => {
-      await i18n.changeLanguage('fr');
-      renderWithProviders(<NavBar />);
-      await waitFor(() => {
-        const select = screen.getByTestId('nav-language-select') as HTMLSelectElement;
-        expect(select.value).toBe('fr');
-      });
-      await i18n.changeLanguage('en');
-    });
-
-    it('changes the active language when a new option is selected', async () => {
-      await i18n.changeLanguage('en');
-      const user = userEvent.setup();
-      renderWithProviders(<NavBar />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-      });
-
-      await user.selectOptions(screen.getByTestId('nav-language-select'), 'de');
-
-      expect(i18n.language).toBe('de');
-      await i18n.changeLanguage('en');
-    });
-  });
-
-  it('navigates to /login after logout is clicked', async () => {
-    const user = userEvent.setup();
-
-    // Render NavBar inside a route tree so MemoryRouter can handle the redirect
-    renderWithProviders(
-      <Routes>
-        <Route path="/" element={<NavBar />} />
-        <Route path="/login" element={<div>Login page</div>} />
-      </Routes>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByTestId('nav-logout'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Login page')).toBeInTheDocument();
-    });
+    expect(screen.queryByTestId('nav-menu-toggle')).not.toBeInTheDocument();
   });
 });

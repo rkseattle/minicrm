@@ -5,8 +5,8 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
-import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
-import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
+import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { SupportedLocale, NavLayout } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** A row from the system_settings table */
 interface SystemSettingRow {
@@ -17,6 +17,9 @@ interface SystemSettingRow {
 
 /** The key used to store the default language setting */
 const DEFAULT_LANGUAGE_KEY = 'default_language';
+
+/** The key used to store the navigation layout setting (MINCRM-133) */
+const NAV_LAYOUT_KEY = 'nav_layout';
 
 /**
  * Retrieves the current system-wide default language.
@@ -55,4 +58,43 @@ export async function setDefaultLanguage(language: SupportedLocale): Promise<Sup
     [DEFAULT_LANGUAGE_KEY, language],
   );
   return language;
+}
+
+/**
+ * Retrieves the current system-wide navigation layout.
+ * Falls back to 'top' if the row is somehow missing. (MINCRM-133)
+ *
+ * @returns The stored nav layout value.
+ */
+export async function getNavLayout(): Promise<NavLayout> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [NAV_LAYOUT_KEY],
+  );
+  if (!result.rows[0]) {
+    logger.warn('system_settings row for nav_layout is missing — falling back to top');
+    return 'top';
+  }
+  const raw = result.rows[0].value;
+  if (!(NAV_LAYOUTS as readonly string[]).includes(raw)) {
+    logger.warn(`system_settings nav_layout '${raw}' is unsupported — falling back to top`);
+    return 'top';
+  }
+  return raw as NavLayout;
+}
+
+/**
+ * Persists a new system-wide navigation layout. (MINCRM-133)
+ *
+ * @param layout - One of the supported nav layout values.
+ * @returns The updated layout value.
+ */
+export async function setNavLayout(layout: NavLayout): Promise<NavLayout> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [NAV_LAYOUT_KEY, layout],
+  );
+  return layout;
 }

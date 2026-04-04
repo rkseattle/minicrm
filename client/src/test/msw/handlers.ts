@@ -627,6 +627,17 @@ export const handlers = [
     return HttpResponse.json({ language: body.language });
   }),
 
+  /** Settings: GET /api/settings/nav-layout (MINCRM-133) */
+  http.get('/api/settings/nav-layout', () => {
+    return HttpResponse.json({ layout: 'top' });
+  }),
+
+  /** Settings: PATCH /api/settings/nav-layout (MINCRM-133) */
+  http.patch('/api/settings/nav-layout', async ({ request }) => {
+    const body = (await request.json()) as { layout: string };
+    return HttpResponse.json({ layout: body.layout });
+  }),
+
   /** Users: GET /api/users/me/language — returns null preference by default */
   http.get('/api/users/me/language', () => {
     return HttpResponse.json({ language: null });

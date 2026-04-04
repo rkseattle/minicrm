@@ -14,7 +14,9 @@
     "languageSelector": "Langue",
     "logout": "Se déconnecter",
     "menu": "Menu",
-    "close": "Fermer"
+    "close": "Fermer",
+    "collapseSidebar": "Réduire la barre latérale",
+    "expandSidebar": "Développer la barre latérale"
   },
   "login": {
     "title": "Connectez-vous à votre compte",
@@ -338,6 +340,15 @@
       "es": "Espagnol",
       "fr": "Français",
       "de": "Allemand"
+    },
+    "navLayout": {
+      "label": "Disposition de navigation",
+      "hint": "Choisissez comment la navigation est affichée pour tous les utilisateurs. Les modifications prennent effet immédiatement.",
+      "top": "Barre supérieure",
+      "left": "Panneau latéral",
+      "hamburger": "Menu hamburger",
+      "saveSuccess": "Disposition de navigation mise à jour.",
+      "saveError": "Échec de l enregistrement de la disposition. Veuillez réessayer."
     },
     "demo": {
       "sectionTitle": "Données de démonstration",

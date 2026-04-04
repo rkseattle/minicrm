@@ -1,11 +1,15 @@
 /**
  * App component — root routing configuration.
  * Declares all application routes using React Router v6.
+ * Wraps the route tree in NavLayoutProvider so the active layout is available
+ * to all page components. (MINCRM-133)
  */
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
+import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.js';
+import NavLeft from '@/components/NavLeft.js';
 import LoginPage from '@/pages/LoginPage.js';
 import ChangePasswordPage from '@/pages/ChangePasswordPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
@@ -22,39 +26,71 @@ import WinLossReportPage from '@/pages/WinLossReportPage.js';
 import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
 
 /**
- * Root application component with route definitions.
+ * Wraps the outlet in NavLeft when the left layout is active.
+ * For top and hamburger layouts, each page renders its own NavBar inline,
+ * so no wrapper is needed here.
  */
-export default function App() {
+function LayoutShell() {
+  const { layout } = useNavLayout();
+  if (layout === 'left') {
+    return (
+      <NavLeft>
+        <Outlet />
+      </NavLeft>
+    );
+  }
+  return <Outlet />;
+}
+
+/**
+ * Route tree wrapped in NavLayoutProvider.
+ */
+function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Public routes — no layout shell */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
       {/* Authenticated routes */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/contacts" element={<ContactsPage />} />
-        <Route path="/contacts/:id" element={<ContactDetailPage />} />
-        <Route path="/accounts" element={<AccountsPage />} />
-        <Route path="/accounts/:id" element={<AccountDetailPage />} />
-        <Route path="/deals" element={<DealsPage />} />
-        <Route path="/deals/:id" element={<DealDetailPage />} />
-        {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
-        <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
-        <Route path="/tasks" element={<MyTasksPage />} />
+        <Route element={<LayoutShell />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/contacts/:id" element={<ContactDetailPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/accounts/:id" element={<AccountDetailPage />} />
+          <Route path="/deals" element={<DealsPage />} />
+          <Route path="/deals/:id" element={<DealDetailPage />} />
+          {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
+          <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
+          <Route path="/tasks" element={<MyTasksPage />} />
+        </Route>
       </Route>
 
       {/* Admin-only routes */}
       <Route element={<AdminRoute />}>
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/admin/settings" element={<AdminSettingsPage />} />
-        <Route path="/admin/automation" element={<AutomationRulesPage />} />
-        <Route path="/reports/win-loss" element={<WinLossReportPage />} />
+        <Route element={<LayoutShell />}>
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/admin/settings" element={<AdminSettingsPage />} />
+          <Route path="/admin/automation" element={<AutomationRulesPage />} />
+          <Route path="/reports/win-loss" element={<WinLossReportPage />} />
+        </Route>
       </Route>
 
       {/* Catch-all: redirect unknown paths to the dashboard */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  );
+}
+
+/**
+ * Root application component with route definitions.
+ */
+export default function App() {
+  return (
+    <NavLayoutProvider>
+      <AppRoutes />
+    </NavLayoutProvider>
   );
 }

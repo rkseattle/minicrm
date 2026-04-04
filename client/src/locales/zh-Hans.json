@@ -14,7 +14,9 @@
     "languageSelector": "语言",
     "logout": "退出登录",
     "menu": "菜单",
-    "close": "关闭"
+    "close": "关闭",
+    "collapseSidebar": "收起侧栏",
+    "expandSidebar": "展开侧栏"
   },
   "login": {
     "title": "登录您的账户",
@@ -338,6 +340,15 @@
       "es": "西班牙语",
       "fr": "法语",
       "de": "德语"
+    },
+    "navLayout": {
+      "label": "导航布局",
+      "hint": "选择所有用户的导航显示方式。更改立即生效。",
+      "top": "顶部导航栏",
+      "left": "左侧导航栏",
+      "hamburger": "汉堡菜单",
+      "saveSuccess": "导航布局已更新。",
+      "saveError": "保存布局失败，请重试。"
     },
     "demo": {
       "sectionTitle": "演示数据",
