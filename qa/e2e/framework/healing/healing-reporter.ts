@@ -17,6 +17,7 @@
 import type { Reporter, TestResult, TestCase, FullResult } from '@playwright/test/reporter';
 import fs from 'node:fs';
 import path from 'node:path';
+import { HealingRegistry } from './healing-registry.js';
 import type { HealEvent } from './healing-registry.js';
 
 const OUTPUT_DIR = 'test-results';
@@ -56,6 +57,12 @@ export class HealingReporter implements Reporter {
    * Merges per-worker files, writes the combined report, and logs a summary.
    */
   onEnd(_result: FullResult): void {
+    // Flush the registry for this reporter process before reading worker files.
+    // In the main process (non-worker), this is typically a no-op since tests
+    // run in worker processes, but it ensures any events recorded in the main
+    // process are also captured. Worker processes flush in their own onEnd call.
+    HealingRegistry.instance.flush();
+
     const allEvents: HealEvent[] = [];
 
     // Collect all worker healing files.

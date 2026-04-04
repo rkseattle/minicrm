@@ -96,7 +96,10 @@ function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
     case 'css':
       return page.locator(value);
     case 'xpath':
-      return page.locator(value);
+      // Use explicit xpath= engine prefix so all XPath expressions are treated
+      // correctly — not just those starting with // or (//. Without the prefix,
+      // page.locator() silently interprets non-rooted XPath as CSS.
+      return page.locator(`xpath=${value}`);
     default: {
       // Exhaustive check — TypeScript will error if a new StrategyType is added
       // without updating this switch.
