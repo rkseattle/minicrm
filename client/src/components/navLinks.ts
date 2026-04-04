@@ -1,8 +1,22 @@
 /**
- * Shared navigation link definitions used by all three nav layout components.
- * Each entry declares the route path, i18n key, and whether it requires admin role.
+ * Shared navigation link definitions and constants used by all three nav layout components.
  * (MINCRM-133)
  */
+
+import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
+
+/**
+ * Native name for each supported locale, displayed in the language selector.
+ * Using the language's own script avoids depending on the active translation
+ * and ensures users can always identify their language regardless of the current UI language.
+ */
+export const LOCALE_NATIVE_NAME: Record<SupportedLocale, string> = {
+  en: 'English',
+  'zh-Hans': '中文（简体）',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+};
 
 export interface NavLinkDef {
   /** Route path */
