@@ -23,6 +23,8 @@ import { t } from '@framework/i18n/locale.js';
 export interface LoginPageContext {
   page: Page;
   healPage: HealPage;
+  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
+  testName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,13 +46,15 @@ export interface LoginPageContext {
 export class LoginPage {
   private readonly page: Page;
   private readonly healPage: HealPage;
+  private readonly testName: string;
 
   /**
-   * @param context - Playwright fixture context containing page and healPage.
+   * @param context - Playwright fixture context containing page, healPage, and testName.
    */
   constructor(context: LoginPageContext) {
     this.page = context.page;
     this.healPage = context.healPage;
+    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -108,11 +112,23 @@ export class LoginPage {
 
   /**
    * Returns the text content of the error alert, or null if no error is shown.
+   *
+   * Uses HealingLocator with 2 strategies to stay consistent with the Page
+   * Object contract. The alert element has no testId, so role + css are used.
    */
   async errorMessage(): Promise<string | null> {
-    const alert = this.page.getByRole('alert');
-    const count = await alert.count();
-    if (count === 0) return null;
-    return alert.first().textContent();
+    const locator = this.healPage.locate([
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[role="alert"]' },
+    ]);
+    try {
+      const resolved = await locator.resolve(this.testName);
+      const count = await resolved.count();
+      if (count === 0) return null;
+      return resolved.first().textContent();
+    } catch {
+      // StrategyExhaustedError means no alert is present — login succeeded.
+      return null;
+    }
   }
 }

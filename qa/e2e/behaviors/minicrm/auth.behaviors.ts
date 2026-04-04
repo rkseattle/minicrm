@@ -23,6 +23,8 @@ import { LoginPage } from '@pages/minicrm/LoginPage.js';
 export interface AuthBehaviorContext {
   page: Page;
   healPage: HealPage;
+  /** Current test name forwarded to Page Object constructors for heal audit records. */
+  testName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +71,7 @@ export interface LoginResult {
  *
  * @example
  * ```ts
- * const result = await login({ email: 'admin@example.com', password: 'secret' }, { page, healPage });
+ * const result = await login({ email: 'admin@example.com', password: 'secret' }, { page, healPage, testName: 'my test' });
  * expect(result.success).toBe(true);
  * ```
  */
@@ -84,17 +86,28 @@ export async function login(
   await loginPage.fillPassword(credentials.password);
   await loginPage.submit();
 
-  // Wait for either navigation away from login or an error alert to appear.
-  await context.page.waitForLoadState('networkidle');
+  // Wait for either navigation away from the login route or the error alert
+  // to become visible. Using Promise.race here avoids the networkidle race
+  // condition where the alert can still be pending a React state update when
+  // networkidle fires (the 401 response completes before the DOM updates).
+  const LOGIN_TIMEOUT_MS = 10_000;
+  await Promise.race([
+    context.page
+      .waitForURL((url) => new URL(url).pathname !== '/', { timeout: LOGIN_TIMEOUT_MS })
+      .catch(() => null),
+    context.page
+      .getByRole('alert')
+      .waitFor({ state: 'visible', timeout: LOGIN_TIMEOUT_MS })
+      .catch(() => null),
+  ]);
 
   const finalUrl = context.page.url();
   const errorMessage = await loginPage.errorMessage();
 
   // Determine success by checking whether the page has navigated away from
   // the login route. The login page is served at the root path.
-  const loginUrl = new URL(finalUrl);
-  const isStillOnLogin = loginUrl.pathname === '/' && errorMessage !== null;
-  const success = !isStillOnLogin;
+  const loginPathname = new URL(finalUrl).pathname;
+  const success = loginPathname !== '/';
 
   return { success, finalUrl, errorMessage };
 }

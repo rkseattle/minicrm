@@ -23,6 +23,8 @@ import { t } from '@framework/i18n/locale.js';
 export interface ContactsPageContext {
   page: Page;
   healPage: HealPage;
+  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
+  testName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,16 +44,18 @@ export interface ContactsPageContext {
 export class ContactsPage {
   private readonly page: Page;
   private readonly healPage: HealPage;
+  private readonly testName: string;
 
   /** The URL path for this page. */
   static readonly PATH = '/contacts';
 
   /**
-   * @param context - Playwright fixture context containing page and healPage.
+   * @param context - Playwright fixture context containing page, healPage, and testName.
    */
   constructor(context: ContactsPageContext) {
     this.page = context.page;
     this.healPage = context.healPage;
+    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -82,21 +86,42 @@ export class ContactsPage {
   /**
    * Returns the number of contact rows visible in the table (desktop layout).
    * Returns 0 when no contacts are listed or during a loading state.
+   *
+   * Uses HealingLocator so any locator healing is captured in the audit log.
    */
   async rowCount(): Promise<number> {
-    // Wait for the page to settle — look for either a contact link or an empty state.
     await this.page.waitForLoadState('networkidle');
-    return this.page.locator('[data-testid^="contact-link-"]').count();
+    // contact-link-{id} rows are dynamic; css prefix-match is the primary
+    // strategy. xpath is the fallback with equivalent semantics.
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'css', value: '[data-testid^="contact-link-"]' },
+          { type: 'xpath', value: '//*[starts-with(@data-testid,"contact-link-")]' },
+        ])
+        .resolve(this.testName);
+      return resolved.count();
+    } catch {
+      // StrategyExhaustedError means no rows are present.
+      return 0;
+    }
   }
 
   /**
    * Returns whether the contacts page is currently loaded and showing the list.
    * Checks for the presence of the "New Contact" button as the stable anchor.
+   *
+   * Uses HealingLocator with 2 strategies to stay consistent with the Page
+   * Object contract.
    */
   async isLoaded(): Promise<boolean> {
-    const btn = this.page.getByTestId('new-contact-button');
     try {
-      await btn.waitFor({ state: 'attached', timeout: 5_000 });
+      await this.healPage
+        .locate([
+          { type: 'testId', value: 'new-contact-button' },
+          { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
+        ])
+        .resolve(this.testName);
       return true;
     } catch {
       return false;
