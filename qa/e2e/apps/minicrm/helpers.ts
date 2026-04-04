@@ -102,7 +102,9 @@ export async function createTestContact(
   const payload = {
     firstName: overrides.firstName ?? 'Test',
     lastName: overrides.lastName ?? 'Contact',
-    email: overrides.email ?? `test-contact-${Date.now()}@example.com`,
+    email:
+      overrides.email ??
+      `test-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
     phone: overrides.phone ?? null,
     title: overrides.title ?? null,
     department: overrides.department ?? null,
