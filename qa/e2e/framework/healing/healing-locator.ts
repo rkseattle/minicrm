@@ -17,6 +17,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { HealingRegistry } from './healing-registry.js';
 import type { LocatorStrategyRecord } from './healing-registry.js';
+import { AiHealer } from './ai-healer.js';
 
 /** All supported locator strategy types in priority order. */
 export type StrategyType = 'testId' | 'role' | 'label' | 'text' | 'css' | 'xpath';
@@ -54,6 +55,12 @@ export interface HealingLocatorOptions {
    * Used by the AI tier (S3) when all static strategies are exhausted.
    */
   intent?: string;
+  /**
+   * Override the AiHealer instance. Used in tests to inject a mock healer
+   * without touching the AI_HEALING env var or making real API calls.
+   * @internal
+   */
+  _aiHealer?: AiHealer;
 }
 
 /**
@@ -147,6 +154,7 @@ export class HealingLocator {
   /** Sorted strategies (by STRATEGY_ORDER). */
   private readonly strategies: LocatorStrategy[];
   private readonly fallbackTimeout: number;
+  private readonly aiHealer: AiHealer;
 
   /** Natural-language description for the AI tier (S3). */
   readonly intent: string;
@@ -171,6 +179,7 @@ export class HealingLocator {
     );
     this.fallbackTimeout = options.fallbackTimeout ?? DEFAULT_FALLBACK_TIMEOUT_MS;
     this.intent = options.intent ?? '';
+    this.aiHealer = options._aiHealer ?? new AiHealer();
   }
 
   /**
@@ -216,6 +225,28 @@ export class HealingLocator {
       }
 
       attempted.push(toRecord(fallback));
+    }
+
+    // AI tier: final fallback after all static strategies fail.
+    // Only invoked when intent is provided (non-empty string).
+    if (this.intent !== '') {
+      const aiResult = await this.aiHealer.heal(this.page, this.intent, attempted);
+
+      if (aiResult !== null) {
+        const aiStrategy: LocatorStrategy = { type: aiResult.type, value: aiResult.value };
+        const aiLocator = buildLocator(this.page, aiStrategy);
+        const aiResolved = await probeLocator(aiLocator, this.fallbackTimeout);
+
+        if (aiResolved) {
+          HealingRegistry.instance.record(
+            testName,
+            toRecord(primary),
+            toRecord(aiStrategy),
+            true, // wasAiHeal
+          );
+          return aiLocator;
+        }
+      }
     }
 
     throw new StrategyExhaustedError(attempted);
