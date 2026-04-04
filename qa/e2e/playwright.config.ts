@@ -21,8 +21,8 @@ export default defineConfig({
 
   reporter: [
     ['html', { open: 'never' }],
-    // Stub slot for HealingReporter — wired in S2 (MINCRM-124)
-    // ['./framework/reporting/healing-reporter', {}],
+    // HealingReporter — merges per-worker heal logs at run end (S2, MINCRM-124)
+    ['./framework/healing/healing-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
   ],
 
