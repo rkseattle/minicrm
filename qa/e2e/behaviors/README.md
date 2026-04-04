@@ -118,14 +118,18 @@ in fixtures that aren't used.
 export interface AuthBehaviorContext {
   page: Page;
   healPage: HealPage;
+  testName: string; // testInfo.title — forwarded to Page Objects for heal audit records
 }
 ```
 
 Pass the full fixture object from the test:
 
 ```ts
-test('logs in as admin', async ({ page, healPage }) => {
-  const result = await login({ email: '...', password: '...' }, { page, healPage });
+test('logs in as admin', async ({ page, healPage }, testInfo) => {
+  const result = await login(
+    { email: '...', password: '...' },
+    { page, healPage, testName: testInfo.title },
+  );
   expect(result.success).toBe(true);
 });
 ```

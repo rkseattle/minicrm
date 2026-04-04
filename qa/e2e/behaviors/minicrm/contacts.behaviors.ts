@@ -23,6 +23,8 @@ import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 export interface ContactsBehaviorContext {
   page: Page;
   healPage: HealPage;
+  /** Current test name forwarded to Page Object constructors for heal audit records. */
+  testName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +54,7 @@ export interface NavigateToContactsResult {
  *
  * @example
  * ```ts
- * const result = await navigateToContacts({ page, healPage });
+ * const result = await navigateToContacts({ page, healPage, testName: 'my test' });
  * expect(result.loaded).toBe(true);
  * expect(result.finalUrl).toContain('/contacts');
  * ```
