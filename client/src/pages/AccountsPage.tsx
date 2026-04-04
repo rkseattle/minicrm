@@ -193,7 +193,7 @@ export default function AccountsPage() {
               setSearchInput(e.target.value);
               setPage(1);
             }}
-            className="w-56"
+            className="w-full sm:w-auto"
           />
           <Input
             id="accounts-industry-filter"
@@ -205,7 +205,7 @@ export default function AccountsPage() {
               setIndustryInput(e.target.value);
               setPage(1);
             }}
-            className="w-48"
+            className="w-full sm:w-auto"
           />
           <OwnerToggle
             value={ownerFilter}
@@ -233,7 +233,7 @@ export default function AccountsPage() {
           </div>
         )}
 
-        {/* Accounts table */}
+        {/* Accounts list */}
         {!isLoading && !isError && (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {accounts.length === 0 ? (
@@ -241,70 +241,109 @@ export default function AccountsPage() {
                 <p className="text-sm text-gray-400">{t('accounts.empty')}</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th
-                      className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                      aria-sort={sortDir}
-                    >
-                      <button
-                        type="button"
-                        onClick={handleSortName}
-                        className="inline-flex items-center gap-1 hover:text-gray-700"
-                        data-testid="accounts-sort-name"
-                      >
-                        {t('accounts.columnName')}
-                        {sortDir === 'ascending' ? ' ↑' : ' ↓'}
-                      </button>
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnIndustry')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnWebsite')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnEmployeeRange')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnRevenueRange')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('accounts.columnOwner')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <>
+                {/* Mobile card view — visible below md */}
+                <ul className="md:hidden divide-y divide-gray-100">
                   {accounts.map((account) => (
-                    <tr key={account.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-indigo-600">
-                        <Link
-                          to={`/accounts/${account.id}`}
-                          data-testid={`account-link-${account.id}`}
-                          className="hover:underline"
-                        >
-                          {account.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{account.industry ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{account.website ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{account.employee_range ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{account.revenue_range ?? '—'}</td>
-                      <td
-                        className="px-4 py-3 text-gray-500"
+                    <li
+                      key={account.id}
+                      className="px-4 py-3"
+                      data-testid={`account-card-${account.id}`}
+                    >
+                      <Link
+                        to={`/accounts/${account.id}`}
+                        data-testid={`account-link-${account.id}`}
+                        className="block font-medium text-indigo-600 hover:underline mb-1"
+                      >
+                        {account.name}
+                      </Link>
+                      {account.industry && (
+                        <p className="text-sm text-gray-500">{account.industry}</p>
+                      )}
+                      {account.website && (
+                        <p className="text-sm text-gray-400">{account.website}</p>
+                      )}
+                      <p
+                        className="text-xs text-gray-400 mt-1"
                         data-testid={`account-owner-${account.id}`}
                       >
+                        {t('accounts.columnOwner')}:{' '}
                         {resolveOwnerName(
                           account.owner_id,
                           activeUsers,
                           t('accounts.ownerUnknown'),
                         )}
-                      </td>
-                    </tr>
+                      </p>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+
+                {/* Desktop table — hidden below md */}
+                <table className="hidden md:table w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        aria-sort={sortDir}
+                      >
+                        <button
+                          type="button"
+                          onClick={handleSortName}
+                          className="inline-flex items-center gap-1 hover:text-gray-700"
+                          data-testid="accounts-sort-name"
+                        >
+                          {t('accounts.columnName')}
+                          {sortDir === 'ascending' ? ' ↑' : ' ↓'}
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnIndustry')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnWebsite')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnEmployeeRange')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnRevenueRange')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnOwner')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {accounts.map((account) => (
+                      <tr key={account.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-indigo-600">
+                          <Link
+                            to={`/accounts/${account.id}`}
+                            data-testid={`account-link-${account.id}`}
+                            className="hover:underline"
+                          >
+                            {account.name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{account.industry ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{account.website ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{account.employee_range ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{account.revenue_range ?? '—'}</td>
+                        <td
+                          className="px-4 py-3 text-gray-500"
+                          data-testid={`account-owner-${account.id}`}
+                        >
+                          {resolveOwnerName(
+                            account.owner_id,
+                            activeUsers,
+                            t('accounts.ownerUnknown'),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
             {data && data.total > data.limit && (
               <Pagination
