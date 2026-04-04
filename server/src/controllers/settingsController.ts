@@ -4,8 +4,16 @@
  */
 
 import type { Request, Response } from 'express';
-import { getDefaultLanguage, setDefaultLanguage } from '../services/settingsService.js';
-import { setDefaultLanguageSchema } from '@minicrm/shared/schemas/settingsSchema.js';
+import {
+  getDefaultLanguage,
+  setDefaultLanguage,
+  getNavLayout,
+  setNavLayout,
+} from '../services/settingsService.js';
+import {
+  setDefaultLanguageSchema,
+  setNavLayoutSchema,
+} from '@minicrm/shared/schemas/settingsSchema.js';
 
 /**
  * GET /api/settings/default-language
@@ -41,4 +49,41 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
 
   const language = await setDefaultLanguage(parsed.data.language);
   res.status(200).json({ language });
+}
+
+/**
+ * GET /api/settings/nav-layout
+ * Returns the current system-wide navigation layout.
+ * Public endpoint — clients need this before auth to render the shell.
+ * (MINCRM-133)
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getNavLayoutHandler(_req: Request, res: Response): Promise<void> {
+  const layout = await getNavLayout();
+  res.status(200).json({ layout });
+}
+
+/**
+ * PATCH /api/settings/nav-layout
+ * Updates the system-wide navigation layout. Admin only. (MINCRM-133)
+ *
+ * @param req - Express request with body `{ layout: NavLayout }`.
+ * @param res - Express response.
+ */
+export async function setNavLayoutHandler(req: Request, res: Response): Promise<void> {
+  const parsed = setNavLayoutSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
+    });
+    return;
+  }
+
+  const layout = await setNavLayout(parsed.data.layout);
+  res.status(200).json({ layout });
 }

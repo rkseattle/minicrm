@@ -14,7 +14,9 @@
     "languageSelector": "Idioma",
     "logout": "Cerrar sesión",
     "menu": "Menú",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "collapseSidebar": "Contraer barra lateral",
+    "expandSidebar": "Expandir barra lateral"
   },
   "login": {
     "title": "Inicia sesión en tu cuenta",
@@ -338,6 +340,15 @@
       "es": "Español",
       "fr": "Francés",
       "de": "Alemán"
+    },
+    "navLayout": {
+      "label": "Diseño de navegación",
+      "hint": "Elige cómo se muestra la navegación para todos los usuarios. Los cambios surten efecto inmediatamente.",
+      "top": "Barra superior",
+      "left": "Panel lateral",
+      "hamburger": "Menú hamburguesa",
+      "saveSuccess": "Diseño de navegación actualizado.",
+      "saveError": "Error al guardar el diseño. Por favor, inténtalo de nuevo."
     },
     "demo": {
       "sectionTitle": "Datos de demostración",

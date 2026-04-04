@@ -5,7 +5,12 @@
  */
 
 import apiClient from './axiosInstance.js';
-import type { DefaultLanguageResponse, SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import type {
+  DefaultLanguageResponse,
+  SupportedLocale,
+  NavLayoutResponse,
+  NavLayout,
+} from '@shared/schemas/settingsSchema.js';
 
 /** React Query cache key for the default language setting */
 export const DEFAULT_LANGUAGE_QUERY_KEY = ['settings', 'defaultLanguage'] as const;
@@ -30,5 +35,27 @@ export async function setDefaultLanguage(
   const response = await apiClient.patch<DefaultLanguageResponse>('/settings/default-language', {
     language,
   });
+  return response.data;
+}
+
+/** React Query cache key for the nav layout setting (MINCRM-133) */
+export const NAV_LAYOUT_QUERY_KEY = ['settings', 'navLayout'] as const;
+
+/**
+ * Returns the current system-wide navigation layout.
+ * Called before auth resolves so the shell can render immediately.
+ */
+export async function getNavLayout(): Promise<NavLayoutResponse> {
+  const response = await apiClient.get<NavLayoutResponse>('/settings/nav-layout');
+  return response.data;
+}
+
+/**
+ * Updates the system-wide navigation layout. Admin only. (MINCRM-133)
+ *
+ * @param layout - One of the supported nav layout values.
+ */
+export async function setNavLayout(layout: NavLayout): Promise<NavLayoutResponse> {
+  const response = await apiClient.patch<NavLayoutResponse>('/settings/nav-layout', { layout });
   return response.data;
 }

@@ -11,6 +11,8 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getDefaultLanguageHandler,
   setDefaultLanguageHandler,
+  getNavLayoutHandler,
+  setNavLayoutHandler,
 } from '../controllers/settingsController.js';
 
 const router = Router();
@@ -105,5 +107,73 @@ router.patch(
   requireRole('admin'),
   asyncHandler(setDefaultLanguageHandler),
 );
+
+/**
+ * @openapi
+ * /api/settings/nav-layout:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getNavLayout
+ *     summary: Get the system navigation layout
+ *     description: >
+ *       Returns the current system-wide navigation layout. Public endpoint —
+ *       clients may need this before auth resolves. Will never return 401.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Current nav layout
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NavLayoutResponse'
+ *             example:
+ *               layout: top
+ */
+router.get('/nav-layout', asyncHandler(getNavLayoutHandler));
+
+/**
+ * @openapi
+ * /api/settings/nav-layout:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setNavLayout
+ *     summary: Set the system navigation layout (admin only)
+ *     description: >
+ *       Updates the system-wide navigation layout. Requires admin role. (MINCRM-133)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SetNavLayoutRequest'
+ *           example:
+ *             layout: left
+ *     responses:
+ *       200:
+ *         description: Nav layout updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NavLayoutResponse'
+ *             example:
+ *               layout: left
+ *       400:
+ *         description: Invalid layout value
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: Layout must be one of: top, left, hamburger
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch('/nav-layout', authenticate, requireRole('admin'), asyncHandler(setNavLayoutHandler));
 
 export default router;

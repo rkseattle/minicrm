@@ -14,7 +14,9 @@
     "languageSelector": "Language",
     "logout": "Log out",
     "menu": "Menu",
-    "close": "Close"
+    "close": "Close",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "login": {
     "title": "Sign in to your account",
@@ -338,6 +340,15 @@
       "es": "Spanish",
       "fr": "French",
       "de": "German"
+    },
+    "navLayout": {
+      "label": "Navigation layout",
+      "hint": "Choose how navigation is displayed for all users. Changes take effect immediately.",
+      "top": "Top Nav",
+      "left": "Left Nav",
+      "hamburger": "Hamburger Menu",
+      "saveSuccess": "Navigation layout updated.",
+      "saveError": "Failed to save layout. Please try again."
     },
     "demo": {
       "sectionTitle": "Demo Data",

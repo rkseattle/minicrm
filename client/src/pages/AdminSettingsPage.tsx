@@ -1,7 +1,7 @@
 /**
  * Admin Settings page.
  * Allows admins to configure system-wide settings.
- * Sections: system default language, demo data management (MINCRM-103).
+ * Sections: system default language, navigation layout (MINCRM-133), demo data management (MINCRM-103).
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -20,8 +20,9 @@ import {
   removeDemoData,
   DEMO_STATUS_QUERY_KEY,
 } from '@/api/demo.js';
-import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
-import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@shared/schemas/settingsSchema.js';
+import type { SupportedLocale, NavLayout } from '@shared/schemas/settingsSchema.js';
+import { useNavLayout } from '@/components/NavLayoutContext.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 
@@ -41,9 +42,37 @@ export default function AdminSettingsPage() {
     queryFn: getDefaultLanguage,
   });
 
+  const { layout: activeLayout, saveLayout } = useNavLayout();
+
   const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
+
+  // ── Nav layout settings ──────────────────────────────────────────────────────
+
+  const [navLayoutSaving, setNavLayoutSaving] = useState(false);
+  const [navLayoutSuccess, setNavLayoutSuccess] = useState(false);
+  const [navLayoutError, setNavLayoutError] = useState(false);
+
+  /**
+   * Persists the selected navigation layout immediately via context.
+   *
+   * @param newLayout - The chosen layout value.
+   */
+  async function handleNavLayoutChange(newLayout: NavLayout): Promise<void> {
+    if (newLayout === activeLayout) return;
+    setNavLayoutSaving(true);
+    setNavLayoutSuccess(false);
+    setNavLayoutError(false);
+    try {
+      await saveLayout(newLayout);
+      setNavLayoutSuccess(true);
+    } catch {
+      setNavLayoutError(true);
+    } finally {
+      setNavLayoutSaving(false);
+    }
+  }
 
   const selectedLanguage: SupportedLocale = pendingLanguage ?? data?.language ?? 'en';
 
@@ -247,6 +276,62 @@ export default function AdminSettingsPage() {
             </div>
           </form>
         )}
+
+        {/* ── Navigation Layout section ─────────────────────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="nav-layout-section"
+        >
+          <h2
+            className="text-lg font-semibold text-gray-900 mb-1"
+            data-testid="nav-layout-section-title"
+          >
+            {t('settings.navLayout.label')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">{t('settings.navLayout.hint')}</p>
+
+          <div
+            className="flex flex-wrap gap-3"
+            role="radiogroup"
+            aria-label={t('settings.navLayout.label')}
+          >
+            {NAV_LAYOUTS.map((layoutOption) => (
+              <button
+                key={layoutOption}
+                type="button"
+                role="radio"
+                aria-checked={activeLayout === layoutOption}
+                data-testid={`nav-layout-option-${layoutOption}`}
+                disabled={navLayoutSaving}
+                onClick={() => void handleNavLayoutChange(layoutOption)}
+                className={[
+                  'px-4 py-2 rounded-md border text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                  activeLayout === layoutOption
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+                  navLayoutSaving ? 'opacity-50 cursor-not-allowed' : '',
+                ].join(' ')}
+              >
+                {t(`settings.navLayout.${layoutOption}`)}
+              </button>
+            ))}
+          </div>
+
+          {navLayoutSuccess && (
+            <p
+              role="status"
+              className="mt-3 text-sm text-green-700"
+              data-testid="nav-layout-success"
+            >
+              {t('settings.navLayout.saveSuccess')}
+            </p>
+          )}
+          {navLayoutError && (
+            <p role="alert" className="mt-3 text-sm text-red-600" data-testid="nav-layout-error">
+              {t('settings.navLayout.saveError')}
+            </p>
+          )}
+        </div>
 
         {/* ── Demo Data section ─────────────────────────────────────────────── */}
         <div

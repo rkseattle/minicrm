@@ -232,6 +232,17 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
 
+### Navigation Layout (MINCRM-133)
+
+- Admin can choose between three navigation layouts from the **Admin Settings** page: **Top Nav** (tab bar, default), **Left Nav** (collapsible sidebar), and **Hamburger Menu** (icon-triggered overlay)
+- The selected layout is stored in the `system_settings` table (`nav_layout` key) and applies immediately to all users without a page reload
+- API endpoints:
+  - `GET /api/settings/nav-layout` — public, returns `{ layout }` (used on app load)
+  - `PATCH /api/settings/nav-layout` — admin only, body `{ layout }`, returns `{ layout }`
+- The active layout is distributed via `NavLayoutContext` / `NavLayoutProvider`; page components use `<NavBar />` without knowing which layout is active
+- Each layout is a self-contained React component (`NavTop`, `NavLeft`, `NavHamburger`) with `data-testid` attributes following the `nav-{layout}-{destination}` convention (e.g. `nav-top-contacts`, `nav-left-deals`, `nav-hamburger-tasks`)
+- Database migration: `014_add_nav_layout_setting.js` seeds the `nav_layout = 'top'` default row
+
 ### User Language Preference (MINCRM-31)
 
 - Any authenticated user can set a personal preferred language from the **Profile Settings** page (`/settings/profile`) or by using the language dropdown in the nav bar
