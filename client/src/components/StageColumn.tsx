@@ -28,6 +28,11 @@ interface StageColumnProps {
   updatingDealIds: Set<string>;
   /** When true, the column expands to full width (used in mobile single-stage view) */
   fullWidth?: boolean;
+  /**
+   * Optional prefix for data-testid attributes on the column and its deal cards.
+   * Used to disambiguate columns rendered in multiple views (e.g. "mobile-").
+   */
+  testIdPrefix?: string;
 }
 
 /** CSS classes for the column border and background */
@@ -98,13 +103,14 @@ export default function StageColumn({
   onCloseRequested,
   updatingDealIds,
   fullWidth = false,
+  testIdPrefix = '',
 }: StageColumnProps) {
   const { t, i18n } = useTranslation();
   const slug = stageSlug(stage);
 
   return (
     <div
-      data-testid={`stage-column-${slug}`}
+      data-testid={`${testIdPrefix}stage-column-${slug}`}
       className={`${fullWidth ? 'w-full' : 'flex-shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
     >
       {/* Column header */}
@@ -117,13 +123,16 @@ export default function StageColumn({
             {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
           </h3>
           <span
-            data-testid={`stage-column-count-${slug}`}
+            data-testid={`${testIdPrefix}stage-column-count-${slug}`}
             className="ms-2 shrink-0 text-xs font-medium"
           >
             {deals.length}
           </span>
         </div>
-        <p data-testid={`stage-column-total-${slug}`} className="text-xs opacity-75 mt-0.5">
+        <p
+          data-testid={`${testIdPrefix}stage-column-total-${slug}`}
+          className="text-xs opacity-75 mt-0.5"
+        >
           {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
         </p>
       </div>
@@ -138,6 +147,7 @@ export default function StageColumn({
             onStageChange={onStageChange}
             onCloseRequested={onCloseRequested}
             isUpdating={updatingDealIds.has(deal.id)}
+            testIdPrefix={testIdPrefix}
           />
         ))}
       </div>

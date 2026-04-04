@@ -311,6 +311,7 @@ export default function PipelineBoardPage() {
                 onCloseRequested={handleCloseRequested}
                 updatingDealIds={updatingDealIds}
                 fullWidth
+                testIdPrefix="mobile-"
               />
             </div>
 

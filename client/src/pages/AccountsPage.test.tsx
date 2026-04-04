@@ -29,9 +29,10 @@ describe('AccountsPage', () => {
   it('renders an account row from the API', async () => {
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {
-      expect(screen.getByText(ACCOUNT_1.name)).toBeInTheDocument();
+      // name appears in both mobile card and desktop table
+      expect(screen.getAllByText(ACCOUNT_1.name).length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText(ACCOUNT_1.industry!)).toBeInTheDocument();
+    expect(screen.getAllByText(ACCOUNT_1.industry!).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows empty state when no accounts are returned', async () => {
@@ -121,9 +122,9 @@ describe('AccountsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<AccountsPage />);
 
-    // Both accounts visible before filtering
+    // Both accounts visible before filtering (each name appears in mobile card + desktop table)
     await waitFor(() => {
-      expect(screen.getByText(repAccount.name)).toBeInTheDocument();
+      expect(screen.getAllByText(repAccount.name).length).toBeGreaterThanOrEqual(1);
     });
 
     await user.click(screen.getByTestId('accounts-owner-filter-mine'));
@@ -131,7 +132,7 @@ describe('AccountsPage', () => {
     await waitFor(() => {
       expect(screen.queryByText(repAccount.name)).not.toBeInTheDocument();
     });
-    expect(screen.getByText(ACCOUNT_1.name)).toBeInTheDocument();
+    expect(screen.getAllByText(ACCOUNT_1.name).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows fallback text for accounts with an unresolvable owner', async () => {

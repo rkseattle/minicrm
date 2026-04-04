@@ -29,11 +29,12 @@ describe('ContactsPage', () => {
   it('renders a contact row from the API', async () => {
     renderWithProviders(<ContactsPage />);
     await waitFor(() => {
+      // name appears in both mobile card and desktop table
       expect(
-        screen.getByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`),
-      ).toBeInTheDocument();
+        screen.getAllByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`).length,
+      ).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText(CONTACT_1.email)).toBeInTheDocument();
+    expect(screen.getAllByText(CONTACT_1.email).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows empty state when no contacts are returned', async () => {
@@ -124,11 +125,11 @@ describe('ContactsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<ContactsPage />);
 
-    // Both contacts visible before filtering
+    // Both contacts visible before filtering (each name appears in mobile card + desktop table)
     await waitFor(() => {
       expect(
-        screen.getByText(`${repContact.first_name} ${repContact.last_name}`),
-      ).toBeInTheDocument();
+        screen.getAllByText(`${repContact.first_name} ${repContact.last_name}`).length,
+      ).toBeGreaterThanOrEqual(1);
     });
 
     await user.click(screen.getByTestId('contacts-owner-filter-mine'));
@@ -138,7 +139,9 @@ describe('ContactsPage', () => {
         screen.queryByText(`${repContact.first_name} ${repContact.last_name}`),
       ).not.toBeInTheDocument();
     });
-    expect(screen.getByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('shows fallback text for contacts with an unresolvable owner', async () => {

@@ -127,6 +127,8 @@ export default function DealsPage() {
   const [pendingClose, setPendingClose] = useState<PendingClose | null>(null);
   const [closeError, setCloseError] = useState<string | null>(null);
   const [showClosed, setShowClosed] = useState(true);
+  /** Index of the currently visible stage in the mobile single-stage board view */
+  const [mobileStageIndex, setMobileStageIndex] = useState(0);
 
   // ── Restore focus after form closes ───────────────────────────────────────
   useEffect(() => {
@@ -496,18 +498,98 @@ export default function DealsPage() {
             )}
 
             {!isLoading && !isError && (
-              <div data-testid="pipeline-board" className="flex gap-4 overflow-x-auto pb-4">
-                {PIPELINE_STAGES.map((stage) => (
+              <div data-testid="pipeline-board">
+                {/* Mobile single-stage view — visible below md */}
+                <div className="md:hidden">
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <button
+                      type="button"
+                      aria-label={t('pipeline.prevStage')}
+                      data-testid="pipeline-mobile-prev"
+                      onClick={() => setMobileStageIndex((i) => Math.max(0, i - 1))}
+                      disabled={mobileStageIndex === 0}
+                      className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <div className="flex-1 text-center">
+                      <p
+                        className="text-sm font-semibold text-gray-700"
+                        data-testid="pipeline-mobile-stage-name"
+                      >
+                        {t(
+                          `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[PIPELINE_STAGES[mobileStageIndex]]}`,
+                        )}{' '}
+                        <span className="font-normal text-gray-500">
+                          {`(${(dealsByStage.get(PIPELINE_STAGES[mobileStageIndex]) ?? []).length})`}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {t('pipeline.stageOf', {
+                          current: mobileStageIndex + 1,
+                          total: PIPELINE_STAGES.length,
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={t('pipeline.nextStage')}
+                      data-testid="pipeline-mobile-next"
+                      onClick={() =>
+                        setMobileStageIndex((i) => Math.min(PIPELINE_STAGES.length - 1, i + 1))
+                      }
+                      disabled={mobileStageIndex === PIPELINE_STAGES.length - 1}
+                      className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                   <StageColumn
-                    key={stage}
-                    stage={stage}
-                    deals={dealsByStage.get(stage) ?? []}
+                    key={PIPELINE_STAGES[mobileStageIndex]}
+                    stage={PIPELINE_STAGES[mobileStageIndex]}
+                    deals={dealsByStage.get(PIPELINE_STAGES[mobileStageIndex]) ?? []}
                     accountNames={accountNames}
                     onStageChange={handleStageChange}
                     onCloseRequested={handleCloseRequested}
                     updatingDealIds={updatingDealIds}
+                    fullWidth
+                    testIdPrefix="mobile-"
                   />
-                ))}
+                </div>
+                {/* Desktop multi-column Kanban — hidden below md */}
+                <div className="hidden md:flex gap-4 overflow-x-auto pb-4">
+                  {PIPELINE_STAGES.map((stage) => (
+                    <StageColumn
+                      key={stage}
+                      stage={stage}
+                      deals={dealsByStage.get(stage) ?? []}
+                      accountNames={accountNames}
+                      onStageChange={handleStageChange}
+                      onCloseRequested={handleCloseRequested}
+                      updatingDealIds={updatingDealIds}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </>
