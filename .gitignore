@@ -49,6 +49,13 @@ coverage/
 test-results/
 playwright-report/
 
+# ─── QA workspace ─────────────────────────────────────────────────────────────
+qa/.env
+qa/node_modules/
+qa/dist/
+qa/playwright-report/
+qa/test-results/
+
 # ─── OS & Editor ──────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

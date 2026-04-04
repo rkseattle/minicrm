@@ -1,0 +1,22 @@
+{
+  "name": "minicrm-qa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-healing Playwright test automation framework for MiniCRM (MINCRM-106)",
+  "scripts": {
+    "test": "playwright test --config=e2e/playwright.config.ts",
+    "test:desktop": "playwright test --config=e2e/playwright.config.ts --project=desktop",
+    "test:mobile": "playwright test --config=e2e/playwright.config.ts --project=mobile-web",
+    "test:headed": "playwright test --config=e2e/playwright.config.ts --headed",
+    "lint:framework-purity": "bash scripts/check-framework-purity.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@grpc/grpc-js": "^1.12.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "@types/node": "^22.14.0",
+    "typescript": "^5.9.3"
+  }
+}
