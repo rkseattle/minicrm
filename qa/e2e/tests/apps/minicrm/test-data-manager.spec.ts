@@ -167,24 +167,26 @@ test.describe('TestDataManager — reverse-order teardown', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('AC2 — teardown on test failure', () => {
-  test('fixture finally pattern — teardown called even when test throws', async () => {
-    // Directly verifies the fixture pattern: create manager, throw in test
-    // body, confirm teardown still fired (via the fixture's finally block).
+  test('teardown() is safe to call from a finally block when a throw precedes it', async () => {
+    // Verifies that TestDataManager.teardown() itself does not throw and
+    // correctly returns results when called from a finally block after an
+    // error. This is the property that makes it safe to wire into the
+    // fixture's finally clause — it does NOT verify that the fixture wiring
+    // in fixtures.ts calls teardown (that is a structural guarantee of the
+    // fixture code, not something unit tests can exercise without a real
+    // Playwright worker).
     const { client, deletedPaths } = makeStubClient();
     const manager = new TestDataManager();
 
     manager.register('deal', 7, '/api/deals/7');
 
-    // Reproduce the fixture's try/finally teardown guarantee.
     let teardownResults = null;
     let testBodyThrew = false;
     try {
-      // "Test body" throws immediately.
       throw new Error('simulated test failure');
     } catch {
       testBodyThrew = true;
     } finally {
-      // Fixture teardown runs unconditionally.
       teardownResults = await manager.teardown(client);
     }
 
