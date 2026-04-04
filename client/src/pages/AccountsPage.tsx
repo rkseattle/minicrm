@@ -252,7 +252,7 @@ export default function AccountsPage() {
                     >
                       <Link
                         to={`/accounts/${account.id}`}
-                        data-testid={`account-link-${account.id}`}
+                        data-testid={`account-card-link-${account.id}`}
                         className="block font-medium text-indigo-600 hover:underline mb-1"
                       >
                         {account.name}
@@ -265,7 +265,7 @@ export default function AccountsPage() {
                       )}
                       <p
                         className="text-xs text-gray-400 mt-1"
-                        data-testid={`account-owner-${account.id}`}
+                        data-testid={`account-card-owner-${account.id}`}
                       >
                         {t('accounts.columnOwner')}:{' '}
                         {resolveOwnerName(

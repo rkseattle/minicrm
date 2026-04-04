@@ -349,7 +349,7 @@ export default function ContactsPage() {
                     >
                       <Link
                         to={`/contacts/${contact.id}`}
-                        data-testid={`contact-link-${contact.id}`}
+                        data-testid={`contact-card-link-${contact.id}`}
                         className="block font-medium text-indigo-600 hover:underline mb-1"
                       >
                         {contact.first_name} {contact.last_name}
@@ -358,7 +358,7 @@ export default function ContactsPage() {
                       {contact.title && <p className="text-sm text-gray-400">{contact.title}</p>}
                       <p
                         className="text-xs text-gray-400 mt-1"
-                        data-testid={`contact-owner-${contact.id}`}
+                        data-testid={`contact-card-owner-${contact.id}`}
                       >
                         {t('contacts.columnOwner')}:{' '}
                         {resolveOwnerName(

@@ -589,11 +589,11 @@ export default function DealsPage() {
                         <li
                           key={deal.id}
                           className="px-4 py-3"
-                          data-testid={`deal-card-${deal.id}`}
+                          data-testid={`deal-list-card-${deal.id}`}
                         >
                           <Link
                             to={`/deals/${deal.id}`}
-                            data-testid={`deal-link-${deal.id}`}
+                            data-testid={`deal-list-card-link-${deal.id}`}
                             className="block font-medium text-indigo-600 hover:underline mb-1"
                           >
                             {deal.name}
@@ -608,7 +608,7 @@ export default function DealsPage() {
                           </p>
                           <p
                             className="text-xs text-gray-400 mt-1"
-                            data-testid={`deal-owner-${deal.id}`}
+                            data-testid={`deal-list-card-owner-${deal.id}`}
                           >
                             {t('deals.columnOwner')}:{' '}
                             {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
