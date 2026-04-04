@@ -43,6 +43,18 @@ describe('Input', () => {
     expect(screen.getByRole('textbox')).toHaveClass('focus:ring-indigo-500');
   });
 
+  it('applies yellow-border class when warning prop is true', () => {
+    render(<Input warning />);
+    expect(screen.getByRole('textbox')).toHaveClass('border-yellow-400');
+    expect(screen.getByRole('textbox')).toHaveClass('focus:ring-yellow-400');
+  });
+
+  it('error takes precedence over warning when both are set', () => {
+    render(<Input error="Invalid" warning />);
+    expect(screen.getByRole('textbox')).toHaveClass('border-red-300');
+    expect(screen.getByRole('textbox')).not.toHaveClass('border-yellow-400');
+  });
+
   it('forwards native input props', async () => {
     const user = userEvent.setup();
     const handleChange = vi.fn();

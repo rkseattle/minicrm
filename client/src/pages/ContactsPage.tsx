@@ -221,7 +221,7 @@ export default function ContactsPage() {
                 className="mb-4 rounded-md bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm text-yellow-800"
               >
                 <p className="font-semibold mb-1">{t('contacts.duplicateWarningTitle')}</p>
-                <p className="mb-3">
+                <p data-testid="duplicate-warning-message" className="mb-3">
                   {t('contacts.duplicateWarningMessage', {
                     name: `${duplicateContact.first_name} ${duplicateContact.last_name}`,
                   })}

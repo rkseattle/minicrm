@@ -251,11 +251,8 @@ describe('ContactsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('duplicate-contact-warning')).toBeInTheDocument();
     });
-    expect(
-      screen.getByText(
-        `A contact with this email already exists: ${duplicateContact.first_name} ${duplicateContact.last_name}.`,
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('duplicate-warning-message')).toBeInTheDocument();
+    expect(screen.getByTestId('contact-email')).toHaveClass('border-yellow-400');
   });
 
   it('shows the "Go to existing contact" link in the duplicate warning', async () => {
