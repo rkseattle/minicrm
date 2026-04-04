@@ -26,6 +26,8 @@ interface StageColumnProps {
   onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
   /** Set of deal IDs whose stage updates are currently in flight */
   updatingDealIds: Set<string>;
+  /** When true, the column expands to full width (used in mobile single-stage view) */
+  fullWidth?: boolean;
 }
 
 /** CSS classes for the column border and background */
@@ -95,6 +97,7 @@ export default function StageColumn({
   onStageChange,
   onCloseRequested,
   updatingDealIds,
+  fullWidth = false,
 }: StageColumnProps) {
   const { t, i18n } = useTranslation();
   const slug = stageSlug(stage);
@@ -102,7 +105,7 @@ export default function StageColumn({
   return (
     <div
       data-testid={`stage-column-${slug}`}
-      className={`flex-shrink-0 w-64 rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
+      className={`${fullWidth ? 'w-full' : 'flex-shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
     >
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
