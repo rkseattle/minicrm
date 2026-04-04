@@ -256,13 +256,13 @@ export default function DealDetailPage() {
           ← {t('deals.backToDeals')}
         </Link>
 
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
           <h1 className="text-2xl font-bold text-gray-900" data-testid="deal-name">
             {deal.name}
           </h1>
 
           {!isEditing && (
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -495,11 +495,11 @@ export default function DealDetailPage() {
   );
 }
 
-/** Renders a labelled read-only row in the detail card. */
+/** Renders a labelled read-only row in the detail card, stacked on mobile. */
 function DetailRow({ label, value, testId }: { label: string; value: string; testId: string }) {
   return (
-    <div className="px-6 py-4 flex items-start gap-4">
-      <span className="w-36 shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide pt-0.5">
+    <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
+      <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
         {label}
       </span>
       <span className="text-sm text-gray-900" data-testid={testId}>
