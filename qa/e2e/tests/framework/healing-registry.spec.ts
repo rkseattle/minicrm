@@ -62,8 +62,11 @@ test.describe('HealingRegistry', () => {
 
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
-    HealingRegistry.instance.flush();
-    process.chdir(originalCwd);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
 
     const writtenPath = path.join(tmpDir, 'test-results', 'healing-77.json');
     expect(fs.existsSync(writtenPath)).toBe(true);
@@ -101,8 +104,11 @@ test.describe('HealingRegistry', () => {
 
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
-    HealingRegistry.instance.flush();
-    process.chdir(originalCwd);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
 
     expect(fs.existsSync(outputDir)).toBe(true);
 
@@ -114,26 +120,27 @@ test.describe('HealingRegistry', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-workers-test-'));
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
+    try {
+      process.env['PW_WORKER_INDEX'] = '0';
+      HealingRegistry.instance.record(
+        'worker 0 test',
+        { type: 'testId', value: 'a' },
+        { type: 'css', value: '.a' },
+      );
+      HealingRegistry.instance.flush();
+      HealingRegistry.instance._reset();
 
-    process.env['PW_WORKER_INDEX'] = '0';
-    HealingRegistry.instance.record(
-      'worker 0 test',
-      { type: 'testId', value: 'a' },
-      { type: 'css', value: '.a' },
-    );
-    HealingRegistry.instance.flush();
-    HealingRegistry.instance._reset();
-
-    process.env['PW_WORKER_INDEX'] = '1';
-    HealingRegistry.instance.record(
-      'worker 1 test',
-      { type: 'testId', value: 'b' },
-      { type: 'css', value: '.b' },
-    );
-    HealingRegistry.instance.flush();
-    HealingRegistry.instance._reset();
-
-    process.chdir(originalCwd);
+      process.env['PW_WORKER_INDEX'] = '1';
+      HealingRegistry.instance.record(
+        'worker 1 test',
+        { type: 'testId', value: 'b' },
+        { type: 'css', value: '.b' },
+      );
+      HealingRegistry.instance.flush();
+      HealingRegistry.instance._reset();
+    } finally {
+      process.chdir(originalCwd);
+    }
 
     const outputDir = path.join(tmpDir, 'test-results');
     const files = fs.readdirSync(outputDir).sort();

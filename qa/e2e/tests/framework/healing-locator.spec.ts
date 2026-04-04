@@ -122,8 +122,11 @@ test.describe('HealingLocator', () => {
     // temporarily replacing cwd so the relative path lands in tmpDir.
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
-    HealingRegistry.instance.flush();
-    process.chdir(originalCwd);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
 
     const writtenPath = path.join(tmpDir, 'test-results', 'healing-99.json');
     const contents = JSON.parse(fs.readFileSync(writtenPath, 'utf-8')) as {
@@ -200,24 +203,38 @@ test.describe('HealingLocator', () => {
   });
 
   test('strategies are sorted by priority regardless of input order', async () => {
-    // Provide strategies in reverse priority order.
-    // The mock resolves on the 1st call (which should be testId after sorting).
-    const page = mockPage([true]);
+    // Track which Page factory method was called first.
+    // If sorting is applied, getByTestId is called before locator (css).
+    // If sorting is NOT applied, locator (css) would be called first because it
+    // appears first in the input array.
+    const callOrder: string[] = [];
 
-    // If strategies were NOT sorted, css would be tried first (index 0 as given)
-    // and resolve on call 0. With sorting, testId is tried first and resolves on
-    // call 0 — same result but we verify no heal event either way since primary resolves.
-    const locator = await new HealingLocator(
-      page,
+    const trackedPage = {
+      getByTestId: (_value: string) => {
+        callOrder.push('getByTestId');
+        return mockLocator(true); // resolves — stops iteration here
+      },
+      locator: (_value: string) => {
+        callOrder.push('locator');
+        return mockLocator(true);
+      },
+      getByRole: () => mockLocator(false),
+      getByLabel: () => mockLocator(false),
+      getByText: () => mockLocator(false),
+    } as unknown as Page;
+
+    await new HealingLocator(
+      trackedPage,
       [
-        { type: 'css', value: '.btn' },
-        { type: 'testId', value: 'btn' },
+        { type: 'css', value: '.btn' }, // lower priority — should be tried second
+        { type: 'testId', value: 'btn' }, // higher priority — should be tried first
       ],
       { fallbackTimeout: 100 },
     ).resolve('sort order test');
 
-    expect(locator).toBeDefined();
-    expect(HealingRegistry.instance.count).toBe(0);
+    // After sorting, testId (getByTestId) must be attempted before css (locator).
+    expect(callOrder[0]).toBe('getByTestId');
+    expect(HealingRegistry.instance.count).toBe(0); // primary resolved, no heal
   });
 
   test('intent field is accessible after construction', () => {
@@ -247,8 +264,11 @@ test.describe('HealingLocator', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-test-ai-'));
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
-    HealingRegistry.instance.flush();
-    process.chdir(originalCwd);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
 
     const writtenPath = path.join(tmpDir, 'test-results', 'healing-88.json');
     const contents = JSON.parse(fs.readFileSync(writtenPath, 'utf-8')) as {
