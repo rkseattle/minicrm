@@ -12,7 +12,9 @@
     "adminSettings": "Admin Settings",
     "profileSettings": "Profile Settings",
     "languageSelector": "Language",
-    "logout": "Log out"
+    "logout": "Log out",
+    "menu": "Menu",
+    "close": "Close"
   },
   "login": {
     "title": "Sign in to your account",
@@ -246,6 +248,9 @@
     "loading": "Loading pipeline…",
     "totalValue": "Total: {{value}}",
     "stageUpdateError": "Failed to update stage. Please try again.",
+    "prevStage": "Previous stage",
+    "nextStage": "Next stage",
+    "stageOf": "Stage {{current}} of {{total}}",
     "closeDeal": {
       "title": "Close as {{stage}}",
       "closeDateLabel": "Close date",

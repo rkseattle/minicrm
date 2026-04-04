@@ -12,7 +12,9 @@
     "adminSettings": "Configuración de administrador",
     "profileSettings": "Configuración de perfil",
     "languageSelector": "Idioma",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "menu": "Menú",
+    "close": "Cerrar"
   },
   "login": {
     "title": "Inicia sesión en tu cuenta",
@@ -246,6 +248,9 @@
     "loading": "Cargando canal…",
     "totalValue": "Total: {{value}}",
     "stageUpdateError": "Error al actualizar la etapa. Por favor, inténtalo de nuevo.",
+    "prevStage": "Etapa anterior",
+    "nextStage": "Etapa siguiente",
+    "stageOf": "Etapa {{current}} de {{total}}",
     "closeDeal": {
       "title": "Cerrar como {{stage}}",
       "closeDateLabel": "Fecha de cierre",
