@@ -281,6 +281,22 @@ test.describe('Auth strategies', () => {
 
     expect(headers['Authorization']).toBeUndefined();
   });
+
+  test('Extra header overrides auth strategy header for the same key', async () => {
+    // When a caller explicitly passes a header that the auth strategy would also
+    // set, the per-request extra header must win (auth strategy applied first,
+    // extra spread on top).
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      authStrategy: new BearerAuthStrategy('default-token'),
+    });
+
+    await client.get('/resource', { Authorization: 'Bearer one-off-token' });
+
+    expect(headers['Authorization']).toBe('Bearer one-off-token');
+  });
 });
 
 // ---------------------------------------------------------------------------
