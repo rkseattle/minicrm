@@ -246,6 +246,10 @@ export class HealingLocator {
           );
           return aiLocator;
         }
+
+        // AI strategy was tried but its probe failed — include it in the
+        // exhausted list so StrategyExhaustedError reports the full attempt set.
+        attempted.push(toRecord(aiStrategy));
       }
     }
 
