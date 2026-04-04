@@ -61,8 +61,10 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
  * HTTP Basic auth — adds `Authorization: Basic <base64(user:pass)>`.
  */
 export class BasicAuthStrategy implements AuthStrategy {
-  /** @param username - The username. */
-  /** @param password - The password. */
+  /**
+   * @param username - The username.
+   * @param password - The password.
+   */
   constructor(
     private readonly username: string,
     private readonly password: string,
@@ -177,9 +179,10 @@ export class RestClient {
    * @returns Final headers record.
    */
   private buildHeaders(extra?: Record<string, string>): Record<string, string> {
-    const headers: Record<string, string> = { ...extra };
+    // Apply auth strategy first so that explicitly supplied extra headers win.
+    const headers: Record<string, string> = {};
     this.authStrategy?.apply(headers);
-    return headers;
+    return { ...headers, ...extra };
   }
 
   /**

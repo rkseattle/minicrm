@@ -135,7 +135,7 @@ function handlePing(
 function handleStream(call: grpc.ServerWritableStream<StreamRequest, StreamResponse>): void {
   const { message, count } = call.request;
   for (let index = 0; index < count; index++) {
-    call.write({ message, index });
+    if (!call.write({ message, index })) break; // respect backpressure / cancellation
   }
   call.end();
 }

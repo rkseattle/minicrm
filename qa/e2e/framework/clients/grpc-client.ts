@@ -239,6 +239,9 @@ export class GrpcClient {
           }
           return Promise.resolve({ value: undefined as unknown as TResponse, done: true });
         }
+        if (resolveNext !== null) {
+          return Promise.reject(new Error('Concurrent calls to next() are not supported'));
+        }
         return new Promise<IteratorResult<TResponse>>((resolve, reject) => {
           resolveNext = resolve;
           rejectNext = reject;
