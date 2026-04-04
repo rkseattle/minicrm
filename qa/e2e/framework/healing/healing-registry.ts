@@ -90,8 +90,11 @@ export class HealingRegistry {
    * Creates the output directory if it does not exist.
    * Safe to call multiple times — each call overwrites the file with
    * the full current event list.
+   *
+   * No-ops when there are no events to avoid unnecessary disk I/O.
    */
   flush(): void {
+    if (this.events.length === 0) return;
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     fs.writeFileSync(
       workerFilePath(),
