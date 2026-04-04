@@ -87,7 +87,7 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
       <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('users.inviteTitle')}</h2>
 
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
-        <div className="min-w-40">
+        <div className="w-full sm:min-w-40 sm:w-auto">
           <Input
             id="invite-name"
             data-testid="invite-name"
@@ -101,7 +101,7 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
           />
         </div>
 
-        <div className="min-w-48">
+        <div className="w-full sm:min-w-48 sm:w-auto">
           <Input
             id="invite-email"
             data-testid="invite-email"
@@ -114,7 +114,7 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
           />
         </div>
 
-        <div className="min-w-32">
+        <div className="w-full sm:min-w-32 sm:w-auto">
           <Select
             id="invite-role"
             data-testid="invite-role"
@@ -128,7 +128,12 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
           </Select>
         </div>
 
-        <Button type="submit" data-testid="invite-submit" disabled={inviteMutation.isPending}>
+        <Button
+          type="submit"
+          data-testid="invite-submit"
+          disabled={inviteMutation.isPending}
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
+        >
           {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
         </Button>
       </form>
@@ -244,7 +249,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
         {t('users.setPassword.hint', { min: PASSWORD_MIN_LENGTH })}
       </p>
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-40">
+        <div className="w-full sm:min-w-40 sm:w-auto">
           <Input
             id={`set-password-${userId}`}
             data-testid={`set-password-input-${userId}`}
@@ -257,7 +262,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
             placeholder={t('users.setPassword.passwordPlaceholder')}
           />
         </div>
-        <div className="min-w-40">
+        <div className="w-full sm:min-w-40 sm:w-auto">
           <Input
             id={`set-password-confirm-${userId}`}
             data-testid={`set-password-confirm-${userId}`}
@@ -275,6 +280,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
           size="sm"
           data-testid={`set-password-submit-${userId}`}
           disabled={mutation.isPending}
+          className="min-h-[44px] sm:min-h-0"
         >
           {mutation.isPending ? t('users.setPassword.submitting') : t('users.setPassword.submit')}
         </Button>
@@ -284,6 +290,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
           size="sm"
           data-testid={`set-password-cancel-${userId}`}
           onClick={onClose}
+          className="min-h-[44px] sm:min-h-0"
         >
           {t('users.cancel')}
         </Button>
@@ -388,77 +395,134 @@ export default function UsersPage() {
                 <p className="text-sm text-gray-400">{t('users.empty')}</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
-                      {t('users.columnName')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('users.columnEmail')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('users.columnRole')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {t('users.columnStatus')}
-                    </th>
-                    <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
-                      {t('users.columnActions')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <>
+                {/* Mobile card view — visible below md */}
+                <ul className="md:hidden divide-y divide-gray-100">
                   {users.map((user) => (
                     <Fragment key={user.id}>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                            {user.status === 'active'
-                              ? t('users.statusActive')
-                              : user.status === 'invited'
-                                ? t('users.statusInvited')
-                                : t('users.statusInactive')}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <UserActionsMenu
-                            user={user}
-                            isPending={
-                              roleMutation.isPending ||
-                              deactivateMutation.isPending ||
-                              reactivateMutation.isPending
-                            }
-                            isOpen={openMenuUserId === user.id}
-                            onToggle={handleMenuToggle}
-                            onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
-                            onSetPassword={(id) =>
-                              setSetPasswordUserId(setPasswordUserId === id ? null : id)
-                            }
-                            onDeactivate={(id) => deactivateMutation.mutate(id)}
-                            onReactivate={(id) => reactivateMutation.mutate(id)}
+                      <li className="px-4 py-3" data-testid={`user-card-${user.id}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {user.name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-600">
+                                {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                              </span>
+                              <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                                {user.status === 'active'
+                                  ? t('users.statusActive')
+                                  : user.status === 'invited'
+                                    ? t('users.statusInvited')
+                                    : t('users.statusInactive')}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            <UserActionsMenu
+                              user={user}
+                              isPending={
+                                roleMutation.isPending ||
+                                deactivateMutation.isPending ||
+                                reactivateMutation.isPending
+                              }
+                              isOpen={openMenuUserId === user.id}
+                              onToggle={handleMenuToggle}
+                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                              onSetPassword={(id) =>
+                                setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                              }
+                              onDeactivate={(id) => deactivateMutation.mutate(id)}
+                              onReactivate={(id) => reactivateMutation.mutate(id)}
+                            />
+                          </div>
+                        </div>
+                        {setPasswordUserId === user.id && (
+                          <SetPasswordForm
+                            userId={user.id}
+                            onClose={() => setSetPasswordUserId(null)}
                           />
-                        </td>
-                      </tr>
-                      {setPasswordUserId === user.id && (
-                        <tr>
-                          <td colSpan={5} className="px-4 pb-4">
-                            <SetPasswordForm
-                              userId={user.id}
-                              onClose={() => setSetPasswordUserId(null)}
+                        )}
+                      </li>
+                    </Fragment>
+                  ))}
+                </ul>
+
+                {/* Desktop table — hidden below md */}
+                <table className="hidden md:table w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
+                        {t('users.columnName')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('users.columnEmail')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('users.columnRole')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('users.columnStatus')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
+                        {t('users.columnActions')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {users.map((user) => (
+                      <Fragment key={user.id}>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
+                          <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                              {user.status === 'active'
+                                ? t('users.statusActive')
+                                : user.status === 'invited'
+                                  ? t('users.statusInvited')
+                                  : t('users.statusInactive')}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <UserActionsMenu
+                              user={user}
+                              isPending={
+                                roleMutation.isPending ||
+                                deactivateMutation.isPending ||
+                                reactivateMutation.isPending
+                              }
+                              isOpen={openMenuUserId === user.id}
+                              onToggle={handleMenuToggle}
+                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                              onSetPassword={(id) =>
+                                setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                              }
+                              onDeactivate={(id) => deactivateMutation.mutate(id)}
+                              onReactivate={(id) => reactivateMutation.mutate(id)}
                             />
                           </td>
                         </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
+                        {setPasswordUserId === user.id && (
+                          <tr>
+                            <td colSpan={5} className="px-4 pb-4">
+                              <SetPasswordForm
+                                userId={user.id}
+                                onClose={() => setSetPasswordUserId(null)}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
             {data && data.total > data.limit && (
               <Pagination
