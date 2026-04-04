@@ -279,7 +279,7 @@ export default function NavBar() {
             to="/"
             end
             className={mobileNavLinkClass}
-            data-testid="nav-link-dashboard"
+            data-testid="nav-link-dashboard-mobile"
             onClick={closeMobileMenu}
           >
             {t('nav.dashboard')}
@@ -287,7 +287,7 @@ export default function NavBar() {
           <NavLink
             to="/contacts"
             className={mobileNavLinkClass}
-            data-testid="nav-link-contacts"
+            data-testid="nav-link-contacts-mobile"
             onClick={closeMobileMenu}
           >
             {t('nav.contacts')}
@@ -295,7 +295,7 @@ export default function NavBar() {
           <NavLink
             to="/accounts"
             className={mobileNavLinkClass}
-            data-testid="nav-link-accounts"
+            data-testid="nav-link-accounts-mobile"
             onClick={closeMobileMenu}
           >
             {t('nav.accounts')}
@@ -303,7 +303,7 @@ export default function NavBar() {
           <NavLink
             to="/deals"
             className={mobileNavLinkClass}
-            data-testid="nav-link-deals"
+            data-testid="nav-link-deals-mobile"
             onClick={closeMobileMenu}
           >
             {t('nav.deals')}
@@ -311,7 +311,7 @@ export default function NavBar() {
           <NavLink
             to="/tasks"
             className={mobileNavLinkClass}
-            data-testid="nav-link-my-tasks"
+            data-testid="nav-link-my-tasks-mobile"
             onClick={closeMobileMenu}
           >
             {t('nav.myTasks')}
@@ -320,7 +320,7 @@ export default function NavBar() {
             <NavLink
               to="/users"
               className={mobileNavLinkClass}
-              data-testid="nav-link-users"
+              data-testid="nav-link-users-mobile"
               onClick={closeMobileMenu}
             >
               {t('nav.users')}
@@ -330,7 +330,7 @@ export default function NavBar() {
             <NavLink
               to="/reports/win-loss"
               className={mobileNavLinkClass}
-              data-testid="nav-link-win-loss-report"
+              data-testid="nav-link-win-loss-report-mobile"
               onClick={closeMobileMenu}
             >
               {t('nav.winLossReport')}
@@ -340,7 +340,7 @@ export default function NavBar() {
             <NavLink
               to="/admin/automation"
               className={mobileNavLinkClass}
-              data-testid="nav-link-automation"
+              data-testid="nav-link-automation-mobile"
               onClick={closeMobileMenu}
             >
               {t('nav.automation')}
@@ -350,7 +350,7 @@ export default function NavBar() {
             <NavLink
               to="/admin/settings"
               className={mobileNavLinkClass}
-              data-testid="nav-link-admin-settings"
+              data-testid="nav-link-admin-settings-mobile"
               onClick={closeMobileMenu}
             >
               {t('nav.adminSettings')}
@@ -361,7 +361,7 @@ export default function NavBar() {
               type="button"
               variant="ghost"
               size="sm"
-              data-testid="nav-logout"
+              data-testid="nav-logout-mobile"
               onClick={() => {
                 closeMobileMenu();
                 logoutMutation.mutate();

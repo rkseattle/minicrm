@@ -185,9 +185,10 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     await waitFor(() => {
-      expect(screen.getByText(DEAL_1.name)).toBeInTheDocument();
+      // name appears in both mobile card and desktop table
+      expect(screen.getAllByText(DEAL_1.name).length).toBeGreaterThanOrEqual(1);
     });
-    // Stage label is rendered inside the deal row (scoped to avoid matching the summary bar chip)
+    // Stage label is rendered inside the desktop deal row (scoped to avoid matching the summary bar chip)
     const row = screen.getByTestId(`deal-link-${DEAL_1.id}`).closest('tr')!;
     expect(within(row).getByText(/prospecting/i)).toBeInTheDocument();
   });
@@ -275,7 +276,8 @@ describe('DealsPage', () => {
     await user.click(screen.getByTestId('deals-view-toggle'));
 
     await waitFor(() => {
-      expect(screen.getByText(repDeal.name)).toBeInTheDocument();
+      // name appears in both mobile card and desktop table
+      expect(screen.getAllByText(repDeal.name).length).toBeGreaterThanOrEqual(1);
     });
 
     await user.click(screen.getByTestId('deals-owner-filter-mine'));
@@ -283,7 +285,7 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.queryByText(repDeal.name)).not.toBeInTheDocument();
     });
-    expect(screen.getByText(DEAL_1.name)).toBeInTheDocument();
+    expect(screen.getAllByText(DEAL_1.name).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows fallback text for deals with an unresolvable owner in list view', async () => {

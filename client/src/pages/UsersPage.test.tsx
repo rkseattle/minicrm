@@ -38,10 +38,10 @@ describe('UsersPage', () => {
     it('renders a row for each user', async () => {
       renderWithProviders(<UsersPage />);
       await waitFor(() => {
-        // ADMIN_USER.name also appears in NavBar, so use getAllByText
+        // names appear in both mobile card and desktop table, so use getAllByText
         expect(screen.getAllByText(ADMIN_USER.name).length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText(REP_USER.name)).toBeInTheDocument();
-        expect(screen.getByText(INVITED_USER.name)).toBeInTheDocument();
+        expect(screen.getAllByText(REP_USER.name).length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText(INVITED_USER.name).length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -55,7 +55,8 @@ describe('UsersPage', () => {
     it('shows the Invited badge for invited users', async () => {
       renderWithProviders(<UsersPage />);
       await waitFor(() => {
-        expect(screen.getByText('Invited')).toBeInTheDocument();
+        // badge appears in both mobile card and desktop table
+        expect(screen.getAllByText('Invited').length).toBeGreaterThanOrEqual(1);
       });
     });
 

@@ -27,6 +27,11 @@ interface DealCardProps {
   onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
   /** When true, the stage selector is disabled */
   isUpdating: boolean;
+  /**
+   * Optional prefix for data-testid attributes.
+   * Used to disambiguate cards rendered in multiple views (e.g. "mobile-").
+   */
+  testIdPrefix?: string;
 }
 
 /**
@@ -59,16 +64,17 @@ export default function DealCard({
   onStageChange,
   onCloseRequested,
   isUpdating,
+  testIdPrefix = '',
 }: DealCardProps) {
   const { t, i18n } = useTranslation();
   return (
     <div
-      data-testid={`deal-card-${deal.id}`}
+      data-testid={`${testIdPrefix}deal-card-${deal.id}`}
       className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
     >
       <Link
         to={`/deals/${deal.id}`}
-        data-testid={`deal-card-link-${deal.id}`}
+        data-testid={`${testIdPrefix}deal-card-link-${deal.id}`}
         className="font-medium text-sm text-indigo-600 hover:underline block mb-1 truncate"
         title={deal.name}
       >
@@ -77,7 +83,7 @@ export default function DealCard({
 
       {accountName !== '—' && (
         <p
-          data-testid={`deal-card-account-${deal.id}`}
+          data-testid={`${testIdPrefix}deal-card-account-${deal.id}`}
           className="text-xs text-gray-500 truncate mb-2"
           title={accountName}
         >
@@ -86,15 +92,17 @@ export default function DealCard({
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-        <span data-testid={`deal-card-value-${deal.id}`}>
+        <span data-testid={`${testIdPrefix}deal-card-value-${deal.id}`}>
           {formatValue(deal.value, i18n.language)}
         </span>
-        <span data-testid={`deal-card-close-date-${deal.id}`}>{deal.close_date ?? '—'}</span>
+        <span data-testid={`${testIdPrefix}deal-card-close-date-${deal.id}`}>
+          {deal.close_date ?? '—'}
+        </span>
       </div>
 
       <Select
         id={`deal-stage-select-${deal.id}`}
-        data-testid={`deal-card-stage-select-${deal.id}`}
+        data-testid={`${testIdPrefix}deal-card-stage-select-${deal.id}`}
         value={deal.stage}
         onChange={(e) => {
           const selected = e.target.value as PipelineStage;

@@ -323,17 +323,29 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
 
   const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
+  const [setMobilePasswordUserId, setSetMobilePasswordUserId] = useState<string | null>(null);
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+  const [openMobileMenuUserId, setOpenMobileMenuUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   /**
-   * Toggles the action menu for the given user.
+   * Toggles the desktop action menu for the given user.
    * Closes the currently open menu if a different one is opened.
    *
    * @param id - The user ID whose menu to toggle.
    */
   const handleMenuToggle = useCallback((id: string): void => {
     setOpenMenuUserId((current) => (current === id ? null : id));
+  }, []);
+
+  /**
+   * Toggles the mobile action menu for the given user.
+   * Uses separate state to avoid cross-talk with the desktop menu's outside-click handlers.
+   *
+   * @param id - The user ID whose menu to toggle.
+   */
+  const handleMobileMenuToggle = useCallback((id: string): void => {
+    setOpenMobileMenuUserId((current) => (current === id ? null : id));
   }, []);
 
   const usersQueryKey = [...USERS_QUERY_KEY, { page }] as const;
@@ -428,21 +440,24 @@ export default function UsersPage() {
                                 deactivateMutation.isPending ||
                                 reactivateMutation.isPending
                               }
-                              isOpen={openMenuUserId === user.id}
-                              onToggle={handleMenuToggle}
+                              isOpen={openMobileMenuUserId === user.id}
+                              onToggle={handleMobileMenuToggle}
                               onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
                               onSetPassword={(id) =>
-                                setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                                setSetMobilePasswordUserId(
+                                  setMobilePasswordUserId === id ? null : id,
+                                )
                               }
                               onDeactivate={(id) => deactivateMutation.mutate(id)}
                               onReactivate={(id) => reactivateMutation.mutate(id)}
+                              testIdPrefix="mobile-"
                             />
                           </div>
                         </div>
-                        {setPasswordUserId === user.id && (
+                        {setMobilePasswordUserId === user.id && (
                           <SetPasswordForm
                             userId={user.id}
-                            onClose={() => setSetPasswordUserId(null)}
+                            onClose={() => setSetMobilePasswordUserId(null)}
                           />
                         )}
                       </li>

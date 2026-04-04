@@ -59,6 +59,45 @@ describe('NavBar', () => {
     });
   });
 
+  describe('mobile hamburger menu', () => {
+    it('renders the hamburger toggle button', async () => {
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+    });
+
+    it('drawer is closed by default', async () => {
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
+    });
+
+    it('clicking the hamburger opens the mobile drawer', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('nav-menu-toggle'));
+      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
+    });
+
+    it('clicking a drawer link closes the drawer', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<NavBar />);
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('nav-menu-toggle'));
+      expect(screen.getByTestId('nav-link-dashboard-mobile')).toBeInTheDocument();
+      await user.click(screen.getByTestId('nav-link-dashboard-mobile'));
+      expect(screen.queryByTestId('nav-link-dashboard-mobile')).not.toBeInTheDocument();
+    });
+  });
+
   describe('language selector', () => {
     it('renders the language selector', async () => {
       renderWithProviders(<NavBar />);
