@@ -5,7 +5,8 @@
   "workspaces": [
     "shared",
     "server",
-    "client"
+    "client",
+    "qa"
   ],
   "scripts": {
     "prepare": "husky || true",

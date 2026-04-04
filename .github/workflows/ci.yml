@@ -95,3 +95,36 @@ jobs:
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
+
+  e2e-framework-purity:
+    name: E2E Framework Purity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check framework/ has no application-domain strings (MINCRM-123)
+        run: bash qa/scripts/check-framework-purity.sh
+
+  e2e-trivial:
+    name: E2E Trivial Smoke Test
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run trivial smoke test (desktop, MINCRM-123)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop qa/e2e/tests/trivial.spec.ts
+
+      - name: Run trivial smoke test (mobile-web, MINCRM-123)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
