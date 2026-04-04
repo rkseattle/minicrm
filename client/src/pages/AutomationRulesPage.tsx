@@ -772,14 +772,14 @@ export default function AutomationRulesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-shrink-0">
                   <button
                     type="button"
                     onClick={(e) => {
                       logsButtonRef.current = e.currentTarget;
                       setSelectedLogsRule(rule);
                     }}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
                     data-testid={`view-logs-${rule.id}`}
                   >
                     {t('automation.viewLogs')}
@@ -791,7 +791,7 @@ export default function AutomationRulesPage() {
                         type="button"
                         onClick={() => deleteMutation.mutate(rule.id)}
                         disabled={deleteMutation.isPending}
-                        className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        className="text-xs text-red-600 hover:text-red-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
                         data-testid={`confirm-delete-${rule.id}`}
                       >
                         {t('automation.confirmDelete')}
@@ -799,7 +799,7 @@ export default function AutomationRulesPage() {
                       <button
                         type="button"
                         onClick={() => setDeleteConfirmId(null)}
-                        className="text-xs text-gray-500 hover:text-gray-700"
+                        className="text-xs text-gray-500 hover:text-gray-700 min-h-[44px] sm:min-h-0 flex items-center"
                         data-testid={`cancel-delete-${rule.id}`}
                       >
                         {t('automation.cancel')}
@@ -809,7 +809,7 @@ export default function AutomationRulesPage() {
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmId(rule.id)}
-                      className="text-xs text-gray-400 hover:text-red-600"
+                      className="text-xs text-gray-400 hover:text-red-600 min-h-[44px] sm:min-h-0 flex items-center"
                       data-testid={`delete-rule-${rule.id}`}
                     >
                       {t('automation.delete')}

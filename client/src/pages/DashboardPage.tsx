@@ -165,56 +165,58 @@ export default function DashboardPage() {
                   {t('dashboard.noDeals')}
                 </p>
               ) : (
-                <table
-                  className="min-w-full divide-y divide-gray-100"
-                  data-testid="stage-breakdown-table"
-                >
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {t('dashboard.columnStage')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {t('dashboard.columnDealCount')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {t('dashboard.columnValue')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {data.stageBreakdown.map((row) => (
-                      <tr key={row.stage} data-testid={`stage-row-${row.stage}`}>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {t(
-                            `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[row.stage as PipelineStage]}`,
-                          )}
-                        </td>
-                        <td
-                          className="px-6 py-4 text-sm text-gray-600 text-end"
-                          data-testid={`stage-count-${row.stage}`}
+                <div className="overflow-x-auto">
+                  <table
+                    className="min-w-full divide-y divide-gray-100"
+                    data-testid="stage-breakdown-table"
+                  >
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          {row.count}
-                        </td>
-                        <td
-                          className="px-6 py-4 text-sm text-gray-600 text-end"
-                          data-testid={`stage-value-${row.stage}`}
+                          {t('dashboard.columnStage')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          {formatCurrency(row.value, i18n.language)}
-                        </td>
+                          {t('dashboard.columnDealCount')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('dashboard.columnValue')}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {data.stageBreakdown.map((row) => (
+                        <tr key={row.stage} data-testid={`stage-row-${row.stage}`}>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {t(
+                              `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[row.stage as PipelineStage]}`,
+                            )}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-gray-600 text-end"
+                            data-testid={`stage-count-${row.stage}`}
+                          >
+                            {row.count}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-gray-600 text-end"
+                            data-testid={`stage-value-${row.stage}`}
+                          >
+                            {formatCurrency(row.value, i18n.language)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </>
