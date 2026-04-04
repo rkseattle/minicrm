@@ -69,4 +69,10 @@ describe('Input', () => {
     // password inputs are not role=textbox
     expect(document.querySelector('input[type="password"]')).toBeInTheDocument();
   });
+
+  it('applies min-h touch-target class (MINCRM-98)', () => {
+    render(<Input />);
+    expect(screen.getByRole('textbox')).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('textbox')).toHaveClass('sm:min-h-0');
+  });
 });

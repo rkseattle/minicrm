@@ -439,7 +439,7 @@ export default function AutomationRulesPage() {
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
                 placeholder={t('automation.fieldNamePlaceholder')}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                 data-testid="rule-name-input"
               />
             </div>
@@ -456,7 +456,7 @@ export default function AutomationRulesPage() {
                 id="trigger-type"
                 value={form.trigger_type}
                 onChange={(e) => setField('trigger_type', e.target.value as AutomationTriggerType)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                 data-testid="trigger-type-select"
               >
                 {AUTOMATION_TRIGGER_TYPES.map((tt) => (
@@ -480,7 +480,7 @@ export default function AutomationRulesPage() {
                   id="trigger-stage"
                   value={form.trigger_stage}
                   onChange={(e) => setField('trigger_stage', e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                   data-testid="trigger-stage-select"
                 >
                   {PIPELINE_STAGES.map((s) => (
@@ -501,7 +501,7 @@ export default function AutomationRulesPage() {
                 id="action-type"
                 value={form.action_type}
                 onChange={(e) => setField('action_type', e.target.value as AutomationActionType)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                 data-testid="action-type-select"
               >
                 {AUTOMATION_ACTION_TYPES.map((at) => (
@@ -529,7 +529,7 @@ export default function AutomationRulesPage() {
                     value={form.task_subject}
                     onChange={(e) => setField('task_subject', e.target.value)}
                     placeholder={t('automation.fieldTaskSubjectPlaceholder')}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                     data-testid="task-subject-input"
                   />
                 </div>
@@ -546,7 +546,7 @@ export default function AutomationRulesPage() {
                     id="task-type"
                     value={form.task_type}
                     onChange={(e) => setField('task_type', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                     data-testid="task-type-select"
                   >
                     {ACTIVITY_TYPES.map((at) => (
@@ -571,7 +571,7 @@ export default function AutomationRulesPage() {
                     onChange={(e) =>
                       setField('assignee_type', e.target.value as 'owner' | 'specific')
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                     data-testid="assignee-type-select"
                   >
                     {AUTOMATION_ASSIGNEE_TYPES.map((a) => (
@@ -595,7 +595,7 @@ export default function AutomationRulesPage() {
                       id="assignee-user"
                       value={form.assignee_id}
                       onChange={(e) => setField('assignee_id', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                       data-testid="assignee-user-select"
                     >
                       <option value="">{t('automation.assigneeUserPlaceholder')}</option>
@@ -622,7 +622,7 @@ export default function AutomationRulesPage() {
                     min={0}
                     value={form.due_date_offset_days}
                     onChange={(e) => setField('due_date_offset_days', e.target.value)}
-                    className="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                     data-testid="due-date-offset-input"
                   />
                   <span className="ms-2 text-sm text-gray-500">
@@ -657,7 +657,7 @@ export default function AutomationRulesPage() {
                   value={form.notification_message}
                   onChange={(e) => setField('notification_message', e.target.value)}
                   placeholder={t('automation.fieldNotificationMessagePlaceholder')}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                   data-testid="notification-message-input"
                 />
               </div>

@@ -52,4 +52,10 @@ describe('Select', () => {
     render(<Select />);
     expect(screen.getByRole('combobox')).toHaveClass('focus:ring-indigo-500');
   });
+
+  it('applies min-h touch-target class (MINCRM-98)', () => {
+    render(<Select />);
+    expect(screen.getByRole('combobox')).toHaveClass('min-h-[44px]');
+    expect(screen.getByRole('combobox')).toHaveClass('sm:min-h-0');
+  });
 });

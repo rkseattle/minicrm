@@ -156,7 +156,7 @@ export default function WinLossReportPage() {
               data-testid="date-preset-select"
               value={preset}
               onChange={(e) => setPreset(e.target.value as DatePreset)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
             >
               <option value="currentMonth">{t('reports.winLoss.presetCurrentMonth')}</option>
               <option value="currentQuarter">{t('reports.winLoss.presetCurrentQuarter')}</option>
@@ -180,7 +180,7 @@ export default function WinLossReportPage() {
                   data-testid="custom-start-input"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -196,7 +196,7 @@ export default function WinLossReportPage() {
                   data-testid="custom-end-input"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                 />
               </div>
             </>
