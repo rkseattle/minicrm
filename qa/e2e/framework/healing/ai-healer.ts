@@ -54,8 +54,13 @@ export interface AiHealerOptions {
 
 /**
  * JS snippet injected into the page to extract a scoped DOM snapshot.
- * Returns the outerHTML of the nearest semantic ancestor of the active element,
- * or the full body HTML as a last resort.
+ *
+ * Strategy (in order):
+ * 1. Walk document.activeElement's ancestor chain for the nearest semantic
+ *    container (main, [role="dialog"], form). Accurate when focus is inside
+ *    the container being healed.
+ * 2. Fall back to the first matching semantic container in document order.
+ * 3. Fall back to document.body.
  *
  * This function is serialized and evaluated in the browser context, so it must
  * be self-contained — no closure references.
@@ -66,10 +71,24 @@ export interface AiHealerOptions {
 const getScopedDomSnippet = /* @__PURE__ */ (() => {
   return new Function(`
     const scopeSelectors = ['main', '[role="dialog"]', 'form'];
+
+    // Walk activeElement ancestors for the nearest semantic container.
+    let node = document.activeElement && document.activeElement.parentElement;
+    while (node && node !== document.body) {
+      const tag = node.tagName.toLowerCase();
+      const role = node.getAttribute('role');
+      if (tag === 'main' || tag === 'form' || role === 'dialog') {
+        return node.outerHTML;
+      }
+      node = node.parentElement;
+    }
+
+    // Fall back to first matching container in document order.
     for (const sel of scopeSelectors) {
       const el = document.querySelector(sel);
       if (el) return el.outerHTML;
     }
+
     return document.body.outerHTML;
   `) as () => string;
 })();
@@ -158,26 +177,22 @@ function parseResponse(raw: string): AiHealResult | null {
 }
 
 /**
- * Wraps a promise with an AbortSignal-based timeout.
- * Rejects with a descriptive error if the timeout fires first.
+ * Races a promise against a timeout. Rejects with a descriptive error if the
+ * timeout fires first. Always clears the timer whether the promise wins or loses.
  */
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`AiHealer: API call timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (err: unknown) => {
-        clearTimeout(timer);
-        reject(err);
-      },
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer!: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`AiHealer: API call timed out after ${timeoutMs}ms`)),
+      timeoutMs,
     );
   });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -194,12 +209,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
  */
 export class AiHealer {
   private readonly timeoutMs: number;
+  private readonly client: Anthropic;
 
   /**
    * @param options - Configuration options.
    */
   constructor(options: AiHealerOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
+    this.client = new Anthropic();
   }
 
   /**
@@ -236,12 +253,10 @@ export class AiHealer {
 
     const prompt = buildPrompt(intent, domSnapshot, attempted);
 
-    const client = new Anthropic();
-
     let rawText: string;
     try {
       const response = await withTimeout(
-        client.messages.create({
+        this.client.messages.create({
           model: HEALING_MODEL,
           max_tokens: 256,
           messages: [{ role: 'user', content: prompt }],
