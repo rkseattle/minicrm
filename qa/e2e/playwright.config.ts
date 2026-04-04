@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
 
 // MINCRM-123: E2E_BASE_URL is the sole source of truth for target environment.
 // Set this to the deployed frontend URL in staging/production.
@@ -8,6 +9,10 @@ const IS_CI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './tests',
+
+  // Point to the root tsconfig so Playwright's transform resolves @framework/* path aliases.
+  // MINCRM-126
+  tsconfig: path.resolve(__dirname, '../tsconfig.json'),
 
   // Fail fast in CI; allow local runs to continue after failures
   fullyParallel: true,
