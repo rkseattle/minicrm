@@ -12,13 +12,16 @@
  * MINCRM-126
  */
 
-/** Supported locale codes. Extend as new locales are added. */
-export type LocaleCode = 'en' | 'es' | 'zh-Hans' | 'fr' | 'de';
+/**
+ * Locale codes with registered maps in this module.
+ * Extend this union and add a matching entry in LOCALE_MAPS when adding a new locale.
+ */
+export type LocaleCode = 'en' | 'es';
 
 /**
  * A flat map from dotted key to translated string.
  * Keys mirror the nested path in the application's locale JSON files
- * (e.g. "login.submitButton" → "nav.contacts").
+ * (e.g. "nav.contacts" → "Contacts").
  */
 export type LocaleMap = Record<string, string>;
 

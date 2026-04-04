@@ -10,7 +10,7 @@ const IS_CI = Boolean(process.env.CI);
 export default defineConfig({
   testDir: './tests',
 
-  // Point to the root tsconfig so Playwright's transform resolves @framework/* path aliases.
+  // Point to qa/tsconfig.json so Playwright's transform resolves @framework/* path aliases.
   // MINCRM-126
   tsconfig: path.resolve(__dirname, '../tsconfig.json'),
 

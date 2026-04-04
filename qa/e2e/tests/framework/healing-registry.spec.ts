@@ -102,6 +102,13 @@ test.describe('HealingRegistry', () => {
     const outputDir = path.join(tmpDir, 'test-results');
     expect(fs.existsSync(outputDir)).toBe(false);
 
+    // flush() no-ops when empty, so seed one event first.
+    HealingRegistry.instance.record(
+      'mkdir test',
+      { type: 'testId', value: 'x' },
+      { type: 'css', value: '.x' },
+    );
+
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
     try {

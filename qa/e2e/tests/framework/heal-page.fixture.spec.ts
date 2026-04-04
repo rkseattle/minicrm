@@ -123,68 +123,84 @@ test.describe('healPage.fill()', () => {
 
 // ---------------------------------------------------------------------------
 // AC2 — Registry flushed in teardown even when test body throws
+//
+// These tests run serially so the second test can assert post-teardown state
+// from the first test — directly exercising the fixture's try/finally block.
 // ---------------------------------------------------------------------------
 
-test.describe('healPage fixture teardown', () => {
-  test('flush does not throw when registry is empty', async ({ healPage: _hp }) => {
-    // flush() on an empty registry should succeed silently.
+test.describe.serial('healPage fixture teardown', () => {
+  test('records a heal event during test body (teardown will reset after this)', async ({
+    healPage: _hp,
+  }) => {
+    // Explicitly reset first so we start from a known state regardless of
+    // which other tests may have run on this worker before us.
+    HealingRegistry.instance._reset();
+    // Inject a heal event. The fixture teardown fires after use() returns,
+    // calling flush() + _reset(). The next test (running after teardown) will
+    // confirm the count is back to 0.
+    HealingRegistry.instance.record(
+      'ac2 event',
+      { type: 'testId', value: 'x' },
+      { type: 'css', value: '.x' },
+      false,
+    );
+    // Count is now 1; fixture teardown will reset it to 0.
+  });
+
+  test('registry is empty after teardown of previous test — fixture try/finally ran', async ({
+    healPage: _hp,
+  }) => {
+    // The fixture teardown from the test above called _reset(). If the
+    // fixture's finally block did not run, count would still be 1.
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('flush() no-ops when registry is empty — no disk write', async ({ healPage: _hp }) => {
+    // flush() short-circuits on empty registry; calling it must not throw.
     HealingRegistry.instance._reset();
     expect(() => HealingRegistry.instance.flush()).not.toThrow();
   });
 
-  test('fixture teardown resets the registry after each test', async ({ healPage: _hp }) => {
-    // Record an event during the test body.
-    HealingRegistry.instance._reset();
+  test('fixture teardown calls flush() — patching flush verifies it fires on test completion', async ({
+    healPage: _hp,
+  }) => {
+    // Patch flush to intercept the call the fixture teardown will make.
+    let flushed = false;
+    const originalFlush = HealingRegistry.instance.flush.bind(HealingRegistry.instance);
+    HealingRegistry.instance.flush = () => {
+      flushed = true;
+      originalFlush();
+    };
+
     HealingRegistry.instance.record(
-      'fixture teardown test',
-      { type: 'testId', value: 'x' },
-      { type: 'css', value: '.x' },
+      'flush verification',
+      { type: 'testId', value: 'y' },
+      { type: 'css', value: '.y' },
       false,
     );
+
+    // The fixture's finally block will call flush() when use() returns.
+    // We verify this by reading `flushed` in the next serial test.
     expect(HealingRegistry.instance.count).toBe(1);
-    // When this test completes, the fixture teardown will call flush() + _reset().
-    // The count assertion here confirms the event was recorded; the reset happens after use().
+
+    // Store the flag on the registry instance so the next test can read it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (HealingRegistry.instance as any).__testFlushed = () => flushed;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (HealingRegistry.instance as any).__restoreFlush = () => {
+      HealingRegistry.instance.flush = originalFlush;
+    };
   });
-});
 
-test('healPage fixture teardown flushes registry even when test body throws', async ({
-  healPage,
-}) => {
-  // Record a heal event manually so we can confirm flush was called by teardown.
-  // We patch flush() to verify it is invoked.
-  let flushed = false;
-  const originalFlush = HealingRegistry.instance.flush.bind(HealingRegistry.instance);
-  HealingRegistry.instance.flush = () => {
-    flushed = true;
-    originalFlush();
-  };
+  test('flush was called by fixture teardown and registry was reset', async ({ healPage: _hp }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const flushed = (HealingRegistry.instance as any).__testFlushed?.() ?? false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (HealingRegistry.instance as any).__restoreFlush?.();
 
-  // Build a custom healPage using buildHealPage so we can simulate the
-  // teardown path directly without relying on test-runner mechanics.
-  // We use the injected healPage only to confirm the fixture is available.
-  expect(healPage).toBeDefined();
-
-  // Simulate what the fixture teardown does on failure:
-  try {
-    // Simulate a test body throwing after recording an event.
-    HealingRegistry.instance.record(
-      'teardown test',
-      { type: 'testId', value: 'x' },
-      { type: 'css', value: '.x' },
-      false,
-    );
-    throw new Error('simulated test failure');
-  } catch {
-    // Teardown path
-    HealingRegistry.instance.flush();
-    HealingRegistry.instance._reset();
-  } finally {
-    // Restore original flush
-    HealingRegistry.instance.flush = originalFlush;
-  }
-
-  expect(flushed).toBe(true);
-  expect(HealingRegistry.instance.count).toBe(0);
+    expect(flushed).toBe(true);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -208,10 +224,11 @@ test.describe('t() locale helper', () => {
     expect(() => t('this.key.does.not.exist')).toThrow(/unknown key/);
   });
 
-  test('throws RangeError on unregistered locale', () => {
-    // 'de' has no registered map in the E2E locale module
-    expect(() => t('login.submitButton', 'de')).toThrow(RangeError);
-    expect(() => t('login.submitButton', 'de')).toThrow(/no locale map registered/);
+  test('all LocaleCode values have registered maps — no valid locale throws', () => {
+    // LocaleCode is narrowed to only 'en' | 'es', both of which have maps.
+    // Calling t() with any LocaleCode value must not throw for a known key.
+    expect(() => t('login.submitButton', 'en')).not.toThrow();
+    expect(() => t('login.submitButton', 'es')).not.toThrow();
   });
 
   test('resolves key in explicit es locale', () => {
