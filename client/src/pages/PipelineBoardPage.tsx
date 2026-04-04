@@ -186,7 +186,7 @@ export default function PipelineBoardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="px-6 py-8">
+      <main className="px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('pipeline.pageTitle')}</h1>
           <Button

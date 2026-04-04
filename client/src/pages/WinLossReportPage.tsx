@@ -129,7 +129,7 @@ export default function WinLossReportPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Page header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900" data-testid="win-loss-report-heading">

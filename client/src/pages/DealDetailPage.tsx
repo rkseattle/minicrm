@@ -24,6 +24,7 @@ import {
   unlinkContactFromDeal,
   DEALS_QUERY_KEY,
 } from '@/api/deals.js';
+import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -113,6 +114,7 @@ export default function DealDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
     },
@@ -125,6 +127,7 @@ export default function DealDetailPage() {
     mutationFn: () => deleteDeal(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       navigate('/deals', { replace: true });
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
@@ -179,6 +182,7 @@ export default function DealDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       setPendingClose(null);
       setCloseError(null);
       setIsEditing(false);
@@ -199,7 +203,7 @@ export default function DealDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
-        <main className="max-w-3xl mx-auto px-6 py-8">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <p aria-busy="true" className="text-sm text-gray-400">
             {t('deals.loading')}
           </p>
@@ -212,7 +216,7 @@ export default function DealDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <NavBar />
-        <main className="max-w-3xl mx-auto px-6 py-8">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <p role="alert" className="text-sm text-red-600">
             {t('deals.notFound')}
           </p>
@@ -242,7 +246,7 @@ export default function DealDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* Back link */}
         <Link
           to="/deals"
