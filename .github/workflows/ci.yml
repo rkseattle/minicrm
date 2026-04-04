@@ -28,6 +28,9 @@ jobs:
       - name: Typecheck server
         run: npm run typecheck --workspace=minicrm-server
 
+      - name: Typecheck qa
+        run: npm run typecheck --workspace=minicrm-qa
+
       - name: Validate OpenAPI spec
         run: npm run lint:api --workspace=minicrm-server
         env:
