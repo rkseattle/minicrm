@@ -118,7 +118,11 @@ export default function NavBar() {
     if (!mobileMenuOpen) return;
 
     function handlePointerDown(e: PointerEvent): void {
-      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
+      if (
+        drawerRef.current &&
+        !drawerRef.current.contains(e.target as Node) &&
+        !hamburgerRef.current?.contains(e.target as Node)
+      ) {
         closeMobileMenu();
       }
     }
