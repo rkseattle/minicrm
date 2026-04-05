@@ -14,6 +14,7 @@
 import type { Page } from '@playwright/test';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
+import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -93,7 +94,7 @@ export async function login(
   const LOGIN_TIMEOUT_MS = 10_000;
   await Promise.race([
     context.page
-      .waitForURL((url) => new URL(url).pathname !== '/', { timeout: LOGIN_TIMEOUT_MS })
+      .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: LOGIN_TIMEOUT_MS })
       .catch(() => null),
     context.page
       .getByRole('alert')
@@ -105,9 +106,9 @@ export async function login(
   const errorMessage = await loginPage.errorMessage();
 
   // Determine success by checking whether the page has navigated away from
-  // the login route. The login page is served at the root path.
+  // the login route. The login page is served at /login.
   const loginPathname = new URL(finalUrl).pathname;
-  const success = loginPathname !== '/';
+  const success = loginPathname !== '/login';
 
   return { success, finalUrl, errorMessage };
 }
@@ -147,16 +148,27 @@ export interface LogoutResult {
 export async function logout(context: AuthBehaviorContext): Promise<LogoutResult> {
   const LOGOUT_TIMEOUT_MS = 10_000;
 
-  await context.healPage.click([
-    { type: 'testId', value: 'logout-button' },
-    { type: 'role', value: 'button', options: { name: 'Logout', exact: false } },
-  ]);
+  // On mobile viewports the desktop nav-logout button is hidden (hidden lg:inline-flex).
+  // Open the hamburger drawer first, then click the mobile logout button.
+  const desktopLogout = context.page.getByTestId('nav-logout');
+  const isDesktopVisible = await desktopLogout.isVisible().catch(() => false);
+
+  if (!isDesktopVisible) {
+    // Mobile: open drawer → click mobile logout button.
+    await context.page.getByTestId('nav-menu-toggle').click();
+    await context.page.getByTestId('nav-logout-mobile').click();
+  } else {
+    await context.healPage.click([
+      { type: 'testId', value: 'nav-logout' },
+      { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+    ]);
+  }
 
   await context.page
-    .waitForURL((url) => new URL(url).pathname === '/', { timeout: LOGOUT_TIMEOUT_MS })
+    .waitForURL((url) => new URL(url).pathname === '/login', { timeout: LOGOUT_TIMEOUT_MS })
     .catch(() => null);
 
   const finalUrl = context.page.url();
-  const success = new URL(finalUrl).pathname === '/';
+  const success = new URL(finalUrl).pathname === '/login';
   return { success, finalUrl };
 }

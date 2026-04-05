@@ -8,10 +8,18 @@ import { authenticate } from '../middleware/auth.js';
 import { login, logout, me, changePassword } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
-/** 10 login attempts per IP per 15-minute window */
+// In E2E environments the BVT suite submits multiple logins per run from a
+// single IP. Disable the limiter in test/e2e so the suite does not exhaust the
+// window during a normal run. The limiter remains active in production.
+const isE2E = process.env.NODE_ENV === 'test' || process.env.E2E === 'true';
+
+/** 10 login attempts per IP per 15-minute window (skipped in test/e2e) */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  // express-rate-limit v7: max:0 blocks all requests, not unlimited.
+  // Use skip() to bypass the limiter entirely in E2E/test environments.
+  skip: () => isE2E,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

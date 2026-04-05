@@ -147,13 +147,15 @@ export async function createTestAccount(
   restClient: RestClient,
   overrides: CreateAccountOverrides = {},
 ): Promise<TestAccount> {
-  const payload = {
+  // Optional string fields must be omitted when unset — the server Zod schema
+  // rejects explicit null values for these fields with a 400 VALIDATION_ERROR.
+  const payload: Record<string, string> = {
     name: overrides.name ?? `Test Account ${Date.now()}`,
-    industry: overrides.industry ?? null,
-    website: overrides.website ?? null,
-    employee_range: overrides.employee_range ?? null,
-    revenue_range: overrides.revenue_range ?? null,
   };
+  if (overrides.industry !== undefined) payload['industry'] = overrides.industry;
+  if (overrides.website !== undefined) payload['website'] = overrides.website;
+  if (overrides.employee_range !== undefined) payload['employee_range'] = overrides.employee_range;
+  if (overrides.revenue_range !== undefined) payload['revenue_range'] = overrides.revenue_range;
 
   // Step 1: create via REST.
   // Server returns { account: AccountRow } — unwrap the nested object.
@@ -220,13 +222,15 @@ export async function createTestDeal(
   restClient: RestClient,
   overrides: CreateDealOverrides & { account_id: string },
 ): Promise<TestDeal> {
-  const payload = {
+  // Optional fields must be omitted when unset — the server Zod schema rejects
+  // explicit null for value (expects number) and close_date (expects string).
+  const payload: Record<string, string> = {
     name: overrides.name ?? `Test Deal ${Date.now()}`,
     stage: overrides.stage ?? 'Prospecting',
-    value: overrides.value ?? null,
-    close_date: overrides.close_date ?? null,
     account_id: overrides.account_id,
   };
+  if (overrides.value !== undefined) payload['value'] = overrides.value;
+  if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
   // Server returns { deal: DealRow } — unwrap.
   const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload);
@@ -287,13 +291,15 @@ export async function createTestActivity(
   restClient: RestClient,
   overrides: CreateActivityOverrides,
 ): Promise<TestActivity> {
-  const payload: Record<string, string | null> = {
+  // Optional linked-record IDs must be omitted when unset — the server Zod
+  // schema rejects explicit null values with a 400 VALIDATION_ERROR.
+  const payload: Record<string, string> = {
     type: overrides.type ?? 'Task',
     subject: overrides.subject ?? `Test Task ${Date.now()}`,
-    contact_id: overrides.contact_id ?? null,
-    account_id: overrides.account_id ?? null,
-    deal_id: overrides.deal_id ?? null,
   };
+  if (overrides.contact_id !== undefined) payload['contact_id'] = overrides.contact_id;
+  if (overrides.account_id !== undefined) payload['account_id'] = overrides.account_id;
+  if (overrides.deal_id !== undefined) payload['deal_id'] = overrides.deal_id;
   if (overrides.notes !== undefined) payload['notes'] = overrides.notes;
   if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
 
@@ -351,17 +357,23 @@ export async function createTestUser(
     role: overrides.role ?? 'rep',
   };
 
-  // Server returns { user, inviteToken, setPasswordPath } — we only need user.
-  const response = await restClient.post<{ user: TestUser }>('/api/users/invite', payload);
-  const user = response.body.user;
+  // Server returns { user, inviteToken, setPasswordPath }.
+  const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
+    '/api/users/invite',
+    payload,
+  );
+  const { user, inviteToken } = response.body;
 
   // Register before setting password so teardown runs even if password-set fails.
   testData.register('user', user.id, `/api/users/${user.id}/deactivate`);
 
-  // Set a known password so the BVT can authenticate as this user.
-  // Admin-set-password does not require the user to change it on first login.
+  // Use POST /api/users/set-password with the invite token rather than
+  // admin-set-password. admin-set-password forces must_change_password=true,
+  // which causes a password-change redirect on the invited user's first login
+  // and breaks the BVT login assertion. set-password with the invite token
+  // activates the account with must_change_password=false.
   const password = overrides.password ?? 'BvtPassword1!';
-  await restClient.post(`/api/users/${user.id}/admin-set-password`, { password });
+  await restClient.post('/api/users/set-password', { token: inviteToken, password });
 
   return { ...user, status: 'active' };
 }

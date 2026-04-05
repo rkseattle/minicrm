@@ -32,9 +32,14 @@ test('@bvt BVT-01: authentication — login, invalid login, logout', async ({ pa
 
   expect(loginResult.success, 'valid login should succeed').toBe(true);
   expect(loginResult.errorMessage).toBeNull();
-  expect(loginResult.finalUrl).not.toMatch(/^.*\/$/); // not the login route
+  expect(loginResult.finalUrl).not.toContain('/login');
 
   // ── 2. Invalid credentials → error shown, still on login page ────────────
+  // Must log out first — the app redirects authenticated sessions away from `/`
+  // before the login form renders, which would make the bad-login attempt fail
+  // for the wrong reason.
+  await logout({ page, healPage, testName });
+
   const badLoginResult = await login(
     { email: 'nobody@example.com', password: 'wrong-password' },
     { page, healPage, testName },

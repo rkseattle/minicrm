@@ -127,8 +127,8 @@ export async function editContact(
 
   // Fill only the supplied fields using their known testId + label pairs.
   const fieldMap: Record<keyof ContactChanges, [string, string]> = {
-    first_name: ['edit-first-name', 'First Name'],
-    last_name: ['edit-last-name', 'Last Name'],
+    first_name: ['contact-first-name', 'First name'],
+    last_name: ['contact-last-name', 'Last name'],
   };
   for (const [key, [testId, label]] of Object.entries(fieldMap) as Array<
     [keyof ContactChanges, [string, string]]

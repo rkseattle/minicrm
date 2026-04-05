@@ -65,7 +65,7 @@ export class LoginPage {
    * Navigates to the login page (application root).
    */
   async navigate(): Promise<void> {
-    await this.page.goto('/');
+    await this.page.goto('/login');
   }
 
   // ---------------------------------------------------------------------------
