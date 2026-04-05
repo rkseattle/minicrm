@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: [main]
 
+# MINCRM-135: checks:write for dorny/test-reporter; pull-requests:write for sticky PR comment
+permissions:
+  checks: write
+  pull-requests: write
+  contents: read
+
 jobs:
   lint-and-typecheck:
     name: Lint & Typecheck
@@ -129,8 +135,34 @@ jobs:
       - name: Run trivial smoke test (desktop, MINCRM-123)
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop qa/e2e/tests/trivial.spec.ts
 
+      - name: Publish desktop results to GitHub Checks (MINCRM-135)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Playwright – desktop (trivial)
+          path: qa/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
       - name: Run trivial smoke test (mobile-web, MINCRM-123)
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
+
+      - name: Publish mobile-web results to GitHub Checks (MINCRM-135)
+        id: results-trivial
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Playwright – mobile-web (trivial)
+          path: qa/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Extract healing summary (MINCRM-135)
+        id: healing
+        if: always()
+        run: |
+          COUNT=$(jq 'length' qa/test-results/healing-report.json 2>/dev/null || echo 0)
+          echo "heal_count=$COUNT" >> $GITHUB_OUTPUT
 
       - name: Debug instructions
         if: failure()
@@ -151,6 +183,23 @@ jobs:
             qa/test-results/
             qa/playwright-report/
           retention-days: 14
+
+      - name: Post test summary comment (MINCRM-135)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request'
+        with:
+          header: playwright-results-trivial
+          message: |
+            ## Playwright Test Results — Smoke (trivial)
+
+            | Project | Status | Tests | Passed | Failed | Skipped |
+            |---------|--------|-------|--------|--------|---------|
+            | desktop | ${{ steps.results-trivial.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-trivial.outputs.total }} | ${{ steps.results-trivial.outputs.passed }} | ${{ steps.results-trivial.outputs.failed }} | ${{ steps.results-trivial.outputs.skipped }} |
+            | mobile-web | ${{ steps.results-trivial.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-trivial.outputs.total }} | ${{ steps.results-trivial.outputs.passed }} | ${{ steps.results-trivial.outputs.failed }} | ${{ steps.results-trivial.outputs.skipped }} |
+
+            ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
+
+            [Download trace artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   e2e-bvt:
     name: E2E BVTs
@@ -251,6 +300,15 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
+      - name: Publish desktop results to GitHub Checks (MINCRM-135)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Playwright – desktop
+          path: qa/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
       - name: Run BVT (mobile-web, MINCRM-131)
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/apps/minicrm/bvt.spec.ts
         env:
@@ -259,7 +317,18 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
-      - name: Log heal count from report
+      - name: Publish mobile-web results to GitHub Checks (MINCRM-135)
+        id: results-bvt
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Playwright – mobile-web
+          path: qa/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Log heal count from report (MINCRM-135)
+        id: healing
         if: always()
         run: |
           REPORT=qa/test-results/healing-report.json
@@ -270,8 +339,10 @@ jobs:
             if [ "$AI" -gt 0 ]; then
               echo "::warning::$AI AI heal(s) occurred — check healing-report.json for details"
             fi
+            echo "heal_count=$TOTAL" >> $GITHUB_OUTPUT
           else
             echo "healing-report.json not found (zero heals or reporter did not run)"
+            echo "heal_count=0" >> $GITHUB_OUTPUT
           fi
 
       - name: Debug instructions
@@ -293,3 +364,20 @@ jobs:
             qa/test-results/
             qa/playwright-report/
           retention-days: 14
+
+      - name: Post test summary comment (MINCRM-135)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request'
+        with:
+          header: playwright-results-bvt
+          message: |
+            ## Playwright Test Results — BVT
+
+            | Project | Status | Tests | Passed | Failed | Skipped |
+            |---------|--------|-------|--------|--------|---------|
+            | desktop | ${{ steps.results-bvt.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-bvt.outputs.total }} | ${{ steps.results-bvt.outputs.passed }} | ${{ steps.results-bvt.outputs.failed }} | ${{ steps.results-bvt.outputs.skipped }} |
+            | mobile-web | ${{ steps.results-bvt.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-bvt.outputs.total }} | ${{ steps.results-bvt.outputs.passed }} | ${{ steps.results-bvt.outputs.failed }} | ${{ steps.results-bvt.outputs.skipped }} |
+
+            ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
+
+            [Download trace artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
