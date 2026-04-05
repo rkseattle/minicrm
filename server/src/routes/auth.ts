@@ -8,10 +8,13 @@ import { authenticate } from '../middleware/auth.js';
 import { login, logout, me, changePassword } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
-// In E2E environments the BVT suite submits multiple logins per run from a
-// single IP. Disable the limiter in test/e2e so the suite does not exhaust the
-// window during a normal run. The limiter remains active in production.
-const isE2E = process.env.NODE_ENV === 'test' || process.env.E2E === 'true';
+// In E2E/test environments the BVT suite submits multiple logins per run from a
+// single IP. Disable the limiter so the suite does not exhaust the window during
+// a normal run. The NODE_ENV !== 'production' guard ensures this bypass can never
+// activate in production regardless of how E2E is set (e.g. copied .env file).
+const isE2E =
+  process.env.NODE_ENV !== 'production' &&
+  (process.env.NODE_ENV === 'test' || process.env.E2E === 'true');
 
 /** 10 login attempts per IP per 15-minute window (skipped in test/e2e) */
 const loginLimiter = rateLimit({

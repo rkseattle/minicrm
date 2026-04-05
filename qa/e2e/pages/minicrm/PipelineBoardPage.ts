@@ -121,6 +121,7 @@ export class PipelineBoardPage {
       const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
       if (!(await prevBtn.isEnabled().catch(() => false))) break;
       await prevBtn.click();
+      await this.page.waitForLoadState('networkidle');
     }
 
     for (const slug of PipelineBoardPage.STAGE_SLUGS) {
@@ -210,10 +211,14 @@ export class PipelineBoardPage {
         const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
         if (!(await prevBtn.isEnabled().catch(() => false))) break;
         await prevBtn.click();
+        await this.page.waitForLoadState('networkidle');
       }
       for (let i = 0; i < targetSlugIndex; i++) {
         const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
-        if (await nextBtn.isEnabled().catch(() => false)) await nextBtn.click();
+        if (await nextBtn.isEnabled().catch(() => false)) {
+          await nextBtn.click();
+          await this.page.waitForLoadState('networkidle');
+        }
       }
       const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
       await card.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);

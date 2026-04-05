@@ -15,9 +15,9 @@ jobs:
     name: Phase 1 - Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -67,9 +67,9 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -93,9 +93,9 @@ jobs:
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
 
@@ -109,7 +109,7 @@ jobs:
     name: Phase 1 - E2E Framework Purity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
@@ -123,9 +123,9 @@ jobs:
       matrix:
         project: [desktop, mobile-web]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-trivial-${{ matrix.project }}-${{ github.run_id }}
           path: |
@@ -191,13 +191,13 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Download desktop artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: playwright-artifacts-trivial-desktop-${{ github.run_id }}
           path: artifacts/desktop
 
       - name: Download mobile-web artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: playwright-artifacts-trivial-mobile-web-${{ github.run_id }}
           path: artifacts/mobile-web
@@ -294,9 +294,9 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -415,7 +415,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}
           path: |
@@ -431,13 +431,13 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Download desktop artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: playwright-artifacts-bvt-desktop-${{ github.run_id }}
           path: artifacts/desktop
 
       - name: Download mobile-web artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: playwright-artifacts-bvt-mobile-web-${{ github.run_id }}
           path: artifacts/mobile-web

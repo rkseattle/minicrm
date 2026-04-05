@@ -337,16 +337,19 @@ export interface CreateUserOverrides {
 
 /**
  * Invites a user via POST /api/users/invite, immediately sets their password
- * via POST /api/users/:id/admin-set-password so BVT-05 can log in as them,
- * registers the user with TestDataManager, and returns the created user.
+ * via POST /api/users/set-password with the invite token, and returns the
+ * created user.
  *
- * @param testData - TestDataManager instance for the current test.
+ * **Teardown note:** Users cannot be hard-deleted; `TestDataManager` tears down
+ * via DELETE which does not match `PATCH /api/users/:id/deactivate`. This helper
+ * does NOT register with TestDataManager. Callers must deactivate the user
+ * manually, e.g. via a `try/finally` block with `PATCH /api/users/:id/deactivate`.
+ *
  * @param restClient - Authenticated RestClient instance (must be admin).
  * @param overrides - Optional field overrides.
  * @returns The created user as returned by the server.
  */
 export async function createTestUser(
-  testData: TestDataManager,
   restClient: RestClient,
   overrides: CreateUserOverrides = {},
 ): Promise<TestUser> {
@@ -357,15 +360,12 @@ export async function createTestUser(
     role: overrides.role ?? 'rep',
   };
 
-  // Server returns { user, inviteToken, setPasswordPath }.
+  // Server returns { user, inviteToken }.
   const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
     '/api/users/invite',
     payload,
   );
   const { user, inviteToken } = response.body;
-
-  // Register before setting password so teardown runs even if password-set fails.
-  testData.register('user', user.id, `/api/users/${user.id}/deactivate`);
 
   // Use POST /api/users/set-password with the invite token rather than
   // admin-set-password. admin-set-password forces must_change_password=true,
