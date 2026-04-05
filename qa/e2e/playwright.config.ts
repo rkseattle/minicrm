@@ -35,10 +35,12 @@ export default defineConfig({
     baseURL: BASE_URL,
     headless: IS_CI ? true : undefined,
 
-    // Capture traces on first retry to aid debugging
-    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+
+    // MINCRM-134: on-first-retry in CI; off locally by default.
+    // Set PLAYWRIGHT_TRACE=on to force traces locally without editing this file.
+    trace: process.env.CI ? 'on-first-retry' : process.env.PLAYWRIGHT_TRACE === 'on' ? 'on' : 'off',
   },
 
   // Global timeouts (ms)
