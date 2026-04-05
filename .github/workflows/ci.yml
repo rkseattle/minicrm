@@ -204,7 +204,7 @@ jobs:
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
         env:
-          VITE_API_URL: http://localhost:3001
+          API_URL: http://localhost:3001
 
       - name: Wait for servers to be ready
         run: |

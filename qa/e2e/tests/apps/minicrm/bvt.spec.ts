@@ -35,7 +35,10 @@ import { createTestContact } from '@apps/minicrm/helpers.js';
 // ---------------------------------------------------------------------------
 
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'] ?? '';
+const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
+if (!ADMIN_PASSWORD) {
+  throw new Error('[bvt] E2E_ADMIN_PASSWORD environment variable is not set');
+}
 
 // ---------------------------------------------------------------------------
 // Response shape for GET /api/contacts (paginated envelope)
