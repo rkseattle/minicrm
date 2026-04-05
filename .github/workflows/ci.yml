@@ -137,7 +137,7 @@ jobs:
         run: |
           echo "--------------------------------------------"
           echo "Tests failed. To view traces:"
-          echo "  1. Download the 'playwright-artifacts' CI artifact"
+          echo "  1. Download the 'playwright-artifacts-trivial-${{ github.run_id }}' CI artifact"
           echo "  2. Run: npx playwright show-trace path/to/trace.zip"
           echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
           echo "--------------------------------------------"
@@ -279,7 +279,7 @@ jobs:
         run: |
           echo "--------------------------------------------"
           echo "Tests failed. To view traces:"
-          echo "  1. Download the 'playwright-artifacts' CI artifact"
+          echo "  1. Download the 'playwright-artifacts-bvt-${{ github.run_id }}' CI artifact"
           echo "  2. Run: npx playwright show-trace path/to/trace.zip"
           echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
           echo "--------------------------------------------"
