@@ -144,14 +144,14 @@ jobs:
         if: always()
         with:
           name: Playwright – ${{ matrix.project }} (trivial)
-          path: qa/test-results/results.xml
+          path: qa/e2e/test-results/results.xml
           reporter: java-junit
           fail-on-error: false
 
       - name: Extract healing summary (MINCRM-135)
         if: always()
         run: |
-          REPORT=qa/test-results/healing-report.json
+          REPORT=test-results/healing-report.json
           if [ -f "$REPORT" ]; then
             TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
             AI=$(node -e "const r=require('./$REPORT'); console.log(r.aiHeals ?? 0)")
@@ -179,8 +179,9 @@ jobs:
         with:
           name: playwright-artifacts-trivial-${{ matrix.project }}-${{ github.run_id }}
           path: |
-            qa/test-results/
-            qa/playwright-report/
+            qa/e2e/test-results/
+            qa/e2e/playwright-report/
+            test-results/
           retention-days: 14
 
   e2e-trivial-report:
@@ -225,8 +226,8 @@ jobs:
           PYEOF
           }
 
-          DESKTOP=$(parse_xml artifacts/desktop/test-results/results.xml)
-          MOBILE=$(parse_xml artifacts/mobile-web/test-results/results.xml)
+          DESKTOP=$(parse_xml artifacts/desktop/qa/e2e/test-results/results.xml)
+          MOBILE=$(parse_xml artifacts/mobile-web/qa/e2e/test-results/results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
@@ -235,7 +236,7 @@ jobs:
           # Check for heals in either artifact
           HEAL_NOTE=""
           for dir in artifacts/desktop artifacts/mobile-web; do
-            REPORT="$dir/test-results/healing-report.json"
+            REPORT="$dir/test-results/healing-report.json"  # repo-root test-results/
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
@@ -376,14 +377,14 @@ jobs:
         if: always()
         with:
           name: Playwright – ${{ matrix.project }}
-          path: qa/test-results/results.xml
+          path: qa/e2e/test-results/results.xml
           reporter: java-junit
           fail-on-error: false
 
       - name: Log heal count from report (MINCRM-135)
         if: always()
         run: |
-          REPORT=qa/test-results/healing-report.json
+          REPORT=test-results/healing-report.json
           if [ -f "$REPORT" ]; then
             TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
             AI=$(node -e "const r=require('./$REPORT'); console.log(r.aiHeals ?? 0)")
@@ -411,8 +412,9 @@ jobs:
         with:
           name: playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}
           path: |
-            qa/test-results/
-            qa/playwright-report/
+            qa/e2e/test-results/
+            qa/e2e/playwright-report/
+            test-results/
           retention-days: 14
 
   e2e-bvt-report:
@@ -457,8 +459,8 @@ jobs:
           PYEOF
           }
 
-          DESKTOP=$(parse_xml artifacts/desktop/test-results/results.xml)
-          MOBILE=$(parse_xml artifacts/mobile-web/test-results/results.xml)
+          DESKTOP=$(parse_xml artifacts/desktop/qa/e2e/test-results/results.xml)
+          MOBILE=$(parse_xml artifacts/mobile-web/qa/e2e/test-results/results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
@@ -467,7 +469,7 @@ jobs:
           # Check for heals in either artifact
           HEAL_NOTE=""
           for dir in artifacts/desktop artifacts/mobile-web; do
-            REPORT="$dir/test-results/healing-report.json"
+            REPORT="$dir/test-results/healing-report.json"  # repo-root test-results/
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
