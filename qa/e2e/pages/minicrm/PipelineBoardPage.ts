@@ -82,11 +82,20 @@ export class PipelineBoardPage {
   ] as const;
 
   /**
+   * Returns true when running in the mobile single-stage view.
+   * Detected by checking whether the mobile-prefixed stage column is visible.
+   */
+  private async isMobileView(): Promise<boolean> {
+    const mobileColumn = this.page.locator('[data-testid^="mobile-stage-column-"]').first();
+    return mobileColumn.isVisible().catch(() => false);
+  }
+
+  /**
    * Returns the stage slug (column testid slug) that currently contains the
    * given deal card.
    *
-   * Checks each stage column in order; returns the slug of the first column
-   * whose `stage-column-{slug}` container holds a `deal-card-{dealId}` element.
+   * On desktop, checks each stage column in order. On mobile, navigates through
+   * all stages one at a time (only one column is rendered at a time).
    *
    * @param dealId - Deal UUID to locate.
    * @returns The column slug (e.g. 'prospecting', 'closed-won') or null.
@@ -94,14 +103,54 @@ export class PipelineBoardPage {
   async getDealColumnSlug(dealId: string): Promise<string | null> {
     await this.page.waitForLoadState('networkidle');
 
+    const mobile = await this.isMobileView();
+
+    if (!mobile) {
+      for (const slug of PipelineBoardPage.STAGE_SLUGS) {
+        const cardInColumn = this.page.locator(
+          `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+        );
+        if ((await cardInColumn.count()) > 0) return slug;
+      }
+      return null;
+    }
+
+    // Mobile: navigate through each stage and check the single visible column.
+    // First, rewind to stage 0 (Prospecting) by clicking prev until disabled.
+    for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
+      const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
+      if (!(await prevBtn.isEnabled().catch(() => false))) break;
+      await prevBtn.click();
+    }
+
     for (const slug of PipelineBoardPage.STAGE_SLUGS) {
-      const cardInColumn = this.page.locator(
-        `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-      );
-      const count = await cardInColumn.count();
-      if (count > 0) return slug;
+      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
+      if (await card.isVisible().catch(() => false)) return slug;
+      const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
+      if (!(await nextBtn.isEnabled().catch(() => false))) break;
+      await nextBtn.click();
+      await this.page.waitForLoadState('networkidle');
     }
     return null;
+  }
+
+  /**
+   * On mobile, navigates to the stage column that contains the given deal by
+   * clicking the next/prev buttons until the deal card is visible.
+   *
+   * @param dealId - Deal UUID.
+   */
+  private async mobileNavigateToStageWithDeal(dealId: string): Promise<void> {
+    const STAGE_COUNT = PipelineBoardPage.STAGE_SLUGS.length;
+    for (let i = 0; i < STAGE_COUNT; i++) {
+      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
+      if (await card.isVisible().catch(() => false)) return;
+      const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
+      if (await nextBtn.isEnabled().catch(() => false)) {
+        await nextBtn.click();
+        await this.page.waitForLoadState('networkidle');
+      }
+    }
   }
 
   /**
@@ -110,11 +159,20 @@ export class PipelineBoardPage {
    * For terminal stages (Closed Won / Closed Lost) the CloseDealModal is
    * submitted with today's date automatically.
    *
+   * On mobile, navigates to the deal's current stage column first.
+   *
    * @param dealId - Deal UUID.
    * @param stage - Target stage value.
    */
   async selectDealStage(dealId: string, stage: PipelineStage): Promise<void> {
-    const selectTestId = `deal-card-stage-select-${dealId}`;
+    const mobile = await this.isMobileView();
+
+    if (mobile) {
+      await this.mobileNavigateToStageWithDeal(dealId);
+    }
+
+    const prefix = mobile ? 'mobile-' : '';
+    const selectTestId = `${prefix}deal-card-stage-select-${dealId}`;
     const select = this.page.locator(`[data-testid="${selectTestId}"]`);
     await select.selectOption(stage);
 
@@ -137,8 +195,34 @@ export class PipelineBoardPage {
       await modal.waitFor({ state: 'hidden' });
     }
 
-    // Wait for any in-flight PATCH to settle before returning.
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the deal card to appear in the target column before returning.
+    // networkidle alone is not sufficient — React Query invalidation and re-render
+    // may lag behind the settled network state.
+    const slug = stage.toLowerCase().replace(/\s+/g, '-');
+
+    if (mobile) {
+      // On mobile, navigate to the target stage column so the card is visible.
+      // Rewind to stage 0 first, then advance to targetSlugIndex.
+      const targetSlugIndex = PipelineBoardPage.STAGE_SLUGS.indexOf(
+        slug as (typeof PipelineBoardPage.STAGE_SLUGS)[number],
+      );
+      for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
+        const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
+        if (!(await prevBtn.isEnabled().catch(() => false))) break;
+        await prevBtn.click();
+      }
+      for (let i = 0; i < targetSlugIndex; i++) {
+        const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
+        if (await nextBtn.isEnabled().catch(() => false)) await nextBtn.click();
+      }
+      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
+      await card.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+    } else {
+      const cardInTarget = this.page.locator(
+        `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+      );
+      await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+    }
   }
 
   /**

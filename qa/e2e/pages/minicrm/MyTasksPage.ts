@@ -72,7 +72,12 @@ export class MyTasksPage {
   }
 
   /**
-   * Clicks the "Mark complete" button for the given task.
+   * Clicks the "Mark complete" button for the given task and waits for the row
+   * to leave the open-tasks view.
+   *
+   * After the PATCH succeeds, React Query invalidates the task list and refetches.
+   * We wait for the row to become hidden rather than relying on networkidle, which
+   * can fire before the query refetch updates the DOM.
    *
    * @param taskId - Activity UUID.
    */
@@ -81,7 +86,9 @@ export class MyTasksPage {
       { type: 'testId', value: `mark-complete-${taskId}` },
       { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
     ]);
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the row to disappear (query refetch removes it from open-tasks view).
+    const row = this.page.locator(`[data-testid="task-row-${taskId}"]`);
+    await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
   }
 
   /**

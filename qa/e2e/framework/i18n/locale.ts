@@ -49,6 +49,9 @@ const EN: LocaleMap = {
   'login.emailLabel': 'Email address',
   'login.passwordLabel': 'Password',
 
+  // Contacts
+  'contacts.saveChanges': 'Save changes',
+
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -77,6 +80,9 @@ const ES: LocaleMap = {
   'login.submitButton': 'Iniciar sesión',
   'login.emailLabel': 'Correo electrónico',
   'login.passwordLabel': 'Contraseña',
+
+  // Contacts
+  'contacts.saveChanges': 'Guardar cambios',
 
   // Common actions
   'common.save': 'Guardar',

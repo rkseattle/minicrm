@@ -73,20 +73,24 @@ export class ContactDetailPage {
    */
   async save(): Promise<void> {
     await this.healPage.click([
-      { type: 'testId', value: 'save-contact-button' },
-      { type: 'role', value: 'button', options: { name: t('common.save'), exact: false } },
+      { type: 'testId', value: 'contact-form-submit' },
+      { type: 'role', value: 'button', options: { name: t('contacts.saveChanges'), exact: false } },
     ]);
   }
 
   /**
-   * Returns whether the contact detail page is loaded (contact name heading visible).
+   * Returns whether the contact detail page is in read mode (Edit button visible).
+   *
+   * The edit button is only present in read mode — it disappears while the edit
+   * form is active. Using it as the ready indicator ensures we detect save completion
+   * rather than just heading presence (the heading is visible in both modes).
    */
   async isLoaded(): Promise<boolean> {
     try {
       await this.healPage
         .locate([
-          { type: 'testId', value: 'contact-name' },
-          { type: 'role', value: 'heading', options: { level: 1 } },
+          { type: 'testId', value: 'edit-contact-button' },
+          { type: 'role', value: 'button', options: { name: t('common.edit'), exact: false } },
         ])
         .resolve(this.testName);
       return true;
