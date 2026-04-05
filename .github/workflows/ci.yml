@@ -132,6 +132,26 @@ jobs:
       - name: Run trivial smoke test (mobile-web, MINCRM-123)
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
 
+      - name: Debug instructions
+        if: failure()
+        run: |
+          echo "--------------------------------------------"
+          echo "Tests failed. To view traces:"
+          echo "  1. Download the 'playwright-artifacts' CI artifact"
+          echo "  2. Run: npx playwright show-trace path/to/trace.zip"
+          echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
+          echo "--------------------------------------------"
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-trivial-${{ github.run_id }}
+          path: |
+            qa/test-results/
+            qa/playwright-report/
+          retention-days: 14
+
   e2e-bvt:
     name: E2E BVTs
     needs: [server-tests, client-tests]
@@ -254,10 +274,22 @@ jobs:
             echo "healing-report.json not found (zero heals or reporter did not run)"
           fi
 
-      - name: Upload healing report artifact
+      - name: Debug instructions
+        if: failure()
+        run: |
+          echo "--------------------------------------------"
+          echo "Tests failed. To view traces:"
+          echo "  1. Download the 'playwright-artifacts' CI artifact"
+          echo "  2. Run: npx playwright show-trace path/to/trace.zip"
+          echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
+          echo "--------------------------------------------"
+
+      - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: healing-report
-          path: qa/test-results/healing-report.json
-          if-no-files-found: warn
+          name: playwright-artifacts-bvt-${{ github.run_id }}
+          path: |
+            qa/test-results/
+            qa/playwright-report/
+          retention-days: 14
