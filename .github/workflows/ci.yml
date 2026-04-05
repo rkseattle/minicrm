@@ -116,7 +116,7 @@ jobs:
 
   e2e-trivial:
     name: E2E Smoke Test (${{ matrix.project }})
-    needs: lint-and-typecheck
+    needs: [lint-and-typecheck, server-tests, client-tests]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
