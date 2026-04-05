@@ -40,7 +40,7 @@ jobs:
         run: npm audit --audit-level=high
 
   server-tests:
-    name: Server Tests
+    name: Server Unit Tests
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
 
@@ -83,7 +83,7 @@ jobs:
           NODE_ENV: test
 
   client-tests:
-    name: Client Tests
+    name: Client Unit Tests
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
@@ -109,7 +109,7 @@ jobs:
         run: bash qa/scripts/check-framework-purity.sh
 
   e2e-trivial:
-    name: E2E Trivial Smoke Test
+    name: E2E Smoke Test
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
@@ -133,7 +133,7 @@ jobs:
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
 
   e2e-bvt:
-    name: E2E BVT (MINCRM-131)
+    name: E2E BVTs
     needs: [server-tests, client-tests]
     runs-on: ubuntu-latest
 
