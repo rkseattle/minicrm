@@ -131,3 +131,129 @@ jobs:
 
       - name: Run trivial smoke test (mobile-web, MINCRM-123)
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
+
+  e2e-bvt:
+    name: E2E BVT (MINCRM-131)
+    needs: [server-tests, client-tests]
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: minicrm
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: minicrm_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations on E2E database
+        run: npm run migrate --workspace=minicrm-server
+        env:
+          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: ci-bvt-secret
+          NODE_ENV: test
+
+      - name: Seed E2E admin user
+        run: npm run seed:e2e-admin
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Start application server
+        run: npm run start --workspace=minicrm-server &
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: ci-bvt-secret
+          NODE_ENV: production
+          PORT: 3001
+
+      - name: Start frontend dev server
+        run: npm run dev --workspace=minicrm-client &
+        env:
+          VITE_API_URL: http://localhost:3001
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for API server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3001/api/health && break
+            echo "  attempt $i/30 — retrying in 2s"
+            sleep 2
+          done
+          echo "Waiting for frontend dev server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5173 && break
+            echo "  attempt $i/30 — retrying in 2s"
+            sleep 2
+          done
+
+      - name: Run BVT (desktop, MINCRM-131)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop qa/e2e/tests/apps/minicrm/bvt.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Run BVT (mobile-web, MINCRM-131)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/apps/minicrm/bvt.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Log heal count from report
+        if: always()
+        run: |
+          REPORT=qa/test-results/healing-report.json
+          if [ -f "$REPORT" ]; then
+            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+            AI=$(node -e "const r=require('./$REPORT'); console.log(r.aiHeals ?? 0)")
+            echo "Heal events this run: total=$TOTAL ai=$AI"
+            if [ "$AI" -gt 0 ]; then
+              echo "::warning::$AI AI heal(s) occurred — check healing-report.json for details"
+            fi
+          else
+            echo "healing-report.json not found (zero heals or reporter did not run)"
+          fi
+
+      - name: Upload healing report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: healing-report
+          path: qa/test-results/healing-report.json
+          if-no-files-found: warn

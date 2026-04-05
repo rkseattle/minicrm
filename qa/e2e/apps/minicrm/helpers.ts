@@ -25,57 +25,62 @@ import type { TestDataManager } from './test-data-manager.js';
 
 /**
  * Minimal representation of a MiniCRM contact as returned by POST /api/contacts.
+ * Field names match the server's snake_case ContactRow shape.
  * Extend as more fields are needed by tests.
  */
 export interface TestContact {
-  id: number;
-  firstName: string;
-  lastName: string;
+  id: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string | null;
   title: string | null;
   department: string | null;
-  accountId: number | null;
-  ownerId: number;
+  account_id: string | null;
+  owner_id: string;
 }
 
 /**
  * Fields accepted when creating a contact. All fields optional — defaults are
  * applied by the helper so the minimum viable entity can be created with a
  * single call.
+ *
+ * Uses snake_case to match the server's createContactSchema validation.
  */
 export interface CreateContactOverrides {
-  firstName?: string;
-  lastName?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   phone?: string;
   title?: string;
   department?: string;
-  accountId?: number;
+  account_id?: string;
 }
 
 /**
  * Minimal representation of a MiniCRM account as returned by POST /api/accounts.
  */
 export interface TestAccount {
-  id: number;
+  id: string;
   name: string;
   industry: string | null;
   website: string | null;
-  employeeRange: string | null;
-  revenueRange: string | null;
-  ownerId: number;
+  employee_range: string | null;
+  revenue_range: string | null;
+  owner_id: string;
 }
 
 /**
  * Fields accepted when creating an account. All fields optional.
+ *
+ * Uses snake_case to match the server's validation schema.
  */
 export interface CreateAccountOverrides {
   name?: string;
   industry?: string;
   website?: string;
-  employeeRange?: string;
-  revenueRange?: string;
+  employee_range?: string;
+  revenue_range?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,20 +105,21 @@ export async function createTestContact(
   overrides: CreateContactOverrides = {},
 ): Promise<TestContact> {
   const payload = {
-    firstName: overrides.firstName ?? 'Test',
-    lastName: overrides.lastName ?? 'Contact',
+    first_name: overrides.first_name ?? 'Test',
+    last_name: overrides.last_name ?? 'Contact',
     email:
       overrides.email ??
       `test-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
     phone: overrides.phone ?? null,
     title: overrides.title ?? null,
     department: overrides.department ?? null,
-    accountId: overrides.accountId ?? null,
+    account_id: overrides.account_id ?? null,
   };
 
   // Step 1: create via REST.
-  const response = await restClient.post<TestContact>('/api/contacts', payload);
-  const contact = response.body;
+  // Server returns { contact: ContactRow } — unwrap the nested object.
+  const response = await restClient.post<{ contact: TestContact }>('/api/contacts', payload);
+  const contact = response.body.contact;
 
   // Step 2: register for teardown immediately so cleanup runs even if the
   // test throws before completing setup.
@@ -141,13 +147,14 @@ export async function createTestAccount(
     name: overrides.name ?? `Test Account ${Date.now()}`,
     industry: overrides.industry ?? null,
     website: overrides.website ?? null,
-    employeeRange: overrides.employeeRange ?? null,
-    revenueRange: overrides.revenueRange ?? null,
+    employee_range: overrides.employee_range ?? null,
+    revenue_range: overrides.revenue_range ?? null,
   };
 
   // Step 1: create via REST.
-  const response = await restClient.post<TestAccount>('/api/accounts', payload);
-  const account = response.body;
+  // Server returns { account: AccountRow } — unwrap the nested object.
+  const response = await restClient.post<{ account: TestAccount }>('/api/accounts', payload);
+  const account = response.body.account;
 
   // Step 2: register for teardown.
   testData.register('account', account.id, `/api/accounts/${account.id}`);
