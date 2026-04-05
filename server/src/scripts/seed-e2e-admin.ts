@@ -9,7 +9,7 @@
  * the existing record is left untouched.
  *
  * Usage:
- *   tsx scripts/seed-e2e-admin.ts
+ *   npm run seed:e2e-admin --workspace=minicrm-server
  *
  * Required environment variables:
  *   DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
@@ -36,8 +36,7 @@ const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
 
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  console.error('[seed-e2e-admin] E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.');
-  process.exit(1);
+  throw new Error('[seed-e2e-admin] E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.');
 }
 
 const SALT_ROUNDS = 10;
@@ -73,6 +72,5 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error('[seed-e2e-admin] Fatal error:', err);
-  process.exit(1);
+  throw err;
 });
