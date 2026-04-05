@@ -42,30 +42,37 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 
 const SALT_ROUNDS = 10;
 
-const client = await pool.connect();
-try {
-  const existing = await client.query<{ id: string }>(
-    `SELECT id FROM users WHERE email = $1 LIMIT 1`,
-    [ADMIN_EMAIL],
-  );
+async function main(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const existing = await client.query<{ id: string }>(
+      `SELECT id FROM users WHERE email = $1 LIMIT 1`,
+      [ADMIN_EMAIL],
+    );
 
-  if (existing.rows.length > 0) {
-    console.log(
-      `[seed-e2e-admin] Admin user already exists (id=${existing.rows[0].id}) — skipping.`,
-    );
-  } else {
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
-    const result = await client.query<{ id: string }>(
-      `INSERT INTO users (email, password_hash, name, role, status, must_change_password)
-       VALUES ($1, $2, 'E2E Admin', 'admin', 'active', false)
-       RETURNING id`,
-      [ADMIN_EMAIL, passwordHash],
-    );
-    console.log(
-      `[seed-e2e-admin] Admin user created (id=${result.rows[0].id}, email=${ADMIN_EMAIL}).`,
-    );
+    if (existing.rows.length > 0) {
+      console.log(
+        `[seed-e2e-admin] Admin user already exists (id=${existing.rows[0].id}) — skipping.`,
+      );
+    } else {
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO users (email, password_hash, name, role, status, must_change_password)
+         VALUES ($1, $2, 'E2E Admin', 'admin', 'active', false)
+         RETURNING id`,
+        [ADMIN_EMAIL, passwordHash],
+      );
+      console.log(
+        `[seed-e2e-admin] Admin user created (id=${result.rows[0].id}, email=${ADMIN_EMAIL}).`,
+      );
+    }
+  } finally {
+    client.release();
+    await pool.end();
   }
-} finally {
-  client.release();
-  await pool.end();
 }
+
+main().catch((err: unknown) => {
+  console.error('[seed-e2e-admin] Fatal error:', err);
+  process.exit(1);
+});
