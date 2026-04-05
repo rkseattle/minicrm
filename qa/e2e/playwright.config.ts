@@ -7,12 +7,19 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 
 const IS_CI = Boolean(process.env.CI);
 
+// MINCRM-135: Anchor output paths to __dirname (qa/e2e/) so they are
+// predictable regardless of the working directory when npx playwright runs.
+const E2E_DIR = __dirname;
+
 export default defineConfig({
   testDir: './tests',
 
   // Point to qa/tsconfig.json so Playwright's transform resolves @framework/* path aliases.
   // MINCRM-126
   tsconfig: path.resolve(__dirname, '../tsconfig.json'),
+
+  // Anchor test artifact output (traces, screenshots, videos) to qa/e2e/test-results/
+  outputDir: path.join(E2E_DIR, 'test-results'),
 
   // Fail fast in CI; allow local runs to continue after failures
   fullyParallel: true,
@@ -25,13 +32,14 @@ export default defineConfig({
   workers: IS_CI ? 2 : undefined,
 
   reporter: [
-    ['html', { open: 'never' }],
+    ['html', { open: 'never', outputFolder: path.join(E2E_DIR, 'playwright-report') }],
     // HealingReporter — merges per-worker heal logs at run end (S2, MINCRM-124)
     ['./framework/healing/healing-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
-    // MINCRM-135: JUnit XML for dorny/test-reporter Checks API integration.
-    // Path must be repo-root-relative since npx playwright runs from the repo root.
-    ...(IS_CI ? [['junit', { outputFile: 'qa/test-results/results.xml' }] as const] : []),
+    // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
+    ...(IS_CI
+      ? [['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }] as const]
+      : []),
   ],
 
   use: {
