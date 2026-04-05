@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130
+ * MINCRM-130, MINCRM-110
  */
 
 import type { Page } from '@playwright/test';
@@ -110,4 +110,53 @@ export async function login(
   const success = loginPathname !== '/';
 
   return { success, finalUrl, errorMessage };
+}
+
+// ---------------------------------------------------------------------------
+// logout()
+// ---------------------------------------------------------------------------
+
+/** Result returned by the logout behavior. */
+export interface LogoutResult {
+  /**
+   * True when logout succeeded (browser landed back on the login route).
+   */
+  success: boolean;
+  /**
+   * The URL the browser settled on after the logout attempt.
+   */
+  finalUrl: string;
+}
+
+/**
+ * Clicks the logout control and waits for the browser to return to the login
+ * route (application root `/`).
+ *
+ * The logout trigger is located by testId first, with a role-based fallback.
+ * Returns a result object — the caller (test spec) is responsible for assertions.
+ *
+ * @param context - Playwright fixture context.
+ * @returns LogoutResult describing the outcome.
+ *
+ * @example
+ * ```ts
+ * const result = await logout({ page, healPage, testName: 'my test' });
+ * expect(result.success).toBe(true);
+ * ```
+ */
+export async function logout(context: AuthBehaviorContext): Promise<LogoutResult> {
+  const LOGOUT_TIMEOUT_MS = 10_000;
+
+  await context.healPage.click([
+    { type: 'testId', value: 'logout-button' },
+    { type: 'role', value: 'button', options: { name: 'Logout', exact: false } },
+  ]);
+
+  await context.page
+    .waitForURL((url) => new URL(url).pathname === '/', { timeout: LOGOUT_TIMEOUT_MS })
+    .catch(() => null);
+
+  const finalUrl = context.page.url();
+  const success = new URL(finalUrl).pathname === '/';
+  return { success, finalUrl };
 }

@@ -4,11 +4,45 @@
  * Import from here rather than individual files so that reorganizing
  * behavior files internally does not break callers.
  *
- * MINCRM-130
+ * MINCRM-130, MINCRM-110
  */
 
-export { login } from './auth.behaviors.js';
-export type { AuthBehaviorContext, LoginCredentials, LoginResult } from './auth.behaviors.js';
+export { login, logout } from './auth.behaviors.js';
+export type {
+  AuthBehaviorContext,
+  LoginCredentials,
+  LoginResult,
+  LogoutResult,
+} from './auth.behaviors.js';
 
-export { navigateToContacts } from './contacts.behaviors.js';
-export type { ContactsBehaviorContext, NavigateToContactsResult } from './contacts.behaviors.js';
+export { navigateToContacts, editContact } from './contacts.behaviors.js';
+export type {
+  ContactsBehaviorContext,
+  NavigateToContactsResult,
+  ContactChanges,
+  EditContactResult,
+} from './contacts.behaviors.js';
+
+export { openDeal, advanceDealStage, closeDealAsWon } from './deals.behaviors.js';
+export type {
+  DealsBehaviorContext,
+  OpenDealResult,
+  AdvanceDealStageResult,
+  CloseDealAsWonResult,
+} from './deals.behaviors.js';
+
+export { navigateToMyTasks, taskIsVisible, completeTask } from './tasks.behaviors.js';
+export type {
+  TasksBehaviorContext,
+  NavigateToMyTasksResult,
+  TaskIsVisibleResult,
+  CompleteTaskResult,
+} from './tasks.behaviors.js';
+
+export { navigateToUsers, inviteUserViaUI, userIsVisibleInList } from './users.behaviors.js';
+export type {
+  UsersBehaviorContext,
+  NavigateToUsersResult,
+  InviteUserViaUIResult,
+  UserIsVisibleInListResult,
+} from './users.behaviors.js';

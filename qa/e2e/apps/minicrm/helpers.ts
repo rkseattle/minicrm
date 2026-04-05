@@ -1,6 +1,8 @@
 /**
  * MiniCRM setup helpers — canonical pattern for creating test entities.
  *
+ * MINCRM-110
+ *
  * Each helper:
  *   1. Creates the entity via RestClient.
  *   2. Registers the returned ID and delete path with TestDataManager.
@@ -13,7 +15,7 @@
  * New helpers for other entity types (deals, activities, accounts) follow the
  * exact same shape — see inline comments for the required steps.
  *
- * MINCRM-129
+ * MINCRM-129, MINCRM-110
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -163,4 +165,203 @@ export async function createTestAccount(
 
   // Step 3: return entity.
   return account;
+}
+
+// ---------------------------------------------------------------------------
+// Deal helper
+// ---------------------------------------------------------------------------
+
+/** Pipeline stages accepted by the server. */
+export type DealStage =
+  | 'Prospecting'
+  | 'Qualification'
+  | 'Proposal'
+  | 'Negotiation'
+  | 'Closed Won'
+  | 'Closed Lost';
+
+/**
+ * Minimal representation of a MiniCRM deal as returned by POST /api/deals.
+ */
+export interface TestDeal {
+  id: string;
+  name: string;
+  stage: DealStage;
+  value: string | null;
+  close_date: string | null;
+  loss_reason: string | null;
+  account_id: string;
+  owner_id: string;
+}
+
+/** Fields accepted when creating a deal. All fields optional except account_id. */
+export interface CreateDealOverrides {
+  name?: string;
+  stage?: DealStage;
+  value?: string;
+  close_date?: string;
+  account_id?: string;
+}
+
+/**
+ * Creates a deal via the REST API, registers it with TestDataManager, and
+ * returns the created deal.
+ *
+ * A deal requires an account. If account_id is not supplied via overrides the
+ * caller must pass an account that was already created and registered.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Authenticated RestClient instance.
+ * @param overrides - Field overrides; account_id is required unless supplied.
+ * @returns The created deal as returned by the server.
+ */
+export async function createTestDeal(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: CreateDealOverrides & { account_id: string },
+): Promise<TestDeal> {
+  const payload = {
+    name: overrides.name ?? `Test Deal ${Date.now()}`,
+    stage: overrides.stage ?? 'Prospecting',
+    value: overrides.value ?? null,
+    close_date: overrides.close_date ?? null,
+    account_id: overrides.account_id,
+  };
+
+  // Server returns { deal: DealRow } — unwrap.
+  const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload);
+  const deal = response.body.deal;
+
+  testData.register('deal', deal.id, `/api/deals/${deal.id}`);
+  return deal;
+}
+
+// ---------------------------------------------------------------------------
+// Activity / task helper
+// ---------------------------------------------------------------------------
+
+/** Activity types accepted by the server. */
+export type ActivityType = 'Call' | 'Email' | 'Meeting' | 'Task' | 'Note';
+
+/**
+ * Minimal representation of a MiniCRM activity as returned by POST /api/activities.
+ */
+export interface TestActivity {
+  id: string;
+  type: ActivityType;
+  subject: string;
+  notes: string | null;
+  due_date: string | null;
+  status: 'open' | 'complete';
+  contact_id: string | null;
+  account_id: string | null;
+  deal_id: string | null;
+  owner_id: string;
+}
+
+/** Fields accepted when creating an activity. At least one linked record is required. */
+export interface CreateActivityOverrides {
+  type?: ActivityType;
+  subject?: string;
+  notes?: string;
+  due_date?: string;
+  contact_id?: string;
+  account_id?: string;
+  deal_id?: string;
+}
+
+/**
+ * Creates an activity (task) via the REST API, registers it with
+ * TestDataManager, and returns the created activity.
+ *
+ * At least one of contact_id, account_id, or deal_id must be supplied via
+ * overrides — the server enforces this constraint.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Authenticated RestClient instance.
+ * @param overrides - Field overrides; at least one linked-record ID required.
+ * @returns The created activity as returned by the server.
+ */
+export async function createTestActivity(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: CreateActivityOverrides,
+): Promise<TestActivity> {
+  const payload: Record<string, string | null> = {
+    type: overrides.type ?? 'Task',
+    subject: overrides.subject ?? `Test Task ${Date.now()}`,
+    contact_id: overrides.contact_id ?? null,
+    account_id: overrides.account_id ?? null,
+    deal_id: overrides.deal_id ?? null,
+  };
+  if (overrides.notes !== undefined) payload['notes'] = overrides.notes;
+  if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
+
+  // Server returns { activity: ActivityRow } — unwrap.
+  const response = await restClient.post<{ activity: TestActivity }>('/api/activities', payload);
+  const activity = response.body.activity;
+
+  testData.register('activity', activity.id, `/api/activities/${activity.id}`);
+  return activity;
+}
+
+// ---------------------------------------------------------------------------
+// User helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal representation of a MiniCRM user as returned by POST /api/users/invite.
+ */
+export interface TestUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'rep';
+  status: 'active' | 'invited' | 'inactive';
+}
+
+/** Fields accepted when inviting a user. */
+export interface CreateUserOverrides {
+  name?: string;
+  email?: string;
+  role?: 'admin' | 'rep';
+  /** Password to set immediately after invite via admin-set-password. */
+  password?: string;
+}
+
+/**
+ * Invites a user via POST /api/users/invite, immediately sets their password
+ * via POST /api/users/:id/admin-set-password so BVT-05 can log in as them,
+ * registers the user with TestDataManager, and returns the created user.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Authenticated RestClient instance (must be admin).
+ * @param overrides - Optional field overrides.
+ * @returns The created user as returned by the server.
+ */
+export async function createTestUser(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: CreateUserOverrides = {},
+): Promise<TestUser> {
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const payload = {
+    name: overrides.name ?? `BVT User ${uniqueSuffix}`,
+    email: overrides.email ?? `bvt-user-${uniqueSuffix}@example.com`,
+    role: overrides.role ?? 'rep',
+  };
+
+  // Server returns { user, inviteToken, setPasswordPath } — we only need user.
+  const response = await restClient.post<{ user: TestUser }>('/api/users/invite', payload);
+  const user = response.body.user;
+
+  // Register before setting password so teardown runs even if password-set fails.
+  testData.register('user', user.id, `/api/users/${user.id}/deactivate`);
+
+  // Set a known password so the BVT can authenticate as this user.
+  // Admin-set-password does not require the user to change it on first login.
+  const password = overrides.password ?? 'BvtPassword1!';
+  await restClient.post(`/api/users/${user.id}/admin-set-password`, { password });
+
+  return { ...user, status: 'active' };
 }
