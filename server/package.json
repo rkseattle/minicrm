@@ -13,7 +13,8 @@
     "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand",
     "test:coverage": "npm test -- --coverage",
     "generate-spec": "tsx src/scripts/generateSpec.ts",
-    "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json"
+    "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json",
+    "seed:e2e-admin": "tsx src/scripts/seed-e2e-admin.ts"
   },
   "dependencies": {
     "@minicrm/shared": "*",
