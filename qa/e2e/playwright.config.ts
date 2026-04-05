@@ -29,8 +29,9 @@ export default defineConfig({
     // HealingReporter — merges per-worker heal logs at run end (S2, MINCRM-124)
     ['./framework/healing/healing-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
-    // MINCRM-135: JUnit XML for dorny/test-reporter Checks API integration
-    ...(IS_CI ? [['junit', { outputFile: 'test-results/results.xml' }] as const] : []),
+    // MINCRM-135: JUnit XML for dorny/test-reporter Checks API integration.
+    // Path must be repo-root-relative since npx playwright runs from the repo root.
+    ...(IS_CI ? [['junit', { outputFile: 'qa/test-results/results.xml' }] as const] : []),
   ],
 
   use: {

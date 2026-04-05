@@ -140,7 +140,6 @@ jobs:
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} qa/e2e/tests/trivial.spec.ts
 
       - name: Publish results to GitHub Checks (MINCRM-135)
-        id: results
         uses: dorny/test-reporter@v1
         if: always()
         with:
@@ -150,11 +149,19 @@ jobs:
           fail-on-error: false
 
       - name: Extract healing summary (MINCRM-135)
-        id: healing
         if: always()
         run: |
-          COUNT=$(jq 'length' qa/test-results/healing-report.json 2>/dev/null || echo 0)
-          echo "heal_count=$COUNT" >> $GITHUB_OUTPUT
+          REPORT=qa/test-results/healing-report.json
+          if [ -f "$REPORT" ]; then
+            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+            AI=$(node -e "const r=require('./$REPORT'); console.log(r.aiHeals ?? 0)")
+            echo "Heal events this run: total=$TOTAL ai=$AI"
+            if [ "$AI" -gt 0 ]; then
+              echo "::warning::$AI AI heal(s) occurred — check healing-report.json for details"
+            fi
+          else
+            echo "healing-report.json not found (zero heals or reporter did not run)"
+          fi
 
       - name: Debug instructions
         if: failure()
@@ -176,21 +183,90 @@ jobs:
             qa/playwright-report/
           retention-days: 14
 
-      - name: Post test summary comment (MINCRM-135)
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: always() && github.event_name == 'pull_request'
+  e2e-trivial-report:
+    name: E2E Smoke Test — PR Comment
+    needs: e2e-trivial
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Download desktop artifacts
+        uses: actions/download-artifact@v4
         with:
-          header: playwright-results-trivial-${{ matrix.project }}
-          message: |
-            ## Playwright Test Results — Smoke (${{ matrix.project }})
+          name: playwright-artifacts-trivial-desktop-${{ github.run_id }}
+          path: artifacts/desktop
 
-            | Status | Tests | Passed | Failed | Skipped |
-            |--------|-------|--------|--------|---------|
-            | ${{ steps.results.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results.outputs.total }} | ${{ steps.results.outputs.passed }} | ${{ steps.results.outputs.failed }} | ${{ steps.results.outputs.skipped }} |
+      - name: Download mobile-web artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-artifacts-trivial-mobile-web-${{ github.run_id }}
+          path: artifacts/mobile-web
 
-            ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
+      - name: Build combined PR comment (MINCRM-135)
+        id: comment
+        run: |
+          parse_xml() {
+            local xml_file="$1"
+            python3 - "$xml_file" <<'PYEOF'
+          import sys, xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse(sys.argv[1])
+              root = tree.getroot()
+              suite = root if root.tag == 'testsuite' else root.find('testsuite')
+              tests   = int(suite.attrib.get('tests',   0))
+              failures= int(suite.attrib.get('failures',0))
+              errors  = int(suite.attrib.get('errors',  0))
+              skipped = int(suite.attrib.get('skipped', 0))
+              failed  = failures + errors
+              passed  = tests - failed - skipped
+              status  = '✅ Passed' if failed == 0 else '❌ Failed'
+              print(f"{status}|{tests}|{passed}|{failed}|{skipped}")
+          except Exception as e:
+              print(f"❓ Unknown|0|0|0|0")
+          PYEOF
+          }
 
-            [Download trace artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          DESKTOP=$(parse_xml artifacts/desktop/test-results/results.xml)
+          MOBILE=$(parse_xml artifacts/mobile-web/test-results/results.xml)
+          ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
+          IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
+
+          # Check for heals in either artifact
+          HEAL_NOTE=""
+          for dir in artifacts/desktop artifacts/mobile-web; do
+            REPORT="$dir/test-results/healing-report.json"
+            if [ -f "$REPORT" ]; then
+              TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+              if [ "$TOTAL" -gt 0 ]; then
+                HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
+                break
+              fi
+            fi
+          done
+
+          {
+            echo 'body<<COMMENT_EOF'
+            echo "## Playwright Test Results — Smoke"
+            echo ""
+            echo "| Project | Status | Tests | Passed | Failed | Skipped |"
+            echo "|---------|--------|-------|--------|--------|---------|"
+            echo "| desktop | $d_status | $d_tests | $d_passed | $d_failed | $d_skipped |"
+            echo "| mobile-web | $m_status | $m_tests | $m_passed | $m_failed | $m_skipped |"
+            if [ -n "$HEAL_NOTE" ]; then
+              echo ""
+              echo "$HEAL_NOTE"
+            fi
+            echo ""
+            echo "[Download trace artifacts]($ARTIFACTS_URL)"
+            echo 'COMMENT_EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Post combined summary comment (MINCRM-135)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: playwright-results-trivial
+          message: ${{ steps.comment.outputs.body }}
 
   e2e-bvt:
     name: E2E BVTs (${{ matrix.project }})
@@ -296,7 +372,6 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
       - name: Publish results to GitHub Checks (MINCRM-135)
-        id: results
         uses: dorny/test-reporter@v1
         if: always()
         with:
@@ -306,7 +381,6 @@ jobs:
           fail-on-error: false
 
       - name: Log heal count from report (MINCRM-135)
-        id: healing
         if: always()
         run: |
           REPORT=qa/test-results/healing-report.json
@@ -317,10 +391,8 @@ jobs:
             if [ "$AI" -gt 0 ]; then
               echo "::warning::$AI AI heal(s) occurred — check healing-report.json for details"
             fi
-            echo "heal_count=$TOTAL" >> $GITHUB_OUTPUT
           else
             echo "healing-report.json not found (zero heals or reporter did not run)"
-            echo "heal_count=0" >> $GITHUB_OUTPUT
           fi
 
       - name: Debug instructions
@@ -343,18 +415,87 @@ jobs:
             qa/playwright-report/
           retention-days: 14
 
-      - name: Post test summary comment (MINCRM-135)
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: always() && github.event_name == 'pull_request'
+  e2e-bvt-report:
+    name: E2E BVTs — PR Comment
+    needs: e2e-bvt
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Download desktop artifacts
+        uses: actions/download-artifact@v4
         with:
-          header: playwright-results-bvt-${{ matrix.project }}
-          message: |
-            ## Playwright Test Results — BVT (${{ matrix.project }})
+          name: playwright-artifacts-bvt-desktop-${{ github.run_id }}
+          path: artifacts/desktop
 
-            | Status | Tests | Passed | Failed | Skipped |
-            |--------|-------|--------|--------|---------|
-            | ${{ steps.results.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results.outputs.total }} | ${{ steps.results.outputs.passed }} | ${{ steps.results.outputs.failed }} | ${{ steps.results.outputs.skipped }} |
+      - name: Download mobile-web artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-artifacts-bvt-mobile-web-${{ github.run_id }}
+          path: artifacts/mobile-web
 
-            ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
+      - name: Build combined PR comment (MINCRM-135)
+        id: comment
+        run: |
+          parse_xml() {
+            local xml_file="$1"
+            python3 - "$xml_file" <<'PYEOF'
+          import sys, xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse(sys.argv[1])
+              root = tree.getroot()
+              suite = root if root.tag == 'testsuite' else root.find('testsuite')
+              tests   = int(suite.attrib.get('tests',   0))
+              failures= int(suite.attrib.get('failures',0))
+              errors  = int(suite.attrib.get('errors',  0))
+              skipped = int(suite.attrib.get('skipped', 0))
+              failed  = failures + errors
+              passed  = tests - failed - skipped
+              status  = '✅ Passed' if failed == 0 else '❌ Failed'
+              print(f"{status}|{tests}|{passed}|{failed}|{skipped}")
+          except Exception as e:
+              print(f"❓ Unknown|0|0|0|0")
+          PYEOF
+          }
 
-            [Download trace artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          DESKTOP=$(parse_xml artifacts/desktop/test-results/results.xml)
+          MOBILE=$(parse_xml artifacts/mobile-web/test-results/results.xml)
+          ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
+          IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
+
+          # Check for heals in either artifact
+          HEAL_NOTE=""
+          for dir in artifacts/desktop artifacts/mobile-web; do
+            REPORT="$dir/test-results/healing-report.json"
+            if [ -f "$REPORT" ]; then
+              TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+              if [ "$TOTAL" -gt 0 ]; then
+                HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
+                break
+              fi
+            fi
+          done
+
+          {
+            echo 'body<<COMMENT_EOF'
+            echo "## Playwright Test Results — BVT"
+            echo ""
+            echo "| Project | Status | Tests | Passed | Failed | Skipped |"
+            echo "|---------|--------|-------|--------|--------|---------|"
+            echo "| desktop | $d_status | $d_tests | $d_passed | $d_failed | $d_skipped |"
+            echo "| mobile-web | $m_status | $m_tests | $m_passed | $m_failed | $m_skipped |"
+            if [ -n "$HEAL_NOTE" ]; then
+              echo ""
+              echo "$HEAL_NOTE"
+            fi
+            echo ""
+            echo "[Download trace artifacts]($ARTIFACTS_URL)"
+            echo 'COMMENT_EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Post combined summary comment (MINCRM-135)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: playwright-results-bvt
+          message: ${{ steps.comment.outputs.body }}
