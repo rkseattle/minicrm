@@ -115,9 +115,13 @@ jobs:
         run: bash qa/scripts/check-framework-purity.sh
 
   e2e-trivial:
-    name: E2E Smoke Test
+    name: E2E Smoke Test (${{ matrix.project }})
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile-web]
     steps:
       - uses: actions/checkout@v4
 
@@ -132,27 +136,15 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run trivial smoke test (desktop, MINCRM-123)
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop qa/e2e/tests/trivial.spec.ts
+      - name: Run trivial smoke test (MINCRM-123)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} qa/e2e/tests/trivial.spec.ts
 
-      - name: Publish desktop results to GitHub Checks (MINCRM-135)
+      - name: Publish results to GitHub Checks (MINCRM-135)
+        id: results
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: Playwright – desktop (trivial)
-          path: qa/test-results/results.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Run trivial smoke test (mobile-web, MINCRM-123)
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/trivial.spec.ts
-
-      - name: Publish mobile-web results to GitHub Checks (MINCRM-135)
-        id: results-trivial
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Playwright – mobile-web (trivial)
+          name: Playwright – ${{ matrix.project }} (trivial)
           path: qa/test-results/results.xml
           reporter: java-junit
           fail-on-error: false
@@ -169,7 +161,7 @@ jobs:
         run: |
           echo "--------------------------------------------"
           echo "Tests failed. To view traces:"
-          echo "  1. Download the 'playwright-artifacts-trivial-${{ github.run_id }}' CI artifact"
+          echo "  1. Download the 'playwright-artifacts-trivial-${{ matrix.project }}-${{ github.run_id }}' CI artifact"
           echo "  2. Run: npx playwright show-trace path/to/trace.zip"
           echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
           echo "--------------------------------------------"
@@ -178,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-artifacts-trivial-${{ github.run_id }}
+          name: playwright-artifacts-trivial-${{ matrix.project }}-${{ github.run_id }}
           path: |
             qa/test-results/
             qa/playwright-report/
@@ -188,23 +180,26 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         if: always() && github.event_name == 'pull_request'
         with:
-          header: playwright-results-trivial
+          header: playwright-results-trivial-${{ matrix.project }}
           message: |
-            ## Playwright Test Results — Smoke (trivial)
+            ## Playwright Test Results — Smoke (${{ matrix.project }})
 
-            | Project | Status | Tests | Passed | Failed | Skipped |
-            |---------|--------|-------|--------|--------|---------|
-            | desktop | ${{ steps.results-trivial.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-trivial.outputs.total }} | ${{ steps.results-trivial.outputs.passed }} | ${{ steps.results-trivial.outputs.failed }} | ${{ steps.results-trivial.outputs.skipped }} |
-            | mobile-web | ${{ steps.results-trivial.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-trivial.outputs.total }} | ${{ steps.results-trivial.outputs.passed }} | ${{ steps.results-trivial.outputs.failed }} | ${{ steps.results-trivial.outputs.skipped }} |
+            | Status | Tests | Passed | Failed | Skipped |
+            |--------|-------|--------|--------|---------|
+            | ${{ steps.results.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results.outputs.total }} | ${{ steps.results.outputs.passed }} | ${{ steps.results.outputs.failed }} | ${{ steps.results.outputs.skipped }} |
 
             ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
 
             [Download trace artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   e2e-bvt:
-    name: E2E BVTs
+    name: E2E BVTs (${{ matrix.project }})
     needs: [server-tests, client-tests]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile-web]
 
     services:
       postgres:
@@ -292,37 +287,20 @@ jobs:
             sleep 2
           done
 
-      - name: Run BVT (desktop, MINCRM-131)
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop qa/e2e/tests/apps/minicrm/bvt.spec.ts
+      - name: Run BVT (MINCRM-131)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} qa/e2e/tests/apps/minicrm/bvt.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
           E2E_API_URL: http://localhost:3001
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
-      - name: Publish desktop results to GitHub Checks (MINCRM-135)
+      - name: Publish results to GitHub Checks (MINCRM-135)
+        id: results
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: Playwright – desktop
-          path: qa/test-results/results.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Run BVT (mobile-web, MINCRM-131)
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=mobile-web qa/e2e/tests/apps/minicrm/bvt.spec.ts
-        env:
-          E2E_BASE_URL: http://localhost:5173
-          E2E_API_URL: http://localhost:3001
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
-
-      - name: Publish mobile-web results to GitHub Checks (MINCRM-135)
-        id: results-bvt
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Playwright – mobile-web
+          name: Playwright – ${{ matrix.project }}
           path: qa/test-results/results.xml
           reporter: java-junit
           fail-on-error: false
@@ -350,7 +328,7 @@ jobs:
         run: |
           echo "--------------------------------------------"
           echo "Tests failed. To view traces:"
-          echo "  1. Download the 'playwright-artifacts-bvt-${{ github.run_id }}' CI artifact"
+          echo "  1. Download the 'playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}' CI artifact"
           echo "  2. Run: npx playwright show-trace path/to/trace.zip"
           echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
           echo "--------------------------------------------"
@@ -359,7 +337,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-artifacts-bvt-${{ github.run_id }}
+          name: playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}
           path: |
             qa/test-results/
             qa/playwright-report/
@@ -369,14 +347,13 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         if: always() && github.event_name == 'pull_request'
         with:
-          header: playwright-results-bvt
+          header: playwright-results-bvt-${{ matrix.project }}
           message: |
-            ## Playwright Test Results — BVT
+            ## Playwright Test Results — BVT (${{ matrix.project }})
 
-            | Project | Status | Tests | Passed | Failed | Skipped |
-            |---------|--------|-------|--------|--------|---------|
-            | desktop | ${{ steps.results-bvt.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-bvt.outputs.total }} | ${{ steps.results-bvt.outputs.passed }} | ${{ steps.results-bvt.outputs.failed }} | ${{ steps.results-bvt.outputs.skipped }} |
-            | mobile-web | ${{ steps.results-bvt.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results-bvt.outputs.total }} | ${{ steps.results-bvt.outputs.passed }} | ${{ steps.results-bvt.outputs.failed }} | ${{ steps.results-bvt.outputs.skipped }} |
+            | Status | Tests | Passed | Failed | Skipped |
+            |--------|-------|--------|--------|---------|
+            | ${{ steps.results.outputs.conclusion == 'success' && '✅ Passed' || '❌ Failed' }} | ${{ steps.results.outputs.total }} | ${{ steps.results.outputs.passed }} | ${{ steps.results.outputs.failed }} | ${{ steps.results.outputs.skipped }} |
 
             ${{ steps.healing.outputs.heal_count > 0 && format('> ⚕️ {0} selector(s) self-healed this run — review `healing-report.json` in artifacts', steps.healing.outputs.heal_count) || '' }}
 
