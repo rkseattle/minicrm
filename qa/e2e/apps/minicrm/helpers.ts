@@ -104,17 +104,19 @@ export async function createTestContact(
   restClient: RestClient,
   overrides: CreateContactOverrides = {},
 ): Promise<TestContact> {
-  const payload = {
+  // phone, title, department are optional (not nullable) in the server schema —
+  // omit them entirely rather than sending null, which Zod rejects with 400.
+  const payload: Record<string, string | null> = {
     first_name: overrides.first_name ?? 'Test',
     last_name: overrides.last_name ?? 'Contact',
     email:
       overrides.email ??
       `test-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
-    phone: overrides.phone ?? null,
-    title: overrides.title ?? null,
-    department: overrides.department ?? null,
     account_id: overrides.account_id ?? null,
   };
+  if (overrides.phone !== undefined) payload['phone'] = overrides.phone;
+  if (overrides.title !== undefined) payload['title'] = overrides.title;
+  if (overrides.department !== undefined) payload['department'] = overrides.department;
 
   // Step 1: create via REST.
   // Server returns { contact: ContactRow } — unwrap the nested object.
