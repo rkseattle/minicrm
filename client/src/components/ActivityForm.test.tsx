@@ -179,6 +179,29 @@ describe('ActivityForm', () => {
     expect(screen.queryByTestId('activity-outcome')).not.toBeInTheDocument();
   });
 
+  // MINCRM-119: remaining absent-field branches for Task and Meeting
+  it('hides direction and outcome fields when type is Task', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Task' } });
+
+    expect(screen.queryByTestId('activity-direction-select')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('activity-outcome')).not.toBeInTheDocument();
+  });
+
+  it('hides direction and outcome fields when type is Meeting', () => {
+    renderWithProviders(
+      <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+    );
+
+    fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Meeting' } });
+
+    expect(screen.queryByTestId('activity-direction-select')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('activity-outcome')).not.toBeInTheDocument();
+  });
+
   it('disables submit when type is Call and direction is not selected', () => {
     renderWithProviders(
       <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
