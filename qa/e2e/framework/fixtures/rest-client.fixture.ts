@@ -47,7 +47,10 @@ export interface RestClientFixtures {
  */
 export const test = base.extend<RestClientFixtures>({
   restClient: async ({ request }, use) => {
-    const client = new RestClient(request);
+    // E2E_API_URL overrides E2E_BASE_URL for REST client calls so the API
+    // server can be targeted directly (bypassing the Vite proxy) in CI.
+    const baseUrl = process.env['E2E_API_URL'] ?? process.env['E2E_BASE_URL'];
+    const client = new RestClient(request, baseUrl ? { baseUrl } : {});
     await use(client);
     // No explicit teardown needed — Playwright disposes the underlying
     // APIRequestContext at the end of the test.
