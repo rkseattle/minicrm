@@ -270,7 +270,7 @@ jobs:
 
   e2e-bvt:
     name: E2E BVTs (${{ matrix.project }})
-    needs: [server-tests, client-tests]
+    needs: [server-tests, client-tests, e2e-trivial]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
