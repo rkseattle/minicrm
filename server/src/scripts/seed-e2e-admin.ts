@@ -32,21 +32,14 @@ const pool = new Pool({
   port: Number(process.env.DB_PORT) || 5432,
 });
 
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
-
-if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  throw new Error('[seed-e2e-admin] E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.');
-}
-
 const SALT_ROUNDS = 10;
 
-async function main(): Promise<void> {
+async function main(adminEmail: string, adminPassword: string): Promise<void> {
   const client = await pool.connect();
   try {
     const existing = await client.query<{ id: string }>(
       `SELECT id FROM users WHERE email = $1 LIMIT 1`,
-      [ADMIN_EMAIL],
+      [adminEmail],
     );
 
     if (existing.rows.length > 0) {
@@ -54,15 +47,15 @@ async function main(): Promise<void> {
         `[seed-e2e-admin] Admin user already exists (id=${existing.rows[0].id}) — skipping.`,
       );
     } else {
-      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, SALT_ROUNDS);
+      const passwordHash = await bcrypt.hash(adminPassword, SALT_ROUNDS);
       const result = await client.query<{ id: string }>(
         `INSERT INTO users (email, password_hash, name, role, status, must_change_password)
          VALUES ($1, $2, 'E2E Admin', 'admin', 'active', false)
          RETURNING id`,
-        [ADMIN_EMAIL, passwordHash],
+        [adminEmail, passwordHash],
       );
       console.log(
-        `[seed-e2e-admin] Admin user created (id=${result.rows[0].id}, email=${ADMIN_EMAIL}).`,
+        `[seed-e2e-admin] Admin user created (id=${result.rows[0].id}, email=${adminEmail}).`,
       );
     }
   } finally {
@@ -71,6 +64,13 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
+const adminEmail = process.env.E2E_ADMIN_EMAIL;
+const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+if (!adminEmail || !adminPassword) {
+  throw new Error('[seed-e2e-admin] E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.');
+}
+
+main(adminEmail, adminPassword).catch((err: unknown) => {
   throw err;
 });
