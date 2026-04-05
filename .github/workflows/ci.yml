@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   lint-and-typecheck:
-    name: Lint & Typecheck
+    name: Phase 1 - Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: npm audit --audit-level=high
 
   server-tests:
-    name: Server Unit Tests
+    name: Phase 2 - Server Unit Tests
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
 
@@ -89,7 +89,7 @@ jobs:
           NODE_ENV: test
 
   client-tests:
-    name: Client Unit Tests
+    name: Phase 2 - Client Unit Tests
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     steps:
@@ -106,7 +106,7 @@ jobs:
         run: npm run test:coverage --workspace=minicrm-client
 
   e2e-framework-purity:
-    name: E2E Framework Purity
+    name: Phase 1 - E2E Framework Purity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
         run: bash qa/scripts/check-framework-purity.sh
 
   e2e-trivial:
-    name: E2E Smoke Test (${{ matrix.project }})
+    name: Phase 3 - E2E Smoke Test (${{ matrix.project }})
     needs: [lint-and-typecheck, server-tests, client-tests]
     runs-on: ubuntu-latest
     strategy:
@@ -185,7 +185,7 @@ jobs:
           retention-days: 14
 
   e2e-trivial-report:
-    name: E2E Smoke Test — PR Comment
+    name: Phase 3 - E2E Smoke Test — Report
     needs: e2e-trivial
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
@@ -270,7 +270,7 @@ jobs:
           message: ${{ steps.comment.outputs.body }}
 
   e2e-bvt:
-    name: E2E BVTs (${{ matrix.project }})
+    name: Phase 4 - E2E BVTs (${{ matrix.project }})
     needs: [server-tests, client-tests, e2e-trivial]
     runs-on: ubuntu-latest
     strategy:
@@ -364,8 +364,8 @@ jobs:
             sleep 2
           done
 
-      - name: Run BVT (MINCRM-131)
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} qa/e2e/tests/apps/minicrm/bvt.spec.ts
+      - name: Run BVT suite (MINCRM-110)
+        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} --grep @bvt qa/e2e/tests/apps/minicrm/bvt/
         env:
           E2E_BASE_URL: http://localhost:5173
           E2E_API_URL: http://localhost:3001
@@ -418,7 +418,7 @@ jobs:
           retention-days: 14
 
   e2e-bvt-report:
-    name: E2E BVTs — PR Comment
+    name: Phase 1 - E2E BVTs — Report
     needs: e2e-bvt
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
