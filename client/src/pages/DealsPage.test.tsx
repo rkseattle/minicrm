@@ -6,7 +6,7 @@
 
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import DealsPage from './DealsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
@@ -15,6 +15,11 @@ import { DEAL_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 
 describe('DealsPage', () => {
+  // Clear persisted view mode before each test so tests start in a known state (MINCRM-146)
+  beforeEach(() => {
+    sessionStorage.removeItem('deals.viewMode');
+  });
+
   // ── Common ─────────────────────────────────────────────────────────────────
 
   it('renders the page heading', async () => {
@@ -411,6 +416,42 @@ describe('DealsPage', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('pipeline-summary-bar')).not.toBeInTheDocument();
+  });
+
+  // ── View mode persistence (MINCRM-146) ───────────────────────────────────────
+
+  it('restores list view when sessionStorage has deals.viewMode=list', async () => {
+    sessionStorage.setItem('deals.viewMode', 'list');
+    renderWithProviders(<DealsPage />);
+    // List view: owner filter buttons are visible; board is not
+    await waitFor(() => {
+      expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('pipeline-board')).not.toBeInTheDocument();
+  });
+
+  it('defaults to board view when sessionStorage has no stored value', async () => {
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-board')).toBeInTheDocument();
+    });
+  });
+
+  it('persists list view to sessionStorage when toggled', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    expect(sessionStorage.getItem('deals.viewMode')).toBe('list');
+  });
+
+  it('persists board view to sessionStorage when toggled back from list', async () => {
+    sessionStorage.setItem('deals.viewMode', 'list');
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    expect(sessionStorage.getItem('deals.viewMode')).toBe('board');
   });
 
   it('toggles back to board view from list view', async () => {
