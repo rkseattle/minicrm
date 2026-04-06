@@ -285,6 +285,8 @@ export default function AutomationRulesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   /** Ref to the "View logs" button that last opened the drawer, for focus restoration on close */
   const logsButtonRef = useRef<HTMLButtonElement | null>(null);
+  /** Stable callback passed to RuleLogsDrawer so handleClose useCallback dep doesn't churn (MINCRM-109) */
+  const handleCloseLogsDrawer = useCallback(() => setSelectedLogsRule(null), []);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createMutation = useMutation({
@@ -833,7 +835,7 @@ export default function AutomationRulesPage() {
       {selectedLogsRule && (
         <RuleLogsDrawer
           rule={selectedLogsRule}
-          onClose={() => setSelectedLogsRule(null)}
+          onClose={handleCloseLogsDrawer}
           triggerRef={logsButtonRef}
         />
       )}
