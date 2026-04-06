@@ -139,17 +139,26 @@ export default function StageColumn({
 
       {/* Deal cards */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-16">
-        {deals.map((deal) => (
-          <DealCard
-            key={deal.id}
-            deal={deal}
-            accountName={accountNames.get(deal.account_id ?? '') ?? '—'}
-            onStageChange={onStageChange}
-            onCloseRequested={onCloseRequested}
-            isUpdating={updatingDealIds.has(deal.id)}
-            testIdPrefix={testIdPrefix}
-          />
-        ))}
+        {deals.length === 0 ? (
+          <p
+            data-testid={`${testIdPrefix}stage-column-empty-${slug}`}
+            className="text-xs text-gray-400 text-center py-4"
+          >
+            {t('pipeline.emptyStage')}
+          </p>
+        ) : (
+          deals.map((deal) => (
+            <DealCard
+              key={deal.id}
+              deal={deal}
+              accountName={accountNames.get(deal.account_id ?? '') ?? '—'}
+              onStageChange={onStageChange}
+              onCloseRequested={onCloseRequested}
+              isUpdating={updatingDealIds.has(deal.id)}
+              testIdPrefix={testIdPrefix}
+            />
+          ))
+        )}
       </div>
     </div>
   );

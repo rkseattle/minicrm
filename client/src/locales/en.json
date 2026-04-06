@@ -253,6 +253,7 @@
     "prevStage": "Previous stage",
     "nextStage": "Next stage",
     "stageOf": "Stage {{current}} of {{total}}",
+    "emptyStage": "No deals in this stage",
     "closeDeal": {
       "title": "Close as {{stage}}",
       "closeDateLabel": "Close date",

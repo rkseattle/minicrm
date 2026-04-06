@@ -253,6 +253,7 @@
     "prevStage": "上一阶段",
     "nextStage": "下一阶段",
     "stageOf": "第 {{current}} 阶段，共 {{total}} 个",
+    "emptyStage": "此阶段暂无商机",
     "closeDeal": {
       "title": "标记为{{stage}}",
       "closeDateLabel": "成交日期",
