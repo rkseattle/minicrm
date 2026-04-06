@@ -88,10 +88,13 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 
 server.listen(port, () => {
   logger.info(`MiniCRM API server listening on port ${port}`);
-  runMigrations()
-    .then(() => seedDefaultAdmin())
-    .catch((err) => {
+  void (async () => {
+    try {
+      await runMigrations();
+      await seedDefaultAdmin();
+    } catch (err) {
       logger.error({ err }, 'Startup initialization failed');
       process.exit(1); // eslint-disable-line n/no-process-exit
-    });
+    }
+  })();
 });
