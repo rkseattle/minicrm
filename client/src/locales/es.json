@@ -493,6 +493,10 @@
     "cancel": "Cancelar"
   },
   "errors": {
+    "boundaryTitle": "Algo salió mal",
+    "boundaryMessage": "Ocurrió un error inesperado. Puedes recargar la página o volver al panel.",
+    "boundaryReload": "Recargar página",
+    "boundaryDashboard": "Ir al panel",
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",
     "AUTH_ACCOUNT_DEACTIVATED": "Tu cuenta ha sido desactivada. Contacta a un administrador.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Por favor, establece tu contraseña antes de iniciar sesión.",
