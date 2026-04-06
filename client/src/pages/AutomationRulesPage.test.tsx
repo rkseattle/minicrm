@@ -507,7 +507,7 @@ describe('AutomationRulesPage', () => {
   });
 
   describe('execution logs drawer — locale timestamp (MINCRM-114)', () => {
-    it('renders the log timestamp using the active locale', async () => {
+    it('renders the log timestamp formatted with the active locale', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
@@ -516,8 +516,11 @@ describe('AutomationRulesPage', () => {
 
       await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
 
+      const expectedText = new Date(AUTOMATION_LOG_1.triggered_at).toLocaleString('en');
       await waitFor(() => {
-        expect(screen.getByTestId(`log-timestamp-${AUTOMATION_LOG_1.id}`)).toBeInTheDocument();
+        expect(screen.getByTestId(`log-timestamp-${AUTOMATION_LOG_1.id}`)).toHaveTextContent(
+          expectedText,
+        );
       });
     });
   });
