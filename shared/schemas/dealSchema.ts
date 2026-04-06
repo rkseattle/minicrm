@@ -35,10 +35,14 @@ export const createDealSchema = z.object({
   account_id: z.string().uuid('Account must be a valid UUID').optional(),
 });
 
+/** Terminal pipeline stages that require a close date <= today */
+export const CLOSED_PIPELINE_STAGES: ReadonlyArray<PipelineStage> = ['Closed Won', 'Closed Lost'];
+
 /**
  * Schema for updating an existing deal.
  * All create fields are optional; owner_id may also be changed.
  * At least one field must be present.
+ * When stage is a terminal stage, close_date must not be in the future.
  */
 export const updateDealSchema = createDealSchema
   .extend({
@@ -58,7 +62,21 @@ export const updateDealSchema = createDealSchema
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
-  });
+  })
+  .refine(
+    (data) => {
+      if (
+        data.stage &&
+        (CLOSED_PIPELINE_STAGES as ReadonlyArray<string>).includes(data.stage) &&
+        data.close_date
+      ) {
+        const today = new Date().toISOString().split('T')[0];
+        return data.close_date <= today;
+      }
+      return true;
+    },
+    { message: 'Close date cannot be in the future' },
+  );
 
 /**
  * Schema for the safe deal response shape returned to API consumers.

@@ -151,4 +151,19 @@ describe('CloseDealModal', () => {
     );
     expect(screen.getByTestId('close-deal-error')).toHaveTextContent('Something went wrong');
   });
+
+  it('date input has max attribute set to today to prevent future date selection (MINCRM-121)', () => {
+    renderWithProviders(
+      <CloseDealModal
+        isOpen={true}
+        targetStage="Closed Won"
+        initialCloseDate={TODAY}
+        isSubmitting={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    const dateInput = screen.getByTestId('close-deal-date-input') as HTMLInputElement;
+    expect(dateInput.max).toBe(TODAY);
+  });
 });

@@ -20,6 +20,7 @@ import {
   unlinkContactFromDeal,
   listContactDeals,
 } from '../services/dealService.js';
+import { updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -73,6 +74,54 @@ afterAll(async () => {
   await pool.query('DELETE FROM accounts');
   await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
   await pool.end();
+});
+
+// ── updateDealSchema — close_date validation (MINCRM-121) ─────────────────────────
+
+describe('updateDealSchema — close_date future-date validation', () => {
+  it('accepts a close_date equal to today for a terminal stage', () => {
+    const today = new Date().toISOString().split('T')[0];
+    const result = updateDealSchema.safeParse({ stage: 'Closed Won', close_date: today });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a past close_date for a terminal stage', () => {
+    const result = updateDealSchema.safeParse({
+      stage: 'Closed Lost',
+      close_date: '2024-01-01',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a future close_date for Closed Won', () => {
+    const result = updateDealSchema.safeParse({
+      stage: 'Closed Won',
+      close_date: '2099-12-31',
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.errors[0].message).toBe('Close date cannot be in the future');
+  });
+
+  it('rejects a future close_date for Closed Lost', () => {
+    const result = updateDealSchema.safeParse({
+      stage: 'Closed Lost',
+      close_date: '2099-12-31',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('allows a future close_date for a non-terminal stage', () => {
+    const result = updateDealSchema.safeParse({
+      stage: 'Prospecting',
+      close_date: '2099-12-31',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows a future close_date when no stage is specified', () => {
+    const result = updateDealSchema.safeParse({ close_date: '2099-12-31' });
+    expect(result.success).toBe(true);
+  });
 });
 
 // ── createDeal ──────────────────────────────────────────────────────────────────
