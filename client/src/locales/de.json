@@ -253,6 +253,7 @@
     "prevStage": "Vorherige Phase",
     "nextStage": "Nächste Phase",
     "stageOf": "Phase {{current}} von {{total}}",
+    "emptyStage": "Keine Geschäfte in dieser Phase",
     "closeDeal": {
       "title": "Als {{stage}} abschließen",
       "closeDateLabel": "Abschlussdatum",

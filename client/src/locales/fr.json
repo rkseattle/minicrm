@@ -253,6 +253,7 @@
     "prevStage": "Étape précédente",
     "nextStage": "Étape suivante",
     "stageOf": "Étape {{current}} sur {{total}}",
+    "emptyStage": "Aucune opportunité dans cette étape",
     "closeDeal": {
       "title": "Clôturer comme {{stage}}",
       "closeDateLabel": "Date de clôture",
