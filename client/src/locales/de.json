@@ -487,7 +487,8 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Ihr Konto wurde deaktiviert. Wenden Sie sich an einen Administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Bitte legen Sie Ihr Passwort fest, bevor Sie sich anmelden.",
     "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
-    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu."
   },
   "pagination": {
     "previous": "Zurück",

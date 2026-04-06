@@ -487,7 +487,8 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Tu cuenta ha sido desactivada. Contacta a un administrador.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Por favor, establece tu contraseña antes de iniciar sesión.",
     "VALIDATION_ERROR": "Por favor, revisa tu información e inténtalo de nuevo.",
-    "generic": "Algo salió mal. Por favor, inténtalo de nuevo."
+    "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
+    "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página."
   },
   "pagination": {
     "previous": "Anterior",

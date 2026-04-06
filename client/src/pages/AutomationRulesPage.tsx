@@ -11,7 +11,7 @@
  * Implements MINCRM-27.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -36,10 +36,16 @@ import {
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import { ACTIVITY_TYPES } from '@shared/schemas/activitySchema.js';
 
-/** Formats an ISO timestamp string for display */
-function formatTimestamp(value: string | Date): string {
+/**
+ * Formats an ISO timestamp string for display using the active i18n locale.
+ *
+ * @param value - ISO timestamp string or Date object
+ * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
+ * @returns Locale-formatted date/time string
+ */
+function formatTimestamp(value: string | Date, locale: string): string {
   const date = typeof value === 'string' ? new Date(value) : value;
-  return date.toLocaleString();
+  return date.toLocaleString(locale);
 }
 
 /** Form state for creating a new automation rule */
@@ -118,7 +124,7 @@ interface RuleLogsDrawerProps {
  * Displays the execution logs for a single automation rule.
  */
 function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const headingId = `logs-drawer-title-${rule.id}`;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -127,11 +133,11 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
     queryFn: () => listRuleLogs(rule.id),
   });
 
-  /** Closes the drawer and returns focus to the trigger button. */
-  function handleClose(): void {
+  /** Closes the drawer and returns focus to the trigger button. (MINCRM-109) */
+  const handleClose = useCallback((): void => {
     triggerRef.current?.focus();
     onClose();
-  }
+  }, [onClose, triggerRef]);
 
   // Move focus to the close button when the drawer mounts (WCAG 2.4.3)
   useEffect(() => {
@@ -139,13 +145,14 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
   }, []);
 
   // Close the drawer when Escape is pressed from any focused child (WCAG 2.1 SC 1.4.13)
+  // MINCRM-109: dependency array added to prevent listener leak on every render
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') handleClose();
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  });
+  }, [handleClose]);
 
   return (
     // Backdrop — clicking the overlay background (not the panel) dismisses the drawer
@@ -225,7 +232,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
                         : t('automation.logOutcomeError')}
                     </span>
                     <span className="text-xs text-gray-400" data-testid={`log-timestamp-${log.id}`}>
-                      {formatTimestamp(log.triggered_at)}
+                      {formatTimestamp(log.triggered_at, i18n.language)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1" data-testid={`log-record-${log.id}`}>
