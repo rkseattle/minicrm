@@ -39,7 +39,7 @@ describe('ConfirmDeleteModal', () => {
     expect(screen.getByTestId('confirm-delete-title')).toBeInTheDocument();
   });
 
-  it('is a dialog element with aria-labelledby', () => {
+  it('is a dialog element with aria-modal and aria-labelledby', () => {
     renderWithProviders(
       <ConfirmDeleteModal
         isOpen={true}
@@ -51,6 +51,7 @@ describe('ConfirmDeleteModal', () => {
     );
     const dialog = screen.getByTestId('confirm-delete-modal');
     expect(dialog.tagName.toLowerCase()).toBe('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveAttribute('aria-labelledby', 'confirm-delete-title');
   });
 
