@@ -111,6 +111,7 @@ export default function CloseDealModal({
                 type="date"
                 label={t('pipeline.closeDeal.closeDateLabel')}
                 value={closeDate}
+                max={initialCloseDate}
                 onChange={(e) => setCloseDate(e.target.value)}
                 disabled={isSubmitting}
               />
