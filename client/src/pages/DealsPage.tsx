@@ -45,6 +45,9 @@ const OPEN_PIPELINE_STAGES = PIPELINE_STAGES.filter(
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
 
+/** sessionStorage key used to persist the selected view mode across navigation (MINCRM-146) */
+const VIEW_MODE_STORAGE_KEY = 'deals.viewMode';
+
 /** State captured while the user has selected a terminal stage but not yet confirmed */
 interface PendingClose {
   dealId: string;
@@ -81,7 +84,11 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
 
   // ── View mode ──────────────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<ViewMode>('board');
+  // Restore from sessionStorage so the chosen view survives navigation (MINCRM-146)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = sessionStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return stored === 'list' ? 'list' : 'board';
+  });
 
   // ── Create form ────────────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
@@ -409,7 +416,9 @@ export default function DealsPage() {
                     { replace: true },
                   );
                 }
-                setViewMode((m) => (m === 'board' ? 'list' : 'board'));
+                const nextMode: ViewMode = viewMode === 'board' ? 'list' : 'board';
+                sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, nextMode);
+                setViewMode(nextMode);
               }}
             >
               {viewMode === 'board' ? t('deals.viewList') : t('deals.viewBoard')}
