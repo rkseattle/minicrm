@@ -427,7 +427,7 @@ jobs:
           retention-days: 14
 
   e2e-bvt-report:
-    name: Phase 1 - E2E BVTs — Report
+    name: Phase 4 - E2E BVTs — Report
     needs: e2e-bvt
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
