@@ -506,6 +506,38 @@ describe('AutomationRulesPage', () => {
     });
   });
 
+  describe('execution logs drawer — locale timestamp (MINCRM-114)', () => {
+    it('renders the log timestamp using the active locale', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`log-timestamp-${AUTOMATION_LOG_1.id}`)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('execution logs drawer — Escape key (MINCRM-109)', () => {
+    it('closes the drawer when Escape is pressed', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+      expect(screen.getByTestId('logs-drawer')).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+      expect(screen.queryByTestId('logs-drawer')).not.toBeInTheDocument();
+    });
+  });
+
   describe('nav link visibility', () => {
     it('shows the Automation nav link for admin users', async () => {
       renderWithProviders(<AutomationRulesPage />);

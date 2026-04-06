@@ -93,7 +93,7 @@ export default function DealDetailPage() {
     queryFn: listActiveUsers,
   });
 
-  const { data: allContactsData } = useQuery({
+  const { data: allContactsData, isError: isContactsError } = useQuery({
     queryKey: ['contacts'],
     queryFn: () => listContacts({ limit: PAGINATION_MAX_LIMIT }),
   });
@@ -424,8 +424,19 @@ export default function DealDetailPage() {
                 </p>
               )}
 
+              {/* Contacts fetch error — MINCRM-117 */}
+              {isContactsError && (
+                <p
+                  role="alert"
+                  className="mt-3 text-sm text-red-600"
+                  data-testid="contacts-fetch-error"
+                >
+                  {t('errors.loadContactsFailed')}
+                </p>
+              )}
+
               {/* Link contact form */}
-              {linkableContacts.length > 0 && (
+              {!isContactsError && linkableContacts.length > 0 && (
                 <div className="mt-3 flex items-center gap-2" data-testid="link-contact-form">
                   <Select
                     id="link-contact-select"

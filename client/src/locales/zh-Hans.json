@@ -487,7 +487,8 @@
     "AUTH_ACCOUNT_DEACTIVATED": "您的帐户已被停用。请联系管理员。",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "请在登录前设置密码。",
     "VALIDATION_ERROR": "请检查您的输入并重试。",
-    "generic": "出了问题，请重试。"
+    "generic": "出了问题，请重试。",
+    "loadContactsFailed": "无法加载联系人，请刷新页面。"
   },
   "pagination": {
     "previous": "上一页",

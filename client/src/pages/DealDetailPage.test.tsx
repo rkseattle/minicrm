@@ -434,6 +434,37 @@ describe('DealDetailPage', () => {
     });
   });
 
+  it('shows error message when contacts fetch fails (MINCRM-117)', async () => {
+    server.use(
+      http.get('/api/contacts', () =>
+        HttpResponse.json(
+          { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-fetch-error')).toBeInTheDocument();
+    });
+  });
+
+  it('hides link contact form when contacts fetch fails (MINCRM-117)', async () => {
+    server.use(
+      http.get('/api/contacts', () =>
+        HttpResponse.json(
+          { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('contacts-fetch-error')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('link-contact-form')).not.toBeInTheDocument();
+  });
+
   it('hides link select when all contacts are already linked', async () => {
     server.use(
       http.get('/api/deals/:id', ({ params }) => {

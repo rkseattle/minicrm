@@ -487,7 +487,8 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Your account has been deactivated. Contact an administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Please set your password before signing in.",
     "VALIDATION_ERROR": "Please check your input and try again.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "loadContactsFailed": "Could not load contacts. Please refresh the page."
   },
   "pagination": {
     "previous": "Previous",
