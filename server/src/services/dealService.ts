@@ -182,9 +182,10 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
 
   const deal = result.rows[0] ?? null;
 
-  // Fire the deal_stage_changed automation trigger only when the stage genuinely changed
+  // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
+  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
   if (deal && params.stage !== undefined && deal.stage !== previousStage) {
-    await fireAutomationTrigger('deal_stage_changed', {
+    void fireAutomationTrigger('deal_stage_changed', {
       recordId: deal.id,
       recordType: 'deal',
       ownerId: deal.owner_id,

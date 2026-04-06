@@ -184,7 +184,7 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 ## Known Architectural Debt (do not worsen)
 
 - No pagination on list endpoints (MINCRM-68) — do not add new unbounded queries
-- Synchronous automation rule execution (MINCRM-67) — do not add new synchronous side effects to write operations
+- Automation rule execution is **fire-and-forget** (MINCRM-122): `fireAutomationTrigger` is called with `void` — no `await`. It swallows all internal errors and logs them. Unhandled rejections surface via the global `unhandledRejection` handler in `server.ts`. Do not revert to `await`. Full async offloading tracked in MINCRM-67.
 - `GET /api/users/active` called frequently — set `staleTime: 5 * 60 * 1000` on this query
 - `staleTime: 0` on dashboard is intentional — do not apply globally
 

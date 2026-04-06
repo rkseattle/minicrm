@@ -97,8 +97,9 @@ export async function createContact(
 
   const contact = result.rows[0];
 
-  // Fire the contact_created automation trigger after successful insert
-  await fireAutomationTrigger('contact_created', {
+  // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
+  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+  void fireAutomationTrigger('contact_created', {
     recordId: contact.id,
     recordType: 'contact',
     ownerId: owner_id,
