@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
@@ -33,6 +34,7 @@ export default function ContactDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const contactQueryKey = ['contacts', id] as const;
 
@@ -95,9 +97,7 @@ export default function ContactDetailPage() {
   });
 
   const handleDelete = (): void => {
-    if (window.confirm(t('contacts.confirmDelete'))) {
-      deleteMutation.mutate();
-    }
+    setIsConfirmDeleteOpen(true);
   };
 
   if (isLoading) {
@@ -141,13 +141,24 @@ export default function ContactDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link */}
+        {/* Back link — MINCRM-113, MINCRM-115 */}
         <Link
           to="/contacts"
           data-testid="back-to-contacts"
-          className="inline-flex items-center text-sm text-indigo-600 hover:underline mb-6"
+          aria-label={t('common.backToContacts')}
+          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
         >
-          ← {t('contacts.backToContacts')}
+          <svg
+            aria-hidden="true"
+            className="w-4 h-4 rtl:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          {t('common.backToContacts')}
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
@@ -301,6 +312,17 @@ export default function ContactDetailPage() {
           </section>
         )}
       </main>
+
+      {/* Delete confirmation modal — MINCRM-107 */}
+      <ConfirmDeleteModal
+        isOpen={isConfirmDeleteOpen}
+        message={t('contacts.confirmDelete')}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          deleteMutation.mutate();
+        }}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }

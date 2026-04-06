@@ -480,7 +480,16 @@
       "all": "Tous",
       "mine": "Les miens"
     },
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "sortAsc": "trié par ordre croissant",
+    "sortDesc": "trié par ordre décroissant",
+    "backToContacts": "Retour aux contacts",
+    "backToAccounts": "Retour aux comptes",
+    "backToDeals": "Retour aux opportunités",
+    "confirmDeleteTitle": "Êtes-vous sûr ?",
+    "delete": "Supprimer",
+    "deleting": "Suppression…",
+    "cancel": "Annuler"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "E-mail ou mot de passe invalide.",

@@ -4,7 +4,7 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
@@ -129,8 +129,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  it('calls delete API and navigates away on confirm', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('opens the confirm-delete modal when Delete is clicked', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<ContactDetailPage />, {
@@ -141,6 +140,22 @@ describe('ContactDetailPage', () => {
       expect(screen.getByTestId('delete-contact-button')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('delete-contact-button'));
+
+    expect(screen.getByTestId('confirm-delete-modal')).toBeInTheDocument();
+  });
+
+  it('calls delete API and navigates away when modal confirm is clicked', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-contact-button'));
+    await user.click(screen.getByTestId('confirm-delete-confirm'));
 
     // After delete the component navigates to /contacts; confirm the button is gone
     await waitFor(() => {
@@ -374,8 +389,7 @@ describe('ContactDetailPage', () => {
     );
   });
 
-  it('does not delete when confirm is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('does not delete when modal cancel is clicked', async () => {
     const user = userEvent.setup();
 
     renderWithProviders(<ContactDetailPage />, {
@@ -386,8 +400,20 @@ describe('ContactDetailPage', () => {
       expect(screen.getByTestId('delete-contact-button')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('delete-contact-button'));
+    await user.click(screen.getByTestId('confirm-delete-cancel'));
 
-    // Button should still be present — delete was not called
+    // Modal dismissed, delete button still present — delete was not called
     expect(screen.getByTestId('delete-contact-button')).toBeInTheDocument();
+  });
+
+  it('renders back-to-contacts link with aria-label', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      const backLink = screen.getByTestId('back-to-contacts');
+      expect(backLink).toHaveAttribute('aria-label');
+    });
   });
 });

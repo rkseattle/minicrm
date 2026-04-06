@@ -407,6 +407,27 @@ describe('DealDetailPage', () => {
     });
   });
 
+  it('opens the confirm-delete modal when Delete is clicked', async () => {
+    const user = userEvent.setup();
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-deal-button'));
+    expect(screen.getByTestId('confirm-delete-modal')).toBeInTheDocument();
+  });
+
+  it('does not delete when modal cancel is clicked', async () => {
+    const user = userEvent.setup();
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-deal-button'));
+    await user.click(screen.getByTestId('confirm-delete-cancel'));
+    expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
+  });
+
   it('invalidates win/loss cache on deal delete (MINCRM-104)', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
@@ -414,7 +435,6 @@ describe('DealDetailPage', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const user = userEvent.setup();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderWithProviders(<DealDetailPage />, {
       initialEntries: [`/deals/${DEAL_1.id}`],
       path: '/deals/:id',
@@ -425,12 +445,21 @@ describe('DealDetailPage', () => {
       expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('delete-deal-button'));
+    await user.click(screen.getByTestId('confirm-delete-confirm'));
 
     await waitFor(() => {
       const invalidatedKeys = invalidateSpy.mock.calls.map(
         (call) => (call[0] as { queryKey: unknown[] }).queryKey,
       );
       expect(invalidatedKeys).toContainEqual(WIN_LOSS_REPORT_QUERY_KEY);
+    });
+  });
+
+  it('renders back-to-deals link with aria-label', async () => {
+    renderDealDetail();
+    await waitFor(() => {
+      const backLink = screen.getByTestId('back-to-deals');
+      expect(backLink).toHaveAttribute('aria-label');
     });
   });
 

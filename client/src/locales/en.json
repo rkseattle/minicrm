@@ -480,7 +480,16 @@
       "all": "All",
       "mine": "Mine"
     },
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "sortAsc": "sorted ascending",
+    "sortDesc": "sorted descending",
+    "backToContacts": "Back to contacts",
+    "backToAccounts": "Back to accounts",
+    "backToDeals": "Back to deals",
+    "confirmDeleteTitle": "Are you sure?",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "cancel": "Cancel"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",

@@ -14,6 +14,7 @@ import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import {
@@ -63,6 +64,7 @@ export default function DealDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState('');
@@ -193,10 +195,7 @@ export default function DealDetailPage() {
   });
 
   const handleDelete = (): void => {
-    if (window.confirm(t('deals.confirmDelete'))) {
-      setDeleteError(null);
-      deleteMutation.mutate();
-    }
+    setIsConfirmDeleteOpen(true);
   };
 
   if (isLoading) {
@@ -247,13 +246,24 @@ export default function DealDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link */}
+        {/* Back link — MINCRM-113, MINCRM-115 */}
         <Link
           to="/deals"
           data-testid="back-to-deals"
-          className="inline-flex items-center text-sm text-indigo-600 hover:underline mb-6"
+          aria-label={t('common.backToDeals')}
+          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
         >
-          ← {t('deals.backToDeals')}
+          <svg
+            aria-hidden="true"
+            className="w-4 h-4 rtl:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          {t('common.backToDeals')}
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
@@ -480,6 +490,18 @@ export default function DealDetailPage() {
           </>
         )}
       </main>
+
+      {/* Delete confirmation modal — MINCRM-107 */}
+      <ConfirmDeleteModal
+        isOpen={isConfirmDeleteOpen}
+        message={t('deals.confirmDelete')}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          setDeleteError(null);
+          deleteMutation.mutate();
+        }}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
 
       {pendingClose && (
         <CloseDealModal
