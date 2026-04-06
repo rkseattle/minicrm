@@ -34,6 +34,7 @@ export default function ContactDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const contactQueryKey = ['contacts', id] as const;
@@ -93,6 +94,9 @@ export default function ContactDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       navigate('/contacts', { replace: true });
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -167,26 +171,33 @@ export default function ContactDetailPage() {
           </h1>
 
           {!isEditing && (
-            <div className="flex items-center gap-2 sm:shrink-0">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="edit-contact-button"
-                onClick={() => setIsEditing(true)}
-              >
-                {t('contacts.edit')}
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                data-testid="delete-contact-button"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? t('contacts.deleting') : t('contacts.delete')}
-              </Button>
+            <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  data-testid="edit-contact-button"
+                  onClick={() => setIsEditing(true)}
+                >
+                  {t('contacts.edit')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  data-testid="delete-contact-button"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? t('contacts.deleting') : t('contacts.delete')}
+                </Button>
+              </div>
+              {deleteError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
+                  {deleteError}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -319,6 +330,7 @@ export default function ContactDetailPage() {
         message={t('contacts.confirmDelete')}
         isDeleting={deleteMutation.isPending}
         onConfirm={() => {
+          setDeleteError(null);
           deleteMutation.mutate();
         }}
         onCancel={() => setIsConfirmDeleteOpen(false)}

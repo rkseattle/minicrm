@@ -416,4 +416,30 @@ describe('ContactDetailPage', () => {
       expect(backLink).toHaveAttribute('aria-label');
     });
   });
+
+  it('shows a delete error message when the delete request fails', async () => {
+    server.use(
+      http.delete('/api/contacts/:id', () =>
+        HttpResponse.json(
+          { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-contact-button'));
+    await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-error')).toBeInTheDocument();
+    });
+  });
 });

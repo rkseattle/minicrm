@@ -85,6 +85,7 @@ export default function ConfirmDeleteModal({
     >
       <dialog
         open
+        aria-modal="true"
         aria-labelledby="confirm-delete-title"
         data-testid="confirm-delete-modal"
         className="relative w-full max-w-sm mx-4 p-0"
