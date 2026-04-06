@@ -30,14 +30,14 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <I18nextProvider i18n={i18n}>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <I18nextProvider i18n={i18n}>
+          <ErrorBoundary>
             <App />
-          </I18nextProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </ErrorBoundary>
+          </ErrorBoundary>
+        </I18nextProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 );

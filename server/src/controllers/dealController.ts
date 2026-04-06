@@ -4,7 +4,11 @@
  */
 
 import type { Request, Response } from 'express';
-import { createDealSchema, updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
+import {
+  createDealSchema,
+  updateDealSchema,
+  CLOSED_PIPELINE_STAGES,
+} from '@minicrm/shared/schemas/dealSchema.js';
 import {
   createDeal,
   findDealById,
@@ -118,6 +122,22 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_ERROR);
     return;
+  }
+
+  // MINCRM-121: reject a future close_date even when stage is not in the payload —
+  // use existing.stage to determine if the deal is already in a terminal stage.
+  if (parsed.data.close_date) {
+    const effectiveStage = parsed.data.stage ?? existing.stage;
+    const today = new Date().toISOString().split('T')[0];
+    if (
+      (CLOSED_PIPELINE_STAGES as readonly string[]).includes(effectiveStage) &&
+      parsed.data.close_date > today
+    ) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Close date cannot be in the future' },
+      });
+      return;
+    }
   }
 
   const deal = await updateDeal(id, parsed.data);

@@ -119,8 +119,28 @@ describe('updateDealSchema — close_date future-date validation', () => {
   });
 
   it('allows a future close_date when no stage is specified', () => {
+    // Note: controller-level check handles the bypass for already-closed deals (MINCRM-121)
     const result = updateDealSchema.safeParse({ close_date: '2099-12-31' });
     expect(result.success).toBe(true);
+  });
+});
+
+// ── updateDealHandler — close_date bypass via existing stage (MINCRM-121) ─────────
+
+describe('updateDeal — close_date enforcement on already-closed deals', () => {
+  it('allows updating a non-date field on a closed deal without triggering the guard', async () => {
+    // Create a deal and close it with today's date
+    const today = new Date().toISOString().split('T')[0];
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    const updated = await updateDeal(deal.id, {
+      stage: 'Closed Won',
+      close_date: today,
+    });
+    expect(updated!.stage).toBe('Closed Won');
+
+    // Updating loss_reason only (no close_date) should not be blocked
+    const patched = await updateDeal(deal.id, { loss_reason: 'Price' });
+    expect(patched!.loss_reason).toBe('Price');
   });
 });
 
