@@ -480,7 +480,16 @@
       "all": "全部",
       "mine": "我的"
     },
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "sortAsc": "升序排列",
+    "sortDesc": "降序排列",
+    "backToContacts": "返回联系人列表",
+    "backToAccounts": "返回客户列表",
+    "backToDeals": "返回商机列表",
+    "confirmDeleteTitle": "确定吗？",
+    "delete": "删除",
+    "deleting": "删除中…",
+    "cancel": "取消"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "电子邮件或密码无效。",

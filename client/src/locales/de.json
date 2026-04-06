@@ -480,7 +480,16 @@
       "all": "Alle",
       "mine": "Meine"
     },
-    "loading": "Laden…"
+    "loading": "Laden…",
+    "sortAsc": "aufsteigend sortiert",
+    "sortDesc": "absteigend sortiert",
+    "backToContacts": "Zurück zu Kontakten",
+    "backToAccounts": "Zurück zu Konten",
+    "backToDeals": "Zurück zu Geschäften",
+    "confirmDeleteTitle": "Sind Sie sicher?",
+    "delete": "Löschen",
+    "deleting": "Wird gelöscht…",
+    "cancel": "Abbrechen"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",

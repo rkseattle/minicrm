@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
@@ -31,6 +32,7 @@ export default function AccountDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const accountQueryKey = ['accounts', id] as const;
   const linkedContactsQueryKey = ['contacts', 'byAccount', id] as const;
@@ -89,10 +91,7 @@ export default function AccountDetailPage() {
   });
 
   const handleDelete = (): void => {
-    if (window.confirm(t('accounts.confirmDelete'))) {
-      setDeleteError(null);
-      deleteMutation.mutate();
-    }
+    setIsConfirmDeleteOpen(true);
   };
 
   if (isLoading) {
@@ -133,13 +132,24 @@ export default function AccountDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link */}
+        {/* Back link — MINCRM-113, MINCRM-115 */}
         <Link
           to="/accounts"
           data-testid="back-to-accounts"
-          className="inline-flex items-center text-sm text-indigo-600 hover:underline mb-6"
+          aria-label={t('common.backToAccounts')}
+          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
         >
-          ← {t('accounts.backToAccounts')}
+          <svg
+            aria-hidden="true"
+            className="w-4 h-4 rtl:rotate-180"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          {t('common.backToAccounts')}
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
@@ -284,6 +294,18 @@ export default function AccountDetailPage() {
           </>
         )}
       </main>
+
+      {/* Delete confirmation modal — MINCRM-107 */}
+      <ConfirmDeleteModal
+        isOpen={isConfirmDeleteOpen}
+        message={t('accounts.confirmDelete')}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          setDeleteError(null);
+          deleteMutation.mutate();
+        }}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }

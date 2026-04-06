@@ -4,7 +4,7 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import AccountDetailPage from './AccountDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
@@ -198,16 +198,45 @@ describe('AccountDetailPage', () => {
     });
   });
 
-  it('shows delete button and navigates away after confirmed delete', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('opens the confirm-delete modal when Delete is clicked', async () => {
     const user = userEvent.setup();
     renderAccountDetail();
     await waitFor(() => {
       expect(screen.getByTestId('delete-account-button')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('delete-account-button'));
+    expect(screen.getByTestId('confirm-delete-modal')).toBeInTheDocument();
+  });
+
+  it('navigates away after modal confirm is clicked', async () => {
+    const user = userEvent.setup();
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-account-button'));
+    await user.click(screen.getByTestId('confirm-delete-confirm'));
     await waitFor(() => {
       expect(screen.queryByTestId('delete-account-button')).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not delete when modal cancel is clicked', async () => {
+    const user = userEvent.setup();
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-account-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('delete-account-button'));
+    await user.click(screen.getByTestId('confirm-delete-cancel'));
+    expect(screen.getByTestId('delete-account-button')).toBeInTheDocument();
+  });
+
+  it('renders back-to-accounts link with aria-label', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      const backLink = screen.getByTestId('back-to-accounts');
+      expect(backLink).toHaveAttribute('aria-label');
     });
   });
 

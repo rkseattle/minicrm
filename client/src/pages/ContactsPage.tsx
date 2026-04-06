@@ -386,7 +386,24 @@ export default function ContactsPage() {
                           data-testid="contacts-sort-name"
                         >
                           {t('contacts.columnName')}
-                          {sortCol === 'first_name' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                          {sortCol === 'first_name' && (
+                            <svg
+                              aria-label={
+                                sortDir === 'ascending' ? t('common.sortAsc') : t('common.sortDesc')
+                              }
+                              className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          )}
                         </button>
                       </th>
                       <th
@@ -400,7 +417,24 @@ export default function ContactsPage() {
                           data-testid="contacts-sort-email"
                         >
                           {t('contacts.columnEmail')}
-                          {sortCol === 'email' && (sortDir === 'ascending' ? ' ↑' : ' ↓')}
+                          {sortCol === 'email' && (
+                            <svg
+                              aria-label={
+                                sortDir === 'ascending' ? t('common.sortAsc') : t('common.sortDesc')
+                              }
+                              className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          )}
                         </button>
                       </th>
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">

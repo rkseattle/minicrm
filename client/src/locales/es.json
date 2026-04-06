@@ -480,7 +480,16 @@
       "all": "Todos",
       "mine": "Míos"
     },
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "sortAsc": "orden ascendente",
+    "sortDesc": "orden descendente",
+    "backToContacts": "Volver a contactos",
+    "backToAccounts": "Volver a cuentas",
+    "backToDeals": "Volver a oportunidades",
+    "confirmDeleteTitle": "¿Está seguro?",
+    "delete": "Eliminar",
+    "deleting": "Eliminando…",
+    "cancel": "Cancelar"
   },
   "errors": {
     "AUTH_INVALID_CREDENTIALS": "Correo electrónico o contraseña inválidos.",
