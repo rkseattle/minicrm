@@ -11,6 +11,7 @@ import { I18nextProvider } from 'react-i18next';
 import './index.css';
 import i18n from './i18n.js';
 import App from './App.js';
+import ErrorBoundary from './components/ErrorBoundary.js';
 
 /** Shared React Query client instance */
 const queryClient = new QueryClient({
@@ -29,12 +30,14 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <I18nextProvider i18n={i18n}>
-          <App />
-        </I18nextProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <I18nextProvider i18n={i18n}>
+            <App />
+          </I18nextProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

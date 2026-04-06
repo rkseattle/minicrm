@@ -493,6 +493,10 @@
     "cancel": "Cancel"
   },
   "errors": {
+    "boundaryTitle": "Something went wrong",
+    "boundaryMessage": "An unexpected error occurred. You can reload the page or return to the dashboard.",
+    "boundaryReload": "Reload page",
+    "boundaryDashboard": "Go to Dashboard",
     "AUTH_INVALID_CREDENTIALS": "Invalid email or password.",
     "AUTH_ACCOUNT_DEACTIVATED": "Your account has been deactivated. Contact an administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Please set your password before signing in.",

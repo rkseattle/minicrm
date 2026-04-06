@@ -493,6 +493,10 @@
     "cancel": "Abbrechen"
   },
   "errors": {
+    "boundaryTitle": "Etwas ist schiefgelaufen",
+    "boundaryMessage": "Ein unerwarteter Fehler ist aufgetreten. Sie können die Seite neu laden oder zum Dashboard zurückkehren.",
+    "boundaryReload": "Seite neu laden",
+    "boundaryDashboard": "Zum Dashboard",
     "AUTH_INVALID_CREDENTIALS": "Ungültige E-Mail oder ungültiges Passwort.",
     "AUTH_ACCOUNT_DEACTIVATED": "Ihr Konto wurde deaktiviert. Wenden Sie sich an einen Administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Bitte legen Sie Ihr Passwort fest, bevor Sie sich anmelden.",
