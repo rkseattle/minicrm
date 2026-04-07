@@ -168,7 +168,7 @@ router.get('/nav-layout', asyncHandler(getNavLayoutHandler));
  *             example:
  *               error:
  *                 code: VALIDATION_ERROR
- *                 message: Layout must be one of: top, left, hamburger
+ *                 message: "Layout must be one of: top, left, hamburger"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
