@@ -7,7 +7,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './LoginPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
@@ -30,17 +30,25 @@ function renderLoginPage() {
  * Renders LoginPage with pre-seeded location state simulating a redirect from
  * ProtectedRoute, so the redirect-back behaviour can be verified.
  *
+ * Uses a /start shim route that issues a Navigate to /login with the correct
+ * state, because renderWithProviders accepts only string initialEntries.
+ *
  * @param from - The pathname the user was trying to reach before being redirected.
  */
 function renderLoginPageWithFrom(from: string) {
   return renderWithProviders(
     <Routes>
+      {/* Shim: navigate to /login with the from state, exactly as ProtectedRoute does */}
+      <Route
+        path="/start"
+        element={<Navigate to="/login" state={{ from: { pathname: from } }} replace />}
+      />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<div>Dashboard</div>} />
       <Route path="/contacts" element={<div>Contacts page</div>} />
       <Route path="/change-password" element={<div>Change password page</div>} />
     </Routes>,
-    { initialEntries: [{ pathname: '/login', state: { from: { pathname: from } } }] },
+    { initialEntries: ['/start'] },
   );
 }
 
