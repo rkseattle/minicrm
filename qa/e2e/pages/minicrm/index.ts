@@ -10,6 +10,9 @@
 export { LoginPage } from './LoginPage.js';
 export type { LoginPageContext } from './LoginPage.js';
 
+export { ChangePasswordPage } from './ChangePasswordPage.js';
+export type { ChangePasswordPageContext } from './ChangePasswordPage.js';
+
 export { ContactsPage } from './ContactsPage.js';
 export type { ContactsPageContext } from './ContactsPage.js';
 

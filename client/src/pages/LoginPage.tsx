@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import type { Location } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -43,7 +44,12 @@ function resolveErrorMessage(error: unknown, t: TFunction): string {
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  // MINCRM-147: ProtectedRoute/AdminRoute pass the blocked location as state
+  // so we can return the user there after a successful login.
+  const fromLocation = (location.state as { from?: Location } | null)?.from;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +61,14 @@ export default function LoginPage() {
       if (data.mustChangePassword) {
         navigate('/change-password', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        // Return to the originally requested path when present; default to dashboard.
+        // Never redirect back to /change-password — that path is reserved for the
+        // forced-change flow and would create a confusing loop.
+        const destination =
+          fromLocation?.pathname && fromLocation.pathname !== '/change-password'
+            ? fromLocation.pathname
+            : '/';
+        navigate(destination, { replace: true });
       }
     },
   });

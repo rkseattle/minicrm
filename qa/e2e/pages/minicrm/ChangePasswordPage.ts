@@ -1,0 +1,185 @@
+/**
+ * ChangePasswordPage — Page Object for the MiniCRM change-password screen.
+ *
+ * Encapsulates all UI interactions on `/change-password`. Every element uses
+ * a HealingLocator with at least 2 strategies. Text-based strategies call t()
+ * so selectors stay locale-correct when E2E_LOCALE is set.
+ *
+ * Page Objects interact with UI only — no business logic, no API calls,
+ * no assertions.
+ *
+ * MINCRM-137
+ */
+
+import type { Page } from '@playwright/test';
+import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import { t } from '@framework/i18n/locale.js';
+
+// ---------------------------------------------------------------------------
+// Fixture context
+// ---------------------------------------------------------------------------
+
+/** Subset of Playwright fixtures required by ChangePasswordPage. */
+export interface ChangePasswordPageContext {
+  page: Page;
+  healPage: HealPage;
+  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
+  testName: string;
+}
+
+// ---------------------------------------------------------------------------
+// ChangePasswordPage
+// ---------------------------------------------------------------------------
+
+/**
+ * Page Object for the MiniCRM change-password screen.
+ *
+ * Usage:
+ * ```ts
+ * const changePasswordPage = new ChangePasswordPage({ page, healPage, testName });
+ * await changePasswordPage.navigate();
+ * await changePasswordPage.fillCurrentPassword('OldPass1!');
+ * await changePasswordPage.fillNewPassword('NewPass2!');
+ * await changePasswordPage.fillConfirmPassword('NewPass2!');
+ * await changePasswordPage.submit();
+ * ```
+ */
+export class ChangePasswordPage {
+  /** URL path for this page. */
+  static readonly PATH = '/change-password';
+
+  private readonly page: Page;
+  private readonly healPage: HealPage;
+  private readonly testName: string;
+
+  /**
+   * @param context - Playwright fixture context containing page, healPage, and testName.
+   */
+  constructor(context: ChangePasswordPageContext) {
+    this.page = context.page;
+    this.healPage = context.healPage;
+    this.testName = context.testName;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Navigates directly to the change-password page.
+   */
+  async navigate(): Promise<void> {
+    await this.page.goto(ChangePasswordPage.PATH);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Form interactions
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fills the current-password input field.
+   *
+   * @param password - The user's current (old) password.
+   */
+  async fillCurrentPassword(password: string): Promise<void> {
+    await this.healPage.fill(password, [
+      { type: 'testId', value: 'change-password-current' },
+      {
+        type: 'label',
+        value: t('changePassword.currentPasswordLabel'),
+        options: { exact: true },
+      },
+    ]);
+  }
+
+  /**
+   * Fills the new-password input field.
+   *
+   * @param password - The desired new password.
+   */
+  async fillNewPassword(password: string): Promise<void> {
+    await this.healPage.fill(password, [
+      { type: 'testId', value: 'change-password-new' },
+      { type: 'label', value: t('changePassword.newPasswordLabel'), options: { exact: true } },
+    ]);
+  }
+
+  /**
+   * Fills the confirm-new-password input field.
+   *
+   * @param password - Must match the value supplied to fillNewPassword().
+   */
+  async fillConfirmPassword(password: string): Promise<void> {
+    await this.healPage.fill(password, [
+      { type: 'testId', value: 'change-password-confirm' },
+      {
+        type: 'label',
+        value: t('changePassword.confirmPasswordLabel'),
+        options: { exact: true },
+      },
+    ]);
+  }
+
+  /**
+   * Clicks the submit button to attempt a password change.
+   */
+  async submit(): Promise<void> {
+    await this.healPage.click([
+      { type: 'testId', value: 'change-password-submit' },
+      {
+        type: 'role',
+        value: 'button',
+        options: { name: t('changePassword.submitButton'), exact: true },
+      },
+    ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // State queries
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the text content of the error alert, or null if no error is shown.
+   *
+   * Uses HealingLocator with 2 strategies. The alert has no testId, so role +
+   * css are used — same pattern as LoginPage.errorMessage().
+   *
+   * @returns Error message text, or null when no alert is present.
+   */
+  async errorMessage(): Promise<string | null> {
+    const locator = this.healPage.locate([
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[role="alert"]' },
+    ]);
+    try {
+      const resolved = await locator.resolve(this.testName);
+      const count = await resolved.count();
+      if (count === 0) return null;
+      return resolved.first().textContent();
+    } catch {
+      // StrategyExhaustedError means no alert is present.
+      return null;
+    }
+  }
+
+  /**
+   * Returns true when the context banner (admin-set-password notice) is visible.
+   *
+   * @returns true if the banner is visible, false otherwise.
+   */
+  async contextBannerVisible(): Promise<boolean> {
+    return this.page
+      .getByTestId('change-password-context-banner')
+      .isVisible()
+      .catch(() => false);
+  }
+
+  /**
+   * Returns the current URL of the page.
+   *
+   * @returns The current page URL string.
+   */
+  url(): string {
+    return this.page.url();
+  }
+}

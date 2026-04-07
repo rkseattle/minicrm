@@ -19,8 +19,28 @@ function renderLoginPage() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<div>Dashboard</div>} />
+      <Route path="/contacts" element={<div>Contacts page</div>} />
+      <Route path="/change-password" element={<div>Change password page</div>} />
     </Routes>,
     { initialEntries: ['/login'] },
+  );
+}
+
+/**
+ * Renders LoginPage with pre-seeded location state simulating a redirect from
+ * ProtectedRoute, so the redirect-back behaviour can be verified.
+ *
+ * @param from - The pathname the user was trying to reach before being redirected.
+ */
+function renderLoginPageWithFrom(from: string) {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<div>Dashboard</div>} />
+      <Route path="/contacts" element={<div>Contacts page</div>} />
+      <Route path="/change-password" element={<div>Change password page</div>} />
+    </Routes>,
+    { initialEntries: [{ pathname: '/login', state: { from: { pathname: from } } }] },
   );
 }
 
@@ -64,6 +84,53 @@ describe('LoginPage', () => {
     const user = userEvent.setup();
 
     // Override auth/me to return the logged-in user after successful login
+    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+
+    renderLoginPage();
+
+    await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await user.type(screen.getByTestId('login-password'), 'correct-password');
+    await user.click(screen.getByTestId('login-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to the saved location (from state) after successful login (MINCRM-147)', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+
+    renderLoginPageWithFrom('/contacts');
+
+    await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await user.type(screen.getByTestId('login-password'), 'correct-password');
+    await user.click(screen.getByTestId('login-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Contacts page')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to dashboard when from state is /change-password (MINCRM-147)', async () => {
+    // /change-password must never be a redirect-back destination — it is reserved
+    // for the forced-change flow and redirecting back there would create a loop.
+    const user = userEvent.setup();
+    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+
+    renderLoginPageWithFrom('/change-password');
+
+    await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await user.type(screen.getByTestId('login-password'), 'correct-password');
+    await user.click(screen.getByTestId('login-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to dashboard when no from state is present', async () => {
+    const user = userEvent.setup();
     server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
     renderLoginPage();

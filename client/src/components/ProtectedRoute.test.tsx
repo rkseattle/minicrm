@@ -1,11 +1,13 @@
 /**
  * Tests for the ProtectedRoute component.
+ *
+ * MINCRM-147: added redirect-back and must_change_password tests.
  */
 
 import { screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
@@ -19,9 +21,17 @@ function renderProtectedRoute(initialEntries = ['/protected']) {
         <Route path="/protected" element={<div>Protected content</div>} />
       </Route>
       <Route path="/login" element={<div>Login page</div>} />
+      <Route path="/change-password" element={<div>Change password page</div>} />
     </Routes>,
     { initialEntries },
   );
+}
+
+/** Captures the location state passed to /login so tests can assert on it. */
+function LoginPageWithState() {
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string } } | null)?.from;
+  return <div>Login page{from ? ` from=${from.pathname}` : ''}</div>;
 }
 
 describe('ProtectedRoute', () => {
@@ -53,6 +63,38 @@ describe('ProtectedRoute', () => {
     renderProtectedRoute();
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument();
+    });
+  });
+
+  it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
+    server.use(
+      http.get('/api/auth/me', () =>
+        HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
+      ),
+    );
+    renderWithProviders(
+      <Routes>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/protected" element={<div>Protected content</div>} />
+        </Route>
+        <Route path="/login" element={<LoginPageWithState />} />
+      </Routes>,
+      { initialEntries: ['/protected'] },
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Login page from=/protected')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to /change-password when must_change_password is true', async () => {
+    server.use(
+      http.get('/api/auth/me', () =>
+        HttpResponse.json({ user: { ...ADMIN_USER, must_change_password: true } }),
+      ),
+    );
+    renderProtectedRoute();
+    await waitFor(() => {
+      expect(screen.getByText('Change password page')).toBeInTheDocument();
     });
   });
 });
