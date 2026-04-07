@@ -1,15 +1,24 @@
 /**
  * Tests for the AdminRoute component.
+ *
+ * MINCRM-147: added redirect-back location state test.
  */
 
 import { screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import AdminRoute from './AdminRoute.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+
+/** Captures the location state passed to /login so tests can assert on it. */
+function LoginPageWithState() {
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string } } | null)?.from;
+  return <div>Login page{from ? ` from=${from.pathname}` : ''}</div>;
+}
 
 /** Renders AdminRoute with a child Outlet, a dashboard fallback, and a login fallback */
 function renderAdminRoute(initialEntries = ['/admin']) {
@@ -61,6 +70,26 @@ describe('AdminRoute', () => {
     renderAdminRoute();
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument();
+    });
+  });
+
+  it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
+    server.use(
+      http.get('/api/auth/me', () =>
+        HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
+      ),
+    );
+    renderWithProviders(
+      <Routes>
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<div>Admin content</div>} />
+        </Route>
+        <Route path="/login" element={<LoginPageWithState />} />
+      </Routes>,
+      { initialEntries: ['/admin'] },
+    );
+    await waitFor(() => {
+      expect(screen.getByText('Login page from=/admin')).toBeInTheDocument();
     });
   });
 });

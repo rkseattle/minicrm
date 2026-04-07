@@ -8,12 +8,13 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110
+ * MINCRM-130, MINCRM-110, MINCRM-137
  */
 
 import type { Page } from '@playwright/test';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
+import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -171,4 +172,151 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
   const finalUrl = context.page.url();
   const success = new URL(finalUrl).pathname === '/login';
   return { success, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// changePassword()
+// ---------------------------------------------------------------------------
+
+/** Credentials accepted by the changePassword behavior. */
+export interface ChangePasswordCredentials {
+  /** The user's current (old) password. */
+  currentPassword: string;
+  /** The desired new password. */
+  newPassword: string;
+  /** Must match newPassword — the form has a confirmation field. */
+  confirmPassword: string;
+}
+
+/** Result returned by the changePassword behavior. */
+export interface ChangePasswordResult {
+  /**
+   * True when the password change succeeded (the page navigated away from
+   * /change-password). False when the form returned an error.
+   */
+  success: boolean;
+  /**
+   * The URL the browser settled on after the attempt.
+   * On success this is the post-change destination (e.g. `/`).
+   * On failure this is still /change-password.
+   */
+  finalUrl: string;
+  /**
+   * The error message text shown by the form, or null when the change succeeded.
+   */
+  errorMessage: string | null;
+}
+
+/**
+ * Navigates to /change-password, fills all three fields, submits, and waits
+ * for the page to settle (navigation away or an alert becoming visible).
+ *
+ * Returns a ChangePasswordResult. The caller (test spec) is responsible for
+ * all assertions on the result.
+ *
+ * @param credentials - Current password, new password, and confirmation.
+ * @param context - Playwright fixture context.
+ * @returns ChangePasswordResult describing the outcome.
+ *
+ * @example
+ * ```ts
+ * const result = await changePassword(
+ *   { currentPassword: 'OldPass1!', newPassword: 'NewPass2!', confirmPassword: 'NewPass2!' },
+ *   { page, healPage, testName },
+ * );
+ * expect(result.success).toBe(true);
+ * ```
+ */
+export async function changePassword(
+  credentials: ChangePasswordCredentials,
+  context: AuthBehaviorContext,
+): Promise<ChangePasswordResult> {
+  const changePasswordPage = new ChangePasswordPage(context);
+
+  await changePasswordPage.navigate();
+  await changePasswordPage.fillCurrentPassword(credentials.currentPassword);
+  await changePasswordPage.fillNewPassword(credentials.newPassword);
+  await changePasswordPage.fillConfirmPassword(credentials.confirmPassword);
+  await changePasswordPage.submit();
+
+  const CHANGE_PASSWORD_TIMEOUT_MS = 10_000;
+  await Promise.race([
+    context.page
+      .waitForURL((url) => new URL(url).pathname !== '/change-password', {
+        timeout: CHANGE_PASSWORD_TIMEOUT_MS,
+      })
+      .catch(() => null),
+    context.page
+      .getByRole('alert')
+      .waitFor({ state: 'visible', timeout: CHANGE_PASSWORD_TIMEOUT_MS })
+      .catch(() => null),
+  ]);
+
+  const finalUrl = context.page.url();
+  const errorMessage = await changePasswordPage.errorMessage();
+  const success = new URL(finalUrl).pathname !== '/change-password';
+
+  return { success, finalUrl, errorMessage };
+}
+
+// ---------------------------------------------------------------------------
+// navigateToProtectedPage()
+// ---------------------------------------------------------------------------
+
+/** Result returned by navigateToProtectedPage. */
+export interface NavigateToProtectedPageResult {
+  /**
+   * The URL the browser settled on after navigating directly to the protected path.
+   * Will be the login URL if the user was not authenticated.
+   */
+  finalUrl: string;
+  /**
+   * True when the browser was redirected to /login (i.e. unauthenticated redirect occurred).
+   */
+  redirectedToLogin: boolean;
+}
+
+/**
+ * Navigates directly to a protected application path and waits for the page
+ * to settle. Returns where the browser ended up.
+ *
+ * Used to verify that an unauthenticated (or session-cleared) browser is
+ * redirected to the login page rather than rendering the protected content.
+ *
+ * @param path - Absolute path to navigate to (e.g. '/contacts').
+ * @param context - Playwright fixture context.
+ * @returns NavigateToProtectedPageResult.
+ *
+ * @example
+ * ```ts
+ * await page.context().clearCookies();
+ * const result = await navigateToProtectedPage('/contacts', { page, healPage, testName });
+ * expect(result.redirectedToLogin).toBe(true);
+ * ```
+ */
+export async function navigateToProtectedPage(
+  path: string,
+  context: AuthBehaviorContext,
+): Promise<NavigateToProtectedPageResult> {
+  const NAVIGATE_TIMEOUT_MS = 10_000;
+
+  await context.page.goto(path);
+
+  // Wait for the URL to stabilise — the React Router redirect is synchronous
+  // but the page navigation event is async.
+  await context.page
+    .waitForURL(
+      (url) => {
+        const pathname = new URL(url).pathname;
+        // Settle when we land on /login or when the path itself is reached
+        // (authenticated case).
+        return pathname === '/login' || pathname === path;
+      },
+      { timeout: NAVIGATE_TIMEOUT_MS },
+    )
+    .catch(() => null);
+
+  const finalUrl = context.page.url();
+  const redirectedToLogin = new URL(finalUrl).pathname === '/login';
+  return { finalUrl, redirectedToLogin };
 }

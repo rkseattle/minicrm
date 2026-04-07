@@ -4,7 +4,7 @@
  * Shows a loading state while the auth check is in progress.
  */
 
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth.js';
 
@@ -15,13 +15,16 @@ import { useAuth } from '@/hooks/useAuth.js';
 export default function ProtectedRoute() {
   const { t } = useTranslation();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <div aria-busy="true">{t('common.loading')}</div>;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // MINCRM-147: preserve the intended destination so LoginPage can redirect
+    // back after successful authentication.
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (user?.must_change_password) {

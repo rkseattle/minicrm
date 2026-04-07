@@ -7,12 +7,15 @@
  * MINCRM-130, MINCRM-110
  */
 
-export { login, logout } from './auth.behaviors.js';
+export { login, logout, changePassword, navigateToProtectedPage } from './auth.behaviors.js';
 export type {
   AuthBehaviorContext,
   LoginCredentials,
   LoginResult,
   LogoutResult,
+  ChangePasswordCredentials,
+  ChangePasswordResult,
+  NavigateToProtectedPageResult,
 } from './auth.behaviors.js';
 
 export { navigateToContacts, editContact } from './contacts.behaviors.js';
