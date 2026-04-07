@@ -44,10 +44,16 @@ const EN: LocaleMap = {
   'nav.users': 'Users',
   'nav.logout': 'Log out',
 
-  // Auth
+  // Auth — login
   'login.submitButton': 'Sign in',
   'login.emailLabel': 'Email address',
   'login.passwordLabel': 'Password',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Current password',
+  'changePassword.newPasswordLabel': 'New password',
+  'changePassword.confirmPasswordLabel': 'Confirm new password',
+  'changePassword.submitButton': 'Change password',
 
   // Contacts
   'contacts.saveChanges': 'Save changes',
@@ -76,10 +82,16 @@ const ES: LocaleMap = {
   'nav.users': 'Usuarios',
   'nav.logout': 'Cerrar sesión',
 
-  // Auth
+  // Auth — login
   'login.submitButton': 'Iniciar sesión',
   'login.emailLabel': 'Correo electrónico',
   'login.passwordLabel': 'Contraseña',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Contraseña actual',
+  'changePassword.newPasswordLabel': 'Nueva contraseña',
+  'changePassword.confirmPasswordLabel': 'Confirmar nueva contraseña',
+  'changePassword.submitButton': 'Cambiar contraseña',
 
   // Contacts
   'contacts.saveChanges': 'Guardar cambios',

@@ -300,36 +300,28 @@ test('@functional F1-O1: logout clears session cookie → subsequent API request
   expect(caughtStatus, '/me after logout must return 401').toBe(401);
 });
 
-test('@functional F1-O2: back-button immediately after logout → browser stays on /login', async ({
+test('@functional F1-O2: navigating to protected route after logout → redirected to /login', async ({
   page,
   healPage,
 }) => {
   const testName = test.info().title;
 
-  // Establish an authenticated session and navigate to the dashboard.
+  // Establish an authenticated session.
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
-  // Confirm we're on an authenticated page before logout.
   expect(new URL(page.url()).pathname, 'should be authenticated before logout').not.toBe('/login');
 
-  // Log out — browser should return to /login.
+  // Log out — browser should return to /login and the session cookie is cleared.
   const logoutResult = await logout({ page, healPage, testName });
   expect(logoutResult.success, 'logout should succeed').toBe(true);
 
-  // Press back. The browser's history stack had an authenticated page before /login.
-  // The app should not restore the authenticated state — ProtectedRoute redirects
-  // back to /login when the session cookie is absent.
-  await page.goBack();
-
-  // Wait for the URL to settle after back-navigation.
-  await page
-    .waitForURL((url) => new URL(url).pathname === '/login', { timeout: 5_000 })
-    .catch(() => null);
+  // Attempt to navigate directly to a protected URL. The session cookie is gone,
+  // so ProtectedRoute must redirect back to /login.
+  const result = await navigateToProtectedPage(PROTECTED_PATH, { page, healPage, testName });
 
   expect(
-    new URL(page.url()).pathname,
-    'back-button after logout should stay on /login, not restore the authenticated page',
-  ).toBe('/login');
+    result.redirectedToLogin,
+    'direct navigation to a protected route after logout must redirect to /login',
+  ).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

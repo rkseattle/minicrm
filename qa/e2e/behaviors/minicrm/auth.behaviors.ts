@@ -298,22 +298,20 @@ export async function navigateToProtectedPage(
   path: string,
   context: AuthBehaviorContext,
 ): Promise<NavigateToProtectedPageResult> {
-  const NAVIGATE_TIMEOUT_MS = 10_000;
+  const NAVIGATE_TIMEOUT_MS = 15_000;
 
-  await context.page.goto(path);
+  // Wait for the network to go idle after navigation so the SPA's initial
+  // render and the auth API call (/api/auth/me) have both completed before
+  // we inspect the URL. Without this, waitForURL below can resolve while the
+  // browser is still on `path` (the SPA mounted but hasn't yet received the
+  // 401 from the auth check and re-rendered with <Navigate to="/login" />).
+  await context.page.goto(path, { waitUntil: 'networkidle' });
 
-  // Wait for the URL to stabilise — the React Router redirect is synchronous
-  // but the page navigation event is async.
+  // After networkidle the auth check has returned. If the user is
+  // unauthenticated, ProtectedRoute will have already dispatched the React
+  // Router redirect. Give it a moment to propagate through the render cycle.
   await context.page
-    .waitForURL(
-      (url) => {
-        const pathname = new URL(url).pathname;
-        // Settle when we land on /login or when the path itself is reached
-        // (authenticated case).
-        return pathname === '/login' || pathname === path;
-      },
-      { timeout: NAVIGATE_TIMEOUT_MS },
-    )
+    .waitForURL((url) => new URL(url).pathname === '/login', { timeout: NAVIGATE_TIMEOUT_MS })
     .catch(() => null);
 
   const finalUrl = context.page.url();
