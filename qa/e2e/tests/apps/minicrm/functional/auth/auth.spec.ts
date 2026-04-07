@@ -21,11 +21,7 @@
  *
  * AC notes:
  *   - AC1: wrong-password and unknown-user errors must return the same message
- *   - AC2: redirect-back URL test is written to the correct behaviour (preserve
- *     the destination URL through the login flow). The app does NOT currently
- *     implement redirect-back — ProtectedRoute redirects to /login with
- *     replace:true and LoginPage always navigates to / on success. This test
- *     WILL FAIL until the feature is implemented (MINCRM-137).
+ *   - AC2: redirect-back URL preserved through login (implemented in MINCRM-147)
  *   - AC3: session invalidation verified at the API layer via restClient
  *
  * Tagged @functional so the suite can be run in isolation:
@@ -233,17 +229,9 @@ test('@functional F1-S2: cleared session → API returns 401 (AC3)', async ({ re
 /**
  * F1-S3: redirect-back URL preserved through login flow (AC2).
  *
- * KNOWN FAILING TEST — the app does not yet implement redirect-back.
- * ProtectedRoute redirects to /login with replace:true and no location state.
- * LoginPage always navigates to / on success.
- *
- * Expected behaviour: navigating to /contacts while unauthenticated should
- * preserve the destination, so that after re-authentication the browser lands
- * on /contacts rather than /.
- *
- * This test will fail until ProtectedRoute passes the destination URL through
- * the login flow (e.g. via React Router location state or a ?redirect= param)
- * and LoginPage honours it on success. (MINCRM-137)
+ * ProtectedRoute passes the blocked location as React Router state when
+ * redirecting to /login. LoginPage reads that state on success and returns
+ * the user to their originally requested path. Implemented in MINCRM-147.
  */
 test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', async ({
   page,

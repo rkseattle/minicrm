@@ -61,12 +61,13 @@ export default function LoginPage() {
       if (data.mustChangePassword) {
         navigate('/change-password', { replace: true });
       } else {
-        // Return to the originally requested path when present; default to dashboard.
+        // Return to the originally requested location when present; default to dashboard.
+        // Pass the full location object so search params and hash are preserved.
         // Never redirect back to /change-password — that path is reserved for the
-        // forced-change flow and would create a confusing loop.
+        // forced-change flow and would create a confusing loop. (MINCRM-147)
         const destination =
           fromLocation?.pathname && fromLocation.pathname !== '/change-password'
-            ? fromLocation.pathname
+            ? fromLocation
             : '/';
         navigate(destination, { replace: true });
       }
