@@ -56,6 +56,21 @@ To view a trace from a CI failure:
 
 The `healing-report.json` (self-healing locator summary) is also included in the same artifact bundle under `test-results/`.
 
+When at least one selector heal occurred, a dedicated `healing-report-<project>-<run_id>` artifact is also uploaded (MINCRM-149). This artifact contains only `healing-report.json` and provides a single-click download link in the PR comment — no need to extract the full `playwright-artifacts` bundle.
+
+**What `healing-report.json` contains:**
+
+| Field         | Description                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `totalHeals`  | Number of selector heals across all tests in the run                                                                                             |
+| `aiHeals`     | Subset of heals resolved by the AI tier (requires `AI_HEALING=true`)                                                                             |
+| `staticHeals` | Subset resolved by static strategy fallback (testId → role → label → text → css → xpath)                                                         |
+| `events`      | Array of individual heal events — each records the test name, original strategy, healed-to strategy, timestamp, and whether the AI tier was used |
+
+**When it appears:** Only when `totalHeals > 0`. On a clean run with zero heals the file is empty (or absent) and no dedicated artifact is uploaded. The PR comment will contain no healing report link.
+
+**How to interpret:** Each event in `events` names the original strategy that failed (e.g. `testId: "submit-button"`) and the fallback that succeeded (e.g. `role: "button" / name: "Save"`). A heal indicates a `data-testid` attribute was missing or changed — the test passed via fallback but the selector should be restored to keep tests resilient.
+
 ### Locally
 
 By default, traces are disabled locally (no cost, no disk usage on passing runs).
