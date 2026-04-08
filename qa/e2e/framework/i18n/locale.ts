@@ -62,6 +62,16 @@ const EN: LocaleMap = {
   'contacts.delete': 'Delete',
   'contacts.empty': 'No contacts yet. Add one to get started.',
 
+  // Accounts
+  'accounts.save': 'Save',
+  'accounts.saveChanges': 'Save changes',
+  'accounts.cancel': 'Cancel',
+  'accounts.delete': 'Delete',
+  'accounts.edit': 'Edit',
+  'accounts.newAccount': 'New Account',
+  'accounts.empty': 'No accounts yet. Add one to get started.',
+  'accounts.linkedContactsEmpty': 'No contacts linked to this account.',
+
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -103,6 +113,16 @@ const ES: LocaleMap = {
   'contacts.cancel': 'Cancelar',
   'contacts.delete': 'Eliminar',
   'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
+
+  // Accounts
+  'accounts.save': 'Guardar',
+  'accounts.saveChanges': 'Guardar cambios',
+  'accounts.cancel': 'Cancelar',
+  'accounts.delete': 'Eliminar',
+  'accounts.edit': 'Editar',
+  'accounts.newAccount': 'Nueva cuenta',
+  'accounts.empty': 'Aún no hay cuentas. Agrega una para empezar.',
+  'accounts.linkedContactsEmpty': 'No hay contactos vinculados a esta cuenta.',
 
   // Common actions
   'common.save': 'Guardar',
