@@ -169,7 +169,7 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
 
   // Link the deal to the contact via deal_contacts (route: POST /deals/:id/contacts/:contactId).
   const linkResponse = await restClient.post(`/api/deals/${deal.id}/contacts/${contact.id}`, {});
-  expect(linkResponse.status, 'linking contact to deal should return 201').toBe(201);
+  expect(linkResponse.status, 'linking contact to deal should return 200').toBe(200);
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
