@@ -189,7 +189,7 @@ jobs:
         if: always() && steps.healing-check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          name: healing-report-trivial-${{ matrix.project }}-${{ github.run_id }}
           path: test-results/healing-report.json
           retention-days: 14
 
@@ -467,7 +467,7 @@ jobs:
         if: always() && steps.healing-check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          name: healing-report-bvt-${{ matrix.project }}-${{ github.run_id }}
           path: test-results/healing-report.json
           retention-days: 14
 
@@ -651,7 +651,7 @@ jobs:
         if: always() && steps.healing-check.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          name: healing-report-functional-${{ matrix.project }}-${{ github.run_id }}
           path: test-results/healing-report.json
           retention-days: 14
 
