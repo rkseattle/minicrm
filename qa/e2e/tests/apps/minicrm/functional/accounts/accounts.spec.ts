@@ -41,6 +41,7 @@ import {
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { createTestAccount, createTestContact } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -249,15 +250,18 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   await page.goto('/accounts?search=F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL');
   await page.waitForLoadState('networkidle');
 
-  // The empty state text should be visible.
-  const emptyText = page.locator('[data-testid="accounts-search"]');
-  expect(await emptyText.isVisible(), 'search input should be visible on accounts page').toBe(true);
-
   // Verify via API that the search returns zero results.
   const result = await restClient.get<AccountListResponse>(
     '/api/accounts?search=F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL',
   );
   expect(result.body.total, 'search should return 0 results').toBe(0);
+
+  // The empty state paragraph should be visible (rendered when accounts.length === 0).
+  // Matches the text from the accounts.empty i18n key: "No accounts yet. Add one to get started."
+  await expect(
+    page.locator(`text=${t('accounts.empty')}`).first(),
+    'empty state text should be visible',
+  ).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
