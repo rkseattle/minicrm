@@ -354,11 +354,10 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
     const adminFound = adminTasks.body.tasks.find((t) => t.id === activity.id);
     expect(adminFound, 'rep task should not appear in admin my-tasks').toBeUndefined();
   } finally {
-    // dispose() and deactivate are independent — run in parallel.
-    await Promise.all([
-      repRequestContext.dispose(),
-      restClient.patch(`/api/users/${repUser.id}/deactivate`),
-    ]);
+    await repRequestContext.dispose().catch(() => null);
+    await restClient.patch(`/api/users/${repUser.id}/deactivate`).catch((err: unknown) => {
+      console.error(`[F5-MY2] teardown: failed to deactivate rep ${repUser.id}: ${String(err)}`);
+    });
   }
 });
 
@@ -438,7 +437,10 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
       'task should still be in rep my-tasks after failed reassign attempt',
     ).toBe(true);
   } finally {
-    await Promise.all([repContext.dispose(), restClient.patch(`/api/users/${rep.id}/deactivate`)]);
+    await repContext.dispose().catch(() => null);
+    await restClient.patch(`/api/users/${rep.id}/deactivate`).catch((err: unknown) => {
+      console.error(`[F5-MY3] teardown: failed to deactivate rep ${rep.id}: ${String(err)}`);
+    });
   }
 });
 
@@ -593,7 +595,10 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
 
   // Toggle is required — completed tasks are hidden by default.
   await page.click('[data-testid="toggle-completed-button"]');
-  await page.waitForLoadState('networkidle');
+  // Wait for the completed row to appear before asserting the badge is absent.
+  await page
+    .locator(`[data-testid="task-row-${activity.id}"]`)
+    .waitFor({ state: 'visible', timeout: 10_000 });
 
   const overdueBadge = page.locator(`[data-testid="task-overdue-badge-${activity.id}"]`);
   await expect(overdueBadge, 'completed task must not show overdue badge').not.toBeVisible();
