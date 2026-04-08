@@ -37,8 +37,21 @@ app.use(
 );
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
-// Allow the Vite dev server to make credentialed requests
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? 'http://localhost:5173').split(',');
+// CORS_ORIGIN is a comma-separated list of allowed origins.
+// Default: http://localhost:5173 (Vite dev server on the same machine).
+//
+// LAN access (MINCRM-148): when a mobile device connects via the server's LAN IP
+// (e.g. http://192.168.1.100:5173) the browser sends that address as the CORS
+// origin, which will be rejected unless it is included in CORS_ORIGIN.
+// Add the LAN address alongside localhost:
+//   CORS_ORIGIN=http://localhost:5173,http://192.168.1.100:5173
+//
+// Wildcards ('*') are intentionally not supported — credentialed requests
+// (cookies) require an explicit origin, not a wildcard.
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
