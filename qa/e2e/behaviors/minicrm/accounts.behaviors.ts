@@ -222,7 +222,18 @@ export async function createAccountViaUI(
     { type: 'role', value: 'button', options: { name: t('accounts.save'), exact: false } },
   ]);
 
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the outcome to settle. On success, the form closes and the New Account
+  // button reappears. On validation error, the form stays open but the browser's
+  // built-in required-field validation fires synchronously without a network round-trip.
+  // Waiting for networkidle alone can be unreliable on slow CI — use a DOM signal first.
+  await Promise.race([
+    // Success path: New Account button reappears once the form is gone.
+    context.page
+      .waitForSelector('[data-testid="new-account-button"]', { timeout: 10_000 })
+      .catch(() => null),
+    // Error path: form stays visible; wait for networkidle to settle any in-flight requests.
+    context.page.waitForLoadState('networkidle').catch(() => null),
+  ]);
 
   const finalUrl = context.page.url();
 
