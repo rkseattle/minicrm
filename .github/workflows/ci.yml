@@ -163,6 +163,30 @@ jobs:
             echo "healing-report.json not found (zero heals or reporter did not run)"
           fi
 
+      - name: Check for healing report artifact (MINCRM-149)
+        id: healing-check
+        if: always()
+        run: |
+          REPORT=test-results/healing-report.json
+          if [ -f "$REPORT" ] && [ -s "$REPORT" ]; then
+            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+            if [ "$TOTAL" -gt 0 ]; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload healing report artifact (MINCRM-149)
+        if: always() && steps.healing-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          path: test-results/healing-report.json
+          retention-days: 14
+
       - name: Debug instructions
         if: failure()
         run: |
@@ -235,14 +259,17 @@ jobs:
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
           IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
 
-          # Check for heals in either artifact
+          # Check for heals in either artifact (MINCRM-149)
           HEAL_NOTE=""
-          for dir in artifacts/desktop artifacts/mobile-web; do
+          HEAL_LINK=""
+          for project in desktop mobile-web; do
+            dir="artifacts/$project"
             REPORT="$dir/test-results/healing-report.json"  # repo-root test-results/
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
                 HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
+                HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
                 break
               fi
             fi
@@ -262,6 +289,9 @@ jobs:
             fi
             echo ""
             echo "[Download trace artifacts]($ARTIFACTS_URL)"
+            if [ -n "$HEAL_LINK" ]; then
+              echo "$HEAL_LINK"
+            fi
             echo 'COMMENT_EOF'
           } >> $GITHUB_OUTPUT
 
@@ -404,6 +434,30 @@ jobs:
           else
             echo "healing-report.json not found (zero heals or reporter did not run)"
           fi
+
+      - name: Check for healing report artifact (MINCRM-149)
+        id: healing-check
+        if: always()
+        run: |
+          REPORT=test-results/healing-report.json
+          if [ -f "$REPORT" ] && [ -s "$REPORT" ]; then
+            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+            if [ "$TOTAL" -gt 0 ]; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload healing report artifact (MINCRM-149)
+        if: always() && steps.healing-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          path: test-results/healing-report.json
+          retention-days: 14
 
       - name: Debug instructions
         if: failure()
@@ -559,6 +613,30 @@ jobs:
             echo "healing-report.json not found (zero heals or reporter did not run)"
           fi
 
+      - name: Check for healing report artifact (MINCRM-149)
+        id: healing-check
+        if: always()
+        run: |
+          REPORT=test-results/healing-report.json
+          if [ -f "$REPORT" ] && [ -s "$REPORT" ]; then
+            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
+            if [ "$TOTAL" -gt 0 ]; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload healing report artifact (MINCRM-149)
+        if: always() && steps.healing-check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: healing-report-${{ matrix.project }}-${{ github.run_id }}
+          path: test-results/healing-report.json
+          retention-days: 14
+
       - name: Debug instructions
         if: failure()
         run: |
@@ -630,12 +708,15 @@ jobs:
           IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
 
           HEAL_NOTE=""
-          for dir in artifacts/desktop artifacts/mobile-web; do
+          HEAL_LINK=""
+          for project in desktop mobile-web; do
+            dir="artifacts/$project"
             REPORT="$dir/test-results/healing-report.json"
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
                 HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
+                HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
                 break
               fi
             fi
@@ -655,6 +736,9 @@ jobs:
             fi
             echo ""
             echo "[Download trace artifacts]($ARTIFACTS_URL)"
+            if [ -n "$HEAL_LINK" ]; then
+              echo "$HEAL_LINK"
+            fi
             echo 'COMMENT_EOF'
           } >> $GITHUB_OUTPUT
 
@@ -715,14 +799,17 @@ jobs:
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
           IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
 
-          # Check for heals in either artifact
+          # Check for heals in either artifact (MINCRM-149)
           HEAL_NOTE=""
-          for dir in artifacts/desktop artifacts/mobile-web; do
+          HEAL_LINK=""
+          for project in desktop mobile-web; do
+            dir="artifacts/$project"
             REPORT="$dir/test-results/healing-report.json"  # repo-root test-results/
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
                 HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
+                HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
                 break
               fi
             fi
@@ -742,6 +829,9 @@ jobs:
             fi
             echo ""
             echo "[Download trace artifacts]($ARTIFACTS_URL)"
+            if [ -n "$HEAL_LINK" ]; then
+              echo "$HEAL_LINK"
+            fi
             echo 'COMMENT_EOF'
           } >> $GITHUB_OUTPUT
 
