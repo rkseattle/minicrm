@@ -246,18 +246,31 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
-  // Navigate to accounts with a search term that matches nothing.
-  await page.goto('/accounts?search=F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL');
-  await page.waitForLoadState('networkidle');
+  const sentinel = 'F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL';
+
+  await navigateToAccounts({ page, healPage, testName });
+
+  // Type a sentinel into the search box — AccountsPage uses controlled useState
+  // for search (not URL params), so this is the correct way to trigger filtering.
+  await healPage.fill(sentinel, [
+    { type: 'testId', value: 'accounts-search' },
+    { type: 'label', value: 'Search', options: { exact: false } },
+  ]);
+
+  // Wait for either an account row or the empty-state text to appear (same
+  // pattern as contacts.spec.ts searchContacts behavior).
+  await Promise.race([
+    page.waitForSelector('[data-testid^="account-link-"]', { timeout: 10_000 }).catch(() => null),
+    page.waitForSelector(`text=${t('accounts.empty')}`, { timeout: 10_000 }).catch(() => null),
+  ]);
 
   // Verify via API that the search returns zero results.
   const result = await restClient.get<AccountListResponse>(
-    '/api/accounts?search=F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL',
+    `/api/accounts?search=${encodeURIComponent(sentinel)}`,
   );
   expect(result.body.total, 'search should return 0 results').toBe(0);
 
-  // The empty state paragraph should be visible (rendered when accounts.length === 0).
-  // Matches the text from the accounts.empty i18n key: "No accounts yet. Add one to get started."
+  // The empty state paragraph should now be visible.
   await expect(
     page.locator(`text=${t('accounts.empty')}`).first(),
     'empty state text should be visible',
