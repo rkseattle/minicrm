@@ -263,53 +263,6 @@ export async function createContactViaUI(
 }
 
 // ---------------------------------------------------------------------------
-// cancelContactCreate()
-// ---------------------------------------------------------------------------
-
-/** Result returned by cancelContactCreate. */
-export interface CancelContactCreateResult {
-  /** True when the form is no longer visible after cancellation. */
-  formClosed: boolean;
-  /** The URL the browser settled on. */
-  finalUrl: string;
-}
-
-/**
- * Navigates to /contacts, opens the inline create form, fills the first-name
- * field, then clicks Cancel — verifying no record is created.
- *
- * @param firstNameValue - Value to type before cancelling (makes the scenario realistic).
- * @param context - Playwright fixture context.
- * @returns CancelContactCreateResult.
- */
-export async function cancelContactCreate(
-  firstNameValue: string,
-  context: ContactsBehaviorContext,
-): Promise<CancelContactCreateResult> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.navigate();
-  await contactsPage.clickNewContact();
-
-  await context.healPage.fill(firstNameValue, [
-    { type: 'testId', value: 'contact-first-name' },
-    { type: 'label', value: 'First name', options: { exact: false } },
-  ]);
-
-  await context.healPage.click([
-    { type: 'testId', value: 'contact-form-cancel' },
-    { type: 'role', value: 'button', options: { name: t('contacts.cancel'), exact: false } },
-  ]);
-
-  await context.page.waitForLoadState('networkidle');
-
-  const formLocator = context.page.locator('[data-testid="contact-form"]');
-  const formClosed = !(await formLocator.isVisible().catch(() => true));
-  const finalUrl = context.page.url();
-
-  return { formClosed, finalUrl };
-}
-
-// ---------------------------------------------------------------------------
 // deleteContactViaUI()
 // ---------------------------------------------------------------------------
 
@@ -491,16 +444,30 @@ export async function searchContacts(
     { type: 'label', value: 'Search', options: { exact: false } },
   ]);
 
-  // Wait for debounce + network.
-  await context.page.waitForLoadState('networkidle');
-  // Extra settle time for debounce (300 ms default in app).
-  await context.page.waitForTimeout(500);
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the search to settle using a DOM signal rather than a fixed sleep.
+  // The contacts list re-renders after the debounce + network round-trip. We
+  // wait until either a contact row OR the empty-state placeholder is attached
+  // to the DOM — whichever appears first. This is more deterministic than a
+  // hardcoded timeout and avoids double-networkidle races on slow CI machines.
+  await Promise.race([
+    context.page
+      .waitForSelector('[data-testid^="contact-link-"]', { timeout: 10_000 })
+      .catch(() => null),
+    context.page
+      .waitForSelector(`text=${t('contacts.empty')}`, { timeout: 10_000 })
+      .catch(() => null),
+  ]);
 
   const rowCount = await contactsPage.rowCount();
 
-  const emptyLocator = context.page.locator('text=' + t('contacts.empty')).first();
-  const emptyStateVisible = await emptyLocator.isVisible().catch(() => false);
+  // The empty state is a <p> with the contacts.empty i18n text.
+  const emptyStateVisible =
+    rowCount === 0 &&
+    (await context.page
+      .locator(`text=${t('contacts.empty')}`)
+      .first()
+      .isVisible()
+      .catch(() => false));
 
   const finalUrl = contactsPage.url();
 

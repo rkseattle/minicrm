@@ -180,13 +180,10 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   await page.fill('[data-testid="contact-email"]', uniqueEmail);
   // Intentionally leave last_name empty. Submit to trigger HTML5 required validation.
   await page.click('[data-testid="contact-form-submit"]');
-  await page.waitForTimeout(300);
 
-  // Form must still be visible (browser blocked submission).
-  const formVisible = await page.isVisible('[data-testid="contact-form"]');
-  expect(formVisible, 'form should still be visible after missing-required-field submit').toBe(
-    true,
-  );
+  // HTML5 validation is synchronous — no network request fires. Use a DOM-based
+  // wait so the assertion retries automatically instead of sleeping a fixed amount.
+  await expect(page.locator('[data-testid="contact-form"]')).toBeVisible();
 
   // Verify no contact was created by searching for the unique email.
   const check = await restClient.get<ContactListResponse>(
@@ -220,11 +217,10 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
   await page.fill('[data-testid="contact-last-name"]', uniqueLastName);
   await page.fill('[data-testid="contact-email"]', 'not-an-email');
   await page.click('[data-testid="contact-form-submit"]');
-  await page.waitForTimeout(300);
 
-  // Form must remain visible.
-  const formVisible = await page.isVisible('[data-testid="contact-form"]');
-  expect(formVisible, 'form should remain after invalid email submit').toBe(true);
+  // HTML5 email validation is synchronous — use a DOM-based wait instead of a
+  // fixed timeout so the assertion retries automatically.
+  await expect(page.locator('[data-testid="contact-form"]')).toBeVisible();
 
   // Verify no contact was created by searching for the unique last name.
   const check = await restClient.get<ContactListResponse>(
@@ -301,11 +297,19 @@ test('@functional F2-R1: contact list shows seeded records', async ({
   const navResult = await navigateToContacts({ page, healPage, testName });
   expect(navResult.loaded, 'contacts page should load').toBe(true);
 
-  // Verify both seeded contacts appear via API search.
+  // Verify both seeded contacts are visible in the UI. Use the search behavior
+  // to filter the list, then assert on the API total (stable) and that the
+  // empty state is NOT shown (UI signal that results rendered).
+  const uiResult = await searchContacts(`List-${uniqueSuffix}`, { page, healPage, testName });
+  expect(uiResult.emptyStateVisible, 'empty state should not be shown when records exist').toBe(
+    false,
+  );
+
+  // Confirm via API that both records are present (cross-checks the render).
   const search = await restClient.get<ContactListResponse>(
     `/api/contacts?search=${encodeURIComponent(`List-${uniqueSuffix}`)}`,
   );
-  expect(search.body.total, 'both seeded contacts should be findable').toBe(2);
+  expect(search.body.total, 'both seeded contacts should be findable via API').toBe(2);
 });
 
 test('@functional F2-R2: sort by first name ascending returns alphabetical order', async ({
@@ -594,9 +598,8 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
   }
   expect(caughtStatus, 'deleted contact must return 404 from API').toBe(404);
 
-  // Contact is already deleted — remove from testData to avoid double-delete.
-  // The TestDataManager's isolated error handling will silently swallow the 404,
-  // but removing it now is cleaner.
+  // Contact is already gone — TestDataManager will receive a 404 on teardown
+  // and swallow it silently, so no further action is needed.
 });
 
 test('@functional F2-D2: cancel confirmation dialog → contact not deleted, remains in list', async ({
