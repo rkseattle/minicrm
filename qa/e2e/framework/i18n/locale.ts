@@ -57,6 +57,10 @@ const EN: LocaleMap = {
 
   // Contacts
   'contacts.saveChanges': 'Save changes',
+  'contacts.save': 'Save',
+  'contacts.cancel': 'Cancel',
+  'contacts.delete': 'Delete',
+  'contacts.empty': 'No contacts yet. Add one to get started.',
 
   // Common actions
   'common.save': 'Save',
@@ -95,6 +99,10 @@ const ES: LocaleMap = {
 
   // Contacts
   'contacts.saveChanges': 'Guardar cambios',
+  'contacts.save': 'Guardar',
+  'contacts.cancel': 'Cancelar',
+  'contacts.delete': 'Eliminar',
+  'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
 
   // Common actions
   'common.save': 'Guardar',

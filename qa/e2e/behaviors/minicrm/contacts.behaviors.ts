@@ -8,11 +8,12 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110
+ * MINCRM-130, MINCRM-110, MINCRM-138
  */
 
 import type { Page } from '@playwright/test';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import { t } from '@framework/i18n/locale.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
@@ -144,4 +145,364 @@ export async function editContact(
   const saved = await detailPage.isLoaded();
   const finalUrl = detailPage.url();
   return { saved, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// createContactViaUI()
+// ---------------------------------------------------------------------------
+
+/** Fields accepted by createContactViaUI. first_name, last_name, email are required. */
+export interface CreateContactUIFields {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  title?: string;
+  department?: string;
+}
+
+/** Result returned by createContactViaUI. */
+export interface CreateContactViaUIResult {
+  /**
+   * True when the form submitted successfully (form is no longer visible,
+   * New Contact button is back).
+   */
+  created: boolean;
+  /**
+   * True when a duplicate-contact warning (409) was surfaced instead of
+   * creating the contact.
+   */
+  duplicateWarning: boolean;
+  /**
+   * True when the form stayed open with a validation error (e.g. missing
+   * required field, invalid email format).
+   */
+  validationError: boolean;
+  /** The URL the browser settled on after the operation. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to /contacts, opens the inline create form, fills the supplied
+ * fields, and submits.
+ *
+ * Returns a result object describing the outcome — the caller asserts against it.
+ *
+ * @param fields - Form field values to fill.
+ * @param context - Playwright fixture context.
+ * @returns CreateContactViaUIResult.
+ */
+export async function createContactViaUI(
+  fields: CreateContactUIFields,
+  context: ContactsBehaviorContext,
+): Promise<CreateContactViaUIResult> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.navigate();
+  await contactsPage.clickNewContact();
+
+  // Fill required fields.
+  await context.healPage.fill(fields.first_name, [
+    { type: 'testId', value: 'contact-first-name' },
+    { type: 'label', value: 'First name', options: { exact: false } },
+  ]);
+  await context.healPage.fill(fields.last_name, [
+    { type: 'testId', value: 'contact-last-name' },
+    { type: 'label', value: 'Last name', options: { exact: false } },
+  ]);
+  await context.healPage.fill(fields.email, [
+    { type: 'testId', value: 'contact-email' },
+    { type: 'label', value: 'Email', options: { exact: false } },
+  ]);
+
+  // Fill optional fields when provided.
+  if (fields.phone !== undefined) {
+    await context.healPage.fill(fields.phone, [
+      { type: 'testId', value: 'contact-phone' },
+      { type: 'label', value: 'Phone', options: { exact: false } },
+    ]);
+  }
+  if (fields.title !== undefined) {
+    await context.healPage.fill(fields.title, [
+      { type: 'testId', value: 'contact-title' },
+      { type: 'label', value: 'Title', options: { exact: false } },
+    ]);
+  }
+  if (fields.department !== undefined) {
+    await context.healPage.fill(fields.department, [
+      { type: 'testId', value: 'contact-department' },
+      { type: 'label', value: 'Department', options: { exact: false } },
+    ]);
+  }
+
+  // Submit the form.
+  await context.healPage.click([
+    { type: 'testId', value: 'contact-form-submit' },
+    { type: 'role', value: 'button', options: { name: t('contacts.save'), exact: false } },
+  ]);
+
+  // Short wait for network/React state to settle.
+  await context.page.waitForLoadState('networkidle');
+
+  const finalUrl = context.page.url();
+
+  // Check for duplicate warning (form stays open with duplicate-contact-warning).
+  const duplicateLocator = context.page.locator('[data-testid="duplicate-contact-warning"]');
+  const duplicateWarning = await duplicateLocator.isVisible().catch(() => false);
+
+  // Check form still visible (either validation error or duplicate warning).
+  const formLocator = context.page.locator('[data-testid="contact-form"]');
+  const formStillVisible = await formLocator.isVisible().catch(() => false);
+
+  // Created when form is gone and no duplicate warning.
+  const created = !formStillVisible && !duplicateWarning;
+
+  // Validation error = form still visible but no duplicate warning.
+  const validationError = formStillVisible && !duplicateWarning;
+
+  return { created, duplicateWarning, validationError, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// cancelContactCreate()
+// ---------------------------------------------------------------------------
+
+/** Result returned by cancelContactCreate. */
+export interface CancelContactCreateResult {
+  /** True when the form is no longer visible after cancellation. */
+  formClosed: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to /contacts, opens the inline create form, fills the first-name
+ * field, then clicks Cancel — verifying no record is created.
+ *
+ * @param firstNameValue - Value to type before cancelling (makes the scenario realistic).
+ * @param context - Playwright fixture context.
+ * @returns CancelContactCreateResult.
+ */
+export async function cancelContactCreate(
+  firstNameValue: string,
+  context: ContactsBehaviorContext,
+): Promise<CancelContactCreateResult> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.navigate();
+  await contactsPage.clickNewContact();
+
+  await context.healPage.fill(firstNameValue, [
+    { type: 'testId', value: 'contact-first-name' },
+    { type: 'label', value: 'First name', options: { exact: false } },
+  ]);
+
+  await context.healPage.click([
+    { type: 'testId', value: 'contact-form-cancel' },
+    { type: 'role', value: 'button', options: { name: t('contacts.cancel'), exact: false } },
+  ]);
+
+  await context.page.waitForLoadState('networkidle');
+
+  const formLocator = context.page.locator('[data-testid="contact-form"]');
+  const formClosed = !(await formLocator.isVisible().catch(() => true));
+  const finalUrl = context.page.url();
+
+  return { formClosed, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// deleteContactViaUI()
+// ---------------------------------------------------------------------------
+
+/** Result returned by deleteContactViaUI. */
+export interface DeleteContactViaUIResult {
+  /**
+   * True when the contact was deleted and the browser navigated back to /contacts.
+   */
+  deleted: boolean;
+  /** The URL the browser settled on after the operation. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to a contact's detail page, clicks Delete, confirms the modal,
+ * and waits for navigation back to /contacts.
+ *
+ * @param id - Contact UUID.
+ * @param context - Playwright fixture context.
+ * @returns DeleteContactViaUIResult.
+ */
+export async function deleteContactViaUI(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<DeleteContactViaUIResult> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.navigate(id);
+
+  // Click the Delete button to open the confirmation modal.
+  await context.healPage.click([
+    { type: 'testId', value: 'delete-contact-button' },
+    { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
+  ]);
+
+  // Confirm deletion in the modal.
+  await context.healPage.click([
+    { type: 'testId', value: 'confirm-delete-confirm' },
+    { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
+  ]);
+
+  // Wait for navigation back to /contacts.
+  await context.page.waitForURL('**/contacts', { timeout: 10_000 }).catch(() => null);
+  await context.page.waitForLoadState('networkidle');
+
+  const finalUrl = context.page.url();
+  const deleted = new URL(finalUrl).pathname === '/contacts';
+
+  return { deleted, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// cancelDeleteContact()
+// ---------------------------------------------------------------------------
+
+/** Result returned by cancelDeleteContact. */
+export interface CancelDeleteContactResult {
+  /** True when the contact detail page is still showing (deletion was cancelled). */
+  stillOnDetailPage: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to a contact's detail page, clicks Delete, then clicks Cancel
+ * in the confirmation modal without confirming.
+ *
+ * @param id - Contact UUID.
+ * @param context - Playwright fixture context.
+ * @returns CancelDeleteContactResult.
+ */
+export async function cancelDeleteContact(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<CancelDeleteContactResult> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.navigate(id);
+
+  // Click the Delete button.
+  await context.healPage.click([
+    { type: 'testId', value: 'delete-contact-button' },
+    { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
+  ]);
+
+  // Click Cancel in the confirmation modal.
+  await context.healPage.click([
+    { type: 'testId', value: 'confirm-delete-cancel' },
+    { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
+  ]);
+
+  // Wait briefly for the modal close animation before checking state.
+  await context.page.waitForTimeout(200);
+
+  await context.page.waitForLoadState('networkidle');
+
+  const finalUrl = context.page.url();
+  // Still on the contact detail page if path matches /contacts/:id.
+  const stillOnDetailPage = new URL(finalUrl).pathname === `/contacts/${id}`;
+
+  return { stillOnDetailPage, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// cancelContactEdit()
+// ---------------------------------------------------------------------------
+
+/** Result returned by cancelContactEdit. */
+export interface CancelContactEditResult {
+  /** True when the detail page returned to read mode (edit button is back). */
+  backToReadMode: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to a contact's detail page, enters edit mode, modifies a field,
+ * then cancels — verifying the change was not persisted.
+ *
+ * @param id - Contact UUID.
+ * @param fieldValue - A value typed into first_name before cancelling.
+ * @param context - Playwright fixture context.
+ * @returns CancelContactEditResult.
+ */
+export async function cancelContactEdit(
+  id: string,
+  fieldValue: string,
+  context: ContactsBehaviorContext,
+): Promise<CancelContactEditResult> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.navigate(id);
+  await detailPage.clickEdit();
+
+  // Type something to make the cancel meaningful.
+  await detailPage.fillField('contact-first-name', 'First name', fieldValue);
+
+  // Click Cancel.
+  await context.healPage.click([
+    { type: 'testId', value: 'contact-form-cancel' },
+    { type: 'role', value: 'button', options: { name: t('contacts.cancel'), exact: false } },
+  ]);
+
+  await context.page.waitForLoadState('networkidle');
+
+  const backToReadMode = await detailPage.isLoaded();
+  const finalUrl = detailPage.url();
+
+  return { backToReadMode, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// searchContacts()
+// ---------------------------------------------------------------------------
+
+/** Result returned by searchContacts. */
+export interface SearchContactsResult {
+  /** Number of contact rows visible after the search settled. */
+  rowCount: number;
+  /** True when the empty-state placeholder is visible. */
+  emptyStateVisible: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to /contacts, types a search term, and waits for results to settle.
+ *
+ * @param searchTerm - Text to type into the search input.
+ * @param context - Playwright fixture context.
+ * @returns SearchContactsResult.
+ */
+export async function searchContacts(
+  searchTerm: string,
+  context: ContactsBehaviorContext,
+): Promise<SearchContactsResult> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.navigate();
+
+  await context.healPage.fill(searchTerm, [
+    { type: 'testId', value: 'contacts-search' },
+    { type: 'label', value: 'Search', options: { exact: false } },
+  ]);
+
+  // Wait for debounce + network.
+  await context.page.waitForLoadState('networkidle');
+  // Extra settle time for debounce (300 ms default in app).
+  await context.page.waitForTimeout(500);
+  await context.page.waitForLoadState('networkidle');
+
+  const rowCount = await contactsPage.rowCount();
+
+  const emptyLocator = context.page.locator('text=' + t('contacts.empty')).first();
+  const emptyStateVisible = await emptyLocator.isVisible().catch(() => false);
+
+  const finalUrl = contactsPage.url();
+
+  return { rowCount, emptyStateVisible, finalUrl };
 }
