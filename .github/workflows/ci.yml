@@ -133,6 +133,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('**/node_modules/@playwright/test/package.json') }}
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -336,6 +342,12 @@ jobs:
       - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
         run: rm -f package-lock.json && npm install
 
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('**/node_modules/@playwright/test/package.json') }}
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -514,6 +526,12 @@ jobs:
 
       - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
         run: rm -f package-lock.json && npm install
+
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('**/node_modules/@playwright/test/package.json') }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
