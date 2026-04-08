@@ -18,12 +18,28 @@ export type {
   NavigateToProtectedPageResult,
 } from './auth.behaviors.js';
 
-export { navigateToContacts, editContact } from './contacts.behaviors.js';
+export {
+  navigateToContacts,
+  editContact,
+  createContactViaUI,
+  cancelContactCreate,
+  deleteContactViaUI,
+  cancelDeleteContact,
+  cancelContactEdit,
+  searchContacts,
+} from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
   NavigateToContactsResult,
   ContactChanges,
   EditContactResult,
+  CreateContactUIFields,
+  CreateContactViaUIResult,
+  CancelContactCreateResult,
+  DeleteContactViaUIResult,
+  CancelDeleteContactResult,
+  CancelContactEditResult,
+  SearchContactsResult,
 } from './contacts.behaviors.js';
 
 export { openDeal, advanceDealStage, closeDealAsWon } from './deals.behaviors.js';
