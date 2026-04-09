@@ -107,12 +107,16 @@ export async function setNavLayoutViaUI(
   // Poll until aria-checked="true" on the selected button, which confirms the
   // PATCH has completed and the context has updated. Avoids fixed waitForTimeout.
   await button.waitFor({ state: 'visible' });
+  let successFeedbackVisible = false;
   await button
     .and(page.locator('[aria-checked="true"]'))
     .waitFor({ state: 'visible' })
+    .then(() => {
+      successFeedbackVisible = true;
+    })
     .catch(() => null);
 
-  return { clicked: true, successFeedbackVisible: true };
+  return { clicked: true, successFeedbackVisible };
 }
 
 // ---------------------------------------------------------------------------
