@@ -191,21 +191,19 @@ test.describe.serial('Layout-mutating tests', () => {
         await navigateViaNavLink('top', 'contacts', { page, healPage, testName });
 
         const contactsLink = page.getByTestId('nav-top-contacts');
-        await contactsLink.waitFor({ state: 'visible' });
-        const classAttr = await contactsLink.getAttribute('class');
-
-        // The active class is 'bg-indigo-50 text-indigo-700' per NavTop.tsx navLinkClass.
-        expect(classAttr, 'active nav-top-contacts should carry indigo active class').toContain(
-          'text-indigo-700',
-        );
+        // Use auto-retrying toHaveClass so React Router's NavLink class update is
+        // not read as a one-shot snapshot that can race the re-render cycle.
+        await expect(
+          contactsLink,
+          'active nav-top-contacts should carry indigo active class',
+        ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
         const dealsLink = page.getByTestId('nav-top-deals');
-        const dealsClass = await dealsLink.getAttribute('class');
-        expect(
-          dealsClass,
+        await expect(
+          dealsLink,
           'inactive nav-top-deals should not carry the active indigo class',
-        ).not.toContain('text-indigo-700');
+        ).not.toHaveClass(/text-indigo-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-TN2');
       }
@@ -266,21 +264,19 @@ test.describe.serial('Layout-mutating tests', () => {
         await navigateViaNavLink('left', 'accounts', { page, healPage, testName });
 
         const accountsLink = page.getByTestId('nav-left-accounts');
-        await accountsLink.waitFor({ state: 'visible' });
-        const classAttr = await accountsLink.getAttribute('class');
-
-        // The active class is 'bg-indigo-50 text-indigo-700' per NavLeft.tsx sidebarLinkClass.
-        expect(classAttr, 'active nav-left-accounts should carry indigo active class').toContain(
-          'text-indigo-700',
-        );
+        // Use auto-retrying toHaveClass so React Router's NavLink class update is
+        // not read as a one-shot snapshot that can race the re-render cycle.
+        await expect(
+          accountsLink,
+          'active nav-left-accounts should carry indigo active class',
+        ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
         const tasksLink = page.getByTestId('nav-left-tasks');
-        const tasksClass = await tasksLink.getAttribute('class');
-        expect(
-          tasksClass,
+        await expect(
+          tasksLink,
           'inactive nav-left-tasks should not carry the active indigo class',
-        ).not.toContain('text-indigo-700');
+        ).not.toHaveClass(/text-indigo-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-LN2');
       }
@@ -713,8 +709,9 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
 
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
   // The page must not be blank or show an unhandled 500.
+  // React Query's error state may render after networkidle, so give it extra time.
   const alert = page.getByRole('alert');
-  await expect(alert).toBeVisible();
+  await expect(alert).toBeVisible({ timeout: 10_000 });
 });
 
 test('@functional F8-DL4: deep link to admin-only route as rep redirects to dashboard', async ({
