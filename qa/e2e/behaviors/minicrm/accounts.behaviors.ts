@@ -222,27 +222,40 @@ export async function createAccountViaUI(
     { type: 'role', value: 'button', options: { name: t('accounts.save'), exact: false } },
   ]);
 
-  // Wait for the outcome to settle. On success, the form closes and the New Account
-  // button reappears. On validation error, the form stays open but the browser's
-  // built-in required-field validation fires synchronously without a network round-trip.
-  // Waiting for networkidle alone can be unreliable on slow CI — use a DOM signal first.
+  // Wait for the outcome to settle.
+  //
+  // Success path: the form closes and the New Account button reappears. We wait for
+  // that explicit DOM signal. networkidle is intentionally NOT used as the primary
+  // wait here: on slow CI the network can go idle immediately after the POST response
+  // arrives, before React has re-rendered to close the form. Reading form visibility
+  // at that instant gives a false positive ("form still open" = account not created),
+  // which is the root cause of F3-C2 flakiness.
+  //
+  // Validation-error path: HTML5 required-field validation fires synchronously — no
+  // POST is made, the form stays open, and the button never reappears. Racing the
+  // button-wait against a short networkidle wait lets the validation path resolve
+  // quickly (network is idle immediately since nothing was sent), while the success
+  // path is anchored to the button signal and never uses networkidle as its resolver.
   await Promise.race([
-    // Success path: New Account button reappears once the form is gone.
     context.page
-      .waitForSelector('[data-testid="new-account-button"]', { timeout: 10_000 })
+      .waitForSelector('[data-testid="new-account-button"]', { state: 'visible', timeout: 10_000 })
       .catch(() => null),
-    // Error path: form stays visible; wait for networkidle to settle any in-flight requests.
-    context.page.waitForLoadState('networkidle').catch(() => null),
+    // Validation-error fast exit: if no network request was made, idle settles in
+    // milliseconds and we can check form state immediately. The 500 ms grace period
+    // guards against any micro-task delay in the form's submit handler.
+    context.page.waitForLoadState('networkidle', { timeout: 500 }).catch(() => null),
   ]);
 
+  // Re-read button visibility as the canonical outcome signal: if the button is now
+  // visible, the form closed (account created). If not, the form is still open.
+  const buttonVisible = await context.page
+    .locator('[data-testid="new-account-button"]')
+    .isVisible()
+    .catch(() => false);
+
   const finalUrl = context.page.url();
-
-  // Check form still visible (validation error).
-  const formLocator = context.page.locator('[data-testid="account-form"]');
-  const formStillVisible = await formLocator.isVisible().catch(() => false);
-
-  const created = !formStillVisible;
-  const validationError = formStillVisible;
+  const created = buttonVisible;
+  const validationError = !buttonVisible;
 
   return { created, validationError, finalUrl };
 }
