@@ -184,8 +184,9 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
     });
 
     // Admin should be able to delete the rep's contact.
+    // Server returns 204 No Content on successful DELETE.
     const res = await restClient.delete(`/api/contacts/${contact.id}`);
-    expect(res.status, 'admin should be able to delete a contact owned by a rep').toBe(200);
+    expect(res.status, 'admin should be able to delete a contact owned by a rep').toBe(204);
   } finally {
     await repRequestContext.dispose().catch(() => null);
     await restClient
@@ -200,29 +201,29 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
 // ---------------------------------------------------------------------------
 
 test('@functional F7-RP1: rep can create and read their own contact', async ({
+  playwright,
   restClient,
   testData,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    // Authenticate as rep.
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
-    const contact = await createTestContact(testData, restClient, {
+    const contact = await createTestContact(testData, repClient, {
       first_name: 'F7RP1',
       last_name: `Own-${Date.now()}`,
     });
 
-    const res = await restClient.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
+    const res = await repClient.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
     expect(res.status, 'rep should be able to read their own contact').toBe(200);
     expect(res.body.contact.id).toBe(contact.id);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-RP1');
   }
 });
@@ -267,37 +268,38 @@ test('@functional F7-RP2: rep can read a contact owned by another rep', async ({
 });
 
 test('@functional F7-RP3: rep can create and complete their own task', async ({
+  playwright,
   restClient,
   testData,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     // Need an account to link the activity to.
-    const account = await createTestAccount(testData, restClient, {
+    const account = await createTestAccount(testData, repClient, {
       name: `F7RP3 Account ${Date.now()}`,
     });
-    const activity = await createTestActivity(testData, restClient, {
+    const activity = await createTestActivity(testData, repClient, {
       type: 'Task',
       subject: `F7RP3 Task ${Date.now()}`,
       account_id: account.id,
     });
 
     // Rep completes their own task.
-    const res = await restClient.patch<{ activity: { id: string; status: string } }>(
+    const res = await repClient.patch<{ activity: { id: string; status: string } }>(
       `/api/activities/${activity.id}`,
       { status: 'complete' },
     );
     expect(res.status, 'rep should be able to complete their own task').toBe(200);
     expect(res.body.activity.status, 'task status should be complete').toBe('complete');
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-RP3');
   }
 });
@@ -469,18 +471,21 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({
 // ---------------------------------------------------------------------------
 
 test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.get('/api/users');
+      await repClient.get('/api/users');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -490,26 +495,27 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
     }
     expect(errorStatus, 'rep GET /api/users should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA1');
   }
 });
 
 test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.post('/api/users/invite', {
+      await repClient.post('/api/users/invite', {
         name: 'Forbidden Invite',
         email: `f7-forbidden-${Date.now()}@example.com`,
         role: 'rep',
@@ -523,9 +529,7 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
     }
     expect(errorStatus, 'rep POST /api/users/invite should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA2');
   }
 });
@@ -667,19 +671,23 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
   }
 });
 
-test('@functional F7-FA7: rep calling GET /api/automation receives 403 (AC1)', async ({
+test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.get('/api/automation');
+      // Automation routes are mounted at /api/automation/rules (not /api/automation).
+      await repClient.get('/api/automation/rules');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -687,28 +695,30 @@ test('@functional F7-FA7: rep calling GET /api/automation receives 403 (AC1)', a
         throw err;
       }
     }
-    expect(errorStatus, 'rep GET /api/automation should return 403').toBe(403);
+    expect(errorStatus, 'rep GET /api/automation/rules should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA7');
   }
 });
 
-test('@functional F7-FA8: rep calling POST /api/automation receives 403 (AC1)', async ({
+test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.post('/api/automation', {
+      // Automation routes are mounted at /api/automation/rules (not /api/automation).
+      await repClient.post('/api/automation/rules', {
         name: 'Forbidden Rule',
         trigger: 'deal_created',
         action: 'log',
@@ -721,28 +731,29 @@ test('@functional F7-FA8: rep calling POST /api/automation receives 403 (AC1)', 
         throw err;
       }
     }
-    expect(errorStatus, 'rep POST /api/automation should return 403').toBe(403);
+    expect(errorStatus, 'rep POST /api/automation/rules should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA8');
   }
 });
 
 test('@functional F7-FA9: rep calling PATCH /api/settings/default-language receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.patch('/api/settings/default-language', { language: 'fr' });
+      await repClient.patch('/api/settings/default-language', { language: 'fr' });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -752,26 +763,27 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
     }
     expect(errorStatus, 'rep PATCH /api/settings/default-language should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA9');
   }
 });
 
 test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 403 (AC1)', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorStatus: number | null = null;
     try {
-      await restClient.patch('/api/settings/nav-layout', { layout: 'left' });
+      await repClient.patch('/api/settings/nav-layout', { layout: 'left' });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -781,9 +793,7 @@ test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 4
     }
     expect(errorStatus, 'rep PATCH /api/settings/nav-layout should return 403').toBe(403);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA10');
   }
 });
@@ -828,6 +838,10 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
         throw err;
       }
     }
+    expect(
+      errorStatus,
+      'rep2 deleting rep1 contact should have been rejected with a non-null status',
+    ).not.toBeNull();
     expect([403, 404], 'rep2 deleting rep1 contact should be forbidden (403 or 404)').toContain(
       errorStatus,
     );
@@ -847,19 +861,22 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
 // ---------------------------------------------------------------------------
 
 test('@functional F7-EH1: forbidden API response includes structured error body', async ({
+  playwright,
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const { user: rep } = await createActivatedUser(restClient);
+  const repContext = await playwright.request.newContext();
+  const repClient = new RestClient(repContext);
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
 
     let errorBody: unknown = null;
     let errorStatus: number | null = null;
     try {
-      await restClient.get('/api/users');
+      await repClient.get('/api/users');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -879,9 +896,7 @@ test('@functional F7-EH1: forbidden API response includes structured error body'
     expect(typeof body.error?.message, 'error.message should be a string').toBe('string');
     expect(body.error?.message?.length, 'error.message should be non-empty').toBeGreaterThan(0);
   } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
+    await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-EH1');
   }
 });
