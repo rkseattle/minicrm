@@ -241,6 +241,8 @@ Before opening a PR, review the full `git diff main` with these checks. Each bul
 
 - **RTL safety** — new Tailwind layout classes must use logical properties (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`) not physical ones (`pl-`, `pr-`, `ml-`, `mr-`, `left-`, `right-`).
 
+- **Dependency audit** — run `npm audit --audit-level=high` from the repo root before pushing. Zero high/critical vulnerabilities is required. If a vulnerability is found, fix it (upgrade the package) before opening the PR — do not open with a known audit failure.
+
 ## General Behavior
 
 - Ask before deleting or overwriting files
