@@ -76,17 +76,19 @@ export async function setNavLayoutViaAPI(
 export interface SetNavLayoutViaUIResult {
   /** True if the layout option button was found and clicked. */
   clicked: boolean;
-  /** True if the success feedback appeared in the UI after saving. */
+  /** True if the aria-checked attribute confirmed the selection after saving. */
   successFeedbackVisible: boolean;
 }
 
 /**
  * Selects a navigation layout using the radio buttons on the Admin Settings page.
  * Assumes the caller has already navigated to /admin/settings and the page is loaded.
+ * Waits for the button's aria-checked attribute to become "true" before returning,
+ * ensuring the PATCH has round-tripped before the caller proceeds.
  *
  * @param layout - The target layout to activate.
  * @param context - Behavior context with page and healPage.
- * @returns Result describing whether the click and success feedback were observed.
+ * @returns Result describing whether the click and aria-checked confirmation were observed.
  */
 export async function setNavLayoutViaUI(
   layout: NavLayout,
@@ -102,14 +104,15 @@ export async function setNavLayoutViaUI(
 
   await button.click();
 
-  // The button triggers a PATCH immediately; there is no separate Save button
-  // for the nav layout section. Wait briefly for the network round-trip.
-  await page.waitForTimeout(500);
+  // Poll until aria-checked="true" on the selected button, which confirms the
+  // PATCH has completed and the context has updated. Avoids fixed waitForTimeout.
+  await button.waitFor({ state: 'visible' });
+  await button
+    .and(page.locator('[aria-checked="true"]'))
+    .waitFor({ state: 'visible' })
+    .catch(() => null);
 
-  // AdminSettingsPage does not currently show a success toast for nav layout —
-  // the aria-checked attribute flips to true on the selected button, which is
-  // the only visual confirmation. We treat the click as success here.
-  return { clicked: true, successFeedbackVisible: false };
+  return { clicked: true, successFeedbackVisible: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +127,7 @@ export interface OpenHamburgerMenuResult {
 
 /**
  * Opens the hamburger menu overlay by clicking the toggle button.
- * Waits for the drawer to appear before returning.
+ * Waits for the drawer to reach the visible state before returning.
  *
  * @param context - Behavior context with page.
  * @returns Result indicating whether the drawer appeared.
@@ -136,6 +139,9 @@ export async function openHamburgerMenu(
 
   await page.getByTestId('nav-menu-toggle').click();
   const drawer = page.getByTestId('nav-hamburger-drawer');
+  // Wait for React to render the drawer — isVisible() after click() is a
+  // snapshot that races React state updates (Greptile P1 finding).
+  await drawer.waitFor({ state: 'visible' }).catch(() => null);
   const drawerVisible = await drawer.isVisible().catch(() => false);
   return { drawerVisible };
 }
@@ -163,10 +169,13 @@ export async function closeHamburgerMenuViaBackdrop(
   const { page } = context;
 
   // Click a point outside the drawer — top-right corner of the viewport is safe.
-  await page.mouse.click(page.viewportSize()!.width - 10, 10);
-  await page.waitForTimeout(300);
+  // Use optional chaining to guard against null viewport (Greptile P2 finding).
+  const viewportWidth = page.viewportSize()?.width ?? 1024;
+  await page.mouse.click(viewportWidth - 10, 10);
 
   const drawer = page.getByTestId('nav-hamburger-drawer');
+  // Wait for the drawer to disappear rather than using a fixed timeout.
+  await drawer.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = await drawer.isVisible().catch(() => false);
   return { drawerClosed: !drawerVisible };
 }
@@ -194,9 +203,10 @@ export async function closeHamburgerMenuViaCloseButton(
   const { page } = context;
 
   await page.getByTestId('nav-hamburger-close').click();
-  await page.waitForTimeout(300);
 
   const drawer = page.getByTestId('nav-hamburger-drawer');
+  // Wait for the drawer to disappear rather than using a fixed timeout.
+  await drawer.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = await drawer.isVisible().catch(() => false);
   return { drawerClosed: !drawerVisible };
 }
