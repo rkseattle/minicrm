@@ -508,10 +508,7 @@
     "inputLabel": "Search",
     "placeholder": "Search…",
     "minLengthHint": "Type at least {{min}} characters to search",
-    "noResults": "No results for \"{{query}}\"",
-    "contactsHeading": "Contacts",
-    "accountsHeading": "Accounts",
-    "dealsHeading": "Deals"
+    "noResults": "No results for \"{{query}}\""
   },
   "pagination": {
     "previous": "Previous",

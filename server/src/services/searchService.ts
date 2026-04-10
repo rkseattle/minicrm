@@ -57,7 +57,9 @@ interface SearchOptions {
  * @returns Grouped search results
  */
 export async function globalSearch(query: string, options: SearchOptions): Promise<SearchResults> {
-  const pattern = `%${query}%`;
+  // Escape LIKE metacharacters so they are treated as literals, not wildcards
+  const escaped = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const pattern = `%${escaped}%`;
   const isAdmin = options.role === 'admin';
 
   const [contactRows, accountRows, dealRows] = await Promise.all([
@@ -65,7 +67,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     pool.query<ContactSearchResult>(
       `SELECT id, first_name, last_name, email
        FROM contacts
-       WHERE (first_name ILIKE $1 OR last_name ILIKE $1 OR email ILIKE $1)
+       WHERE (first_name ILIKE $1 ESCAPE '\\' OR last_name ILIKE $1 ESCAPE '\\' OR email ILIKE $1 ESCAPE '\\')
          AND ($2 OR owner_id = $3)
        ORDER BY last_name, first_name
        LIMIT $4`,
@@ -76,7 +78,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     pool.query<AccountSearchResult>(
       `SELECT id, name
        FROM accounts
-       WHERE name ILIKE $1
+       WHERE name ILIKE $1 ESCAPE '\\'
          AND ($2 OR owner_id = $3)
        ORDER BY name
        LIMIT $4`,
@@ -87,7 +89,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     pool.query<DealSearchResult>(
       `SELECT id, name, stage
        FROM deals
-       WHERE name ILIKE $1
+       WHERE name ILIKE $1 ESCAPE '\\'
          AND ($2 OR owner_id = $3)
        ORDER BY name
        LIMIT $4`,

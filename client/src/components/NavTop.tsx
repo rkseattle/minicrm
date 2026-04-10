@@ -148,7 +148,10 @@ export default function NavTop() {
 
         {/* Right controls */}
         <div className="flex items-center gap-3">
-          <GlobalSearch />
+          {/* Search — desktop only; appears in mobile drawer below */}
+          <div className="hidden lg:block">
+            <GlobalSearch />
+          </div>
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
           <select
             aria-label={t('nav.languageSelector')}
@@ -224,6 +227,10 @@ export default function NavTop() {
           aria-label={t('nav.menu')}
           className="lg:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-1"
         >
+          {/* Search — mobile drawer */}
+          <div className="pb-2">
+            <GlobalSearch />
+          </div>
           {visibleLinks.map((link) => (
             <NavLink
               key={link.to}

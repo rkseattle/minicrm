@@ -288,4 +288,36 @@ describe('globalSearch — special characters', () => {
       globalSearch(longQuery, { userId: adminId, role: 'admin' }),
     ).resolves.toBeDefined();
   });
+
+  it('treats % as a literal character, not a wildcard', async () => {
+    await createContact({
+      first_name: 'Percent',
+      last_name: 'Test',
+      email: 'percent@example.com',
+      owner_id: adminId,
+    });
+
+    // Searching for '%' should not match 'Percent' — it must be escaped
+    const results = await globalSearch('%', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.first_name === 'Percent')).toBe(false);
+  });
+
+  it('treats _ as a literal character, not a single-character wildcard', async () => {
+    await createContact({
+      first_name: 'Underscore',
+      last_name: 'Test',
+      email: 'underscore@example.com',
+      owner_id: adminId,
+    });
+    await createContact({
+      first_name: 'AB',
+      last_name: 'Test',
+      email: 'ab@example.com',
+      owner_id: adminId,
+    });
+
+    // Searching '_B' should not match 'AB' (single-char wildcard) when properly escaped
+    const results = await globalSearch('_B', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.first_name === 'AB')).toBe(false);
+  });
 });

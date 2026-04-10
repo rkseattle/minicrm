@@ -3,7 +3,16 @@
  */
 
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { globalSearch, SEARCH_MIN_LENGTH } from '../services/searchService.js';
+
+/** Zod schema for the search query parameters */
+const searchQuerySchema = z.object({
+  q: z
+    .string({ required_error: 'q is required' })
+    .trim()
+    .min(SEARCH_MIN_LENGTH, `Search query must be at least ${SEARCH_MIN_LENGTH} characters.`),
+});
 
 /**
  * GET /api/search?q=<term>
@@ -15,10 +24,9 @@ import { globalSearch, SEARCH_MIN_LENGTH } from '../services/searchService.js';
  * @param res - Express response
  */
 export async function globalSearchHandler(req: Request, res: Response): Promise<void> {
-  const rawQuery = req.query.q;
-  const query = typeof rawQuery === 'string' ? rawQuery.trim() : '';
+  const parsed = searchQuerySchema.safeParse(req.query);
 
-  if (query.length < SEARCH_MIN_LENGTH) {
+  if (!parsed.success) {
     res.status(400).json({
       error: {
         code: 'QUERY_TOO_SHORT',
@@ -28,7 +36,7 @@ export async function globalSearchHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  const results = await globalSearch(query, {
+  const results = await globalSearch(parsed.data.q, {
     userId: req.user!.id,
     role: req.user!.role as 'admin' | 'rep',
   });
