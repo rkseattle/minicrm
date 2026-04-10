@@ -344,7 +344,7 @@
     },
     "navLayout": {
       "label": "Navigations-Layout",
-      "hint": "Wählen Sie, wie die Navigation für alle Benutzer angezeigt wird. Änderungen werden sofort wirksam.",
+      "hint": "Wählen Sie, wie die Navigation für alle Desktop-Benutzer angezeigt wird. Auf Mobilgeräten wird immer das Hamburger-Menü verwendet.",
       "top": "Obere Navigation",
       "left": "Linke Navigation",
       "hamburger": "Hamburger-Menü",

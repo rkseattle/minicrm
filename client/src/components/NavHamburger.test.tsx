@@ -126,24 +126,28 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
 
-  it('renders the language selector', async () => {
+  it('renders the language selector in the top bar', async () => {
     renderNavHamburger();
     await waitFor(() => {
       expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
     });
   });
 
-  it('global search input is present in the open drawer', async () => {
-    const user = userEvent.setup();
+  it('renders the logout button in the top bar', async () => {
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
-    expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
   });
 
-  it('shows the logged-in user name', async () => {
+  it('renders the global search input in the top bar', async () => {
+    renderNavHamburger();
+    await waitFor(() => {
+      expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the logged-in user name in the top bar', async () => {
     renderNavHamburger();
     await waitFor(() => {
       expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
@@ -168,11 +172,6 @@ describe('NavHamburger', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-    });
-    // Open drawer first so logout button is visible
-    await user.click(screen.getByTestId('nav-menu-toggle'));
     await waitFor(() => {
       expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
     });

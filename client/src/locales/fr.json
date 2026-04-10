@@ -344,7 +344,7 @@
     },
     "navLayout": {
       "label": "Disposition de navigation",
-      "hint": "Choisissez comment la navigation est affichée pour tous les utilisateurs. Les modifications prennent effet immédiatement.",
+      "hint": "Choisissez comment la navigation est affichée pour tous les utilisateurs sur ordinateur. Sur mobile, le menu hamburger est toujours utilisé.",
       "top": "Barre supérieure",
       "left": "Panneau latéral",
       "hamburger": "Menu hamburger",
