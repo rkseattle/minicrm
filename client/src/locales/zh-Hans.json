@@ -508,10 +508,7 @@
     "inputLabel": "搜索",
     "placeholder": "搜索…",
     "minLengthHint": "请输入至少 {{min}} 个字符",
-    "noResults": "未找到《{{query}}》的结果",
-    "contactsHeading": "联系人",
-    "accountsHeading": "客户",
-    "dealsHeading": "商机"
+    "noResults": "未找到《{{query}}》的结果"
   },
   "pagination": {
     "previous": "上一页",

@@ -508,10 +508,7 @@
     "inputLabel": "Rechercher",
     "placeholder": "Rechercher…",
     "minLengthHint": "Saisissez au moins {{min}} caractères pour rechercher",
-    "noResults": "Aucun résultat pour « {{query}} »",
-    "contactsHeading": "Contacts",
-    "accountsHeading": "Comptes",
-    "dealsHeading": "Opportunités"
+    "noResults": "Aucun résultat pour « {{query}} »"
   },
   "pagination": {
     "previous": "Précédent",
