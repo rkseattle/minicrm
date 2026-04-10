@@ -129,6 +129,24 @@ describe('NavTop', () => {
     });
   });
 
+  it('navigates to /login after the mobile drawer logout button is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<NavTop />} />
+        <Route path="/login" element={<div>Login page</div>} />
+      </Routes>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-logout-mobile'));
+    await waitFor(() => {
+      expect(screen.getByText('Login page')).toBeInTheDocument();
+    });
+  });
+
   it('navigates to /login after logout is clicked', async () => {
     const user = userEvent.setup();
     renderWithProviders(
