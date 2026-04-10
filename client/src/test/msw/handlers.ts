@@ -18,6 +18,7 @@ import type {
   AutomationRuleResponse,
   AutomationRuleLogResponse,
 } from '@shared/schemas/automationSchema.js';
+import type { SearchResponse } from '@/api/search.js';
 
 /** Reusable fixture: an automation rule */
 export const AUTOMATION_RULE_1: AutomationRuleResponse = {
@@ -724,5 +725,41 @@ export const handlers = [
   /** Admin: DELETE /api/admin/demo */
   http.delete('/api/admin/demo', () => {
     return HttpResponse.json({ success: true });
+  }),
+
+  /** Search: GET /api/search — returns contacts, accounts, and deals matching ?q= */
+  http.get('/api/search', ({ request }) => {
+    const url = new URL(request.url);
+    const query = url.searchParams.get('q') ?? '';
+    if (query.length < 2) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'QUERY_TOO_SHORT',
+            message: 'Search query must be at least 2 characters.',
+          },
+        },
+        { status: 400 },
+      );
+    }
+    const searchResponse: SearchResponse = {
+      contacts: query.toLowerCase().includes('alice')
+        ? [
+            {
+              id: CONTACT_1.id,
+              first_name: 'Alice',
+              last_name: 'Smith',
+              email: 'alice@example.com',
+            },
+          ]
+        : [],
+      accounts: query.toLowerCase().includes('acme')
+        ? [{ id: ACCOUNT_1.id, name: 'Acme Corp' }]
+        : [],
+      deals: query.toLowerCase().includes('acme')
+        ? [{ id: DEAL_1.id, name: 'Acme Enterprise Deal', stage: 'Prospecting' }]
+        : [],
+    };
+    return HttpResponse.json(searchResponse);
   }),
 ];

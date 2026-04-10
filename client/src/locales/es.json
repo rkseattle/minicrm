@@ -504,6 +504,15 @@
     "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página."
   },
+  "search": {
+    "inputLabel": "Buscar",
+    "placeholder": "Buscar…",
+    "minLengthHint": "Escribe al menos {{min}} caracteres para buscar",
+    "noResults": "Sin resultados para «{{query}}»",
+    "contactsHeading": "Contactos",
+    "accountsHeading": "Cuentas",
+    "dealsHeading": "Negocios"
+  },
   "pagination": {
     "previous": "Anterior",
     "next": "Siguiente",

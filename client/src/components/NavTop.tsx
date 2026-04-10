@@ -15,6 +15,7 @@ import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
+import GlobalSearch from './GlobalSearch.js';
 
 /**
  * Returns Tailwind classes for a desktop nav link based on its active state.
@@ -147,6 +148,7 @@ export default function NavTop() {
 
         {/* Right controls */}
         <div className="flex items-center gap-3">
+          <GlobalSearch />
           {user && <span className="text-sm text-gray-500 hidden sm:block">{user.name}</span>}
           <select
             aria-label={t('nav.languageSelector')}
