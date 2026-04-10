@@ -15,6 +15,7 @@ import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
+import GlobalSearch from './GlobalSearch.js';
 
 /**
  * Returns Tailwind classes for an overlay nav link based on its active state.
@@ -215,6 +216,11 @@ export default function NavHamburger() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          {/* Search */}
+          <div className="px-3 py-2 border-b border-gray-100">
+            <GlobalSearch />
           </div>
 
           {/* Nav links */}

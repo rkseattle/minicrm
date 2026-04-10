@@ -43,7 +43,6 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -52,19 +51,6 @@ import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F9-search] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Layout setup
-//
-// GlobalSearch lives in NavTop only — it is absent in the left-sidebar and
-// hamburger layouts. Set the layout to 'top' via the API before every test so
-// search tests are not affected by layout state left by other parallel specs.
-// ---------------------------------------------------------------------------
-
-test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await setNavLayoutViaAPI('top', restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -81,23 +67,71 @@ interface SearchApiResponse {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the actionable GlobalSearch input for the current viewport.
+ * Returns the actionable GlobalSearch input for the current nav layout and viewport.
  *
- * GlobalSearch lives in NavTop only. On desktop (≥1024 px) it is always
- * visible in the top bar. On mobile (<1024 px) the desktop wrapper is
- * `hidden lg:block` — the input is in the DOM but not clickable. The usable
- * input is inside the mobile nav drawer (`#mobile-nav-drawer`), which only
- * renders while the drawer is open. This helper opens the drawer first on
- * mobile so the visible instance is actionable before returning.
+ * GlobalSearch is present in all three nav layouts (NavTop, NavLeft, NavHamburger).
+ * Each layout exposes it differently:
+ *
+ * - NavTop desktop (≥1024 px): input is always visible in the top bar.
+ * - NavTop mobile (<1024 px): input is in the mobile drawer (`#mobile-nav-drawer`),
+ *   which only renders while the drawer is open. NavTop's desktop input wrapper is
+ *   `hidden lg:block` — present in the DOM but not clickable below lg.
+ * - NavLeft (any width): input is always visible in the sidebar when not collapsed.
+ * - NavHamburger (any width): input is inside the overlay drawer
+ *   (`[data-testid="nav-hamburger-drawer"]`), which only renders when open.
+ *
+ * The helper probes which layout is active by checking for distinctive elements,
+ * then opens any required drawer before returning the scoped locator.
  *
  * @param page - Playwright Page.
  * @returns A Locator for the visible search input.
  */
 async function openSearchInput(page: Page): Promise<Locator> {
-  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  // NavLeft: sidebar is always rendered — check for its collapse toggle.
+  const isNavLeft = await page
+    .getByTestId('nav-left-collapse-toggle')
+    .isVisible()
+    .catch(() => false);
+  if (isNavLeft) {
+    // Input is directly in the sidebar (never inside a drawer for NavLeft).
+    const input = page.getByTestId('global-search-input');
+    await input.waitFor({ state: 'visible', timeout: 5_000 });
+    return input;
+  }
 
+  // NavHamburger: the top bar has nav-menu-toggle but no desktop nav links.
+  // Distinguish from NavTop mobile by checking for hamburger-specific drawer id.
+  const isHamburger = await page
+    .locator('#hamburger-nav-drawer')
+    .count()
+    .then(
+      (n) =>
+        n > 0 ||
+        // drawer may not be open yet — check if the toggle is present without lg:hidden desktop links
+        page
+          .getByTestId('nav-top-contacts')
+          .isVisible()
+          .then((v) => !v)
+          .catch(() => true),
+    )
+    .catch(() => false);
+
+  if (isHamburger) {
+    const drawer = page.getByTestId('nav-hamburger-drawer');
+    const drawerVisible = await drawer.isVisible().catch(() => false);
+    if (!drawerVisible) {
+      await page.getByTestId('nav-menu-toggle').click();
+      await drawer.waitFor({ state: 'visible', timeout: 5_000 });
+    }
+    const input = drawer.getByTestId('global-search-input');
+    await input.waitFor({ state: 'visible', timeout: 5_000 });
+    return input;
+  }
+
+  // NavTop: desktop input is always visible at lg+. On mobile it is inside the
+  // mobile drawer (`#mobile-nav-drawer`) behind `hidden lg:block`.
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
   if (isMobile) {
-    // On mobile the input lives inside the nav drawer — open it first.
     const drawer = page.locator('#mobile-nav-drawer');
     const drawerVisible = await drawer.isVisible().catch(() => false);
     if (!drawerVisible) {

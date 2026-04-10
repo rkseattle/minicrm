@@ -14,6 +14,7 @@ import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
+import GlobalSearch from './GlobalSearch.js';
 
 /**
  * Returns Tailwind classes for a sidebar nav link based on its active state.
@@ -128,6 +129,13 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
             )}
           </button>
         </div>
+
+        {/* Search — hidden when sidebar is collapsed */}
+        {!collapsed && (
+          <div className="px-2 py-2 border-b border-gray-100">
+            <GlobalSearch />
+          </div>
+        )}
 
         {/* Nav links */}
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
