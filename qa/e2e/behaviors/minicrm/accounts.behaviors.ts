@@ -224,26 +224,26 @@ export async function createAccountViaUI(
 
   // Wait for the outcome to settle.
   //
-  // Success path: the form closes and the New Account button reappears. We wait for
-  // that explicit DOM signal. networkidle is intentionally NOT used as the primary
-  // wait here: on slow CI the network can go idle immediately after the POST response
-  // arrives, before React has re-rendered to close the form. Reading form visibility
-  // at that instant gives a false positive ("form still open" = account not created),
-  // which is the root cause of F3-C2 flakiness.
+  // Two possible outcomes after clicking submit:
   //
-  // Validation-error path: HTML5 required-field validation fires synchronously — no
-  // POST is made, the form stays open, and the button never reappears. Racing the
-  // button-wait against a short networkidle wait lets the validation path resolve
-  // quickly (network is idle immediately since nothing was sent), while the success
-  // path is anchored to the button signal and never uses networkidle as its resolver.
+  // 1. Success: a POST fires, the server responds, React closes the form and
+  //    re-renders the New Account button. We wait for that button as the
+  //    canonical signal (up to 10s).
+  //
+  // 2. Validation error: HTML5 required-field validation fires synchronously,
+  //    no POST is made, and the network stays idle immediately. We detect this
+  //    with a 100ms networkidle check — short enough that a real POST cannot
+  //    complete in that window, but long enough for the synchronous validation
+  //    to have prevented submission.
+  //
+  // The previous implementation used 500ms for the networkidle leg, which was
+  // long enough for slow-CI POST responses to cause the race to resolve before
+  // React re-rendered the button — the root cause of the F3-C2 flaky failure.
   await Promise.race([
     context.page
       .waitForSelector('[data-testid="new-account-button"]', { state: 'visible', timeout: 10_000 })
       .catch(() => null),
-    // Validation-error fast exit: if no network request was made, idle settles in
-    // milliseconds and we can check form state immediately. The 500 ms grace period
-    // guards against any micro-task delay in the form's submit handler.
-    context.page.waitForLoadState('networkidle', { timeout: 500 }).catch(() => null),
+    context.page.waitForLoadState('networkidle', { timeout: 100 }).catch(() => null),
   ]);
 
   // Re-read button visibility as the canonical outcome signal: if the button is now
