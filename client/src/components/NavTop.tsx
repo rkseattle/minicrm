@@ -6,7 +6,7 @@
  * (MINCRM-133)
  */
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, useEffect, useCallback } from 'react';
@@ -51,6 +51,7 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
 export default function NavTop() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -60,6 +61,7 @@ export default function NavTop() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      navigate('/login', { replace: true });
     },
   });
 
