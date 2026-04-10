@@ -133,6 +133,16 @@ describe('NavHamburger', () => {
     });
   });
 
+  it('global search input is present in the open drawer', async () => {
+    const user = userEvent.setup();
+    renderNavHamburger();
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('nav-menu-toggle'));
+    expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
+  });
+
   it('shows the logged-in user name', async () => {
     renderNavHamburger();
     await waitFor(() => {

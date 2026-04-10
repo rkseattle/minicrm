@@ -97,6 +97,23 @@ describe('NavLeft', () => {
     });
   });
 
+  it('renders the global search input when sidebar is expanded', async () => {
+    renderNavLeft();
+    await waitFor(() => {
+      expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
+    });
+  });
+
+  it('hides the global search input when sidebar is collapsed', async () => {
+    const user = userEvent.setup();
+    renderNavLeft();
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-left-collapse-toggle')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('nav-left-collapse-toggle'));
+    expect(screen.queryByTestId('global-search-input')).not.toBeInTheDocument();
+  });
+
   it('renders children in the main content area', async () => {
     renderNavLeft(<div data-testid="page-content">Page content</div>);
     await waitFor(() => {
