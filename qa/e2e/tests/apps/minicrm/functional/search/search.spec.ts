@@ -20,8 +20,8 @@
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
  * UI testids used (GlobalSearch.tsx, MINCRM-168):
- *   global-search-input        — the search input (persistent ContentSearchHeader for left/hamburger;
- *                                NavTop header for top desktop; NavTop mobile drawer for top mobile)
+ *   global-search-input        — the search input (NavHeader for all layouts on desktop and
+ *                                left/hamburger mobile; NavTop mobile drawer for NavTop mobile)
  *   search-results-panel       — the results dropdown
  *   search-min-length-hint     — shown when query < 2 chars
  *   search-empty-state         — shown when query >= 2 chars and no results
@@ -70,26 +70,25 @@ interface SearchApiResponse {
 /**
  * Returns the actionable GlobalSearch input.
  *
- * For NavTop mobile (<1024 px), the desktop search input is hidden behind
- * `hidden lg:block` and is not interactable. On mobile it is inside the
- * mobile drawer (`#mobile-nav-drawer`) and requires the drawer to be opened first.
+ * NavLeft and NavHamburger always render the search input visibly in the
+ * persistent header. NavTop on desktop also renders it visibly. Only
+ * NavTop on mobile hides it behind `hidden lg:block` — in that case the
+ * input lives inside the mobile drawer (`#mobile-nav-drawer`) and the
+ * drawer must be opened first.
  *
- * For all other layouts (NavTop desktop, NavLeft, NavHamburger), the search input
- * is always visible in the persistent ContentSearchHeader above page content and
- * requires no drawer interaction.
+ * Detection: check whether the header input is already visible. If not,
+ * open the NavTop mobile drawer and return the input scoped to it.
  *
  * @param page - Playwright Page.
  * @returns A Locator for the visible search input.
  */
 async function openSearchInput(page: Page): Promise<Locator> {
-  // NavTop mobile: input lives inside the mobile drawer behind hidden lg:block.
-  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-  const isNavTop = await page
-    .getByTestId('nav-top-contacts')
-    .isVisible()
-    .catch(() => false);
+  const headerInput = page.getByTestId('global-search-input').first();
+  const isHeaderInputVisible = await headerInput.isVisible().catch(() => false);
 
-  if (isMobile && isNavTop) {
+  if (!isHeaderInputVisible) {
+    // NavTop mobile: the header input is hidden (hidden lg:block wrapper).
+    // Open the mobile drawer which contains its own search input instance.
     const drawer = page.locator('#mobile-nav-drawer');
     const drawerVisible = await drawer.isVisible().catch(() => false);
     if (!drawerVisible) {
@@ -101,10 +100,7 @@ async function openSearchInput(page: Page): Promise<Locator> {
     return input;
   }
 
-  // All other layouts: ContentSearchHeader is always visible above page content.
-  const input = page.getByTestId('global-search-input').first();
-  await input.waitFor({ state: 'visible', timeout: 5_000 });
-  return input;
+  return headerInput;
 }
 
 /**
