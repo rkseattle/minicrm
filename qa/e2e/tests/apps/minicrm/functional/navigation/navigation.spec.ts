@@ -369,6 +369,14 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
+      // The nav layout selector in Admin Settings is hidden on mobile viewports
+      // (hidden lg:block) because mobile always uses hamburger. Nothing to test here.
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(
+        isMobile,
+        'F8-LS1: nav layout selector is desktop-only (hidden lg:block on mobile)',
+      );
+
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
