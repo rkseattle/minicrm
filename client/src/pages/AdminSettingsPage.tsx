@@ -277,9 +277,9 @@ export default function AdminSettingsPage() {
           </form>
         )}
 
-        {/* ── Navigation Layout section ─────────────────────────────────────── */}
+        {/* ── Navigation Layout section — desktop only (mobile always uses hamburger) */}
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className="hidden lg:block mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="nav-layout-section"
         >
           <h2

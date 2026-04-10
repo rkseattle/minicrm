@@ -344,7 +344,7 @@
     },
     "navLayout": {
       "label": "Diseño de navegación",
-      "hint": "Elige cómo se muestra la navegación para todos los usuarios. Los cambios surten efecto inmediatamente.",
+      "hint": "Elige cómo se muestra la navegación para todos los usuarios en escritorio. En móvil, siempre se usa el menú hamburguesa.",
       "top": "Barra superior",
       "left": "Panel lateral",
       "hamburger": "Menú hamburguesa",

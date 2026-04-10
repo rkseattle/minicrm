@@ -38,10 +38,10 @@ function renderNavLeft(children: React.ReactNode = <div data-testid="page-conten
 }
 
 describe('NavLeft', () => {
-  it('renders the MiniCRM brand name', async () => {
+  it('renders the MiniCRM brand name in the header', async () => {
     renderNavLeft();
     await waitFor(() => {
-      expect(screen.getAllByText('MiniCRM').length).toBeGreaterThan(0);
+      expect(screen.getByText('MiniCRM')).toBeInTheDocument();
     });
   });
 
@@ -97,21 +97,11 @@ describe('NavLeft', () => {
     });
   });
 
-  it('renders the global search input when sidebar is expanded', async () => {
+  it('renders the global search input in the header', async () => {
     renderNavLeft();
     await waitFor(() => {
       expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
     });
-  });
-
-  it('hides the global search input when sidebar is collapsed', async () => {
-    const user = userEvent.setup();
-    renderNavLeft();
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-left-collapse-toggle')).toBeInTheDocument();
-    });
-    await user.click(screen.getByTestId('nav-left-collapse-toggle'));
-    expect(screen.queryByTestId('global-search-input')).not.toBeInTheDocument();
   });
 
   it('renders children in the main content area', async () => {
@@ -129,18 +119,20 @@ describe('NavLeft', () => {
   });
 
   describe('collapse toggle', () => {
-    it('clicking collapse toggle hides the language selector', async () => {
+    it('clicking collapse toggle hides the nav link labels', async () => {
       const user = userEvent.setup();
       renderNavLeft();
       await waitFor(() => {
         expect(screen.getByTestId('nav-left-collapse-toggle')).toBeInTheDocument();
       });
-      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
+      // Nav link text is visible when expanded
+      expect(screen.getByTestId('nav-left-contacts')).toHaveTextContent(/contacts/i);
       await user.click(screen.getByTestId('nav-left-collapse-toggle'));
-      expect(screen.queryByTestId('nav-language-select')).not.toBeInTheDocument();
+      // After collapse, link shows only a single-letter abbreviation
+      expect(screen.getByTestId('nav-left-contacts')).not.toHaveTextContent(/contacts/i);
     });
 
-    it('clicking collapse toggle twice restores the language selector', async () => {
+    it('clicking collapse toggle twice restores the nav link labels', async () => {
       const user = userEvent.setup();
       renderNavLeft();
       await waitFor(() => {
@@ -148,7 +140,7 @@ describe('NavLeft', () => {
       });
       await user.click(screen.getByTestId('nav-left-collapse-toggle'));
       await user.click(screen.getByTestId('nav-left-collapse-toggle'));
-      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-left-contacts')).toHaveTextContent(/contacts/i);
     });
   });
 });

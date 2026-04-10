@@ -344,7 +344,7 @@
     },
     "navLayout": {
       "label": "Navigation layout",
-      "hint": "Choose how navigation is displayed for all users. Changes take effect immediately.",
+      "hint": "Choose how navigation is displayed for all users on desktop. On mobile, the hamburger layout is always used.",
       "top": "Top Nav",
       "left": "Left Nav",
       "hamburger": "Hamburger Menu",
