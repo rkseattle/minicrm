@@ -504,6 +504,15 @@
     "generic": "Something went wrong. Please try again.",
     "loadContactsFailed": "Could not load contacts. Please refresh the page."
   },
+  "search": {
+    "inputLabel": "Search",
+    "placeholder": "Search…",
+    "minLengthHint": "Type at least {{min}} characters to search",
+    "noResults": "No results for \"{{query}}\"",
+    "contactsHeading": "Contacts",
+    "accountsHeading": "Accounts",
+    "dealsHeading": "Deals"
+  },
   "pagination": {
     "previous": "Previous",
     "next": "Next",

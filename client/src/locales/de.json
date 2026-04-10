@@ -504,6 +504,15 @@
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu."
   },
+  "search": {
+    "inputLabel": "Suche",
+    "placeholder": "Suchen…",
+    "minLengthHint": "Geben Sie mindestens {{min}} Zeichen ein",
+    "noResults": "Keine Ergebnisse für \u201e{{query}}\u201c",
+    "contactsHeading": "Kontakte",
+    "accountsHeading": "Konten",
+    "dealsHeading": "Geschäfte"
+  },
   "pagination": {
     "previous": "Zurück",
     "next": "Weiter",

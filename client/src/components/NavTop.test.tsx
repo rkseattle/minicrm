@@ -65,6 +65,13 @@ describe('NavTop', () => {
     });
   });
 
+  it('renders the global search input', async () => {
+    renderWithProviders(<NavTop />);
+    await waitFor(() => {
+      expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
+    });
+  });
+
   it('shows the logged-in user name', async () => {
     renderWithProviders(<NavTop />);
     await waitFor(() => {

@@ -504,6 +504,15 @@
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
     "loadContactsFailed": "Impossible de charger les contacts. Veuillez actualiser la page."
   },
+  "search": {
+    "inputLabel": "Rechercher",
+    "placeholder": "Rechercher…",
+    "minLengthHint": "Saisissez au moins {{min}} caractères pour rechercher",
+    "noResults": "Aucun résultat pour « {{query}} »",
+    "contactsHeading": "Contacts",
+    "accountsHeading": "Comptes",
+    "dealsHeading": "Opportunités"
+  },
   "pagination": {
     "previous": "Précédent",
     "next": "Suivant",
