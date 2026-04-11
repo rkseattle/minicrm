@@ -231,23 +231,19 @@ export async function createAccountViaUI(
   //    canonical signal (up to 10s).
   //
   // 2. Validation error: HTML5 required-field validation fires synchronously,
-  //    no POST is made, and the network stays idle immediately. We detect this
-  //    with a 100ms networkidle check — short enough that a real POST cannot
-  //    complete in that window, but long enough for the synchronous validation
-  //    to have prevented submission.
+  //    no POST is made. The form stays open and the button never reappears.
+  //    We time out after 10s and check button visibility — it will be false.
   //
-  // The previous implementation used 500ms for the networkidle leg, which was
-  // long enough for slow-CI POST responses to cause the race to resolve before
-  // React re-rendered the button — the root cause of the F3-C2 flaky failure.
-  await Promise.race([
-    context.page
-      .waitForSelector('[data-testid="new-account-button"]', { state: 'visible', timeout: 10_000 })
-      .catch(() => null),
-    context.page.waitForLoadState('networkidle', { timeout: 100 }).catch(() => null),
-  ]);
+  // We do NOT race with networkidle or a fixed timer. On slow CI mobile runners
+  // even 100ms networkidle can fire while a POST is still in-flight, causing
+  // the race to resolve before React re-renders the button and yielding a false
+  // `created: false` result (MINCRM-139).
+  await context.page
+    .waitForSelector('[data-testid="new-account-button"]', { state: 'visible', timeout: 10_000 })
+    .catch(() => null);
 
-  // Re-read button visibility as the canonical outcome signal: if the button is now
-  // visible, the form closed (account created). If not, the form is still open.
+  // The New Account button being visible is the canonical success signal.
+  // If it is not visible, the form is still open (validation error or server error).
   const buttonVisible = await context.page
     .locator('[data-testid="new-account-button"]')
     .isVisible()
