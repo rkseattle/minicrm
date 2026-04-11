@@ -55,6 +55,21 @@ const forgotPasswordLimiter = rateLimit({
   },
 });
 
+/** 10 reset-password attempts per IP per 15-minute window (skipped in test/e2e) */
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skip: () => isE2E,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Too many password reset attempts, please try again later.',
+    },
+  },
+});
+
 const router = Router();
 
 /**
@@ -350,7 +365,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPasswo
  *                 code: RESET_TOKEN_INVALID
  *                 message: This reset link is invalid or has expired.
  */
-router.post('/reset-password', asyncHandler(resetPassword));
+router.post('/reset-password', resetPasswordLimiter, asyncHandler(resetPassword));
 
 // ── Dev/test-only endpoint ───────────────────────────────────────────────────
 // Returns a plaintext reset token for a given email address.
