@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import type { Location } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -135,6 +135,16 @@ export default function LoginPage() {
               {loginMutation.isPending ? t('login.submitting') : t('login.submitButton')}
             </Button>
           </form>
+
+          <p className="mt-4 text-center text-sm text-gray-500">
+            <Link
+              to="/forgot-password"
+              data-testid="login-forgot-password"
+              className="text-indigo-600 hover:underline"
+            >
+              {t('login.forgotPassword')}
+            </Link>
+          </p>
         </div>
       </div>
     </div>

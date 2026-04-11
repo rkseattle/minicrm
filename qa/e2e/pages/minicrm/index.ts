@@ -27,3 +27,9 @@ export type { MyTasksPageContext } from './MyTasksPage.js';
 
 export { UsersPage } from './UsersPage.js';
 export type { UsersPageContext } from './UsersPage.js';
+
+export { ForgotPasswordPage } from './ForgotPasswordPage.js';
+export type { ForgotPasswordPageContext } from './ForgotPasswordPage.js';
+
+export { ResetPasswordPage } from './ResetPasswordPage.js';
+export type { ResetPasswordPageContext } from './ResetPasswordPage.js';

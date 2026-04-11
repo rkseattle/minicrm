@@ -12,6 +12,8 @@ import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.j
 import NavLeft from '@/components/NavLeft.js';
 import LoginPage from '@/pages/LoginPage.js';
 import ChangePasswordPage from '@/pages/ChangePasswordPage.js';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage.js';
+import ResetPasswordPage from '@/pages/ResetPasswordPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
 import ContactsPage from '@/pages/ContactsPage.js';
 import ContactDetailPage from '@/pages/ContactDetailPage.js';
@@ -51,6 +53,8 @@ function AppRoutes() {
       {/* Public routes — no layout shell */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Authenticated routes */}
       <Route element={<ProtectedRoute />}>

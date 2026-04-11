@@ -26,7 +26,33 @@
     "passwordLabel": "Contraseña",
     "passwordPlaceholder": "Tu contraseña",
     "submitButton": "Iniciar sesión",
-    "submitting": "Iniciando sesión…"
+    "submitting": "Iniciando sesión…",
+    "forgotPassword": "¿Olvidaste tu contraseña?"
+  },
+  "forgotPassword": {
+    "title": "Restablecer contraseña",
+    "subtitle": "Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "submitButton": "Enviar enlace de restablecimiento",
+    "submitting": "Enviando…",
+    "successMessage": "Si existe una cuenta con ese correo electrónico, se ha enviado un enlace. Revisa tu bandeja de entrada.",
+    "backToLogin": "Volver al inicio de sesión"
+  },
+  "resetPassword": {
+    "title": "Establecer nueva contraseña",
+    "newPasswordLabel": "Nueva contraseña",
+    "newPasswordPlaceholder": "Nueva contraseña",
+    "confirmPasswordLabel": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
+    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "submitButton": "Establecer nueva contraseña",
+    "submitting": "Guardando…",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+    "passwordComplexity": "La contraseña debe contener al menos una letra y un número.",
+    "tokenMissing": "Este enlace de restablecimiento es inválido o ha expirado.",
+    "requestNewLink": "Solicitar un nuevo enlace de restablecimiento"
   },
   "users": {
     "pageTitle": "Gestión de usuarios",
@@ -501,6 +527,7 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Tu cuenta ha sido desactivada. Contacta a un administrador.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Por favor, establece tu contraseña antes de iniciar sesión.",
     "VALIDATION_ERROR": "Por favor, revisa tu información e inténtalo de nuevo.",
+    "RESET_TOKEN_INVALID": "Este enlace de restablecimiento es inválido o ha expirado.",
     "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página."
   },

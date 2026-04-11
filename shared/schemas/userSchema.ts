@@ -72,6 +72,25 @@ export const adminSetPasswordSchema = z.object({
 });
 
 /**
+ * Schema for the POST /api/auth/forgot-password request body.
+ */
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .email('Must be a valid email address')
+    .toLowerCase()
+    .trim(),
+});
+
+/**
+ * Schema for the POST /api/auth/reset-password request body.
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string({ required_error: 'Token is required' }).min(1, 'Token is required'),
+  password: passwordComplexitySchema,
+});
+
+/**
  * Schema for the update-role request body.
  */
 export const updateRoleSchema = z.object({
@@ -119,6 +138,8 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 export type AdminSetPasswordInput = z.infer<typeof adminSetPasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type UpdatePreferredLanguageInput = z.infer<typeof updatePreferredLanguageSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
