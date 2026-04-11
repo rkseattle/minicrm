@@ -739,6 +739,49 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
+  /** Import: POST /api/admin/import/:entity/parse — returns headers, fields, preview */
+  http.post('/api/admin/import/:entity/parse', ({ params }) => {
+    const entity = params.entity as string;
+    const headers =
+      entity === 'contacts'
+        ? ['First Name', 'Last Name', 'Email', 'Phone']
+        : entity === 'accounts'
+          ? ['Company', 'Industry', 'Website']
+          : ['Deal Name', 'Stage', 'Value'];
+    const fields =
+      entity === 'contacts'
+        ? [
+            { key: 'first_name', label: 'First Name', required: true },
+            { key: 'last_name', label: 'Last Name', required: true },
+            { key: 'email', label: 'Email', required: true },
+            { key: 'phone', label: 'Phone', required: false },
+          ]
+        : entity === 'accounts'
+          ? [
+              { key: 'name', label: 'Company Name', required: true },
+              { key: 'industry', label: 'Industry', required: false },
+              { key: 'website', label: 'Website', required: false },
+            ]
+          : [
+              { key: 'name', label: 'Deal Name', required: true },
+              { key: 'stage', label: 'Stage', required: true },
+              { key: 'value', label: 'Value', required: false },
+            ];
+    const preview = [Object.fromEntries(headers.map((h, i) => [h, `Sample ${i + 1}`]))];
+    return HttpResponse.json({ headers, fields, preview });
+  }),
+
+  /** Import: POST /api/admin/import/:entity/run — returns import summary */
+  http.post('/api/admin/import/:entity/run', () => {
+    return HttpResponse.json({
+      created: 2,
+      skipped: 1,
+      failedCount: 0,
+      failed: [],
+      errorCsv: '',
+    });
+  }),
+
   /** Search: GET /api/search — returns contacts, accounts, and deals matching ?q= */
   http.get('/api/search', ({ request }) => {
     const url = new URL(request.url);

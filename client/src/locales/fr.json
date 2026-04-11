@@ -401,6 +401,55 @@
       "seedError": "Impossible d'insérer les données de démo. Veuillez réessayer.",
       "resetError": "Impossible de réinitialiser les données de démo. Veuillez réessayer.",
       "removeError": "Impossible de supprimer les données de démo. Veuillez réessayer."
+    },
+    "import": {
+      "sectionTitle": "Importer des données",
+      "sectionHint": "Importez des contacts, des comptes et des affaires depuis des fichiers CSV. Importez d'abord les comptes pour de meilleurs résultats.",
+      "tab": {
+        "accounts": "Comptes",
+        "contacts": "Contacts",
+        "deals": "Affaires"
+      },
+      "accounts": {
+        "hint": "Importez des comptes d'entreprise. Champ obligatoire : Nom.",
+        "skipDuplicates": "Ignorer les lignes où un compte portant le même nom existe déjà"
+      },
+      "contacts": {
+        "hint": "Importez des contacts. Champs obligatoires : Prénom, Nom, E-mail.",
+        "unassignedOwnership": "Laisser les contacts importés sans propriétaire"
+      },
+      "deals": {
+        "hint": "Importez des affaires. Champs obligatoires : Nom de l'affaire, Étape. Importez d'abord les comptes pour les lier par nom.",
+        "skipUnresolvableAccounts": "Ignorer les lignes dont le nom de compte ne correspond à aucun compte existant"
+      }
+    }
+  },
+  "import": {
+    "dropZoneHint": "Cliquez ou déposez un fichier CSV {{entity}} ici",
+    "csvOnly": "Fichiers .csv uniquement, 10 Mo maximum",
+    "fileInputLabel": "Télécharger le fichier CSV {{entity}}",
+    "parsing": "Analyse du CSV en cours…",
+    "selectedFile": "Fichier :",
+    "mappingHeading": "Associer les colonnes CSV aux champs CRM",
+    "selectColumn": "— sélectionner une colonne —",
+    "required": "obligatoire",
+    "previewHeading": "Aperçu (5 premières lignes)",
+    "missingValue": "(manquant)",
+    "previewButton": "Aperçu",
+    "runButton": "Importer {{entity}}",
+    "running": "Importation de {{entity}} en cours…",
+    "back": "Retour",
+    "summaryHeading": "Importation terminée",
+    "summaryCreated": "{{count}} enregistrement(s) créé(s)",
+    "summarySkipped": "{{count}} enregistrement(s) ignoré(s) (doublon)",
+    "summaryFailed": "{{count}} enregistrement(s) en échec",
+    "downloadErrors": "Télécharger le rapport d'erreurs",
+    "importAgain": "Importer un autre fichier {{entity}}",
+    "error": {
+      "notCsv": "Seuls les fichiers .csv sont acceptés",
+      "tooLarge": "Le fichier dépasse la limite de 10 Mo",
+      "parseFailed": "Impossible d'analyser le fichier CSV",
+      "runFailed": "L'importation a échoué — veuillez réessayer"
     }
   },
   "profileSettings": {

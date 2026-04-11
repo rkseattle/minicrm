@@ -22,6 +22,7 @@ import settingsRoutes from './routes/settings.js';
 import automationRoutes from './routes/automation.js';
 import demoRoutes from './routes/demo.js';
 import searchRoutes from './routes/search.js';
+import importRoutes from './routes/import.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
@@ -91,6 +92,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/automation/rules', automationRoutes);
 app.use('/api/admin/demo', demoRoutes);
+app.use('/api/admin/import', importRoutes);
 app.use('/api/search', searchRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
