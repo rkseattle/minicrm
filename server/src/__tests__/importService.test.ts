@@ -246,13 +246,9 @@ describe('importContacts', () => {
     expect(dbRows[0].account_id).toBe(accountId);
   });
 
-  it('still uses adminId as owner when unassigned_ownership is true (contacts.owner_id is NOT NULL)', async () => {
-    // The contacts table enforces NOT NULL on owner_id, so even with unassigned_ownership=true
-    // the import uses the adminId as owner. This test confirms no DB error occurs.
-    const mappingUnassigned: ContactMapping = { ...mapping, unassigned_ownership: true };
+  it('sets owner_id to the importing admin for all created contacts', async () => {
     const rows = [{ First: 'Alice', Last: 'Smith', Email: 'alice@example.com' }];
-    const result = await importContacts(rows, mappingUnassigned, adminId);
-    expect(result.created).toBe(1);
+    await importContacts(rows, mapping, adminId);
 
     const { rows: dbRows } = await pool.query('SELECT owner_id FROM contacts WHERE email = $1', [
       'alice@example.com',
@@ -354,6 +350,21 @@ describe('importDeals', () => {
     const result = await importDeals(rows, mappingWithValue, adminId);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0].reason).toContain('Invalid value');
+  });
+
+  it('fails rows with close_date not in YYYY-MM-DD format', async () => {
+    const mappingWithDate: DealMapping = { ...mapping, close_date: 'CloseDate' };
+    const rows = [{ Deal: 'Bad Date', Stage: 'Prospecting', CloseDate: 'Jan 1 2025' }];
+    const result = await importDeals(rows, mappingWithDate, adminId);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].reason).toContain('Invalid close_date');
+  });
+
+  it('accepts close_date in YYYY-MM-DD format', async () => {
+    const mappingWithDate: DealMapping = { ...mapping, close_date: 'CloseDate' };
+    const rows = [{ Deal: 'Good Date', Stage: 'Prospecting', CloseDate: '2025-12-31' }];
+    const result = await importDeals(rows, mappingWithDate, adminId);
+    expect(result.created).toBe(1);
   });
 
   it('handles a mix of valid, failed, and skipped rows', async () => {

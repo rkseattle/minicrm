@@ -494,17 +494,7 @@ export default function AdminSettingsPage() {
               {tab === 'contacts' && (
                 <>
                   <p className="text-xs text-gray-500 mb-4">{t('settings.import.contacts.hint')}</p>
-                  <CsvImporter
-                    entity="contacts"
-                    entityLabel={t('settings.import.tab.contacts')}
-                    options={[
-                      {
-                        key: 'unassigned_ownership',
-                        label: t('settings.import.contacts.unassignedOwnership'),
-                        defaultValue: false,
-                      },
-                    ]}
-                  />
+                  <CsvImporter entity="contacts" entityLabel={t('settings.import.tab.contacts')} />
                 </>
               )}
               {tab === 'deals' && (

@@ -282,18 +282,52 @@ describe('CsvImporter', () => {
       const user = userEvent.setup();
       renderWithProviders(
         <CsvImporter
-          entity="contacts"
-          entityLabel="Contacts"
-          options={[
-            { key: 'unassigned_ownership', label: 'Leave unassigned', defaultValue: false },
-          ]}
+          entity="accounts"
+          entityLabel="Accounts"
+          options={[{ key: 'skip_duplicates', label: 'Skip duplicates', defaultValue: true }]}
         />,
       );
-      const input = screen.getByTestId('contacts-file-input');
+      const input = screen.getByTestId('accounts-file-input');
       await user.upload(input, makeCsvFile());
       await waitFor(() => {
-        expect(screen.getByTestId('contacts-option-unassigned_ownership')).toBeInTheDocument();
+        expect(screen.getByTestId('accounts-option-skip_duplicates')).toBeInTheDocument();
       });
+    });
+
+    it('handleReset restores option checkboxes to their default values', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <CsvImporter
+          entity="accounts"
+          entityLabel="Accounts"
+          options={[{ key: 'skip_duplicates', label: 'Skip duplicates', defaultValue: true }]}
+        />,
+      );
+      const input = screen.getByTestId('accounts-file-input');
+      await user.upload(input, makeCsvFile());
+      await waitFor(() =>
+        expect(screen.getByTestId('accounts-option-skip_duplicates')).toBeInTheDocument(),
+      );
+
+      // Uncheck the checkbox (change from defaultValue true → false)
+      const checkbox = screen.getByTestId('accounts-option-skip_duplicates') as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+      await user.click(checkbox);
+      expect(checkbox.checked).toBe(false);
+
+      // Reset via Back button
+      await user.click(screen.getByTestId('accounts-back-button'));
+      expect(screen.getByTestId('accounts-drop-zone')).toBeInTheDocument();
+
+      // Re-upload — checkbox should be restored to defaultValue (true)
+      await user.upload(screen.getByTestId('accounts-file-input'), makeCsvFile());
+      await waitFor(() =>
+        expect(screen.getByTestId('accounts-option-skip_duplicates')).toBeInTheDocument(),
+      );
+      const resetCheckbox = screen.getByTestId(
+        'accounts-option-skip_duplicates',
+      ) as HTMLInputElement;
+      expect(resetCheckbox.checked).toBe(true);
     });
   });
 });

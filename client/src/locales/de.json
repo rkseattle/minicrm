@@ -415,8 +415,7 @@
         "skipDuplicates": "Zeilen überspringen, bei denen bereits ein Konto mit demselben Namen existiert"
       },
       "contacts": {
-        "hint": "Kontakte importieren. Pflichtfelder: Vorname, Nachname, E-Mail.",
-        "unassignedOwnership": "Importierte Kontakte ohne Besitzer lassen"
+        "hint": "Kontakte importieren. Pflichtfelder: Vorname, Nachname, E-Mail."
       },
       "deals": {
         "hint": "Deals importieren. Pflichtfelder: Dealname, Phase. Importieren Sie zuerst Konten, um sie per Name zu verknüpfen.",
