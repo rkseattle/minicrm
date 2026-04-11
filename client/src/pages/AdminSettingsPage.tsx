@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import CsvImporter from '@/components/CsvImporter.js';
 import {
   getDefaultLanguage,
   setDefaultLanguage,
@@ -27,6 +28,7 @@ import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 
 type DemoAction = 'seed' | 'reset' | 'remove';
+type ImportTab = 'accounts' | 'contacts' | 'deals';
 
 /**
  * Admin-only page for configuring system-wide settings.
@@ -200,6 +202,10 @@ export default function AdminSettingsPage() {
   }
 
   const demoActive = demoStatus?.active ?? false;
+
+  // ── Import Data ──────────────────────────────────────────────────────────────
+
+  const [importTab, setImportTab] = useState<ImportTab>('accounts');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -414,6 +420,111 @@ export default function AdminSettingsPage() {
               {t(demoFeedback.key)}
             </p>
           )}
+        </div>
+
+        {/* ── Import Data section ───────────────────────────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="import-section"
+        >
+          <h2
+            className="text-lg font-semibold text-gray-900 mb-1"
+            data-testid="import-section-title"
+          >
+            {t('settings.import.sectionTitle')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">{t('settings.import.sectionHint')}</p>
+
+          {/* Tabs */}
+          <div
+            className="flex border-b border-gray-200 mb-6"
+            role="tablist"
+            aria-label={t('settings.import.sectionTitle')}
+          >
+            {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={importTab === tab}
+                aria-controls={`import-panel-${tab}`}
+                id={`import-tab-${tab}`}
+                data-testid={`import-tab-${tab}`}
+                onClick={() => {
+                  if (importTab !== tab) setImportTab(tab);
+                }}
+                className={[
+                  'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500',
+                  importTab === tab
+                    ? 'border-indigo-600 text-indigo-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                ].join(' ')}
+              >
+                {t(`settings.import.tab.${tab}`)}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab panels */}
+          {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
+            <div
+              key={tab}
+              role="tabpanel"
+              id={`import-panel-${tab}`}
+              aria-labelledby={`import-tab-${tab}`}
+              hidden={importTab !== tab}
+              data-testid={`import-panel-${tab}`}
+            >
+              {tab === 'accounts' && (
+                <>
+                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.accounts.hint')}</p>
+                  <CsvImporter
+                    entity="accounts"
+                    entityLabel={t('settings.import.tab.accounts')}
+                    options={[
+                      {
+                        key: 'skip_duplicates',
+                        label: t('settings.import.accounts.skipDuplicates'),
+                        defaultValue: true,
+                      },
+                    ]}
+                  />
+                </>
+              )}
+              {tab === 'contacts' && (
+                <>
+                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.contacts.hint')}</p>
+                  <CsvImporter
+                    entity="contacts"
+                    entityLabel={t('settings.import.tab.contacts')}
+                    options={[
+                      {
+                        key: 'unassigned_ownership',
+                        label: t('settings.import.contacts.unassignedOwnership'),
+                        defaultValue: false,
+                      },
+                    ]}
+                  />
+                </>
+              )}
+              {tab === 'deals' && (
+                <>
+                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.deals.hint')}</p>
+                  <CsvImporter
+                    entity="deals"
+                    entityLabel={t('settings.import.tab.deals')}
+                    options={[
+                      {
+                        key: 'skip_unresolvable_accounts',
+                        label: t('settings.import.deals.skipUnresolvableAccounts'),
+                        defaultValue: false,
+                      },
+                    ]}
+                  />
+                </>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* ── Confirmation dialog ────────────────────────────────────────────── */}

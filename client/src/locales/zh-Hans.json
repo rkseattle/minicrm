@@ -401,6 +401,55 @@
       "seedError": "演示数据填充失败，请重试。",
       "resetError": "演示数据重置失败，请重试。",
       "removeError": "演示数据删除失败，请重试。"
+    },
+    "import": {
+      "sectionTitle": "导入数据",
+      "sectionHint": "从 CSV 文件导入联系人、客户和商机。建议先导入客户，再导入联系人。",
+      "tab": {
+        "accounts": "客户",
+        "contacts": "联系人",
+        "deals": "商机"
+      },
+      "accounts": {
+        "hint": "导入公司客户。必填字段：名称。",
+        "skipDuplicates": "跳过同名客户已存在的行"
+      },
+      "contacts": {
+        "hint": "导入联系人。必填字段：名字、姓氏、电子邮件。",
+        "unassignedOwnership": "导入的联系人不分配负责人"
+      },
+      "deals": {
+        "hint": "导入商机。必填字段：名称、阶段。建议先导入客户以便通过名称关联。",
+        "skipUnresolvableAccounts": "跳过客户名称无法匹配的行"
+      }
+    }
+  },
+  "import": {
+    "dropZoneHint": "点击或拖放 {{entity}} CSV 文件至此处",
+    "csvOnly": "仅支持 .csv 文件，最大 10 MB",
+    "fileInputLabel": "上传 {{entity}} CSV 文件",
+    "parsing": "正在解析 CSV…",
+    "selectedFile": "文件：",
+    "mappingHeading": "将 CSV 列映射到 CRM 字段",
+    "selectColumn": "— 选择列 —",
+    "required": "必填",
+    "previewHeading": "预览（前 5 行）",
+    "missingValue": "（缺失）",
+    "previewButton": "预览",
+    "runButton": "导入 {{entity}}",
+    "running": "正在导入 {{entity}}…",
+    "back": "返回",
+    "summaryHeading": "导入完成",
+    "summaryCreated": "已创建 {{count}} 条记录",
+    "summarySkipped": "已跳过 {{count}} 条记录（重复）",
+    "summaryFailed": "{{count}} 条记录失败",
+    "downloadErrors": "下载错误报告",
+    "importAgain": "再次导入 {{entity}} 文件",
+    "error": {
+      "notCsv": "仅接受 .csv 文件",
+      "tooLarge": "文件超过 10 MB 限制",
+      "parseFailed": "无法解析 CSV 文件",
+      "runFailed": "导入失败，请重试"
     }
   },
   "profileSettings": {

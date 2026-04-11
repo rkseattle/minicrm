@@ -401,6 +401,55 @@
       "seedError": "Demodaten konnten nicht eingefügt werden. Bitte erneut versuchen.",
       "resetError": "Demodaten konnten nicht zurückgesetzt werden. Bitte erneut versuchen.",
       "removeError": "Demodaten konnten nicht entfernt werden. Bitte erneut versuchen."
+    },
+    "import": {
+      "sectionTitle": "Daten importieren",
+      "sectionHint": "Importieren Sie Kontakte, Konten und Deals aus CSV-Dateien. Importieren Sie zuerst Konten für beste Ergebnisse.",
+      "tab": {
+        "accounts": "Konten",
+        "contacts": "Kontakte",
+        "deals": "Deals"
+      },
+      "accounts": {
+        "hint": "Unternehmenskonten importieren. Pflichtfeld: Name.",
+        "skipDuplicates": "Zeilen überspringen, bei denen bereits ein Konto mit demselben Namen existiert"
+      },
+      "contacts": {
+        "hint": "Kontakte importieren. Pflichtfelder: Vorname, Nachname, E-Mail.",
+        "unassignedOwnership": "Importierte Kontakte ohne Besitzer lassen"
+      },
+      "deals": {
+        "hint": "Deals importieren. Pflichtfelder: Dealname, Phase. Importieren Sie zuerst Konten, um sie per Name zu verknüpfen.",
+        "skipUnresolvableAccounts": "Zeilen überspringen, deren Kontoname keinem vorhandenen Konto entspricht"
+      }
+    }
+  },
+  "import": {
+    "dropZoneHint": "Klicken oder {{entity}}-CSV-Datei hierher ziehen",
+    "csvOnly": "Nur .csv-Dateien, bis zu 10 MB",
+    "fileInputLabel": "{{entity}}-CSV-Datei hochladen",
+    "parsing": "CSV wird analysiert…",
+    "selectedFile": "Datei:",
+    "mappingHeading": "CSV-Spalten den CRM-Feldern zuordnen",
+    "selectColumn": "— Spalte auswählen —",
+    "required": "erforderlich",
+    "previewHeading": "Vorschau (erste 5 Zeilen)",
+    "missingValue": "(fehlend)",
+    "previewButton": "Vorschau",
+    "runButton": "{{entity}} importieren",
+    "running": "{{entity}} wird importiert…",
+    "back": "Zurück",
+    "summaryHeading": "Import abgeschlossen",
+    "summaryCreated": "{{count}} Datensatz/Datensätze erstellt",
+    "summarySkipped": "{{count}} Datensatz/Datensätze übersprungen (Duplikat)",
+    "summaryFailed": "{{count}} Datensatz/Datensätze fehlgeschlagen",
+    "downloadErrors": "Fehlerbericht herunterladen",
+    "importAgain": "Weitere {{entity}}-Datei importieren",
+    "error": {
+      "notCsv": "Nur .csv-Dateien werden akzeptiert",
+      "tooLarge": "Datei überschreitet das 10-MB-Limit",
+      "parseFailed": "CSV-Datei konnte nicht analysiert werden",
+      "runFailed": "Import fehlgeschlagen — bitte erneut versuchen"
     }
   },
   "profileSettings": {

@@ -401,6 +401,27 @@
       "seedError": "Failed to seed demo data. Please try again.",
       "resetError": "Failed to reset demo data. Please try again.",
       "removeError": "Failed to remove demo data. Please try again."
+    },
+    "import": {
+      "sectionTitle": "Import Data",
+      "sectionHint": "Import contacts, accounts, and deals from CSV files. Import accounts before contacts for best results.",
+      "tab": {
+        "accounts": "Accounts",
+        "contacts": "Contacts",
+        "deals": "Deals"
+      },
+      "accounts": {
+        "hint": "Import company accounts. Required field: Name.",
+        "skipDuplicates": "Skip rows where an account with the same name already exists"
+      },
+      "contacts": {
+        "hint": "Import contacts. Required fields: First Name, Last Name, Email.",
+        "unassignedOwnership": "Leave imported contacts unassigned (no owner)"
+      },
+      "deals": {
+        "hint": "Import deals. Required fields: Deal Name, Stage. Import accounts first so deals can be linked by account name.",
+        "skipUnresolvableAccounts": "Skip rows whose account name does not match any existing account"
+      }
     }
   },
   "profileSettings": {
@@ -543,5 +564,33 @@
     "pageOf": "Page {{page}} of {{total}}",
     "showing": "Showing {{from}}–{{to}} of {{total}}",
     "loadMore": "Load more"
+  },
+  "import": {
+    "dropZoneHint": "Click or drag and drop a {{entity}} CSV file here",
+    "csvOnly": "Only .csv files, up to 10 MB",
+    "fileInputLabel": "Upload {{entity}} CSV file",
+    "parsing": "Parsing CSV…",
+    "selectedFile": "File:",
+    "mappingHeading": "Map CSV columns to CRM fields",
+    "selectColumn": "— select column —",
+    "required": "required",
+    "previewHeading": "Preview (first 5 rows)",
+    "missingValue": "(missing)",
+    "previewButton": "Preview",
+    "runButton": "Import {{entity}}",
+    "running": "Importing {{entity}}…",
+    "back": "Back",
+    "summaryHeading": "Import complete",
+    "summaryCreated": "{{count}} record(s) created",
+    "summarySkipped": "{{count}} record(s) skipped (duplicate)",
+    "summaryFailed": "{{count}} record(s) failed",
+    "downloadErrors": "Download error report",
+    "importAgain": "Import another {{entity}} file",
+    "error": {
+      "notCsv": "Only .csv files are accepted",
+      "tooLarge": "File exceeds the 10 MB limit",
+      "parseFailed": "Could not parse CSV file",
+      "runFailed": "Import failed — please try again"
+    }
   }
 }
