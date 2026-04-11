@@ -246,7 +246,7 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
   }
 });
 
-test('@functional F1-PR6: reset-password — existing session invalidated after reset (MINCRM-157)', async ({
+test('@functional F1-PR6: reset-password — old password rejected after reset, confirming password change (MINCRM-157)', async ({
   page,
   healPage,
   restClient,

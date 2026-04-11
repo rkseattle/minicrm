@@ -59,14 +59,12 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 
   // Invalidate sessions from before a password reset (MINCRM-157).
-  // If password_changed_at is set, any JWT issued before that timestamp is invalid.
-  // JWT iat is in whole seconds; password_changed_at has sub-second precision from Postgres.
-  // Subtract 1 000 ms so that a token issued in the same second as the reset is not
-  // rejected — the freshly issued auto-login JWT must not be immediately invalidated.
+  // Compare at second granularity to match JWT iat precision: floor password_changed_at
+  // to whole seconds so a token issued in the same second as the reset is accepted,
+  // while any token issued in an earlier second is correctly rejected.
   if (user.password_changed_at && decoded.iat !== undefined) {
-    const passwordChangedAtMs = user.password_changed_at.getTime();
-    const tokenIssuedAtMs = decoded.iat * 1000;
-    if (tokenIssuedAtMs < passwordChangedAtMs - 1000) {
+    const passwordChangedAtSec = Math.floor(user.password_changed_at.getTime() / 1000);
+    if (decoded.iat < passwordChangedAtSec) {
       res.status(401).json({
         error: { code: 'AUTH_INVALID_TOKEN', message: 'Session invalidated — please log in again' },
       });
