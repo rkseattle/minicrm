@@ -58,6 +58,19 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
+  // Invalidate sessions from before a password reset (MINCRM-157).
+  // If password_changed_at is set, any JWT issued before that timestamp is invalid.
+  if (user.password_changed_at && decoded.iat !== undefined) {
+    const passwordChangedAtMs = user.password_changed_at.getTime();
+    const tokenIssuedAtMs = decoded.iat * 1000;
+    if (tokenIssuedAtMs < passwordChangedAtMs) {
+      res.status(401).json({
+        error: { code: 'AUTH_INVALID_TOKEN', message: 'Session invalidated — please log in again' },
+      });
+      return;
+    }
+  }
+
   // Enforce password change — all routes except change-password itself are blocked.
   // Use req.originalUrl so the check is path-prefix-agnostic.
   // Strip query string before comparing — .includes() on the full originalUrl is bypassable

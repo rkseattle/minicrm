@@ -26,7 +26,33 @@
     "passwordLabel": "Password",
     "passwordPlaceholder": "Your password",
     "submitButton": "Sign in",
-    "submitting": "Signing in…"
+    "submitting": "Signing in…",
+    "forgotPassword": "Forgot your password?"
+  },
+  "forgotPassword": {
+    "title": "Reset your password",
+    "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "submitButton": "Send Reset Link",
+    "submitting": "Sending…",
+    "successMessage": "If an account with that email exists, a reset link has been sent. Check your inbox.",
+    "backToLogin": "Back to sign in"
+  },
+  "resetPassword": {
+    "title": "Set new password",
+    "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "New password",
+    "confirmPasswordLabel": "Confirm password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "submitButton": "Set new password",
+    "submitting": "Saving…",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "Password must be at least {{min}} characters.",
+    "passwordComplexity": "Password must contain at least one letter and one number.",
+    "tokenMissing": "This reset link is invalid or has expired.",
+    "requestNewLink": "Request a new reset link"
   },
   "users": {
     "pageTitle": "User Management",
@@ -501,6 +527,7 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Your account has been deactivated. Contact an administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Please set your password before signing in.",
     "VALIDATION_ERROR": "Please check your input and try again.",
+    "RESET_TOKEN_INVALID": "This reset link is invalid or has expired.",
     "generic": "Something went wrong. Please try again.",
     "loadContactsFailed": "Could not load contacts. Please refresh the page."
   },

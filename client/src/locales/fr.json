@@ -26,7 +26,33 @@
     "passwordLabel": "Mot de passe",
     "passwordPlaceholder": "Votre mot de passe",
     "submitButton": "Se connecter",
-    "submitting": "Connexion en cours…"
+    "submitting": "Connexion en cours…",
+    "forgotPassword": "Mot de passe oublié ?"
+  },
+  "forgotPassword": {
+    "title": "Réinitialiser votre mot de passe",
+    "subtitle": "Entrez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+    "emailLabel": "Adresse e-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "submitButton": "Envoyer le lien de réinitialisation",
+    "submitting": "Envoi en cours…",
+    "successMessage": "Si un compte avec cette adresse e-mail existe, un lien a été envoyé. Vérifiez votre boîte de réception.",
+    "backToLogin": "Retour à la connexion"
+  },
+  "resetPassword": {
+    "title": "Définir un nouveau mot de passe",
+    "newPasswordLabel": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "Nouveau mot de passe",
+    "confirmPasswordLabel": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
+    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "submitButton": "Définir le nouveau mot de passe",
+    "submitting": "Enregistrement…",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordTooShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
+    "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "tokenMissing": "Ce lien de réinitialisation est invalide ou a expiré.",
+    "requestNewLink": "Demander un nouveau lien de réinitialisation"
   },
   "users": {
     "pageTitle": "Gestion des utilisateurs",
@@ -501,6 +527,7 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Votre compte a été désactivé. Contactez un administrateur.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Veuillez définir votre mot de passe avant de vous connecter.",
     "VALIDATION_ERROR": "Veuillez vérifier vos informations et réessayer.",
+    "RESET_TOKEN_INVALID": "Ce lien de réinitialisation est invalide ou a expiré.",
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
     "loadContactsFailed": "Impossible de charger les contacts. Veuillez actualiser la page."
   },

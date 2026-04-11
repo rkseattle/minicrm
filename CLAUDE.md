@@ -166,6 +166,7 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 - Functional specs live under `qa/e2e/tests/apps/minicrm/functional/<domain>/`, tagged `@functional`
 - CI runs BVTs in Phase 4; functional tests run in Phase 5 (`needs: e2e-bvt`)
 - **Any new `@functional` spec file placed under `functional/` is picked up automatically — no CI changes required**
+- **Every story implementation must add or update a functional E2E spec** — do not mark a ticket done without E2E coverage for the new behavior
 
 ## Internationalization
 

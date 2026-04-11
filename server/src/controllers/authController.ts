@@ -6,8 +6,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
-import { loginSchema, PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
+import {
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  PASSWORD_MIN_LENGTH,
+} from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 
@@ -178,4 +184,98 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   await userService.setUserPasswordFromPlaintext(user.id, newPassword);
 
   res.status(200).json({ message: 'Password changed successfully' });
+}
+
+/** Base URL used to construct the reset link (falls back to localhost in dev) */
+const APP_BASE_URL = process.env.APP_BASE_URL ?? 'http://localhost:5173';
+
+/**
+ * POST /api/auth/forgot-password
+ * Accepts an email address and initiates the password reset flow.
+ * Always returns 200 regardless of whether the email matches a user,
+ * to prevent user enumeration (MINCRM-156).
+ */
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const parseResult = forgotPasswordSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const { email } = parseResult.data;
+
+  // Look up the user — but do not reveal whether the email exists.
+  const user = await userService.findUserByEmail(email);
+
+  if (user && user.status === 'active') {
+    const { plaintextToken } = await userService.createPasswordResetToken(user.id);
+    const resetUrl = `${APP_BASE_URL}/reset-password?token=${plaintextToken}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+  }
+
+  // Always respond with 200 — same message whether or not the user exists.
+  res.status(200).json({
+    message: 'If an account with that email exists, a reset link has been sent.',
+  });
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Validates a reset token, updates the user's password, and logs them in.
+ * Invalidates the token after use (MINCRM-157).
+ */
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const parseResult = resetPasswordSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const { token, password } = parseResult.data;
+
+  const user = await userService.resetPasswordWithToken(token, password);
+  if (!user) {
+    res.status(400).json({
+      error: {
+        code: 'RESET_TOKEN_INVALID',
+        message: 'This reset link is invalid or has expired.',
+      },
+    });
+    return;
+  }
+
+  // Issue a fresh session for the user so they are logged in immediately.
+  const tokenPayload = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+  };
+
+  const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
+  const COOKIE_MAX_AGE_MS = JWT_EXPIRY_SECONDS * 1000;
+
+  const sessionToken = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
+    expiresIn: JWT_EXPIRY_SECONDS,
+  });
+
+  res.cookie(AUTH_COOKIE_NAME, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+  });
+
+  res.status(200).json({ user: sanitizeUser(user) });
 }

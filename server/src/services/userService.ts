@@ -3,6 +3,7 @@
  * Business logic belongs here. Controllers must not query the database directly.
  */
 
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logger from '../logger.js';
@@ -24,6 +25,9 @@ export interface UserRow {
   status: UserStatus;
   must_change_password: boolean;
   preferred_language: SupportedLocale | null;
+  password_reset_token_hash: string | null;
+  password_reset_expires_at: Date | null;
+  password_changed_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -327,4 +331,123 @@ export async function adminSetUserPassword(
     );
   }
   return updated;
+}
+
+// ── Password reset (MINCRM-156, MINCRM-157) ───────────────────────────────────
+
+/** Length of the plaintext reset token in bytes (produces a 64-char hex string) */
+const RESET_TOKEN_BYTES = 32;
+
+/** Reset token expiry in milliseconds (60 minutes) */
+const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
+
+/**
+ * Hashes a plaintext reset token using SHA-256.
+ * The hash is stored in the DB; the plaintext is sent only in the email link.
+ *
+ * @param plaintext - The plaintext hex token.
+ * @returns The SHA-256 hex digest.
+ */
+function hashResetToken(plaintext: string): string {
+  return crypto.createHash('sha256').update(plaintext).digest('hex');
+}
+
+/**
+ * Result returned by createPasswordResetToken.
+ * The plaintext token must be embedded in the reset URL sent to the user.
+ * It is never stored in the database.
+ */
+export interface CreatePasswordResetTokenResult {
+  /** The plaintext token to embed in the reset URL. */
+  plaintextToken: string;
+  /** ISO timestamp when the token expires (60 minutes from now). */
+  expiresAt: Date;
+}
+
+/**
+ * Generates a cryptographically random reset token for the given user,
+ * stores its SHA-256 hash in the database, and returns the plaintext token.
+ *
+ * If the user already has an unexpired token it is overwritten (invalidated).
+ * Only called for active users — callers must verify status before calling.
+ *
+ * @param userId - The UUID of the user requesting a reset.
+ * @returns The plaintext token and expiry timestamp.
+ */
+export async function createPasswordResetToken(
+  userId: string,
+): Promise<CreatePasswordResetTokenResult> {
+  const plaintextToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString('hex');
+  const tokenHash = hashResetToken(plaintextToken);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+
+  await pool.query(
+    `UPDATE users
+     SET password_reset_token_hash = $2,
+         password_reset_expires_at = $3,
+         updated_at = now()
+     WHERE id = $1`,
+    [userId, tokenHash, expiresAt],
+  );
+
+  return { plaintextToken, expiresAt };
+}
+
+/**
+ * Looks up a user by a plaintext reset token.
+ * Returns null when the token is not found, already used, or expired.
+ *
+ * @param plaintextToken - The plaintext token from the reset URL.
+ * @returns The matching user row, or null if the token is invalid/expired.
+ */
+export async function findUserByResetToken(plaintextToken: string): Promise<UserRow | null> {
+  const tokenHash = hashResetToken(plaintextToken);
+  const result = await pool.query<UserRow>(
+    `SELECT * FROM users
+     WHERE password_reset_token_hash = $1
+       AND password_reset_expires_at > now()
+     LIMIT 1`,
+    [tokenHash],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Resets a user's password using a plaintext token.
+ *
+ * - Validates that the token exists and has not expired.
+ * - Hashes the new password with bcrypt.
+ * - Updates the password, clears the reset token fields, sets password_changed_at.
+ * - Returns the updated user row, or null when the token is invalid/expired.
+ *
+ * Setting password_changed_at invalidates all existing JWTs issued before this
+ * timestamp (session invalidation on other devices — MINCRM-157).
+ *
+ * @param plaintextToken - The plaintext token from the reset URL.
+ * @param newPassword - The user's desired new plaintext password.
+ * @returns The updated user row, or null if the token was invalid or expired.
+ */
+export async function resetPasswordWithToken(
+  plaintextToken: string,
+  newPassword: string,
+): Promise<UserRow | null> {
+  const user = await findUserByResetToken(plaintextToken);
+  if (!user) return null;
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+  const result = await pool.query<UserRow>(
+    `UPDATE users
+     SET password_hash = $2,
+         password_reset_token_hash = NULL,
+         password_reset_expires_at = NULL,
+         password_changed_at = now(),
+         must_change_password = false,
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [user.id, passwordHash],
+  );
+
+  return result.rows[0] ?? null;
 }

@@ -362,6 +362,18 @@ export const handlers = [
     return HttpResponse.json({ message: 'Password changed successfully' });
   }),
 
+  /** Auth: POST /api/auth/forgot-password — always returns 200 */
+  http.post('/api/auth/forgot-password', () => {
+    return HttpResponse.json({
+      message: 'If an account with that email exists, a reset link has been sent.',
+    });
+  }),
+
+  /** Auth: POST /api/auth/reset-password — returns admin user on success */
+  http.post('/api/auth/reset-password', () => {
+    return HttpResponse.json({ user: ADMIN_USER });
+  }),
+
   /** Contacts: GET /api/contacts — supports ?account=<id> and ?owner=me filters */
   http.get('/api/contacts', ({ request }) => {
     const url = new URL(request.url);

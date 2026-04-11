@@ -5,7 +5,14 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
-import { login, logout, me, changePassword } from '../controllers/authController.js';
+import {
+  login,
+  logout,
+  me,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+} from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
 // In E2E/test environments the BVT suite submits multiple logins per run from a
@@ -29,6 +36,21 @@ const loginLimiter = rateLimit({
     error: {
       code: 'RATE_LIMITED',
       message: 'Too many login attempts, please try again later.',
+    },
+  },
+});
+
+/** 5 forgot-password attempts per IP per 15-minute window (skipped in test/e2e) */
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skip: () => isE2E,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Too many password reset requests, please try again later.',
     },
   },
 });
@@ -235,5 +257,130 @@ router.get('/me', authenticate, asyncHandler(me));
  *                 message: Current password is incorrect
  */
 router.post('/change-password', authenticate, asyncHandler(changePassword));
+
+/**
+ * @openapi
+ * /api/auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     operationId: forgotPassword
+ *     summary: Request a password reset link
+ *     description: >
+ *       Accepts an email address and sends a reset link if a matching active
+ *       user exists. Always returns 200 to prevent user enumeration (MINCRM-156).
+ *       Rate-limited to 5 requests per 15 minutes per IP.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Request accepted (same response whether or not email matched)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *             example:
+ *               message: If an account with that email exists, a reset link has been sent.
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPassword));
+
+/**
+ * @openapi
+ * /api/auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     operationId: resetPassword
+ *     summary: Set a new password using a reset token
+ *     description: >
+ *       Validates the token, updates the user's password, invalidates the token,
+ *       and sets a new session cookie (MINCRM-157). All existing sessions for the
+ *       user are invalidated via password_changed_at.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: abc123...
+ *               password:
+ *                 type: string
+ *                 example: NewPass1
+ *     responses:
+ *       200:
+ *         description: Password reset successful — user is now logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Token invalid, expired, or password fails complexity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: RESET_TOKEN_INVALID
+ *                 message: This reset link is invalid or has expired.
+ */
+router.post('/reset-password', asyncHandler(resetPassword));
+
+// ── Dev/test-only endpoint ───────────────────────────────────────────────────
+// Returns a plaintext reset token for a given email address.
+// Only available when NODE_ENV !== 'production'.
+// Used by E2E tests to bypass the email delivery step. (MINCRM-156)
+if (process.env.NODE_ENV !== 'production') {
+  /**
+   * POST /api/auth/dev/reset-token — dev/test only.
+   * Creates and returns a plaintext reset token for a given email address.
+   * Used by E2E tests to bypass the email delivery step. Never available in production.
+   */
+  router.post(
+    '/dev/reset-token',
+    asyncHandler(async (req, res) => {
+      const { email } = req.body as { email?: unknown };
+      if (typeof email !== 'string' || !email) {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'email required' } });
+        return;
+      }
+      const { findUserByEmail, createPasswordResetToken } =
+        await import('../services/userService.js');
+      const user = await findUserByEmail(email);
+      if (!user || user.status !== 'active') {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+        return;
+      }
+      const { plaintextToken } = await createPasswordResetToken(user.id);
+      res.status(200).json({ token: plaintextToken });
+    }),
+  );
+}
 
 export default router;

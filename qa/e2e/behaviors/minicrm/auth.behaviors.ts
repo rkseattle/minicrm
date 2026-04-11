@@ -15,6 +15,8 @@ import type { Page } from '@playwright/test';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
+import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
+import { ResetPasswordPage } from '@pages/minicrm/ResetPasswordPage.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -321,4 +323,103 @@ export async function navigateToProtectedPage(
   const finalUrl = context.page.url();
   const redirectedToLogin = new URL(finalUrl).pathname === '/login';
   return { finalUrl, redirectedToLogin };
+}
+
+// ---------------------------------------------------------------------------
+// requestPasswordReset()
+// ---------------------------------------------------------------------------
+
+/** Result returned by the requestPasswordReset behavior. */
+export interface RequestPasswordResetResult {
+  /** True when the success message became visible after submission. */
+  success: boolean;
+  /** The URL the browser settled on after the attempt. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to the forgot-password page, enters an email address, submits,
+ * and waits for the success message to appear.
+ *
+ * Returns a result object — the caller is responsible for assertions.
+ *
+ * @param email - Email address to submit.
+ * @param context - Playwright fixture context.
+ * @returns RequestPasswordResetResult.
+ */
+export async function requestPasswordReset(
+  email: string,
+  context: AuthBehaviorContext,
+): Promise<RequestPasswordResetResult> {
+  const forgotPasswordPage = new ForgotPasswordPage(context);
+
+  await forgotPasswordPage.navigate();
+  await forgotPasswordPage.fillEmail(email);
+  await forgotPasswordPage.submit();
+
+  const TIMEOUT_MS = 10_000;
+  await context.page
+    .getByTestId('forgot-password-success')
+    .waitFor({ state: 'visible', timeout: TIMEOUT_MS })
+    .catch(() => null);
+
+  const finalUrl = context.page.url();
+  const success = await forgotPasswordPage.successMessageVisible();
+  return { success, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// resetPassword()
+// ---------------------------------------------------------------------------
+
+/** Result returned by the resetPassword behavior. */
+export interface ResetPasswordResult {
+  /** True when the reset succeeded (the page navigated away from /reset-password). */
+  success: boolean;
+  /** The URL the browser settled on after the attempt. */
+  finalUrl: string;
+  /** The error message text shown by the form, or null when reset succeeded. */
+  errorMessage: string | null;
+}
+
+/**
+ * Navigates to /reset-password with the given token, fills new + confirm
+ * password fields, submits, and waits for the page to settle.
+ *
+ * Returns a result object — the caller is responsible for assertions.
+ *
+ * @param token - The plaintext reset token from the email link.
+ * @param newPassword - The desired new password.
+ * @param confirmPassword - Must match newPassword.
+ * @param context - Playwright fixture context.
+ * @returns ResetPasswordResult.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+  context: AuthBehaviorContext,
+): Promise<ResetPasswordResult> {
+  const resetPage = new ResetPasswordPage(context);
+
+  await resetPage.navigate(token);
+  await resetPage.fillNewPassword(newPassword);
+  await resetPage.fillConfirmPassword(confirmPassword);
+  await resetPage.submit();
+
+  const TIMEOUT_MS = 10_000;
+  await Promise.race([
+    context.page
+      .waitForURL((url) => new URL(url).pathname !== '/reset-password', { timeout: TIMEOUT_MS })
+      .catch(() => null),
+    context.page
+      .getByTestId('reset-password-error')
+      .waitFor({ state: 'visible', timeout: TIMEOUT_MS })
+      .catch(() => null),
+  ]);
+
+  const finalUrl = context.page.url();
+  const errorMessage = await resetPage.errorMessage();
+  const success = new URL(finalUrl).pathname !== '/reset-password';
+  return { success, finalUrl, errorMessage };
 }

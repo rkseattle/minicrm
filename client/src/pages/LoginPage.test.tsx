@@ -21,6 +21,7 @@ function renderLoginPage() {
       <Route path="/" element={<div>Dashboard</div>} />
       <Route path="/contacts" element={<div>Contacts page</div>} />
       <Route path="/change-password" element={<div>Change password page</div>} />
+      <Route path="/forgot-password" element={<div>Forgot password page</div>} />
     </Routes>,
     { initialEntries: ['/login'] },
   );
@@ -47,6 +48,7 @@ function renderLoginPageWithFrom(from: string) {
       <Route path="/" element={<div>Dashboard</div>} />
       <Route path="/contacts" element={<div>Contacts page</div>} />
       <Route path="/change-password" element={<div>Change password page</div>} />
+      <Route path="/forgot-password" element={<div>Forgot password page</div>} />
     </Routes>,
     { initialEntries: ['/start'] },
   );
@@ -149,6 +151,22 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the "Forgot your password?" link (MINCRM-156)', () => {
+    renderLoginPage();
+    expect(screen.getByTestId('login-forgot-password')).toBeInTheDocument();
+  });
+
+  it('navigates to /forgot-password when the link is clicked (MINCRM-156)', async () => {
+    const user = userEvent.setup();
+    renderLoginPage();
+
+    await user.click(screen.getByTestId('login-forgot-password'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Forgot password page')).toBeInTheDocument();
     });
   });
 

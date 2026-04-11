@@ -26,7 +26,33 @@
     "passwordLabel": "Passwort",
     "passwordPlaceholder": "Ihr Passwort",
     "submitButton": "Anmelden",
-    "submitting": "Anmeldung läuft…"
+    "submitting": "Anmeldung läuft…",
+    "forgotPassword": "Passwort vergessen?"
+  },
+  "forgotPassword": {
+    "title": "Passwort zurücksetzen",
+    "subtitle": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "sie@beispiel.de",
+    "submitButton": "Link zum Zurücksetzen senden",
+    "submitting": "Wird gesendet…",
+    "successMessage": "Falls ein Konto mit dieser E-Mail-Adresse existiert, wurde ein Link gesendet. Überprüfen Sie Ihr Postfach.",
+    "backToLogin": "Zurück zur Anmeldung"
+  },
+  "resetPassword": {
+    "title": "Neues Passwort festlegen",
+    "newPasswordLabel": "Neues Passwort",
+    "newPasswordPlaceholder": "Neues Passwort",
+    "confirmPasswordLabel": "Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "submitButton": "Neues Passwort festlegen",
+    "submitting": "Wird gespeichert…",
+    "passwordMismatch": "Passwörter stimmen nicht überein.",
+    "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen lang sein.",
+    "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten.",
+    "tokenMissing": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
+    "requestNewLink": "Neuen Zurücksetzungslink anfordern"
   },
   "users": {
     "pageTitle": "Benutzerverwaltung",
@@ -501,6 +527,7 @@
     "AUTH_ACCOUNT_DEACTIVATED": "Ihr Konto wurde deaktiviert. Wenden Sie sich an einen Administrator.",
     "AUTH_ACCOUNT_NOT_ACTIVATED": "Bitte legen Sie Ihr Passwort fest, bevor Sie sich anmelden.",
     "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+    "RESET_TOKEN_INVALID": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu."
   },
