@@ -415,8 +415,7 @@
         "skipDuplicates": "Skip rows where an account with the same name already exists"
       },
       "contacts": {
-        "hint": "Import contacts. Required fields: First Name, Last Name, Email.",
-        "unassignedOwnership": "Leave imported contacts unassigned (no owner)"
+        "hint": "Import contacts. Required fields: First Name, Last Name, Email."
       },
       "deals": {
         "hint": "Import deals. Required fields: Deal Name, Stage. Import accounts first so deals can be linked by account name.",

@@ -415,8 +415,7 @@
         "skipDuplicates": "Omitir filas donde ya existe una cuenta con el mismo nombre"
       },
       "contacts": {
-        "hint": "Importa contactos. Campos obligatorios: Nombre, Apellido, Correo electrónico.",
-        "unassignedOwnership": "Dejar los contactos importados sin asignar (sin propietario)"
+        "hint": "Importa contactos. Campos obligatorios: Nombre, Apellido, Correo electrónico."
       },
       "deals": {
         "hint": "Importa negocios. Campos obligatorios: Nombre del negocio, Etapa. Importa las cuentas primero para vincularlos por nombre.",

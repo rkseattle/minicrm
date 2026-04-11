@@ -229,8 +229,6 @@ export type ContactMapping = {
   title?: string;
   department?: string;
   account_name?: string;
-  /** When true, imported contacts have no owner (null). Default: false (owner = admin). */
-  unassigned_ownership?: boolean;
 };
 
 /** Basic email format regex */
@@ -242,7 +240,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  *
  * @param rows - All CSV data rows.
  * @param mapping - Maps CRM field keys to CSV column headers.
- * @param adminId - The importing admin's user ID (becomes owner_id unless unassigned).
+ * @param adminId - The importing admin's user ID (becomes owner_id for all imported contacts).
  * @returns Import summary with counts and failure details.
  */
 export async function importContacts(
@@ -261,10 +259,6 @@ export async function importContacts(
     'SELECT id, name FROM accounts',
   );
   const accountByName = new Map(accountRows.map((r) => [r.name.toLowerCase(), r.id]));
-
-  // owner_id is NOT NULL in the contacts table — unassigned_ownership is surfaced in the UI
-  // but physically uses adminId; true unassigned ownership would require a schema change.
-  const ownerId = adminId;
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 1;
@@ -312,7 +306,7 @@ export async function importContacts(
         `INSERT INTO contacts
            (first_name, last_name, email, phone, title, department, account_id, owner_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [firstName, lastName, email, phone, title, department, accountId, ownerId],
+        [firstName, lastName, email, phone, title, department, accountId, adminId],
       );
       existingEmails.add(email);
       result.created++;
@@ -420,7 +414,17 @@ export async function importDeals(
       }
     }
 
-    const closeDate = mapping.close_date ? (csvRow[mapping.close_date] ?? '').trim() || null : null;
+    const closeDateRaw = mapping.close_date ? (csvRow[mapping.close_date] ?? '').trim() : '';
+    let closeDate: string | null = closeDateRaw || null;
+    if (closeDate && !/^\d{4}-\d{2}-\d{2}$/.test(closeDate)) {
+      result.failed.push({
+        row: rowNum,
+        data: csvRow,
+        reason: `Invalid close_date "${closeDate}" — expected YYYY-MM-DD`,
+      });
+      continue;
+    }
+
     const lossReason = mapping.loss_reason
       ? (csvRow[mapping.loss_reason] ?? '').trim() || null
       : null;

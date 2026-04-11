@@ -415,8 +415,7 @@
         "skipDuplicates": "Ignorer les lignes où un compte portant le même nom existe déjà"
       },
       "contacts": {
-        "hint": "Importez des contacts. Champs obligatoires : Prénom, Nom, E-mail.",
-        "unassignedOwnership": "Laisser les contacts importés sans propriétaire"
+        "hint": "Importez des contacts. Champs obligatoires : Prénom, Nom, E-mail."
       },
       "deals": {
         "hint": "Importez des affaires. Champs obligatoires : Nom de l'affaire, Étape. Importez d'abord les comptes pour les lier par nom.",

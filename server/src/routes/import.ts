@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
@@ -237,5 +238,20 @@ router.post('/deals/parse', upload.single('file'), asyncHandler(parseDealsCsv));
  *         $ref: '#/components/responses/Forbidden'
  */
 router.post('/deals/run', upload.single('file'), asyncHandler(runDealsImport));
+
+/**
+ * Multer error handler — converts fileFilter rejections (non-CSV uploads) from the
+ * default HTTP 500 into a proper 400 VALIDATION_ERROR response.
+ * Must be a 4-argument middleware for Express to treat it as an error handler.
+ */
+
+router.use((err: Error, _req: Request, res: Response, _next: NextFunction): void => {
+  if (err instanceof multer.MulterError || err.message === 'Only .csv files are accepted') {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message } });
+    return;
+  }
+  // Not a multer error — let the global handler deal with it
+  _next(err);
+});
 
 export default router;

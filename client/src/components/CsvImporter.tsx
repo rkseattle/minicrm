@@ -215,6 +215,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     setParseData(null);
     setParseError(null);
     setMapping({});
+    setOptionValues(Object.fromEntries(options.map((o) => [o.key, o.defaultValue])));
     setSummary(null);
     setRunError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';

@@ -129,7 +129,6 @@ const contactMappingSchema = z.object({
   title: z.string().optional(),
   department: z.string().optional(),
   account_name: z.string().optional(),
-  unassigned_ownership: z.boolean().optional(),
 });
 
 const dealMappingSchema = z.object({
@@ -279,7 +278,6 @@ export async function runContactsImport(req: Request, res: Response): Promise<vo
     title: mapping.title,
     department: mapping.department,
     account_name: mapping.account_name,
-    unassigned_ownership: mapping.unassigned_ownership,
   };
 
   const importResult = await importContacts(csvData.rows, contactMapping, req.user!.id);
