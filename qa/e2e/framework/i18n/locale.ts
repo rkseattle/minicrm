@@ -55,6 +55,16 @@ const EN: LocaleMap = {
   'changePassword.confirmPasswordLabel': 'Confirm new password',
   'changePassword.submitButton': 'Change password',
 
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'Email address',
+  'forgotPassword.submitButton': 'Send Reset Link',
+  'forgotPassword.backToLogin': 'Back to sign in',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'New password',
+  'resetPassword.confirmPasswordLabel': 'Confirm password',
+  'resetPassword.submitButton': 'Set new password',
+
   // Contacts
   'contacts.saveChanges': 'Save changes',
   'contacts.save': 'Save',
@@ -106,6 +116,16 @@ const ES: LocaleMap = {
   'changePassword.newPasswordLabel': 'Nueva contraseña',
   'changePassword.confirmPasswordLabel': 'Confirmar nueva contraseña',
   'changePassword.submitButton': 'Cambiar contraseña',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'Correo electrónico',
+  'forgotPassword.submitButton': 'Enviar enlace de restablecimiento',
+  'forgotPassword.backToLogin': 'Volver a iniciar sesión',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'Nueva contraseña',
+  'resetPassword.confirmPasswordLabel': 'Confirmar contraseña',
+  'resetPassword.submitButton': 'Establecer nueva contraseña',
 
   // Contacts
   'contacts.saveChanges': 'Guardar cambios',
