@@ -402,6 +402,16 @@
       "resetError": "No se pudieron restablecer los datos de demo. Por favor, inténtalo de nuevo.",
       "removeError": "No se pudieron eliminar los datos de demo. Por favor, inténtalo de nuevo."
     },
+    "emailNotifications": {
+      "sectionTitle": "Notificaciones por correo electrónico",
+      "sectionHint": "Controla si se envían notificaciones por correo electrónico a los usuarios.",
+      "enabled": "Activado",
+      "disabled": "Desactivado",
+      "recipientCount": "{{count}} usuario activo tiene las notificaciones activadas",
+      "recipientCount_other": "{{count}} usuarios activos tienen las notificaciones activadas",
+      "saveSuccess": "Configuración de notificaciones actualizada.",
+      "saveError": "Error al actualizar. Por favor, inténtalo de nuevo."
+    },
     "import": {
       "sectionTitle": "Importar datos",
       "sectionHint": "Importa contactos, cuentas y negocios desde archivos CSV. Importa las cuentas antes que los contactos para obtener mejores resultados.",
@@ -461,7 +471,14 @@
     "saveSuccess": "Preferencias guardadas.",
     "saveError": "Error al guardar. Por favor, inténtalo de nuevo.",
     "loadError": "Error al cargar la configuración. Por favor, inténtalo de nuevo.",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "notifications": {
+      "sectionTitle": "Notificaciones por correo electrónico",
+      "sectionHint": "Elige qué notificaciones por correo deseas recibir de MiniCRM.",
+      "overdueTasks": "Tareas vencidas — resumen diario de tareas nuevamente vencidas",
+      "assignments": "Asignaciones — correo cuando te asignen un contacto, cuenta o negocio",
+      "dealStageChanges": "Cambios de etapa — correo cuando uno de tus negocios cambie de etapa"
+    }
   },
   "reports": {
     "winLoss": {

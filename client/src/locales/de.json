@@ -402,6 +402,16 @@
       "resetError": "Demodaten konnten nicht zurückgesetzt werden. Bitte erneut versuchen.",
       "removeError": "Demodaten konnten nicht entfernt werden. Bitte erneut versuchen."
     },
+    "emailNotifications": {
+      "sectionTitle": "E-Mail-Benachrichtigungen",
+      "sectionHint": "Steuern Sie, ob ausgehende E-Mail-Benachrichtigungen an Benutzer gesendet werden.",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "recipientCount": "{{count}} aktiver Benutzer hat Benachrichtigungen aktiviert",
+      "recipientCount_other": "{{count}} aktive Benutzer haben Benachrichtigungen aktiviert",
+      "saveSuccess": "Einstellung für E-Mail-Benachrichtigungen aktualisiert.",
+      "saveError": "Aktualisierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
     "import": {
       "sectionTitle": "Daten importieren",
       "sectionHint": "Importieren Sie Kontakte, Konten und Deals aus CSV-Dateien. Importieren Sie zuerst Konten für beste Ergebnisse.",
@@ -461,7 +471,14 @@
     "saveSuccess": "Einstellungen gespeichert.",
     "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "loadError": "Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
-    "loading": "Laden…"
+    "loading": "Laden…",
+    "notifications": {
+      "sectionTitle": "E-Mail-Benachrichtigungen",
+      "sectionHint": "Wählen Sie, welche E-Mail-Benachrichtigungen Sie von MiniCRM erhalten möchten.",
+      "overdueTasks": "Überfällige Aufgaben — tägliche Zusammenfassung bei neu überfälligen Aufgaben",
+      "assignments": "Zuweisungen — E-Mail, wenn Ihnen ein Kontakt, Konto oder Deal zugewiesen wird",
+      "dealStageChanges": "Deal-Phasenänderungen — E-Mail, wenn einer Ihrer Deals in eine neue Phase wechselt"
+    }
   },
   "reports": {
     "winLoss": {

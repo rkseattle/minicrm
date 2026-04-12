@@ -23,6 +23,10 @@ import {
   clearMustChangePassword,
   getUserPreferredLanguage,
   setUserPreferredLanguage,
+  getNotificationPrefs,
+  updateNotificationPrefs,
+  listUsersOptedIn,
+  countActiveNotificationRecipients,
   seedDefaultAdmin,
 } from '../services/userService.js';
 import pool from '../db.js';
@@ -530,5 +534,104 @@ describe('setUserPreferredLanguage', () => {
   it('returns null for a non-existent user', async () => {
     const result = await setUserPreferredLanguage('00000000-0000-0000-0000-000000000000', 'en');
     expect(result).toBeNull();
+  });
+});
+
+// ── getNotificationPrefs (MINCRM-163) ─────────────────────────────────────────
+
+describe('getNotificationPrefs', () => {
+  it('returns all-true defaults for a newly created user', async () => {
+    const user = await createUser(BASE_USER);
+    const prefs = await getNotificationPrefs(user.id);
+    expect(prefs).toEqual({
+      notify_overdue_tasks: true,
+      notify_assignments: true,
+      notify_deal_stage_changes: true,
+    });
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const prefs = await getNotificationPrefs('00000000-0000-0000-0000-000000000000');
+    expect(prefs).toBeNull();
+  });
+});
+
+// ── updateNotificationPrefs (MINCRM-163) ──────────────────────────────────────
+
+describe('updateNotificationPrefs', () => {
+  it('persists updated preference flags', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await updateNotificationPrefs(user.id, {
+      notify_overdue_tasks: false,
+      notify_assignments: true,
+      notify_deal_stage_changes: false,
+    });
+    expect(updated).not.toBeNull();
+    expect(updated!.notify_overdue_tasks).toBe(false);
+    expect(updated!.notify_assignments).toBe(true);
+    expect(updated!.notify_deal_stage_changes).toBe(false);
+  });
+
+  it('can set all flags to false', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await updateNotificationPrefs(user.id, {
+      notify_overdue_tasks: false,
+      notify_assignments: false,
+      notify_deal_stage_changes: false,
+    });
+    expect(updated!.notify_overdue_tasks).toBe(false);
+    expect(updated!.notify_assignments).toBe(false);
+    expect(updated!.notify_deal_stage_changes).toBe(false);
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const result = await updateNotificationPrefs('00000000-0000-0000-0000-000000000000', {
+      notify_overdue_tasks: false,
+      notify_assignments: false,
+      notify_deal_stage_changes: false,
+    });
+    expect(result).toBeNull();
+  });
+});
+
+// ── listUsersOptedIn (MINCRM-163) ─────────────────────────────────────────────
+
+describe('listUsersOptedIn', () => {
+  it('returns users opted in to overdue task notifications by default', async () => {
+    const user = await createUser(BASE_USER);
+    const opted = await listUsersOptedIn('notify_overdue_tasks');
+    const ids = opted.map((u) => u.id);
+    expect(ids).toContain(user.id);
+  });
+
+  it('excludes users who have opted out', async () => {
+    const user = await createUser(BASE_USER);
+    await updateNotificationPrefs(user.id, {
+      notify_overdue_tasks: false,
+      notify_assignments: true,
+      notify_deal_stage_changes: true,
+    });
+    const opted = await listUsersOptedIn('notify_overdue_tasks');
+    const ids = opted.map((u) => u.id);
+    expect(ids).not.toContain(user.id);
+  });
+});
+
+// ── countActiveNotificationRecipients (MINCRM-163) ───────────────────────────
+
+describe('countActiveNotificationRecipients', () => {
+  it('counts active users with at least one notification enabled', async () => {
+    const user = await createUser(BASE_USER);
+    const count = await countActiveNotificationRecipients();
+    expect(count).toBeGreaterThanOrEqual(1);
+
+    // Disable all notifs — should no longer be counted
+    await updateNotificationPrefs(user.id, {
+      notify_overdue_tasks: false,
+      notify_assignments: false,
+      notify_deal_stage_changes: false,
+    });
+    const countAfter = await countActiveNotificationRecipients();
+    expect(countAfter).toBeLessThan(count);
   });
 });

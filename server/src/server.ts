@@ -7,10 +7,12 @@
 
 import 'dotenv/config';
 import http from 'http';
+import cron from 'node-cron';
 import app from './app.js';
 import logger from './logger.js';
 import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
+import { sendOverdueDigests } from './services/notificationService.js';
 import pool from './db.js';
 
 /** Default port for the API server */
@@ -98,3 +100,17 @@ server.listen(port, () => {
     }
   })();
 });
+
+// Daily overdue task digest — runs at 08:00 server time every day (MINCRM-161).
+// In test/CI environments the cron is skipped to avoid side effects.
+if (process.env.NODE_ENV !== 'test') {
+  const overdueDigestCron = cron.schedule('0 8 * * *', () => {
+    logger.info('cron: running overdue task digest');
+    void sendOverdueDigests();
+  });
+  logger.info('Overdue task digest cron scheduled (daily at 08:00)');
+
+  // Stop the cron task when the process shuts down so it is garbage-collected.
+  process.once('SIGTERM', () => overdueDigestCron.stop());
+  process.once('SIGINT', () => overdueDigestCron.stop());
+}

@@ -159,6 +159,69 @@ export async function adminSetPassword(id: string, password: string): Promise<Us
   return response.data;
 }
 
+// ── Notification preferences (MINCRM-163) ────────────────────────────────────
+
+/** Shape of the notification preference flags */
+export interface NotificationPrefs {
+  notify_overdue_tasks: boolean;
+  notify_assignments: boolean;
+  notify_deal_stage_changes: boolean;
+}
+
+/** Shape returned by the notification preferences endpoints */
+export interface NotificationPrefsResponse {
+  preferences: NotificationPrefs;
+}
+
+/** Shape returned by the notification recipient count endpoint */
+export interface NotificationRecipientCountResponse {
+  count: number;
+}
+
+/** React Query cache key for the current user's notification preferences */
+export const MY_NOTIFICATION_PREFS_QUERY_KEY = ['users', 'me', 'notification-preferences'] as const;
+
+/** React Query cache key for the admin notification recipient count */
+export const NOTIFICATION_RECIPIENT_COUNT_QUERY_KEY = [
+  'users',
+  'notification-recipient-count',
+] as const;
+
+/**
+ * Returns the authenticated user's email notification preference flags.
+ */
+export async function getMyNotificationPrefs(): Promise<NotificationPrefsResponse> {
+  const response = await apiClient.get<NotificationPrefsResponse>(
+    '/users/me/notification-preferences',
+  );
+  return response.data;
+}
+
+/**
+ * Persists the authenticated user's email notification preference flags.
+ *
+ * @param prefs - The new notification preference values.
+ */
+export async function updateMyNotificationPrefs(
+  prefs: NotificationPrefs,
+): Promise<NotificationPrefsResponse> {
+  const response = await apiClient.patch<NotificationPrefsResponse>(
+    '/users/me/notification-preferences',
+    prefs,
+  );
+  return response.data;
+}
+
+/**
+ * Returns the count of active users with at least one notification enabled. Admin only.
+ */
+export async function getNotificationRecipientCount(): Promise<NotificationRecipientCountResponse> {
+  const response = await apiClient.get<NotificationRecipientCountResponse>(
+    '/users/notification-recipient-count',
+  );
+  return response.data;
+}
+
 /** Shape returned by the language preference endpoints */
 export interface LanguagePreferenceResponse {
   language: SupportedLocale | null;

@@ -17,6 +17,9 @@ import {
   adminSetPassword,
   getMyPreferredLanguage,
   setMyPreferredLanguage,
+  getMyNotificationPrefs,
+  updateMyNotificationPrefs,
+  getNotificationRecipientCount,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -232,6 +235,63 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
  */
 router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage));
 
+/**
+ * @openapi
+ * /api/users/me/notification-preferences:
+ *   get:
+ *     tags: [Users]
+ *     operationId: getMyNotificationPrefs
+ *     summary: Get the authenticated user's email notification preferences (MINCRM-163)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current notification preference flags
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 preferences:
+ *                   type: object
+ *                   properties:
+ *                     notify_overdue_tasks: { type: boolean }
+ *                     notify_assignments: { type: boolean }
+ *                     notify_deal_stage_changes: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/me/notification-preferences', authenticate, asyncHandler(getMyNotificationPrefs));
+
+/**
+ * @openapi
+ * /api/users/me/notification-preferences:
+ *   patch:
+ *     tags: [Users]
+ *     operationId: updateMyNotificationPrefs
+ *     summary: Update the authenticated user's email notification preferences (MINCRM-163)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notify_overdue_tasks: { type: boolean }
+ *               notify_assignments: { type: boolean }
+ *               notify_deal_stage_changes: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Preferences updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.patch('/me/notification-preferences', authenticate, asyncHandler(updateMyNotificationPrefs));
+
 /** All routes below require authentication + admin role */
 router.use(authenticate, requireRole('admin'));
 
@@ -395,6 +455,64 @@ router.get('/', asyncHandler(listUsers));
  *               error:
  *                 code: FORBIDDEN
  *                 message: Admin role required
+ */
+/**
+ * @openapi
+ * /api/users/notification-recipient-count:
+ *   get:
+ *     tags: [Users]
+ *     operationId: getNotificationRecipientCount
+ *     summary: Count of active users with at least one notification enabled (admin only, MINCRM-163)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Recipient count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count: { type: integer }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/notification-recipient-count', asyncHandler(getNotificationRecipientCount));
+
+/**
+ * @openapi
+ * /api/users/invite:
+ *   post:
+ *     tags: [Users]
+ *     operationId: inviteUser
+ *     summary: Invite a new user (admin only)
+ *     description: Creates a new user account in invited status and returns a set-password link.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, name, role]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               name: { type: string }
+ *               role: { type: string, enum: [admin, rep] }
+ *     responses:
+ *       201:
+ *         description: User invited successfully
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
  */
 router.post('/invite', asyncHandler(inviteUser));
 

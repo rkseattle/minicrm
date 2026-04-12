@@ -21,6 +21,9 @@ const DEFAULT_LANGUAGE_KEY = 'default_language';
 /** The key used to store the navigation layout setting (MINCRM-133) */
 const NAV_LAYOUT_KEY = 'nav_layout';
 
+/** The key used to store the global email notifications enabled setting (MINCRM-163) */
+const EMAIL_NOTIFICATIONS_ENABLED_KEY = 'email_notifications_enabled';
+
 /**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
@@ -97,4 +100,42 @@ export async function setNavLayout(layout: NavLayout): Promise<NavLayout> {
     [NAV_LAYOUT_KEY, layout],
   );
   return layout;
+}
+
+// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+
+/**
+ * Returns whether the system-wide email notifications are enabled.
+ * Defaults to true if the setting row is missing.
+ *
+ * @returns True when notifications are globally enabled.
+ */
+export async function getEmailNotificationsEnabled(): Promise<boolean> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [EMAIL_NOTIFICATIONS_ENABLED_KEY],
+  );
+  if (!result.rows[0]) {
+    logger.warn(
+      'system_settings row for email_notifications_enabled is missing — defaulting to true',
+    );
+    return true;
+  }
+  return result.rows[0].value === 'true';
+}
+
+/**
+ * Sets whether the system-wide email notifications are enabled. Admin only.
+ *
+ * @param enabled - Whether to enable or disable email notifications globally.
+ * @returns The persisted value.
+ */
+export async function setEmailNotificationsEnabled(enabled: boolean): Promise<boolean> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled)],
+  );
+  return enabled;
 }

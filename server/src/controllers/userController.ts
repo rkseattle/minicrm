@@ -12,12 +12,14 @@ import {
   adminSetPasswordSchema,
   updateRoleSchema,
   updatePreferredLanguageSchema,
+  updateNotificationPrefsSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import type { ActiveUserRow } from '../services/userService.js';
 import type { JwtTokenPayload } from '../types/express.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { countActiveNotificationRecipients } from '../services/userService.js';
 
 /** Invite token expiry — 72 hours */
 const INVITE_TOKEN_EXPIRY = '72h';
@@ -272,6 +274,59 @@ export async function setMyPreferredLanguage(req: Request, res: Response): Promi
   }
 
   res.status(200).json({ language: user.preferred_language });
+}
+
+/**
+ * GET /api/users/me/notification-preferences
+ * Returns the authenticated user's email notification preference flags. (MINCRM-163)
+ */
+export async function getMyNotificationPrefs(req: Request, res: Response): Promise<void> {
+  const prefs = await userService.getNotificationPrefs(req.user!.id);
+  if (!prefs) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+  res.status(200).json({ preferences: prefs });
+}
+
+/**
+ * PATCH /api/users/me/notification-preferences
+ * Persists the authenticated user's email notification preference flags. (MINCRM-163)
+ */
+export async function updateMyNotificationPrefs(req: Request, res: Response): Promise<void> {
+  const parseResult = updateNotificationPrefsSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const user = await userService.updateNotificationPrefs(req.user!.id, parseResult.data);
+  if (!user) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+
+  res.status(200).json({
+    preferences: {
+      notify_overdue_tasks: user.notify_overdue_tasks,
+      notify_assignments: user.notify_assignments,
+      notify_deal_stage_changes: user.notify_deal_stage_changes,
+    },
+  });
+}
+
+/**
+ * GET /api/users/me/notification-recipient-count
+ * Returns the count of active users with at least one notification enabled. Admin only. (MINCRM-163)
+ */
+export async function getNotificationRecipientCount(_req: Request, res: Response): Promise<void> {
+  const count = await countActiveNotificationRecipients();
+  res.status(200).json({ count });
 }
 
 /**

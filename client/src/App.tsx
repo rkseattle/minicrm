@@ -26,6 +26,7 @@ import UsersPage from '@/pages/UsersPage.js';
 import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
 import WinLossReportPage from '@/pages/WinLossReportPage.js';
 import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
+import ProfilePage from '@/pages/ProfilePage.js';
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active.
@@ -69,6 +70,7 @@ function AppRoutes() {
           {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
           <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
           <Route path="/tasks" element={<MyTasksPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>
 

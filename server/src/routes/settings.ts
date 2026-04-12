@@ -13,6 +13,8 @@ import {
   setDefaultLanguageHandler,
   getNavLayoutHandler,
   setNavLayoutHandler,
+  getEmailNotificationsEnabledHandler,
+  setEmailNotificationsEnabledHandler,
 } from '../controllers/settingsController.js';
 
 const router = Router();
@@ -175,5 +177,60 @@ router.get('/nav-layout', asyncHandler(getNavLayoutHandler));
  *         $ref: '#/components/responses/Forbidden'
  */
 router.patch('/nav-layout', authenticate, requireRole('admin'), asyncHandler(setNavLayoutHandler));
+
+/**
+ * @openapi
+ * /api/settings/email-notifications:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getEmailNotificationsEnabled
+ *     summary: Get the system-wide email notifications toggle (MINCRM-163)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Whether email notifications are globally enabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 enabled: { type: boolean }
+ */
+router.get('/email-notifications', authenticate, asyncHandler(getEmailNotificationsEnabledHandler));
+
+/**
+ * @openapi
+ * /api/settings/email-notifications:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setEmailNotificationsEnabled
+ *     summary: Set the system-wide email notifications toggle (admin only, MINCRM-163)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Toggle state updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/email-notifications',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setEmailNotificationsEnabledHandler),
+);
 
 export default router;

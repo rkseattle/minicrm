@@ -59,3 +59,37 @@ export async function setNavLayout(layout: NavLayout): Promise<NavLayoutResponse
   const response = await apiClient.patch<NavLayoutResponse>('/settings/nav-layout', { layout });
   return response.data;
 }
+
+// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+
+/** Shape returned by the email notifications toggle endpoints */
+export interface EmailNotificationsResponse {
+  enabled: boolean;
+}
+
+/** React Query cache key for the email notifications enabled setting */
+export const EMAIL_NOTIFICATIONS_QUERY_KEY = ['settings', 'emailNotifications'] as const;
+
+/**
+ * Returns whether the system-wide email notifications are enabled.
+ * Requires authentication.
+ */
+export async function getEmailNotificationsEnabled(): Promise<EmailNotificationsResponse> {
+  const response = await apiClient.get<EmailNotificationsResponse>('/settings/email-notifications');
+  return response.data;
+}
+
+/**
+ * Sets whether the system-wide email notifications are enabled. Admin only.
+ *
+ * @param enabled - Whether to enable or disable email notifications globally.
+ */
+export async function setEmailNotificationsEnabled(
+  enabled: boolean,
+): Promise<EmailNotificationsResponse> {
+  const response = await apiClient.patch<EmailNotificationsResponse>(
+    '/settings/email-notifications',
+    { enabled },
+  );
+  return response.data;
+}

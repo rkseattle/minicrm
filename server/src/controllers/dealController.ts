@@ -22,6 +22,8 @@ import {
 } from '../services/dealService.js';
 import { findContactById } from '../services/contactService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { findUserById } from '../services/userService.js';
+import { queueAssignmentNotification } from '../services/notificationService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -146,6 +148,25 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
   res.status(200).json({ deal });
+
+  // Fire-and-forget: notify the new owner when the deal is reassigned. (MINCRM-162)
+  if (parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
+    void (async () => {
+      try {
+        const newOwner = await findUserById(parsed.data.owner_id!);
+        if (newOwner && newOwner.notify_assignments) {
+          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
+            recordType: 'deal',
+            recordName: deal.name,
+            recordPath: `/deals/${deal.id}`,
+            assignedByName: req.user!.name,
+          });
+        }
+      } catch {
+        // Swallow — notification failure must not affect the response
+      }
+    })();
+  }
 }
 
 /**
