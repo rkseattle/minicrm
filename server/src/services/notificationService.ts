@@ -207,12 +207,12 @@ export async function sendOverdueDigests(): Promise<void> {
       });
     }
 
-    // Send one digest per owner and record the notified task IDs
+    // Send one digest per owner and record the notified task IDs.
+    // Dedup rows are inserted BEFORE sending so that a transient delivery failure
+    // does not cause the same tasks to be re-notified on the next cron run.
     for (const [ownerId, { email, name, tasks }] of byOwner) {
       try {
-        await sendOverdueTaskDigest(email, name, tasks);
-
-        // Mark all these tasks as notified in one batch insert
+        // Mark tasks as notified first — prevents duplicate emails on delivery failure
         const placeholders = tasks.map((_, i) => `($${i + 1})`).join(', ');
         await pool.query(
           `INSERT INTO overdue_task_notifications (activity_id)
@@ -220,6 +220,8 @@ export async function sendOverdueDigests(): Promise<void> {
            ON CONFLICT DO NOTHING`,
           tasks.map((t) => t.id),
         );
+
+        await sendOverdueTaskDigest(email, name, tasks);
 
         logger.info({ ownerId, count: tasks.length }, 'notificationService: overdue digest sent');
       } catch (err) {
