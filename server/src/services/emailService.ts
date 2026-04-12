@@ -12,6 +12,26 @@ import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import logger from '../logger.js';
 
+/** HTML-escape map for the five characters that can break HTML contexts */
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#x27;',
+};
+
+/**
+ * Escapes a string for safe interpolation into HTML.
+ * All user-supplied data must pass through this before being placed in email templates.
+ *
+ * @param str - Raw string value from user or DB.
+ * @returns HTML-safe string.
+ */
+function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch);
+}
+
 /** Lazily-created transport instance — null until first use */
 let _transport: Transporter | null = null;
 
@@ -128,20 +148,21 @@ export async function sendOverdueTaskDigest(
 
   const taskRows = tasks
     .map((task) => {
+      const safeName = task.linked_record_name ? escapeHtml(task.linked_record_name) : null;
       const recordLink =
-        task.linked_record_name && task.linked_record_path
-          ? `<a href="${appUrl}${task.linked_record_path}">${task.linked_record_name}</a>`
-          : (task.linked_record_name ?? '—');
+        safeName && task.linked_record_path
+          ? `<a href="${appUrl}${escapeHtml(task.linked_record_path)}">${safeName}</a>`
+          : (safeName ?? '—');
       return `<tr>
-        <td style="padding:6px 12px;border-bottom:1px solid #eee">${task.subject}</td>
-        <td style="padding:6px 12px;border-bottom:1px solid #eee">${task.due_date}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #eee">${escapeHtml(task.subject)}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #eee">${escapeHtml(task.due_date)}</td>
         <td style="padding:6px 12px;border-bottom:1px solid #eee">${recordLink}</td>
       </tr>`;
     })
     .join('');
 
   const html = `
-    <p>Hi ${name},</p>
+    <p>Hi ${escapeHtml(name)},</p>
     <p>You have ${tasks.length} overdue task${tasks.length === 1 ? '' : 's'} in MiniCRM:</p>
     <table style="border-collapse:collapse;width:100%;max-width:600px">
       <thead>
@@ -196,9 +217,9 @@ export async function sendAssignmentNotification(
   const itemRows = items
     .map(
       (item) => `<li>
-        <strong>${item.recordType}</strong>:
-        <a href="${appUrl}${item.recordPath}">${item.recordName}</a>
-        (assigned by ${item.assignedByName})
+        <strong>${escapeHtml(item.recordType)}</strong>:
+        <a href="${appUrl}${escapeHtml(item.recordPath)}">${escapeHtml(item.recordName)}</a>
+        (assigned by ${escapeHtml(item.assignedByName)})
       </li>`,
     )
     .join('');
@@ -209,7 +230,7 @@ export async function sendAssignmentNotification(
       : `${items.length} records were assigned to you`;
 
   const html = `
-    <p>Hi ${name},</p>
+    <p>Hi ${escapeHtml(name)},</p>
     <p>The following record${items.length === 1 ? ' has' : 's have'} been assigned to you:</p>
     <ul>${itemRows}</ul>
     <p style="color:#888;font-size:12px">
