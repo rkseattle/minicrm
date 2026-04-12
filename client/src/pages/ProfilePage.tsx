@@ -139,7 +139,10 @@ export default function ProfilePage() {
    * @param key - The preference key to toggle.
    */
   function togglePref(key: keyof NotificationPrefs): void {
-    setPrefsOverrides((prev) => ({ ...prev, [key]: !prefs[key] }));
+    setPrefsOverrides((prev) => {
+      const current = prev[key] !== undefined ? prev[key] : serverPrefs[key];
+      return { ...prev, [key]: !current };
+    });
   }
 
   return (
