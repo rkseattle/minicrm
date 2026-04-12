@@ -209,6 +209,13 @@ describe('importContacts', () => {
     expect(result.skipped).toBe(1);
   });
 
+  it('fails rows with missing email field', async () => {
+    const rows = [{ First: 'Alice', Last: 'Smith', Email: '' }];
+    const result = await importContacts(rows, mapping, adminId);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].reason).toContain('Missing required field: email');
+  });
+
   it('fails rows with invalid email format', async () => {
     const rows = [{ First: 'Alice', Last: 'Smith', Email: 'not-an-email' }];
     const result = await importContacts(rows, mapping, adminId);
@@ -284,6 +291,13 @@ describe('importDeals', () => {
     expect(dbRows[0].stage).toBe('Closed Won');
   });
 
+  it('fails rows with missing stage field', async () => {
+    const rows = [{ Deal: 'Test', Stage: '' }];
+    const result = await importDeals(rows, mapping, adminId);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].reason).toContain('Missing required field: stage');
+  });
+
   it('fails rows with unrecognised stage', async () => {
     const rows = [{ Deal: 'Test', Stage: 'UnknownStage' }];
     const result = await importDeals(rows, mapping, adminId);
@@ -342,6 +356,17 @@ describe('importDeals', () => {
       'Big Sale',
     ]);
     expect(dbRows[0].account_id).toBeNull();
+  });
+
+  it('accepts a valid numeric value', async () => {
+    const mappingWithValue: DealMapping = { ...mapping, value: 'Value' };
+    const rows = [{ Deal: 'Good Deal', Stage: 'Prospecting', Value: '9999.99' }];
+    const result = await importDeals(rows, mappingWithValue, adminId);
+    expect(result.created).toBe(1);
+    const { rows: dbRows } = await pool.query('SELECT value FROM deals WHERE name = $1', [
+      'Good Deal',
+    ]);
+    expect(Number(dbRows[0].value)).toBe(9999.99);
   });
 
   it('fails rows with invalid value', async () => {

@@ -210,8 +210,11 @@ export async function importAccounts(
       existingNames.add(name.toLowerCase());
       result.created++;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      result.failed.push({ row: rowNum, data: csvRow, reason: `Database error: ${message}` });
+      result.failed.push({
+        row: rowNum,
+        data: csvRow,
+        reason: `Database error: ${(err as Error).message}`,
+      });
     }
   }
 
@@ -311,8 +314,11 @@ export async function importContacts(
       existingEmails.add(email);
       result.created++;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      result.failed.push({ row: rowNum, data: csvRow, reason: `Database error: ${message}` });
+      result.failed.push({
+        row: rowNum,
+        data: csvRow,
+        reason: `Database error: ${(err as Error).message}`,
+      });
     }
   }
 
@@ -437,8 +443,11 @@ export async function importDeals(
       );
       result.created++;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      result.failed.push({ row: rowNum, data: csvRow, reason: `Database error: ${message}` });
+      result.failed.push({
+        row: rowNum,
+        data: csvRow,
+        reason: `Database error: ${(err as Error).message}`,
+      });
     }
   }
 
