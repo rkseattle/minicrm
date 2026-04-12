@@ -9,6 +9,8 @@ import {
   setDefaultLanguage,
   getNavLayout,
   setNavLayout,
+  getEmailNotificationsEnabled,
+  setEmailNotificationsEnabled,
 } from '../services/settingsService.js';
 import {
   setDefaultLanguageSchema,
@@ -86,4 +88,44 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
 
   const layout = await setNavLayout(parsed.data.layout);
   res.status(200).json({ layout });
+}
+
+// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+
+/**
+ * GET /api/settings/email-notifications
+ * Returns whether the system-wide email notifications are enabled.
+ * Requires authentication (admin sees this in settings page).
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getEmailNotificationsEnabledHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  const enabled = await getEmailNotificationsEnabled();
+  res.status(200).json({ enabled });
+}
+
+/**
+ * PATCH /api/settings/email-notifications
+ * Sets whether the system-wide email notifications are enabled. Admin only. (MINCRM-163)
+ *
+ * @param req - Express request with body `{ enabled: boolean }`.
+ * @param res - Express response.
+ */
+export async function setEmailNotificationsEnabledHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  if (typeof req.body.enabled !== 'boolean') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'enabled must be a boolean' },
+    });
+    return;
+  }
+
+  const enabled = await setEmailNotificationsEnabled(req.body.enabled as boolean);
+  res.status(200).json({ enabled });
 }

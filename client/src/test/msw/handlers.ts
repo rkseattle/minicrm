@@ -651,6 +651,49 @@ export const handlers = [
     return HttpResponse.json({ layout: body.layout });
   }),
 
+  /** Settings: GET /api/settings/email-notifications (MINCRM-163) */
+  http.get('/api/settings/email-notifications', () => {
+    return HttpResponse.json({ enabled: true });
+  }),
+
+  /** Settings: PATCH /api/settings/email-notifications (MINCRM-163) */
+  http.patch('/api/settings/email-notifications', async ({ request }) => {
+    const body = (await request.json()) as { enabled: boolean };
+    return HttpResponse.json({ enabled: body.enabled });
+  }),
+
+  /** Users: GET /api/users/notification-recipient-count (MINCRM-163) */
+  http.get('/api/users/notification-recipient-count', () => {
+    return HttpResponse.json({ count: 2 });
+  }),
+
+  /** Users: GET /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
+  http.get('/api/users/me/notification-preferences', () => {
+    return HttpResponse.json({
+      preferences: {
+        notify_overdue_tasks: true,
+        notify_assignments: true,
+        notify_deal_stage_changes: true,
+      },
+    });
+  }),
+
+  /** Users: PATCH /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
+  http.patch('/api/users/me/notification-preferences', async ({ request }) => {
+    const body = (await request.json()) as {
+      notify_overdue_tasks?: boolean;
+      notify_assignments?: boolean;
+      notify_deal_stage_changes?: boolean;
+    };
+    return HttpResponse.json({
+      preferences: {
+        notify_overdue_tasks: body.notify_overdue_tasks ?? true,
+        notify_assignments: body.notify_assignments ?? true,
+        notify_deal_stage_changes: body.notify_deal_stage_changes ?? true,
+      },
+    });
+  }),
+
   /** Users: GET /api/users/me/language — returns null preference by default */
   http.get('/api/users/me/language', () => {
     return HttpResponse.json({ language: null });

@@ -17,6 +17,8 @@ import {
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { findUserById } from '../services/userService.js';
+import { queueAssignmentNotification } from '../services/notificationService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -180,6 +182,25 @@ export async function updateContactHandler(req: Request, res: Response): Promise
 
   const contact = await updateContact(id, parsed.data);
   res.status(200).json({ contact });
+
+  // Fire-and-forget: notify the new owner when the contact is reassigned. (MINCRM-162)
+  if (contact && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
+    void (async () => {
+      try {
+        const newOwner = await findUserById(parsed.data.owner_id!);
+        if (newOwner && newOwner.notify_assignments) {
+          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
+            recordType: 'contact',
+            recordName: `${contact.first_name} ${contact.last_name}`,
+            recordPath: `/contacts/${contact.id}`,
+            assignedByName: req.user!.name,
+          });
+        }
+      } catch {
+        // Swallow — notification failure must not affect the response
+      }
+    })();
+  }
 }
 
 /**

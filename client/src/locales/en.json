@@ -402,6 +402,16 @@
       "resetError": "Failed to reset demo data. Please try again.",
       "removeError": "Failed to remove demo data. Please try again."
     },
+    "emailNotifications": {
+      "sectionTitle": "Email Notifications",
+      "sectionHint": "Control whether outbound email notifications are delivered to users. When disabled, no notification emails are sent regardless of individual user preferences.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "recipientCount": "{{count}} active user has notifications enabled",
+      "recipientCount_other": "{{count}} active users have notifications enabled",
+      "saveSuccess": "Email notification setting updated.",
+      "saveError": "Failed to update. Please try again."
+    },
     "import": {
       "sectionTitle": "Import Data",
       "sectionHint": "Import contacts, accounts, and deals from CSV files. Import accounts before contacts for best results.",
@@ -433,7 +443,14 @@
     "saveSuccess": "Preferences saved.",
     "saveError": "Failed to save. Please try again.",
     "loadError": "Failed to load settings. Please try again.",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "notifications": {
+      "sectionTitle": "Email Notifications",
+      "sectionHint": "Choose which email notifications you want to receive from MiniCRM.",
+      "overdueTasks": "Overdue tasks — receive a daily digest when you have newly-overdue tasks",
+      "assignments": "Record assignments — receive an email when a contact, account, or deal is assigned to you",
+      "dealStageChanges": "Deal stage changes — receive an email when one of your deals moves to a new stage"
+    }
   },
   "reports": {
     "winLoss": {

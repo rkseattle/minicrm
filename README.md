@@ -243,9 +243,23 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Each layout is a self-contained React component (`NavTop`, `NavLeft`, `NavHamburger`) with `data-testid` attributes following the `nav-{layout}-{destination}` convention (e.g. `nav-top-contacts`, `nav-left-deals`, `nav-hamburger-tasks`)
 - Database migration: `014_add_nav_layout_setting.js` seeds the `nav_layout = 'top'` default row
 
+### Email Notifications (MINCRM-161, MINCRM-162, MINCRM-163)
+
+- **Overdue task digest** (MINCRM-161): A daily cron job runs at 08:00 server time. For each active user who has opted in to overdue task notifications, it sends one HTML email listing all open Tasks past their due date that have not previously been notified. Deduplication is tracked in the `overdue_task_notifications` table — each task is notified at most once.
+- **Assignment notifications** (MINCRM-162): When a contact, account, or deal is reassigned, the new owner receives an email if they have assignments notifications enabled. Multiple assignment events within a 2-minute window are batched into a single email per recipient.
+- **User notification preferences** (MINCRM-163): Every authenticated user can configure three per-category toggles on the `/profile` page: overdue task digests, assignment notifications, and deal stage change notifications. Admins additionally have a global kill switch on the **Admin Settings** page that suppresses all notification emails regardless of individual preferences.
+- API endpoints:
+  - `GET /api/users/me/notification-preferences` — auth required, returns `{ preferences: { notify_overdue_tasks, notify_assignments, notify_deal_stage_changes } }`
+  - `PATCH /api/users/me/notification-preferences` — auth required, body with any subset of the three boolean fields
+  - `GET /api/users/notification-recipient-count` — admin only, returns `{ count }` (active users with any notification pref enabled)
+  - `GET /api/settings/email-notifications` — auth required, returns `{ enabled: boolean }`
+  - `PATCH /api/settings/email-notifications` — admin only, body `{ enabled: boolean }`
+- Database migrations: `016_add_notification_prefs_to_users.js` adds three boolean columns to `users`; `017_create_overdue_task_notifications.js` creates the dedup table and seeds the `email_notifications_enabled` system setting
+- Email transport uses nodemailer with SMTP env vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`); in development and test environments emails are stubbed (logged to console rather than sent)
+
 ### User Language Preference (MINCRM-31)
 
-- Any authenticated user can set a personal preferred language from the **Profile Settings** page (`/settings/profile`) or by using the language dropdown in the nav bar
+- Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar
 - Personal preference overrides the system-wide default at all times; setting it to "Use system default" clears the preference and falls back to the admin-configured default
 - The language dropdown in the nav bar now persists the selection to the server (previously session-only)
 - On login, the user's stored preference is returned with the `/api/auth/me` response and applied immediately — no language flash

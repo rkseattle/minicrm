@@ -25,11 +25,21 @@ export interface UserRow {
   status: UserStatus;
   must_change_password: boolean;
   preferred_language: SupportedLocale | null;
+  notify_overdue_tasks: boolean;
+  notify_assignments: boolean;
+  notify_deal_stage_changes: boolean;
   password_reset_token_hash: string | null;
   password_reset_expires_at: Date | null;
   password_changed_at: Date | null;
   created_at: Date;
   updated_at: Date;
+}
+
+/** Notification preferences shape */
+export interface NotificationPrefs {
+  notify_overdue_tasks: boolean;
+  notify_assignments: boolean;
+  notify_deal_stage_changes: boolean;
 }
 
 interface CreateUserParams {
@@ -410,6 +420,79 @@ export async function findUserByResetToken(plaintextToken: string): Promise<User
     [tokenHash],
   );
   return result.rows[0] ?? null;
+}
+
+// ── Notification preferences (MINCRM-163) ────────────────────────────────────
+
+/**
+ * Returns the notification preferences for a user.
+ *
+ * @param id - The user UUID.
+ * @returns The notification preference flags, or null if the user was not found.
+ */
+export async function getNotificationPrefs(id: string): Promise<NotificationPrefs | null> {
+  const result = await pool.query<NotificationPrefs>(
+    `SELECT notify_overdue_tasks, notify_assignments, notify_deal_stage_changes
+     FROM users WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Persists a user's notification preference flags.
+ *
+ * @param id - The user UUID.
+ * @param prefs - The new preference values.
+ * @returns The updated user row, or null if the user was not found.
+ */
+export async function updateNotificationPrefs(
+  id: string,
+  prefs: NotificationPrefs,
+): Promise<UserRow | null> {
+  const result = await pool.query<UserRow>(
+    `UPDATE users
+     SET notify_overdue_tasks = $2,
+         notify_assignments = $3,
+         notify_deal_stage_changes = $4,
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [id, prefs.notify_overdue_tasks, prefs.notify_assignments, prefs.notify_deal_stage_changes],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Returns all active users who have opted in to a given notification type,
+ * alongside their email address. Used by notification dispatch logic.
+ *
+ * @param notifColumn - Column name of the notification flag to filter by.
+ * @returns Array of users with id, email, name.
+ */
+export async function listUsersOptedIn(
+  notifColumn: 'notify_overdue_tasks' | 'notify_assignments' | 'notify_deal_stage_changes',
+): Promise<Pick<UserRow, 'id' | 'email' | 'name'>[]> {
+  // Column name is from a closed enum — safe to interpolate
+  const result = await pool.query<Pick<UserRow, 'id' | 'email' | 'name'>>(
+    `SELECT id, email, name FROM users WHERE status = 'active' AND ${notifColumn} = true`,
+  );
+  return result.rows;
+}
+
+/**
+ * Returns a count of active users who have at least one notification type enabled.
+ * Used by the admin settings page to show blast radius. (MINCRM-163)
+ *
+ * @returns Count of active users with at least one notification enabled.
+ */
+export async function countActiveNotificationRecipients(): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM users
+     WHERE status = 'active'
+       AND (notify_overdue_tasks = true OR notify_assignments = true OR notify_deal_stage_changes = true)`,
+  );
+  return parseInt(result.rows[0].count, 10);
 }
 
 /**

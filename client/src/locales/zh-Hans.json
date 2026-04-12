@@ -402,6 +402,16 @@
       "resetError": "演示数据重置失败，请重试。",
       "removeError": "演示数据删除失败，请重试。"
     },
+    "emailNotifications": {
+      "sectionTitle": "电子邮件通知",
+      "sectionHint": "控制是否向用户发送电子邮件通知。",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "recipientCount": "{{count}} 位活跃用户已启用通知",
+      "recipientCount_other": "{{count}} 位活跃用户已启用通知",
+      "saveSuccess": "邮件通知设置已更新。",
+      "saveError": "更新失败，请重试。"
+    },
     "import": {
       "sectionTitle": "导入数据",
       "sectionHint": "从 CSV 文件导入联系人、客户和商机。建议先导入客户，再导入联系人。",
@@ -461,7 +471,14 @@
     "saveSuccess": "偏好设置已保存。",
     "saveError": "保存失败，请重试。",
     "loadError": "加载设置失败，请重试。",
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "notifications": {
+      "sectionTitle": "电子邮件通知",
+      "sectionHint": "选择您希望从 MiniCRM 接收哪些电子邮件通知。",
+      "overdueTasks": "逾期任务 — 每日摘要，汇总新逾期的任务",
+      "assignments": "记录分配 — 当联系人、客户或商机分配给您时发送邮件",
+      "dealStageChanges": "商机阶段变更 — 当您的商机进入新阶段时发送邮件"
+    }
   },
   "reports": {
     "winLoss": {

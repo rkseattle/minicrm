@@ -14,6 +14,8 @@ import {
   ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { findUserById } from '../services/userService.js';
+import { queueAssignmentNotification } from '../services/notificationService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -133,6 +135,25 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
 
   const account = await updateAccount(id, parsed.data);
   res.status(200).json({ account });
+
+  // Fire-and-forget: notify the new owner when the account is reassigned. (MINCRM-162)
+  if (account && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
+    void (async () => {
+      try {
+        const newOwner = await findUserById(parsed.data.owner_id!);
+        if (newOwner && newOwner.notify_assignments) {
+          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
+            recordType: 'account',
+            recordName: account.name,
+            recordPath: `/accounts/${account.id}`,
+            assignedByName: req.user!.name,
+          });
+        }
+      } catch {
+        // Swallow — notification failure must not affect the response
+      }
+    })();
+  }
 }
 
 /**

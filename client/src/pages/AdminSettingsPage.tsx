@@ -21,6 +21,15 @@ import {
   removeDemoData,
   DEMO_STATUS_QUERY_KEY,
 } from '@/api/demo.js';
+import {
+  getEmailNotificationsEnabled,
+  setEmailNotificationsEnabled,
+  EMAIL_NOTIFICATIONS_QUERY_KEY,
+} from '@/api/settings.js';
+import {
+  getNotificationRecipientCount,
+  NOTIFICATION_RECIPIENT_COUNT_QUERY_KEY,
+} from '@/api/users.js';
 import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale, NavLayout } from '@shared/schemas/settingsSchema.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
@@ -203,6 +212,57 @@ export default function AdminSettingsPage() {
 
   const demoActive = demoStatus?.active ?? false;
 
+  // ── Email Notifications global toggle (MINCRM-163) ──────────────────────────
+
+  const {
+    data: emailNotifData,
+    isLoading: emailNotifLoading,
+    isError: emailNotifError,
+  } = useQuery({
+    queryKey: EMAIL_NOTIFICATIONS_QUERY_KEY,
+    queryFn: getEmailNotificationsEnabled,
+  });
+
+  const { data: recipientCountData, isLoading: recipientCountLoading } = useQuery({
+    queryKey: NOTIFICATION_RECIPIENT_COUNT_QUERY_KEY,
+    queryFn: getNotificationRecipientCount,
+  });
+
+  const [emailNotifSaving, setEmailNotifSaving] = useState(false);
+  const [emailNotifSuccess, setEmailNotifSuccess] = useState(false);
+  const [emailNotifSaveError, setEmailNotifSaveError] = useState(false);
+
+  const emailNotifMutation = useMutation({
+    mutationFn: setEmailNotificationsEnabled,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(EMAIL_NOTIFICATIONS_QUERY_KEY, saved);
+      void queryClient.invalidateQueries({ queryKey: EMAIL_NOTIFICATIONS_QUERY_KEY });
+      setEmailNotifSaving(false);
+      setEmailNotifSuccess(true);
+      setEmailNotifSaveError(false);
+    },
+    onError: () => {
+      setEmailNotifSaving(false);
+      setEmailNotifSaveError(true);
+      setEmailNotifSuccess(false);
+    },
+  });
+
+  /**
+   * Toggles the system-wide email notifications setting.
+   *
+   * @param newValue - The new enabled state.
+   */
+  function handleEmailNotifToggle(newValue: boolean): void {
+    if (emailNotifSaving) return;
+    setEmailNotifSaving(true);
+    setEmailNotifSuccess(false);
+    setEmailNotifSaveError(false);
+    emailNotifMutation.mutate(newValue);
+  }
+
+  const emailNotifEnabled = emailNotifData?.enabled ?? true;
+
   // ── Import Data ──────────────────────────────────────────────────────────────
 
   const [importTab, setImportTab] = useState<ImportTab>('accounts');
@@ -336,6 +396,95 @@ export default function AdminSettingsPage() {
             <p role="alert" className="mt-3 text-sm text-red-600" data-testid="nav-layout-error">
               {t('settings.navLayout.saveError')}
             </p>
+          )}
+        </div>
+
+        {/* ── Email Notifications section (MINCRM-163) ─────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="email-notifications-section"
+        >
+          <h2
+            className="text-lg font-semibold text-gray-900 mb-1"
+            data-testid="email-notifications-section-title"
+          >
+            {t('settings.emailNotifications.sectionTitle')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            {t('settings.emailNotifications.sectionHint')}
+          </p>
+
+          {emailNotifLoading && (
+            <p className="text-sm text-gray-500" data-testid="email-notif-loading">
+              {t('common.loading')}
+            </p>
+          )}
+
+          {emailNotifError && (
+            <p role="alert" className="text-sm text-red-600" data-testid="email-notif-error">
+              {t('settings.loadError')}
+            </p>
+          )}
+
+          {!emailNotifLoading && !emailNotifError && (
+            <div className="space-y-4">
+              {/* Recipient count */}
+              <p className="text-sm text-gray-600" data-testid="email-notif-recipient-count">
+                {recipientCountLoading
+                  ? t('common.loading')
+                  : t('settings.emailNotifications.recipientCount', {
+                      count: recipientCountData?.count ?? 0,
+                    })}
+              </p>
+
+              {/* Toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={emailNotifEnabled}
+                  data-testid="email-notif-toggle"
+                  disabled={emailNotifSaving}
+                  onClick={() => handleEmailNotifToggle(!emailNotifEnabled)}
+                  className={[
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+                    emailNotifEnabled ? 'bg-indigo-600' : 'bg-gray-200',
+                    emailNotifSaving ? 'opacity-50 cursor-not-allowed' : '',
+                  ].join(' ')}
+                >
+                  <span
+                    className={[
+                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                      emailNotifEnabled ? 'translate-x-5' : 'translate-x-0',
+                    ].join(' ')}
+                  />
+                </button>
+                <span className="text-sm font-medium text-gray-700">
+                  {emailNotifEnabled
+                    ? t('settings.emailNotifications.enabled')
+                    : t('settings.emailNotifications.disabled')}
+                </span>
+              </div>
+
+              {emailNotifSuccess && (
+                <p
+                  role="status"
+                  className="text-sm text-green-700"
+                  data-testid="email-notif-success"
+                >
+                  {t('settings.emailNotifications.saveSuccess')}
+                </p>
+              )}
+              {emailNotifSaveError && (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600"
+                  data-testid="email-notif-save-error"
+                >
+                  {t('settings.emailNotifications.saveError')}
+                </p>
+              )}
+            </div>
           )}
         </div>
 

@@ -402,6 +402,16 @@
       "resetError": "Impossible de réinitialiser les données de démo. Veuillez réessayer.",
       "removeError": "Impossible de supprimer les données de démo. Veuillez réessayer."
     },
+    "emailNotifications": {
+      "sectionTitle": "Notifications par e-mail",
+      "sectionHint": "Contrôlez si les notifications par e-mail sont envoyées aux utilisateurs.",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "recipientCount": "{{count}} utilisateur actif a les notifications activées",
+      "recipientCount_other": "{{count}} utilisateurs actifs ont les notifications activées",
+      "saveSuccess": "Paramètre de notification mis à jour.",
+      "saveError": "Échec de la mise à jour. Veuillez réessayer."
+    },
     "import": {
       "sectionTitle": "Importer des données",
       "sectionHint": "Importez des contacts, des comptes et des affaires depuis des fichiers CSV. Importez d'abord les comptes pour de meilleurs résultats.",
@@ -461,7 +471,14 @@
     "saveSuccess": "Préférences enregistrées.",
     "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
     "loadError": "Échec du chargement des paramètres. Veuillez réessayer.",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "notifications": {
+      "sectionTitle": "Notifications par e-mail",
+      "sectionHint": "Choisissez les notifications e-mail que vous souhaitez recevoir de MiniCRM.",
+      "overdueTasks": "Tâches en retard — résumé quotidien des nouvelles tâches en retard",
+      "assignments": "Attributions — e-mail lorsqu'un contact, compte ou affaire vous est attribué",
+      "dealStageChanges": "Changements d'étape — e-mail lorsqu'une de vos affaires change d'étape"
+    }
   },
   "reports": {
     "winLoss": {

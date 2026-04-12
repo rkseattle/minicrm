@@ -116,6 +116,15 @@ export const updatePreferredLanguageSchema = z.object({
 });
 
 /**
+ * Schema for PATCH /api/users/me/notification-preferences request body. (MINCRM-163)
+ */
+export const updateNotificationPrefsSchema = z.object({
+  notify_overdue_tasks: z.boolean(),
+  notify_assignments: z.boolean(),
+  notify_deal_stage_changes: z.boolean(),
+});
+
+/**
  * Schema for the safe user response shape returned to API consumers.
  * Never includes password_hash.
  */
@@ -127,6 +136,9 @@ export const userResponseSchema = z.object({
   status: z.enum(USER_STATUSES),
   must_change_password: z.boolean(),
   preferred_language: z.enum(SUPPORTED_LOCALES).nullable().optional(),
+  notify_overdue_tasks: z.boolean().optional(),
+  notify_assignments: z.boolean().optional(),
+  notify_deal_stage_changes: z.boolean().optional(),
   created_at: z.string().or(z.date()),
 });
 
@@ -142,4 +154,5 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type UpdatePreferredLanguageInput = z.infer<typeof updatePreferredLanguageSchema>;
+export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;

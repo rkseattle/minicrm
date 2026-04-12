@@ -13,6 +13,8 @@ import {
   setDefaultLanguage,
   getNavLayout,
   setNavLayout,
+  getEmailNotificationsEnabled,
+  setEmailNotificationsEnabled,
 } from '../services/settingsService.js';
 import pool from '../db.js';
 
@@ -20,7 +22,9 @@ beforeEach(async () => {
   // Reset to seeded defaults before each test
   await pool.query(
     `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ('default_language', 'en', now()), ('nav_layout', 'top', now())
+     VALUES ('default_language', 'en', now()),
+            ('nav_layout', 'top', now()),
+            ('email_notifications_enabled', 'true', now())
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
   );
 });
@@ -124,5 +128,45 @@ describe('setNavLayout', () => {
     for (const layout of layouts) {
       await expect(setNavLayout(layout)).resolves.toBe(layout);
     }
+  });
+});
+
+// ── getEmailNotificationsEnabled (MINCRM-163) ─────────────────────────────────
+
+describe('getEmailNotificationsEnabled', () => {
+  it('returns true when the setting is "true"', async () => {
+    const enabled = await getEmailNotificationsEnabled();
+    expect(enabled).toBe(true);
+  });
+
+  it('returns false when the setting is "false"', async () => {
+    await pool.query(
+      `UPDATE system_settings SET value = 'false' WHERE key = 'email_notifications_enabled'`,
+    );
+    const enabled = await getEmailNotificationsEnabled();
+    expect(enabled).toBe(false);
+  });
+
+  it('defaults to true when the row is missing', async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'email_notifications_enabled'`);
+    const enabled = await getEmailNotificationsEnabled();
+    expect(enabled).toBe(true);
+  });
+});
+
+// ── setEmailNotificationsEnabled (MINCRM-163) ─────────────────────────────────
+
+describe('setEmailNotificationsEnabled', () => {
+  it('persists false and returns false', async () => {
+    const result = await setEmailNotificationsEnabled(false);
+    expect(result).toBe(false);
+    expect(await getEmailNotificationsEnabled()).toBe(false);
+  });
+
+  it('persists true and returns true', async () => {
+    await setEmailNotificationsEnabled(false);
+    const result = await setEmailNotificationsEnabled(true);
+    expect(result).toBe(true);
+    expect(await getEmailNotificationsEnabled()).toBe(true);
   });
 });
