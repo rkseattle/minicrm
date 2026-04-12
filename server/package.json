@@ -10,7 +10,7 @@
     "migrate": "node-pg-migrate -m ../db/migrations up",
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "typecheck": "tsc --noEmit",
-    "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand",
+    "test": "DOTENV_CONFIG_PATH=../.env.test node --experimental-vm-modules ../node_modules/.bin/jest --runInBand --forceExit",
     "test:coverage": "npm test -- --coverage",
     "generate-spec": "tsx src/scripts/generateSpec.ts",
     "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json",

@@ -51,7 +51,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'inv-sec-%'");
-  await pool.end();
 });
 
 // ── MINCRM-87: invite token is time-limited ───────────────────────────────────

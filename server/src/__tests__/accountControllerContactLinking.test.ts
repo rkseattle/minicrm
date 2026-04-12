@@ -62,7 +62,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts');
   await pool.query("DELETE FROM users WHERE email LIKE '%acct-link-ctrl%'");
-  await pool.end();
 });
 
 // ── POST /api/accounts — contact_ids ────────────────────────────────────────────

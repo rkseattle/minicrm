@@ -57,7 +57,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query(`DELETE FROM users WHERE email LIKE '${TEST_EMAIL_PREFIX}%'`);
-  await pool.end();
 });
 
 // ---------------------------------------------------------------------------

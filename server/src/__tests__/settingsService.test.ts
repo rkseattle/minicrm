@@ -25,10 +25,6 @@ beforeEach(async () => {
   );
 });
 
-afterAll(async () => {
-  await pool.end();
-});
-
 describe('getDefaultLanguage', () => {
   it('returns "en" when no override has been set', async () => {
     const language = await getDefaultLanguage();

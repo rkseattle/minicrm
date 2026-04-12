@@ -37,11 +37,13 @@ const BASE_USER = {
 };
 
 beforeEach(async () => {
+  // Clean up in FK order so suites that left deal/contact/activity data don't block user deletion
+  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contacts');
+  await pool.query('DELETE FROM accounts');
   await pool.query('DELETE FROM users');
-});
-
-afterAll(async () => {
-  await pool.end();
 });
 
 // ── createUser ─────────────────────────────────────────────────────────────────

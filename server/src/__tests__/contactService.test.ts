@@ -45,9 +45,26 @@ let ownerId: string;
 let accountId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users');
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1))',
+    [OWNER_USER.email],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
+    [OWNER_USER.email],
+  );
+  await pool.query('DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1)', [
+    OWNER_USER.email,
+  ]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
+    [OWNER_USER.email],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
+    [OWNER_USER.email],
+  );
+  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
   const account = await createAccount({ name: 'Test Account', owner_id: ownerId });
@@ -59,10 +76,15 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users');
-  await pool.end();
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
+    [OWNER_USER.email],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
+    [OWNER_USER.email],
+  );
+  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
 });
 
 // ── createContact ───────────────────────────────────────────────────────────────

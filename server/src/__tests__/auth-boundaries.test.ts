@@ -128,7 +128,6 @@ afterAll(async () => {
     "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
   await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
-  await pool.end();
 });
 
 // ── Deals ─────────────────────────────────────────────────────────────────────

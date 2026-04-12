@@ -60,7 +60,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
-  await pool.end();
 });
 
 // ── GET /api/users ──────────────────────────────────────────────────────────────

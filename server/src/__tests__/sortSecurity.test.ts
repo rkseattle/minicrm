@@ -63,7 +63,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email = 'sort-sec-test@example.com'");
-  await pool.end();
 });
 
 // ── Contacts ─────────────────────────────────────────────────────────────────

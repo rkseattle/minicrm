@@ -59,7 +59,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [
     [REP_USER.email, OTHER_REP_USER.email],
   ]);
-  await pool.end();
 });
 
 /** Default date range used across tests: all of 2025 */
