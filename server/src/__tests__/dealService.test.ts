@@ -73,7 +73,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts');
   await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
-  await pool.end();
 });
 
 // ── updateDealSchema — close_date validation (MINCRM-121) ─────────────────────────

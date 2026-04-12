@@ -104,7 +104,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
   await pool.query('DELETE FROM contacts WHERE id = $1', [contactId]);
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_USER.email, REP_USER.email]]);
-  await pool.end();
 });
 
 // ── createAutomationRule ────────────────────────────────────────────────────────

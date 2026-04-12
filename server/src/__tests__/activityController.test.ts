@@ -54,7 +54,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM activities');
   await pool.query('DELETE FROM contacts WHERE email = $1', ['activity-ctrl-contact@example.com']);
   await pool.query('DELETE FROM users WHERE email = $1', ['activity-ctrl-rep@example.com']);
-  await pool.end();
 });
 
 // ── Cross-field direction null-guard ──────────────────────────────────────────

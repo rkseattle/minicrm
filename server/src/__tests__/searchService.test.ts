@@ -66,7 +66,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts');
   await pool.query("DELETE FROM users WHERE email LIKE 'search-%'");
-  await pool.end();
 });
 
 describe('SEARCH_MIN_LENGTH', () => {

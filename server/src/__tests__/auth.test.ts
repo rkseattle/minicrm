@@ -85,7 +85,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'auth-test-%'");
-  await pool.end();
 });
 
 // ── MINCRM-74: deactivated user rejection ───────────────────────────────────

@@ -70,7 +70,6 @@ afterAll(async () => {
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
   await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
-  await pool.end();
 });
 
 // ── MINCRM-122: fire-and-forget automation trigger ─────────────────────────

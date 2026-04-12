@@ -66,7 +66,6 @@ afterAll(async () => {
     await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
   }
   await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
-  await pool.end();
 });
 
 // ── getDemoStatus ─────────────────────────────────────────────────────────────

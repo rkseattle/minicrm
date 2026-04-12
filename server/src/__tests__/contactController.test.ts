@@ -27,9 +27,14 @@ let repCookie: string;
 let otherRepCookie: string;
 let adminCookie: string;
 
+const CONTACT_CTRL_EMAILS = ['rep@example.com', 'other@example.com', 'admin@example.com'];
+
 beforeAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM users');
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = ANY($1))',
+    [CONTACT_CTRL_EMAILS],
+  );
+  await pool.query('DELETE FROM users WHERE email = ANY($1)', [CONTACT_CTRL_EMAILS]);
 
   const rep = await createUser({
     email: 'rep@example.com',
@@ -75,9 +80,11 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM users');
-  await pool.end();
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = ANY($1))',
+    [CONTACT_CTRL_EMAILS],
+  );
+  await pool.query('DELETE FROM users WHERE email = ANY($1)', [CONTACT_CTRL_EMAILS]);
 });
 
 // ── PATCH /api/contacts/:id ──────────────────────────────────────────────────
