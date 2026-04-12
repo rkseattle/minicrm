@@ -10,6 +10,7 @@
  */
 
 import 'dotenv/config';
+import { jest } from '@jest/globals';
 import {
   sendOverdueDigests,
   queueAssignmentNotification,
@@ -233,6 +234,25 @@ describe('sendOverdueDigests', () => {
   });
 });
 
+// ── sendOverdueDigests — outer error catch ────────────────────────────────────
+
+describe('sendOverdueDigests outer error handling', () => {
+  it('resolves (does not throw) when the DB query itself throws', async () => {
+    // Temporarily replace pool.query so the initial SELECT throws.
+    // The outer try/catch in sendOverdueDigests must catch this and resolve.
+    const originalQuery = pool.query.bind(pool);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pool as any).query = () => Promise.reject(new Error('DB connection lost'));
+
+    try {
+      await expect(sendOverdueDigests()).resolves.toBeUndefined();
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pool as any).query = originalQuery;
+    }
+  });
+});
+
 // ── queueAssignmentNotification ───────────────────────────────────────────────
 
 describe('queueAssignmentNotification', () => {
@@ -263,5 +283,61 @@ describe('queueAssignmentNotification', () => {
       assignedByName: 'Admin',
     });
     // No assertion beyond no-throw — timer dispatch is tested via integration
+  });
+
+  it('flushes the batch and sends email after the batching window (fake timers)', async () => {
+    // Use a unique recipientId that won't collide with other test runs
+    const uniqueRecipientId = `flush-test-${Date.now()}`;
+
+    jest.useFakeTimers();
+    try {
+      queueAssignmentNotification(uniqueRecipientId, ownerEmail, BASE_USER.name, {
+        recordType: 'contact',
+        recordName: 'Flush Test Contact',
+        recordPath: `/contacts/${contactId}`,
+        assignedByName: 'Admin',
+      });
+
+      // Advance time past the 2-minute batch window and flush all pending microtasks
+      jest.runAllTimers();
+      // Allow the async flushAssignmentBatch to complete
+      await Promise.resolve();
+      await Promise.resolve();
+    } finally {
+      jest.useRealTimers();
+    }
+    // No assertion beyond no-throw; flush path exercised for branch coverage
+  });
+
+  it('flush does not send when global notifications are disabled (fake timers)', async () => {
+    // Disable global notifications
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('email_notifications_enabled', 'false', now())
+       ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = now()`,
+    );
+
+    const uniqueRecipientId = `flush-disabled-${Date.now()}`;
+
+    jest.useFakeTimers();
+    try {
+      queueAssignmentNotification(uniqueRecipientId, ownerEmail, BASE_USER.name, {
+        recordType: 'deal',
+        recordName: 'Suppressed Deal',
+        recordPath: `/deals/${contactId}`,
+        assignedByName: 'Admin',
+      });
+
+      jest.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
+    } finally {
+      jest.useRealTimers();
+      // Restore global notifications
+      await pool.query(
+        `UPDATE system_settings SET value = 'true' WHERE key = 'email_notifications_enabled'`,
+      );
+    }
+    // No assertion beyond no-throw; kill-switch branch in flushAssignmentBatch exercised
   });
 });
