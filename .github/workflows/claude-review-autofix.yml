@@ -1,4 +1,8 @@
-name: Review Greptile Feedback
+name: Claude Code Review Autofix
+
+# MINCRM-178: Replaces the Greptile autofix loop. When Claude's PR review
+# (claude-review.yml) posts comments via github-actions[bot], this workflow
+# runs Claude Code on the branch to address the feedback automatically.
 
 on:
   pull_request_review:
@@ -8,20 +12,20 @@ on:
 
 jobs:
   address-feedback:
-    # Only run when Greptile posts a review with changes requested
-    # or posts a follow-up comment on a PR
+    # Run when github-actions[bot] posts a review comment or a follow-up PR comment.
+    # github-actions[bot] is the actor used by claude-code-action review posts.
     if: |
       (github.event_name == 'pull_request_review' &&
-       github.event.review.user.login == 'greptile-apps[bot]' &&
+       github.event.review.user.login == 'github-actions[bot]' &&
        github.event.review.state == 'commented') ||
       (github.event_name == 'issue_comment' &&
-       github.event.comment.user.login == 'greptile-apps[bot]' &&
+       github.event.comment.user.login == 'github-actions[bot]' &&
        github.event.issue.pull_request != null)
 
     runs-on: ubuntu-latest
-    # Serialize runs per PR so concurrent Greptile reviews don't cause conflicting commits
+    # Serialize runs per PR so concurrent review posts don't cause conflicting commits
     concurrency:
-      group: greptile-feedback-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: claude-review-autofix-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
 
     permissions:
@@ -29,9 +33,7 @@ jobs:
       pull-requests: write
 
     steps:
-      # Fetch the PR head ref via API before checkout — for issue_comment events,
-      # github.event.issue.pull_request only contains URL fields (no head.ref),
-      # so we cannot rely on the event payload alone.
+      # Fetch the PR head ref via API — issue_comment events don't include head.ref
       - name: Get PR head ref
         id: get-ref
         uses: actions/github-script@v7
@@ -48,68 +50,66 @@ jobs:
             core.setOutput('pr_title', pr.title);
             core.setOutput('pr_branch', pr.head.ref);
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
-          # Use the branch ref resolved above — works for both trigger types
           ref: ${{ steps.get-ref.outputs.pr_branch }}
           fetch-depth: 0
 
-      - name: Collect Greptile feedback
+      - name: Collect Claude review feedback
         id: feedback
         uses: actions/github-script@v7
         with:
           script: |
             const pr_number = Number('${{ steps.get-ref.outputs.pr_number }}');
 
-            // Top-level review summary bodies
+            // Top-level review summary bodies from github-actions[bot]
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr_number
             });
             const reviewSummaries = reviews
-              .filter(r => r.user.login === 'greptile-apps[bot]')
+              .filter(r => r.user.login === 'github-actions[bot]')
               .map(r => r.body)
               .filter(Boolean)
               .join('\n\n---\n\n');
 
-            // Per-file inline comments — listReviews does NOT return these
+            // Per-file inline comments from github-actions[bot]
             const { data: reviewComments } = await github.rest.pulls.listReviewComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr_number
             });
             const inlineComments = reviewComments
-              .filter(c => c.user.login === 'greptile-apps[bot]')
+              .filter(c => c.user.login === 'github-actions[bot]')
               .map(c => `File: ${c.path} (line ${c.line ?? c.original_line})\n${c.body}`)
               .join('\n\n---\n\n');
 
             const sections = [];
             if (reviewSummaries) sections.push(`=== REVIEW SUMMARIES ===\n\n${reviewSummaries}`);
             if (inlineComments)  sections.push(`=== INLINE COMMENTS ===\n\n${inlineComments}`);
-            core.setOutput('greptile_feedback', sections.join('\n\n'));
+            core.setOutput('review_feedback', sections.join('\n\n'));
 
       - name: Run Claude Code to address feedback
-        # Pinned to commit SHA behind the v1 tag to avoid supply-chain surprises
         uses: anthropics/claude-code-action@094bd24d575e7b30ac1576024817bf1a97c81262
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            A code review bot (Greptile) has reviewed a pull request and
-            flagged issues that need to be addressed.
+            A Claude Code review bot has reviewed a pull request and flagged issues
+            that need to be addressed.
 
             PR Title: ${{ steps.get-ref.outputs.pr_title }}
             Branch: ${{ steps.get-ref.outputs.pr_branch }}
 
-            Greptile feedback to address:
+            Claude review feedback to address:
             ---
-            ${{ steps.feedback.outputs.greptile_feedback }}
+            ${{ steps.feedback.outputs.review_feedback }}
             ---
 
             Instructions:
-            - Read each issue Greptile raised carefully
-            - Fix only the issues Greptile identified — do not refactor unrelated code
+            - Read each issue raised carefully
+            - Fix only the issues identified — do not refactor unrelated code
             - Re-read CLAUDE.md to ensure fixes comply with architecture rules
             - After fixing, run the linter and fix any new errors introduced
-            - Commit with message: fix: address Greptile feedback on <PR title>
+            - Commit with message: fix: address Claude review feedback on <PR title>
             - Do not open a new PR — push to the existing branch

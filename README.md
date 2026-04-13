@@ -84,6 +84,36 @@ npm test --workspace=minicrm-client
 npm run test:coverage --workspace=minicrm-client
 ```
 
+## Automated PR Code Review (MINCRM-178)
+
+All pull requests are automatically reviewed by Claude Code via `.github/workflows/claude-review.yml`. The review runs on `pull_request` events (opened, synchronize, reopened) and posts inline comments and a summary review.
+
+### What it checks
+
+- **Architecture violations** — business logic in controllers or routes; `pool.query()` calls outside `server/src/services/`
+- **Validation** — missing Zod validation on request bodies; ORDER BY params not allowlist-validated before SQL interpolation
+- **Frontend** — missing `data-testid` attributes on interactable elements; hardcoded user-facing strings not wrapped in `t('key')`; physical Tailwind directional classes instead of logical property utilities (RTL safety)
+- **Security** — missing `authenticate` middleware; missing `requireRole('admin')` on admin routes; PATCH/DELETE ownership not enforced; `owner_id` from request body instead of `req.user.id`
+- **Documentation** — new service functions missing JSDoc; async handlers not wrapped in `try/catch` or `asyncHandler`; non-standard error response shape
+- **Scope** — any implementation touching out-of-scope MINCRM-5, 6, or 7 features
+- **PR title** — conventional commit prefix (`feat:`, `fix:`, `chore:`, `test:`, `docs:`)
+
+### What it does NOT flag
+
+Style issues enforced by ESLint/Prettier, naming preferences, and correct-but-stylistically-different patterns.
+
+### How to interpret comments
+
+Comments quote the specific code that violated a rule and explain the correct pattern. If the diff is clean, the review will say so briefly.
+
+### Triggering a re-review
+
+Push a new commit to the branch. The `synchronize` event re-triggers the review automatically.
+
+### Auto-fix loop
+
+`.github/workflows/claude-review-autofix.yml` listens for review comments from `github-actions[bot]` (the actor used by the review workflow) and runs Claude Code on the branch to address the feedback automatically, then pushes a fix commit.
+
 ## Project Structure
 
 ```
