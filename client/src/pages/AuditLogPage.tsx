@@ -22,32 +22,45 @@ const PAGE_SIZE = 50;
 
 /**
  * Builds a human-readable one-line summary for an audit log entry row.
+ *
+ * @param entry - Audit log entry
+ * @param t - i18n translation function
+ * @returns Human-readable description
  */
-function buildRowSummary(entry: AuditLogEntry): string {
+function buildRowSummary(
+  entry: AuditLogEntry,
+  t: (key: string, opts?: Record<string, string>) => string,
+): string {
   const actor = entry.changed_by_name ?? 'Unknown';
+  const recordType = t(`auditLog.recordTypes.${entry.record_type}`);
   switch (entry.event_type) {
     case 'created':
-      return `${actor} created this ${entry.record_type}`;
+      return t('auditLog.summary.created', { actor, recordType });
     case 'updated':
       return entry.field_name
-        ? `${actor} changed ${entry.field_name}`
-        : `${actor} updated this ${entry.record_type}`;
+        ? t('auditLog.summary.updated', {
+            actor,
+            field: entry.field_name,
+            oldValue: entry.old_value ?? t('auditLog.summary.noOldValue'),
+            newValue: entry.new_value ?? t('auditLog.summary.noNewValue'),
+          })
+        : t('auditLog.summary.updated', { actor, field: '', oldValue: '', newValue: '' });
     case 'deleted':
-      return `${actor} deleted this ${entry.record_type}`;
+      return t('auditLog.summary.deleted', { actor, recordType });
     case 'login':
-      return `${actor} logged in`;
+      return t('auditLog.summary.login', { actor });
     case 'logout':
-      return `${actor} logged out`;
+      return t('auditLog.summary.logout', { actor });
     case 'password_changed':
-      return `${actor} changed the password`;
+      return t('auditLog.summary.password_changed', { actor });
     case 'role_changed':
-      return `${actor} changed the role`;
+      return t('auditLog.summary.role_changed', { actor, newValue: entry.new_value ?? '' });
     case 'deactivated':
-      return `${actor} deactivated this user`;
+      return t('auditLog.summary.deactivated', { actor });
     case 'reactivated':
-      return `${actor} reactivated this user`;
+      return t('auditLog.summary.reactivated', { actor });
     case 'ownership_reassigned':
-      return `${actor} reassigned ownership`;
+      return t('auditLog.summary.ownership_reassigned', { actor });
     default:
       return `${actor} — ${entry.event_type}`;
   }
@@ -378,7 +391,7 @@ export default function AuditLogPage() {
                             className="text-sm text-gray-900 font-medium"
                             data-testid={`audit-log-summary-${entry.id}`}
                           >
-                            {buildRowSummary(entry)}
+                            {buildRowSummary(entry, t)}
                             {entry.record_name && (
                               <span className="ms-1 text-sm text-gray-500 font-normal">
                                 — {entry.record_name}
