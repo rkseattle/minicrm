@@ -21,10 +21,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The action installs Claude Code CLI via curl from claude.ai/install.sh.
-      # That endpoint occasionally returns 429. Pre-install with retries so the
-      # action finds the binary already on PATH and skips its own install step.
-      - name: Install Claude Code CLI (with retries)
+      # The action always runs: curl -fsSL https://claude.ai/install.sh | bash -s 1.0.88
+      # That endpoint occasionally returns 429 with no retry logic in the action.
+      # Workaround: pre-install the CLI with retries, then shadow `curl` with a
+      # wrapper that intercepts the exact install URL and exits 0 (no-op), so the
+      # action's install step succeeds without hitting the endpoint again.
+      - name: Install Claude Code CLI (with retries) and shield install URL
         run: |
           for i in 1 2 3 4 5; do
             curl -fsSL https://claude.ai/install.sh | bash -s 1.0.88 && break
@@ -32,6 +34,22 @@ jobs:
             sleep $((i * 10))
           done
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          # Shadow curl so the action's re-install attempt is a no-op
+          mkdir -p "$HOME/.local/bin-shim"
+          cat > "$HOME/.local/bin-shim/curl" <<'SHIM'
+          #!/usr/bin/env bash
+          for arg in "$@"; do
+            if [[ "$arg" == *"claude.ai/install.sh"* ]]; then
+              echo "#!/usr/bin/env bash" >&1
+              echo "# install already done — shim no-op" >&1
+              exit 0
+            fi
+          done
+          exec /usr/bin/curl "$@"
+          SHIM
+          chmod +x "$HOME/.local/bin-shim/curl"
+          echo "$HOME/.local/bin-shim" >> "$GITHUB_PATH"
 
       - name: Run Claude Code PR review (MINCRM-178)
         uses: anthropics/claude-code-action@beta
