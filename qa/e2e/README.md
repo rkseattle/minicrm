@@ -12,6 +12,16 @@ pages/       Page-object models
 tests/       Spec files — mirrors the structure above
 ```
 
+## Smoke-Level Coverage
+
+Smoke-level (sanity) E2E coverage is provided by the BVT suite — there is no separate smoke test file. The BVTs run in Phase 4 of CI and cover the critical end-to-end journeys (auth, contact CRUD, deal pipeline, task flow, user management) with self-healing locators, proper test-data teardown, and CI artifact reporting.
+
+BVT specs live under `qa/e2e/tests/apps/minicrm/bvt/` and are tagged `@bvt`. To run them locally:
+
+```bash
+npx playwright test --config=qa/e2e/playwright.config.ts --grep @bvt qa/e2e/tests/apps/minicrm/bvt/
+```
+
 ## Running Tests
 
 ```bash
