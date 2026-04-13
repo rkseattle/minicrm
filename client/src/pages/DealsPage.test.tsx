@@ -240,10 +240,13 @@ describe('DealsPage', () => {
       name: 'Closed Won Deal',
       stage: 'Closed Won' as const,
     };
+    // Server-side: respect hideClosed=true param so pagination total is also accurate
     server.use(
-      http.get('/api/deals', () =>
-        HttpResponse.json({ data: [DEAL_1, closedDeal], total: 2, page: 1, limit: 50 }),
-      ),
+      http.get('/api/deals', ({ request }) => {
+        const hideClosed = new URL(request.url).searchParams.get('hideClosed') === 'true';
+        const deals = hideClosed ? [DEAL_1] : [DEAL_1, closedDeal];
+        return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
+      }),
     );
 
     const user = userEvent.setup();
@@ -256,7 +259,7 @@ describe('DealsPage', () => {
       expect(screen.getAllByText(closedDeal.name).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Click hide closed
+    // Click hide closed — triggers a new query with hideClosed=true
     await user.click(screen.getByTestId('toggle-closed-deals'));
 
     // Closed deal should disappear; open deal stays

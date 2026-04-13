@@ -31,6 +31,8 @@ export interface ListDealsParams {
   owner?: 'me';
   /** When provided, only deals for this account are returned */
   accountId?: string;
+  /** When true, Closed Won and Closed Lost deals are excluded (MINCRM-176) */
+  hideClosed?: boolean;
   /** Column to sort by */
   sort?: 'created_at' | 'name' | 'close_date' | 'value';
   /** Sort direction */
@@ -52,6 +54,7 @@ export async function listDeals(
   const queryParams: Record<string, string> = {};
   if (params.owner) queryParams['owner'] = params.owner;
   if (params.accountId) queryParams['account'] = params.accountId;
+  if (params.hideClosed) queryParams['hideClosed'] = 'true';
   if (params.sort) queryParams['sort'] = params.sort;
   if (params.dir) queryParams['dir'] = params.dir;
   if (params.page !== undefined) queryParams['page'] = String(params.page);

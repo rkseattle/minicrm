@@ -153,7 +153,13 @@ export default function DealsPage() {
   const listQueryKey = [
     ...DEALS_QUERY_KEY,
     'list',
-    { owner: ownerFilter === 'me' ? 'me' : undefined, sort: sortCol, dir: sortDir, page: listPage },
+    {
+      owner: ownerFilter === 'me' ? 'me' : undefined,
+      hideClosed: !showClosed,
+      sort: sortCol,
+      dir: sortDir,
+      page: listPage,
+    },
   ] as const;
 
   const {
@@ -179,6 +185,7 @@ export default function DealsPage() {
     queryFn: () =>
       listDeals({
         owner: ownerFilter === 'me' ? 'me' : undefined,
+        hideClosed: !showClosed || undefined,
         sort: sortCol,
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         page: listPage,
@@ -244,10 +251,8 @@ export default function DealsPage() {
     });
   }, [listData?.data, viewMode]);
 
-  // Server handles sorting and pagination; apply client-side closed filter (MINCRM-176)
-  const sortedDeals: DealResponse[] = (listData?.data ?? []).filter(
-    (deal) => showClosed || !(CLOSED_STAGES as PipelineStage[]).includes(deal.stage),
-  );
+  // Server handles sorting, pagination, and closed-stage filtering (MINCRM-176)
+  const sortedDeals: DealResponse[] = listData?.data ?? [];
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
