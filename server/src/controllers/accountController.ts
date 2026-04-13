@@ -11,11 +11,13 @@ import {
   listAccounts,
   updateAccount,
   deleteAccount,
+  exportAccountsForCsv,
   ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
+import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -154,6 +156,67 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
       }
     })();
   }
+}
+
+/**
+ * GET /api/accounts/export
+ * Streams all matching accounts as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, search, industry) except
+ * pagination/sort — all matching rows are exported.
+ * Reps automatically get their own accounts; admins may pass ?all=true to export all.
+ * (MINCRM-165)
+ */
+export async function exportAccountsHandler(req: Request, res: Response): Promise<void> {
+  const isAdmin = req.user!.role === 'admin';
+  const exportAll = req.query.all === 'true';
+
+  const ownerId = !isAdmin || !exportAll ? req.user!.id : undefined;
+
+  const search =
+    typeof req.query.search === 'string' && req.query.search.trim().length > 0
+      ? req.query.search.trim()
+      : undefined;
+
+  const industry =
+    typeof req.query.industry === 'string' && req.query.industry.trim().length > 0
+      ? req.query.industry.trim()
+      : undefined;
+
+  const rows = await exportAccountsForCsv({ ownerId, search, industry });
+
+  const headers = [
+    'Name',
+    'Industry',
+    'Website',
+    'Employees',
+    'Revenue Range',
+    'Owner',
+    'Contacts',
+    'Deals',
+    'Created',
+    'Updated',
+  ];
+
+  const csvRows = rows.map((r) => ({
+    Name: r.name,
+    Industry: r.industry,
+    Website: r.website,
+    Employees: r.employee_range,
+    'Revenue Range': r.revenue_range,
+    Owner: r.owner_name,
+    Contacts: r.contact_count,
+    Deals: r.deal_count,
+    Created: r.created_at,
+    Updated: r.updated_at,
+  }));
+
+  const csv = serializeToCsv(headers, csvRows);
+  const filename = csvFilename('accounts');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(csv);
 }
 
 /**

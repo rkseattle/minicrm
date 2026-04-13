@@ -16,11 +16,12 @@ import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listAccounts, createAccount } from '@/api/accounts.js';
+import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
@@ -33,8 +34,11 @@ export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
 export default function AccountsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,16 +151,57 @@ export default function AccountsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('accounts.pageTitle')}</h1>
-          {!showForm && (
+          <div className="flex items-center gap-2">
+            {/* Export filtered view */}
             <Button
-              ref={newAccountButtonRef}
               type="button"
-              data-testid="new-account-button"
-              onClick={() => setShowForm(true)}
+              variant="secondary"
+              data-testid="accounts-export-csv-button"
+              disabled={isExporting}
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  await exportAccountsCsv({
+                    search: debouncedSearch || undefined,
+                    industry: debouncedIndustry || undefined,
+                  });
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
             >
-              {t('accounts.newAccount')}
+              {isExporting ? t('accounts.exporting') : t('accounts.exportCsv')}
             </Button>
-          )}
+            {/* Export all — admins only */}
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="secondary"
+                data-testid="accounts-export-all-button"
+                disabled={isExporting}
+                onClick={async () => {
+                  setIsExporting(true);
+                  try {
+                    await exportAccountsCsv({ all: true });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? t('accounts.exporting') : t('accounts.exportAll')}
+              </Button>
+            )}
+            {!showForm && (
+              <Button
+                ref={newAccountButtonRef}
+                type="button"
+                data-testid="new-account-button"
+                onClick={() => setShowForm(true)}
+              >
+                {t('accounts.newAccount')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Inline create form — owner field intentionally omitted; defaults to creating user */}

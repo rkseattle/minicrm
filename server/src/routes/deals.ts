@@ -14,6 +14,7 @@ import {
   deleteDealHandler,
   linkContactHandler,
   unlinkContactHandler,
+  exportDealsHandler,
 } from '../controllers/dealController.js';
 
 const router = Router();
@@ -83,6 +84,45 @@ const router = Router();
  *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listDealsHandler));
+
+/**
+ * @openapi
+ * /api/deals/export:
+ *   get:
+ *     tags: [Deals]
+ *     operationId: exportDeals
+ *     summary: Export deals to CSV
+ *     description: >
+ *       Returns all matching deals as a UTF-8 CSV file (with BOM).
+ *       Reps receive only their own deals. Admins receive their own deals
+ *       by default; pass `?all=true` to export all deals.
+ *       (MINCRM-166)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all deals
+ *       - in: query
+ *         name: account
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by account ID
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/export', authenticate, asyncHandler(exportDealsHandler));
 
 /**
  * @openapi

@@ -126,6 +126,52 @@ export async function linkContactToDeal(
   return response.data;
 }
 
+/** Parameters for the deals CSV export */
+export interface ExportDealsParams {
+  /** When true, admins export all deals (reps always get their own) */
+  all?: boolean;
+  accountId?: string;
+}
+
+/**
+ * Downloads all matching deals as a CSV file.
+ * Triggers a browser file-save dialog.
+ * (MINCRM-166)
+ *
+ * @param params - Optional filter parameters
+ */
+export async function exportDealsCsv(params: ExportDealsParams = {}): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (params.all) queryParams.all = 'true';
+  if (params.accountId) queryParams.account = params.accountId;
+
+  const response = await apiClient.get<Blob>('/deals/export', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-deals-${date}.csv`;
+  triggerCsvDownload(response.data, filename);
+}
+
+/**
+ * Creates a temporary anchor element to trigger a file download from a Blob.
+ *
+ * @param blob - CSV blob received from the server
+ * @param filename - Suggested filename for the download
+ */
+function triggerCsvDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Unlinks a contact from a deal without deleting either record.
  * Returns the updated list of contacts linked to the deal.

@@ -13,6 +13,7 @@ import {
   updateContactHandler,
   deleteContactHandler,
   listContactDealsHandler,
+  exportContactsHandler,
 } from '../controllers/contactController.js';
 
 const router = Router();
@@ -89,6 +90,56 @@ const router = Router();
  *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listContactsHandler));
+
+/**
+ * @openapi
+ * /api/contacts/export:
+ *   get:
+ *     tags: [Contacts]
+ *     operationId: exportContacts
+ *     summary: Export contacts to CSV
+ *     description: >
+ *       Returns all matching contacts as a UTF-8 CSV file (with BOM).
+ *       Reps receive only their own contacts. Admins receive their own contacts
+ *       by default; pass `?all=true` to export all contacts.
+ *       Accepts the same filter params as the list endpoint (search, accountSearch, account).
+ *       (MINCRM-164)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all contacts regardless of owner
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on name or email
+ *       - in: query
+ *         name: accountSearch
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on linked account name
+ *       - in: query
+ *         name: account
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by account ID
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/export', authenticate, asyncHandler(exportContactsHandler));
 
 /**
  * @openapi

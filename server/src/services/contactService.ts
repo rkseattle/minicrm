@@ -255,6 +255,96 @@ export async function updateContact(
   return result.rows[0] ?? null;
 }
 
+/** Shape of a contact row enriched with display names for CSV export */
+export interface ContactExportRow {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  title: string | null;
+  department: string | null;
+  account_name: string | null;
+  owner_name: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Options for filtering contacts to export (mirrors list options minus pagination) */
+interface ExportContactsOptions {
+  /** When provided, only contacts with this owner_id are returned */
+  ownerId?: string;
+  /** When provided, only contacts linked to this account_id are returned */
+  accountId?: string;
+  /** Case-insensitive substring match across first_name, last_name, and email */
+  search?: string;
+  /** Case-insensitive substring match on the linked account name */
+  accountSearch?: string;
+}
+
+/**
+ * Returns all contacts matching the given filters, enriched with account name
+ * and owner name, for CSV export. No pagination — returns every matching row.
+ * (MINCRM-164)
+ *
+ * @param options - Filters (same semantics as listContacts, minus pagination/sort)
+ * @returns Array of enriched contact rows ordered by last_name ASC, first_name ASC
+ */
+export async function exportContactsForCsv(
+  options: ExportContactsOptions = {},
+): Promise<ContactExportRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (options.ownerId) {
+    values.push(options.ownerId);
+    conditions.push(`c.owner_id = $${values.length}`);
+  }
+
+  if (options.accountId) {
+    values.push(options.accountId);
+    conditions.push(`c.account_id = $${values.length}`);
+  }
+
+  if (options.search) {
+    const pattern = `%${options.search}%`;
+    values.push(pattern);
+    const idx = values.length;
+    conditions.push(
+      `(c.first_name ILIKE $${idx} OR c.last_name ILIKE $${idx} OR c.email ILIKE $${idx})`,
+    );
+  }
+
+  if (options.accountSearch) {
+    const pattern = `%${options.accountSearch}%`;
+    values.push(pattern);
+    conditions.push(`a.name ILIKE $${values.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query<ContactExportRow>(
+    `SELECT
+       c.first_name,
+       c.last_name,
+       c.email,
+       c.phone,
+       c.title,
+       c.department,
+       a.name AS account_name,
+       u.name AS owner_name,
+       c.created_at,
+       c.updated_at
+     FROM contacts c
+     LEFT JOIN accounts a ON c.account_id = a.id
+     JOIN users u ON c.owner_id = u.id
+     ${whereClause}
+     ORDER BY c.last_name ASC, c.first_name ASC`,
+    values,
+  );
+
+  return result.rows;
+}
+
 /**
  * Deletes a contact by its UUID.
  *

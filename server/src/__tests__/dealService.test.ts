@@ -19,6 +19,7 @@ import {
   linkContactToDeal,
   unlinkContactFromDeal,
   listContactDeals,
+  exportDealsForCsv,
 } from '../services/dealService.js';
 import { updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import { createUser } from '../services/userService.js';
@@ -518,5 +519,94 @@ describe('listDealContacts', () => {
     expect(contacts[0].first_name).toBe('Alice');
     expect(contacts[0].last_name).toBe('Smith');
     expect(contacts[0].email).toBe('alice-dc@example.com');
+  });
+});
+
+// ── exportDealsForCsv ───────────────────────────────────────────────────────────
+
+describe('exportDealsForCsv', () => {
+  it('returns an empty array when no deals exist', async () => {
+    const rows = await exportDealsForCsv();
+    expect(rows).toEqual([]);
+  });
+
+  it('returns enriched rows with owner_name and account_name', async () => {
+    await createDeal({ ...BASE_DEAL, account_id: accountId, owner_id: ownerId });
+
+    const rows = await exportDealsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    expect(row.name).toBe('Acme Enterprise Deal');
+    expect(row.stage).toBe('Prospecting');
+    expect(row.owner_name).toBe('Deal Owner');
+    expect(row.account_name).toBe('Test Account');
+  });
+
+  it('returns null account_name when deal has no account', async () => {
+    await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+
+    const rows = await exportDealsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].account_name).toBeNull();
+  });
+
+  it('returns semicolon-separated contact names when contacts are linked', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+
+    const contactA = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Alice', 'Smith', 'export-a@example.com', $1) RETURNING id`,
+      [ownerId],
+    );
+    const contactB = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Bob', 'Jones', 'export-b@example.com', $1) RETURNING id`,
+      [ownerId],
+    );
+
+    await pool.query('INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2), ($1, $3)', [
+      deal.id,
+      contactA.rows[0].id,
+      contactB.rows[0].id,
+    ]);
+
+    const rows = await exportDealsForCsv({ ownerId });
+    expect(rows).toHaveLength(1);
+    // contacts ordered by last_name, first_name
+    expect(rows[0].contact_names).toBe('Bob Jones; Alice Smith');
+  });
+
+  it('returns null contact_names when no contacts are linked', async () => {
+    await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+
+    const rows = await exportDealsForCsv({ ownerId });
+    expect(rows[0].contact_names).toBeNull();
+  });
+
+  it('filters by ownerId', async () => {
+    // Guard against leftover user from a prior failed run
+    await pool.query(
+      `DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = 'deal-export-other@example.com')`,
+    );
+    await pool.query(`DELETE FROM users WHERE email = 'deal-export-other@example.com'`);
+
+    const otherUser = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ('deal-export-other@example.com', 'Other', 'rep', 'x', 'active') RETURNING id`,
+    );
+    const otherOwnerId = otherUser.rows[0].id;
+
+    await createDeal({ ...BASE_DEAL, name: 'Mine', owner_id: ownerId });
+    await createDeal({ ...BASE_DEAL, name: 'Theirs', owner_id: otherOwnerId });
+
+    const rows = await exportDealsForCsv({ ownerId });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Mine');
+
+    // Must delete deals before user due to FK constraint
+    await pool.query('DELETE FROM deals WHERE owner_id = $1', [otherOwnerId]);
+    await pool.query('DELETE FROM users WHERE email = $1', ['deal-export-other@example.com']);
   });
 });

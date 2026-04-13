@@ -197,6 +197,82 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
   return deal;
 }
 
+/** Shape of a deal row enriched with display names and contact names for CSV export */
+export interface DealExportRow {
+  name: string;
+  stage: string;
+  value: string | null;
+  close_date: string | null;
+  loss_reason: string | null;
+  account_name: string | null;
+  contact_names: string | null;
+  owner_name: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Options for filtering deals to export (mirrors list options minus pagination) */
+interface ExportDealsOptions {
+  /** When provided, only deals with this owner_id are returned */
+  ownerId?: string;
+  /** When provided, only deals linked to this account_id are returned */
+  accountId?: string;
+}
+
+/**
+ * Returns all deals matching the given filters, enriched with account name,
+ * semicolon-separated contact names, and owner name, for CSV export. No pagination.
+ * (MINCRM-166)
+ *
+ * @param options - Filters (same semantics as listDeals, minus pagination/sort)
+ * @returns Array of enriched deal rows ordered by created_at ASC
+ */
+export async function exportDealsForCsv(
+  options: ExportDealsOptions = {},
+): Promise<DealExportRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (options.ownerId) {
+    values.push(options.ownerId);
+    conditions.push(`d.owner_id = $${values.length}`);
+  }
+
+  if (options.accountId) {
+    values.push(options.accountId);
+    conditions.push(`d.account_id = $${values.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query<DealExportRow>(
+    `SELECT
+       d.name,
+       d.stage,
+       d.value,
+       d.close_date::text,
+       d.loss_reason,
+       a.name AS account_name,
+       (
+         SELECT string_agg(c.first_name || ' ' || c.last_name, '; ' ORDER BY c.last_name, c.first_name)
+         FROM deal_contacts dc
+         JOIN contacts c ON dc.contact_id = c.id
+         WHERE dc.deal_id = d.id
+       ) AS contact_names,
+       u.name AS owner_name,
+       d.created_at,
+       d.updated_at
+     FROM deals d
+     LEFT JOIN accounts a ON d.account_id = a.id
+     JOIN users u ON d.owner_id = u.id
+     ${whereClause}
+     ORDER BY d.created_at ASC`,
+    values,
+  );
+
+  return result.rows;
+}
+
 /**
  * Deletes a deal by its UUID.
  * Associated deal_contacts rows are removed via CASCADE.

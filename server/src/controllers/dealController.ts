@@ -18,12 +18,15 @@ import {
   listDealContacts,
   linkContactToDeal,
   unlinkContactFromDeal,
+  exportDealsForCsv,
   DEAL_SORT_COLUMNS,
 } from '../services/dealService.js';
 import { findContactById } from '../services/contactService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
+import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { z } from 'zod';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -247,4 +250,66 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
 
   await deleteDeal(id);
   res.status(204).send();
+}
+
+/**
+ * GET /api/deals/export
+ * Streams all matching deals as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, account) except pagination/sort.
+ * Reps automatically get their own deals; admins may pass ?all=true to export all.
+ * (MINCRM-166)
+ */
+export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
+  const isAdmin = req.user!.role === 'admin';
+  const exportAll = req.query.all === 'true';
+
+  const ownerId = !isAdmin || !exportAll ? req.user!.id : undefined;
+
+  let accountId: string | undefined;
+  if (typeof req.query.account === 'string' && req.query.account.length > 0) {
+    const parsed = z.string().uuid().safeParse(req.query.account);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
+      });
+      return;
+    }
+    accountId = parsed.data;
+  }
+
+  const rows = await exportDealsForCsv({ ownerId, accountId });
+
+  const headers = [
+    'Name',
+    'Stage',
+    'Value',
+    'Close Date',
+    'Loss Reason',
+    'Account',
+    'Contacts',
+    'Owner',
+    'Created',
+    'Updated',
+  ];
+
+  const csvRows = rows.map((r) => ({
+    Name: r.name,
+    Stage: r.stage,
+    Value: r.value,
+    'Close Date': r.close_date,
+    'Loss Reason': r.loss_reason,
+    Account: r.account_name,
+    Contacts: r.contact_names,
+    Owner: r.owner_name,
+    Created: r.created_at,
+    Updated: r.updated_at,
+  }));
+
+  const csv = serializeToCsv(headers, csvRows);
+  const filename = csvFilename('deals');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(csv);
 }
