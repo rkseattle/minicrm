@@ -7,6 +7,7 @@
 
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import logger from '../logger.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,13 @@ export function diffFields(
     const normalizedOld = oldVal ?? null;
     const normalizedNew = newVal ?? null;
 
-    if (String(normalizedOld) === String(normalizedNew)) continue;
+    if (normalizedOld === normalizedNew) continue;
+    if (
+      normalizedOld !== null &&
+      normalizedNew !== null &&
+      String(normalizedOld) === String(normalizedNew)
+    )
+      continue;
 
     entries.push({
       ...base,
@@ -333,22 +340,26 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
 export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise<void> {
   const isSensitive = entry.fieldName != null && SENSITIVE_FIELDS.has(entry.fieldName);
 
-  await pool.query(
-    `INSERT INTO audit_log
-       (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [
-      entry.recordType,
-      entry.recordId ?? null,
-      entry.recordName ?? null,
-      entry.eventType,
-      entry.fieldName ?? null,
-      isSensitive ? null : (entry.oldValue ?? null),
-      isSensitive ? null : (entry.newValue ?? null),
-      entry.changedById ?? null,
-      entry.changedByName ?? null,
-    ],
-  );
+  try {
+    await pool.query(
+      `INSERT INTO audit_log
+         (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        entry.recordType,
+        entry.recordId ?? null,
+        entry.recordName ?? null,
+        entry.eventType,
+        entry.fieldName ?? null,
+        isSensitive ? null : (entry.oldValue ?? null),
+        isSensitive ? null : (entry.newValue ?? null),
+        entry.changedById ?? null,
+        entry.changedByName ?? null,
+      ],
+    );
+  } catch (err) {
+    logger.warn({ err }, 'writeAuditEntryBestEffort: failed to write audit entry');
+  }
 }
 
 /**

@@ -35,10 +35,18 @@ function formatRelativeTime(dateStr: string, locale: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSecs < 60) return 'just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  if (diffSecs < 60) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(0, 'second');
+  }
+  if (diffMins < 60) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffMins, 'minute');
+  }
+  if (diffHours < 24) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffHours, 'hour');
+  }
+  if (diffDays < 7) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffDays, 'day');
+  }
 
   return date.toLocaleDateString(locale, {
     year: 'numeric',
