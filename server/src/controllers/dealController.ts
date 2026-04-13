@@ -54,17 +54,19 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
 /**
  * GET /api/deals
  * Lists deals with optional filters and pagination:
- *   ?owner=me      — scope to the authenticated user's deals
- *   ?account=<uuid> — filter by account UUID
- *   ?sort=<col>    — sort column (created_at|name|close_date|value)
- *   ?dir=asc|desc  — sort direction
- *   ?page=<n>      — 1-based page number (default 1)
- *   ?limit=<n>     — records per page (default 50, max 100)
+ *   ?owner=me         — scope to the authenticated user's deals
+ *   ?account=<uuid>   — filter by account UUID
+ *   ?hideClosed=true  — exclude Closed Won and Closed Lost deals (MINCRM-176)
+ *   ?sort=<col>       — sort column (created_at|name|close_date|value)
+ *   ?dir=asc|desc     — sort direction
+ *   ?page=<n>         — 1-based page number (default 1)
+ *   ?limit=<n>        — records per page (default 50, max 100)
  */
 export async function listDealsHandler(req: Request, res: Response): Promise<void> {
   const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
   const accountId =
     typeof req.query.account === 'string' && req.query.account ? req.query.account : undefined;
+  const excludeClosedStages = req.query.hideClosed === 'true';
 
   const paginationParsed = paginationParamsSchema.safeParse({
     page: req.query.page,
@@ -83,7 +85,14 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
     : undefined;
   const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
 
-  const result = await listDeals({ ownerId, accountId, sort, dir, ...paginationParsed.data });
+  const result = await listDeals({
+    ownerId,
+    accountId,
+    excludeClosedStages,
+    sort,
+    dir,
+    ...paginationParsed.data,
+  });
   res.status(200).json(result);
 }
 

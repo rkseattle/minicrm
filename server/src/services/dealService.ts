@@ -55,6 +55,8 @@ interface ListDealsOptions {
   ownerId?: string;
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
+  /** When true, Closed Won and Closed Lost deals are excluded (MINCRM-176) */
+  excludeClosedStages?: boolean;
   /** Column to sort by; defaults to 'created_at' */
   sort?: DealSortColumn;
   /** Sort direction; defaults to 'ASC' */
@@ -159,6 +161,10 @@ export async function listDeals(
   if (options.accountId) {
     values.push(options.accountId);
     conditions.push(`account_id = $${values.length}`);
+  }
+
+  if (options.excludeClosedStages) {
+    conditions.push(`stage NOT IN ('Closed Won', 'Closed Lost')`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

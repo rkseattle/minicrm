@@ -277,6 +277,37 @@ describe('listDeals', () => {
     expect(result.data).toHaveLength(1);
     expect(result.data[0].name).toBe('Account Deal');
   });
+
+  it('excludes Closed Won and Closed Lost deals when excludeClosedStages is true (MINCRM-176)', async () => {
+    await createDeal({ ...BASE_DEAL, name: 'Open Deal', owner_id: ownerId });
+    const closedWon = await createDeal({
+      ...BASE_DEAL,
+      name: 'Closed Won Deal',
+      owner_id: ownerId,
+    });
+    const closedLost = await createDeal({
+      ...BASE_DEAL,
+      name: 'Closed Lost Deal',
+      owner_id: ownerId,
+    });
+
+    // Move them to terminal stages
+    const today = new Date().toISOString().split('T')[0];
+    await updateDeal(closedWon.id, { stage: 'Closed Won', close_date: today, loss_reason: null });
+    await updateDeal(closedLost.id, {
+      stage: 'Closed Lost',
+      close_date: today,
+      loss_reason: 'Budget',
+    });
+
+    const withClosed = await listDeals();
+    expect(withClosed.total).toBe(3);
+
+    const withoutClosed = await listDeals({ excludeClosedStages: true });
+    expect(withoutClosed.data).toHaveLength(1);
+    expect(withoutClosed.total).toBe(1);
+    expect(withoutClosed.data[0].name).toBe('Open Deal');
+  });
 });
 
 // ── listDeals — pagination ──────────────────────────────────────────────────────
