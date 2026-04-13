@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
+import AttachmentsSection from '@/components/AttachmentsSection.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
@@ -371,6 +372,9 @@ export default function DealDetailPage() {
 
             {/* Activity timeline */}
             <ActivityTimeline dealId={id} />
+
+            {/* Attachments (MINCRM-167) */}
+            {id && <AttachmentsSection recordType="deal" recordId={id} />}
 
             {/* Linked contacts */}
             <section className="mt-8" aria-labelledby="linked-contacts-heading">

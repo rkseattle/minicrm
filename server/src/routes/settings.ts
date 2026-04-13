@@ -16,6 +16,12 @@ import {
   getEmailNotificationsEnabledHandler,
   setEmailNotificationsEnabledHandler,
 } from '../controllers/settingsController.js';
+import {
+  getStorageConfigHandler,
+  setStorageConfigHandler,
+  clearStorageConfigHandler,
+  testStorageConfigHandler,
+} from '../controllers/attachmentController.js';
 
 const router = Router();
 
@@ -231,6 +237,126 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setEmailNotificationsEnabledHandler),
+);
+
+// ── Storage configuration (MINCRM-169) ───────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/storage:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getStorageConfig
+ *     summary: Get the storage backend configuration (admin only, MINCRM-169)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Storage configuration (secret masked)
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/storage', authenticate, requireRole('admin'), asyncHandler(getStorageConfigHandler));
+
+/**
+ * @openapi
+ * /api/settings/storage:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: setStorageConfig
+ *     summary: Save storage backend configuration (admin only, MINCRM-169)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               endpoint: { type: string }
+ *               bucket: { type: string }
+ *               accessKeyId: { type: string }
+ *               secretAccessKey: { type: string }
+ *     responses:
+ *       200:
+ *         description: Storage configuration saved
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put('/storage', authenticate, requireRole('admin'), asyncHandler(setStorageConfigHandler));
+
+/**
+ * @openapi
+ * /api/settings/storage:
+ *   delete:
+ *     tags: [Settings]
+ *     operationId: clearStorageConfig
+ *     summary: Clear storage backend configuration (admin only, MINCRM-169)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Storage configuration cleared
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.delete(
+  '/storage',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(clearStorageConfigHandler),
+);
+
+/**
+ * @openapi
+ * /api/settings/storage/test:
+ *   post:
+ *     tags: [Settings]
+ *     operationId: testStorageConfig
+ *     summary: Test candidate storage credentials (admin only, MINCRM-169)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               endpoint: { type: string }
+ *               bucket: { type: string }
+ *               accessKeyId: { type: string }
+ *               secretAccessKey: { type: string }
+ *     responses:
+ *       200:
+ *         description: Test result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.post(
+  '/storage/test',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(testStorageConfigHandler),
 );
 
 export default router;

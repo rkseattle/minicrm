@@ -860,4 +860,72 @@ export const handlers = [
     };
     return HttpResponse.json(searchResponse);
   }),
+
+  // ── Attachments (MINCRM-167) ─────────────────────────────────────────────────
+
+  /** Attachments: GET /api/attachments — returns empty list by default */
+  http.get('/api/attachments', () => {
+    return HttpResponse.json({ attachments: [] });
+  }),
+
+  /** Attachments: POST /api/attachments — returns a created attachment */
+  http.post('/api/attachments', () => {
+    return HttpResponse.json(
+      {
+        attachment: {
+          id: '00000000-0000-0000-0000-000000000a01',
+          record_type: 'contact',
+          record_id: '00000000-0000-0000-0000-000000000101',
+          filename: 'uploaded.pdf',
+          file_size: 1024,
+          mime_type: 'application/pdf',
+          uploader_id: '00000000-0000-0000-0000-000000000001',
+          uploader_name: 'Test Admin',
+          uploaded_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Attachments: DELETE /api/attachments/:id */
+  http.delete('/api/attachments/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ── Storage settings (MINCRM-169) ────────────────────────────────────────────
+
+  /** Settings: GET /api/settings/storage — not configured by default */
+  http.get('/api/settings/storage', () => {
+    return HttpResponse.json({ configured: false, config: null });
+  }),
+
+  /** Settings: PUT /api/settings/storage */
+  http.put('/api/settings/storage', async ({ request }) => {
+    const body = (await request.json()) as {
+      endpoint: string;
+      bucket: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+    };
+    return HttpResponse.json({
+      configured: true,
+      config: {
+        endpoint: body.endpoint,
+        bucket: body.bucket,
+        accessKeyId: body.accessKeyId,
+        secretAccessKey: '********',
+      },
+    });
+  }),
+
+  /** Settings: DELETE /api/settings/storage */
+  http.delete('/api/settings/storage', () => {
+    return HttpResponse.json({ configured: false, config: null });
+  }),
+
+  /** Settings: POST /api/settings/storage/test */
+  http.post('/api/settings/storage/test', () => {
+    return HttpResponse.json({ success: true });
+  }),
 ];

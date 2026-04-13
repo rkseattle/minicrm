@@ -421,6 +421,23 @@
       "saveSuccess": "Paramètre de notification mis à jour.",
       "saveError": "Échec de la mise à jour. Veuillez réessayer."
     },
+    "storage": {
+      "sectionTitle": "Stockage de fichiers",
+      "sectionHint": "Connectez un backend de stockage compatible S3 pour les pièces jointes. Les identifiants sont chiffrés au repos.",
+      "endpointLabel": "URL du point de terminaison",
+      "bucketLabel": "Nom du bucket",
+      "accessKeyIdLabel": "Identifiant de clé d'accès",
+      "secretAccessKeyLabel": "Clé d'accès secrète",
+      "secretMasked": "Clé enregistrée — saisissez une nouvelle valeur pour la mettre à jour.",
+      "secretPlaceholder": "Saisir une nouvelle clé pour mettre à jour",
+      "testButton": "Tester la connexion",
+      "testSuccess": "Connexion réussie.",
+      "testFail": "Connexion échouée — vérifiez vos identifiants et réessayez.",
+      "saveButton": "Enregistrer",
+      "saveSuccess": "Configuration du stockage enregistrée.",
+      "saveError": "Échec de l'enregistrement de la configuration du stockage.",
+      "clearButton": "Effacer la configuration"
+    },
     "import": {
       "sectionTitle": "Importer des données",
       "sectionHint": "Importez des contacts, des comptes et des affaires depuis des fichiers CSV. Importez d'abord les comptes pour de meilleurs résultats.",
@@ -574,6 +591,24 @@
     "validationTaskSubjectRequired": "Le sujet de la tâche est requis.",
     "validationAssigneeRequired": "Veuillez sélectionner un utilisateur spécifique pour assigner la tâche.",
     "validationMessageRequired": "Le message de notification est requis."
+  },
+  "attachments": {
+    "sectionTitle": "Pièces jointes",
+    "notConfigured": "Les pièces jointes ne sont pas configurées — contactez votre administrateur.",
+    "uploadZoneLabel": "Téléverser un fichier",
+    "uploadZoneHint": "Cliquez ou glissez-déposez un fichier ici",
+    "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — max. 25 Mo",
+    "uploading": "Téléversement…",
+    "empty": "Aucune pièce jointe.",
+    "download": "Télécharger",
+    "deleteConfirmTitle": "Supprimer la pièce jointe ?",
+    "deleteConfirmMessage": "Cette action est irréversible.",
+    "errorFileTooLarge": "Le fichier dépasse la limite de 25 Mo.",
+    "errorFileType": "Type de fichier non pris en charge. Acceptés : PDF, .docx, .xlsx, .png, .jpg, .txt.",
+    "errorStorageCap": "L'enregistrement a atteint la limite de 100 Mo de pièces jointes.",
+    "errorUpload": "Échec du téléversement — veuillez réessayer.",
+    "errorDelete": "Échec de la suppression — veuillez réessayer.",
+    "errorLoad": "Impossible de charger les pièces jointes."
   },
   "common": {
     "ownerToggle": {

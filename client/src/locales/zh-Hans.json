@@ -421,6 +421,23 @@
       "saveSuccess": "邮件通知设置已更新。",
       "saveError": "更新失败，请重试。"
     },
+    "storage": {
+      "sectionTitle": "文件存储",
+      "sectionHint": "连接 S3 兼容对象存储后端以支持文件附件功能。凭证经过加密存储。",
+      "endpointLabel": "端点 URL",
+      "bucketLabel": "存储桶名称",
+      "accessKeyIdLabel": "访问密钥 ID",
+      "secretAccessKeyLabel": "访问密钥",
+      "secretMasked": "密钥已保存 — 输入新值以更新。",
+      "secretPlaceholder": "输入新密钥以更新",
+      "testButton": "测试连接",
+      "testSuccess": "连接成功。",
+      "testFail": "连接失败 — 请检查凭证后重试。",
+      "saveButton": "保存",
+      "saveSuccess": "存储配置已保存。",
+      "saveError": "保存存储配置失败。",
+      "clearButton": "清除配置"
+    },
     "import": {
       "sectionTitle": "导入数据",
       "sectionHint": "从 CSV 文件导入联系人、客户和商机。建议先导入客户，再导入联系人。",
@@ -574,6 +591,24 @@
     "validationTaskSubjectRequired": "任务主题为必填项。",
     "validationAssigneeRequired": "请选择指定用户来分配任务。",
     "validationMessageRequired": "通知消息为必填项。"
+  },
+  "attachments": {
+    "sectionTitle": "附件",
+    "notConfigured": "文件附件未配置，请联系管理员。",
+    "uploadZoneLabel": "上传文件",
+    "uploadZoneHint": "点击或拖放文件到此处",
+    "uploadZoneTypes": "PDF、.docx、.xlsx、.png、.jpg、.txt — 最大 25 MB",
+    "uploading": "上传中…",
+    "empty": "暂无附件。",
+    "download": "下载",
+    "deleteConfirmTitle": "删除附件？",
+    "deleteConfirmMessage": "此操作无法撤销。",
+    "errorFileTooLarge": "文件超过 25 MB 大小限制。",
+    "errorFileType": "不支持的文件类型。可接受：PDF、.docx、.xlsx、.png、.jpg、.txt。",
+    "errorStorageCap": "该记录已达到 100 MB 附件上限。",
+    "errorUpload": "上传失败，请重试。",
+    "errorDelete": "删除失败，请重试。",
+    "errorLoad": "无法加载附件。"
   },
   "common": {
     "ownerToggle": {
