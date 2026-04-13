@@ -181,7 +181,10 @@
     "duplicateWarningTitle": "可能存在重复",
     "duplicateWarningMessage": "已存在使用此邮箱的联系人：{{name}}。",
     "duplicateGoToExisting": "前往已有联系人",
-    "duplicateCreateAnyway": "仍然创建"
+    "duplicateCreateAnyway": "仍然创建",
+    "exportCsv": "导出 CSV",
+    "exportAll": "导出全部",
+    "exporting": "导出中…"
   },
   "accounts": {
     "pageTitle": "客户",
@@ -225,7 +228,10 @@
     "contactsSelected_other": "已选 {{count}} 个联系人",
     "contactsNone": "未选择联系人",
     "searchPlaceholder": "按公司名称搜索…",
-    "industryFilterPlaceholder": "按行业筛选…"
+    "industryFilterPlaceholder": "按行业筛选…",
+    "exportCsv": "导出 CSV",
+    "exportAll": "导出全部",
+    "exporting": "导出中…"
   },
   "deals": {
     "pageTitle": "商机",
@@ -269,7 +275,10 @@
     "selectContactToLink": "— 选择联系人 —",
     "viewBoard": "看板视图",
     "viewList": "列表视图",
-    "pipelineSummaryLabel": "管道摘要"
+    "pipelineSummaryLabel": "管道摘要",
+    "exportCsv": "导出 CSV",
+    "exportAll": "导出全部",
+    "exporting": "导出中…"
   },
   "pipeline": {
     "pageTitle": "管道看板",

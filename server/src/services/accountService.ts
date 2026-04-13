@@ -271,6 +271,83 @@ export async function updateAccount(
   }
 }
 
+/** Shape of an account row enriched with display names and counts for CSV export */
+export interface AccountExportRow {
+  name: string;
+  industry: string | null;
+  website: string | null;
+  employee_range: string | null;
+  revenue_range: string | null;
+  owner_name: string;
+  contact_count: string;
+  deal_count: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Options for filtering accounts to export (mirrors list options minus pagination) */
+interface ExportAccountsOptions {
+  /** When provided, only accounts with this owner_id are returned */
+  ownerId?: string;
+  /** Case-insensitive substring match on account name */
+  search?: string;
+  /** Case-insensitive substring match on industry */
+  industry?: string;
+}
+
+/**
+ * Returns all accounts matching the given filters, enriched with owner name,
+ * contact count, and deal count, for CSV export. No pagination.
+ * (MINCRM-165)
+ *
+ * @param options - Filters (same semantics as listAccounts, minus pagination/sort)
+ * @returns Array of enriched account rows ordered by name ASC
+ */
+export async function exportAccountsForCsv(
+  options: ExportAccountsOptions = {},
+): Promise<AccountExportRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (options.ownerId) {
+    values.push(options.ownerId);
+    conditions.push(`a.owner_id = $${values.length}`);
+  }
+
+  if (options.search) {
+    values.push(`%${options.search}%`);
+    conditions.push(`a.name ILIKE $${values.length}`);
+  }
+
+  if (options.industry) {
+    values.push(`%${options.industry}%`);
+    conditions.push(`a.industry ILIKE $${values.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await pool.query<AccountExportRow>(
+    `SELECT
+       a.name,
+       a.industry,
+       a.website,
+       a.employee_range,
+       a.revenue_range,
+       u.name AS owner_name,
+       (SELECT COUNT(*) FROM contacts c WHERE c.account_id = a.id)::text AS contact_count,
+       (SELECT COUNT(*) FROM deals d WHERE d.account_id = a.id)::text AS deal_count,
+       a.created_at,
+       a.updated_at
+     FROM accounts a
+     JOIN users u ON a.owner_id = u.id
+     ${whereClause}
+     ORDER BY a.name ASC`,
+    values,
+  );
+
+  return result.rows;
+}
+
 /**
  * Deletes an account by its UUID.
  * Associated contacts have their account_id set to NULL (not deleted).

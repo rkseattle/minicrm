@@ -181,7 +181,10 @@
     "duplicateWarningTitle": "Mögliches Duplikat",
     "duplicateWarningMessage": "Ein Kontakt mit dieser E-Mail-Adresse existiert bereits: {{name}}.",
     "duplicateGoToExisting": "Zum vorhandenen Kontakt",
-    "duplicateCreateAnyway": "Trotzdem erstellen"
+    "duplicateCreateAnyway": "Trotzdem erstellen",
+    "exportCsv": "CSV exportieren",
+    "exportAll": "Alle exportieren",
+    "exporting": "Exportiere…"
   },
   "accounts": {
     "pageTitle": "Konten",
@@ -225,7 +228,10 @@
     "contactsSelected_other": "{{count}} Kontakte ausgewählt",
     "contactsNone": "Keine Kontakte ausgewählt",
     "searchPlaceholder": "Nach Firmenname suchen…",
-    "industryFilterPlaceholder": "Nach Branche filtern…"
+    "industryFilterPlaceholder": "Nach Branche filtern…",
+    "exportCsv": "CSV exportieren",
+    "exportAll": "Alle exportieren",
+    "exporting": "Exportiere…"
   },
   "deals": {
     "pageTitle": "Geschäfte",
@@ -269,7 +275,10 @@
     "selectContactToLink": "— Kontakt auswählen —",
     "viewBoard": "Board-Ansicht",
     "viewList": "Listenansicht",
-    "pipelineSummaryLabel": "Pipeline-Übersicht"
+    "pipelineSummaryLabel": "Pipeline-Übersicht",
+    "exportCsv": "CSV exportieren",
+    "exportAll": "Alle exportieren",
+    "exporting": "Exportiere…"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",

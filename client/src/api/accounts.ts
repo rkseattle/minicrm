@@ -97,3 +97,51 @@ export async function updateAccount(
 export async function deleteAccount(id: string): Promise<void> {
   await apiClient.delete(`/accounts/${id}`);
 }
+
+/** Parameters for the accounts CSV export */
+export interface ExportAccountsParams {
+  /** When true, admins export all accounts (reps always get their own) */
+  all?: boolean;
+  search?: string;
+  industry?: string;
+}
+
+/**
+ * Downloads all matching accounts as a CSV file.
+ * Triggers a browser file-save dialog.
+ * (MINCRM-165)
+ *
+ * @param params - Optional filter parameters
+ */
+export async function exportAccountsCsv(params: ExportAccountsParams = {}): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (params.all) queryParams.all = 'true';
+  if (params.search) queryParams.search = params.search;
+  if (params.industry) queryParams.industry = params.industry;
+
+  const response = await apiClient.get<Blob>('/accounts/export', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-accounts-${date}.csv`;
+  triggerCsvDownload(response.data, filename);
+}
+
+/**
+ * Creates a temporary anchor element to trigger a file download from a Blob.
+ *
+ * @param blob - CSV blob received from the server
+ * @param filename - Suggested filename for the download
+ */
+function triggerCsvDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}

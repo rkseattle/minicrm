@@ -12,6 +12,7 @@ import {
   getAccountHandler,
   updateAccountHandler,
   deleteAccountHandler,
+  exportAccountsHandler,
 } from '../controllers/accountController.js';
 
 const router = Router();
@@ -80,6 +81,49 @@ const router = Router();
  *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listAccountsHandler));
+
+/**
+ * @openapi
+ * /api/accounts/export:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: exportAccounts
+ *     summary: Export accounts to CSV
+ *     description: >
+ *       Returns all matching accounts as a UTF-8 CSV file (with BOM).
+ *       Reps receive only their own accounts. Admins receive their own accounts
+ *       by default; pass `?all=true` to export all accounts.
+ *       (MINCRM-165)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all accounts
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on account name
+ *       - in: query
+ *         name: industry
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on industry
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/export', authenticate, asyncHandler(exportAccountsHandler));
 
 /**
  * @openapi

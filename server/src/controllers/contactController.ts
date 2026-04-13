@@ -13,12 +13,14 @@ import {
   listContacts,
   updateContact,
   deleteContact,
+  exportContactsForCsv,
   CONTACT_SORT_COLUMNS,
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
+import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -218,6 +220,82 @@ export async function listContactDealsHandler(req: Request, res: Response): Prom
 
   const deals = await listContactDeals(id);
   res.status(200).json({ deals });
+}
+
+/**
+ * GET /api/contacts/export
+ * Streams all matching contacts as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, search, accountSearch, account)
+ * except pagination/sort — all matching rows are exported.
+ * Reps automatically get their own contacts; admins may omit ?owner to get all.
+ * Pass ?all=true to bypass the rep-scoped default and export all visible records
+ * (admins only; reps always export their own).
+ * (MINCRM-164)
+ */
+export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
+  const isAdmin = req.user!.role === 'admin';
+  const exportAll = req.query.all === 'true';
+
+  // Reps always get their own contacts; admins get all unless scoped
+  const ownerId = !isAdmin || !exportAll ? req.user!.id : undefined;
+
+  let accountId: string | undefined;
+  if (typeof req.query.account === 'string' && req.query.account.length > 0) {
+    const parsed = z.string().uuid().safeParse(req.query.account);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
+      });
+      return;
+    }
+    accountId = parsed.data;
+  }
+
+  const search =
+    typeof req.query.search === 'string' && req.query.search.trim().length > 0
+      ? req.query.search.trim()
+      : undefined;
+
+  const accountSearch =
+    typeof req.query.accountSearch === 'string' && req.query.accountSearch.trim().length > 0
+      ? req.query.accountSearch.trim()
+      : undefined;
+
+  const rows = await exportContactsForCsv({ ownerId, accountId, search, accountSearch });
+
+  const headers = [
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone',
+    'Title',
+    'Department',
+    'Account',
+    'Owner',
+    'Created',
+    'Updated',
+  ];
+
+  const csvRows = rows.map((r) => ({
+    'First Name': r.first_name,
+    'Last Name': r.last_name,
+    Email: r.email,
+    Phone: r.phone,
+    Title: r.title,
+    Department: r.department,
+    Account: r.account_name,
+    Owner: r.owner_name,
+    Created: r.created_at,
+    Updated: r.updated_at,
+  }));
+
+  const csv = serializeToCsv(headers, csvRows);
+  const filename = csvFilename('contacts');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(csv);
 }
 
 /**

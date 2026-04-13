@@ -15,6 +15,7 @@ import {
   listAccounts,
   updateAccount,
   deleteAccount,
+  exportAccountsForCsv,
 } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -349,5 +350,78 @@ describe('deleteAccount', () => {
   it('returns null for a non-existent account', async () => {
     const result = await deleteAccount('00000000-0000-0000-0000-000000000000');
     expect(result).toBeNull();
+  });
+});
+
+// ── exportAccountsForCsv ────────────────────────────────────────────────────────
+
+describe('exportAccountsForCsv', () => {
+  it('returns an empty array when no accounts exist', async () => {
+    const rows = await exportAccountsForCsv();
+    expect(rows).toEqual([]);
+  });
+
+  it('returns enriched rows with owner_name, contact_count, and deal_count', async () => {
+    await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
+
+    const rows = await exportAccountsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    expect(row.name).toBe('Acme Corp');
+    expect(row.owner_name).toBe('Account Owner');
+    expect(row.contact_count).toBe('0');
+    expect(row.deal_count).toBe('0');
+  });
+
+  it('filters by ownerId', async () => {
+    // Guard against leftover user from a prior failed run
+    await pool.query(
+      `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = 'acct-export-other@example.com')`,
+    );
+    await pool.query(`DELETE FROM users WHERE email = 'acct-export-other@example.com'`);
+
+    const otherUser = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ('acct-export-other@example.com', 'Other', 'rep', 'x', 'active') RETURNING id`,
+    );
+    const otherOwnerId = otherUser.rows[0].id;
+
+    await createAccount({ name: 'Mine', owner_id: ownerId });
+    await createAccount({ name: 'Theirs', owner_id: otherOwnerId });
+
+    const rows = await exportAccountsForCsv({ ownerId });
+    expect(rows.every((r) => r.owner_name === 'Account Owner')).toBe(true);
+
+    // Must delete accounts before user due to FK constraint
+    await pool.query('DELETE FROM accounts WHERE owner_id = $1', [otherOwnerId]);
+    await pool.query('DELETE FROM users WHERE email = $1', ['acct-export-other@example.com']);
+  });
+
+  it('filters by search', async () => {
+    await createAccount({ name: 'Alpha Inc', owner_id: ownerId });
+    await createAccount({ name: 'Beta Corp', owner_id: ownerId });
+
+    const rows = await exportAccountsForCsv({ search: 'Alpha' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Alpha Inc');
+  });
+
+  it('filters by industry', async () => {
+    await createAccount({ name: 'TechCo', industry: 'Technology', owner_id: ownerId });
+    await createAccount({ name: 'FarmCo', industry: 'Agriculture', owner_id: ownerId });
+
+    const rows = await exportAccountsForCsv({ industry: 'Technology' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('TechCo');
+  });
+
+  it('orders results by name', async () => {
+    await createAccount({ name: 'Zzz Corp', owner_id: ownerId });
+    await createAccount({ name: 'Aaa Inc', owner_id: ownerId });
+
+    const rows = await exportAccountsForCsv({ ownerId });
+    expect(rows[0].name).toBe('Aaa Inc');
+    expect(rows[rows.length - 1].name).toBe('Zzz Corp');
   });
 });

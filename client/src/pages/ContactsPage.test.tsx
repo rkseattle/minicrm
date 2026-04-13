@@ -4,12 +4,13 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ContactsPage from './ContactsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { CONTACT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import * as contactsApi from '../api/contacts.js';
 
 describe('ContactsPage', () => {
   it('renders the page heading', async () => {
@@ -368,6 +369,59 @@ describe('ContactsPage', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('contact-form')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── CSV export ─────────────────────────────────────────────────────────────
+
+  describe('CSV export buttons', () => {
+    beforeEach(() => {
+      vi.spyOn(contactsApi, 'exportContactsCsv').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export CSV button', async () => {
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('contacts-export-csv-button')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the Export All button for admin users', async () => {
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('contacts-export-all-button')).toBeInTheDocument();
+      });
+    });
+
+    it('does not render the Export All button for rep users', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('contacts-export-csv-button')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('contacts-export-all-button')).not.toBeInTheDocument();
+    });
+
+    it('calls exportContactsCsv with current filters when Export CSV is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('contacts-export-csv-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('contacts-export-csv-button'));
+      expect(contactsApi.exportContactsCsv).toHaveBeenCalledWith(
+        expect.objectContaining({ search: undefined, accountSearch: undefined }),
+      );
+    });
+
+    it('calls exportContactsCsv with all:true when Export All is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('contacts-export-all-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('contacts-export-all-button'));
+      expect(contactsApi.exportContactsCsv).toHaveBeenCalledWith({ all: true });
     });
   });
 });

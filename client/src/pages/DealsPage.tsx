@@ -17,7 +17,7 @@ import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
-import { listDeals, createDeal, updateDeal, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { listDeals, createDeal, updateDeal, exportDealsCsv, DEALS_QUERY_KEY } from '@/api/deals.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import {
   PAGINATION_DEFAULT_LIMIT,
@@ -27,6 +27,7 @@ import {
 /** Max records fetched for the board view — fetches all by capping at the server max */
 const PAGINATION_MAX_BOARD_LIMIT = PAGINATION_MAX_LIMIT;
 import { listAccounts } from '@/api/accounts.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
@@ -82,8 +83,11 @@ function todayIso(): string {
 export default function DealsPage() {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [isExporting, setIsExporting] = useState(false);
 
-  // ── View mode ──────────────────────────────────────────────────────────────
+  // ── View mode ───────────────��──────────────────────────────────────────────
   // Restore from sessionStorage so the chosen view survives navigation (MINCRM-146)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const stored = sessionStorage.getItem(VIEW_MODE_STORAGE_KEY);
@@ -398,6 +402,44 @@ export default function DealsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
           <div className="flex items-center gap-2">
+            {/* Export filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="deals-export-csv-button"
+              disabled={isExporting}
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  await exportDealsCsv();
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
+            >
+              {isExporting ? t('deals.exporting') : t('deals.exportCsv')}
+            </Button>
+            {/* Export all — admins only */}
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                data-testid="deals-export-all-button"
+                disabled={isExporting}
+                onClick={async () => {
+                  setIsExporting(true);
+                  try {
+                    await exportDealsCsv({ all: true });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? t('deals.exporting') : t('deals.exportAll')}
+              </Button>
+            )}
             {/* View toggle */}
             <Button
               type="button"

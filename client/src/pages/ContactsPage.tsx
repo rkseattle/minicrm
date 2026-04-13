@@ -16,7 +16,7 @@ import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listContacts, createContact } from '@/api/contacts.js';
+import { listContacts, createContact, exportContactsCsv } from '@/api/contacts.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -24,6 +24,7 @@ import type { ActiveUser } from '@/api/users.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
@@ -36,7 +37,10 @@ export const CONTACTS_QUERY_KEY = ['contacts'] as const;
 export default function ContactsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newContactButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
@@ -196,16 +200,58 @@ export default function ContactsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('contacts.pageTitle')}</h1>
-          {!showForm && (
+          <div className="flex items-center gap-2">
+            {/* Export filtered view */}
             <Button
-              ref={newContactButtonRef}
               type="button"
-              data-testid="new-contact-button"
-              onClick={() => setShowForm(true)}
+              variant="secondary"
+              data-testid="contacts-export-csv-button"
+              disabled={isExporting}
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  await exportContactsCsv({
+                    search: debouncedSearch || undefined,
+                    accountSearch: debouncedAccountSearch || undefined,
+                    owner: ownerFilter === 'me' ? 'me' : undefined,
+                  });
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
             >
-              {t('contacts.newContact')}
+              {isExporting ? t('contacts.exporting') : t('contacts.exportCsv')}
             </Button>
-          )}
+            {/* Export all — admins only */}
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="secondary"
+                data-testid="contacts-export-all-button"
+                disabled={isExporting}
+                onClick={async () => {
+                  setIsExporting(true);
+                  try {
+                    await exportContactsCsv({ all: true });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? t('contacts.exporting') : t('contacts.exportAll')}
+              </Button>
+            )}
+            {!showForm && (
+              <Button
+                ref={newContactButtonRef}
+                type="button"
+                data-testid="new-contact-button"
+                onClick={() => setShowForm(true)}
+              >
+                {t('contacts.newContact')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Inline create form — owner field intentionally omitted; defaults to creating user */}

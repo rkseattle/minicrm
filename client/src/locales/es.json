@@ -181,7 +181,10 @@
     "duplicateWarningTitle": "Posible duplicado",
     "duplicateWarningMessage": "Ya existe un contacto con este correo electrónico: {{name}}.",
     "duplicateGoToExisting": "Ir al contacto existente",
-    "duplicateCreateAnyway": "Crear de todas formas"
+    "duplicateCreateAnyway": "Crear de todas formas",
+    "exportCsv": "Exportar CSV",
+    "exportAll": "Exportar todo",
+    "exporting": "Exportando…"
   },
   "accounts": {
     "pageTitle": "Cuentas",
@@ -225,7 +228,10 @@
     "contactsSelected_other": "{{count}} contactos seleccionados",
     "contactsNone": "Ningún contacto seleccionado",
     "searchPlaceholder": "Buscar por nombre de empresa…",
-    "industryFilterPlaceholder": "Filtrar por industria…"
+    "industryFilterPlaceholder": "Filtrar por industria…",
+    "exportCsv": "Exportar CSV",
+    "exportAll": "Exportar todo",
+    "exporting": "Exportando…"
   },
   "deals": {
     "pageTitle": "Oportunidades",
@@ -269,7 +275,10 @@
     "selectContactToLink": "— Seleccionar un contacto —",
     "viewBoard": "Vista tablero",
     "viewList": "Vista lista",
-    "pipelineSummaryLabel": "Resumen del canal"
+    "pipelineSummaryLabel": "Resumen del canal",
+    "exportCsv": "Exportar CSV",
+    "exportAll": "Exportar todo",
+    "exporting": "Exportando…"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

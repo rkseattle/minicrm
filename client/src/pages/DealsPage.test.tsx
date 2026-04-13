@@ -6,12 +6,13 @@
 
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import DealsPage from './DealsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { DEAL_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import * as dealsApi from '../api/deals.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 
 describe('DealsPage', () => {
@@ -470,5 +471,56 @@ describe('DealsPage', () => {
     });
     expect(screen.queryByTestId('deals-owner-filter-all')).not.toBeInTheDocument();
     expect(screen.queryByTestId('deals-owner-filter-mine')).not.toBeInTheDocument();
+  });
+
+  // ── CSV export ─────────────────────────────────────────────────────────────
+
+  describe('CSV export buttons', () => {
+    beforeEach(() => {
+      vi.spyOn(dealsApi, 'exportDealsCsv').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export CSV button', async () => {
+      renderWithProviders(<DealsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the Export All button for admin users', async () => {
+      renderWithProviders(<DealsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-export-all-button')).toBeInTheDocument();
+      });
+    });
+
+    it('does not render the Export All button for rep users', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      renderWithProviders(<DealsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('deals-export-all-button')).not.toBeInTheDocument();
+    });
+
+    it('calls exportDealsCsv when Export CSV is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('deals-export-csv-button'));
+      expect(dealsApi.exportDealsCsv).toHaveBeenCalled();
+    });
+
+    it('calls exportDealsCsv with all:true when Export All is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-export-all-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('deals-export-all-button'));
+      expect(dealsApi.exportDealsCsv).toHaveBeenCalledWith({ all: true });
+    });
   });
 });

@@ -181,7 +181,10 @@
     "duplicateWarningTitle": "Possible duplicate",
     "duplicateWarningMessage": "A contact with this email already exists: {{name}}.",
     "duplicateGoToExisting": "Go to existing contact",
-    "duplicateCreateAnyway": "Create anyway"
+    "duplicateCreateAnyway": "Create anyway",
+    "exportCsv": "Export CSV",
+    "exportAll": "Export All",
+    "exporting": "Exporting…"
   },
   "accounts": {
     "pageTitle": "Accounts",
@@ -225,7 +228,10 @@
     "contactsSelected_other": "{{count}} contacts selected",
     "contactsNone": "No contacts selected",
     "searchPlaceholder": "Search by company name…",
-    "industryFilterPlaceholder": "Filter by industry…"
+    "industryFilterPlaceholder": "Filter by industry…",
+    "exportCsv": "Export CSV",
+    "exportAll": "Export All",
+    "exporting": "Exporting…"
   },
   "deals": {
     "pageTitle": "Deals",
@@ -269,7 +275,10 @@
     "selectContactToLink": "— Select a contact —",
     "viewBoard": "Board view",
     "viewList": "List view",
-    "pipelineSummaryLabel": "Pipeline summary"
+    "pipelineSummaryLabel": "Pipeline summary",
+    "exportCsv": "Export CSV",
+    "exportAll": "Export All",
+    "exporting": "Exporting…"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",

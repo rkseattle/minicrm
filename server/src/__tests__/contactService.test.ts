@@ -16,6 +16,7 @@ import {
   listContacts,
   updateContact,
   deleteContact,
+  exportContactsForCsv,
 } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
@@ -545,5 +546,96 @@ describe('deleteContact', () => {
   it('returns null for a non-existent contact', async () => {
     const result = await deleteContact('00000000-0000-0000-0000-000000000000');
     expect(result).toBeNull();
+  });
+});
+
+// ── exportContactsForCsv ────────────────────────────────────────────────────────
+
+describe('exportContactsForCsv', () => {
+  it('returns an empty array when no contacts exist', async () => {
+    const rows = await exportContactsForCsv();
+    expect(rows).toEqual([]);
+  });
+
+  it('returns enriched rows with owner_name and account_name', async () => {
+    await createContact({ ...BASE_CONTACT, account_id: accountId, owner_id: ownerId });
+
+    const rows = await exportContactsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    expect(row.first_name).toBe('Alice');
+    expect(row.last_name).toBe('Smith');
+    expect(row.email).toBe('alice@example.com');
+    expect(row.owner_name).toBe('Owner User');
+    expect(row.account_name).toBe('Test Account');
+  });
+
+  it('returns null account_name when contact has no account', async () => {
+    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+
+    const rows = await exportContactsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].account_name).toBeNull();
+  });
+
+  it('filters by ownerId', async () => {
+    // Guard against leftover user from a prior failed run
+    await pool.query(
+      `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = 'export-other@example.com')`,
+    );
+    await pool.query(`DELETE FROM users WHERE email = 'export-other@example.com'`);
+
+    const otherUser = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ('export-other@example.com', 'Other User', 'rep', 'x', 'active') RETURNING id`,
+    );
+    const otherOwnerId = otherUser.rows[0].id;
+
+    await createContact({ ...BASE_CONTACT, email: 'mine@example.com', owner_id: ownerId });
+    await createContact({ ...BASE_CONTACT, email: 'theirs@example.com', owner_id: otherOwnerId });
+
+    const rows = await exportContactsForCsv({ ownerId });
+    expect(rows.every((r) => r.owner_name === 'Owner User')).toBe(true);
+
+    // Must delete contacts before user due to FK constraint
+    await pool.query('DELETE FROM contacts WHERE owner_id = $1', [otherOwnerId]);
+    await pool.query('DELETE FROM users WHERE email = $1', ['export-other@example.com']);
+  });
+
+  it('filters by search', async () => {
+    await createContact({ ...BASE_CONTACT, email: 'alice@example.com', owner_id: ownerId });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Bob',
+      email: 'bob@example.com',
+      owner_id: ownerId,
+    });
+
+    const rows = await exportContactsForCsv({ search: 'alice' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].email).toBe('alice@example.com');
+  });
+
+  it('orders results by last_name then first_name', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Zara',
+      last_name: 'Zzz',
+      email: 'z@example.com',
+      owner_id: ownerId,
+    });
+    await createContact({
+      ...BASE_CONTACT,
+      first_name: 'Aaron',
+      last_name: 'Aaa',
+      email: 'a@example.com',
+      owner_id: ownerId,
+    });
+
+    const rows = await exportContactsForCsv({ ownerId });
+    expect(rows[0].last_name).toBe('Aaa');
+    expect(rows[rows.length - 1].last_name).toBe('Zzz');
   });
 });
