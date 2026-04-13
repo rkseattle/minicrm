@@ -21,6 +21,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The action installs Claude Code CLI via curl from claude.ai/install.sh.
+      # That endpoint occasionally returns 429. Pre-install with retries so the
+      # action finds the binary already on PATH and skips its own install step.
+      - name: Install Claude Code CLI (with retries)
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsSL https://claude.ai/install.sh | bash -s 1.0.88 && break
+            echo "Attempt $i failed — waiting ${i}0s before retry"
+            sleep $((i * 10))
+          done
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Run Claude Code PR review (MINCRM-178)
         uses: anthropics/claude-code-action@beta
         with:
