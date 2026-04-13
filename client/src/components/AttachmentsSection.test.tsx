@@ -39,24 +39,14 @@ const ATTACHMENT_2: Attachment = {
 /** Sets up a storage-configured response and an optional attachment list. */
 function withStorageConfigured(attachments: Attachment[] = []) {
   server.use(
-    http.get('/api/settings/storage', () =>
-      HttpResponse.json({
-        configured: true,
-        config: {
-          endpoint: 'http://localhost:9000',
-          bucket: 'test',
-          accessKeyId: 'key',
-          secretAccessKey: '********',
-        },
-      }),
-    ),
+    http.get('/api/settings/storage/status', () => HttpResponse.json({ configured: true })),
     http.get('/api/attachments', () => HttpResponse.json({ attachments })),
   );
 }
 
 function withStorageNotConfigured() {
   server.use(
-    http.get('/api/settings/storage', () => HttpResponse.json({ configured: false, config: null })),
+    http.get('/api/settings/storage/status', () => HttpResponse.json({ configured: false })),
   );
 }
 

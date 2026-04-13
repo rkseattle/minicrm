@@ -181,7 +181,11 @@ function buildClient(config: StorageConfig): MinioClient {
  */
 export async function uploadObject(key: string, buffer: Buffer, mimeType: string): Promise<void> {
   const config = await getStorageConfig();
-  if (!config) throw new Error('Storage is not configured');
+  if (!config) {
+    const err = new Error('Storage is not configured');
+    (err as NodeJS.ErrnoException).code = 'STORAGE_NOT_CONFIGURED';
+    throw err;
+  }
 
   const client = buildClient(config);
   await client.putObject(config.bucket, key, buffer, buffer.length, {
@@ -197,7 +201,11 @@ export async function uploadObject(key: string, buffer: Buffer, mimeType: string
  */
 export async function getObjectStream(key: string): Promise<Readable> {
   const config = await getStorageConfig();
-  if (!config) throw new Error('Storage is not configured');
+  if (!config) {
+    const err = new Error('Storage is not configured');
+    (err as NodeJS.ErrnoException).code = 'STORAGE_NOT_CONFIGURED';
+    throw err;
+  }
 
   const client = buildClient(config);
   return client.getObject(config.bucket, key);
@@ -210,7 +218,11 @@ export async function getObjectStream(key: string): Promise<Readable> {
  */
 export async function deleteObject(key: string): Promise<void> {
   const config = await getStorageConfig();
-  if (!config) throw new Error('Storage is not configured');
+  if (!config) {
+    const err = new Error('Storage is not configured');
+    (err as NodeJS.ErrnoException).code = 'STORAGE_NOT_CONFIGURED';
+    throw err;
+  }
 
   const client = buildClient(config);
   await client.removeObject(config.bucket, key);

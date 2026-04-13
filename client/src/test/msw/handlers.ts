@@ -895,6 +895,11 @@ export const handlers = [
 
   // ── Storage settings (MINCRM-169) ────────────────────────────────────────────
 
+  /** Settings: GET /api/settings/storage/status — not configured by default */
+  http.get('/api/settings/storage/status', () => {
+    return HttpResponse.json({ configured: false });
+  }),
+
   /** Settings: GET /api/settings/storage — not configured by default */
   http.get('/api/settings/storage', () => {
     return HttpResponse.json({ configured: false, config: null });
