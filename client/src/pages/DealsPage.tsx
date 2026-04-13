@@ -7,7 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -100,31 +100,23 @@ export default function DealsPage() {
   const newDealButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
 
-  // ── List view state ────────────────────────────────────────────────────────
-  const [searchParams, setSearchParams] = useSearchParams();
-  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
-  const [listPage, setListPage] = useState(1);
+  // ── Shared filter state (MINCRM-176) ──────────────────────────────────────
+  // Both ownerFilter and showClosed are lifted to the parent so they persist
+  // across Board ↔ List view switches.
+  const [ownerFilter, setOwnerFilterState] = useState<OwnerFilter>('all');
 
   /**
-   * Updates the ?owner query param. Removes it when filter is 'all'. (MINCRM-55)
+   * Updates the owner filter. Resets list pagination to page 1. (MINCRM-176)
    *
    * @param value - New owner filter value
    */
   function setOwnerFilter(value: OwnerFilter): void {
     setListPage(1);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value === 'me') {
-          next.set('owner', 'me');
-        } else {
-          next.delete('owner');
-        }
-        return next;
-      },
-      { replace: true },
-    );
+    setOwnerFilterState(value);
   }
+
+  // ── List view state ────────────────────────────────────────────────────────
+  const [listPage, setListPage] = useState(1);
 
   type SortColumn = 'name' | 'close_date';
   type SortDir = 'ascending' | 'descending';
@@ -252,8 +244,10 @@ export default function DealsPage() {
     });
   }, [listData?.data, viewMode]);
 
-  // Server handles sorting and pagination — use data as-is
-  const sortedDeals: DealResponse[] = listData?.data ?? [];
+  // Server handles sorting and pagination; apply client-side closed filter (MINCRM-176)
+  const sortedDeals: DealResponse[] = (listData?.data ?? []).filter(
+    (deal) => showClosed || !(CLOSED_STAGES as PipelineStage[]).includes(deal.stage),
+  );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -449,17 +443,6 @@ export default function DealsPage() {
               size="sm"
               data-testid="deals-view-toggle"
               onClick={() => {
-                // Reset owner filter when returning to board so the board always shows all deals
-                if (viewMode === 'list') {
-                  setSearchParams(
-                    (prev) => {
-                      const next = new URLSearchParams(prev);
-                      next.delete('owner');
-                      return next;
-                    },
-                    { replace: true },
-                  );
-                }
                 const nextMode: ViewMode = viewMode === 'board' ? 'list' : 'board';
                 sessionStorage.setItem(VIEW_MODE_STORAGE_KEY, nextMode);
                 setViewMode(nextMode);
@@ -508,9 +491,13 @@ export default function DealsPage() {
         {/* ── Board view ──────────────────────────────────────────────────── */}
         {viewMode === 'board' && (
           <>
-            {/* Board toolbar */}
-            <div className="flex items-center justify-between mb-4">
-              <div>{/* spacer */}</div>
+            {/* Board toolbar — filter controls (MINCRM-176) */}
+            <div className="flex items-center gap-3 mb-4">
+              <OwnerToggle
+                value={ownerFilter}
+                onChange={setOwnerFilter}
+                testIdPrefix="deals-owner-filter"
+              />
               <Button
                 variant="secondary"
                 size="sm"
@@ -651,13 +638,23 @@ export default function DealsPage() {
         {/* ── List view ───────────────────────────────────────────────────── */}
         {viewMode === 'list' && (
           <>
-            {/* Owner filter */}
+            {/* List toolbar — filter controls (MINCRM-176) */}
             <div className="mb-4 flex items-center gap-3">
               <OwnerToggle
                 value={ownerFilter}
                 onChange={setOwnerFilter}
                 testIdPrefix="deals-owner-filter"
               />
+              <Button
+                variant="secondary"
+                size="sm"
+                data-testid="toggle-closed-deals"
+                onClick={() => setShowClosed((prev) => !prev)}
+              >
+                {showClosed
+                  ? t('pipeline.closeDeal.hideClosed')
+                  : t('pipeline.closeDeal.showClosed')}
+              </Button>
             </div>
 
             {/* Pipeline summary bar — shows open-stage deal counts and totals (MINCRM-56) */}

@@ -118,6 +118,14 @@ describe('DealsPage', () => {
     });
   });
 
+  it('renders the owner toggle in board view (MINCRM-176)', async () => {
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
+      expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
+    });
+  });
+
   it('shows loading state in board view while deals are being fetched', () => {
     renderWithProviders(<DealsPage />);
     expect(screen.getByRole('paragraph', { hidden: true })).toHaveAttribute('aria-busy', 'true');
@@ -178,9 +186,10 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     expect(screen.queryByTestId('pipeline-board')).not.toBeInTheDocument();
-    // The owner toggle is only visible in list view
+    // Owner toggle and hide-closed button are visible in list view (MINCRM-176)
     expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
     expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
+    expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();
   });
 
   it('renders a deal row from the API in list view', async () => {
@@ -212,6 +221,49 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No deals yet. Add one to get started.')).toBeInTheDocument();
     });
+  });
+
+  it('renders the hide/show closed deals toggle in list view (MINCRM-176)', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();
+    });
+  });
+
+  it('hides closed deals from list view when hide-closed toggle is clicked (MINCRM-176)', async () => {
+    const closedDeal = {
+      ...DEAL_1,
+      id: '00000000-0000-0000-0000-000000000399',
+      name: 'Closed Won Deal',
+      stage: 'Closed Won' as const,
+    };
+    server.use(
+      http.get('/api/deals', () =>
+        HttpResponse.json({ data: [DEAL_1, closedDeal], total: 2, page: 1, limit: 50 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+
+    // Both deals visible initially
+    await waitFor(() => {
+      expect(screen.getAllByText(closedDeal.name).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Click hide closed
+    await user.click(screen.getByTestId('toggle-closed-deals'));
+
+    // Closed deal should disappear; open deal stays
+    await waitFor(() => {
+      expect(screen.queryByText(closedDeal.name)).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByText(DEAL_1.name).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows error state in list view when the API fails', async () => {
@@ -316,7 +368,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('resets owner filter to all when switching back to board view', async () => {
+  it('preserves owner filter when switching between board and list views (MINCRM-176)', async () => {
     const repDeal = {
       ...DEAL_1,
       id: '00000000-0000-0000-0000-000000000303',
@@ -334,26 +386,25 @@ describe('DealsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
 
-    // Switch to list view and set filter to "mine"
-    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
-    await user.click(screen.getByTestId('deals-view-toggle'));
-    await waitFor(() => expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument());
-    await user.click(screen.getByTestId('deals-owner-filter-mine'));
+    // Board view starts with All filter active
+    await waitFor(() => expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument());
+    expect(screen.getByTestId('deals-owner-filter-all')).toHaveAttribute('aria-pressed', 'true');
 
-    // Switch back to board — filter should be reset to all
+    // Set filter to "mine" in board view
+    await user.click(screen.getByTestId('deals-owner-filter-mine'));
+    await waitFor(() =>
+      expect(screen.getByTestId('deals-owner-filter-mine')).toHaveAttribute('aria-pressed', 'true'),
+    );
+
+    // Switch to list view — filter should still be "mine"
+    await user.click(screen.getByTestId('deals-view-toggle'));
+    await waitFor(() => expect(screen.queryByTestId('pipeline-board')).not.toBeInTheDocument());
+    expect(screen.getByTestId('deals-owner-filter-mine')).toHaveAttribute('aria-pressed', 'true');
+
+    // Switch back to board — filter should remain "mine"
     await user.click(screen.getByTestId('deals-view-toggle'));
     await waitFor(() => expect(screen.getByTestId('pipeline-board')).toBeInTheDocument());
-
-    // Both deals should be visible on the board (not just the filtered one)
-    await waitFor(() => {
-      expect(screen.getByTestId(`deal-card-${DEAL_1.id}`)).toBeInTheDocument();
-    });
-
-    // Switch to list again to confirm filter was reset
-    await user.click(screen.getByTestId('deals-view-toggle'));
-    await waitFor(() => {
-      expect(screen.getByTestId('deals-owner-filter-all')).toHaveAttribute('aria-pressed', 'true');
-    });
+    expect(screen.getByTestId('deals-owner-filter-mine')).toHaveAttribute('aria-pressed', 'true');
   });
 
   // ── Pipeline summary bar ───────────────────────────────────────────────────
@@ -424,7 +475,7 @@ describe('DealsPage', () => {
   it('restores list view when sessionStorage has deals.viewMode=list', async () => {
     sessionStorage.setItem('deals.viewMode', 'list');
     renderWithProviders(<DealsPage />);
-    // List view: owner filter buttons are visible; board is not
+    // List view: pipeline-board is absent; owner filter and toggle-closed-deals are present in both views
     await waitFor(() => {
       expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
     });
@@ -469,8 +520,10 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pipeline-board')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('deals-owner-filter-all')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('deals-owner-filter-mine')).not.toBeInTheDocument();
+    // Filter controls are present in board view too (MINCRM-176)
+    expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
+    expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
+    expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();
   });
 
   // ── CSV export ─────────────────────────────────────────────────────────────
