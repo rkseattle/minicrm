@@ -654,7 +654,10 @@ export default function DealsPage() {
                 variant="secondary"
                 size="sm"
                 data-testid="toggle-closed-deals"
-                onClick={() => setShowClosed((prev) => !prev)}
+                onClick={() => {
+                  setListPage(1);
+                  setShowClosed((prev) => !prev);
+                }}
               >
                 {showClosed
                   ? t('pipeline.closeDeal.hideClosed')

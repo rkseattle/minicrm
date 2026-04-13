@@ -269,6 +269,35 @@ describe('DealsPage', () => {
     expect(screen.getAllByText(DEAL_1.name).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('resets to page 1 when hide-closed toggle is clicked in list view (MINCRM-176)', async () => {
+    const requests: URL[] = [];
+    // Return enough total to show pagination (total > limit)
+    server.use(
+      http.get('/api/deals', ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json({ data: [DEAL_1], total: 100, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<DealsPage />);
+    await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
+    await user.click(screen.getByTestId('deals-view-toggle'));
+
+    // Advance to page 2
+    await waitFor(() => expect(screen.getByTestId('pagination-next')).toBeInTheDocument());
+    await user.click(screen.getByTestId('pagination-next'));
+
+    // Toggle hide-closed — should reset back to page 1
+    requests.length = 0; // clear so we only check the next request
+    await user.click(screen.getByTestId('toggle-closed-deals'));
+
+    await waitFor(() => {
+      const lastReq = requests[requests.length - 1];
+      expect(lastReq?.searchParams.get('page')).not.toBe('2');
+    });
+  });
+
   it('shows error state in list view when the API fails', async () => {
     server.use(
       http.get('/api/deals', () =>
