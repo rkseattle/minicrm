@@ -75,6 +75,8 @@ test.describe('Profile page — notification preferences', () => {
     restClient,
   }) => {
     const testName = test.info().title;
+    // Authenticate restClient to use API for setup/teardown
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Reset preferences to all-true via API before the test
     await restClient.patch('/api/users/me/notification-preferences', {
       notify_overdue_tasks: true,
@@ -114,6 +116,8 @@ test.describe('Profile page — notification preferences', () => {
     restClient,
   }) => {
     const testName = test.info().title;
+    // Authenticate restClient to use API for setup/teardown
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     await restClient.patch('/api/users/me/notification-preferences', {
       notify_overdue_tasks: true,
       notify_assignments: true,
@@ -159,7 +163,7 @@ test.describe('Admin Settings — global email notifications', () => {
     const testName = test.info().title;
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/admin/settings');
-    await expect(page.getByTestId('email-notif-section')).toBeVisible();
+    await expect(page.getByTestId('email-notifications-section')).toBeVisible();
     await expect(page.getByTestId('email-notif-toggle')).toBeVisible();
   });
 
@@ -179,6 +183,8 @@ test.describe('Admin Settings — global email notifications', () => {
     restClient,
   }) => {
     const testName = test.info().title;
+    // Authenticate restClient to use API for setup/teardown
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Ensure enabled at start
     await restClient.patch('/api/settings/email-notifications', { enabled: true });
 
