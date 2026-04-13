@@ -147,16 +147,18 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
-        run: rm -f package-lock.json && npm install
-
       - name: Cache Playwright browser binaries
+        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ hashFiles('**/node_modules/@playwright/test/package.json') }}
+          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
+        run: rm -f package-lock.json && npm install
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations on E2E database
@@ -332,16 +334,18 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
-        run: rm -f package-lock.json && npm install
-
       - name: Cache Playwright browser binaries
+        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ hashFiles('**/node_modules/@playwright/test/package.json') }}
+          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
+        run: rm -f package-lock.json && npm install
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations on E2E database
