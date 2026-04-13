@@ -215,7 +215,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
             </button>
             {showAll && (
               <span className="ms-2 text-xs text-gray-400" aria-label={String(totalCount)}>
-                {t('auditLog.totalCount', { count: String(totalCount) })}
+                {t('auditLog.totalCount', { count: totalCount })}
               </span>
             )}
           </div>
