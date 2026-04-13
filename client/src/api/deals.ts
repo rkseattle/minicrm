@@ -4,6 +4,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type { DealResponse, CreateDealInput, UpdateDealInput } from '@shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
@@ -153,23 +154,6 @@ export async function exportDealsCsv(params: ExportDealsParams = {}): Promise<vo
   const date = new Date().toISOString().split('T')[0];
   const filename = `minicrm-deals-${date}.csv`;
   triggerCsvDownload(response.data, filename);
-}
-
-/**
- * Creates a temporary anchor element to trigger a file download from a Blob.
- *
- * @param blob - CSV blob received from the server
- * @param filename - Suggested filename for the download
- */
-function triggerCsvDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
 }
 
 /**

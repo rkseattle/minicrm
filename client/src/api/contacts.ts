@@ -4,6 +4,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type {
   ContactResponse,
   CreateContactInput,
@@ -132,7 +133,6 @@ export async function listContactDeals(id: string): Promise<{ deals: DealRespons
 export interface ExportContactsParams {
   /** When true, admins export all contacts (reps always get their own) */
   all?: boolean;
-  owner?: 'me';
   accountId?: string;
   search?: string;
   accountSearch?: string;
@@ -148,7 +148,6 @@ export interface ExportContactsParams {
 export async function exportContactsCsv(params: ExportContactsParams = {}): Promise<void> {
   const queryParams: Record<string, string> = {};
   if (params.all) queryParams.all = 'true';
-  if (params.owner) queryParams.owner = params.owner;
   if (params.accountId) queryParams.account = params.accountId;
   if (params.search) queryParams.search = params.search;
   if (params.accountSearch) queryParams.accountSearch = params.accountSearch;
@@ -161,21 +160,4 @@ export async function exportContactsCsv(params: ExportContactsParams = {}): Prom
   const date = new Date().toISOString().split('T')[0];
   const filename = `minicrm-contacts-${date}.csv`;
   triggerCsvDownload(response.data, filename);
-}
-
-/**
- * Creates a temporary anchor element to trigger a file download from a Blob.
- *
- * @param blob - CSV blob received from the server
- * @param filename - Suggested filename for the download
- */
-function triggerCsvDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
 }
