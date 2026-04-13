@@ -421,6 +421,23 @@
       "saveSuccess": "Email notification setting updated.",
       "saveError": "Failed to update. Please try again."
     },
+    "storage": {
+      "sectionTitle": "File Storage",
+      "sectionHint": "Connect an S3-compatible object storage backend for file attachments. Credentials are encrypted at rest.",
+      "endpointLabel": "Endpoint URL",
+      "bucketLabel": "Bucket name",
+      "accessKeyIdLabel": "Access key ID",
+      "secretAccessKeyLabel": "Secret access key",
+      "secretMasked": "Secret key saved — enter a new value to update it.",
+      "secretPlaceholder": "Enter new secret to update",
+      "testButton": "Test Connection",
+      "testSuccess": "Connection successful.",
+      "testFail": "Connection failed — check your credentials and try again.",
+      "saveButton": "Save",
+      "saveSuccess": "Storage configuration saved.",
+      "saveError": "Failed to save storage configuration.",
+      "clearButton": "Clear Configuration"
+    },
     "import": {
       "sectionTitle": "Import Data",
       "sectionHint": "Import contacts, accounts, and deals from CSV files. Import accounts before contacts for best results.",
@@ -546,6 +563,24 @@
     "validationTaskSubjectRequired": "Task subject is required.",
     "validationAssigneeRequired": "Please select a specific user to assign the task to.",
     "validationMessageRequired": "Notification message is required."
+  },
+  "attachments": {
+    "sectionTitle": "Attachments",
+    "notConfigured": "File attachments are not configured — contact your admin.",
+    "uploadZoneLabel": "Upload file",
+    "uploadZoneHint": "Click or drag and drop a file here",
+    "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — up to 25 MB",
+    "uploading": "Uploading…",
+    "empty": "No attachments yet.",
+    "download": "Download",
+    "deleteConfirmTitle": "Delete attachment?",
+    "deleteConfirmMessage": "This action cannot be undone.",
+    "errorFileTooLarge": "File exceeds the 25 MB size limit.",
+    "errorFileType": "Unsupported file type. Accepted: PDF, .docx, .xlsx, .png, .jpg, .txt.",
+    "errorStorageCap": "The record has reached the 100 MB attachment limit.",
+    "errorUpload": "Upload failed — please try again.",
+    "errorDelete": "Delete failed — please try again.",
+    "errorLoad": "Could not load attachments."
   },
   "common": {
     "ownerToggle": {

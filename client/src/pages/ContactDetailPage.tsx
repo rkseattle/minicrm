@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
+import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
@@ -283,6 +284,9 @@ export default function ContactDetailPage() {
 
         {/* Activity timeline */}
         {!isEditing && <ActivityTimeline contactId={id} />}
+
+        {/* Attachments (MINCRM-167) */}
+        {!isEditing && id && <AttachmentsSection recordType="contact" recordId={id} />}
 
         {/* Linked deals */}
         {!isEditing && (

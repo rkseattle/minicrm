@@ -421,6 +421,23 @@
       "saveSuccess": "Configuración de notificaciones actualizada.",
       "saveError": "Error al actualizar. Por favor, inténtalo de nuevo."
     },
+    "storage": {
+      "sectionTitle": "Almacenamiento de archivos",
+      "sectionHint": "Conecta un backend de almacenamiento compatible con S3 para adjuntos. Las credenciales se cifran en reposo.",
+      "endpointLabel": "URL del punto de conexión",
+      "bucketLabel": "Nombre del bucket",
+      "accessKeyIdLabel": "ID de clave de acceso",
+      "secretAccessKeyLabel": "Clave de acceso secreta",
+      "secretMasked": "Clave guardada — introduce un nuevo valor para actualizarla.",
+      "secretPlaceholder": "Introduce nueva clave para actualizar",
+      "testButton": "Probar conexión",
+      "testSuccess": "Conexión exitosa.",
+      "testFail": "Conexión fallida — comprueba las credenciales e inténtalo de nuevo.",
+      "saveButton": "Guardar",
+      "saveSuccess": "Configuración de almacenamiento guardada.",
+      "saveError": "Error al guardar la configuración de almacenamiento.",
+      "clearButton": "Borrar configuración"
+    },
     "import": {
       "sectionTitle": "Importar datos",
       "sectionHint": "Importa contactos, cuentas y negocios desde archivos CSV. Importa las cuentas antes que los contactos para obtener mejores resultados.",
@@ -574,6 +591,24 @@
     "validationTaskSubjectRequired": "El asunto de la tarea es obligatorio.",
     "validationAssigneeRequired": "Por favor, selecciona un usuario específico para asignar la tarea.",
     "validationMessageRequired": "El mensaje de notificación es obligatorio."
+  },
+  "attachments": {
+    "sectionTitle": "Adjuntos",
+    "notConfigured": "Los adjuntos no están configurados — contacta con tu administrador.",
+    "uploadZoneLabel": "Subir archivo",
+    "uploadZoneHint": "Haz clic o arrastra un archivo aquí",
+    "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — máx. 25 MB",
+    "uploading": "Subiendo…",
+    "empty": "No hay adjuntos.",
+    "download": "Descargar",
+    "deleteConfirmTitle": "¿Eliminar adjunto?",
+    "deleteConfirmMessage": "Esta acción no se puede deshacer.",
+    "errorFileTooLarge": "El archivo supera el límite de 25 MB.",
+    "errorFileType": "Tipo de archivo no compatible. Aceptados: PDF, .docx, .xlsx, .png, .jpg, .txt.",
+    "errorStorageCap": "El registro ha alcanzado el límite de 100 MB de adjuntos.",
+    "errorUpload": "Error al subir — inténtalo de nuevo.",
+    "errorDelete": "Error al eliminar — inténtalo de nuevo.",
+    "errorLoad": "No se pudieron cargar los adjuntos."
   },
   "common": {
     "ownerToggle": {

@@ -23,6 +23,7 @@ import automationRoutes from './routes/automation.js';
 import demoRoutes from './routes/demo.js';
 import searchRoutes from './routes/search.js';
 import importRoutes from './routes/import.js';
+import attachmentRoutes from './routes/attachments.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
@@ -94,6 +95,7 @@ app.use('/api/automation/rules', automationRoutes);
 app.use('/api/admin/demo', demoRoutes);
 app.use('/api/admin/import', importRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/attachments', attachmentRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req: Request, res: Response) => {

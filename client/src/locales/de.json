@@ -421,6 +421,23 @@
       "saveSuccess": "Einstellung für E-Mail-Benachrichtigungen aktualisiert.",
       "saveError": "Aktualisierung fehlgeschlagen. Bitte versuchen Sie es erneut."
     },
+    "storage": {
+      "sectionTitle": "Dateispeicher",
+      "sectionHint": "Verbinden Sie ein S3-kompatibles Objekt-Storage-Backend für Dateianhänge. Zugangsdaten werden verschlüsselt gespeichert.",
+      "endpointLabel": "Endpunkt-URL",
+      "bucketLabel": "Bucket-Name",
+      "accessKeyIdLabel": "Zugriffsschlüssel-ID",
+      "secretAccessKeyLabel": "Geheimer Zugriffsschlüssel",
+      "secretMasked": "Schlüssel gespeichert — geben Sie einen neuen Wert ein, um ihn zu aktualisieren.",
+      "secretPlaceholder": "Neuen Schlüssel eingeben, um zu aktualisieren",
+      "testButton": "Verbindung testen",
+      "testSuccess": "Verbindung erfolgreich.",
+      "testFail": "Verbindung fehlgeschlagen — überprüfen Sie Ihre Zugangsdaten und versuchen Sie es erneut.",
+      "saveButton": "Speichern",
+      "saveSuccess": "Speicherkonfiguration gespeichert.",
+      "saveError": "Fehler beim Speichern der Speicherkonfiguration.",
+      "clearButton": "Konfiguration löschen"
+    },
     "import": {
       "sectionTitle": "Daten importieren",
       "sectionHint": "Importieren Sie Kontakte, Konten und Deals aus CSV-Dateien. Importieren Sie zuerst Konten für beste Ergebnisse.",
@@ -574,6 +591,24 @@
     "validationTaskSubjectRequired": "Aufgabenbetreff ist erforderlich.",
     "validationAssigneeRequired": "Bitte wählen Sie einen bestimmten Benutzer für die Aufgabenzuweisung aus.",
     "validationMessageRequired": "Benachrichtigungsnachricht ist erforderlich."
+  },
+  "attachments": {
+    "sectionTitle": "Anhänge",
+    "notConfigured": "Dateianhänge sind nicht konfiguriert — wenden Sie sich an Ihren Administrator.",
+    "uploadZoneLabel": "Datei hochladen",
+    "uploadZoneHint": "Klicken Sie hier oder ziehen Sie eine Datei hierher",
+    "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — max. 25 MB",
+    "uploading": "Hochladen…",
+    "empty": "Keine Anhänge vorhanden.",
+    "download": "Herunterladen",
+    "deleteConfirmTitle": "Anhang löschen?",
+    "deleteConfirmMessage": "Diese Aktion kann nicht rückgängig gemacht werden.",
+    "errorFileTooLarge": "Die Datei überschreitet das 25-MB-Limit.",
+    "errorFileType": "Nicht unterstützter Dateityp. Akzeptiert: PDF, .docx, .xlsx, .png, .jpg, .txt.",
+    "errorStorageCap": "Der Datensatz hat das Anhang-Limit von 100 MB erreicht.",
+    "errorUpload": "Upload fehlgeschlagen — bitte versuchen Sie es erneut.",
+    "errorDelete": "Löschen fehlgeschlagen — bitte versuchen Sie es erneut.",
+    "errorLoad": "Anhänge konnten nicht geladen werden."
   },
   "common": {
     "ownerToggle": {
