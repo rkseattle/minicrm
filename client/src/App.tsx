@@ -27,6 +27,7 @@ import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
 import WinLossReportPage from '@/pages/WinLossReportPage.js';
 import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
 import ProfilePage from '@/pages/ProfilePage.js';
+import AuditLogPage from '@/pages/AuditLogPage.js';
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active.
@@ -79,6 +80,7 @@ function AppRoutes() {
         <Route element={<LayoutShell />}>
           <Route path="/users" element={<UsersPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
+          <Route path="/admin/audit-log" element={<AuditLogPage />} />
           <Route path="/admin/automation" element={<AutomationRulesPage />} />
           <Route path="/reports/win-loss" element={<WinLossReportPage />} />
         </Route>

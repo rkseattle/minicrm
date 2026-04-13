@@ -44,7 +44,10 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  const deal = await createDeal({ ...parsed.data, owner_id: req.user!.id });
+  const deal = await createDeal(
+    { ...parsed.data, owner_id: req.user!.id },
+    { id: req.user!.id, name: req.user!.name },
+  );
   res.status(201).json({ deal });
 }
 
@@ -145,7 +148,12 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     }
   }
 
-  const deal = await updateDeal(id, parsed.data);
+  const deal = await updateDeal(
+    id,
+    parsed.data,
+    { id: req.user!.id, name: req.user!.name },
+    existing,
+  );
   if (!deal) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
     return;
@@ -248,7 +256,7 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  await deleteDeal(id);
+  await deleteDeal(id, { id: req.user!.id, name: req.user!.name }, existing.name);
   res.status(204).send();
 }
 

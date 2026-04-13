@@ -168,7 +168,7 @@ router.post('/login', loginLimiter, asyncHandler(login));
  *             example:
  *               message: Logged out successfully
  */
-router.post('/logout', logout);
+router.post('/logout', authenticate, asyncHandler(logout));
 
 /**
  * @openapi

@@ -16,6 +16,8 @@ import * as userService from '../services/userService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { sanitizeUser } from '../utils/userUtils.js';
+import { writeAuditEntryBestEffort } from '../services/auditService.js';
+import logger from '../logger.js';
 
 /** JWT expiry — 8 hours expressed in seconds */
 const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
@@ -100,19 +102,41 @@ export async function login(req: Request, res: Response): Promise<void> {
     user: sanitizeUser(user),
     mustChangePassword: user.must_change_password,
   });
+
+  // Fire-and-forget: audit login event — failure must not block the login response (MINCRM-170)
+  void writeAuditEntryBestEffort({
+    recordType: 'user',
+    recordId: user.id,
+    recordName: user.name,
+    eventType: 'login',
+    changedById: user.id,
+    changedByName: user.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write login audit entry'));
 }
 
 /**
  * POST /api/auth/logout
- * Clears the auth cookie.
+ * Clears the auth cookie and writes a logout audit entry.
  */
-export function logout(_req: Request, res: Response): void {
+export async function logout(req: Request, res: Response): Promise<void> {
+  const user = req.user!;
+
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
   });
   res.status(200).json({ message: 'Logged out successfully' });
+
+  // Fire-and-forget: audit logout event — failure must not block the response (MINCRM-170)
+  void writeAuditEntryBestEffort({
+    recordType: 'user',
+    recordId: user.id,
+    recordName: user.name,
+    eventType: 'logout',
+    changedById: user.id,
+    changedByName: user.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write logout audit entry'));
 }
 
 /**

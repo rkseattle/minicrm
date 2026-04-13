@@ -652,5 +652,80 @@
     "pageOf": "Page {{page}} sur {{total}}",
     "showing": "Affichage de {{from}}–{{to}} sur {{total}}",
     "loadMore": "Charger plus"
+  },
+  "auditLog": {
+    "heading": "Journal d'audit",
+    "navLink": "Voir le journal d'audit",
+    "sectionHint": "Consultez un historique complet et inaltérable des modifications apportées à tous les enregistrements du système.",
+    "changeHistory": "Historique des modifications",
+    "showAll": "Tout afficher",
+    "showLess": "Réduire",
+    "totalCount": "({{count}})",
+    "noHistory": "Aucun historique de modification pour l'instant.",
+    "loading": "Chargement de l'historique…",
+    "eventTypes": {
+      "created": "Créé",
+      "updated": "Mis à jour",
+      "deleted": "Supprimé",
+      "login": "Connexion",
+      "logout": "Déconnexion",
+      "password_changed": "Mot de passe modifié",
+      "role_changed": "Rôle modifié",
+      "deactivated": "Désactivé",
+      "reactivated": "Réactivé",
+      "ownership_reassigned": "Propriété réattribuée"
+    },
+    "recordTypes": {
+      "contact": "Contact",
+      "account": "Compte",
+      "deal": "Affaire",
+      "user": "Utilisateur",
+      "system_settings": "Paramètres système",
+      "all": "Tous"
+    },
+    "filters": {
+      "from": "Du",
+      "to": "Au",
+      "user": "Utilisateur",
+      "allUsers": "Tous les utilisateurs",
+      "recordType": "Type d'enregistrement",
+      "eventType": "Type d'événement",
+      "allTypes": "Tous les types",
+      "allEvents": "Tous les événements",
+      "applyFilters": "Appliquer",
+      "clearFilters": "Effacer les filtres"
+    },
+    "table": {
+      "timestamp": "Horodatage",
+      "user": "Utilisateur",
+      "eventType": "Événement",
+      "recordType": "Type",
+      "recordName": "Enregistrement",
+      "summary": "Résumé",
+      "field": "Champ",
+      "oldValue": "Ancienne valeur",
+      "newValue": "Nouvelle valeur",
+      "noEntries": "Aucune entrée dans le journal d'audit ne correspond aux filtres actuels."
+    },
+    "summary": {
+      "created": "{{actor}} a créé ce {{recordType}}",
+      "updated": "{{actor}} a modifié {{field}} de {{oldValue}} à {{newValue}}",
+      "deleted": "{{actor}} a supprimé ce {{recordType}}",
+      "login": "{{actor}} s'est connecté",
+      "logout": "{{actor}} s'est déconnecté",
+      "password_changed": "{{actor}} a modifié le mot de passe",
+      "role_changed": "{{actor}} a changé le rôle en {{newValue}}",
+      "deactivated": "{{actor}} a désactivé cet utilisateur",
+      "reactivated": "{{actor}} a réactivé cet utilisateur",
+      "ownership_reassigned": "{{actor}} a réattribué la propriété",
+      "noOldValue": "(vide)",
+      "noNewValue": "(vide)"
+    },
+    "pagination": {
+      "prev": "Précédent",
+      "next": "Suivant",
+      "page": "Page {{page}} sur {{total}}"
+    },
+    "accessDenied": "Vous n'avez pas la permission de consulter le journal d'audit."
   }
 }

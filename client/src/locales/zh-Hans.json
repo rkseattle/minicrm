@@ -652,5 +652,80 @@
     "pageOf": "第 {{page}} 页，共 {{total}} 页",
     "showing": "显示第 {{from}}–{{to}} 条，共 {{total}} 条",
     "loadMore": "加载更多"
+  },
+  "auditLog": {
+    "heading": "审计日志",
+    "navLink": "查看审计日志",
+    "sectionHint": "浏览系统中所有记录变更的完整、不可篡改的历史记录。",
+    "changeHistory": "变更历史",
+    "showAll": "显示全部",
+    "showLess": "收起",
+    "totalCount": "({{count}})",
+    "noHistory": "暂无变更历史。",
+    "loading": "加载历史…",
+    "eventTypes": {
+      "created": "已创建",
+      "updated": "已更新",
+      "deleted": "已删除",
+      "login": "已登录",
+      "logout": "已登出",
+      "password_changed": "密码已更改",
+      "role_changed": "角色已更改",
+      "deactivated": "已停用",
+      "reactivated": "已重新激活",
+      "ownership_reassigned": "所有权已转让"
+    },
+    "recordTypes": {
+      "contact": "联系人",
+      "account": "客户",
+      "deal": "商机",
+      "user": "用户",
+      "system_settings": "系统设置",
+      "all": "全部"
+    },
+    "filters": {
+      "from": "开始日期",
+      "to": "结束日期",
+      "user": "用户",
+      "allUsers": "所有用户",
+      "recordType": "记录类型",
+      "eventType": "事件类型",
+      "allTypes": "所有类型",
+      "allEvents": "所有事件",
+      "applyFilters": "应用",
+      "clearFilters": "清除筛选"
+    },
+    "table": {
+      "timestamp": "时间戳",
+      "user": "用户",
+      "eventType": "事件",
+      "recordType": "记录类型",
+      "recordName": "记录",
+      "summary": "摘要",
+      "field": "字段",
+      "oldValue": "旧值",
+      "newValue": "新值",
+      "noEntries": "没有符合当前筛选条件的审计日志条目。"
+    },
+    "summary": {
+      "created": "{{actor}} 创建了此{{recordType}}",
+      "updated": "{{actor}} 将 {{field}} 从 {{oldValue}} 更改为 {{newValue}}",
+      "deleted": "{{actor}} 删除了此{{recordType}}",
+      "login": "{{actor}} 已登录",
+      "logout": "{{actor}} 已登出",
+      "password_changed": "{{actor}} 更改了密码",
+      "role_changed": "{{actor}} 将角色更改为 {{newValue}}",
+      "deactivated": "{{actor}} 停用了此用户",
+      "reactivated": "{{actor}} 重新激活了此用户",
+      "ownership_reassigned": "{{actor}} 转让了所有权",
+      "noOldValue": "（空）",
+      "noNewValue": "（空）"
+    },
+    "pagination": {
+      "prev": "上一页",
+      "next": "下一页",
+      "page": "第 {{page}} 页，共 {{total}} 页"
+    },
+    "accessDenied": "您没有权限查看审计日志。"
   }
 }

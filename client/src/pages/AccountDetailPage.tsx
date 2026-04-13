@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import ChangeHistory from '@/components/ChangeHistory.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
@@ -253,6 +254,9 @@ export default function AccountDetailPage() {
 
             {/* Attachments (MINCRM-167) */}
             {id && <AttachmentsSection recordType="account" recordId={id} />}
+
+            {/* Change history (MINCRM-171) */}
+            {id && <ChangeHistory recordType="account" recordId={id} />}
 
             {/* Linked contacts */}
             <section className="mt-8" aria-labelledby="linked-contacts-heading">

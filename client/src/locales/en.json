@@ -625,6 +625,81 @@
     "showing": "Showing {{from}}–{{to}} of {{total}}",
     "loadMore": "Load more"
   },
+  "auditLog": {
+    "heading": "Audit Log",
+    "navLink": "View Audit Log",
+    "sectionHint": "Browse a complete, tamper-proof history of changes made across all records in the system.",
+    "changeHistory": "Change History",
+    "showAll": "Show all",
+    "showLess": "Show less",
+    "totalCount": "({{count}})",
+    "noHistory": "No change history yet.",
+    "loading": "Loading history…",
+    "eventTypes": {
+      "created": "Created",
+      "updated": "Updated",
+      "deleted": "Deleted",
+      "login": "Logged in",
+      "logout": "Logged out",
+      "password_changed": "Password changed",
+      "role_changed": "Role changed",
+      "deactivated": "Deactivated",
+      "reactivated": "Reactivated",
+      "ownership_reassigned": "Ownership reassigned"
+    },
+    "recordTypes": {
+      "contact": "Contact",
+      "account": "Account",
+      "deal": "Deal",
+      "user": "User",
+      "system_settings": "System Settings",
+      "all": "All"
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "user": "User",
+      "allUsers": "All users",
+      "recordType": "Record type",
+      "eventType": "Event type",
+      "allTypes": "All types",
+      "allEvents": "All events",
+      "applyFilters": "Apply",
+      "clearFilters": "Clear filters"
+    },
+    "table": {
+      "timestamp": "Timestamp",
+      "user": "User",
+      "eventType": "Event",
+      "recordType": "Record type",
+      "recordName": "Record",
+      "summary": "Summary",
+      "field": "Field",
+      "oldValue": "Old value",
+      "newValue": "New value",
+      "noEntries": "No audit log entries match the current filters."
+    },
+    "summary": {
+      "created": "{{actor}} created this {{recordType}}",
+      "updated": "{{actor}} changed {{field}} from {{oldValue}} to {{newValue}}",
+      "deleted": "{{actor}} deleted this {{recordType}}",
+      "login": "{{actor}} logged in",
+      "logout": "{{actor}} logged out",
+      "password_changed": "{{actor}} changed the password",
+      "role_changed": "{{actor}} changed the role to {{newValue}}",
+      "deactivated": "{{actor}} deactivated this user",
+      "reactivated": "{{actor}} reactivated this user",
+      "ownership_reassigned": "{{actor}} reassigned ownership",
+      "noOldValue": "(empty)",
+      "noNewValue": "(empty)"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{total}}"
+    },
+    "accessDenied": "You do not have permission to view the audit log."
+  },
   "import": {
     "dropZoneHint": "Click or drag and drop a {{entity}} CSV file here",
     "csvOnly": "Only .csv files, up to 10 MB",

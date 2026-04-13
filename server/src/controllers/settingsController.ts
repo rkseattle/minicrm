@@ -16,6 +16,8 @@ import {
   setDefaultLanguageSchema,
   setNavLayoutSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
+import { writeAuditEntryBestEffort } from '../services/auditService.js';
+import logger from '../logger.js';
 
 /**
  * GET /api/settings/default-language
@@ -49,8 +51,21 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
     return;
   }
 
+  const previousLanguage = await getDefaultLanguage();
   const language = await setDefaultLanguage(parsed.data.language);
   res.status(200).json({ language });
+
+  // Audit: system settings updated (MINCRM-170)
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Default Language',
+    eventType: 'updated',
+    fieldName: 'Default Language',
+    oldValue: previousLanguage,
+    newValue: language,
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
 /**
@@ -86,8 +101,21 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
     return;
   }
 
+  const previousLayout = await getNavLayout();
   const layout = await setNavLayout(parsed.data.layout);
   res.status(200).json({ layout });
+
+  // Audit: system settings updated (MINCRM-170)
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Navigation Layout',
+    eventType: 'updated',
+    fieldName: 'Navigation Layout',
+    oldValue: previousLayout,
+    newValue: layout,
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
 // ── Email notifications global toggle (MINCRM-163) ───────────────────────────
@@ -126,6 +154,19 @@ export async function setEmailNotificationsEnabledHandler(
     return;
   }
 
+  const previousEnabled = await getEmailNotificationsEnabled();
   const enabled = await setEmailNotificationsEnabled(req.body.enabled as boolean);
   res.status(200).json({ enabled });
+
+  // Audit: system settings updated (MINCRM-170)
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Email Notifications',
+    eventType: 'updated',
+    fieldName: 'Email Notifications',
+    oldValue: String(previousEnabled),
+    newValue: String(enabled),
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }

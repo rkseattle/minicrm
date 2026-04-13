@@ -54,13 +54,16 @@ export async function inviteUser(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const user = await userService.createUser({
-    email,
-    name,
-    role,
-    passwordHash: null,
-    status: 'invited',
-  });
+  const user = await userService.createUser(
+    {
+      email,
+      name,
+      role,
+      passwordHash: null,
+      status: 'invited',
+    },
+    { id: req.user!.id, name: req.user!.name },
+  );
 
   // Generate a short-lived invite token so the invited user can set their password.
   // In a real deployment this token would be embedded in the invite email link.
@@ -127,7 +130,10 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
   const id = String(req.params['id']);
   const { role } = parseResult.data;
 
-  const user = await userService.updateUserRole(id, role);
+  const user = await userService.updateUserRole(id, role, {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
   if (!user) {
     res.status(404).json({
       error: { code: 'USER_NOT_FOUND', message: 'User not found' },
@@ -145,7 +151,10 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
 export async function deactivateUser(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
 
-  const user = await userService.updateUserStatus(id, 'inactive');
+  const user = await userService.updateUserStatus(id, 'inactive', {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
   if (!user) {
     res.status(404).json({
       error: { code: 'USER_NOT_FOUND', message: 'User not found' },
@@ -163,7 +172,10 @@ export async function deactivateUser(req: Request, res: Response): Promise<void>
 export async function reactivateUser(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
 
-  const user = await userService.updateUserStatus(id, 'active');
+  const user = await userService.updateUserStatus(id, 'active', {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
   if (!user) {
     res.status(404).json({
       error: { code: 'USER_NOT_FOUND', message: 'User not found' },
@@ -368,7 +380,12 @@ export async function adminSetPassword(req: Request, res: Response): Promise<voi
     return;
   }
 
-  const updated = await userService.adminSetUserPassword(req.user!.id, targetUserId, password);
+  const updated = await userService.adminSetUserPassword(
+    req.user!.id,
+    targetUserId,
+    password,
+    req.user!.name,
+  );
   if (!updated) {
     res.status(404).json({
       error: { code: 'USER_NOT_FOUND', message: 'User not found' },

@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import ChangeHistory from '@/components/ChangeHistory.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
@@ -287,6 +288,9 @@ export default function ContactDetailPage() {
 
         {/* Attachments (MINCRM-167) */}
         {!isEditing && id && <AttachmentsSection recordType="contact" recordId={id} />}
+
+        {/* Change history (MINCRM-171) */}
+        {!isEditing && id && <ChangeHistory recordType="contact" recordId={id} />}
 
         {/* Linked deals */}
         {!isEditing && (

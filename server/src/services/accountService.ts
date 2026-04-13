@@ -10,6 +10,17 @@ import type {
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
+import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
+import type { AuditEntryInput } from './auditService.js';
+
+/** Actor info required to write audit entries on write operations */
+export interface AuditActor {
+  id: string;
+  name: string;
+}
+
+/** Fallback actor used when no user context is available (e.g. tests, system operations) */
+const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Columns that may be updated via updateAccount — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof Omit<UpdateAccountInput, 'contact_ids'>> = new Set([
@@ -102,12 +113,15 @@ export async function setAccountContacts(
 
 /**
  * Creates a new account record, optionally linking contacts atomically.
+ * Writes an audit entry in the same transaction. (MINCRM-170)
  *
  * @param params - Account fields plus the owner's user ID and optional contact_ids
+ * @param actor - User performing the action (for audit log)
  * @returns The inserted account row
  */
 export async function createAccount(
   params: CreateAccountInput & { owner_id: string },
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<AccountRow> {
   const { name, industry, website, employee_range, revenue_range, owner_id, contact_ids } = params;
 
@@ -134,6 +148,16 @@ export async function createAccount(
     if (contact_ids && contact_ids.length > 0) {
       await setAccountContacts(account.id, contact_ids, client);
     }
+
+    // Audit: record created (MINCRM-170)
+    await writeAuditEntry(client, {
+      recordType: 'account',
+      recordId: account.id,
+      recordName: account.name,
+      eventType: 'created',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
 
     await client.query('COMMIT');
     return account;
@@ -214,14 +238,19 @@ export async function listAccounts(
 
 /**
  * Updates one or more fields on an existing account, optionally updating linked contacts atomically.
+ * Writes per-field audit entries in the same transaction. (MINCRM-170)
  *
  * @param id - Account UUID
  * @param params - Fields to update (at least one required); optional contact_ids replaces current links
+ * @param actor - User performing the action (for audit log)
+ * @param before - Snapshot of the account before update (used for diff)
  * @returns The updated account row, or null if not found
  */
 export async function updateAccount(
   id: string,
   params: UpdateAccountInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+  before?: AccountRow,
 ): Promise<AccountRow | null> {
   const { contact_ids, ...accountParams } = params;
 
@@ -259,6 +288,30 @@ export async function updateAccount(
 
     if (account && contact_ids !== undefined) {
       await setAccountContacts(account.id, contact_ids, client);
+    }
+
+    if (account && before) {
+      // Audit: per-field diff (MINCRM-170)
+      const auditBase = {
+        recordType: 'account' as const,
+        recordId: account.id,
+        recordName: account.name,
+        changedById: actor.id,
+        changedByName: actor.name,
+      };
+
+      const fieldEntries = diffFields(
+        before as unknown as Record<string, unknown>,
+        account as unknown as Record<string, unknown>,
+        auditBase,
+      );
+
+      const ownershipEntries: AuditEntryInput[] = [];
+      if (params.owner_id !== undefined && params.owner_id !== before.owner_id) {
+        ownershipEntries.push({ ...auditBase, eventType: 'ownership_reassigned' });
+      }
+
+      await writeAuditEntries(client, [...fieldEntries, ...ownershipEntries]);
     }
 
     await client.query('COMMIT');
@@ -349,19 +402,52 @@ export async function exportAccountsForCsv(
 }
 
 /**
- * Deletes an account by its UUID.
+ * Deletes an account by its UUID and writes an audit entry in the same transaction.
  * Associated contacts have their account_id set to NULL (not deleted).
+ * (MINCRM-170)
  *
  * @param id - Account UUID
+ * @param actor - User performing the action (for audit log)
+ * @param recordName - Display name of the account (used for audit log after deletion)
  * @returns The deleted account row, or null if not found
  */
-export async function deleteAccount(id: string): Promise<AccountRow | null> {
-  // Unlink contacts first (though the FK is SET NULL on delete, being explicit is clearer)
-  await pool.query('UPDATE contacts SET account_id = NULL WHERE account_id = $1', [id]);
+export async function deleteAccount(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+  recordName = '',
+): Promise<AccountRow | null> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const result = await pool.query<AccountRow>('DELETE FROM accounts WHERE id = $1 RETURNING *', [
-    id,
-  ]);
+    // Unlink contacts first (though the FK is SET NULL on delete, being explicit is clearer)
+    await client.query('UPDATE contacts SET account_id = NULL WHERE account_id = $1', [id]);
 
-  return result.rows[0] ?? null;
+    const result = await client.query<AccountRow>(
+      'DELETE FROM accounts WHERE id = $1 RETURNING *',
+      [id],
+    );
+
+    const account = result.rows[0] ?? null;
+
+    if (account) {
+      // Audit: record deleted (MINCRM-170)
+      await writeAuditEntry(client, {
+        recordType: 'account',
+        recordId: id,
+        recordName,
+        eventType: 'deleted',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return account;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
