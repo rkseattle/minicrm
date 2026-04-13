@@ -1,0 +1,82 @@
+name: Claude Code PR Review
+
+# MINCRM-178: Replaces Greptile with Claude Code as the automated PR reviewer.
+# Claude reads CLAUDE.md natively, making it aware of MiniCRM-specific architecture
+# rules, i18n requirements, data-testid conventions, and security patterns.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  claude-review:
+    name: Claude Code Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code PR review (MINCRM-178)
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review_instructions: |
+            You are reviewing a MiniCRM pull request. MiniCRM is a CRM application built
+            with React + Vite (client), Node.js + Express + TypeScript (server), and
+            PostgreSQL. The full architecture rules are in CLAUDE.md at the repo root.
+
+            Focus your review on the following MiniCRM-specific concerns. Flag anything
+            that violates them — do not flag style issues already enforced by ESLint/Prettier,
+            naming preferences, or correct-but-stylistically-different patterns.
+
+            **Architecture violations**
+            - Business logic (DB queries, data transformation, rule evaluation) placed in a
+              controller or route handler instead of a service function
+            - Direct `pool.query()` calls outside of `server/src/services/`
+            - Controllers doing anything beyond request/response shaping and Zod validation
+
+            **Validation**
+            - Missing Zod validation on API request bodies before the service call
+            - Sort/filter query params used in a SQL ORDER BY without allowlist validation
+              (must check against an explicit `ALLOWED_SORT` array before interpolation)
+
+            **Frontend**
+            - New interactable UI elements (buttons, inputs, links, form controls) missing
+              a `data-testid` attribute — required for Playwright E2E selectors (MINCRM-42)
+            - User-facing strings hardcoded in JSX instead of wrapped in `t('key')` calls
+            - New Tailwind layout classes using physical directional properties (`pl-`, `pr-`,
+              `ml-`, `mr-`, `left-`, `right-`, `text-left`, `text-right`) instead of logical
+              property utilities (`ps-`, `pe-`, `ms-`, `me-`, `start-`, `end-`,
+              `text-start`, `text-end`) — required for RTL support (MINCRM-69)
+
+            **Security**
+            - Hardcoded credentials or secrets in any file
+            - Authenticated routes missing the `authenticate` middleware
+            - Admin-only routes missing `requireRole('admin')`
+            - PATCH/DELETE handlers that do not enforce ownership:
+              `WHERE id = $1 AND (owner_id = $2 OR $3 = 'admin')`
+            - `owner_id` read from the request body instead of `req.user.id`
+
+            **Documentation / code quality**
+            - New service functions missing JSDoc (params + return type)
+            - Async route handlers not wrapped in `try/catch` or `asyncHandler`
+            - Error responses not using the standard shape:
+              `{ error: { code: string, message: string } }`
+
+            **Scope**
+            - Any implementation that touches features from MINCRM-5 (comms epics),
+              MINCRM-6 (reporting epics beyond what is already implemented), or MINCRM-7
+              (automation epics beyond what is already implemented) — these are out of scope
+
+            **PR title**
+            - Conventional commit prefix missing or incorrect
+              (must be one of: `feat:`, `fix:`, `chore:`, `test:`, `docs:`)
+
+            When you find an issue, quote the relevant code and explain exactly what rule it
+            violates and what the correct pattern is. If the diff looks correct, say so briefly
+            rather than inventing issues.
