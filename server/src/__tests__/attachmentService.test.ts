@@ -206,6 +206,149 @@ describe('uploadAttachment — storage cap logic', () => {
     );
     expect(Number(result.rows[0].total)).toBe(3000);
   });
+
+  it('throws STORAGE_CAP_EXCEEDED when the cap would be exceeded', async () => {
+    const { uploadAttachment } = await import('../services/attachmentService.js');
+
+    // Fill the record to just under the 100 MB cap (99 MB)
+    const nintyNineMb = 99 * 1024 * 1024;
+    await insertAttachment({ filename: 'big.pdf', fileSize: nintyNineMb });
+
+    // A 2 MB upload would push it over the 100 MB limit
+    const twoMb = 2 * 1024 * 1024;
+    await expect(
+      uploadAttachment({
+        recordType: 'contact',
+        recordId: contactId,
+        filename: 'overflow.pdf',
+        fileSize: twoMb,
+        mimeType: 'application/pdf',
+        buffer: Buffer.alloc(0),
+        uploaderId,
+      }),
+    ).rejects.toMatchObject({ code: 'STORAGE_CAP_EXCEEDED' });
+  });
+});
+
+// ── downloadAttachment ────────────────────────────────────────────────────────
+
+describe('downloadAttachment', () => {
+  it('throws NOT_FOUND for a non-existent attachment', async () => {
+    const { downloadAttachment } = await import('../services/attachmentService.js');
+    await expect(
+      downloadAttachment('00000000-0000-0000-0000-000000000000', uploaderId, 'rep'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+// ── storageService (DB-only paths) ────────────────────────────────────────────
+
+describe('storageService — DB-only operations', () => {
+  const STORAGE_KEYS = [
+    'storage_endpoint',
+    'storage_bucket',
+    'storage_access_key_id',
+    'storage_secret_access_key',
+  ];
+
+  beforeEach(async () => {
+    // Clean any leftover storage settings from previous runs
+    await pool.query(`DELETE FROM system_settings WHERE key = ANY($1)`, [STORAGE_KEYS]);
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = ANY($1)`, [STORAGE_KEYS]);
+  });
+
+  it('getStorageConfig returns null when no settings are stored', async () => {
+    const { getStorageConfig } = await import('../services/storageService.js');
+    const result = await getStorageConfig();
+    expect(result).toBeNull();
+  });
+
+  it('setStorageConfig(null) clears settings and returns null', async () => {
+    const { setStorageConfig } = await import('../services/storageService.js');
+    // Insert a dummy value first so there is something to delete
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('storage_endpoint', 'http://test', now())`,
+    );
+    const result = await setStorageConfig(null);
+    expect(result).toBeNull();
+    // Verify deletion
+    const check = await pool.query(`SELECT 1 FROM system_settings WHERE key = 'storage_endpoint'`);
+    expect(check.rowCount).toBe(0);
+  });
+
+  it('setStorageConfig writes encrypted secret and getStorageConfig reads it back', async () => {
+    const { setStorageConfig, getStorageConfig } = await import('../services/storageService.js');
+
+    const saved = await setStorageConfig({
+      endpoint: 'http://minio:9000',
+      bucket: 'test-bucket',
+      accessKeyId: 'testkey',
+      secretAccessKey: 'supersecret',
+    });
+
+    expect(saved).not.toBeNull();
+    expect(saved!.secretAccessKey).toBe('********');
+    expect(saved!.endpoint).toBe('http://minio:9000');
+
+    const config = await getStorageConfig();
+    expect(config).not.toBeNull();
+    expect(config!.endpoint).toBe('http://minio:9000');
+    expect(config!.bucket).toBe('test-bucket');
+    expect(config!.accessKeyId).toBe('testkey');
+    expect(config!.secretAccessKey).toBe('supersecret');
+  });
+
+  it('getStorageConfig returns null when the stored secret cannot be decrypted', async () => {
+    const { getStorageConfig } = await import('../services/storageService.js');
+
+    // Insert a garbage (non-decryptable) value for the secret
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES
+         ('storage_endpoint', 'http://minio:9000', now()),
+         ('storage_bucket', 'bucket', now()),
+         ('storage_access_key_id', 'key', now()),
+         ('storage_secret_access_key', 'not:valid:hex', now())`,
+    );
+
+    const result = await getStorageConfig();
+    expect(result).toBeNull();
+  });
+
+  it('uploadObject throws STORAGE_NOT_CONFIGURED when storage is not set up', async () => {
+    const { uploadObject } = await import('../services/storageService.js');
+    await expect(uploadObject('any/key', Buffer.alloc(0), 'application/pdf')).rejects.toMatchObject(
+      { code: 'STORAGE_NOT_CONFIGURED' },
+    );
+  });
+
+  it('getObjectStream throws STORAGE_NOT_CONFIGURED when storage is not set up', async () => {
+    const { getObjectStream } = await import('../services/storageService.js');
+    await expect(getObjectStream('any/key')).rejects.toMatchObject({
+      code: 'STORAGE_NOT_CONFIGURED',
+    });
+  });
+
+  it('deleteObject throws STORAGE_NOT_CONFIGURED when storage is not set up', async () => {
+    const { deleteObject } = await import('../services/storageService.js');
+    await expect(deleteObject('any/key')).rejects.toMatchObject({
+      code: 'STORAGE_NOT_CONFIGURED',
+    });
+  });
+
+  it('testStorageConnection returns false when the endpoint is unreachable', async () => {
+    const { testStorageConnection } = await import('../services/storageService.js');
+    const result = await testStorageConnection({
+      endpoint: 'http://localhost:19999',
+      bucket: 'no-such-bucket',
+      accessKeyId: 'key',
+      secretAccessKey: 'secret',
+    });
+    expect(result).toBe(false);
+  });
 });
 
 // ── cryptoService ─────────────────────────────────────────────────────────────
@@ -234,5 +377,16 @@ describe('cryptoService encrypt/decrypt', () => {
   it('throws on a malformed payload', async () => {
     const { decrypt } = await import('../services/cryptoService.js');
     expect(() => decrypt('not:a:valid:payload:format')).toThrow();
+  });
+
+  it('throws when NODE_ENCRYPTION_KEY is missing or invalid', async () => {
+    const { encrypt } = await import('../services/cryptoService.js');
+    const original = process.env.NODE_ENCRYPTION_KEY;
+    try {
+      delete process.env.NODE_ENCRYPTION_KEY;
+      expect(() => encrypt('value')).toThrow(/NODE_ENCRYPTION_KEY/);
+    } finally {
+      process.env.NODE_ENCRYPTION_KEY = original;
+    }
   });
 });

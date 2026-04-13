@@ -151,7 +151,7 @@ export async function downloadAttachmentHandler(req: Request, res: Response): Pr
   res.setHeader('Content-Type', attachment.mime_type);
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${encodeURIComponent(attachment.filename)}"`,
+    `attachment; filename*=UTF-8''${encodeURIComponent(attachment.filename)}`,
   );
   res.setHeader('Content-Length', String(attachment.file_size));
   stream.pipe(res);

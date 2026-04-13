@@ -848,7 +848,7 @@ export default function AdminSettingsPage() {
                     !storageForm.endpoint ||
                     !storageForm.bucket ||
                     !storageForm.accessKeyId ||
-                    (!storageForm.secretAccessKey && !storageData?.configured)
+                    !storageForm.secretAccessKey
                   }
                 >
                   {storageSaveMutation.isPending
