@@ -263,9 +263,9 @@ export async function deleteAttachment(
     throw err;
   }
 
+  // Remove metadata row first so the record is gone even if storage cleanup fails
+  await pool.query('DELETE FROM attachments WHERE id = $1', [id]);
+
   // Delete from object storage
   await deleteObject(attachment.storage_key);
-
-  // Remove metadata row
-  await pool.query('DELETE FROM attachments WHERE id = $1', [id]);
 }

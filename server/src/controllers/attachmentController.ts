@@ -193,6 +193,19 @@ export async function deleteAttachmentHandler(req: Request, res: Response): Prom
 // ── Storage settings (MINCRM-169) ─────────────────────────────────────────────
 
 /**
+ * GET /api/settings/storage/status
+ * Returns only whether storage is configured. Authenticated users (not admin-only).
+ * Used by AttachmentsSection to decide whether to show the upload UI.
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getStorageStatusHandler(_req: Request, res: Response): Promise<void> {
+  const config = await getStorageConfig();
+  res.status(200).json({ configured: config !== null });
+}
+
+/**
  * GET /api/settings/storage
  * Returns the current storage configuration (secret masked). Admin only.
  *

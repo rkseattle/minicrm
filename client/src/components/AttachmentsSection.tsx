@@ -14,9 +14,9 @@ import {
   uploadAttachment,
   deleteAttachment,
   getDownloadUrl,
-  getStorageConfig,
+  getStorageStatus,
   attachmentsQueryKey,
-  STORAGE_CONFIG_QUERY_KEY,
+  STORAGE_STATUS_QUERY_KEY,
   type RecordType,
   type Attachment,
 } from '@/api/attachments.js';
@@ -74,10 +74,10 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
 
   const queryKey = attachmentsQueryKey(recordType, recordId);
 
-  // Check whether storage is configured
+  // Check whether storage is configured (uses /status — no admin gate)
   const { data: storageData, isLoading: storageLoading } = useQuery({
-    queryKey: STORAGE_CONFIG_QUERY_KEY,
-    queryFn: getStorageConfig,
+    queryKey: STORAGE_STATUS_QUERY_KEY,
+    queryFn: getStorageStatus,
   });
 
   const storageConfigured = storageData?.configured ?? false;

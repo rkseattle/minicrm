@@ -46,6 +46,9 @@ export function attachmentsQueryKey(recordType: RecordType, recordId: string): r
 /** React Query key for the storage configuration. */
 export const STORAGE_CONFIG_QUERY_KEY = ['settings', 'storage'] as const;
 
+/** React Query key for the storage status (configured flag only). */
+export const STORAGE_STATUS_QUERY_KEY = ['settings', 'storage', 'status'] as const;
+
 // ── Attachment endpoints ───────────────────────────────────────────────────────
 
 /**
@@ -114,6 +117,21 @@ export async function deleteAttachment(id: string): Promise<void> {
 export interface StorageConfigResponse {
   configured: boolean;
   config: StorageConfig | null;
+}
+
+/** Response shape for the storage status endpoint (no admin required). */
+export interface StorageStatusResponse {
+  configured: boolean;
+}
+
+/**
+ * Returns only whether storage is configured. Available to all authenticated users.
+ *
+ * @returns { configured: boolean }
+ */
+export async function getStorageStatus(): Promise<StorageStatusResponse> {
+  const response = await apiClient.get<StorageStatusResponse>('/settings/storage/status');
+  return response.data;
 }
 
 /**

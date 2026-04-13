@@ -17,6 +17,7 @@ import {
   setEmailNotificationsEnabledHandler,
 } from '../controllers/settingsController.js';
 import {
+  getStorageStatusHandler,
   getStorageConfigHandler,
   setStorageConfigHandler,
   clearStorageConfigHandler,
@@ -240,6 +241,32 @@ router.patch(
 );
 
 // ── Storage configuration (MINCRM-169) ───────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/storage/status:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getStorageStatus
+ *     summary: Get whether storage is configured (authenticated, MINCRM-167)
+ *     description: >
+ *       Returns only { configured: boolean }. Available to all authenticated users
+ *       (not admin-only) so the attachments UI can show or hide the upload zone.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Storage configured status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 configured: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/storage/status', authenticate, asyncHandler(getStorageStatusHandler));
 
 /**
  * @openapi
