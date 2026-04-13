@@ -25,7 +25,9 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          review_instructions: |
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          mode: experimental-review
+          custom_instructions: |
             You are reviewing a MiniCRM pull request. MiniCRM is a CRM application built
             with React + Vite (client), Node.js + Express + TypeScript (server), and
             PostgreSQL. The full architecture rules are in CLAUDE.md at the repo root.
