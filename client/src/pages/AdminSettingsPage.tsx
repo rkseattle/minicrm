@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -953,6 +954,37 @@ export default function AdminSettingsPage() {
               )}
             </div>
           ))}
+        </div>
+
+        {/* ── Audit Log section (MINCRM-172) ───────────────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="audit-log-section"
+        >
+          <h2
+            className="text-lg font-semibold text-gray-900 mb-1"
+            data-testid="audit-log-section-title"
+          >
+            {t('auditLog.heading')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">{t('auditLog.sectionHint')}</p>
+          <Link
+            to="/admin/audit-log"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline"
+            data-testid="audit-log-link"
+          >
+            {t('auditLog.navLink')}
+            <svg
+              aria-hidden="true"
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
 
         {/* ── Confirmation dialog ────────────────────────────────────────────── */}

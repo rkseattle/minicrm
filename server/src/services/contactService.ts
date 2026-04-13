@@ -4,12 +4,24 @@
  */
 
 import pool from '../db.js';
+import type { PoolClient } from 'pg';
 import type {
   CreateContactInput,
   UpdateContactInput,
 } from '@minicrm/shared/schemas/contactSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
+import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
+import type { AuditEntryInput } from './auditService.js';
+
+/** Actor info required to write audit entries on write operations */
+export interface AuditActor {
+  id: string;
+  name: string;
+}
+
+/** Fallback actor used when no user context is available (e.g. tests, system operations) */
+const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Columns that may be updated via updateContact — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
@@ -69,43 +81,67 @@ interface ListContactsOptions {
 }
 
 /**
- * Creates a new contact record.
+ * Creates a new contact record and writes an audit entry in the same transaction.
  *
  * @param params - Contact fields plus the owner's user ID
+ * @param actor - User performing the action (for audit log)
  * @returns The inserted contact row
  */
 export async function createContact(
   params: CreateContactInput & { owner_id: string },
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<ContactRow> {
   const { first_name, last_name, email, phone, title, department, account_id, owner_id } = params;
 
-  const result = await pool.query<ContactRow>(
-    `INSERT INTO contacts (first_name, last_name, email, phone, title, department, account_id, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING *`,
-    [
-      first_name,
-      last_name,
-      email.toLowerCase(),
-      phone ?? null,
-      title ?? null,
-      department ?? null,
-      account_id ?? null,
-      owner_id,
-    ],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const contact = result.rows[0];
+    const result = await client.query<ContactRow>(
+      `INSERT INTO contacts (first_name, last_name, email, phone, title, department, account_id, owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        first_name,
+        last_name,
+        email.toLowerCase(),
+        phone ?? null,
+        title ?? null,
+        department ?? null,
+        account_id ?? null,
+        owner_id,
+      ],
+    );
 
-  // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
-  void fireAutomationTrigger('contact_created', {
-    recordId: contact.id,
-    recordType: 'contact',
-    ownerId: owner_id,
-  });
+    const contact = result.rows[0];
 
-  return contact;
+    // Audit: record created (MINCRM-170)
+    await writeAuditEntry(client, {
+      recordType: 'contact',
+      recordId: contact.id,
+      recordName: `${contact.first_name} ${contact.last_name}`,
+      eventType: 'created',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
+    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    void fireAutomationTrigger('contact_created', {
+      recordId: contact.id,
+      recordType: 'contact',
+      ownerId: owner_id,
+    });
+
+    return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -223,15 +259,19 @@ export async function listContacts(
 }
 
 /**
- * Updates one or more fields on an existing contact.
+ * Updates one or more fields on an existing contact and writes per-field audit entries.
  *
  * @param id - Contact UUID
  * @param params - Fields to update (at least one required)
+ * @param actor - User performing the action (for audit log)
+ * @param before - Snapshot of the contact before update (used for diff)
  * @returns The updated contact row, or null if not found
  */
 export async function updateContact(
   id: string,
   params: UpdateContactInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+  before?: ContactRow,
 ): Promise<ContactRow | null> {
   const normalized: UpdateContactInput = {
     ...params,
@@ -244,15 +284,56 @@ export async function updateContact(
   // Build dynamic SET clause: first_name = $2, last_name = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
 
-  const result = await pool.query<ContactRow>(
-    `UPDATE contacts
-     SET ${setClauses}, updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [id, ...fields.map((f) => normalized[f])],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  return result.rows[0] ?? null;
+    const result = await client.query<ContactRow>(
+      `UPDATE contacts
+       SET ${setClauses}, updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [id, ...fields.map((f) => normalized[f])],
+    );
+
+    const contact = result.rows[0] ?? null;
+
+    if (contact && before) {
+      // Audit: per-field diff (MINCRM-170)
+      const auditBase = {
+        recordType: 'contact' as const,
+        recordId: contact.id,
+        recordName: `${contact.first_name} ${contact.last_name}`,
+        changedById: actor.id,
+        changedByName: actor.name,
+      };
+
+      const fieldEntries = diffFields(
+        before as unknown as Record<string, unknown>,
+        contact as unknown as Record<string, unknown>,
+        auditBase,
+      );
+
+      // If ownership changed, also write an ownership_reassigned event
+      const ownershipEntries: AuditEntryInput[] = [];
+      if (params.owner_id !== undefined && params.owner_id !== before.owner_id) {
+        ownershipEntries.push({
+          ...auditBase,
+          eventType: 'ownership_reassigned',
+        });
+      }
+
+      await writeAuditEntries(client, [...fieldEntries, ...ownershipEntries]);
+    }
+
+    await client.query('COMMIT');
+    return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /** Shape of a contact row enriched with display names for CSV export */
@@ -346,15 +427,47 @@ export async function exportContactsForCsv(
 }
 
 /**
- * Deletes a contact by its UUID.
+ * Deletes a contact by its UUID and writes an audit entry in the same transaction.
  *
  * @param id - Contact UUID
+ * @param actor - User performing the action (for audit log)
+ * @param recordName - Display name of the contact (used for audit log after deletion)
  * @returns The deleted contact row, or null if not found
  */
-export async function deleteContact(id: string): Promise<ContactRow | null> {
-  const result = await pool.query<ContactRow>('DELETE FROM contacts WHERE id = $1 RETURNING *', [
-    id,
-  ]);
+export async function deleteContact(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+  recordName = '',
+): Promise<ContactRow | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  return result.rows[0] ?? null;
+    const result = await client.query<ContactRow>(
+      'DELETE FROM contacts WHERE id = $1 RETURNING *',
+      [id],
+    );
+
+    const contact = result.rows[0] ?? null;
+
+    if (contact) {
+      // Audit: record deleted (MINCRM-170)
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: id,
+        recordName,
+        eventType: 'deleted',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }

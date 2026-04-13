@@ -64,11 +64,14 @@ export async function createContactHandler(req: Request, res: Response): Promise
     }
   }
 
-  const contact = await createContact({
-    ...parsed.data,
-    account_id: parsed.data.account_id ?? null,
-    owner_id: req.user!.id,
-  });
+  const contact = await createContact(
+    {
+      ...parsed.data,
+      account_id: parsed.data.account_id ?? null,
+      owner_id: req.user!.id,
+    },
+    { id: req.user!.id, name: req.user!.name },
+  );
   res.status(201).json({ contact });
 }
 
@@ -182,7 +185,12 @@ export async function updateContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const contact = await updateContact(id, parsed.data);
+  const contact = await updateContact(
+    id,
+    parsed.data,
+    { id: req.user!.id, name: req.user!.name },
+    existing,
+  );
   res.status(200).json({ contact });
 
   // Fire-and-forget: notify the new owner when the contact is reassigned. (MINCRM-162)
@@ -317,6 +325,10 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  await deleteContact(id);
+  await deleteContact(
+    id,
+    { id: req.user!.id, name: req.user!.name },
+    `${existing.first_name} ${existing.last_name}`,
+  );
   res.status(204).send();
 }

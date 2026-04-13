@@ -11,6 +11,16 @@ import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js
 import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
+import { writeAuditEntry } from './auditService.js';
+
+/** Actor info required to write audit entries on write operations */
+export interface AuditActor {
+  id: string;
+  name: string;
+}
+
+/** Fallback actor used when no user context is available (e.g. tests, system operations) */
+const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Number of bcrypt salt rounds for password hashing */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -73,56 +83,146 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 }
 
 /**
- * Creates a new user record.
+ * Creates a new user record and writes an audit entry when an actor is provided.
+ * (MINCRM-170)
+ *
+ * @param actor - Admin who created the user; omitted for seed / test operations
  */
-export async function createUser({
-  email,
-  name,
-  role,
-  passwordHash,
-  status,
-}: CreateUserParams): Promise<UserRow> {
-  const result = await pool.query<UserRow>(
-    `INSERT INTO users (email, name, role, password_hash, status)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [email.toLowerCase().trim(), name.trim(), role, passwordHash, status],
-  );
-  return result.rows[0];
+export async function createUser(
+  { email, name, role, passwordHash, status }: CreateUserParams,
+  actor?: AuditActor,
+): Promise<UserRow> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<UserRow>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [email.toLowerCase().trim(), name.trim(), role, passwordHash, status],
+    );
+
+    const user = result.rows[0];
+
+    if (actor) {
+      await writeAuditEntry(client, {
+        recordType: 'user',
+        recordId: user.id,
+        recordName: user.name,
+        eventType: 'created',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return user;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Updates a user's status field.
+ * Updates a user's status field and writes a deactivated/reactivated audit entry.
+ * (MINCRM-170)
  *
  * @param id - The user UUID.
  * @param status - The new status.
+ * @param actor - Admin performing the action.
  */
-export async function updateUserStatus(id: string, status: UserStatus): Promise<UserRow | null> {
-  const result = await pool.query<UserRow>(
-    `UPDATE users
-     SET status = $2, updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [id, status],
-  );
-  return result.rows[0] ?? null;
+export async function updateUserStatus(
+  id: string,
+  status: UserStatus,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<UserRow | null> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<UserRow>(
+      `UPDATE users
+       SET status = $2, updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [id, status],
+    );
+
+    const user = result.rows[0] ?? null;
+
+    if (user) {
+      const eventType = status === 'inactive' ? 'deactivated' : 'reactivated';
+      await writeAuditEntry(client, {
+        recordType: 'user',
+        recordId: user.id,
+        recordName: user.name,
+        eventType,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return user;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Updates a user's role field.
+ * Updates a user's role field and writes a role_changed audit entry.
+ * (MINCRM-170)
  *
  * @param id - The user UUID.
  * @param role - The new role.
+ * @param actor - Admin performing the action.
  */
-export async function updateUserRole(id: string, role: UserRole): Promise<UserRow | null> {
-  const result = await pool.query<UserRow>(
-    `UPDATE users
-     SET role = $2, updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [id, role],
-  );
-  return result.rows[0] ?? null;
+export async function updateUserRole(
+  id: string,
+  role: UserRole,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<UserRow | null> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<UserRow>(
+      `UPDATE users
+       SET role = $2, updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [id, role],
+    );
+
+    const user = result.rows[0] ?? null;
+
+    if (user) {
+      await writeAuditEntry(client, {
+        recordType: 'user',
+        recordId: user.id,
+        recordName: user.name,
+        eventType: 'role_changed',
+        fieldName: 'Role',
+        newValue: role,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return user;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /** Options for paginating the users list */
@@ -316,31 +416,55 @@ export async function adminSetUserPassword(
   adminId: string,
   targetUserId: string,
   plaintext: string,
+  adminName = 'System',
 ): Promise<UserRow | null> {
   const user = await findUserById(targetUserId);
   if (!user) return null;
 
   const passwordHash = await bcrypt.hash(plaintext, BCRYPT_SALT_ROUNDS);
 
-  const result = await pool.query<UserRow>(
-    `UPDATE users
-     SET password_hash = $2,
-         must_change_password = true,
-         status = CASE WHEN status = 'invited' THEN 'active'::varchar ELSE status END,
-         updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [targetUserId, passwordHash],
-  );
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const updated = result.rows[0] ?? null;
-  if (updated) {
-    logger.info(
-      { adminId, targetUserId, timestamp: new Date().toISOString() },
-      `[AUDIT] Admin password set: admin_id=${adminId} target_user_id=${targetUserId}`,
+    const result = await client.query<UserRow>(
+      `UPDATE users
+       SET password_hash = $2,
+           must_change_password = true,
+           status = CASE WHEN status = 'invited' THEN 'active'::varchar ELSE status END,
+           updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [targetUserId, passwordHash],
     );
+
+    const updated = result.rows[0] ?? null;
+
+    if (updated) {
+      // Audit: password_changed event — no value stored for sensitive field (MINCRM-170)
+      await writeAuditEntry(client, {
+        recordType: 'user',
+        recordId: updated.id,
+        recordName: updated.name,
+        eventType: 'password_changed',
+        changedById: adminId,
+        changedByName: adminName,
+      });
+
+      logger.info(
+        { adminId, targetUserId, timestamp: new Date().toISOString() },
+        `[AUDIT] Admin password set: admin_id=${adminId} target_user_id=${targetUserId}`,
+      );
+    }
+
+    await client.query('COMMIT');
+    return updated;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-  return updated;
 }
 
 // ── Password reset (MINCRM-156, MINCRM-157) ───────────────────────────────────

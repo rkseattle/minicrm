@@ -35,7 +35,10 @@ export async function createAccountHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const account = await createAccount({ ...parsed.data, owner_id: req.user!.id });
+  const account = await createAccount(
+    { ...parsed.data, owner_id: req.user!.id },
+    { id: req.user!.id, name: req.user!.name },
+  );
   res.status(201).json({ account });
 }
 
@@ -135,7 +138,12 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const account = await updateAccount(id, parsed.data);
+  const account = await updateAccount(
+    id,
+    parsed.data,
+    { id: req.user!.id, name: req.user!.name },
+    existing,
+  );
   res.status(200).json({ account });
 
   // Fire-and-forget: notify the new owner when the account is reassigned. (MINCRM-162)
@@ -238,6 +246,6 @@ export async function deleteAccountHandler(req: Request, res: Response): Promise
     return;
   }
 
-  await deleteAccount(id);
+  await deleteAccount(id, { id: req.user!.id, name: req.user!.name }, existing.name);
   res.status(204).send();
 }

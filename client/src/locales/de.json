@@ -652,5 +652,80 @@
     "pageOf": "Seite {{page}} von {{total}}",
     "showing": "{{from}}–{{to}} von {{total}} angezeigt",
     "loadMore": "Mehr laden"
+  },
+  "auditLog": {
+    "heading": "Änderungsprotokoll",
+    "navLink": "Änderungsprotokoll anzeigen",
+    "sectionHint": "Durchsuchen Sie eine vollständige, manipulationssichere Geschichte aller Änderungen an Datensätzen im System.",
+    "changeHistory": "Änderungshistorie",
+    "showAll": "Alle anzeigen",
+    "showLess": "Weniger anzeigen",
+    "totalCount": "({{count}})",
+    "noHistory": "Noch keine Änderungshistorie.",
+    "loading": "Lade Verlauf…",
+    "eventTypes": {
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "deleted": "Gelöscht",
+      "login": "Angemeldet",
+      "logout": "Abgemeldet",
+      "password_changed": "Passwort geändert",
+      "role_changed": "Rolle geändert",
+      "deactivated": "Deaktiviert",
+      "reactivated": "Reaktiviert",
+      "ownership_reassigned": "Eigentümerschaft übertragen"
+    },
+    "recordTypes": {
+      "contact": "Kontakt",
+      "account": "Unternehmen",
+      "deal": "Geschäft",
+      "user": "Benutzer",
+      "system_settings": "Systemeinstellungen",
+      "all": "Alle"
+    },
+    "filters": {
+      "from": "Von",
+      "to": "Bis",
+      "user": "Benutzer",
+      "allUsers": "Alle Benutzer",
+      "recordType": "Datensatztyp",
+      "eventType": "Ereignistyp",
+      "allTypes": "Alle Typen",
+      "allEvents": "Alle Ereignisse",
+      "applyFilters": "Anwenden",
+      "clearFilters": "Filter zurücksetzen"
+    },
+    "table": {
+      "timestamp": "Zeitstempel",
+      "user": "Benutzer",
+      "eventType": "Ereignis",
+      "recordType": "Datensatztyp",
+      "recordName": "Datensatz",
+      "summary": "Zusammenfassung",
+      "field": "Feld",
+      "oldValue": "Alter Wert",
+      "newValue": "Neuer Wert",
+      "noEntries": "Keine Protokolleinträge entsprechen den aktuellen Filtern."
+    },
+    "summary": {
+      "created": "{{actor}} hat diesen {{recordType}} erstellt",
+      "updated": "{{actor}} hat {{field}} von {{oldValue}} zu {{newValue}} geändert",
+      "deleted": "{{actor}} hat diesen {{recordType}} gelöscht",
+      "login": "{{actor}} hat sich angemeldet",
+      "logout": "{{actor}} hat sich abgemeldet",
+      "password_changed": "{{actor}} hat das Passwort geändert",
+      "role_changed": "{{actor}} hat die Rolle auf {{newValue}} geändert",
+      "deactivated": "{{actor}} hat diesen Benutzer deaktiviert",
+      "reactivated": "{{actor}} hat diesen Benutzer reaktiviert",
+      "ownership_reassigned": "{{actor}} hat die Eigentümerschaft übertragen",
+      "noOldValue": "(leer)",
+      "noNewValue": "(leer)"
+    },
+    "pagination": {
+      "prev": "Zurück",
+      "next": "Weiter",
+      "page": "Seite {{page}} von {{total}}"
+    },
+    "accessDenied": "Sie haben keine Berechtigung, das Änderungsprotokoll einzusehen."
   }
 }

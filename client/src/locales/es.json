@@ -652,5 +652,80 @@
     "pageOf": "Página {{page}} de {{total}}",
     "showing": "Mostrando {{from}}–{{to}} de {{total}}",
     "loadMore": "Cargar más"
+  },
+  "auditLog": {
+    "heading": "Registro de auditoría",
+    "navLink": "Ver registro de auditoría",
+    "sectionHint": "Consulta un historial completo e inalterable de los cambios realizados en todos los registros del sistema.",
+    "changeHistory": "Historial de cambios",
+    "showAll": "Mostrar todo",
+    "showLess": "Mostrar menos",
+    "totalCount": "({{count}})",
+    "noHistory": "Aún no hay historial de cambios.",
+    "loading": "Cargando historial…",
+    "eventTypes": {
+      "created": "Creado",
+      "updated": "Actualizado",
+      "deleted": "Eliminado",
+      "login": "Inicio de sesión",
+      "logout": "Cierre de sesión",
+      "password_changed": "Contraseña cambiada",
+      "role_changed": "Rol cambiado",
+      "deactivated": "Desactivado",
+      "reactivated": "Reactivado",
+      "ownership_reassigned": "Propiedad reasignada"
+    },
+    "recordTypes": {
+      "contact": "Contacto",
+      "account": "Cuenta",
+      "deal": "Negocio",
+      "user": "Usuario",
+      "system_settings": "Configuración del sistema",
+      "all": "Todos"
+    },
+    "filters": {
+      "from": "Desde",
+      "to": "Hasta",
+      "user": "Usuario",
+      "allUsers": "Todos los usuarios",
+      "recordType": "Tipo de registro",
+      "eventType": "Tipo de evento",
+      "allTypes": "Todos los tipos",
+      "allEvents": "Todos los eventos",
+      "applyFilters": "Aplicar",
+      "clearFilters": "Limpiar filtros"
+    },
+    "table": {
+      "timestamp": "Fecha y hora",
+      "user": "Usuario",
+      "eventType": "Evento",
+      "recordType": "Tipo de registro",
+      "recordName": "Registro",
+      "summary": "Resumen",
+      "field": "Campo",
+      "oldValue": "Valor anterior",
+      "newValue": "Valor nuevo",
+      "noEntries": "No hay entradas en el registro de auditoría que coincidan con los filtros actuales."
+    },
+    "summary": {
+      "created": "{{actor}} creó este {{recordType}}",
+      "updated": "{{actor}} cambió {{field}} de {{oldValue}} a {{newValue}}",
+      "deleted": "{{actor}} eliminó este {{recordType}}",
+      "login": "{{actor}} inició sesión",
+      "logout": "{{actor}} cerró sesión",
+      "password_changed": "{{actor}} cambió la contraseña",
+      "role_changed": "{{actor}} cambió el rol a {{newValue}}",
+      "deactivated": "{{actor}} desactivó este usuario",
+      "reactivated": "{{actor}} reactivó este usuario",
+      "ownership_reassigned": "{{actor}} reasignó la propiedad",
+      "noOldValue": "(vacío)",
+      "noNewValue": "(vacío)"
+    },
+    "pagination": {
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{page}} de {{total}}"
+    },
+    "accessDenied": "No tiene permiso para ver el registro de auditoría."
   }
 }

@@ -933,4 +933,19 @@ export const handlers = [
   http.post('/api/settings/storage/test', () => {
     return HttpResponse.json({ success: true });
   }),
+
+  /** Audit log: GET /api/audit-log/record — returns empty history by default */
+  http.get('/api/audit-log/record', () => {
+    return HttpResponse.json({ entries: [] });
+  }),
+
+  /** Audit log: GET /api/audit-log — returns empty paginated list by default */
+  http.get('/api/audit-log', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
+  }),
+
+  /** Audit log: GET /api/audit-log/actors — returns empty list by default */
+  http.get('/api/audit-log/actors', () => {
+    return HttpResponse.json({ actors: [] });
+  }),
 ];

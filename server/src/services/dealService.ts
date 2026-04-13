@@ -4,9 +4,21 @@
  */
 
 import pool from '../db.js';
+import type { PoolClient } from 'pg';
 import type { CreateDealInput, UpdateDealInput } from '@minicrm/shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
+import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
+import type { AuditEntryInput } from './auditService.js';
+
+/** Actor info required to write audit entries on write operations */
+export interface AuditActor {
+  id: string;
+  name: string;
+}
+
+/** Fallback actor used when no user context is available (e.g. tests, system operations) */
+const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Columns that may be updated via updateDeal — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
@@ -54,32 +66,59 @@ interface ListDealsOptions {
 }
 
 /**
- * Creates a new deal record.
+ * Creates a new deal record and writes an audit entry in the same transaction.
+ * (MINCRM-170)
  *
  * @param params - Deal fields plus the owner's user ID
+ * @param actor - User performing the action (for audit log)
  * @returns The inserted deal row
  */
-export async function createDeal(params: CreateDealInput & { owner_id: string }): Promise<DealRow> {
+export async function createDeal(
+  params: CreateDealInput & { owner_id: string },
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<DealRow> {
   const { name, stage, value, close_date, account_id, owner_id } = params;
 
-  const result = await pool.query<DealRow>(
-    `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
-    [name, stage, value ?? null, close_date ?? null, account_id ?? null, owner_id],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const deal = result.rows[0];
+    const result = await client.query<DealRow>(
+      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
+      [name, stage, value ?? null, close_date ?? null, account_id ?? null, owner_id],
+    );
 
-  // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
-  void fireAutomationTrigger('deal_created', {
-    recordId: deal.id,
-    recordType: 'deal',
-    ownerId: owner_id,
-  });
+    const deal = result.rows[0];
 
-  return deal;
+    // Audit: record created (MINCRM-170)
+    await writeAuditEntry(client, {
+      recordType: 'deal',
+      recordId: deal.id,
+      recordName: deal.name,
+      eventType: 'created',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
+    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    void fireAutomationTrigger('deal_created', {
+      recordId: deal.id,
+      recordType: 'deal',
+      ownerId: owner_id,
+    });
+
+    return deal;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -151,13 +190,21 @@ export async function listDeals(
 }
 
 /**
- * Updates one or more fields on an existing deal.
+ * Updates one or more fields on an existing deal and writes per-field audit entries.
+ * (MINCRM-170)
  *
  * @param id - Deal UUID
  * @param params - Fields to update (at least one required)
+ * @param actor - User performing the action (for audit log)
+ * @param before - Snapshot of the deal before update (used for diff)
  * @returns The updated deal row, or null if not found
  */
-export async function updateDeal(id: string, params: UpdateDealInput): Promise<DealRow | null> {
+export async function updateDeal(
+  id: string,
+  params: UpdateDealInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+  before?: DealRow,
+): Promise<DealRow | null> {
   const fields = (Object.keys(params) as (keyof UpdateDealInput)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field),
   );
@@ -167,34 +214,69 @@ export async function updateDeal(id: string, params: UpdateDealInput): Promise<D
     return findDealById(id);
   }
 
-  // Capture the current stage before updating so we can detect an actual change
-  const previousStage = params.stage !== undefined ? (await findDealById(id))?.stage : undefined;
+  const previousStage = before?.stage;
 
   // Build dynamic SET clause: name = $2, stage = $3, ...
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
 
-  const result = await pool.query<DealRow>(
-    `UPDATE deals
-     SET ${setClauses}, updated_at = now()
-     WHERE id = $1
-     RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
-    [id, ...fields.map((f) => params[f])],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const deal = result.rows[0] ?? null;
+    const result = await client.query<DealRow>(
+      `UPDATE deals
+       SET ${setClauses}, updated_at = now()
+       WHERE id = $1
+       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
+      [id, ...fields.map((f) => params[f])],
+    );
 
-  // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
-  if (deal && params.stage !== undefined && deal.stage !== previousStage) {
-    void fireAutomationTrigger('deal_stage_changed', {
-      recordId: deal.id,
-      recordType: 'deal',
-      ownerId: deal.owner_id,
-      newStage: deal.stage,
-    });
+    const deal = result.rows[0] ?? null;
+
+    if (deal && before) {
+      // Audit: per-field diff (MINCRM-170)
+      const auditBase = {
+        recordType: 'deal' as const,
+        recordId: deal.id,
+        recordName: deal.name,
+        changedById: actor.id,
+        changedByName: actor.name,
+      };
+
+      const fieldEntries = diffFields(
+        before as unknown as Record<string, unknown>,
+        deal as unknown as Record<string, unknown>,
+        auditBase,
+      );
+
+      const ownershipEntries: AuditEntryInput[] = [];
+      if (params.owner_id !== undefined && params.owner_id !== before.owner_id) {
+        ownershipEntries.push({ ...auditBase, eventType: 'ownership_reassigned' });
+      }
+
+      await writeAuditEntries(client, [...fieldEntries, ...ownershipEntries]);
+    }
+
+    await client.query('COMMIT');
+
+    // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
+    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    if (deal && params.stage !== undefined && deal.stage !== previousStage) {
+      void fireAutomationTrigger('deal_stage_changed', {
+        recordId: deal.id,
+        recordType: 'deal',
+        ownerId: deal.owner_id,
+        newStage: deal.stage,
+      });
+    }
+
+    return deal;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return deal;
 }
 
 /** Shape of a deal row enriched with display names and contact names for CSV export */
@@ -274,19 +356,52 @@ export async function exportDealsForCsv(
 }
 
 /**
- * Deletes a deal by its UUID.
+ * Deletes a deal by its UUID and writes an audit entry in the same transaction.
  * Associated deal_contacts rows are removed via CASCADE.
  * Linked contacts and accounts are not affected.
+ * (MINCRM-170)
  *
  * @param id - Deal UUID
+ * @param actor - User performing the action (for audit log)
+ * @param recordName - Display name of the deal (used for audit log after deletion)
  * @returns The deleted deal row, or null if not found
  */
-export async function deleteDeal(id: string): Promise<DealRow | null> {
-  const result = await pool.query<DealRow>(
-    'DELETE FROM deals WHERE id = $1 RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at',
-    [id],
-  );
-  return result.rows[0] ?? null;
+export async function deleteDeal(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+  recordName = '',
+): Promise<DealRow | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<DealRow>(
+      'DELETE FROM deals WHERE id = $1 RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at',
+      [id],
+    );
+
+    const deal = result.rows[0] ?? null;
+
+    if (deal) {
+      // Audit: record deleted (MINCRM-170)
+      await writeAuditEntry(client, {
+        recordType: 'deal',
+        recordId: id,
+        recordName,
+        eventType: 'deleted',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return deal;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /** Shape of a contact row joined from deal_contacts */

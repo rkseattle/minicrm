@@ -24,6 +24,7 @@ import demoRoutes from './routes/demo.js';
 import searchRoutes from './routes/search.js';
 import importRoutes from './routes/import.js';
 import attachmentRoutes from './routes/attachments.js';
+import auditLogRoutes from './routes/auditLog.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
@@ -96,6 +97,7 @@ app.use('/api/admin/demo', demoRoutes);
 app.use('/api/admin/import', importRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/attachments', attachmentRoutes);
+app.use('/api/audit-log', auditLogRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req: Request, res: Response) => {
