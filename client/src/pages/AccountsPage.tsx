@@ -164,6 +164,7 @@ export default function AccountsPage() {
                   await exportAccountsCsv({
                     search: debouncedSearch || undefined,
                     industry: debouncedIndustry || undefined,
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
                   });
                 } finally {
                   setIsExporting(false);

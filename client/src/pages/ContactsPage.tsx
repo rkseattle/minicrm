@@ -213,7 +213,7 @@ export default function ContactsPage() {
                   await exportContactsCsv({
                     search: debouncedSearch || undefined,
                     accountSearch: debouncedAccountSearch || undefined,
-                    owner: ownerFilter === 'me' ? 'me' : undefined,
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
                   });
                 } finally {
                   setIsExporting(false);

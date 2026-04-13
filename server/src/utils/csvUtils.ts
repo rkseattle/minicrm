@@ -3,10 +3,15 @@
  * (MINCRM-164, MINCRM-165, MINCRM-166)
  */
 
+/** Characters that Excel/Sheets treat as formula starters — prefix with ' to prevent DDE injection */
+const FORMULA_START_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
+
 /**
  * Escapes a single CSV field value according to RFC 4180.
  * Fields containing commas, double-quotes, or newlines are wrapped in double-quotes.
  * Embedded double-quotes are escaped by doubling them.
+ * Fields whose first character is a spreadsheet formula trigger character are prefixed
+ * with a single quote to prevent DDE/formula injection (MINCRM-164).
  *
  * @param value - Raw cell value (null/undefined rendered as empty string)
  * @returns Properly escaped CSV field
@@ -20,10 +25,17 @@ function escapeCsvField(value: string | number | Date | null | undefined): strin
           .replace('T', ' ')
           .replace(/\.\d{3}Z$/, ' UTC')
       : String(value);
-  if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
-    return `"${str.replace(/"/g, '""')}"`;
+  // Prefix formula-trigger characters to prevent DDE injection in Excel / Google Sheets
+  const sanitized = str.length > 0 && FORMULA_START_CHARS.has(str[0]) ? `'${str}` : str;
+  if (
+    sanitized.includes('"') ||
+    sanitized.includes(',') ||
+    sanitized.includes('\n') ||
+    sanitized.includes('\r')
+  ) {
+    return `"${sanitized.replace(/"/g, '""')}"`;
   }
-  return str;
+  return sanitized;
 }
 
 /**

@@ -412,7 +412,9 @@ export default function DealsPage() {
               onClick={async () => {
                 setIsExporting(true);
                 try {
-                  await exportDealsCsv();
+                  await exportDealsCsv({
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                  });
                 } finally {
                   setIsExporting(false);
                 }
