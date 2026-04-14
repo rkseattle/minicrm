@@ -7,6 +7,7 @@ import apiClient from './axiosInstance.js';
 import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type {
   AccountResponse,
+  AccountType,
   CreateAccountInput,
   UpdateAccountInput,
 } from '@shared/schemas/accountSchema.js';
@@ -24,6 +25,8 @@ export interface ListAccountsParams {
   search?: string;
   /** Case-insensitive match on industry field */
   industry?: string;
+  /** Filter by account type (MINCRM-183) */
+  account_type?: AccountType;
   /** Column to sort by */
   sort?: 'created_at' | 'name';
   /** Sort direction */
@@ -46,6 +49,7 @@ export async function listAccounts(
   if (params.owner) queryParams.owner = params.owner;
   if (params.search) queryParams.search = params.search;
   if (params.industry) queryParams.industry = params.industry;
+  if (params.account_type) queryParams.account_type = params.account_type;
   if (params.sort) queryParams.sort = params.sort;
   if (params.dir) queryParams.dir = params.dir;
   if (params.page !== undefined) queryParams.page = String(params.page);
@@ -105,6 +109,40 @@ export interface ExportAccountsParams {
   all?: boolean;
   search?: string;
   industry?: string;
+}
+
+/**
+ * Returns all direct child (subsidiary) accounts of the given account. (MINCRM-184)
+ *
+ * @param id - Parent account UUID
+ */
+export async function listChildAccounts(id: string): Promise<{ accounts: AccountResponse[] }> {
+  const response = await apiClient.get<{ accounts: AccountResponse[] }>(`/accounts/${id}/children`);
+  return response.data;
+}
+
+/** Parameters for account type-ahead search */
+export interface SearchAccountsParams {
+  /** Substring to match against account name */
+  q: string;
+  /** Account UUID to exclude from results (prevents self-parenting) */
+  exclude?: string;
+}
+
+/**
+ * Type-ahead search for accounts by name. Returns up to 10 matches. (MINCRM-184)
+ *
+ * @param params - Search parameters
+ */
+export async function searchAccountsByName(
+  params: SearchAccountsParams,
+): Promise<{ accounts: AccountResponse[] }> {
+  const queryParams: Record<string, string> = { q: params.q };
+  if (params.exclude) queryParams.exclude = params.exclude;
+  const response = await apiClient.get<{ accounts: AccountResponse[] }>('/accounts/search', {
+    params: queryParams,
+  });
+  return response.data;
 }
 
 /**

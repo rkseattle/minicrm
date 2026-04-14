@@ -161,3 +161,52 @@ export async function exportContactsCsv(params: ExportContactsParams = {}): Prom
   const filename = `minicrm-contacts-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
+
+/** Per-field source choice for contact merge */
+export type MergeFieldChoice = 'winner' | 'loser';
+
+/** Parameters for merging two contact records (MINCRM-187) */
+export interface MergeContactsParams {
+  /** UUID of the contact to merge into (will survive) */
+  winnerId: string;
+  /** UUID of the contact to merge from (will be deleted) */
+  loserId: string;
+  /** For each field, which contact's value to keep */
+  fieldChoices: Partial<
+    Record<
+      | 'first_name'
+      | 'last_name'
+      | 'email'
+      | 'phone'
+      | 'title'
+      | 'department'
+      | 'account_id'
+      | 'address_line1'
+      | 'address_line2'
+      | 'city'
+      | 'state_region'
+      | 'postal_code'
+      | 'country'
+      | 'linkedin_url'
+      | 'twitter_x_url',
+      MergeFieldChoice
+    >
+  >;
+}
+
+/**
+ * Merges two contact records. The winner survives; the loser is deleted.
+ * Returns the updated winner contact. (MINCRM-187)
+ *
+ * @param params - Merge parameters including field choices
+ */
+export async function mergeContacts(
+  params: MergeContactsParams,
+): Promise<{ contact: ContactResponse }> {
+  const { winnerId, loserId, fieldChoices } = params;
+  const response = await apiClient.post(`/contacts/${winnerId}/merge`, {
+    loserId,
+    fieldChoices,
+  });
+  return response.data as { contact: ContactResponse };
+}
