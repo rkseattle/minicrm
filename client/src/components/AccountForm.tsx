@@ -44,6 +44,11 @@ interface AccountFormProps {
    */
   accountId?: string;
   /**
+   * Display name of the currently selected parent account (MINCRM-184).
+   * Populated by AccountDetailPage when editing an account that already has a parent.
+   */
+  initialParentAccountName?: string;
+  /**
    * When provided, an owner selector is rendered.
    * Omit on the create form (ownership defaults to the creating user server-side).
    */
@@ -93,6 +98,7 @@ export default function AccountForm({
   initialContactIds,
   accountId,
   users,
+  initialParentAccountName,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -110,7 +116,7 @@ export default function AccountForm({
   // Parent account type-ahead state (MINCRM-184)
   const [parentQuery, setParentQuery] = useState('');
   const [parentSuggestions, setParentSuggestions] = useState<AccountResponse[]>([]);
-  const [parentName, setParentName] = useState(initialValues?.parent_account_id ? '' : '');
+  const [parentName, setParentName] = useState(initialParentAccountName ?? '');
 
   // Move focus to the first input when the form mounts (WCAG 2.4.3)
   useEffect(() => {
