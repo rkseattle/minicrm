@@ -300,6 +300,10 @@ describe('getDashboardSummary — weighted pipeline value', () => {
     );
     const summary = await getDashboardSummary(repId);
     expect(parseFloat(summary.weightedPipelineValue)).toBeCloseTo(60000, 0);
+    // stageBreakdown should also reflect the per-deal override
+    const prospecting = summary.stageBreakdown.find((r) => r.stage === 'Prospecting');
+    expect(prospecting).toBeDefined();
+    expect(parseFloat(prospecting!.weightedValue)).toBeCloseTo(60000, 0);
   });
 
   it('includes weighted_value in per-stage breakdown', async () => {

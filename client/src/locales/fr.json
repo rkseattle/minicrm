@@ -288,7 +288,8 @@
     "probabilityClear": "Réinitialiser au défaut de l'étape",
     "probabilityDefaultHint": "Défaut de l'étape utilisé : {{pct}} %",
     "probabilityOverriddenHint": "Remplacement actif — défaut ignoré",
-    "probabilityPct": "{{pct}} %"
+    "probabilityPct": "{{pct}} %",
+    "probabilityInvalid": "La probabilité doit être un nombre entier compris entre 0 et 100"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",

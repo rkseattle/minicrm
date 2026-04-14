@@ -169,12 +169,13 @@ export async function findDealById(id: string): Promise<DealRow | null> {
 /**
  * SELECT columns used in deal list queries.
  * JOINs pipeline_stages to resolve effective_probability and probability_is_overridden.
- * effective_probability = deal.probability if overridden, else stage default.
+ * effective_probability = deal.probability if overridden, else stage default, else 0.
+ * The final fallback to 0 guards against a deal whose stage was deleted (ps row absent).
  * probability_is_overridden = true when d.probability IS NOT NULL.
  * (MINCRM-179)
  */
 const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
-  COALESCE(d.probability, ps.probability) AS effective_probability,
+  COALESCE(d.probability, ps.probability, 0) AS effective_probability,
   (d.probability IS NOT NULL) AS probability_is_overridden,
   d.created_at, d.updated_at`;
 
@@ -429,14 +430,20 @@ export async function deleteDeal(
   try {
     await client.query('BEGIN');
 
-    // effective_probability uses 0 as a fallback — the stage JOIN is not needed here
-    // since the row is being deleted (only id, name, and owner_id are used for the audit entry).
+    // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
+    // DealRow consistent with every other query path. (MINCRM-179)
     const result = await client.query<DealRow>(
-      `DELETE FROM deals WHERE id = $1
-       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id,
-                 COALESCE(probability, 0) AS effective_probability,
-                 (probability IS NOT NULL) AS probability_is_overridden,
-                 created_at, updated_at`,
+      `WITH deleted AS (
+         DELETE FROM deals WHERE id = $1 RETURNING *
+       )
+       SELECT
+         deleted.id, deleted.name, deleted.stage, deleted.value,
+         deleted.close_date::text, deleted.loss_reason, deleted.account_id, deleted.owner_id,
+         COALESCE(deleted.probability, ps.probability, 0) AS effective_probability,
+         (deleted.probability IS NOT NULL) AS probability_is_overridden,
+         deleted.created_at, deleted.updated_at
+       FROM deleted
+       LEFT JOIN pipeline_stages ps ON ps.name = deleted.stage`,
       [id],
     );
 

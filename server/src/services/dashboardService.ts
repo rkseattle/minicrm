@@ -4,7 +4,6 @@
  */
 
 import pool from '../db.js';
-import { PIPELINE_STAGES } from '@minicrm/shared/schemas/dealSchema.js';
 
 /** PostgreSQL row shape for the task-count aggregation query */
 interface TaskCountRow {
@@ -25,6 +24,7 @@ interface StageQueryRow {
   count: string;
   value: string;
   weighted_value: string;
+  sort_order: string;
 }
 
 /** A per-stage aggregate row returned from the database */
@@ -96,20 +96,21 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
 
   // ── Deal aggregates ──────────────────────────────────────────────────────────
   // Exclude closed stages from all open-deal metrics.
-  // weighted_pipeline_value = SUM(value × COALESCE(d.probability, ps.probability) / 100)
+  // weighted_pipeline_value = SUM(value × COALESCE(d.probability, ps.probability, 0) / 100)
+  // The three-argument COALESCE guards against deals whose stage has been deleted (ps absent).
   // effective_probability comes from a LEFT JOIN to pipeline_stages. (MINCRM-179)
   const dealTotalsQuery = ownerFilter
     ? `SELECT
          COUNT(*) AS open_deal_count,
          COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_pipeline_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1`
     : `SELECT
          COUNT(*) AS open_deal_count,
          COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_pipeline_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')`;
@@ -122,44 +123,40 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   const weightedPipelineValue = dealTotalsRow.weighted_pipeline_value ?? '0';
 
   // ── Per-stage breakdown ──────────────────────────────────────────────────────
-  // Results are fetched unordered from the database, then sorted in application code by
-  // the canonical PIPELINE_STAGES order so the table always reflects the sales funnel
-  // sequence regardless of which deals were created first.
+  // Sort order comes from pipeline_stages.sort_order so custom stages sort correctly.
+  // Deals whose stage has been deleted (ps absent) fall to sort_order = 2147483647 (INT max).
   const stageQuery = ownerFilter
     ? `SELECT
          d.stage,
          COUNT(*) AS count,
          COALESCE(SUM(d.value), 0)::text AS value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_value,
+         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1
-       GROUP BY d.stage`
+       GROUP BY d.stage
+       ORDER BY COALESCE(MAX(ps.sort_order), 2147483647)`
     : `SELECT
          d.stage,
          COUNT(*) AS count,
          COALESCE(SUM(d.value), 0)::text AS value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_value,
+         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')
-       GROUP BY d.stage`;
+       GROUP BY d.stage
+       ORDER BY COALESCE(MAX(ps.sort_order), 2147483647)`;
 
   const stageResult = await pool.query<StageQueryRow>(stageQuery, dealParams);
 
-  // Build a position map from PIPELINE_STAGES for O(1) sort lookups.
-  // The Map key type is widened to string so DB-returned stage names can be looked up directly
-  // without a cast at each call site. Unknown stages fall back to position 999 (sorted last).
-  const stageOrder = new Map<string, number>(PIPELINE_STAGES.map((stage, index) => [stage, index]));
-
-  const stageBreakdown: StageBreakdownRow[] = stageResult.rows
-    .map((row) => ({
-      stage: row.stage,
-      count: parseInt(row.count, 10),
-      value: row.value,
-      weightedValue: row.weighted_value,
-    }))
-    .sort((a, b) => (stageOrder.get(a.stage) ?? 999) - (stageOrder.get(b.stage) ?? 999));
+  const stageBreakdown: StageBreakdownRow[] = stageResult.rows.map((row) => ({
+    stage: row.stage,
+    count: parseInt(row.count, 10),
+    value: row.value,
+    weightedValue: row.weighted_value,
+  }));
 
   return {
     overdueTasks,

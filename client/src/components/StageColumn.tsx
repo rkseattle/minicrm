@@ -91,7 +91,7 @@ function sumValues(deals: DealResponse[], locale: string): string {
 function sumWeightedValues(deals: DealResponse[], locale: string): string {
   const total = deals.reduce((acc, d) => {
     const value = d.value ? parseFloat(d.value) : 0;
-    return acc + (value * d.effective_probability) / 100;
+    return acc + (value * (d.effective_probability ?? 0)) / 100;
   }, 0);
   return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
 }
