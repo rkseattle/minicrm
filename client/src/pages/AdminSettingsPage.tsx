@@ -499,6 +499,8 @@ export default function AdminSettingsPage() {
 
   /**
    * Moves a stage one position up in the ordered list by swapping sort_order values.
+   * The two PATCH requests are sequenced — the second fires only after the first
+   * succeeds, preventing a partial swap if the server rejects one of the updates.
    *
    * @param index - Current index of the stage to move up
    */
@@ -506,13 +508,16 @@ export default function AdminSettingsPage() {
     if (index === 0) return;
     const current = stages[index];
     const above = stages[index - 1];
-    // Swap sort_order values — send two mutations sequentially using current values
-    reorderStageMutation.mutate({ id: current.id, sort_order: above.sort_order });
-    reorderStageMutation.mutate({ id: above.id, sort_order: current.sort_order });
+    void (async () => {
+      await reorderStageMutation.mutateAsync({ id: current.id, sort_order: above.sort_order });
+      await reorderStageMutation.mutateAsync({ id: above.id, sort_order: current.sort_order });
+    })();
   }
 
   /**
    * Moves a stage one position down in the ordered list by swapping sort_order values.
+   * The two PATCH requests are sequenced — the second fires only after the first
+   * succeeds, preventing a partial swap if the server rejects one of the updates.
    *
    * @param index - Current index of the stage to move down
    */
@@ -520,8 +525,10 @@ export default function AdminSettingsPage() {
     if (index === stages.length - 1) return;
     const current = stages[index];
     const below = stages[index + 1];
-    reorderStageMutation.mutate({ id: current.id, sort_order: below.sort_order });
-    reorderStageMutation.mutate({ id: below.id, sort_order: current.sort_order });
+    void (async () => {
+      await reorderStageMutation.mutateAsync({ id: current.id, sort_order: below.sort_order });
+      await reorderStageMutation.mutateAsync({ id: below.id, sort_order: current.sort_order });
+    })();
   }
 
   /**

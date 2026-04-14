@@ -82,7 +82,11 @@ jobs:
             A service function that does NOT include ownership in its WHERE clause is correct
             by design — do NOT flag it as a security violation.
 
-            When you find a genuine violation, post an inline comment on the offending line:
+            When you find a genuine violation, post an inline comment on the offending line.
+            Every comment MUST begin with its priority label on its own line:
+            `**[P1 — Security]**`, `**[P2 — Bug]**`, or `**[P3 — Rule violation]**`
+
+            Then provide:
             - One sentence naming the exact rule violated
             - The correct pattern or a concrete fix
 
