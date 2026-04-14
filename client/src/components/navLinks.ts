@@ -33,6 +33,7 @@ export interface NavLinkDef {
 export const NAV_LINKS: NavLinkDef[] = [
   { to: '/', labelKey: 'nav.dashboard', adminOnly: false, end: true },
   { to: '/contacts', labelKey: 'nav.contacts', adminOnly: false },
+  { to: '/leads', labelKey: 'nav.leads', adminOnly: false },
   { to: '/accounts', labelKey: 'nav.accounts', adminOnly: false },
   { to: '/deals', labelKey: 'nav.deals', adminOnly: false },
   { to: '/tasks', labelKey: 'nav.myTasks', adminOnly: false },
@@ -49,6 +50,7 @@ export const NAV_LINKS: NavLinkDef[] = [
 export const DESTINATION_NAME: Record<string, string> = {
   '/': 'dashboard',
   '/contacts': 'contacts',
+  '/leads': 'leads',
   '/accounts': 'accounts',
   '/deals': 'deals',
   '/tasks': 'tasks',

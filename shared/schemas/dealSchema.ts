@@ -90,6 +90,8 @@ export const dealResponseSchema = z.object({
   loss_reason: z.string().nullable(),
   account_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
+  /** Set when the deal was created via lead conversion (MINCRM-175) */
+  source_lead_id: z.string().uuid().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });

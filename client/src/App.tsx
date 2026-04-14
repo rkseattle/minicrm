@@ -28,6 +28,8 @@ import WinLossReportPage from '@/pages/WinLossReportPage.js';
 import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
 import ProfilePage from '@/pages/ProfilePage.js';
 import AuditLogPage from '@/pages/AuditLogPage.js';
+import LeadsPage from '@/pages/LeadsPage.js';
+import LeadDetailPage from '@/pages/LeadDetailPage.js';
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active.
@@ -64,6 +66,8 @@ function AppRoutes() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:id" element={<ContactDetailPage />} />
+          <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/leads/:id" element={<LeadDetailPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/accounts/:id" element={<AccountDetailPage />} />
           <Route path="/deals" element={<DealsPage />} />

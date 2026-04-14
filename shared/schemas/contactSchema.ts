@@ -56,6 +56,8 @@ export const contactResponseSchema = z.object({
   department: z.string().nullable(),
   account_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
+  /** Set when the contact was created via lead conversion (MINCRM-175) */
+  source_lead_id: z.string().uuid().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });
