@@ -47,6 +47,17 @@ export const createDealSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Close date must be in YYYY-MM-DD format')
     .optional(),
   account_id: z.string().uuid('Account must be a valid UUID').optional(),
+  /**
+   * Optional per-deal probability override (0–100).
+   * When omitted, the deal inherits its probability from the pipeline stage default.
+   * (MINCRM-179)
+   */
+  probability: z
+    .number()
+    .int('Probability must be an integer')
+    .min(0, 'Probability must be 0 or greater')
+    .max(100, 'Probability must be 100 or less')
+    .optional(),
 });
 
 /** Terminal pipeline stages that require a close date <= today */
@@ -73,6 +84,14 @@ export const updateDealSchema = createDealSchema
       .nullable()
       .optional(),
     account_id: z.string().uuid('Account must be a valid UUID').nullable().optional(),
+    // Allow null to clear a manual probability override (reverts to stage default)
+    probability: z
+      .number()
+      .int('Probability must be an integer')
+      .min(0, 'Probability must be 0 or greater')
+      .max(100, 'Probability must be 100 or less')
+      .nullable()
+      .optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
@@ -106,6 +125,17 @@ export const dealResponseSchema = z.object({
   owner_id: z.string().uuid(),
   /** Set when the deal was created via lead conversion (MINCRM-175) */
   source_lead_id: z.string().uuid().nullable().optional(),
+  /**
+   * Resolved probability for this deal (0–100).
+   * Equals the deal's manual override when set; otherwise the current stage default.
+   * (MINCRM-179)
+   */
+  effective_probability: z.number().int(),
+  /**
+   * True when the deal's probability has been manually overridden from the stage default.
+   * (MINCRM-179)
+   */
+  probability_is_overridden: z.boolean(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });

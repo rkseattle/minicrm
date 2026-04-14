@@ -133,7 +133,9 @@
     "columnStage": "阶段",
     "columnDealCount": "商机数",
     "columnValue": "金额",
-    "noDeals": "暂无进行中的商机。"
+    "noDeals": "暂无进行中的商机。",
+    "columnWeightedValue": "加权价值",
+    "weightedPipelineValue": "加权管道"
   },
   "contacts": {
     "pageTitle": "联系人",
@@ -279,7 +281,14 @@
     "pipelineSummaryLabel": "管道摘要",
     "exportCsv": "导出 CSV",
     "exportAll": "导出全部",
-    "exporting": "导出中…"
+    "exporting": "导出中…",
+    "probabilityLabel": "概率 (%)",
+    "probabilityDefault": "阶段默认概率",
+    "probabilityOverridden": "手动覆盖的概率",
+    "probabilityClear": "重置为阶段默认值",
+    "probabilityDefaultHint": "使用阶段默认值：{{pct}}%",
+    "probabilityOverriddenHint": "覆盖已激活 — 阶段默认值已忽略",
+    "probabilityPct": "{{pct}}%"
   },
   "pipeline": {
     "pageTitle": "管道看板",
@@ -304,7 +313,8 @@
       "negotiation": "商务谈判",
       "closedWon": "成交",
       "closedLost": "未成交"
-    }
+    },
+    "weightedValue": "加权：{{value}}"
   },
   "activities": {
     "timelineHeading": "活动记录",

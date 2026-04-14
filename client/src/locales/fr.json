@@ -133,7 +133,9 @@
     "columnStage": "Étape",
     "columnDealCount": "Opportunités",
     "columnValue": "Valeur",
-    "noDeals": "Aucune opportunité ouverte pour l'instant."
+    "noDeals": "Aucune opportunité ouverte pour l'instant.",
+    "columnWeightedValue": "Valeur pondérée",
+    "weightedPipelineValue": "Pipeline pondérée"
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -279,7 +281,14 @@
     "pipelineSummaryLabel": "Résumé du pipeline",
     "exportCsv": "Exporter CSV",
     "exportAll": "Tout exporter",
-    "exporting": "Exportation…"
+    "exporting": "Exportation…",
+    "probabilityLabel": "Probabilité (%)",
+    "probabilityDefault": "Probabilité par défaut de l'étape",
+    "probabilityOverridden": "Probabilité substituée manuellement",
+    "probabilityClear": "Réinitialiser au défaut de l'étape",
+    "probabilityDefaultHint": "Défaut de l'étape utilisé : {{pct}} %",
+    "probabilityOverriddenHint": "Remplacement actif — défaut ignoré",
+    "probabilityPct": "{{pct}} %"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",
@@ -304,7 +313,8 @@
       "negotiation": "Négociation",
       "closedWon": "Gagné",
       "closedLost": "Perdu"
-    }
+    },
+    "weightedValue": "Pondéré : {{value}}"
   },
   "activities": {
     "timelineHeading": "Activité",

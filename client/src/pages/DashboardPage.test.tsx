@@ -166,6 +166,33 @@ describe('DashboardPage', () => {
     });
   });
 
+  describe('weighted pipeline value (MINCRM-179)', () => {
+    it('renders the weighted pipeline stat card', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('stat-weighted-pipeline-value')).toBeInTheDocument();
+      });
+    });
+
+    it('displays the formatted weighted pipeline value from the API', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        // DASHBOARD_SUMMARY fixture has weightedPipelineValue: '52500.00'
+        const card = screen.getByTestId('stat-weighted-pipeline-value');
+        expect(card).toHaveTextContent('$52,500.00');
+      });
+    });
+
+    it('renders a weighted value column in the stage breakdown table', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('stage-breakdown-table')).toBeInTheDocument();
+        // Prospecting row weighted value: $5,000.00
+        expect(screen.getByTestId('stage-weighted-value-Prospecting')).toBeInTheDocument();
+      });
+    });
+  });
+
   describe('admin vs rep scope labels', () => {
     it('shows "Team" scope label for admins', async () => {
       renderWithProviders(<DashboardPage />);

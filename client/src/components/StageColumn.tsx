@@ -80,6 +80,22 @@ function sumValues(deals: DealResponse[], locale: string): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
 }
 
+/**
+ * Computes the weighted pipeline value (sum of value × probability / 100) for a set of deals
+ * and formats it as a USD currency string.
+ *
+ * @param deals - Deals to sum
+ * @param locale - BCP 47 locale tag from i18next
+ * @returns Locale-formatted USD currency string
+ */
+function sumWeightedValues(deals: DealResponse[], locale: string): string {
+  const total = deals.reduce((acc, d) => {
+    const value = d.value ? parseFloat(d.value) : 0;
+    return acc + (value * d.effective_probability) / 100;
+  }, 0);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
+}
+
 /** Kebab-case version of a stage name used in data-testid attributes */
 function stageSlug(stage: string): string {
   return stage.toLowerCase().replace(/\s+/g, '-');
@@ -131,6 +147,12 @@ export default function StageColumn({
           className="text-xs opacity-75 mt-0.5"
         >
           {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
+        </p>
+        <p
+          data-testid={`${testIdPrefix}stage-column-weighted-${slug}`}
+          className="text-xs opacity-60 mt-0.5"
+        >
+          {t('pipeline.weightedValue', { value: sumWeightedValues(deals, i18n.language) })}
         </p>
       </div>
 

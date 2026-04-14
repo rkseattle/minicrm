@@ -118,7 +118,7 @@ export default function DashboardPage() {
           <>
             {/* Stat cards */}
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8"
               data-testid="dashboard-stat-cards"
             >
               <StatCard
@@ -142,6 +142,11 @@ export default function DashboardPage() {
                 testId="stat-pipeline-value"
                 label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.pipelineValue')}`}
                 value={formatCurrency(data.openPipelineValue, i18n.language)}
+              />
+              <StatCard
+                testId="stat-weighted-pipeline-value"
+                label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.weightedPipelineValue')}`}
+                value={formatCurrency(data.weightedPipelineValue, i18n.language)}
               />
             </div>
 
@@ -189,6 +194,12 @@ export default function DashboardPage() {
                         >
                           {t('dashboard.columnValue')}
                         </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('dashboard.columnWeightedValue')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100">
@@ -208,6 +219,12 @@ export default function DashboardPage() {
                             data-testid={`stage-value-${row.stage}`}
                           >
                             {formatCurrency(row.value, i18n.language)}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-gray-600 text-end"
+                            data-testid={`stage-weighted-value-${row.stage}`}
+                          >
+                            {formatCurrency(row.weightedValue, i18n.language)}
                           </td>
                         </tr>
                       ))}

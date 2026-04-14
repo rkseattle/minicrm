@@ -133,7 +133,9 @@
     "columnStage": "Phase",
     "columnDealCount": "Geschäfte",
     "columnValue": "Wert",
-    "noDeals": "Noch keine offenen Geschäfte."
+    "noDeals": "Noch keine offenen Geschäfte.",
+    "columnWeightedValue": "Gewichteter Wert",
+    "weightedPipelineValue": "Gewichtete Pipeline"
   },
   "contacts": {
     "pageTitle": "Kontakte",
@@ -279,7 +281,14 @@
     "pipelineSummaryLabel": "Pipeline-Übersicht",
     "exportCsv": "CSV exportieren",
     "exportAll": "Alle exportieren",
-    "exporting": "Exportiere…"
+    "exporting": "Exportiere…",
+    "probabilityLabel": "Wahrscheinlichkeit (%)",
+    "probabilityDefault": "Standard-Wahrscheinlichkeit der Phase",
+    "probabilityOverridden": "Manuell überschriebene Wahrscheinlichkeit",
+    "probabilityClear": "Auf Standard der Phase zurücksetzen",
+    "probabilityDefaultHint": "Phasenstandard wird verwendet: {{pct}}%",
+    "probabilityOverriddenHint": "Überschreibung aktiv — Phasenstandard ignoriert",
+    "probabilityPct": "{{pct}} %"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",
@@ -304,7 +313,8 @@
       "negotiation": "Verhandlung",
       "closedWon": "Gewonnen",
       "closedLost": "Verloren"
-    }
+    },
+    "weightedValue": "Gewichtet: {{value}}"
   },
   "activities": {
     "timelineHeading": "Aktivität",
@@ -670,7 +680,7 @@
     "inputLabel": "Suche",
     "placeholder": "Suchen…",
     "minLengthHint": "Geben Sie mindestens {{min}} Zeichen ein",
-    "noResults": "Keine Ergebnisse für \u201e{{query}}\u201c"
+    "noResults": "Keine Ergebnisse für „{{query}}“"
   },
   "pagination": {
     "previous": "Zurück",

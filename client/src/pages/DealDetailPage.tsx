@@ -114,6 +114,8 @@ export default function DealDetailPage() {
         close_date: values.close_date || null,
         account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
+        // null clears the override; undefined leaves it unchanged
+        probability: values.probability !== '' ? parseInt(values.probability, 10) : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
@@ -182,6 +184,7 @@ export default function DealDetailPage() {
         loss_reason,
         account_id: formValues.account_id || null,
         owner_id: formValues.owner_id || undefined,
+        probability: formValues.probability !== '' ? parseInt(formValues.probability, 10) : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
@@ -363,6 +366,16 @@ export default function DealDetailPage() {
                 label={t('deals.accountLabel')}
                 value={resolveAccountName(deal.account_id)}
                 testId="detail-account"
+              />
+              {/* Probability — show override indicator when manually set (MINCRM-179) */}
+              <DetailRow
+                label={t('deals.probabilityLabel')}
+                value={
+                  deal.probability_is_overridden
+                    ? `${deal.effective_probability}% (${t('deals.probabilityOverridden')})`
+                    : `${deal.effective_probability}%`
+                }
+                testId="detail-probability"
               />
               {deal.loss_reason && (
                 <DetailRow
