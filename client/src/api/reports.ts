@@ -1,6 +1,7 @@
 /**
  * Reports API module.
- * Wraps the win/loss report endpoint. Requires authentication.
+ * Wraps report endpoints (win/loss, activity volume). Requires authentication.
+ * Implements MINCRM-26 (win/loss) and MINCRM-181 (activity volume).
  */
 
 import apiClient from './axiosInstance.js';
@@ -53,6 +54,67 @@ export async function getWinLossReport(
     query.owner_id = params.ownerId;
   }
   const response = await apiClient.get<WinLossReportResponse>('/reports/win-loss', {
+    params: query,
+  });
+  return response.data;
+}
+
+// ── Activity Volume Report (MINCRM-181) ───────────────────────────────────────
+
+/** React Query cache key for activity volume report queries */
+export const ACTIVITY_VOLUME_REPORT_QUERY_KEY = ['reports', 'activity-volume'] as const;
+
+/** Parameters for the activity volume report request */
+export interface ActivityVolumeReportParams {
+  /** Start of the date range, YYYY-MM-DD (inclusive) */
+  start: string;
+  /** End of the date range, YYYY-MM-DD (inclusive) */
+  end: string;
+  /** Filter by owner UUID (admin only) */
+  ownerId?: string;
+}
+
+/** Count per activity type for a single rep row */
+export interface ActivityTypeCounts {
+  Note: number;
+  Call: number;
+  Email: number;
+  Meeting: number;
+  Task: number;
+}
+
+/** A single rep row in the activity volume report */
+export interface ActivityVolumeRepRow {
+  ownerId: string;
+  ownerName: string;
+  counts: ActivityTypeCounts;
+  total: number;
+}
+
+/** Shape of the activity volume report response from the API */
+export interface ActivityVolumeReportResponse {
+  rows: ActivityVolumeRepRow[];
+  totals: ActivityTypeCounts & { total: number };
+}
+
+/**
+ * Fetches an activity volume report for the given date range.
+ * Admins can optionally filter by owner; reps always see only their own data.
+ *
+ * @param params - Date range and optional owner filter
+ * @returns ActivityVolumeReportResponse
+ */
+export async function getActivityVolumeReport(
+  params: ActivityVolumeReportParams,
+): Promise<ActivityVolumeReportResponse> {
+  const query: Record<string, string> = {
+    start: params.start,
+    end: params.end,
+  };
+  if (params.ownerId) {
+    query.owner_id = params.ownerId;
+  }
+  const response = await apiClient.get<ActivityVolumeReportResponse>('/reports/activity-volume', {
     params: query,
   });
   return response.data;

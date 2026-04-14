@@ -340,3 +340,84 @@ describe('getDashboardSummary — weighted pipeline value', () => {
     expect(parseFloat(summary.weightedPipelineValue)).toBe(0);
   });
 });
+
+// ── Recent activities (MINCRM-185) ────────────────────────────────────────────
+
+describe('getDashboardSummary — recentActivities', () => {
+  it('returns an empty array when there are no activities', async () => {
+    const summary = await getDashboardSummary(repId);
+    expect(summary.recentActivities).toEqual([]);
+  });
+
+  it('returns activities for the given owner when ownerId is provided', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Note', 'My note', $1, $2)`,
+      [contactId, repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(summary.recentActivities).toHaveLength(1);
+    expect(summary.recentActivities[0].subject).toBe('My note');
+    expect(summary.recentActivities[0].type).toBe('Note');
+  });
+
+  it('does not return another rep activities when scoped by ownerId', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Call', 'Other rep call', $1, $2)`,
+      [contactId, otherRepId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(summary.recentActivities).toHaveLength(0);
+  });
+
+  it('returns all users activities when ownerId is null (admin)', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Note', 'Rep note', $1, $2),
+              ('Email', 'Other email', $1, $3)`,
+      [contactId, repId, otherRepId],
+    );
+    const summary = await getDashboardSummary(null);
+    expect(summary.recentActivities.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('returns at most 10 activities', async () => {
+    // Insert 15 activities
+    for (let i = 0; i < 15; i++) {
+      await pool.query(
+        `INSERT INTO activities (type, subject, contact_id, owner_id)
+         VALUES ('Note', $1, $2, $3)`,
+        [`Note ${i}`, contactId, repId],
+      );
+    }
+    const summary = await getDashboardSummary(repId);
+    expect(summary.recentActivities.length).toBeLessThanOrEqual(10);
+  });
+
+  it('includes the linked record name and path for a contact-linked activity', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Call', 'Discovery call', $1, $2)`,
+      [contactId, repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    const entry = summary.recentActivities[0];
+    expect(entry.linkedRecordName).toBe('Dashboard Contact');
+    expect(entry.linkedRecordPath).toBe(`/contacts/${contactId}`);
+  });
+
+  it('returns activities ordered by updated_at descending', async () => {
+    // Insert two activities; second should appear first
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Note', 'Older note', $1, $2, NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour'),
+         ('Note', 'Newer note', $1, $2, NOW(), NOW())`,
+      [contactId, repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(summary.recentActivities[0].subject).toBe('Newer note');
+    expect(summary.recentActivities[1].subject).toBe('Older note');
+  });
+});

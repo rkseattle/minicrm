@@ -9,6 +9,7 @@
     "myTasks": "Mes tâches",
     "users": "Utilisateurs",
     "winLossReport": "Rapport victoires/défaites",
+    "activityVolumeReport": "Rapport d'activité",
     "automation": "Automatisation",
     "adminSettings": "Paramètres administrateur",
     "profileSettings": "Paramètres du profil",
@@ -135,7 +136,12 @@
     "columnValue": "Valeur",
     "noDeals": "Aucune opportunité ouverte pour l'instant.",
     "columnWeightedValue": "Valeur pondérée",
-    "weightedPipelineValue": "Pipeline pondérée"
+    "weightedPipelineValue": "Pipeline pondérée",
+    "recentActivityHeading": "Activité récente",
+    "recentActivityViewAll": "Tout voir",
+    "recentActivityEmpty": "Aucune activité récente — commencez par enregistrer un appel ou une note.",
+    "recentActivityLoading": "Chargement des activités…",
+    "recentActivityUnlinked": "Enregistrement non lié"
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -544,6 +550,32 @@
     }
   },
   "reports": {
+    "activityVolume": {
+      "pageTitle": "Rapport d'activité",
+      "subtitle": "Nombre d'activités par commercial et par type pour la période sélectionnée.",
+      "dateRangeLabel": "Période",
+      "presetThisWeek": "Cette semaine",
+      "presetCurrentMonth": "Ce mois-ci",
+      "presetCurrentQuarter": "Ce trimestre",
+      "presetCustom": "Période personnalisée",
+      "startDateLabel": "Date de début",
+      "endDateLabel": "Date de fin",
+      "dateRangeInvalid": "La date de début ne peut pas être postérieure à la date de fin.",
+      "ownerFilterLabel": "Responsable",
+      "ownerFilterAll": "Tous les commerciaux",
+      "loading": "Chargement du rapport…",
+      "errorLoad": "Échec du chargement du rapport. Veuillez réessayer.",
+      "columnRep": "Commercial",
+      "columnNote": "Note",
+      "columnCall": "Appel",
+      "columnEmail": "E-mail",
+      "columnMeeting": "Réunion",
+      "columnTask": "Tâche",
+      "columnTotal": "Total",
+      "totalsRow": "Total",
+      "empty": "Aucune activité enregistrée pour cette période.",
+      "exportCsv": "Exporter CSV"
+    },
     "winLoss": {
       "pageTitle": "Rapport victoires/défaites",
       "subtitle": "Performance des affaires clôturées pour la période sélectionnée.",

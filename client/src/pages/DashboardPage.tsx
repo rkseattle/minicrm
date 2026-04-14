@@ -6,9 +6,10 @@
  * - Total open deal count
  * - Total open pipeline value
  * - Per-stage breakdown of open deals
+ * - Recent activity feed (MINCRM-185)
  *
  * Admins see team-wide data; reps see their own data only.
- * Implements MINCRM-25.
+ * Implements MINCRM-25, MINCRM-185.
  */
 
 import { Link } from 'react-router-dom';
@@ -16,7 +17,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { useAuth } from '@/hooks/useAuth.js';
-import { getDashboardSummary, DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
+import {
+  getDashboardSummary,
+  DASHBOARD_QUERY_KEY,
+  type RecentActivityEntry,
+} from '@/api/dashboard.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 
 /**
@@ -71,6 +76,137 @@ function StatCard({ label, value, linkTo, testId, variant = 'default' }: StatCar
         <p className={valueClass} data-testid={`${testId}-value`}>
           {value}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Maps an activity type string to a short badge label and color class.
+ * Uses plain text badges rather than icons to avoid requiring an icon library.
+ *
+ * @param type - Activity type (Note, Call, Email, Meeting, Task)
+ */
+function activityTypeBadge(type: string): { label: string; className: string } {
+  switch (type) {
+    case 'Call':
+      return { label: 'Call', className: 'bg-blue-100 text-blue-700' };
+    case 'Email':
+      return { label: 'Email', className: 'bg-purple-100 text-purple-700' };
+    case 'Meeting':
+      return { label: 'Meeting', className: 'bg-green-100 text-green-700' };
+    case 'Task':
+      return { label: 'Task', className: 'bg-yellow-100 text-yellow-700' };
+    default:
+      return { label: 'Note', className: 'bg-gray-100 text-gray-600' };
+  }
+}
+
+/**
+ * Converts an ISO timestamp to a human-readable relative time string.
+ * Examples: "just now", "3 minutes ago", "2 hours ago", "4 days ago".
+ *
+ * @param isoString - ISO 8601 timestamp string
+ */
+function relativeTime(isoString: string): string {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  if (diffSeconds < 60) return 'just now';
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+}
+
+/**
+ * Renders the recent activity feed section on the dashboard. (MINCRM-185)
+ */
+function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] }) {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="bg-white rounded-lg border border-gray-200 mt-6"
+      data-testid="recent-activity-feed"
+    >
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-gray-900">
+          {t('dashboard.recentActivityHeading')}
+        </h2>
+        <Link
+          to="/activities"
+          className="text-sm text-indigo-600 hover:underline"
+          data-testid="recent-activity-view-all"
+        >
+          {t('dashboard.recentActivityViewAll')}
+        </Link>
+      </div>
+
+      {activities.length === 0 ? (
+        <p
+          className="px-6 py-8 text-sm text-gray-400 text-center"
+          data-testid="recent-activity-empty"
+        >
+          {t('dashboard.recentActivityEmpty')}
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100" data-testid="recent-activity-list">
+          {activities.map((entry) => {
+            const badge = activityTypeBadge(entry.type);
+            return (
+              <li
+                key={entry.id}
+                className="px-6 py-3 flex items-center gap-3"
+                data-testid={`recent-activity-${entry.id}`}
+              >
+                {/* Type badge */}
+                <span
+                  className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium shrink-0 ${badge.className}`}
+                  data-testid={`recent-activity-type-${entry.id}`}
+                >
+                  {badge.label}
+                </span>
+
+                {/* Subject */}
+                <span
+                  className="text-sm text-gray-900 truncate flex-1"
+                  data-testid={`recent-activity-subject-${entry.id}`}
+                >
+                  {entry.subject}
+                </span>
+
+                {/* Linked record */}
+                {entry.linkedRecordPath ? (
+                  <Link
+                    to={entry.linkedRecordPath}
+                    className="text-sm text-indigo-600 hover:underline shrink-0 hidden sm:block"
+                    data-testid={`recent-activity-record-${entry.id}`}
+                  >
+                    {entry.linkedRecordName}
+                  </Link>
+                ) : entry.linkedRecordName ? (
+                  <span
+                    className="text-sm text-gray-500 shrink-0 hidden sm:block"
+                    data-testid={`recent-activity-record-${entry.id}`}
+                  >
+                    {entry.linkedRecordName}
+                  </span>
+                ) : null}
+
+                {/* Relative timestamp */}
+                <span
+                  className="text-xs text-gray-400 shrink-0"
+                  data-testid={`recent-activity-time-${entry.id}`}
+                  title={entry.updatedAt}
+                >
+                  {relativeTime(entry.updatedAt)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
@@ -233,6 +369,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* Recent activity feed (MINCRM-185) */}
+            <RecentActivityFeed activities={data.recentActivities} />
           </>
         )}
       </main>

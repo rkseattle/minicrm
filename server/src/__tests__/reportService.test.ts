@@ -9,7 +9,7 @@
  */
 
 import 'dotenv/config';
-import { getWinLossReport } from '../services/reportService.js';
+import { getWinLossReport, getActivityVolumeReport } from '../services/reportService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -33,10 +33,14 @@ const OTHER_REP_USER = {
 
 let repId: string;
 let otherRepId: string;
+/** A shared contact used as the required parent record for activity test data */
+let contactId: string;
 
 beforeAll(async () => {
+  await pool.query('DELETE FROM activities');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contacts WHERE email = $1', ['report-contact@example.com']);
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [
     [REP_USER.email, OTHER_REP_USER.email],
   ]);
@@ -46,16 +50,27 @@ beforeAll(async () => {
 
   const other = await createUser(OTHER_REP_USER);
   otherRepId = other.id;
+
+  const contactResult = await pool.query<{ id: string }>(
+    `INSERT INTO contacts (first_name, last_name, email, owner_id)
+     VALUES ('Report', 'Contact', 'report-contact@example.com', $1)
+     RETURNING id`,
+    [repId],
+  );
+  contactId = contactResult.rows[0].id;
 });
 
 beforeEach(async () => {
+  await pool.query('DELETE FROM activities');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM deals');
 });
 
 afterAll(async () => {
+  await pool.query('DELETE FROM activities');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contacts WHERE email = $1', ['report-contact@example.com']);
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [
     [REP_USER.email, OTHER_REP_USER.email],
   ]);
@@ -295,5 +310,127 @@ describe('getWinLossReport — loss reason breakdown', () => {
     const report = await getWinLossReport({ ...RANGE, ownerId: repId });
     expect(report.lossReasonBreakdown).toHaveLength(1);
     expect(report.lossReasonBreakdown[0].reason).toBe('Price');
+  });
+});
+
+// ── Activity Volume Report (MINCRM-181) ───────────────────────────────────────
+
+/** Activity range covering 2025 — activities are matched by created_at */
+const ACT_RANGE = { startDate: '2025-01-01', endDate: '2025-12-31' };
+
+describe('getActivityVolumeReport — empty state', () => {
+  it('returns empty rows and zero totals when there are no activities', async () => {
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: repId });
+    expect(report.rows).toHaveLength(0);
+    expect(report.totals.total).toBe(0);
+  });
+});
+
+describe('getActivityVolumeReport — counts by type', () => {
+  it('counts each activity type correctly for a single rep', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Note',    'n1', $1, $2, '2025-06-01', '2025-06-01'),
+         ('Call',    'c1', $1, $2, '2025-06-02', '2025-06-02'),
+         ('Call',    'c2', $1, $2, '2025-06-03', '2025-06-03'),
+         ('Email',   'e1', $1, $2, '2025-07-01', '2025-07-01'),
+         ('Meeting', 'm1', $1, $2, '2025-08-01', '2025-08-01'),
+         ('Task',    't1', $1, $2, '2025-09-01', '2025-09-01')`,
+      [contactId, repId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: repId });
+    expect(report.rows).toHaveLength(1);
+    const row = report.rows[0];
+    expect(row.ownerId).toBe(repId);
+    expect(row.counts.Note).toBe(1);
+    expect(row.counts.Call).toBe(2);
+    expect(row.counts.Email).toBe(1);
+    expect(row.counts.Meeting).toBe(1);
+    expect(row.counts.Task).toBe(1);
+    expect(row.total).toBe(6);
+  });
+
+  it('computes column totals correctly', async () => {
+    // repId: 2 notes; otherRepId: 1 call
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Note', 'rep-n1', $1, $2, '2025-03-01', '2025-03-01'),
+         ('Note', 'rep-n2', $1, $2, '2025-03-02', '2025-03-02'),
+         ('Call', 'other-c1', $1, $3, '2025-04-01', '2025-04-01')`,
+      [contactId, repId, otherRepId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: null });
+    expect(report.totals.Note).toBe(2);
+    expect(report.totals.Call).toBe(1);
+    expect(report.totals.total).toBe(3);
+  });
+});
+
+describe('getActivityVolumeReport — date range filtering', () => {
+  it('filters activities by created_at date (inclusive)', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Note', 'in range',    $1, $2, '2025-06-15', '2025-06-15'),
+         ('Note', 'before',      $1, $2, '2025-05-31', '2025-05-31'),
+         ('Note', 'after',       $1, $2, '2025-07-01', '2025-07-01'),
+         ('Note', 'start edge',  $1, $2, '2025-06-01', '2025-06-01'),
+         ('Note', 'end edge',    $1, $2, '2025-06-30', '2025-06-30')`,
+      [contactId, repId],
+    );
+    const report = await getActivityVolumeReport({
+      startDate: '2025-06-01',
+      endDate: '2025-06-30',
+      ownerId: repId,
+    });
+    const row = report.rows[0];
+    // in range + start edge + end edge = 3
+    expect(row.counts.Note).toBe(3);
+  });
+});
+
+describe('getActivityVolumeReport — owner scoping', () => {
+  it('scopes results to the given owner when ownerId is provided', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Call', 'rep call',   $1, $2, '2025-05-01', '2025-05-01'),
+         ('Email', 'other email', $1, $3, '2025-05-01', '2025-05-01')`,
+      [contactId, repId, otherRepId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: repId });
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].ownerId).toBe(repId);
+    expect(report.rows[0].counts.Call).toBe(1);
+  });
+
+  it('returns all reps when ownerId is null (admin)', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Note', 'rep note',   $1, $2, '2025-05-01', '2025-05-01'),
+         ('Task', 'other task', $1, $3, '2025-05-02', '2025-05-02')`,
+      [contactId, repId, otherRepId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: null });
+    expect(report.rows).toHaveLength(2);
+  });
+});
+
+describe('getActivityVolumeReport — types default to zero', () => {
+  it('returns zero for activity types not logged by a rep', async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES ('Note', 'only note', $1, $2, '2025-06-01', '2025-06-01')`,
+      [contactId, repId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: repId });
+    const row = report.rows[0];
+    expect(row.counts.Call).toBe(0);
+    expect(row.counts.Email).toBe(0);
+    expect(row.counts.Meeting).toBe(0);
+    expect(row.counts.Task).toBe(0);
   });
 });
