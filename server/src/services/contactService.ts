@@ -33,6 +33,16 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   'department',
   'account_id',
   'owner_id',
+  // Address fields (MINCRM-182)
+  'address_line1',
+  'address_line2',
+  'city',
+  'state_region',
+  'postal_code',
+  'country',
+  // Social profile URLs (MINCRM-190)
+  'linkedin_url',
+  'twitter_x_url',
 ]);
 
 /** Shape of a contact row returned from the database */
@@ -46,6 +56,16 @@ export interface ContactRow {
   department: string | null;
   account_id: string | null;
   owner_id: string;
+  // Address fields (MINCRM-182)
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  // Social profile URLs (MINCRM-190)
+  linkedin_url: string | null;
+  twitter_x_url: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -91,15 +111,36 @@ export async function createContact(
   params: CreateContactInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<ContactRow> {
-  const { first_name, last_name, email, phone, title, department, account_id, owner_id } = params;
+  const {
+    first_name,
+    last_name,
+    email,
+    phone,
+    title,
+    department,
+    account_id,
+    owner_id,
+    address_line1,
+    address_line2,
+    city,
+    state_region,
+    postal_code,
+    country,
+    linkedin_url,
+    twitter_x_url,
+  } = params;
 
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query<ContactRow>(
-      `INSERT INTO contacts (first_name, last_name, email, phone, title, department, account_id, owner_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO contacts (
+         first_name, last_name, email, phone, title, department, account_id, owner_id,
+         address_line1, address_line2, city, state_region, postal_code, country,
+         linkedin_url, twitter_x_url
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
         first_name,
@@ -110,6 +151,14 @@ export async function createContact(
         department ?? null,
         account_id ?? null,
         owner_id,
+        address_line1 ?? null,
+        address_line2 ?? null,
+        city ?? null,
+        state_region ?? null,
+        postal_code ?? null,
+        country ?? null,
+        linkedin_url ?? null,
+        twitter_x_url ?? null,
       ],
     );
 
@@ -344,6 +393,16 @@ export interface ContactExportRow {
   phone: string | null;
   title: string | null;
   department: string | null;
+  // Address fields (MINCRM-182)
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  // Social profile URLs (MINCRM-190)
+  linkedin_url: string | null;
+  twitter_x_url: string | null;
   account_name: string | null;
   owner_name: string;
   created_at: Date;
@@ -411,6 +470,14 @@ export async function exportContactsForCsv(
        c.phone,
        c.title,
        c.department,
+       c.address_line1,
+       c.address_line2,
+       c.city,
+       c.state_region,
+       c.postal_code,
+       c.country,
+       c.linkedin_url,
+       c.twitter_x_url,
        a.name AS account_name,
        u.name AS owner_name,
        c.created_at,
@@ -464,6 +531,193 @@ export async function deleteContact(
 
     await client.query('COMMIT');
     return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Input for merging two contact records. (MINCRM-187)
+ * The winner is the record that survives; the loser is deleted.
+ * For each field where the two contacts differ, the caller specifies which value to keep.
+ */
+export interface MergeContactsInput {
+  /** UUID of the contact record that will survive the merge */
+  winnerId: string;
+  /** UUID of the contact record that will be deleted after merge */
+  loserId: string;
+  /**
+   * Per-field winner source — 'winner' keeps the current winner value, 'loser' takes the loser value.
+   * Fields omitted here default to keeping the winner's current value.
+   */
+  fieldChoices: Partial<
+    Record<
+      | 'first_name'
+      | 'last_name'
+      | 'email'
+      | 'phone'
+      | 'title'
+      | 'department'
+      | 'account_id'
+      | 'address_line1'
+      | 'address_line2'
+      | 'city'
+      | 'state_region'
+      | 'postal_code'
+      | 'country'
+      | 'linkedin_url'
+      | 'twitter_x_url',
+      'winner' | 'loser'
+    >
+  >;
+}
+
+/** Fields that the caller may choose between when merging contacts */
+const MERGEABLE_FIELDS = [
+  'first_name',
+  'last_name',
+  'email',
+  'phone',
+  'title',
+  'department',
+  'account_id',
+  'address_line1',
+  'address_line2',
+  'city',
+  'state_region',
+  'postal_code',
+  'country',
+  'linkedin_url',
+  'twitter_x_url',
+] as const;
+
+/**
+ * Atomically merges two contact records into one.
+ *
+ * Steps (all within one transaction):
+ *   1. Apply field choices to the winner record.
+ *   2. Re-link loser's activities to the winner.
+ *   3. Re-link loser's deals (deal_contacts) to the winner (skip if winner already linked).
+ *   4. Copy loser's account association to winner if winner has none.
+ *   5. Delete the loser record.
+ *   6. Write an audit entry on the winner: "merged" with loser name.
+ *   7. Create a system activity note on the winner's timeline.
+ * (MINCRM-187)
+ *
+ * @param input - Merge parameters
+ * @param actor - User performing the merge (for audit log)
+ * @returns The updated winner contact row
+ */
+export async function mergeContacts(
+  input: MergeContactsInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<ContactRow> {
+  const { winnerId, loserId, fieldChoices } = input;
+
+  if (winnerId === loserId) {
+    throw Object.assign(new Error('Cannot merge a contact with itself'), { code: 'SELF_MERGE' });
+  }
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Fetch both contacts inside the transaction for a consistent snapshot
+    const [winnerResult, loserResult] = await Promise.all([
+      client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 FOR UPDATE', [winnerId]),
+      client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 FOR UPDATE', [loserId]),
+    ]);
+
+    const winner = winnerResult.rows[0];
+    const loser = loserResult.rows[0];
+
+    if (!winner) throw new Error(`Winner contact ${winnerId} not found`);
+    if (!loser) throw new Error(`Loser contact ${loserId} not found`);
+
+    // Build the UPDATE for the winner using field choices
+    const updates: Record<string, unknown> = {};
+    for (const field of MERGEABLE_FIELDS) {
+      if (fieldChoices[field] === 'loser') {
+        updates[field] = loser[field];
+      }
+    }
+
+    // If winner has no account and loser does, take the loser's account (step 4)
+    if (!winner.account_id && loser.account_id && fieldChoices['account_id'] !== 'loser') {
+      updates['account_id'] = loser.account_id;
+    }
+
+    // Apply updates to the winner if any field choices were made
+    if (Object.keys(updates).length > 0) {
+      const setFields = Object.keys(updates);
+      const setClauses = setFields.map((f, i) => `${f} = $${i + 2}`).join(', ');
+      await client.query(`UPDATE contacts SET ${setClauses}, updated_at = now() WHERE id = $1`, [
+        winnerId,
+        ...setFields.map((f) => updates[f]),
+      ]);
+    }
+
+    // Re-link loser's activities to the winner (step 2)
+    await client.query('UPDATE activities SET contact_id = $1 WHERE contact_id = $2', [
+      winnerId,
+      loserId,
+    ]);
+
+    // Re-link loser's deals to the winner (step 3)
+    // Insert only where winner isn't already on the deal, then delete loser entries
+    await client.query(
+      `INSERT INTO deal_contacts (deal_id, contact_id)
+       SELECT dc.deal_id, $1
+       FROM deal_contacts dc
+       WHERE dc.contact_id = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM deal_contacts dc2
+           WHERE dc2.deal_id = dc.deal_id AND dc2.contact_id = $1
+         )
+       ON CONFLICT DO NOTHING`,
+      [winnerId, loserId],
+    );
+    await client.query('DELETE FROM deal_contacts WHERE contact_id = $1', [loserId]);
+
+    // Fetch the final winner state before deleting the loser
+    const updatedWinnerResult = await client.query<ContactRow>(
+      'SELECT * FROM contacts WHERE id = $1',
+      [winnerId],
+    );
+    const updatedWinner = updatedWinnerResult.rows[0];
+    const loserName = `${loser.first_name} ${loser.last_name}`;
+
+    // Delete the loser (step 5)
+    await client.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+
+    // Audit: merged event on the winner (step 6)
+    await writeAuditEntry(client, {
+      recordType: 'contact',
+      recordId: winnerId,
+      recordName: `${updatedWinner.first_name} ${updatedWinner.last_name}`,
+      eventType: 'merged',
+      newValue: loserName,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    // Activity note on the winner's timeline (step 7)
+    await client.query(
+      `INSERT INTO activities (type, subject, notes, status, contact_id, owner_id)
+       VALUES ('Note', $1, $2, 'complete', $3, $4)`,
+      [
+        `Merged from ${loserName}`,
+        `Contact record merged from ${loserName} (${loserId})`,
+        winnerId,
+        actor.id,
+      ],
+    );
+
+    await client.query('COMMIT');
+    return updatedWinner;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

@@ -14,6 +14,7 @@ import {
   updateContact,
   deleteContact,
   exportContactsForCsv,
+  mergeContacts,
   CONTACT_SORT_COLUMNS,
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
@@ -279,6 +280,14 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
     'Phone',
     'Title',
     'Department',
+    'Address Line 1',
+    'Address Line 2',
+    'City',
+    'State/Region',
+    'Postal Code',
+    'Country',
+    'LinkedIn URL',
+    'Twitter/X URL',
     'Account',
     'Owner',
     'Created',
@@ -292,6 +301,14 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
     Phone: r.phone,
     Title: r.title,
     Department: r.department,
+    'Address Line 1': r.address_line1,
+    'Address Line 2': r.address_line2,
+    City: r.city,
+    'State/Region': r.state_region,
+    'Postal Code': r.postal_code,
+    Country: r.country,
+    'LinkedIn URL': r.linkedin_url,
+    'Twitter/X URL': r.twitter_x_url,
     Account: r.account_name,
     Owner: r.owner_name,
     Created: r.created_at,
@@ -331,4 +348,70 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
     `${existing.first_name} ${existing.last_name}`,
   );
   res.status(204).send();
+}
+
+/**
+ * POST /api/contacts/:id/merge
+ * Merges the contact identified by :id (the winner) with a specified loser contact.
+ * Only admins and the winner's owner may perform a merge.
+ * Body: { loserId: string, fieldChoices: Record<field, 'winner'|'loser'> }
+ * (MINCRM-187)
+ */
+export async function mergeContactHandler(req: Request, res: Response): Promise<void> {
+  const winnerId = String(req.params['id']);
+
+  const winner = await findContactById(winnerId);
+  if (!winner) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  if (winner.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ERROR);
+    return;
+  }
+
+  const { loserId, fieldChoices } = req.body as {
+    loserId?: string;
+    fieldChoices?: Record<string, string>;
+  };
+
+  if (!loserId || typeof loserId !== 'string') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'loserId is required' },
+    });
+    return;
+  }
+
+  const loser = await findContactById(loserId);
+  if (!loser) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Loser contact not found' } });
+    return;
+  }
+
+  if (winnerId === loserId) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Cannot merge a contact with itself' },
+    });
+    return;
+  }
+
+  try {
+    const merged = await mergeContacts(
+      {
+        winnerId,
+        loserId,
+        fieldChoices: (fieldChoices ?? {}) as Parameters<typeof mergeContacts>[0]['fieldChoices'],
+      },
+      { id: req.user!.id, name: req.user!.name },
+    );
+    res.status(200).json({ contact: merged });
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'CIRCULAR_PARENT') {
+      res.status(400).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
 }

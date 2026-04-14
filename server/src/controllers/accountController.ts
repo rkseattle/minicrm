@@ -4,7 +4,12 @@
  */
 
 import type { Request, Response } from 'express';
-import { createAccountSchema, updateAccountSchema } from '@minicrm/shared/schemas/accountSchema.js';
+import { z } from 'zod';
+import {
+  createAccountSchema,
+  updateAccountSchema,
+  ACCOUNT_TYPE_VALUES,
+} from '@minicrm/shared/schemas/accountSchema.js';
 import {
   createAccount,
   findAccountById,
@@ -12,6 +17,8 @@ import {
   updateAccount,
   deleteAccount,
   exportAccountsForCsv,
+  listChildAccounts,
+  searchAccounts,
   ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -66,6 +73,17 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
       ? req.query.industry.trim()
       : undefined;
 
+  // account_type filter — validate against allowlist (MINCRM-183)
+  const accountTypeRaw =
+    typeof req.query.account_type === 'string' && req.query.account_type.trim().length > 0
+      ? req.query.account_type.trim()
+      : undefined;
+  const accountType =
+    accountTypeRaw !== undefined &&
+    (ACCOUNT_TYPE_VALUES as readonly string[]).includes(accountTypeRaw)
+      ? (accountTypeRaw as (typeof ACCOUNT_TYPE_VALUES)[number])
+      : undefined;
+
   const paginationParsed = paginationParamsSchema.safeParse({
     page: req.query.page,
     limit: req.query.limit,
@@ -87,6 +105,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
     ownerId,
     search,
     industry,
+    accountType,
     sort,
     dir,
     ...paginationParsed.data,
@@ -138,12 +157,22 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const account = await updateAccount(
-    id,
-    parsed.data,
-    { id: req.user!.id, name: req.user!.name },
-    existing,
-  );
+  let account;
+  try {
+    account = await updateAccount(
+      id,
+      parsed.data,
+      { id: req.user!.id, name: req.user!.name },
+      existing,
+    );
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'CIRCULAR_PARENT') {
+      res.status(400).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
   res.status(200).json({ account });
 
   // Fire-and-forget: notify the new owner when the account is reassigned. (MINCRM-162)
@@ -195,10 +224,12 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
 
   const headers = [
     'Name',
+    'Type',
     'Industry',
     'Website',
     'Employees',
     'Revenue Range',
+    'Parent Account',
     'Owner',
     'Contacts',
     'Deals',
@@ -208,10 +239,12 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
 
   const csvRows = rows.map((r) => ({
     Name: r.name,
+    Type: r.account_type,
     Industry: r.industry,
     Website: r.website,
     Employees: r.employee_range,
     'Revenue Range': r.revenue_range,
+    'Parent Account': r.parent_account_name,
     Owner: r.owner_name,
     Contacts: r.contact_count,
     Deals: r.deal_count,
@@ -248,4 +281,51 @@ export async function deleteAccountHandler(req: Request, res: Response): Promise
 
   await deleteAccount(id, { id: req.user!.id, name: req.user!.name }, existing.name);
   res.status(204).send();
+}
+
+/**
+ * GET /api/accounts/:id/children
+ * Returns all direct subsidiary accounts of the given account. (MINCRM-184)
+ */
+export async function listChildAccountsHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const account = await findAccountById(id);
+
+  if (!account) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  const children = await listChildAccounts(id);
+  res.status(200).json({ accounts: children });
+}
+
+/**
+ * GET /api/accounts/search
+ * Type-ahead search for accounts by name. Returns up to 10 matches.
+ * Used by the Parent Account selector in AccountForm. (MINCRM-184)
+ *
+ * Query params:
+ *   ?q=<text>       — required substring to match
+ *   ?exclude=<uuid> — optional UUID to exclude from results (prevent self-parenting)
+ */
+export async function searchAccountsHandler(req: Request, res: Response): Promise<void> {
+  const query =
+    typeof req.query.q === 'string' && req.query.q.trim().length > 0
+      ? req.query.q.trim()
+      : undefined;
+
+  if (!query) {
+    res.status(200).json({ accounts: [] });
+    return;
+  }
+
+  const excludeRaw = typeof req.query.exclude === 'string' ? req.query.exclude : undefined;
+  const excludeId =
+    excludeRaw !== undefined && z.string().uuid().safeParse(excludeRaw).success
+      ? excludeRaw
+      : undefined;
+
+  const accounts = await searchAccounts(query, excludeId);
+  res.status(200).json({ accounts });
 }
