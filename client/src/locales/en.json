@@ -133,6 +133,8 @@
     "columnStage": "Stage",
     "columnDealCount": "Deals",
     "columnValue": "Value",
+    "columnWeightedValue": "Weighted Value",
+    "weightedPipelineValue": "Weighted pipeline",
     "noDeals": "No open deals yet."
   },
   "contacts": {
@@ -281,12 +283,20 @@
     "exportCsv": "Export CSV",
     "exportAll": "Export All",
     "exporting": "Exporting…",
-    "convertedFromLead": "Converted from lead — click to view original lead"
+    "convertedFromLead": "Converted from lead — click to view original lead",
+    "probabilityLabel": "Probability (%)",
+    "probabilityDefault": "Stage default probability",
+    "probabilityOverridden": "Manually overridden probability",
+    "probabilityClear": "Reset to stage default",
+    "probabilityDefaultHint": "Using stage default: {{pct}}%",
+    "probabilityOverriddenHint": "Override active — stage default ignored",
+    "probabilityPct": "{{pct}}%"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",
     "loading": "Loading pipeline…",
     "totalValue": "Total: {{value}}",
+    "weightedValue": "Weighted: {{value}}",
     "stageUpdateError": "Failed to update stage. Please try again.",
     "prevStage": "Previous stage",
     "nextStage": "Next stage",

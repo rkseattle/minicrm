@@ -29,6 +29,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
   'account_id',
   'owner_id',
   'loss_reason',
+  'probability',
 ]);
 
 /** Shape of a deal row returned from the database */
@@ -41,6 +42,17 @@ export interface DealRow {
   loss_reason: string | null;
   account_id: string | null;
   owner_id: string;
+  /**
+   * Resolved effective probability for this deal (0–100).
+   * Returns the deal's manual override when set; otherwise the current stage default.
+   * Computed via JOIN to pipeline_stages in all queries. (MINCRM-179)
+   */
+  effective_probability: number;
+  /**
+   * True when the deal has a manually stored probability (not inheriting from stage default).
+   * (MINCRM-179)
+   */
+  probability_is_overridden: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -79,17 +91,34 @@ export async function createDeal(
   params: CreateDealInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<DealRow> {
-  const { name, stage, value, close_date, account_id, owner_id } = params;
+  const { name, stage, value, close_date, account_id, owner_id, probability } = params;
 
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // Insert the deal, then immediately re-query with the pipeline_stages JOIN so
+    // effective_probability and probability_is_overridden are resolved correctly.
+    // (MINCRM-179)
+    const insertResult = await client.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, probability)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        name,
+        stage,
+        value ?? null,
+        close_date ?? null,
+        account_id ?? null,
+        owner_id,
+        probability ?? null,
+      ],
+    );
+    const newId = insertResult.rows[0].id;
+
     const result = await client.query<DealRow>(
-      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
-      [name, stage, value ?? null, close_date ?? null, account_id ?? null, owner_id],
+      `SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1`,
+      [newId],
     );
 
     const deal = result.rows[0];
@@ -131,15 +160,26 @@ export async function createDeal(
  */
 export async function findDealById(id: string): Promise<DealRow | null> {
   const result = await pool.query<DealRow>(
-    'SELECT id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at FROM deals WHERE id = $1 LIMIT 1',
+    `SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1 LIMIT 1`,
     [id],
   );
   return result.rows[0] ?? null;
 }
 
-/** SELECT columns used in deal list queries */
-const DEAL_SELECT =
-  'id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at';
+/**
+ * SELECT columns used in deal list queries.
+ * JOINs pipeline_stages to resolve effective_probability and probability_is_overridden.
+ * effective_probability = deal.probability if overridden, else stage default.
+ * probability_is_overridden = true when d.probability IS NOT NULL.
+ * (MINCRM-179)
+ */
+const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
+  COALESCE(d.probability, ps.probability) AS effective_probability,
+  (d.probability IS NOT NULL) AS probability_is_overridden,
+  d.created_at, d.updated_at`;
+
+/** FROM clause that joins pipeline_stages for probability resolution */
+const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.name = d.stage`;
 
 /**
  * Returns a paginated list of deals, optionally scoped by owner and/or account.
@@ -155,16 +195,16 @@ export async function listDeals(
 
   if (options.ownerId) {
     values.push(options.ownerId);
-    conditions.push(`owner_id = $${values.length}`);
+    conditions.push(`d.owner_id = $${values.length}`);
   }
 
   if (options.accountId) {
     values.push(options.accountId);
-    conditions.push(`account_id = $${values.length}`);
+    conditions.push(`d.account_id = $${values.length}`);
   }
 
   if (options.excludeClosedStages) {
-    conditions.push(`stage NOT IN ('Closed Won', 'Closed Lost')`);
+    conditions.push(`d.stage NOT IN ('Closed Won', 'Closed Lost')`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -180,9 +220,9 @@ export async function listDeals(
   const offset = (page - 1) * limit;
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM deals ${where}`, values),
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM ${DEAL_FROM} ${where}`, values),
     pool.query<DealRow>(
-      `SELECT ${DEAL_SELECT} FROM deals ${where} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} ${where} ORDER BY d.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     ),
   ]);
@@ -229,15 +269,23 @@ export async function updateDeal(
   try {
     await client.query('BEGIN');
 
-    const result = await client.query<DealRow>(
+    const updateResult = await client.query<{ id: string }>(
       `UPDATE deals
        SET ${setClauses}, updated_at = now()
        WHERE id = $1
-       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at`,
+       RETURNING id`,
       [id, ...fields.map((f) => params[f])],
     );
 
-    const deal = result.rows[0] ?? null;
+    // Re-fetch with pipeline_stages JOIN so effective_probability is resolved (MINCRM-179)
+    const updatedId = updateResult.rows[0]?.id ?? null;
+    const fetchResult = updatedId
+      ? await client.query<DealRow>(`SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1`, [
+          updatedId,
+        ])
+      : { rows: [] as DealRow[] };
+
+    const deal = fetchResult.rows[0] ?? null;
 
     if (deal && before) {
       // Audit: per-field diff (MINCRM-170)
@@ -381,8 +429,14 @@ export async function deleteDeal(
   try {
     await client.query('BEGIN');
 
+    // effective_probability uses 0 as a fallback — the stage JOIN is not needed here
+    // since the row is being deleted (only id, name, and owner_id are used for the audit entry).
     const result = await client.query<DealRow>(
-      'DELETE FROM deals WHERE id = $1 RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id, created_at, updated_at',
+      `DELETE FROM deals WHERE id = $1
+       RETURNING id, name, stage, value, close_date::text, loss_reason, account_id, owner_id,
+                 COALESCE(probability, 0) AS effective_probability,
+                 (probability IS NOT NULL) AS probability_is_overridden,
+                 created_at, updated_at`,
       [id],
     );
 
@@ -473,8 +527,8 @@ export async function unlinkContactFromDeal(dealId: string, contactId: string): 
  */
 export async function listContactDeals(contactId: string): Promise<DealRow[]> {
   const result = await pool.query<DealRow>(
-    `SELECT d.id, d.name, d.stage, d.value, d.close_date::text, d.loss_reason, d.account_id, d.owner_id, d.created_at, d.updated_at
-     FROM deals d
+    `SELECT ${DEAL_SELECT}
+     FROM ${DEAL_FROM}
      INNER JOIN deal_contacts dc ON dc.deal_id = d.id
      WHERE dc.contact_id = $1
      ORDER BY d.created_at ASC`,

@@ -645,3 +645,72 @@ describe('exportDealsForCsv', () => {
     await pool.query('DELETE FROM users WHERE email = $1', ['deal-export-other@example.com']);
   });
 });
+
+// ── Deal probability (MINCRM-179) ──────────────────────────────────────────────────────
+
+describe('deal probability — effective_probability and probability_is_overridden', () => {
+  it('inherits stage default probability when no override is set', async () => {
+    // Prospecting stage has default probability = 10
+    const deal = await createDeal({ ...BASE_DEAL, stage: 'Prospecting', owner_id: ownerId });
+    expect(deal.probability_is_overridden).toBe(false);
+    expect(deal.effective_probability).toBe(10);
+  });
+
+  it('stores a manual probability override and reflects it in effective_probability', async () => {
+    const deal = await createDeal({
+      ...BASE_DEAL,
+      stage: 'Prospecting',
+      probability: 55,
+      owner_id: ownerId,
+    });
+    expect(deal.probability_is_overridden).toBe(true);
+    expect(deal.effective_probability).toBe(55);
+  });
+
+  it('clears the override via updateDeal (null reverts to stage default)', async () => {
+    const deal = await createDeal({
+      ...BASE_DEAL,
+      stage: 'Prospecting',
+      probability: 55,
+      owner_id: ownerId,
+    });
+    expect(deal.probability_is_overridden).toBe(true);
+
+    const updated = await updateDeal(deal.id, { probability: null });
+    expect(updated!.probability_is_overridden).toBe(false);
+    expect(updated!.effective_probability).toBe(10); // back to Prospecting stage default
+  });
+
+  it('reflects the stage default when the deal moves to a new stage (no override)', async () => {
+    // Create in Prospecting (10%), move to Proposal (50%)
+    const deal = await createDeal({ ...BASE_DEAL, stage: 'Prospecting', owner_id: ownerId });
+    const updated = await updateDeal(deal.id, { stage: 'Proposal' });
+    expect(updated!.probability_is_overridden).toBe(false);
+    expect(updated!.effective_probability).toBe(50); // Proposal default
+  });
+
+  it('keeps the manual override when the deal moves to a new stage', async () => {
+    // Create in Prospecting with override 80%, move to Proposal
+    const deal = await createDeal({
+      ...BASE_DEAL,
+      stage: 'Prospecting',
+      probability: 80,
+      owner_id: ownerId,
+    });
+    const updated = await updateDeal(deal.id, { stage: 'Proposal' });
+    expect(updated!.probability_is_overridden).toBe(true);
+    expect(updated!.effective_probability).toBe(80); // override persists
+  });
+
+  it('finds a deal by id with correct probability fields', async () => {
+    const created = await createDeal({
+      ...BASE_DEAL,
+      stage: 'Qualification',
+      probability: 30,
+      owner_id: ownerId,
+    });
+    const found = await findDealById(created.id);
+    expect(found!.probability_is_overridden).toBe(true);
+    expect(found!.effective_probability).toBe(30);
+  });
+});

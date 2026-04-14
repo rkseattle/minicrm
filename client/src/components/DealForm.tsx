@@ -26,6 +26,11 @@ export interface DealFormValues {
   account_id: string;
   /** UUID of the owner; populated only when users prop is provided (edit mode) */
   owner_id: string;
+  /**
+   * Probability override string (empty string = no override, use stage default).
+   * When non-empty, must parse to an integer 0–100. (MINCRM-179)
+   */
+  probability: string;
 }
 
 interface DealFormProps {
@@ -71,6 +76,8 @@ interface DealFormProps {
 
 /**
  * Returns the initial state for the form, optionally seeded from an existing deal.
+ * When the deal has a probability override, it is pre-populated in the probability field.
+ * When not overridden, the field is left empty (stage default will display as a hint).
  *
  * @param initial - Optional existing deal values to pre-populate
  */
@@ -82,6 +89,8 @@ function buildInitialState(initial?: Partial<DealResponse>): DealFormValues {
     close_date: initial?.close_date ?? '',
     account_id: initial?.account_id ?? '',
     owner_id: initial?.owner_id ?? '',
+    // Pre-populate only when overridden; empty string means "use stage default" (MINCRM-179)
+    probability: initial?.probability_is_overridden ? String(initial.effective_probability) : '',
   };
 }
 
@@ -102,7 +111,7 @@ export default function DealForm({
   triggerRef,
 }: DealFormProps) {
   const { t } = useTranslation();
-  const { stageNames, terminalStageNames } = usePipelineStages();
+  const { stageNames, terminalStageNames, stages } = usePipelineStages();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<DealFormValues>(() => buildInitialState(initialValues));
@@ -199,6 +208,42 @@ export default function DealForm({
           onChange={handleChange}
           disabled={isSubmitting}
         />
+
+        {/* Probability override field — empty = inherit from stage default (MINCRM-179) */}
+        <div className="flex flex-col gap-1">
+          <Input
+            id="deal-probability"
+            data-testid="deal-probability-input"
+            name="probability"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            label={t('deals.probabilityLabel')}
+            placeholder={String(stages.find((s) => s.name === formData.stage)?.probability ?? '')}
+            value={formData.probability}
+            onChange={handleChange}
+            disabled={isSubmitting}
+          />
+          {formData.probability !== '' && (
+            <button
+              type="button"
+              data-testid="deal-probability-clear"
+              className="text-xs text-indigo-600 hover:underline self-start"
+              onClick={() => setFormData((prev) => ({ ...prev, probability: '' }))}
+              disabled={isSubmitting}
+            >
+              {t('deals.probabilityClear')}
+            </button>
+          )}
+          <p className="text-xs text-gray-400">
+            {formData.probability !== ''
+              ? t('deals.probabilityOverriddenHint')
+              : t('deals.probabilityDefaultHint', {
+                  pct: stages.find((s) => s.name === formData.stage)?.probability ?? 0,
+                })}
+          </p>
+        </div>
 
         {accounts !== undefined && (
           <Select

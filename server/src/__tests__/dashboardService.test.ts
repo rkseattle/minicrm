@@ -276,3 +276,63 @@ describe('getDashboardSummary — stage breakdown', () => {
     expect(proposal?.value).toBe('0');
   });
 });
+
+// ── Weighted pipeline value (MINCRM-179) ──────────────────────────────────────────
+
+describe('getDashboardSummary — weighted pipeline value', () => {
+  it('returns weightedPipelineValue using stage default probability', async () => {
+    // Prospecting default = 10%; value = $100,000 → weighted = $10,000
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, owner_id)
+       VALUES ('Weighted test', 'Prospecting', 100000, $1)`,
+      [repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(parseFloat(summary.weightedPipelineValue)).toBeCloseTo(10000, 0);
+  });
+
+  it('uses per-deal probability override for weighted calculation', async () => {
+    // Deal value = $100,000 with manual probability = 60% → weighted = $60,000
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, probability, owner_id)
+       VALUES ('Override deal', 'Prospecting', 100000, 60, $1)`,
+      [repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(parseFloat(summary.weightedPipelineValue)).toBeCloseTo(60000, 0);
+  });
+
+  it('includes weighted_value in per-stage breakdown', async () => {
+    // Qualification default = 25%; value = $80,000 → weighted = $20,000
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, owner_id)
+       VALUES ('Stage weighted', 'Qualification', 80000, $1)`,
+      [repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    const qual = summary.stageBreakdown.find((r) => r.stage === 'Qualification');
+    expect(qual).toBeDefined();
+    expect(parseFloat(qual!.weightedValue)).toBeCloseTo(20000, 0);
+  });
+
+  it('returns 0 weighted value when all deals have null value', async () => {
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, owner_id)
+       VALUES ('No value', 'Prospecting', NULL, $1)`,
+      [repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    expect(parseFloat(summary.weightedPipelineValue)).toBe(0);
+  });
+
+  it('excludes closed stages from weighted pipeline total', async () => {
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, owner_id)
+       VALUES ('Won deal', 'Closed Won', 100000, $1)`,
+      [repId],
+    );
+    const summary = await getDashboardSummary(repId);
+    // Closed Won is excluded; weighted total should remain 0
+    expect(parseFloat(summary.weightedPipelineValue)).toBe(0);
+  });
+});

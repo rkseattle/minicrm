@@ -13,6 +13,8 @@ export interface StageBreakdown {
   stage: string;
   count: number;
   value: string;
+  /** Sum of (value × effective_probability / 100) for deals in this stage (MINCRM-179) */
+  weightedValue: string;
 }
 
 /** Shape of the dashboard summary response from the API */
@@ -21,6 +23,10 @@ export interface DashboardSummaryResponse {
   tasksDueToday: number;
   openDealCount: number;
   openPipelineValue: string;
+  /**
+   * Sum of (value × effective_probability / 100) for all open deals. (MINCRM-179)
+   */
+  weightedPipelineValue: string;
   stageBreakdown: StageBreakdown[];
 }
 

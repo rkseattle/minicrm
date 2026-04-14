@@ -133,7 +133,9 @@
     "columnStage": "Etapa",
     "columnDealCount": "Oportunidades",
     "columnValue": "Valor",
-    "noDeals": "Aún no hay oportunidades abiertas."
+    "noDeals": "Aún no hay oportunidades abiertas.",
+    "columnWeightedValue": "Valor ponderado",
+    "weightedPipelineValue": "Pipeline ponderada"
   },
   "contacts": {
     "pageTitle": "Contactos",
@@ -279,7 +281,14 @@
     "pipelineSummaryLabel": "Resumen del canal",
     "exportCsv": "Exportar CSV",
     "exportAll": "Exportar todo",
-    "exporting": "Exportando…"
+    "exporting": "Exportando…",
+    "probabilityLabel": "Probabilidad (%)",
+    "probabilityDefault": "Probabilidad predeterminada de la etapa",
+    "probabilityOverridden": "Probabilidad sobrescrita manualmente",
+    "probabilityClear": "Restablecer al valor predeterminado de la etapa",
+    "probabilityDefaultHint": "Usando el valor predeterminado de la etapa: {{pct}}%",
+    "probabilityOverriddenHint": "Anulación activa — valor predeterminado ignorado",
+    "probabilityPct": "{{pct}} %"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",
@@ -304,7 +313,8 @@
       "negotiation": "Negociación",
       "closedWon": "Ganado",
       "closedLost": "Perdido"
-    }
+    },
+    "weightedValue": "Ponderado: {{value}}"
   },
   "activities": {
     "timelineHeading": "Actividad",

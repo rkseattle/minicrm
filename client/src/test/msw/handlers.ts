@@ -124,9 +124,10 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
   tasksDueToday: 1,
   openDealCount: 3,
   openPipelineValue: '150000.00',
+  weightedPipelineValue: '52500.00',
   stageBreakdown: [
-    { stage: 'Prospecting', count: 1, value: '50000.00' },
-    { stage: 'Qualification', count: 2, value: '100000.00' },
+    { stage: 'Prospecting', count: 1, value: '50000.00', weightedValue: '5000.00' },
+    { stage: 'Qualification', count: 2, value: '100000.00', weightedValue: '25000.00' },
   ],
 };
 
@@ -216,6 +217,8 @@ export const DEAL_1: DealResponse = {
   loss_reason: null,
   account_id: '00000000-0000-0000-0000-000000000201',
   owner_id: '00000000-0000-0000-0000-000000000001',
+  effective_probability: 10,
+  probability_is_overridden: false,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };

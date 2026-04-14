@@ -264,6 +264,8 @@ export default function DealsPage() {
         value: values.value !== '' ? parseFloat(values.value) : undefined,
         close_date: values.close_date || undefined,
         account_id: values.account_id || undefined,
+        // Pass probability override only when the field is non-empty (MINCRM-179)
+        probability: values.probability !== '' ? parseInt(values.probability, 10) : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });

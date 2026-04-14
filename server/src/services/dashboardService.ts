@@ -16,6 +16,7 @@ interface TaskCountRow {
 interface DealTotalsRow {
   open_deal_count: string;
   open_pipeline_value: string | null;
+  weighted_pipeline_value: string | null;
 }
 
 /** PostgreSQL row shape for the per-stage breakdown query */
@@ -23,6 +24,7 @@ interface StageQueryRow {
   stage: string;
   count: string;
   value: string;
+  weighted_value: string;
 }
 
 /** A per-stage aggregate row returned from the database */
@@ -30,6 +32,8 @@ export interface StageBreakdownRow {
   stage: string;
   count: number;
   value: string; // PostgreSQL SUM(numeric) returns a string
+  /** Sum of (value × effective_probability / 100) for deals in this stage */
+  weightedValue: string;
 }
 
 /** Shape of the dashboard summary returned to the controller */
@@ -42,6 +46,11 @@ export interface DashboardSummary {
   openDealCount: number;
   /** Sum of value for all open deals, as a decimal string */
   openPipelineValue: string;
+  /**
+   * Sum of (value × effective_probability / 100) for all open deals, as a decimal string.
+   * effective_probability = deal.probability override if set, else stage default. (MINCRM-179)
+   */
+  weightedPipelineValue: string;
   /** Per-stage breakdown of open deal count and total value, ordered by pipeline funnel position */
   stageBreakdown: StageBreakdownRow[];
 }
@@ -87,23 +96,30 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
 
   // ── Deal aggregates ──────────────────────────────────────────────────────────
   // Exclude closed stages from all open-deal metrics.
+  // weighted_pipeline_value = SUM(value × COALESCE(d.probability, ps.probability) / 100)
+  // effective_probability comes from a LEFT JOIN to pipeline_stages. (MINCRM-179)
   const dealTotalsQuery = ownerFilter
     ? `SELECT
          COUNT(*) AS open_deal_count,
-         COALESCE(SUM(value), 0)::text AS open_pipeline_value
-       FROM deals
-       WHERE stage NOT IN ('Closed Won', 'Closed Lost') AND owner_id = $1`
+         COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_pipeline_value
+       FROM deals d
+       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+       WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1`
     : `SELECT
          COUNT(*) AS open_deal_count,
-         COALESCE(SUM(value), 0)::text AS open_pipeline_value
-       FROM deals
-       WHERE stage NOT IN ('Closed Won', 'Closed Lost')`;
+         COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_pipeline_value
+       FROM deals d
+       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+       WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')`;
 
   const dealParams = ownerFilter ? [ownerId] : [];
   const dealTotalsResult = await pool.query<DealTotalsRow>(dealTotalsQuery, dealParams);
   const dealTotalsRow = dealTotalsResult.rows[0];
   const openDealCount = parseInt(dealTotalsRow.open_deal_count, 10);
   const openPipelineValue = dealTotalsRow.open_pipeline_value ?? '0';
+  const weightedPipelineValue = dealTotalsRow.weighted_pipeline_value ?? '0';
 
   // ── Per-stage breakdown ──────────────────────────────────────────────────────
   // Results are fetched unordered from the database, then sorted in application code by
@@ -111,19 +127,23 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   // sequence regardless of which deals were created first.
   const stageQuery = ownerFilter
     ? `SELECT
-         stage,
+         d.stage,
          COUNT(*) AS count,
-         COALESCE(SUM(value), 0)::text AS value
-       FROM deals
-       WHERE stage NOT IN ('Closed Won', 'Closed Lost') AND owner_id = $1
-       GROUP BY stage`
+         COALESCE(SUM(d.value), 0)::text AS value,
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_value
+       FROM deals d
+       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+       WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1
+       GROUP BY d.stage`
     : `SELECT
-         stage,
+         d.stage,
          COUNT(*) AS count,
-         COALESCE(SUM(value), 0)::text AS value
-       FROM deals
-       WHERE stage NOT IN ('Closed Won', 'Closed Lost')
-       GROUP BY stage`;
+         COALESCE(SUM(d.value), 0)::text AS value,
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability) / 100.0), 0)::text AS weighted_value
+       FROM deals d
+       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+       WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')
+       GROUP BY d.stage`;
 
   const stageResult = await pool.query<StageQueryRow>(stageQuery, dealParams);
 
@@ -137,6 +157,7 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
       stage: row.stage,
       count: parseInt(row.count, 10),
       value: row.value,
+      weightedValue: row.weighted_value,
     }))
     .sort((a, b) => (stageOrder.get(a.stage) ?? 999) - (stageOrder.get(b.stage) ?? 999));
 
@@ -145,6 +166,7 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     tasksDueToday,
     openDealCount,
     openPipelineValue,
+    weightedPipelineValue,
     stageBreakdown,
   };
 }
