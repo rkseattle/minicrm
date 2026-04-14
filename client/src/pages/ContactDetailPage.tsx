@@ -4,7 +4,7 @@
  * Supports toggling to an edit form (including owner reassignment) and deleting the contact.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,14 @@ import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
-import { getContact, updateContact, deleteContact, listContactDeals } from '@/api/contacts.js';
+import {
+  getContact,
+  updateContact,
+  deleteContact,
+  listContactDeals,
+  mergeContacts,
+  listContacts,
+} from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -24,19 +31,54 @@ import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
+import type { MergeFieldChoice, MergeContactsParams } from '@/api/contacts.js';
+import type { ContactResponse } from '@shared/schemas/contactSchema.js';
+import { useAuth } from '@/hooks/useAuth.js';
 
 /**
  * Single contact detail page with view/edit/delete.
  */
+/** Field names available for merge comparison */
+type MergeableField =
+  | 'first_name'
+  | 'last_name'
+  | 'email'
+  | 'phone'
+  | 'title'
+  | 'department'
+  | 'account_id'
+  | 'address_line1'
+  | 'address_line2'
+  | 'city'
+  | 'state_region'
+  | 'postal_code'
+  | 'country'
+  | 'linkedin_url'
+  | 'twitter_x_url';
+
 export default function ContactDetailPage() {
   const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+
+  // Merge state (MINCRM-187)
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeSearchQuery, setMergeSearchQuery] = useState('');
+  const [mergeLoserContact, setMergeLoserContact] = useState<MergeContactsParams['loserId'] | null>(
+    null,
+  );
+  const [mergeLoserData, setMergeLoserData] = useState<ContactResponse | null>(null);
+  const [mergeFieldChoices, setMergeFieldChoices] = useState<
+    Partial<Record<MergeableField, MergeFieldChoice>>
+  >({});
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [mergeSearchResults, setMergeSearchResults] = useState<ContactResponse[]>([]);
 
   const contactQueryKey = ['contacts', id] as const;
 
@@ -78,6 +120,14 @@ export default function ContactDetailPage() {
         department: values.department || undefined,
         account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
+        address_line1: values.address_line1 || undefined,
+        address_line2: values.address_line2 || undefined,
+        city: values.city || undefined,
+        state_region: values.state_region || undefined,
+        postal_code: values.postal_code || undefined,
+        country: values.country || undefined,
+        linkedin_url: values.linkedin_url || undefined,
+        twitter_x_url: values.twitter_x_url || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactQueryKey });
@@ -98,6 +148,48 @@ export default function ContactDetailPage() {
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  // Merge: search for loser contact as query changes (MINCRM-187)
+  useEffect(() => {
+    const trimmed = mergeSearchQuery.trim();
+    if (trimmed.length < 2) return;
+    let cancelled = false;
+    listContacts({ search: trimmed, limit: 10 })
+      .then((result) => {
+        if (!cancelled) {
+          // Exclude the current contact from results
+          setMergeSearchResults(result.data.filter((c) => c.id !== id));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMergeSearchResults([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mergeSearchQuery, id]);
+
+  const mergeMutation = useMutation({
+    mutationFn: () =>
+      mergeContacts({
+        winnerId: id!,
+        loserId: mergeLoserContact!,
+        fieldChoices: mergeFieldChoices,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: contactQueryKey });
+      queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
+      setIsMerging(false);
+      setMergeLoserContact(null);
+      setMergeLoserData(null);
+      setMergeFieldChoices({});
+      setMergeSearchQuery('');
+      setMergeError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setMergeError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
@@ -291,6 +383,349 @@ export default function ContactDetailPage() {
               value={resolveOwnerName(contact.owner_id, activeUsers, t('contacts.ownerUnknown'))}
               testId="detail-owner"
             />
+          </div>
+        )}
+
+        {/* Address section — shown when at least one field is populated (MINCRM-182) */}
+        {!isEditing &&
+          (contact.address_line1 ||
+            contact.address_line2 ||
+            contact.city ||
+            contact.state_region ||
+            contact.postal_code ||
+            contact.country) && (
+            <div
+              className="mt-6 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
+              data-testid="contact-address-section"
+            >
+              <div className="px-6 py-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {t('contacts.addressSection')}
+                </p>
+              </div>
+              {contact.address_line1 && (
+                <DetailRow
+                  label={t('contacts.addressLine1Label')}
+                  value={contact.address_line1}
+                  testId="detail-address-line1"
+                />
+              )}
+              {contact.address_line2 && (
+                <DetailRow
+                  label={t('contacts.addressLine2Label')}
+                  value={contact.address_line2}
+                  testId="detail-address-line2"
+                />
+              )}
+              {contact.city && (
+                <DetailRow
+                  label={t('contacts.cityLabel')}
+                  value={contact.city}
+                  testId="detail-city"
+                />
+              )}
+              {contact.state_region && (
+                <DetailRow
+                  label={t('contacts.stateRegionLabel')}
+                  value={contact.state_region}
+                  testId="detail-state-region"
+                />
+              )}
+              {contact.postal_code && (
+                <DetailRow
+                  label={t('contacts.postalCodeLabel')}
+                  value={contact.postal_code}
+                  testId="detail-postal-code"
+                />
+              )}
+              {contact.country && (
+                <DetailRow
+                  label={t('contacts.countryLabel')}
+                  value={contact.country}
+                  testId="detail-country"
+                />
+              )}
+            </div>
+          )}
+
+        {/* Social profile links — shown when at least one URL is set (MINCRM-190) */}
+        {!isEditing && (contact.linkedin_url || contact.twitter_x_url) && (
+          <div
+            className="mt-6 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
+            data-testid="contact-social-section"
+          >
+            <div className="px-6 py-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                {t('contacts.socialSection')}
+              </p>
+            </div>
+            {contact.linkedin_url && (
+              <div className="px-6 py-4 flex items-center gap-3" data-testid="detail-linkedin-url">
+                {/* LinkedIn icon */}
+                <svg
+                  aria-hidden="true"
+                  className="w-4 h-4 shrink-0 text-blue-700"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                </svg>
+                <a
+                  href={contact.linkedin_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-indigo-600 hover:underline truncate"
+                  data-testid="detail-linkedin-link"
+                >
+                  {t('contacts.linkedinUrlLabel')}
+                </a>
+              </div>
+            )}
+            {contact.twitter_x_url && (
+              <div className="px-6 py-4 flex items-center gap-3" data-testid="detail-twitter-x-url">
+                {/* X/Twitter icon */}
+                <svg
+                  aria-hidden="true"
+                  className="w-4 h-4 shrink-0 text-gray-900"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <a
+                  href={contact.twitter_x_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-indigo-600 hover:underline truncate"
+                  data-testid="detail-twitter-x-link"
+                >
+                  {t('contacts.twitterXUrlLabel')}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Merge contact UI (MINCRM-187) */}
+        {!isEditing && (user?.role === 'admin' || user?.id === contact.owner_id) && (
+          <div className="mt-6">
+            {!isMerging ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                data-testid="merge-contact-button"
+                onClick={() => setIsMerging(true)}
+              >
+                {t('contacts.mergeWithAnother')}
+              </Button>
+            ) : (
+              <div
+                className="bg-white border border-gray-200 rounded-lg p-6"
+                data-testid="merge-contact-panel"
+              >
+                <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                  {t('contacts.mergeHeading')}
+                </h2>
+
+                {!mergeLoserContact ? (
+                  <div>
+                    <label
+                      htmlFor="merge-search"
+                      className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+                    >
+                      {t('contacts.mergeSearchLabel')}
+                    </label>
+                    <input
+                      id="merge-search"
+                      data-testid="merge-search-input"
+                      type="search"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      placeholder={t('contacts.mergeSearchPlaceholder')}
+                      value={mergeSearchQuery}
+                      onChange={(e) => setMergeSearchQuery(e.target.value)}
+                    />
+                    {mergeSearchQuery.trim().length >= 2 && mergeSearchResults.length > 0 && (
+                      <ul
+                        data-testid="merge-search-results"
+                        className="mt-2 border border-gray-200 rounded-lg divide-y divide-gray-100"
+                      >
+                        {mergeSearchResults.map((result) => (
+                          <li key={result.id}>
+                            <button
+                              type="button"
+                              data-testid={`merge-select-${result.id}`}
+                              className="w-full text-start px-4 py-3 text-sm hover:bg-gray-50"
+                              onClick={() => {
+                                setMergeLoserContact(result.id);
+                                setMergeLoserData(result);
+                                setMergeSearchResults([]);
+                                setMergeSearchQuery('');
+                              }}
+                            >
+                              <span className="font-medium text-gray-900">
+                                {result.first_name} {result.last_name}
+                              </span>
+                              <span className="text-gray-500 ms-2">{result.email}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-700 mb-4">
+                      {t('contacts.mergeCompareIntro', {
+                        winner: `${contact.first_name} ${contact.last_name}`,
+                        loser: mergeLoserData
+                          ? `${mergeLoserData.first_name} ${mergeLoserData.last_name}`
+                          : '',
+                      })}
+                    </p>
+                    {/* Side-by-side field comparison */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="px-4 py-2 text-start text-xs font-semibold text-gray-500 uppercase">
+                              {t('contacts.mergeFieldColumn')}
+                            </th>
+                            <th className="px-4 py-2 text-start text-xs font-semibold text-gray-500 uppercase">
+                              {t('contacts.mergeWinnerColumn', {
+                                name: `${contact.first_name} ${contact.last_name}`,
+                              })}
+                            </th>
+                            <th className="px-4 py-2 text-start text-xs font-semibold text-gray-500 uppercase">
+                              {t('contacts.mergeLoserColumn', {
+                                name: `${mergeLoserData?.first_name ?? ''} ${mergeLoserData?.last_name ?? ''}`.trim(),
+                              })}
+                            </th>
+                            <th className="px-4 py-2 text-start text-xs font-semibold text-gray-500 uppercase">
+                              {t('contacts.mergeKeepColumn')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {(
+                            [
+                              'first_name',
+                              'last_name',
+                              'email',
+                              'phone',
+                              'title',
+                              'department',
+                            ] as MergeableField[]
+                          ).map((field) => {
+                            const winnerVal = (contact as Record<string, unknown>)[field] as
+                              | string
+                              | null;
+                            const loserVal = mergeLoserData
+                              ? ((mergeLoserData as Record<string, unknown>)[field] as
+                                  | string
+                                  | null)
+                              : null;
+                            const isDifferent = winnerVal !== loserVal;
+                            return (
+                              <tr
+                                key={field}
+                                data-testid={`merge-field-row-${field}`}
+                                className={isDifferent ? 'bg-yellow-50' : ''}
+                              >
+                                <td className="px-4 py-2 font-medium text-gray-700">
+                                  {t(`contacts.${field}Label` as never, field)}
+                                </td>
+                                <td className="px-4 py-2 text-gray-900">{winnerVal ?? '—'}</td>
+                                <td className="px-4 py-2 text-gray-900">{loserVal ?? '—'}</td>
+                                <td className="px-4 py-2">
+                                  {isDifferent ? (
+                                    <select
+                                      data-testid={`merge-choice-${field}`}
+                                      className="border border-gray-300 rounded text-sm px-2 py-1"
+                                      value={mergeFieldChoices[field] ?? 'winner'}
+                                      onChange={(e) =>
+                                        setMergeFieldChoices((prev) => ({
+                                          ...prev,
+                                          [field]: e.target.value as MergeFieldChoice,
+                                        }))
+                                      }
+                                    >
+                                      <option value="winner">
+                                        {t('contacts.mergeKeepWinner')}
+                                      </option>
+                                      <option value="loser">{t('contacts.mergeKeepLoser')}</option>
+                                    </select>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">
+                                      {t('contacts.mergeSameValue')}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {mergeError && (
+                      <p
+                        role="alert"
+                        className="mt-3 text-sm text-red-600"
+                        data-testid="merge-error"
+                      >
+                        {mergeError}
+                      </p>
+                    )}
+
+                    <div className="mt-4 flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="danger"
+                        data-testid="merge-confirm-button"
+                        disabled={mergeMutation.isPending}
+                        onClick={() => {
+                          setMergeError(null);
+                          mergeMutation.mutate();
+                        }}
+                      >
+                        {mergeMutation.isPending
+                          ? t('contacts.mergePending')
+                          : t('contacts.mergeConfirm')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        data-testid="merge-cancel-button"
+                        onClick={() => {
+                          setMergeLoserContact(null);
+                          setMergeLoserData(null);
+                          setMergeFieldChoices({});
+                          setMergeError(null);
+                        }}
+                      >
+                        {t('contacts.mergeBack')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        data-testid="merge-close-button"
+                        onClick={() => {
+                          setIsMerging(false);
+                          setMergeLoserContact(null);
+                          setMergeLoserData(null);
+                          setMergeFieldChoices({});
+                          setMergeError(null);
+                          setMergeSearchQuery('');
+                        }}
+                      >
+                        {t('contacts.cancel')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

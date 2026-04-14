@@ -15,7 +15,7 @@ import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
-import { getAccount, updateAccount, deleteAccount } from '@/api/accounts.js';
+import { getAccount, updateAccount, deleteAccount, listChildAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -38,6 +38,7 @@ export default function AccountDetailPage() {
 
   const accountQueryKey = ['accounts', id] as const;
   const linkedContactsQueryKey = ['contacts', 'byAccount', id] as const;
+  const childAccountsQueryKey = ['accounts', id, 'children'] as const;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: accountQueryKey,
@@ -51,12 +52,19 @@ export default function AccountDetailPage() {
     enabled: Boolean(id),
   });
 
+  const { data: childAccountsData } = useQuery({
+    queryKey: childAccountsQueryKey,
+    queryFn: () => listChildAccounts(id!),
+    enabled: Boolean(id),
+  });
+
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
   });
 
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+  const childAccounts = childAccountsData?.accounts ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (values: AccountFormValues) =>
@@ -68,11 +76,14 @@ export default function AccountDetailPage() {
         revenue_range: values.revenue_range || undefined,
         owner_id: values.owner_id || undefined,
         contact_ids: values.contact_ids,
+        account_type: values.account_type || null,
+        parent_account_id: values.parent_account_id || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: linkedContactsQueryKey });
+      queryClient.invalidateQueries({ queryKey: childAccountsQueryKey });
       setIsEditing(false);
       setUpdateError(null);
     },
@@ -200,6 +211,7 @@ export default function AccountDetailPage() {
             <AccountForm
               initialValues={account}
               initialContactIds={linkedContactsData?.data.map((c) => c.id) ?? []}
+              accountId={id}
               users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
@@ -217,6 +229,33 @@ export default function AccountDetailPage() {
         ) : (
           <>
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {account.account_type && (
+                <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
+                  <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
+                    {t('accounts.accountTypeLabel')}
+                  </span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+                    data-testid="detail-account-type"
+                  >
+                    {t(`accounts.accountType.${account.account_type}`)}
+                  </span>
+                </div>
+              )}
+              {account.parent_account_id && (
+                <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
+                  <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
+                    {t('accounts.parentAccountLabel')}
+                  </span>
+                  <Link
+                    to={`/accounts/${account.parent_account_id}`}
+                    data-testid="detail-parent-account"
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    {t('accounts.parentAccountLink')}
+                  </Link>
+                </div>
+              )}
               <DetailRow
                 label={t('accounts.industryLabel')}
                 value={account.industry ?? '—'}
@@ -299,6 +338,39 @@ export default function AccountDetailPage() {
                 )}
               </div>
             </section>
+
+            {/* Subsidiary accounts (MINCRM-184) */}
+            {childAccounts.length > 0 && (
+              <section className="mt-8" aria-labelledby="subsidiaries-heading">
+                <h2
+                  id="subsidiaries-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="subsidiary-accounts-heading"
+                >
+                  {t('accounts.subsidiaryAccountsHeading')}
+                </h2>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <ul className="divide-y divide-gray-100" data-testid="subsidiary-accounts-list">
+                    {childAccounts.map((child) => (
+                      <li key={child.id} className="px-6 py-3 flex items-center gap-3">
+                        <Link
+                          to={`/accounts/${child.id}`}
+                          data-testid={`subsidiary-account-${child.id}`}
+                          className="text-sm font-medium text-indigo-600 hover:underline"
+                        >
+                          {child.name}
+                        </Link>
+                        {child.account_type && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                            {t(`accounts.accountType.${child.account_type}`)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
           </>
         )}
       </main>
