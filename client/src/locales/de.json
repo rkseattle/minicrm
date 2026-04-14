@@ -288,7 +288,8 @@
     "probabilityClear": "Auf Standard der Phase zurücksetzen",
     "probabilityDefaultHint": "Phasenstandard wird verwendet: {{pct}}%",
     "probabilityOverriddenHint": "Überschreibung aktiv — Phasenstandard ignoriert",
-    "probabilityPct": "{{pct}} %"
+    "probabilityPct": "{{pct}} %",
+    "probabilityInvalid": "Wahrscheinlichkeit muss eine ganze Zahl zwischen 0 und 100 sein"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",

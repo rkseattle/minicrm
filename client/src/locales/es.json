@@ -288,7 +288,8 @@
     "probabilityClear": "Restablecer al valor predeterminado de la etapa",
     "probabilityDefaultHint": "Usando el valor predeterminado de la etapa: {{pct}}%",
     "probabilityOverriddenHint": "Anulación activa — valor predeterminado ignorado",
-    "probabilityPct": "{{pct}} %"
+    "probabilityPct": "{{pct}} %",
+    "probabilityInvalid": "La probabilidad debe ser un número entero entre 0 y 100"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

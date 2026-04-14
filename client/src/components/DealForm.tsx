@@ -115,6 +115,7 @@ export default function DealForm({
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<DealFormValues>(() => buildInitialState(initialValues));
+  const [probabilityError, setProbabilityError] = useState<string | null>(null);
 
   // Move focus to the first input when the form mounts (WCAG 2.4.3)
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function DealForm({
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = event.target;
+    if (name === 'probability') setProbabilityError(null);
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
@@ -138,6 +140,15 @@ export default function DealForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
+    // Reject decimal probability input before it reaches parseInt (MINCRM-179)
+    if (formData.probability !== '') {
+      const raw = Number(formData.probability);
+      if (!Number.isInteger(raw) || raw < 0 || raw > 100) {
+        setProbabilityError(t('deals.probabilityInvalid'));
+        return;
+      }
+    }
+    setProbabilityError(null);
     onSubmit(formData);
   };
 
@@ -236,13 +247,19 @@ export default function DealForm({
               {t('deals.probabilityClear')}
             </button>
           )}
-          <p className="text-xs text-gray-400">
-            {formData.probability !== ''
-              ? t('deals.probabilityOverriddenHint')
-              : t('deals.probabilityDefaultHint', {
-                  pct: stages.find((s) => s.name === formData.stage)?.probability ?? 0,
-                })}
-          </p>
+          {probabilityError ? (
+            <p className="text-xs text-red-600" data-testid="deal-probability-error" role="alert">
+              {probabilityError}
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400">
+              {formData.probability !== ''
+                ? t('deals.probabilityOverriddenHint')
+                : t('deals.probabilityDefaultHint', {
+                    pct: stages.find((s) => s.name === formData.stage)?.probability ?? 0,
+                  })}
+            </p>
+          )}
         </div>
 
         {accounts !== undefined && (

@@ -288,7 +288,8 @@
     "probabilityClear": "重置为阶段默认值",
     "probabilityDefaultHint": "使用阶段默认值：{{pct}}%",
     "probabilityOverriddenHint": "覆盖已激活 — 阶段默认值已忽略",
-    "probabilityPct": "{{pct}}%"
+    "probabilityPct": "{{pct}}%",
+    "probabilityInvalid": "概率必须是 0 到 100 之间的整数"
   },
   "pipeline": {
     "pageTitle": "管道看板",

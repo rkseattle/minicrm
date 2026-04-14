@@ -290,7 +290,8 @@
     "probabilityClear": "Reset to stage default",
     "probabilityDefaultHint": "Using stage default: {{pct}}%",
     "probabilityOverriddenHint": "Override active — stage default ignored",
-    "probabilityPct": "{{pct}}%"
+    "probabilityPct": "{{pct}}%",
+    "probabilityInvalid": "Probability must be a whole number between 0 and 100"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",
