@@ -200,7 +200,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Full CRUD REST API at `/api/leads`; conversion endpoint at `POST /api/leads/:id/convert`; status history at `GET /api/leads/:id/status-history`
 - Database migrations: `020_create_leads.js` adds `leads` and `lead_status_history` tables; adds `source_lead_id` FK column to `contacts` and `deals`
 
-### Contacts (MINCRM-8, MINCRM-11, MINCRM-14)
+### Contacts (MINCRM-8, MINCRM-11, MINCRM-14, MINCRM-182, MINCRM-187, MINCRM-190)
 
 - List all contacts in a sortable table with owner column
 - Create, edit, and delete contacts via inline forms
@@ -210,19 +210,26 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Filter contacts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
 - Duplicate email detection on create: returns a persistent inline warning banner with a link to the existing contact; rep can still proceed by clicking "Create anyway" (MINCRM-13)
-- Full CRUD REST API at `/api/contacts`
+- Address fields: `address_line1`, `address_line2`, `city`, `state_region`, `postal_code`, `country` — collapsible section in the form, displayed on detail page when populated (MINCRM-182)
+- Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated (MINCRM-190)
+- Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written (MINCRM-187)
+- Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:winnerId/merge`
 
-### Accounts (MINCRM-9, MINCRM-10, MINCRM-11, MINCRM-14)
+### Accounts (MINCRM-9, MINCRM-10, MINCRM-11, MINCRM-14, MINCRM-183, MINCRM-184)
 
 - List all accounts in a sortable table with owner column
 - Create, edit, and delete accounts via inline forms
 - Account detail page with full field display including resolved owner name
 - Search accounts by company name via the search input (passes `?search=<text>` to the API; case-insensitive substring match on `name`)
 - Filter accounts by industry via `?industry=<text>`
+- Filter accounts by account type via `?accountType=<type>` (MINCRM-183)
 - Filter accounts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
+- Account type field: `Prospect`, `Customer`, `Partner`, `Vendor`, `Competitor`, `Other` — displayed as badge on list and detail pages (MINCRM-183)
+- Parent account relationship: accounts may have a parent account; circular chain detection prevents invalid hierarchies; subsidiary accounts listed on parent detail page (MINCRM-184)
+- Type-ahead parent account search in the edit form (MINCRM-184)
 - Linked contacts listed on the account detail page
-- Full CRUD REST API at `/api/accounts`
+- Full CRUD REST API at `/api/accounts`; additional endpoints: `GET /api/accounts/search`, `GET /api/accounts/:id/children`
 
 ### Deals (MINCRM-15)
 
