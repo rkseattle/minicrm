@@ -23,6 +23,12 @@ import {
   clearStorageConfigHandler,
   testStorageConfigHandler,
 } from '../controllers/attachmentController.js';
+import {
+  listPipelineStagesHandler,
+  createPipelineStageHandler,
+  updatePipelineStageHandler,
+  deletePipelineStageHandler,
+} from '../controllers/pipelineStageController.js';
 
 const router = Router();
 
@@ -384,6 +390,152 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(testStorageConfigHandler),
+);
+
+// ── Pipeline stage configuration (MINCRM-180) ────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/pipeline-stages:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: listPipelineStages
+ *     summary: List all pipeline stages in order (MINCRM-180)
+ *     description: >
+ *       Returns all pipeline stages ordered by sort_order. Public endpoint —
+ *       the client fetches this at app startup to populate the stage selector.
+ *       Will never return 401.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Ordered list of pipeline stages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PipelineStageResponse'
+ */
+router.get('/pipeline-stages', asyncHandler(listPipelineStagesHandler));
+
+/**
+ * @openapi
+ * /api/settings/pipeline-stages:
+ *   post:
+ *     tags: [Settings]
+ *     operationId: createPipelineStage
+ *     summary: Create a new pipeline stage (admin only, MINCRM-180)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, sort_order]
+ *             properties:
+ *               name: { type: string }
+ *               sort_order: { type: integer }
+ *               probability: { type: integer, minimum: 0, maximum: 100 }
+ *     responses:
+ *       201:
+ *         description: Stage created
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: Stage name already in use
+ */
+router.post(
+  '/pipeline-stages',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(createPipelineStageHandler),
+);
+
+/**
+ * @openapi
+ * /api/settings/pipeline-stages/{id}:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: updatePipelineStage
+ *     summary: Update a pipeline stage (admin only, MINCRM-180)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               sort_order: { type: integer }
+ *               probability: { type: integer, minimum: 0, maximum: 100 }
+ *     responses:
+ *       200:
+ *         description: Stage updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Forbidden or fixed stage
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Stage name already in use
+ */
+router.patch(
+  '/pipeline-stages/:id',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(updatePipelineStageHandler),
+);
+
+/**
+ * @openapi
+ * /api/settings/pipeline-stages/{id}:
+ *   delete:
+ *     tags: [Settings]
+ *     operationId: deletePipelineStage
+ *     summary: Delete a pipeline stage (admin only, MINCRM-180)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Stage deleted
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Forbidden or fixed stage
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Stage has open deals — cannot delete
+ */
+router.delete(
+  '/pipeline-stages/:id',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(deletePipelineStageHandler),
 );
 
 export default router;

@@ -11,9 +11,9 @@ import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
-import { CLOSED_STAGES } from '@/components/CloseDealModal.js';
-import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
+import { usePipelineStages } from '@/hooks/usePipelineStages.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 
@@ -77,7 +77,7 @@ interface DealFormProps {
 function buildInitialState(initial?: Partial<DealResponse>): DealFormValues {
   return {
     name: initial?.name ?? '',
-    stage: initial?.stage ?? PIPELINE_STAGES[0],
+    stage: initial?.stage ?? PIPELINE_STAGES[0], // fallback; overridden once live stages load
     value: initial?.value ?? '',
     close_date: initial?.close_date ?? '',
     account_id: initial?.account_id ?? '',
@@ -102,6 +102,7 @@ export default function DealForm({
   triggerRef,
 }: DealFormProps) {
   const { t } = useTranslation();
+  const { stageNames, terminalStageNames } = usePipelineStages();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<DealFormValues>(() => buildInitialState(initialValues));
@@ -157,8 +158,8 @@ export default function DealForm({
           label={t('deals.stageLabel')}
           value={formData.stage}
           onChange={(e) => {
-            const selected = e.target.value as PipelineStage;
-            if (onCloseRequested && (CLOSED_STAGES as PipelineStage[]).includes(selected)) {
+            const selected = e.target.value;
+            if (onCloseRequested && terminalStageNames.includes(selected)) {
               onCloseRequested(selected as 'Closed Won' | 'Closed Lost', formData);
             } else {
               handleSelectChange(e);
@@ -167,9 +168,9 @@ export default function DealForm({
           disabled={isSubmitting}
           required
         >
-          {PIPELINE_STAGES.map((stage) => (
+          {stageNames.map((stage) => (
             <option key={stage} value={stage}>
-              {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+              {getStageDisplayName(stage, t)}
             </option>
           ))}
         </Select>

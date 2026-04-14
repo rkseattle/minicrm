@@ -7,12 +7,12 @@
 
 import { useTranslation } from 'react-i18next';
 import DealCard from '@/components/DealCard.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
 interface StageColumnProps {
-  /** Pipeline stage this column represents */
-  stage: PipelineStage;
+  /** Pipeline stage this column represents (may be a custom stage name) */
+  stage: string;
   /** Deals assigned to this stage */
   deals: DealResponse[];
   /** Map of account_id → account name for O(1) lookup */
@@ -54,7 +54,7 @@ const COLUMN_HEADER_DEFAULT = 'bg-white text-gray-700';
  *
  * @param stage - Pipeline stage name
  */
-function columnWrapperClass(stage: PipelineStage): string {
+function columnWrapperClass(stage: string): string {
   return COLUMN_WRAPPER_CLASSES[stage] ?? COLUMN_WRAPPER_DEFAULT;
 }
 
@@ -63,7 +63,7 @@ function columnWrapperClass(stage: PipelineStage): string {
  *
  * @param stage - Pipeline stage name
  */
-function columnHeaderClass(stage: PipelineStage): string {
+function columnHeaderClass(stage: string): string {
   return COLUMN_HEADER_CLASSES[stage] ?? COLUMN_HEADER_DEFAULT;
 }
 
@@ -81,7 +81,7 @@ function sumValues(deals: DealResponse[], locale: string): string {
 }
 
 /** Kebab-case version of a stage name used in data-testid attributes */
-function stageSlug(stage: PipelineStage): string {
+function stageSlug(stage: string): string {
   return stage.toLowerCase().replace(/\s+/g, '-');
 }
 
@@ -116,11 +116,8 @@ export default function StageColumn({
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
         <div className="flex items-center justify-between">
-          <h3
-            className="text-sm font-semibold truncate"
-            title={t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
-          >
-            {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+          <h3 className="text-sm font-semibold truncate" title={getStageDisplayName(stage, t)}>
+            {getStageDisplayName(stage, t)}
           </h3>
           <span
             data-testid={`${testIdPrefix}stage-column-count-${slug}`}

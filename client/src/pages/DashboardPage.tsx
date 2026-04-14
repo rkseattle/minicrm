@@ -17,8 +17,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { getDashboardSummary, DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
-import type { PipelineStage } from '@shared/schemas/dealSchema.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 
 /**
  * Formats a numeric string as a currency amount using the active i18next locale.
@@ -196,9 +195,7 @@ export default function DashboardPage() {
                       {data.stageBreakdown.map((row) => (
                         <tr key={row.stage} data-testid={`stage-row-${row.stage}`}>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {t(
-                              `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[row.stage as PipelineStage]}`,
-                            )}
+                            {getStageDisplayName(row.stage, t)}
                           </td>
                           <td
                             className="px-6 py-4 text-sm text-gray-600 text-end"

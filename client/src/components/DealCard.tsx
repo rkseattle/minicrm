@@ -8,9 +8,9 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/Select.js';
-import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { CLOSED_STAGES } from '@/components/CloseDealModal.js';
+import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
 
 interface DealCardProps {
@@ -67,6 +67,7 @@ export default function DealCard({
   testIdPrefix = '',
 }: DealCardProps) {
   const { t, i18n } = useTranslation();
+  const { stageNames, terminalStageNames } = usePipelineStages();
   return (
     <div
       data-testid={`${testIdPrefix}deal-card-${deal.id}`}
@@ -105,19 +106,22 @@ export default function DealCard({
         data-testid={`${testIdPrefix}deal-card-stage-select-${deal.id}`}
         value={deal.stage}
         onChange={(e) => {
-          const selected = e.target.value as PipelineStage;
-          if ((CLOSED_STAGES as PipelineStage[]).includes(selected)) {
+          const selected = e.target.value;
+          if (
+            terminalStageNames.includes(selected) ||
+            (CLOSED_STAGES as string[]).includes(selected)
+          ) {
             onCloseRequested(deal.id, selected as 'Closed Won' | 'Closed Lost');
           } else {
-            onStageChange(deal.id, selected);
+            onStageChange(deal.id, selected as PipelineStage);
           }
         }}
         disabled={isUpdating}
         className="text-xs"
       >
-        {PIPELINE_STAGES.map((stage) => (
+        {stageNames.map((stage) => (
           <option key={stage} value={stage}>
-            {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
+            {getStageDisplayName(stage, t)}
           </option>
         ))}
       </Select>

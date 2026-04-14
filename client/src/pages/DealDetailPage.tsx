@@ -34,10 +34,10 @@ import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
-import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
@@ -346,7 +346,7 @@ export default function DealDetailPage() {
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
               <DetailRow
                 label={t('deals.stageLabel')}
-                value={t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`)}
+                value={getStageDisplayName(deal.stage, t)}
                 testId="detail-stage"
               />
               <DetailRow
