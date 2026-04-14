@@ -182,6 +182,22 @@ export async function createAccount(
   try {
     await client.query('BEGIN');
 
+    // Validate no circular parent chain before inserting (MINCRM-184)
+    if (parent_account_id) {
+      // Use the client (within the transaction) to avoid TOCTOU races
+      const isCircular = await wouldCreateCircularParent(
+        // New account has no id yet — pass a sentinel that can never match any real row
+        '00000000-0000-0000-0000-000000000000',
+        parent_account_id,
+        client,
+      );
+      if (isCircular) {
+        throw Object.assign(new Error('Circular parent chain detected'), {
+          code: 'CIRCULAR_PARENT',
+        });
+      }
+    }
+
     const result = await client.query<AccountRow>(
       `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id, account_type, parent_account_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -314,14 +330,6 @@ export async function updateAccount(
 ): Promise<AccountRow | null> {
   const { contact_ids, ...accountParams } = params;
 
-  // Validate no circular parent chain before starting the transaction (MINCRM-184)
-  if (accountParams.parent_account_id) {
-    const isCircular = await wouldCreateCircularParent(id, accountParams.parent_account_id, pool);
-    if (isCircular) {
-      throw Object.assign(new Error('Circular parent chain detected'), { code: 'CIRCULAR_PARENT' });
-    }
-  }
-
   const fields = (Object.keys(accountParams) as (keyof typeof accountParams)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof Omit<UpdateAccountInput, 'contact_ids'>),
   );
@@ -329,6 +337,20 @@ export async function updateAccount(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Validate no circular parent chain inside the transaction to avoid TOCTOU races (MINCRM-184)
+    if (accountParams.parent_account_id) {
+      const isCircular = await wouldCreateCircularParent(
+        id,
+        accountParams.parent_account_id,
+        client,
+      );
+      if (isCircular) {
+        throw Object.assign(new Error('Circular parent chain detected'), {
+          code: 'CIRCULAR_PARENT',
+        });
+      }
+    }
 
     let account: AccountRow | null = null;
 

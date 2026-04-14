@@ -195,6 +195,37 @@ router.post('/', authenticate, asyncHandler(createAccountHandler));
 
 /**
  * @openapi
+ * /api/accounts/search:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: searchAccounts
+ *     summary: Type-ahead account name search
+ *     description: >
+ *       Returns up to 10 accounts whose name contains the query string.
+ *       Used by the Parent Account type-ahead selector. (MINCRM-184)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Substring to match against account name
+ *       - in: query
+ *         name: exclude
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Account UUID to exclude (prevents self-parenting)
+ *     responses:
+ *       200:
+ *         description: Matching accounts
+ */
+router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
+
+/**
+ * @openapi
  * /api/accounts/{id}:
  *   get:
  *     tags: [Accounts]
@@ -402,37 +433,6 @@ router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
  *                 message: Account not found
  */
 router.delete('/:id', authenticate, asyncHandler(deleteAccountHandler));
-
-/**
- * @openapi
- * /api/accounts/search:
- *   get:
- *     tags: [Accounts]
- *     operationId: searchAccounts
- *     summary: Type-ahead account name search
- *     description: >
- *       Returns up to 10 accounts whose name contains the query string.
- *       Used by the Parent Account type-ahead selector. (MINCRM-184)
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: query
- *         name: q
- *         required: true
- *         schema:
- *           type: string
- *         description: Substring to match against account name
- *       - in: query
- *         name: exclude
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Account UUID to exclude (prevents self-parenting)
- *     responses:
- *       200:
- *         description: Matching accounts
- */
-router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
 
 /**
  * @openapi

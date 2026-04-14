@@ -218,6 +218,15 @@ export const CONTACT_1: ContactResponse = {
   department: 'Sales',
   account_id: '00000000-0000-0000-0000-000000000201',
   owner_id: '00000000-0000-0000-0000-000000000001',
+  address_line1: null,
+  address_line2: null,
+  city: null,
+  state_region: null,
+  postal_code: null,
+  country: null,
+  linkedin_url: null,
+  twitter_x_url: null,
+  other_url: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
@@ -233,6 +242,15 @@ export const CONTACT_2: ContactResponse = {
   department: 'Engineering',
   account_id: null,
   owner_id: '00000000-0000-0000-0000-000000000001',
+  address_line1: null,
+  address_line2: null,
+  city: null,
+  state_region: null,
+  postal_code: null,
+  country: null,
+  linkedin_url: null,
+  twitter_x_url: null,
+  other_url: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
@@ -603,6 +621,57 @@ export const handlers = [
   /** Accounts: GET /api/accounts/search — returns empty list by default */
   http.get('/api/accounts/search', () => {
     return HttpResponse.json([]);
+  }),
+
+  /** Contacts: GET /api/contacts/:id/addresses — returns empty list by default */
+  http.get('/api/contacts/:id/addresses', () => {
+    return HttpResponse.json({ addresses: [] });
+  }),
+
+  /** Contacts: POST /api/contacts/:id/addresses */
+  http.post('/api/contacts/:id/addresses', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      address: {
+        id: 'addr-new',
+        contact_id: 'contact-1',
+        label: body['label'] ?? null,
+        address_line1: body['address_line1'] ?? null,
+        address_line2: null,
+        city: body['city'] ?? null,
+        state_region: null,
+        postal_code: null,
+        country: null,
+        is_default: body['is_default'] ?? false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Contacts: DELETE /api/contacts/:id/addresses/:addressId */
+  http.delete('/api/contacts/:id/addresses/:addressId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Contacts: POST /api/contacts/:id/addresses/:addressId/set-default */
+  http.post('/api/contacts/:id/addresses/:addressId/set-default', ({ params }) => {
+    return HttpResponse.json({
+      address: {
+        id: params['addressId'],
+        contact_id: params['id'],
+        label: null,
+        address_line1: '123 Main St',
+        address_line2: null,
+        city: 'Seattle',
+        state_region: 'WA',
+        postal_code: '98101',
+        country: 'US',
+        is_default: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
   }),
 
   /** Deals: GET /api/deals — supports ?owner=me filter */

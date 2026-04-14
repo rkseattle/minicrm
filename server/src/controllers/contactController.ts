@@ -16,6 +16,11 @@ import {
   exportContactsForCsv,
   mergeContacts,
   CONTACT_SORT_COLUMNS,
+  listContactAddresses,
+  addContactAddress,
+  updateContactAddress,
+  removeContactAddress,
+  setDefaultContactAddress,
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -396,22 +401,125 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  try {
-    const merged = await mergeContacts(
-      {
-        winnerId,
-        loserId,
-        fieldChoices: (fieldChoices ?? {}) as Parameters<typeof mergeContacts>[0]['fieldChoices'],
-      },
-      { id: req.user!.id, name: req.user!.name },
-    );
-    res.status(200).json({ contact: merged });
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code === 'CIRCULAR_PARENT') {
-      res.status(400).json({ error: { code, message: (err as Error).message } });
-      return;
-    }
-    throw err;
+  const merged = await mergeContacts(
+    {
+      winnerId,
+      loserId,
+      fieldChoices: (fieldChoices ?? {}) as Parameters<typeof mergeContacts>[0]['fieldChoices'],
+    },
+    { id: req.user!.id, name: req.user!.name },
+  );
+  res.status(200).json({ contact: merged });
+}
+
+// ── Contact Address Handlers ───────────────────────────────────────────────────
+
+/** Zod schema for creating or updating a contact address */
+const contactAddressSchema = z.object({
+  label: z.string().trim().max(50).optional(),
+  address_line1: z.string().trim().max(255).optional(),
+  address_line2: z.string().trim().max(255).optional(),
+  city: z.string().trim().max(100).optional(),
+  state_region: z.string().trim().max(100).optional(),
+  postal_code: z.string().trim().max(20).optional(),
+  country: z.string().trim().max(100).optional(),
+  is_default: z.boolean().optional(),
+});
+
+/**
+ * GET /api/contacts/:id/addresses
+ * Returns all addresses for the given contact.
+ */
+export async function listContactAddressesHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const contact = await findContactById(id);
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
   }
+  const addresses = await listContactAddresses(id);
+  res.status(200).json({ addresses });
+}
+
+/**
+ * POST /api/contacts/:id/addresses
+ * Adds a new address to the given contact.
+ */
+export async function addContactAddressHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const parsed = contactAddressSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid input',
+      },
+    });
+    return;
+  }
+
+  const contact = await findContactById(id);
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  const address = await addContactAddress(id, parsed.data);
+  res.status(201).json({ address });
+}
+
+/**
+ * PATCH /api/contacts/:id/addresses/:addressId
+ * Updates a contact address.
+ */
+export async function updateContactAddressHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const addressId = String(req.params['addressId']);
+  const parsed = contactAddressSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid input',
+      },
+    });
+    return;
+  }
+
+  const address = await updateContactAddress(addressId, id, parsed.data);
+  if (!address) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Address not found' } });
+    return;
+  }
+  res.status(200).json({ address });
+}
+
+/**
+ * DELETE /api/contacts/:id/addresses/:addressId
+ * Removes a contact address.
+ */
+export async function deleteContactAddressHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const addressId = String(req.params['addressId']);
+  const deleted = await removeContactAddress(addressId, id);
+  if (!deleted) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Address not found' } });
+    return;
+  }
+  res.status(204).send();
+}
+
+/**
+ * POST /api/contacts/:id/addresses/:addressId/set-default
+ * Sets the given address as the default for this contact.
+ */
+export async function setDefaultContactAddressHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const addressId = String(req.params['addressId']);
+  const address = await setDefaultContactAddress(addressId, id);
+  if (!address) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Address not found' } });
+    return;
+  }
+  res.status(200).json({ address });
 }

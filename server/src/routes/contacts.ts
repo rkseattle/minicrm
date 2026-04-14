@@ -15,6 +15,11 @@ import {
   listContactDealsHandler,
   exportContactsHandler,
   mergeContactHandler,
+  listContactAddressesHandler,
+  addContactAddressHandler,
+  updateContactAddressHandler,
+  deleteContactAddressHandler,
+  setDefaultContactAddressHandler,
 } from '../controllers/contactController.js';
 
 const router = Router();
@@ -540,5 +545,26 @@ router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
  *         description: Contact not found
  */
 router.post('/:id/merge', authenticate, asyncHandler(mergeContactHandler));
+
+// ── Contact Address Routes ─────────────────────────────────────────────────────
+
+/** List all addresses for a contact. */
+router.get('/:id/addresses', authenticate, asyncHandler(listContactAddressesHandler));
+
+/** Add a new address to a contact. */
+router.post('/:id/addresses', authenticate, asyncHandler(addContactAddressHandler));
+
+/** Update a contact address. */
+router.patch('/:id/addresses/:addressId', authenticate, asyncHandler(updateContactAddressHandler));
+
+/** Delete a contact address. */
+router.delete('/:id/addresses/:addressId', authenticate, asyncHandler(deleteContactAddressHandler));
+
+/** Set a contact address as the default. */
+router.post(
+  '/:id/addresses/:addressId/set-default',
+  authenticate,
+  asyncHandler(setDefaultContactAddressHandler),
+);
 
 export default router;
