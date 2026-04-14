@@ -5,8 +5,7 @@ name: Claude Code PR Review
 # rules, i18n requirements, data-testid conventions, and security patterns.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch: # disabled — re-enable by restoring pull_request trigger when credits are available
 
 permissions:
   contents: read
