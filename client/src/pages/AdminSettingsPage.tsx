@@ -423,8 +423,7 @@ export default function AdminSettingsPage() {
   }, [showAddStage]);
 
   const createStageMutation = useMutation({
-    mutationFn: (params: { name: string; sort_order: number; probability: number }) =>
-      createPipelineStage(params),
+    mutationFn: (params: { name: string; probability: number }) => createPipelineStage(params),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
       setShowAddStage(false);
@@ -579,12 +578,9 @@ export default function AdminSettingsPage() {
       return;
     }
     const probability = parseInt(addStageProbability, 10);
-    // Insert before the two terminal stages
-    const nonTerminalCount = stages.filter((s) => !s.is_terminal).length;
-    const newSortOrder = (nonTerminalCount + 1) * 10;
+    // sort_order is server-assigned (MAX non-terminal + 10) — no client calculation needed
     createStageMutation.mutate({
       name: trimmedName,
-      sort_order: newSortOrder,
       probability: isNaN(probability) ? 0 : probability,
     });
   }

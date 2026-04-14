@@ -8,7 +8,7 @@
 import { useTranslation } from 'react-i18next';
 import DealCard from '@/components/DealCard.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
-import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 
 interface StageColumnProps {
   /** Pipeline stage this column represents (may be a custom stage name) */
@@ -18,12 +18,12 @@ interface StageColumnProps {
   /** Map of account_id → account name for O(1) lookup */
   accountNames: Map<string, string>;
   /** Called when a deal card's stage selector changes to a non-terminal stage */
-  onStageChange: (dealId: string, stage: PipelineStage) => void;
+  onStageChange: (dealId: string, stage: string) => void;
   /**
    * Called when the user selects a terminal stage on a deal card.
    * The parent opens the close deal modal.
    */
-  onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
+  onCloseRequested: (dealId: string, stage: string) => void;
   /** Set of deal IDs whose stage updates are currently in flight */
   updatingDealIds: Set<string>;
   /** When true, the column expands to full width (used in mobile single-stage view) */

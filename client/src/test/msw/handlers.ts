@@ -20,6 +20,59 @@ import type {
 } from '@shared/schemas/automationSchema.js';
 import type { SearchResponse } from '@/api/search.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
+import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
+
+/** Reusable fixture: the six default pipeline stages */
+export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
+  {
+    id: 'ps-1',
+    name: 'Prospecting',
+    sort_order: 10,
+    probability: 10,
+    is_terminal: false,
+    is_fixed: false,
+  },
+  {
+    id: 'ps-2',
+    name: 'Qualification',
+    sort_order: 20,
+    probability: 25,
+    is_terminal: false,
+    is_fixed: false,
+  },
+  {
+    id: 'ps-3',
+    name: 'Proposal',
+    sort_order: 30,
+    probability: 50,
+    is_terminal: false,
+    is_fixed: false,
+  },
+  {
+    id: 'ps-4',
+    name: 'Negotiation',
+    sort_order: 40,
+    probability: 75,
+    is_terminal: false,
+    is_fixed: false,
+  },
+  {
+    id: 'ps-5',
+    name: 'Closed Won',
+    sort_order: 50,
+    probability: 100,
+    is_terminal: true,
+    is_fixed: true,
+  },
+  {
+    id: 'ps-6',
+    name: 'Closed Lost',
+    sort_order: 60,
+    probability: 0,
+    is_terminal: true,
+    is_fixed: true,
+  },
+];
 
 /** Reusable fixture: an automation rule */
 export const AUTOMATION_RULE_1: AutomationRuleResponse = {
@@ -1037,5 +1090,42 @@ export const handlers = [
   /** Audit log: GET /api/audit-log/actors — returns empty list by default */
   http.get('/api/audit-log/actors', () => {
     return HttpResponse.json({ actors: [] });
+  }),
+
+  /** Pipeline stages: GET /api/settings/pipeline-stages — returns six seed stages */
+  http.get('/api/settings/pipeline-stages', () => {
+    return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
+  }),
+
+  /** Pipeline stages: POST /api/settings/pipeline-stages — creates a new stage */
+  http.post('/api/settings/pipeline-stages', async ({ request }) => {
+    const body = (await request.json()) as { name: string; probability?: number };
+    const newStage: PipelineStageResponse = {
+      id: '00000000-0000-0000-0000-000000000901',
+      name: body.name,
+      sort_order: 50,
+      probability: body.probability ?? 0,
+      is_terminal: false,
+      is_fixed: false,
+    };
+    return HttpResponse.json(newStage, { status: 201 });
+  }),
+
+  /** Pipeline stages: PATCH /api/settings/pipeline-stages/:id — updates a stage */
+  http.patch('/api/settings/pipeline-stages/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<PipelineStageResponse>;
+    const existing = PIPELINE_STAGES_FIXTURE.find((s) => s.id === params.id);
+    if (!existing) {
+      return HttpResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Pipeline stage not found' } },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json({ ...existing, ...body });
+  }),
+
+  /** Pipeline stages: DELETE /api/settings/pipeline-stages/:id — deletes a stage */
+  http.delete('/api/settings/pipeline-stages/:id', ({ params }) => {
+    return HttpResponse.json({ id: params.id });
   }),
 ];

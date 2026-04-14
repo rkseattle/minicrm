@@ -9,9 +9,8 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/Select.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
-import { CLOSED_STAGES } from '@/components/CloseDealModal.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
-import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 
 interface DealCardProps {
   /** The deal record to display */
@@ -19,12 +18,12 @@ interface DealCardProps {
   /** Resolved account display name, or '—' when no account is linked */
   accountName: string;
   /** Called when the user selects a non-terminal stage */
-  onStageChange: (dealId: string, stage: PipelineStage) => void;
+  onStageChange: (dealId: string, stage: string) => void;
   /**
-   * Called when the user selects a terminal stage (Closed Won / Closed Lost).
+   * Called when the user selects a terminal stage.
    * The parent is responsible for opening the close deal modal.
    */
-  onCloseRequested: (dealId: string, stage: 'Closed Won' | 'Closed Lost') => void;
+  onCloseRequested: (dealId: string, stage: string) => void;
   /** When true, the stage selector is disabled */
   isUpdating: boolean;
   /**
@@ -107,13 +106,10 @@ export default function DealCard({
         value={deal.stage}
         onChange={(e) => {
           const selected = e.target.value;
-          if (
-            terminalStageNames.includes(selected) ||
-            (CLOSED_STAGES as string[]).includes(selected)
-          ) {
-            onCloseRequested(deal.id, selected as 'Closed Won' | 'Closed Lost');
+          if (terminalStageNames.includes(selected)) {
+            onCloseRequested(deal.id, selected);
           } else {
-            onStageChange(deal.id, selected as PipelineStage);
+            onStageChange(deal.id, selected);
           }
         }}
         disabled={isUpdating}

@@ -81,35 +81,45 @@ export async function findPipelineStageById(id: string): Promise<PipelineStageRo
 
 /**
  * Creates a new pipeline stage.
- * Rejects if the name already exists (case-insensitive).
  *
- * @param params - Stage fields from the validated request
+ * sort_order is auto-assigned as MAX(non-terminal sort_order) + 10, placing the
+ * new stage just before the terminal stages. This eliminates client-side sort_order
+ * collision risk between concurrent creates.
+ *
+ * Name uniqueness is enforced by the DB unique index (case-insensitive). A 23505
+ * violation is caught and re-thrown as STAGE_NAME_CONFLICT.
+ *
+ * @param params - Stage fields from the validated request (no sort_order)
  * @returns The inserted stage row
  * @throws Error with code STAGE_NAME_CONFLICT if the name is already in use
  */
 export async function createPipelineStage(
   params: CreatePipelineStageInput,
 ): Promise<PipelineStageRow> {
-  const { name, sort_order, probability } = params;
+  const { name, probability } = params;
 
-  // Check for name collision (case-insensitive)
-  const collision = await pool.query<{ id: string }>(
-    'SELECT id FROM pipeline_stages WHERE lower(name) = lower($1) LIMIT 1',
-    [name],
+  // Auto-assign sort_order: append after all existing stages (admin can reorder afterward)
+  const maxResult = await pool.query<{ max: number | null }>(
+    'SELECT MAX(sort_order) AS max FROM pipeline_stages',
   );
-  if (collision.rows.length > 0) {
-    const err = new Error(`A stage named "${name}" already exists`);
-    (err as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
+  const sortOrder = (maxResult.rows[0].max ?? 0) + 10;
+
+  try {
+    const result = await pool.query<PipelineStageRow>(
+      `INSERT INTO pipeline_stages (name, sort_order, probability)
+       VALUES ($1, $2, $3)
+       RETURNING ${STAGE_SELECT}`,
+      [name, sortOrder, probability ?? 0],
+    );
+    return result.rows[0];
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === '23505') {
+      const e = new Error(`A stage named "${name}" already exists`);
+      (e as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
+      throw e;
+    }
     throw err;
   }
-
-  const result = await pool.query<PipelineStageRow>(
-    `INSERT INTO pipeline_stages (name, sort_order, probability)
-     VALUES ($1, $2, $3)
-     RETURNING ${STAGE_SELECT}`,
-    [name, sort_order, probability ?? 0],
-  );
-  return result.rows[0];
 }
 
 /**
@@ -120,11 +130,16 @@ export async function createPipelineStage(
  *
  * Fixed stages (is_fixed = true) may not have their name changed.
  *
+ * Name and sort_order uniqueness are enforced by DB unique indexes. A 23505
+ * violation is caught and re-thrown as STAGE_NAME_CONFLICT or
+ * STAGE_SORT_ORDER_CONFLICT depending on which constraint fired.
+ *
  * @param id - Stage UUID
  * @param params - Fields to update
  * @returns The updated stage row, or null if not found
  * @throws Error with code STAGE_FIXED if attempting to rename a fixed stage
  * @throws Error with code STAGE_NAME_CONFLICT if the new name is already in use
+ * @throws Error with code STAGE_SORT_ORDER_CONFLICT if the sort_order is already in use
  */
 export async function updatePipelineStage(
   id: string,
@@ -133,23 +148,10 @@ export async function updatePipelineStage(
   const existing = await findPipelineStageById(id);
   if (!existing) return null;
 
-  if (params.name !== undefined && params.name !== existing.name) {
-    if (existing.is_fixed) {
-      const err = new Error('Fixed stages cannot be renamed');
-      (err as NodeJS.ErrnoException).code = 'STAGE_FIXED';
-      throw err;
-    }
-
-    // Check for name collision with another stage
-    const collision = await pool.query<{ id: string }>(
-      'SELECT id FROM pipeline_stages WHERE lower(name) = lower($1) AND id <> $2 LIMIT 1',
-      [params.name, id],
-    );
-    if (collision.rows.length > 0) {
-      const err = new Error(`A stage named "${params.name}" already exists`);
-      (err as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
-      throw err;
-    }
+  if (params.name !== undefined && params.name !== existing.name && existing.is_fixed) {
+    const err = new Error('Fixed stages cannot be renamed');
+    (err as NodeJS.ErrnoException).code = 'STAGE_FIXED';
+    throw err;
   }
 
   const client: PoolClient = await pool.connect();
@@ -195,6 +197,19 @@ export async function updatePipelineStage(
     return result.rows[0] ?? null;
   } catch (error) {
     await client.query('ROLLBACK');
+    const pgCode = (error as NodeJS.ErrnoException).code;
+    if (pgCode === '23505') {
+      const constraint =
+        (error as NodeJS.ErrnoException & { constraint?: string }).constraint ?? '';
+      if (constraint.includes('sort_order') || params.name === undefined) {
+        const e = new Error('That sort order is already in use by another stage');
+        (e as NodeJS.ErrnoException).code = 'STAGE_SORT_ORDER_CONFLICT';
+        throw e;
+      }
+      const e = new Error(`A stage named "${params.name}" already exists`);
+      (e as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
+      throw e;
+    }
     throw error;
   } finally {
     client.release();
