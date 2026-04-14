@@ -442,4 +442,291 @@ describe('ContactDetailPage', () => {
       expect(screen.getByTestId('delete-error')).toBeInTheDocument();
     });
   });
+
+  it('shows an update error when saving contact changes fails', async () => {
+    server.use(
+      http.patch('/api/contacts/:id', () =>
+        HttpResponse.json(
+          { error: { code: 'VALIDATION_ERROR', message: 'Email already in use' } },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+    await user.click(screen.getByTestId('edit-contact-button'));
+    await user.click(screen.getByTestId('contact-form-submit'));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the merge button and opens the merge panel when clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => expect(screen.getByTestId('merge-contact-button')).toBeInTheDocument());
+    await user.click(screen.getByTestId('merge-contact-button'));
+    expect(screen.getByTestId('merge-contact-panel')).toBeInTheDocument();
+  });
+
+  describe('address management (edit mode)', () => {
+    it('shows the addresses section in edit mode', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      expect(screen.getByTestId('contact-addresses-section')).toBeInTheDocument();
+    });
+
+    it('shows the add address button in edit mode', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      expect(screen.getByTestId('add-address-button')).toBeInTheDocument();
+    });
+
+    it('shows the add address inline form when Add Address is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('add-address-button'));
+      expect(screen.getByTestId('add-address-form')).toBeInTheDocument();
+    });
+
+    it('hides the add form when Cancel is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('add-address-button'));
+      await user.click(screen.getByTestId('cancel-address-button'));
+      expect(screen.queryByTestId('add-address-form')).not.toBeInTheDocument();
+    });
+
+    it('submits a new address and hides the form on success', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('add-address-button'));
+      await user.type(screen.getByTestId('new-address-line1'), '123 Main St');
+      await user.click(screen.getByTestId('save-address-button'));
+      await waitFor(() => {
+        expect(screen.queryByTestId('add-address-form')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows existing addresses when the address list is non-empty', async () => {
+      const addressId = '00000000-0000-0000-0000-000000000501';
+      server.use(
+        http.get('/api/contacts/:id/addresses', () =>
+          HttpResponse.json({
+            addresses: [
+              {
+                id: addressId,
+                contact_id: CONTACT_1.id,
+                label: 'Work',
+                address_line1: '100 Office Blvd',
+                address_line2: null,
+                city: 'Seattle',
+                state_region: 'WA',
+                postal_code: '98101',
+                country: 'US',
+                is_default: true,
+                created_at: '2025-01-01T00:00:00.000Z',
+              },
+            ],
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId(`address-row-${addressId}`)).toBeInTheDocument();
+      });
+      expect(screen.getByTestId(`address-default-badge-${addressId}`)).toBeInTheDocument();
+    });
+
+    it('removes an address when Remove is clicked', async () => {
+      const addressId = '00000000-0000-0000-0000-000000000502';
+      let deleted = false;
+      server.use(
+        http.get('/api/contacts/:id/addresses', () =>
+          HttpResponse.json({
+            addresses: deleted
+              ? []
+              : [
+                  {
+                    id: addressId,
+                    contact_id: CONTACT_1.id,
+                    label: null,
+                    address_line1: '42 Delete Me',
+                    address_line2: null,
+                    city: null,
+                    state_region: null,
+                    postal_code: null,
+                    country: null,
+                    is_default: false,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                  },
+                ],
+          }),
+        ),
+        http.delete('/api/contacts/:id/addresses/:addressId', () => {
+          deleted = true;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId(`remove-address-${addressId}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`remove-address-${addressId}`));
+      // After successful delete the query is invalidated; address row should disappear
+      await waitFor(() => {
+        expect(screen.queryByTestId(`address-row-${addressId}`)).not.toBeInTheDocument();
+      });
+    });
+
+    it('sets an address as default when Set as Default is clicked', async () => {
+      const addressId = '00000000-0000-0000-0000-000000000503';
+      server.use(
+        http.get('/api/contacts/:id/addresses', () =>
+          HttpResponse.json({
+            addresses: [
+              {
+                id: addressId,
+                contact_id: CONTACT_1.id,
+                label: null,
+                address_line1: '99 Non-Default St',
+                address_line2: null,
+                city: null,
+                state_region: null,
+                postal_code: null,
+                country: null,
+                is_default: false,
+                created_at: '2025-01-01T00:00:00.000Z',
+              },
+            ],
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId(`set-default-address-${addressId}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`set-default-address-${addressId}`));
+      // Mutation fires; no error expected
+    });
+
+    it('shows an error message when saving an address fails', async () => {
+      server.use(
+        http.post('/api/contacts/:id/addresses', () =>
+          HttpResponse.json(
+            { error: { code: 'VALIDATION_ERROR', message: 'Address is invalid' } },
+            { status: 400 },
+          ),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('add-address-button'));
+      await user.type(screen.getByTestId('new-address-line1'), '123 Bad St');
+      await user.click(screen.getByTestId('save-address-button'));
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
+    it('resets address state when edit is cancelled', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('add-address-button'));
+      expect(screen.getByTestId('add-address-form')).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('contact-form-cancel'));
+      // Back in view mode — add-address form should be gone
+      expect(screen.queryByTestId('add-address-form')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('social profile display', () => {
+    it('shows other_url as a clickable link when set', async () => {
+      server.use(
+        http.get('/api/contacts/:id', ({ params }) => {
+          if (params.id === CONTACT_1.id) {
+            return HttpResponse.json({
+              contact: { ...CONTACT_1, other_url: 'https://example.com/profile' },
+            });
+          }
+          return HttpResponse.json(
+            { error: { code: 'NOT_FOUND', message: 'Not found' } },
+            { status: 404 },
+          );
+        }),
+      );
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('detail-other-link')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('detail-other-link')).toHaveAttribute(
+        'href',
+        'https://example.com/profile',
+      );
+    });
+  });
 });
