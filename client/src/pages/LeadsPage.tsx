@@ -447,8 +447,7 @@ export default function LeadsPage() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">
-                            {resolveOwnerName(lead.owner_id, activeUsers) ??
-                              t('leads.ownerUnknown')}
+                            {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500">
                             {new Date(lead.created_at).toLocaleDateString()}

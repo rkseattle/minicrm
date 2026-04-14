@@ -314,7 +314,7 @@ export default function LeadDetailPage() {
                   {t('leads.ownerLabel')}
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {resolveOwnerName(lead.owner_id, activeUsers) ?? t('leads.ownerUnknown')}
+                  {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
                 </dd>
               </div>
               <div>
