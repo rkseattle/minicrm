@@ -300,6 +300,24 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Database migrations: `016_add_notification_prefs_to_users.js` adds three boolean columns to `users`; `017_create_overdue_task_notifications.js` creates the dedup table and seeds the `email_notifications_enabled` system setting
 - Email transport uses nodemailer with SMTP env vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`); in development and test environments emails are stubbed (logged to console rather than sent)
 
+### Custom Pipeline Stages (MINCRM-180)
+
+- Admin Settings includes a **Pipeline Stages** section where admins can add, rename, reorder (up/down buttons), and delete custom pipeline stages with per-stage default probability percentages
+- **Closed Won** and **Closed Lost** are always present, always last, and cannot be renamed or deleted (marked `is_fixed = true` in the DB)
+- Deleting a stage is blocked if any open (non-terminal) deals are currently in that stage — the admin sees the deal count and must move those deals first
+- Stage names must be unique (case-insensitive); blank names are rejected
+- Renaming a stage atomically updates all deals in the old stage name in the same DB transaction — no deal records are orphaned
+- Pipeline stage definitions are stored in the new `pipeline_stages` table (migration `021_create_pipeline_stages.js`); the `deals_stage_check` constraint is removed in the same migration
+- The client fetches the live stage list on app startup via `GET /api/settings/pipeline-stages` (public endpoint) and caches it for 5 minutes via React Query (`PIPELINE_STAGES_QUERY_KEY`)
+- All stage selectors (`DealForm`, `DealCard`, `AutomationRulesPage`) and board columns (`DealsPage`, `StageColumn`) now consume the live stage list via the `usePipelineStages` hook instead of the hardcoded constant
+- Custom stage names are displayed using their raw name; built-in stage names still use i18n translation keys
+- API endpoints:
+  - `GET /api/settings/pipeline-stages` — public, returns `{ stages: PipelineStageResponse[] }` in sort order
+  - `POST /api/settings/pipeline-stages` — admin only, body `{ name, sort_order, probability? }`, returns the new stage
+  - `PATCH /api/settings/pipeline-stages/:id` — admin only, body `{ name?, sort_order?, probability? }`, returns updated stage; fixed stages reject name changes with 403
+  - `DELETE /api/settings/pipeline-stages/:id` — admin only, returns `{ id }` on success; 409 if open deals exist
+- Database migration: `021_create_pipeline_stages.js` creates the `pipeline_stages` table, seeds the six default stages, and drops the hardcoded `deals_stage_check` constraint
+
 ### User Language Preference (MINCRM-31)
 
 - Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar

@@ -19,9 +19,8 @@ import { getContact, updateContact, deleteContact, listContactDeals } from '@/ap
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-import type { PipelineStage } from '@shared/schemas/dealSchema.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
@@ -331,9 +330,7 @@ export default function ContactDetailPage() {
                         {deal.name}
                       </Link>
                       <span className="text-sm text-gray-500">
-                        {t(
-                          `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
-                        )}
+                        {getStageDisplayName(deal.stage, t)}
                       </span>
                     </li>
                   ))}

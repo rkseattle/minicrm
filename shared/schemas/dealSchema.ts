@@ -1,11 +1,19 @@
 /**
  * Shared Zod schemas for deal-related validation.
  * Imported by both the server (request validation) and the client (form validation).
+ *
+ * Pipeline stages are now stored in the pipeline_stages DB table (MINCRM-180).
+ * PIPELINE_STAGES is kept as the seed/fallback set for bootstrapping; runtime
+ * validation uses the live stage list fetched from the API.
  */
 
 import { z } from 'zod';
 
-/** Fixed pipeline stages for the alpha release. Order reflects the sales funnel. */
+/**
+ * Seed pipeline stage names — used for bootstrapping and as the fallback when the
+ * live stage list is not yet available. The authoritative list lives in the
+ * pipeline_stages table and is fetched via GET /api/settings/pipeline-stages.
+ */
 export const PIPELINE_STAGES = [
   'Prospecting',
   'Qualification',
@@ -15,6 +23,7 @@ export const PIPELINE_STAGES = [
   'Closed Lost',
 ] as const;
 
+/** Type-level union of the seed stage names (kept for backward compatibility). */
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
 /**
@@ -26,7 +35,12 @@ export const createDealSchema = z.object({
     .string({ required_error: 'Deal name is required' })
     .min(1, 'Deal name is required')
     .trim(),
-  stage: z.enum(PIPELINE_STAGES, { required_error: 'Stage is required' }),
+  /**
+   * Stage is validated as a non-empty string at the schema level.
+   * The server additionally validates the value against the live pipeline_stages
+   * table (MINCRM-180). The client validates against the cached stage list.
+   */
+  stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
   value: z.number().nonnegative('Value must be 0 or greater').optional(),
   close_date: z
     .string()
@@ -84,7 +98,7 @@ export const updateDealSchema = createDealSchema
 export const dealResponseSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  stage: z.enum(PIPELINE_STAGES),
+  stage: z.string(),
   value: z.string().nullable(), // pg returns numeric as string
   close_date: z.string().nullable(),
   loss_reason: z.string().nullable(),

@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import StageColumn from '@/components/StageColumn.js';
-import CloseDealModal, { CLOSED_STAGES } from '@/components/CloseDealModal.js';
+import CloseDealModal from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
@@ -31,17 +31,12 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
-import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
-import { PIPELINE_STAGE_I18N_KEY } from '@/utils/pipelineStageI18nKey.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-
-/** Open pipeline stages shown in the summary bar (excludes terminal stages) */
-const OPEN_PIPELINE_STAGES = PIPELINE_STAGES.filter(
-  (s) => s !== 'Closed Won' && s !== 'Closed Lost',
-);
+import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
@@ -85,6 +80,10 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+
+  // Live stage list — replaces hardcoded PIPELINE_STAGES (MINCRM-180)
+  const { stages: pipelineStages, stageNames, terminalStageNames } = usePipelineStages();
+  const openStages = pipelineStages.filter((s) => !s.is_terminal);
   const [isExporting, setIsExporting] = useState(false);
 
   // ── View mode ───────────────��──────────────────────────────────────────────
@@ -226,14 +225,15 @@ export default function DealsPage() {
    * Uses boardData since the board fetches all deals in a single page.
    */
   const dealsByStage = useMemo(() => {
-    const grouped = new Map<PipelineStage, DealResponse[]>();
-    PIPELINE_STAGES.forEach((stage) => grouped.set(stage, []));
+    const grouped = new Map<string, DealResponse[]>();
+    stageNames.forEach((stage) => grouped.set(stage, []));
     (boardData?.data ?? []).forEach((deal) => {
-      if (!showClosed && (CLOSED_STAGES as PipelineStage[]).includes(deal.stage)) return;
-      grouped.get(deal.stage)?.push(deal);
+      if (!showClosed && terminalStageNames.includes(deal.stage)) return;
+      if (!grouped.has(deal.stage)) grouped.set(deal.stage, []);
+      grouped.get(deal.stage)!.push(deal);
     });
     return grouped;
-  }, [boardData?.data, showClosed]);
+  }, [boardData?.data, showClosed, stageNames, terminalStageNames]);
 
   /**
    * Per-stage count and total value for the open pipeline stages.
@@ -244,12 +244,12 @@ export default function DealsPage() {
   const pipelineSummary = useMemo(() => {
     if (viewMode !== 'list') return [];
     const deals = listData?.data ?? [];
-    return OPEN_PIPELINE_STAGES.map((stage) => {
-      const stageDeals = deals.filter((d) => d.stage === stage);
+    return openStages.map((s) => {
+      const stageDeals = deals.filter((d) => d.stage === s.name);
       const total = stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
-      return { stage, count: stageDeals.length, total };
+      return { stage: s.name, count: stageDeals.length, total };
     });
-  }, [listData?.data, viewMode]);
+  }, [listData?.data, viewMode, openStages]);
 
   // Server handles sorting, pagination, and closed-stage filtering (MINCRM-176)
   const sortedDeals: DealResponse[] = listData?.data ?? [];
@@ -298,14 +298,14 @@ export default function DealsPage() {
       });
     },
     onError: (_error, variables) => {
-      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+      if (terminalStageNames.includes(variables.stage)) {
         setCloseError(t('pipeline.stageUpdateError'));
       } else {
         setStageError(t('pipeline.stageUpdateError'));
       }
     },
     onSuccess: (_data, variables) => {
-      if ((CLOSED_STAGES as PipelineStage[]).includes(variables.stage)) {
+      if (terminalStageNames.includes(variables.stage)) {
         setPendingClose(null);
         setCloseError(null);
       }
@@ -319,7 +319,7 @@ export default function DealsPage() {
       // Invalidate all deals queries (board and list variants)
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
-      if ((CLOSED_STAGES as PipelineStage[]).includes(stage)) {
+      if (terminalStageNames.includes(stage)) {
         queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       }
     },
@@ -572,17 +572,15 @@ export default function DealsPage() {
                         className="text-sm font-semibold text-gray-700"
                         data-testid="pipeline-mobile-stage-name"
                       >
-                        {t(
-                          `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[PIPELINE_STAGES[mobileStageIndex]]}`,
-                        )}{' '}
+                        {getStageDisplayName(stageNames[mobileStageIndex] ?? '', t)}{' '}
                         <span className="font-normal text-gray-500">
-                          {`(${(dealsByStage.get(PIPELINE_STAGES[mobileStageIndex]) ?? []).length})`}
+                          {`(${(dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []).length})`}
                         </span>
                       </p>
                       <p className="text-xs text-gray-400">
                         {t('pipeline.stageOf', {
                           current: mobileStageIndex + 1,
-                          total: PIPELINE_STAGES.length,
+                          total: stageNames.length,
                         })}
                       </p>
                     </div>
@@ -591,9 +589,9 @@ export default function DealsPage() {
                       aria-label={t('pipeline.nextStage')}
                       data-testid="pipeline-mobile-next"
                       onClick={() =>
-                        setMobileStageIndex((i) => Math.min(PIPELINE_STAGES.length - 1, i + 1))
+                        setMobileStageIndex((i) => Math.min(stageNames.length - 1, i + 1))
                       }
-                      disabled={mobileStageIndex === PIPELINE_STAGES.length - 1}
+                      disabled={mobileStageIndex === stageNames.length - 1}
                       className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
                     >
                       <svg
@@ -610,9 +608,9 @@ export default function DealsPage() {
                     </button>
                   </div>
                   <StageColumn
-                    key={PIPELINE_STAGES[mobileStageIndex]}
-                    stage={PIPELINE_STAGES[mobileStageIndex]}
-                    deals={dealsByStage.get(PIPELINE_STAGES[mobileStageIndex]) ?? []}
+                    key={stageNames[mobileStageIndex]}
+                    stage={stageNames[mobileStageIndex] ?? ''}
+                    deals={dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []}
                     accountNames={accountNames}
                     onStageChange={handleStageChange}
                     onCloseRequested={handleCloseRequested}
@@ -623,7 +621,7 @@ export default function DealsPage() {
                 </div>
                 {/* Desktop multi-column Kanban — hidden below md */}
                 <div className="hidden md:flex gap-4 overflow-x-auto pb-4">
-                  {PIPELINE_STAGES.map((stage) => (
+                  {stageNames.map((stage) => (
                     <StageColumn
                       key={stage}
                       stage={stage}
@@ -679,9 +677,7 @@ export default function DealsPage() {
                     data-testid={`pipeline-summary-${stage.toLowerCase().replace(/\s+/g, '-')}`}
                     className="flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
                   >
-                    <span className="font-semibold">
-                      {t(`pipeline.stages.${PIPELINE_STAGE_I18N_KEY[stage]}`)}
-                    </span>
+                    <span className="font-semibold">{getStageDisplayName(stage, t)}</span>
                     <span className="text-gray-400">·</span>
                     <span>{count}</span>
                     <span className="text-gray-400">·</span>
@@ -739,9 +735,7 @@ export default function DealsPage() {
                             {deal.name}
                           </Link>
                           <p className="text-sm text-gray-700">
-                            {t(
-                              `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
-                            )}
+                            {getStageDisplayName(deal.stage, t)}
                           </p>
                           <p className="text-sm text-gray-500">
                             {formatDealValue(deal.value, i18n.language)}
@@ -854,9 +848,7 @@ export default function DealsPage() {
                               </Link>
                             </td>
                             <td className="px-4 py-3 text-gray-700">
-                              {t(
-                                `pipeline.stages.${PIPELINE_STAGE_I18N_KEY[deal.stage as PipelineStage]}`,
-                              )}
+                              {getStageDisplayName(deal.stage, t)}
                             </td>
                             <td className="px-4 py-3 text-gray-500">
                               {formatDealValue(deal.value, i18n.language)}

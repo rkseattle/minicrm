@@ -195,13 +195,17 @@ describe('DB constraints — deals', () => {
     ).rejects.toThrow();
   });
 
-  it('rejects a deal with an invalid stage value', async () => {
-    await expect(
-      pool.query(
-        `INSERT INTO deals (name, stage, owner_id) VALUES ('Bad Stage Deal', 'NotAStage', $1)`,
-        [ownerId],
-      ),
-    ).rejects.toThrow();
+  it('accepts any stage string at the DB level (stage validation now at app layer, MINCRM-180)', async () => {
+    // Migration 021 removed the deals_stage_check constraint so admins can define
+    // custom stage names. The pipelineStageService.getStageNames() list is the
+    // authoritative allowlist — enforced in the deal controller, not in the DB.
+    const result = await pool.query(
+      `INSERT INTO deals (name, stage, owner_id) VALUES ('Custom Stage Deal', 'Discovery', $1) RETURNING id`,
+      [ownerId],
+    );
+    expect(result.rows[0].id).toBeTruthy();
+    // Clean up
+    await pool.query('DELETE FROM deals WHERE id = $1', [result.rows[0].id]);
   });
 
   it('rejects a deal whose account_id references a non-existent account (FK)', async () => {

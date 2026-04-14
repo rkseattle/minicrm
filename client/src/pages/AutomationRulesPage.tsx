@@ -34,6 +34,7 @@ import {
   type AutomationRuleLogResponse,
 } from '@shared/schemas/automationSchema.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
+import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 import { ACTIVITY_TYPES } from '@shared/schemas/activitySchema.js';
 
 /**
@@ -265,6 +266,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
 export default function AutomationRulesPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { stageNames } = usePipelineStages();
 
   // ── Data fetching ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
@@ -492,7 +494,7 @@ export default function AutomationRulesPage() {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
                   data-testid="trigger-stage-select"
                 >
-                  {PIPELINE_STAGES.map((s) => (
+                  {stageNames.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
