@@ -19,6 +19,9 @@ import {
   deleteLead,
   getLeadStatusHistory,
   convertLead,
+  findLeadByContactId,
+  findLeadByDealId,
+  searchAccountsForConversion,
 } from '../services/leadsService.js';
 import { findContactById } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
@@ -313,6 +316,22 @@ describe('convertLead', () => {
     ).rejects.toMatchObject({ code: 'DISQUALIFIED' });
   });
 
+  it('throws ACCOUNT_NOT_FOUND when linking to a non-existent account', async () => {
+    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+
+    await expect(
+      convertLead(
+        lead.id,
+        {
+          contact: { first_name: lead.first_name, email: lead.email },
+          account: { mode: 'link', account_id: '00000000-0000-0000-0000-000000000000' },
+          deal: { name: 'Opp' },
+        },
+        { id: ownerId, name: 'Tester' },
+      ),
+    ).rejects.toMatchObject({ code: 'ACCOUNT_NOT_FOUND' });
+  });
+
   it('links to an existing account instead of creating one', async () => {
     const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
 
@@ -334,5 +353,119 @@ describe('convertLead', () => {
     );
 
     expect(result.account_id).toBe(existingAccountId);
+  });
+});
+
+// ── listLeads — lead_source filter ──────────────────────────────────────────
+
+describe('listLeads — lead_source filter', () => {
+  it('filters by lead_source', async () => {
+    await createLead({
+      ...BASE_LEAD,
+      lead_source: 'Web',
+      email: 'web@example.com',
+      owner_id: ownerId,
+    });
+    await createLead({
+      ...BASE_LEAD,
+      lead_source: 'Referral',
+      email: 'ref@example.com',
+      owner_id: ownerId,
+    });
+
+    const result = await listLeads({ lead_source: 'Referral' });
+    expect(result.data.every((l) => l.lead_source === 'Referral')).toBe(true);
+    expect(result.data.some((l) => l.email === 'ref@example.com')).toBe(true);
+    expect(result.data.some((l) => l.email === 'web@example.com')).toBe(false);
+  });
+});
+
+// ── findLeadByContactId / findLeadByDealId ───────────────────────────────────
+
+describe('findLeadByContactId', () => {
+  it('returns the source lead for a converted contact', async () => {
+    const lead = await createLead({
+      ...BASE_LEAD,
+      email: 'bycontact@example.com',
+      owner_id: ownerId,
+    });
+    const result = await convertLead(
+      lead.id,
+      {
+        contact: { first_name: lead.first_name, email: lead.email },
+        account: { mode: 'create', name: 'Contact Test Corp' },
+        deal: { name: 'Contact Test Opp' },
+      },
+      { id: ownerId, name: 'Tester' },
+    );
+
+    const found = await findLeadByContactId(result.contact_id);
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(lead.id);
+  });
+
+  it('returns null when the contact has no source lead', async () => {
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+      ['No', 'Lead', 'nolead@example.com', ownerId],
+    );
+    const found = await findLeadByContactId(contactResult.rows[0].id);
+    expect(found).toBeNull();
+  });
+});
+
+describe('findLeadByDealId', () => {
+  it('returns the source lead for a converted deal', async () => {
+    const lead = await createLead({ ...BASE_LEAD, email: 'bydeal@example.com', owner_id: ownerId });
+    const result = await convertLead(
+      lead.id,
+      {
+        contact: { first_name: lead.first_name, email: lead.email },
+        account: { mode: 'create', name: 'Deal Test Corp' },
+        deal: { name: 'Deal Test Opp' },
+      },
+      { id: ownerId, name: 'Tester' },
+    );
+
+    const found = await findLeadByDealId(result.deal_id);
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(lead.id);
+  });
+
+  it('returns null when the deal has no source lead', async () => {
+    const acctResult = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      ['No Lead Corp', ownerId],
+    );
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, account_id, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+      ['No Lead Deal', 'Prospecting', acctResult.rows[0].id, ownerId],
+    );
+    const found = await findLeadByDealId(dealResult.rows[0].id);
+    expect(found).toBeNull();
+  });
+});
+
+// ── searchAccountsForConversion ──────────────────────────────────────────────
+
+describe('searchAccountsForConversion', () => {
+  it('returns accounts matching the query substring', async () => {
+    await pool.query(`INSERT INTO accounts (name, owner_id) VALUES ($1, $2), ($3, $4)`, [
+      'Acme Industries',
+      ownerId,
+      'Acme Holdings',
+      ownerId,
+    ]);
+
+    const results = await searchAccountsForConversion('Acme');
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    expect(results.every((r) => r.name.toLowerCase().includes('acme'))).toBe(true);
+    expect(results[0]).toHaveProperty('id');
+    expect(results[0]).toHaveProperty('name');
+  });
+
+  it('returns empty array when no accounts match', async () => {
+    const results = await searchAccountsForConversion('zzznomatch99999');
+    expect(results).toHaveLength(0);
   });
 });
