@@ -17,6 +17,7 @@ import {
   updateContact,
   deleteContact,
   exportContactsForCsv,
+  mergeContacts,
 } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
@@ -45,6 +46,9 @@ let ownerId: string;
 
 let accountId: string;
 
+/** Secondary user emails created in individual tests — cleaned up in beforeAll to prevent duplicate key errors on rerun */
+const SECONDARY_USERS = ['other@example.com', 'search-other@example.com'];
+
 beforeAll(async () => {
   await pool.query(
     'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1))',
@@ -65,6 +69,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
     [OWNER_USER.email],
   );
+  await pool.query('DELETE FROM users WHERE email = ANY($1)', [SECONDARY_USERS]);
   await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -77,6 +82,13 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1))',
+    [OWNER_USER.email],
+  );
+  await pool.query('DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1)', [
+    OWNER_USER.email,
+  ]);
   await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
     [OWNER_USER.email],
@@ -637,5 +649,290 @@ describe('exportContactsForCsv', () => {
     const rows = await exportContactsForCsv({ ownerId });
     expect(rows[0].last_name).toBe('Aaa');
     expect(rows[rows.length - 1].last_name).toBe('Zzz');
+  });
+
+  it('includes address and social fields in export rows', async () => {
+    await createContact({
+      ...BASE_CONTACT,
+      email: 'csv-export@example.com',
+      owner_id: ownerId,
+      address_line1: '123 Main St',
+      city: 'Springfield',
+      country: 'US',
+      linkedin_url: 'https://linkedin.com/in/alice',
+    });
+
+    const rows = await exportContactsForCsv({ ownerId });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].address_line1).toBe('123 Main St');
+    expect(rows[0].city).toBe('Springfield');
+    expect(rows[0].country).toBe('US');
+    expect(rows[0].linkedin_url).toBe('https://linkedin.com/in/alice');
+  });
+});
+
+// ── createContact — address and social fields ───────────────────────────────────
+
+describe('createContact — address and social fields', () => {
+  it('stores address fields when provided', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'addr@example.com',
+      owner_id: ownerId,
+      address_line1: '100 Oak Ave',
+      address_line2: 'Suite 200',
+      city: 'Portland',
+      state_region: 'OR',
+      postal_code: '97201',
+      country: 'US',
+    });
+
+    expect(contact.address_line1).toBe('100 Oak Ave');
+    expect(contact.address_line2).toBe('Suite 200');
+    expect(contact.city).toBe('Portland');
+    expect(contact.state_region).toBe('OR');
+    expect(contact.postal_code).toBe('97201');
+    expect(contact.country).toBe('US');
+  });
+
+  it('stores null for address fields when omitted', async () => {
+    const contact = await createContact({
+      first_name: 'No',
+      last_name: 'Address',
+      email: 'noaddr@example.com',
+      owner_id: ownerId,
+    });
+
+    expect(contact.address_line1).toBeNull();
+    expect(contact.city).toBeNull();
+    expect(contact.country).toBeNull();
+  });
+
+  it('stores linkedin_url and twitter_x_url when provided', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'social@example.com',
+      owner_id: ownerId,
+      linkedin_url: 'https://linkedin.com/in/alicesmith',
+      twitter_x_url: 'https://x.com/alicesmith',
+    });
+
+    expect(contact.linkedin_url).toBe('https://linkedin.com/in/alicesmith');
+    expect(contact.twitter_x_url).toBe('https://x.com/alicesmith');
+  });
+
+  it('stores null for social fields when omitted', async () => {
+    const contact = await createContact({
+      first_name: 'No',
+      last_name: 'Social',
+      email: 'nosocial@example.com',
+      owner_id: ownerId,
+    });
+    expect(contact.linkedin_url).toBeNull();
+    expect(contact.twitter_x_url).toBeNull();
+  });
+});
+
+// ── updateContact — address and social fields ───────────────────────────────────
+
+describe('updateContact — address and social fields', () => {
+  it('updates city and country', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const updated = await updateContact(contact.id, { city: 'Seattle', country: 'US' });
+    expect(updated!.city).toBe('Seattle');
+    expect(updated!.country).toBe('US');
+    // Other fields intact
+    expect(updated!.first_name).toBe('Alice');
+  });
+
+  it('updates linkedin_url', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const updated = await updateContact(contact.id, {
+      linkedin_url: 'https://www.linkedin.com/in/testuser',
+    });
+    expect(updated!.linkedin_url).toBe('https://www.linkedin.com/in/testuser');
+  });
+
+  it('overwrites linkedin_url with a new value', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'clearme@example.com',
+      owner_id: ownerId,
+      linkedin_url: 'https://linkedin.com/in/old-url',
+    });
+    const updated = await updateContact(contact.id, {
+      linkedin_url: 'https://linkedin.com/in/new-url',
+    });
+    expect(updated!.linkedin_url).toBe('https://linkedin.com/in/new-url');
+  });
+});
+
+// ── mergeContacts ───────────────────────────────────────────────────────────────
+
+describe('mergeContacts', () => {
+  /** Reusable actor derived from the test owner (valid user in DB) */
+  const getActor = () => ({ id: ownerId, name: 'Owner User' });
+
+  it('deletes the loser contact after merge', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      email: 'loser@example.com',
+      owner_id: ownerId,
+    });
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const found = await findContactById(loser.id);
+    expect(found).toBeNull();
+  });
+
+  it('winner contact still exists after merge', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'alive-winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      email: 'alive-loser@example.com',
+      owner_id: ownerId,
+    });
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const found = await findContactById(winner.id);
+    expect(found).not.toBeNull();
+  });
+
+  it('rejects self-merge (winner === loser)', async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: 'self@example.com',
+      owner_id: ownerId,
+    });
+
+    await expect(
+      mergeContacts({ winnerId: contact.id, loserId: contact.id, fieldChoices: {} }),
+    ).rejects.toMatchObject({ code: 'SELF_MERGE' });
+  });
+
+  it('uses loser field value when fieldChoices specifies loser', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      first_name: 'WinnerFirst',
+      email: 'fc-winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      first_name: 'LoserFirst',
+      email: 'fc-loser@example.com',
+      owner_id: ownerId,
+    });
+
+    await mergeContacts(
+      { winnerId: winner.id, loserId: loser.id, fieldChoices: { first_name: 'loser' } },
+      getActor(),
+    );
+
+    const updated = await findContactById(winner.id);
+    expect(updated!.first_name).toBe('LoserFirst');
+  });
+
+  it('re-links loser activities to winner', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'act-winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      email: 'act-loser@example.com',
+      owner_id: ownerId,
+    });
+
+    // Insert an activity linked to the loser
+    const actResult = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, status, contact_id, owner_id)
+       VALUES ('Note', 'Test Note', 'open', $1, $2)
+       RETURNING id`,
+      [loser.id, ownerId],
+    );
+    const activityId = actResult.rows[0].id;
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    // The original activity should now be linked to the winner
+    const actRow = await pool.query<{ contact_id: string }>(
+      'SELECT contact_id FROM activities WHERE id = $1',
+      [activityId],
+    );
+    expect(actRow.rows[0].contact_id).toBe(winner.id);
+  });
+
+  it('writes a merged audit entry', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'audit-winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      first_name: 'AuditLoser',
+      email: 'audit-loser@example.com',
+      owner_id: ownerId,
+    });
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const auditRow = await pool.query(
+      `SELECT * FROM audit_log WHERE record_type = 'contact' AND record_id = $1 AND event_type = 'merged'`,
+      [winner.id],
+    );
+    expect(auditRow.rows).toHaveLength(1);
+  });
+
+  it('re-links loser deal_contacts to winner, skipping duplicates', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'deal-winner@example.com',
+      owner_id: ownerId,
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      email: 'deal-loser@example.com',
+      owner_id: ownerId,
+    });
+
+    // Create a deal linked to the loser
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, account_id, owner_id)
+       VALUES ('Merge Deal', 'Prospecting', $1, $2)
+       RETURNING id`,
+      [accountId, ownerId],
+    );
+    const dealId = dealResult.rows[0].id;
+
+    await pool.query(`INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2)`, [
+      dealId,
+      loser.id,
+    ]);
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    // The winner should now be linked to the deal
+    const linkRow = await pool.query(
+      `SELECT * FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2`,
+      [dealId, winner.id],
+    );
+    expect(linkRow.rows).toHaveLength(1);
+
+    // Cleanup deal
+    await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
   });
 });
