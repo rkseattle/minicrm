@@ -73,7 +73,7 @@ export default function DealDetailPage() {
 
   /** Close deal modal state — null when closed */
   const [pendingClose, setPendingClose] = useState<{
-    stage: 'Closed Won' | 'Closed Lost';
+    stage: string;
     /** Form values captured at the moment the terminal stage was selected */
     formValues: DealFormValues;
   } | null>(null);
@@ -169,7 +169,7 @@ export default function DealDetailPage() {
       loss_reason,
       formValues,
     }: {
-      stage: 'Closed Won' | 'Closed Lost';
+      stage: string;
       close_date: string | null;
       loss_reason: string | null;
       formValues: DealFormValues;

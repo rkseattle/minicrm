@@ -21,6 +21,8 @@ export type PipelineStageResponse = z.infer<typeof pipelineStageResponseSchema>;
 
 /**
  * Request body for creating a new pipeline stage.
+ * sort_order is intentionally absent — the server auto-assigns it as
+ * MAX(non-terminal sort_order) + 10, eliminating client-side collision risk.
  */
 export const createPipelineStageSchema = z.object({
   name: z
@@ -28,7 +30,6 @@ export const createPipelineStageSchema = z.object({
     .min(1, 'Stage name cannot be blank')
     .max(100, 'Stage name must be 100 characters or fewer')
     .trim(),
-  sort_order: z.number({ required_error: 'Sort order is required' }).int().nonnegative(),
   probability: z.number().int().min(0).max(100).optional().default(0),
 });
 

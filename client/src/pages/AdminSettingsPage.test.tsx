@@ -399,7 +399,123 @@ describe('AdminSettingsPage', () => {
         );
       });
     });
+  });
 
+  // ── Pipeline stage section ─────────────────────────────────────────────────
+
+  describe('pipeline stage section', () => {
+    it('renders the pipeline stages table with seed stage names', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Prospecting')).toBeInTheDocument();
+      expect(screen.getByText('Closed Won')).toBeInTheDocument();
+    });
+
+    it('shows name conflict error when adding a duplicate stage name', async () => {
+      server.use(
+        http.post('/api/settings/pipeline-stages', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'STAGE_NAME_CONFLICT',
+                message: 'A stage named "Demo" already exists',
+              },
+            },
+            { status: 409 },
+          ),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('add-stage-button'));
+      await user.type(screen.getByTestId('add-stage-name-input'), 'Demo');
+      await user.click(screen.getByTestId('add-stage-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('add-stage-error')).toBeInTheDocument();
+      });
+    });
+
+    it('disables the name input for fixed stages', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+      });
+      // Click edit on Closed Won (is_fixed: true)
+      await user.click(screen.getByTestId('pipeline-stage-edit-ps-5'));
+      await waitFor(() => {
+        const nameInput = screen.getByTestId('pipeline-stage-name-input-ps-5') as HTMLInputElement;
+        expect(nameInput.disabled).toBe(true);
+      });
+    });
+
+    it('shows blocked message with deal count when delete is blocked', async () => {
+      server.use(
+        http.delete('/api/settings/pipeline-stages/:id', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'STAGE_HAS_OPEN_DEALS',
+                message: 'Cannot delete — 3 open deal(s) must be moved first',
+                dealCount: 3,
+              },
+            },
+            { status: 409 },
+          ),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-stage-delete-ps-1')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('pipeline-stage-delete-ps-1'));
+      await user.click(screen.getByTestId('delete-stage-confirm'));
+      await waitFor(() => {
+        expect(screen.getByTestId('delete-stage-blocked-message')).toBeInTheDocument();
+      });
+    });
+
+    it('shows success feedback after successfully adding a stage', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('add-stage-button'));
+      await user.type(screen.getByTestId('add-stage-name-input'), 'Discovery');
+      await user.click(screen.getByTestId('add-stage-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('pipeline-stages-feedback')).toBeInTheDocument();
+      });
+    });
+
+    it('shows generic error when add stage request fails with a server error', async () => {
+      server.use(
+        http.post('/api/settings/pipeline-stages', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('add-stage-button'));
+      await user.type(screen.getByTestId('add-stage-name-input'), 'Discovery');
+      await user.click(screen.getByTestId('add-stage-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('add-stage-error')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('demo data section — remove failure', () => {
     it('shows error feedback when remove fails', async () => {
       server.use(
         http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })),

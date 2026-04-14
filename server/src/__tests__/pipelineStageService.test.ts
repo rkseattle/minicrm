@@ -106,34 +106,35 @@ describe('getTerminalStageNames', () => {
 
 describe('createPipelineStage', () => {
   it('inserts a new non-terminal stage and returns it', async () => {
-    const stage = await createPipelineStage({
-      name: 'Discovery',
-      sort_order: 5,
-      probability: 15,
-    });
+    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 });
     expect(stage.id).toBeTruthy();
     expect(stage.name).toBe('Discovery');
-    expect(stage.sort_order).toBe(5);
     expect(stage.probability).toBe(15);
     expect(stage.is_terminal).toBe(false);
     expect(stage.is_fixed).toBe(false);
   });
 
+  it('auto-assigns sort_order as MAX(all stages) + 10', async () => {
+    // Seed has max sort_order 60 (Closed Lost); new stage should get 70
+    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 });
+    expect(stage.sort_order).toBe(70);
+  });
+
   it('appears in listPipelineStages after creation', async () => {
-    await createPipelineStage({ name: 'POC', sort_order: 25, probability: 40 });
+    await createPipelineStage({ name: 'POC', probability: 40 });
     const names = await getStageNames();
     expect(names).toContain('POC');
   });
 
   it('throws STAGE_NAME_CONFLICT for a duplicate name (case-insensitive)', async () => {
-    await createPipelineStage({ name: 'Demo', sort_order: 5, probability: 20 });
-    await expect(
-      createPipelineStage({ name: 'DEMO', sort_order: 6, probability: 20 }),
-    ).rejects.toMatchObject({ code: 'STAGE_NAME_CONFLICT' });
+    await createPipelineStage({ name: 'Demo', probability: 20 });
+    await expect(createPipelineStage({ name: 'DEMO', probability: 20 })).rejects.toMatchObject({
+      code: 'STAGE_NAME_CONFLICT',
+    });
   });
 
   it('defaults probability to 0 when set to 0', async () => {
-    const stage = await createPipelineStage({ name: 'Scoping', sort_order: 35, probability: 0 });
+    const stage = await createPipelineStage({ name: 'Scoping', probability: 0 });
     expect(stage.probability).toBe(0);
   });
 });
@@ -218,13 +219,23 @@ describe('updatePipelineStage', () => {
     });
     expect(result).toBeNull();
   });
+
+  it('throws STAGE_SORT_ORDER_CONFLICT when updating to an already-used sort_order', async () => {
+    const stages = await listPipelineStages();
+    const prospecting = stages.find((s) => s.name === 'Prospecting')!;
+    const qualification = stages.find((s) => s.name === 'Qualification')!;
+    // Prospecting has sort_order 10; try to give Qualification the same sort_order
+    await expect(
+      updatePipelineStage(qualification.id, { sort_order: prospecting.sort_order }),
+    ).rejects.toMatchObject({ code: 'STAGE_SORT_ORDER_CONFLICT' });
+  });
 });
 
 // ── deletePipelineStage ────────────────────────────────────────────────────────
 
 describe('deletePipelineStage', () => {
   it('deletes a custom stage with no open deals', async () => {
-    const created = await createPipelineStage({ name: 'ToDelete', sort_order: 45, probability: 0 });
+    const created = await createPipelineStage({ name: 'ToDelete', probability: 0 });
     const deleted = await deletePipelineStage(created.id);
     expect(deleted?.name).toBe('ToDelete');
     const found = await findPipelineStageById(created.id);

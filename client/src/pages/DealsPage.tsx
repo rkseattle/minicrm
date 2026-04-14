@@ -33,7 +33,7 @@ import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
-import type { DealResponse, PipelineStage } from '@shared/schemas/dealSchema.js';
+import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
@@ -47,7 +47,7 @@ const VIEW_MODE_STORAGE_KEY = 'deals.viewMode';
 /** State captured while the user has selected a terminal stage but not yet confirmed */
 interface PendingClose {
   dealId: string;
-  stage: 'Closed Won' | 'Closed Lost';
+  stage: string;
 }
 
 /**
@@ -284,7 +284,7 @@ export default function DealsPage() {
       loss_reason,
     }: {
       id: string;
-      stage: PipelineStage;
+      stage: string;
       close_date?: string;
       loss_reason?: string;
     }) =>
@@ -333,7 +333,7 @@ export default function DealsPage() {
    * @param dealId - UUID of the deal to update
    * @param stage - Target pipeline stage
    */
-  function handleStageChange(dealId: string, stage: PipelineStage): void {
+  function handleStageChange(dealId: string, stage: string): void {
     stageMutation.mutate({ id: dealId, stage });
   }
 
@@ -341,9 +341,9 @@ export default function DealsPage() {
    * Opens the close deal modal when a terminal stage is selected on a deal card.
    *
    * @param dealId - UUID of the deal to close
-   * @param stage - Terminal stage selected ('Closed Won' | 'Closed Lost')
+   * @param stage - Terminal stage selected by the user
    */
-  function handleCloseRequested(dealId: string, stage: 'Closed Won' | 'Closed Lost'): void {
+  function handleCloseRequested(dealId: string, stage: string): void {
     setCloseError(null);
     setPendingClose({ dealId, stage });
   }

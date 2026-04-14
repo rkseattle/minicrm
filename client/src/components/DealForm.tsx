@@ -54,7 +54,7 @@ interface DealFormProps {
    * If omitted, terminal stages update formData as any other stage would
    * (backward-compatible create flow).
    */
-  onCloseRequested?: (stage: 'Closed Won' | 'Closed Lost', formValues: DealFormValues) => void;
+  onCloseRequested?: (stage: string, formValues: DealFormValues) => void;
   /** Called with the current field values when the form is submitted */
   onSubmit: (values: DealFormValues) => void;
   /** Called when the Cancel button is clicked */
@@ -160,7 +160,7 @@ export default function DealForm({
           onChange={(e) => {
             const selected = e.target.value;
             if (onCloseRequested && terminalStageNames.includes(selected)) {
-              onCloseRequested(selected as 'Closed Won' | 'Closed Lost', formData);
+              onCloseRequested(selected, formData);
             } else {
               handleSelectChange(e);
             }

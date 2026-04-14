@@ -16,7 +16,18 @@ const SEED_STAGES: PipelineStageResponse[] = PIPELINE_STAGES.map((name, index) =
   id: `seed-${index}`,
   name,
   sort_order: (index + 1) * 10,
-  probability: name === 'Closed Won' ? 100 : name === 'Closed Lost' ? 0 : 0,
+  probability:
+    name === 'Closed Won'
+      ? 100
+      : name === 'Prospecting'
+        ? 10
+        : name === 'Qualification'
+          ? 25
+          : name === 'Proposal'
+            ? 50
+            : name === 'Negotiation'
+              ? 75
+              : 0, // Closed Lost and any unexpected seed name
   is_terminal: name === 'Closed Won' || name === 'Closed Lost',
   is_fixed: name === 'Closed Won' || name === 'Closed Lost',
 }));

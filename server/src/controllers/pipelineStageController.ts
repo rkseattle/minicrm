@@ -106,6 +106,12 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
         .json({ error: { code: 'STAGE_NAME_CONFLICT', message: (err as Error).message } });
       return;
     }
+    if (code === 'STAGE_SORT_ORDER_CONFLICT') {
+      res
+        .status(409)
+        .json({ error: { code: 'STAGE_SORT_ORDER_CONFLICT', message: (err as Error).message } });
+      return;
+    }
     throw err;
   }
 }

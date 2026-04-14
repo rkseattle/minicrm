@@ -18,7 +18,7 @@ interface CloseDealModalProps {
   /** Whether the modal is visible */
   isOpen: boolean;
   /** The terminal stage the user selected */
-  targetStage: 'Closed Won' | 'Closed Lost';
+  targetStage: string;
   /** Initial value for the close date field (YYYY-MM-DD, typically today) */
   initialCloseDate: string;
   /** Disables all inputs and buttons while the API call is in flight */
