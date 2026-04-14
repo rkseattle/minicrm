@@ -5,6 +5,17 @@
 
 import { z } from 'zod';
 
+/** Valid values for the account_type field (MINCRM-183) */
+export const ACCOUNT_TYPE_VALUES = [
+  'Prospect',
+  'Customer',
+  'Partner',
+  'Vendor',
+  'Competitor',
+  'Other',
+] as const;
+export type AccountType = (typeof ACCOUNT_TYPE_VALUES)[number];
+
 /**
  * Schema for creating a new account.
  * name is required; all other fields are optional.
@@ -20,6 +31,10 @@ export const createAccountSchema = z.object({
   revenue_range: z.string().trim().optional(),
   /** UUIDs of contacts to link to this account */
   contact_ids: z.array(z.string().uuid('Each contact ID must be a valid UUID')).optional(),
+  /** Account classification type (MINCRM-183) */
+  account_type: z.enum(ACCOUNT_TYPE_VALUES).nullable().optional(),
+  /** UUID of the parent account (MINCRM-184) */
+  parent_account_id: z.string().uuid('Parent account must be a valid UUID').nullable().optional(),
 });
 
 /**
@@ -47,6 +62,10 @@ export const accountResponseSchema = z.object({
   employee_range: z.string().nullable(),
   revenue_range: z.string().nullable(),
   owner_id: z.string().uuid(),
+  /** Account classification type (MINCRM-183) */
+  account_type: z.enum(ACCOUNT_TYPE_VALUES).nullable().optional(),
+  /** UUID of the parent account (MINCRM-184) */
+  parent_account_id: z.string().uuid().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });

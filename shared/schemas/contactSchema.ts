@@ -27,6 +27,36 @@ export const createContactSchema = z.object({
   title: z.string().trim().optional(),
   department: z.string().trim().optional(),
   account_id: z.string().uuid('Account ID must be a valid UUID').nullable().optional(),
+  // Address fields (MINCRM-182)
+  address_line1: z.string().trim().optional(),
+  address_line2: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  state_region: z.string().trim().optional(),
+  postal_code: z.string().trim().optional(),
+  country: z.string().trim().optional(),
+  // Social profile URLs (MINCRM-190)
+  linkedin_url: z
+    .string()
+    .trim()
+    .refine(
+      (val) =>
+        val === '' ||
+        val.startsWith('https://linkedin.com/') ||
+        val.startsWith('https://www.linkedin.com/'),
+      {
+        message: 'LinkedIn URL must begin with https://linkedin.com/ or https://www.linkedin.com/',
+      },
+    )
+    .optional(),
+  twitter_x_url: z
+    .string()
+    .trim()
+    .refine(
+      (val) =>
+        val === '' || val.startsWith('https://twitter.com/') || val.startsWith('https://x.com/'),
+      { message: 'Twitter/X URL must begin with https://twitter.com/ or https://x.com/' },
+    )
+    .optional(),
 });
 
 /**
@@ -58,6 +88,16 @@ export const contactResponseSchema = z.object({
   owner_id: z.string().uuid(),
   /** Set when the contact was created via lead conversion (MINCRM-175) */
   source_lead_id: z.string().uuid().nullable().optional(),
+  // Address fields (MINCRM-182)
+  address_line1: z.string().nullable().optional(),
+  address_line2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state_region: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  // Social profile URLs (MINCRM-190)
+  linkedin_url: z.string().nullable().optional(),
+  twitter_x_url: z.string().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });
