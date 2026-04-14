@@ -4,11 +4,12 @@
  */
 
 import pool from '../db.js';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   CreateAccountInput,
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
+import type { AccountType } from '@minicrm/shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditEntryInput } from './auditService.js';
@@ -30,6 +31,8 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof Omit<UpdateAccountInput, 'contact
   'employee_range',
   'revenue_range',
   'owner_id',
+  'account_type',
+  'parent_account_id',
 ]);
 
 /** Shape of an account row returned from the database */
@@ -41,6 +44,10 @@ export interface AccountRow {
   employee_range: string | null;
   revenue_range: string | null;
   owner_id: string;
+  /** Account classification type (MINCRM-183) */
+  account_type: AccountType | null;
+  /** UUID of the parent account (MINCRM-184) */
+  parent_account_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -63,6 +70,8 @@ interface ListAccountsOptions {
    * (case-insensitive substring match) are returned.
    */
   industry?: string;
+  /** When provided, only accounts with this account_type are returned (MINCRM-183) */
+  accountType?: AccountType;
   /** Column to sort by; defaults to 'created_at' */
   sort?: AccountSortColumn;
   /** Sort direction; defaults to 'ASC' */
@@ -71,6 +80,40 @@ interface ListAccountsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+}
+
+/**
+ * Checks whether setting parentId as the parent of accountId would create a circular chain.
+ * Traverses upward from parentId until it either reaches a root (no parent) or finds accountId.
+ * Must be called within a transaction if called alongside other account writes.
+ * (MINCRM-184)
+ *
+ * @param accountId - The account being updated
+ * @param parentId - The proposed parent account UUID
+ * @param client - pg client (may be a pool or PoolClient)
+ * @returns true if a circular chain would be created, false otherwise
+ */
+export async function wouldCreateCircularParent(
+  accountId: string,
+  parentId: string,
+  client: Pool | PoolClient,
+): Promise<boolean> {
+  if (accountId === parentId) return true;
+
+  let currentId: string | null = parentId;
+  // Traverse upward — a chain deeper than the total account count is impossible,
+  // but cap at 100 to guard against extreme cases.
+  const MAX_DEPTH = 100;
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const result: { rows: Array<{ parent_account_id: string | null }> } = await client.query<{
+      parent_account_id: string | null;
+    }>('SELECT parent_account_id FROM accounts WHERE id = $1 LIMIT 1', [currentId]);
+    const parentAccountId: string | null = result.rows[0]?.parent_account_id ?? null;
+    if (parentAccountId === null) return false;
+    if (parentAccountId === accountId) return true;
+    currentId = parentAccountId;
+  }
+  return false;
 }
 
 /**
@@ -123,15 +166,25 @@ export async function createAccount(
   params: CreateAccountInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<AccountRow> {
-  const { name, industry, website, employee_range, revenue_range, owner_id, contact_ids } = params;
+  const {
+    name,
+    industry,
+    website,
+    employee_range,
+    revenue_range,
+    owner_id,
+    contact_ids,
+    account_type,
+    parent_account_id,
+  } = params;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query<AccountRow>(
-      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id, account_type, parent_account_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         name,
@@ -140,6 +193,8 @@ export async function createAccount(
         employee_range ?? null,
         revenue_range ?? null,
         owner_id,
+        account_type ?? null,
+        parent_account_id ?? null,
       ],
     );
 
@@ -208,6 +263,11 @@ export async function listAccounts(
     conditions.push(`industry ILIKE $${values.length}`);
   }
 
+  if (options.accountType) {
+    values.push(options.accountType);
+    conditions.push(`account_type = $${values.length}`);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
@@ -253,6 +313,14 @@ export async function updateAccount(
   before?: AccountRow,
 ): Promise<AccountRow | null> {
   const { contact_ids, ...accountParams } = params;
+
+  // Validate no circular parent chain before starting the transaction (MINCRM-184)
+  if (accountParams.parent_account_id) {
+    const isCircular = await wouldCreateCircularParent(id, accountParams.parent_account_id, pool);
+    if (isCircular) {
+      throw Object.assign(new Error('Circular parent chain detected'), { code: 'CIRCULAR_PARENT' });
+    }
+  }
 
   const fields = (Object.keys(accountParams) as (keyof typeof accountParams)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof Omit<UpdateAccountInput, 'contact_ids'>),
@@ -331,6 +399,8 @@ export interface AccountExportRow {
   website: string | null;
   employee_range: string | null;
   revenue_range: string | null;
+  account_type: string | null;
+  parent_account_name: string | null;
   owner_name: string;
   contact_count: string;
   deal_count: string;
@@ -386,6 +456,8 @@ export async function exportAccountsForCsv(
        a.website,
        a.employee_range,
        a.revenue_range,
+       a.account_type,
+       p.name AS parent_account_name,
        u.name AS owner_name,
        (SELECT COUNT(*) FROM contacts c WHERE c.account_id = a.id)::text AS contact_count,
        (SELECT COUNT(*) FROM deals d WHERE d.account_id = a.id)::text AS deal_count,
@@ -393,6 +465,7 @@ export async function exportAccountsForCsv(
        a.updated_at
      FROM accounts a
      JOIN users u ON a.owner_id = u.id
+     LEFT JOIN accounts p ON a.parent_account_id = p.id
      ${whereClause}
      ORDER BY a.name ASC`,
     values,
@@ -450,4 +523,46 @@ export async function deleteAccount(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Returns all direct child accounts (subsidiaries) of the given account.
+ * Used on the account detail page to display the subsidiary list. (MINCRM-184)
+ *
+ * @param parentId - UUID of the parent account
+ * @returns Array of child account rows
+ */
+export async function listChildAccounts(parentId: string): Promise<AccountRow[]> {
+  const result = await pool.query<AccountRow>(
+    'SELECT * FROM accounts WHERE parent_account_id = $1 ORDER BY name ASC',
+    [parentId],
+  );
+  return result.rows;
+}
+
+/**
+ * Searches accounts by name (case-insensitive substring) for type-ahead use.
+ * Excludes the account with excludeId to prevent self-parenting. (MINCRM-184)
+ *
+ * @param query - Substring to match against account name
+ * @param excludeId - Account UUID to exclude from results
+ * @param limit - Maximum number of results (defaults to 10)
+ * @returns Array of matching account rows
+ */
+export async function searchAccounts(
+  query: string,
+  excludeId?: string,
+  limit = 10,
+): Promise<AccountRow[]> {
+  const pattern = `%${query}%`;
+  const result = excludeId
+    ? await pool.query<AccountRow>(
+        'SELECT * FROM accounts WHERE name ILIKE $1 AND id != $2 ORDER BY name ASC LIMIT $3',
+        [pattern, excludeId, limit],
+      )
+    : await pool.query<AccountRow>(
+        'SELECT * FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT $2',
+        [pattern, limit],
+      );
+  return result.rows;
 }

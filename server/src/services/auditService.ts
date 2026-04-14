@@ -25,7 +25,9 @@ export type AuditEventType =
   | 'role_changed'
   | 'deactivated'
   | 'reactivated'
-  | 'ownership_reassigned';
+  | 'ownership_reassigned'
+  /** Contact merge — winner record absorbed the loser (MINCRM-187) */
+  | 'merged';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

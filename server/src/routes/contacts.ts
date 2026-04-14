@@ -14,6 +14,7 @@ import {
   deleteContactHandler,
   listContactDealsHandler,
   exportContactsHandler,
+  mergeContactHandler,
 } from '../controllers/contactController.js';
 
 const router = Router();
@@ -492,5 +493,52 @@ router.delete('/:id', authenticate, asyncHandler(deleteContactHandler));
  *                 message: Contact not found
  */
 router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
+
+/**
+ * @openapi
+ * /api/contacts/{id}/merge:
+ *   post:
+ *     tags: [Contacts]
+ *     operationId: mergeContacts
+ *     summary: Merge two contact records
+ *     description: >
+ *       Atomically merges the loser contact into the winner (identified by :id).
+ *       Activities and deals are re-linked to the winner; the loser is deleted.
+ *       Only admins and the winner's owner may perform a merge.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the winner contact
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [loserId]
+ *             properties:
+ *               loserId:
+ *                 type: string
+ *                 format: uuid
+ *               fieldChoices:
+ *                 type: object
+ *                 description: Per-field choice of 'winner' or 'loser' value to keep
+ *     responses:
+ *       200:
+ *         description: Merged contact (the winner)
+ *       400:
+ *         description: Validation error
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Contact not found
+ */
+router.post('/:id/merge', authenticate, asyncHandler(mergeContactHandler));
 
 export default router;
