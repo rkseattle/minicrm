@@ -7,11 +7,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
+import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
 import ContactSelector from '@/components/ContactSelector.js';
-import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { AccountResponse, AccountType } from '@shared/schemas/accountSchema.js';
+import { ACCOUNT_TYPE_VALUES } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
+import { searchAccountsByName } from '@/api/accounts.js';
 
 /** Form field values managed by this component */
 export interface AccountFormValues {
@@ -24,6 +27,10 @@ export interface AccountFormValues {
   owner_id: string;
   /** UUIDs of contacts linked to this account */
   contact_ids: string[];
+  /** Account classification type (MINCRM-183) */
+  account_type: AccountType | '';
+  /** UUID of the parent account, or empty string for no parent (MINCRM-184) */
+  parent_account_id: string;
 }
 
 interface AccountFormProps {
@@ -31,6 +38,11 @@ interface AccountFormProps {
   initialValues?: Partial<AccountResponse>;
   /** Pre-populate the contact selector with already-linked contact UUIDs */
   initialContactIds?: string[];
+  /**
+   * UUID of this account (used to exclude it from parent search to prevent self-parenting).
+   * Omit on create form.
+   */
+  accountId?: string;
   /**
    * When provided, an owner selector is rendered.
    * Omit on the create form (ownership defaults to the creating user server-side).
@@ -68,6 +80,8 @@ function buildInitialState(
     revenue_range: initial?.revenue_range ?? '',
     owner_id: initial?.owner_id ?? '',
     contact_ids: initialContactIds ?? [],
+    account_type: initial?.account_type ?? '',
+    parent_account_id: initial?.parent_account_id ?? '',
   };
 }
 
@@ -77,6 +91,7 @@ function buildInitialState(
 export default function AccountForm({
   initialValues,
   initialContactIds,
+  accountId,
   users,
   onSubmit,
   onCancel,
@@ -92,10 +107,32 @@ export default function AccountForm({
     buildInitialState(initialValues, initialContactIds),
   );
 
+  // Parent account type-ahead state (MINCRM-184)
+  const [parentQuery, setParentQuery] = useState('');
+  const [parentSuggestions, setParentSuggestions] = useState<AccountResponse[]>([]);
+  const [parentName, setParentName] = useState(initialValues?.parent_account_id ? '' : '');
+
   // Move focus to the first input when the form mounts (WCAG 2.4.3)
   useEffect(() => {
     firstInputRef.current?.focus();
   }, []);
+
+  // Search parent accounts when query changes (MINCRM-184)
+  useEffect(() => {
+    const trimmed = parentQuery.trim();
+    if (trimmed.length < 2) return;
+    let cancelled = false;
+    searchAccountsByName({ q: trimmed, exclude: accountId })
+      .then((result) => {
+        if (!cancelled) setParentSuggestions(result.accounts);
+      })
+      .catch(() => {
+        if (!cancelled) setParentSuggestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [parentQuery, accountId]);
 
   /** Returns focus to the trigger element when the form closes. */
   function returnFocus(): void {
@@ -193,6 +230,24 @@ export default function AccountForm({
           disabled={isSubmitting}
         />
 
+        {/* Account Type dropdown (MINCRM-183) */}
+        <Select
+          id="account-type"
+          data-testid="account-type-select"
+          name="account_type"
+          label={t('accounts.accountTypeLabel')}
+          value={formData.account_type}
+          onChange={handleSelectChange}
+          disabled={isSubmitting}
+        >
+          <option value="">{t('accounts.accountTypeNone')}</option>
+          {ACCOUNT_TYPE_VALUES.map((type) => (
+            <option key={type} value={type}>
+              {t(`accounts.accountType.${type}`)}
+            </option>
+          ))}
+        </Select>
+
         {users !== undefined && (
           <OwnerSelect
             id="account-owner"
@@ -216,6 +271,73 @@ export default function AccountForm({
           onChange={handleContactIdsChange}
           disabled={isSubmitting}
         />
+      </div>
+
+      {/* Parent Account type-ahead (MINCRM-184) */}
+      <div className="mb-4 relative">
+        <label
+          htmlFor="account-parent-search"
+          className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+        >
+          {t('accounts.parentAccountLabel')}
+        </label>
+        {formData.parent_account_id ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-900" data-testid="account-parent-selected-name">
+              {parentName || t('accounts.parentAccountSelected')}
+            </span>
+            <button
+              type="button"
+              data-testid="account-parent-clear"
+              className="text-xs text-red-500 hover:underline"
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, parent_account_id: '' }));
+                setParentName('');
+                setParentQuery('');
+              }}
+              disabled={isSubmitting}
+            >
+              {t('accounts.parentAccountClear')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <Input
+              id="account-parent-search"
+              data-testid="account-parent-search"
+              name="parent_account_search"
+              type="text"
+              placeholder={t('accounts.parentAccountPlaceholder')}
+              value={parentQuery}
+              onChange={(e) => setParentQuery(e.target.value)}
+              disabled={isSubmitting}
+            />
+            {parentQuery.trim().length >= 2 && parentSuggestions.length > 0 && (
+              <ul
+                data-testid="account-parent-suggestions"
+                className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                {parentSuggestions.map((suggestion) => (
+                  <li key={suggestion.id}>
+                    <button
+                      type="button"
+                      data-testid={`account-parent-option-${suggestion.id}`}
+                      className="w-full text-start px-4 py-2 text-sm text-gray-900 hover:bg-gray-50"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, parent_account_id: suggestion.id }));
+                        setParentName(suggestion.name);
+                        setParentQuery('');
+                        setParentSuggestions([]);
+                      }}
+                    >
+                      {suggestion.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </div>
 
       {error && (

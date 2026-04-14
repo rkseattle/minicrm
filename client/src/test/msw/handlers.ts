@@ -595,6 +595,16 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  /** Accounts: GET /api/accounts/:id/children — returns empty list by default */
+  http.get('/api/accounts/:id/children', () => {
+    return HttpResponse.json([]);
+  }),
+
+  /** Accounts: GET /api/accounts/search — returns empty list by default */
+  http.get('/api/accounts/search', () => {
+    return HttpResponse.json([]);
+  }),
+
   /** Deals: GET /api/deals — supports ?owner=me filter */
   http.get('/api/deals', ({ request }) => {
     const url = new URL(request.url);

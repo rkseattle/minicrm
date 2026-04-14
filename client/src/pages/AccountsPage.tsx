@@ -20,7 +20,9 @@ import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.j
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
-import type { AccountResponse } from '@shared/schemas/accountSchema.js';
+import type { AccountResponse, AccountType } from '@shared/schemas/accountSchema.js';
+import { ACCOUNT_TYPE_VALUES } from '@shared/schemas/accountSchema.js';
+import { Select } from '@/components/ui/Select.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
@@ -45,6 +47,7 @@ export default function AccountsPage() {
   const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | ''>('');
   const [page, setPage] = useState(1);
 
   /**
@@ -94,6 +97,7 @@ export default function AccountsPage() {
       owner: ownerFilter === 'me' ? 'me' : undefined,
       search: debouncedSearch || undefined,
       industry: debouncedIndustry || undefined,
+      account_type: accountTypeFilter || undefined,
       sort: 'name' as const,
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
       page,
@@ -107,6 +111,7 @@ export default function AccountsPage() {
         owner: ownerFilter === 'me' ? 'me' : undefined,
         search: debouncedSearch || undefined,
         industry: debouncedIndustry || undefined,
+        account_type: accountTypeFilter || undefined,
         sort: 'name',
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         page,
@@ -253,6 +258,24 @@ export default function AccountsPage() {
             }}
             className="w-full sm:w-auto"
           />
+          {/* Account type filter (MINCRM-183) */}
+          <Select
+            id="accounts-type-filter"
+            data-testid="accounts-type-filter"
+            value={accountTypeFilter}
+            onChange={(e) => {
+              setAccountTypeFilter(e.target.value as AccountType | '');
+              setPage(1);
+            }}
+            className="w-full sm:w-auto"
+          >
+            <option value="">{t('accounts.accountTypeFilterAll')}</option>
+            {ACCOUNT_TYPE_VALUES.map((type) => (
+              <option key={type} value={type}>
+                {t(`accounts.accountType.${type}`)}
+              </option>
+            ))}
+          </Select>
           <OwnerToggle
             value={ownerFilter}
             onChange={setOwnerFilter}
@@ -354,6 +377,9 @@ export default function AccountsPage() {
                         </button>
                       </th>
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('accounts.columnType')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {t('accounts.columnIndustry')}
                       </th>
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -381,6 +407,15 @@ export default function AccountsPage() {
                           >
                             {account.name}
                           </Link>
+                        </td>
+                        <td className="px-4 py-3" data-testid={`account-type-${account.id}`}>
+                          {account.account_type ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                              {t(`accounts.accountType.${account.account_type}`)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-gray-500">{account.industry ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{account.website ?? '—'}</td>
