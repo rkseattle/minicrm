@@ -1,0 +1,491 @@
+/**
+ * LeadsPage component.
+ * Lists all lead records with status badges, filter toggles, and an inline create form.
+ * Supports inline status updates from the list view.
+ * (MINCRM-173, MINCRM-174)
+ */
+
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import NavBar from '@/components/NavBar.js';
+import LeadForm from '@/components/LeadForm.js';
+import { Button } from '@/components/ui/Button.js';
+import { Pagination } from '@/components/ui/Pagination.js';
+import { listLeads, createLead, updateLead, deleteLead } from '@/api/leads.js';
+import type { DuplicateLeadInfo } from '@/api/leads.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
+import type { LeadResponse } from '@shared/schemas/leadSchema.js';
+import { LEAD_STATUSES, LEAD_SOURCES } from '@shared/schemas/leadSchema.js';
+import { useAuth } from '@/hooks/useAuth.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import type { LeadFormValues } from '@/components/LeadForm.js';
+
+/** React Query cache key for the leads list */
+export const LEADS_QUERY_KEY = ['leads'] as const;
+
+/** Tailwind badge classes by status (MINCRM-174) */
+const STATUS_BADGE: Record<string, string> = {
+  New: 'bg-blue-100 text-blue-800',
+  Contacted: 'bg-yellow-100 text-yellow-800',
+  Qualified: 'bg-green-100 text-green-800',
+  Disqualified: 'bg-gray-100 text-gray-600',
+};
+
+/**
+ * Leads list page with status filters, inline status update, and inline create form.
+ */
+export default function LeadsPage() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  const [showForm, setShowForm] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const newLeadButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
+  const [duplicateLead, setDuplicateLead] = useState<DuplicateLeadInfo | null>(null);
+  const forceNextSubmit = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const [page, setPage] = useState(1);
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'me'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [sourceFilter, setSourceFilter] = useState<string>('');
+  const [includeDisqualified, setIncludeDisqualified] = useState(false);
+  const [includeConverted, setIncludeConverted] = useState(false);
+
+  // Inline status editing
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+
+  const queryParams = {
+    owner: ownerFilter === 'me' ? ('me' as const) : undefined,
+    status: statusFilter || undefined,
+    lead_source: sourceFilter || undefined,
+    includeDisqualified,
+    includeConverted,
+    page,
+    limit: PAGINATION_DEFAULT_LIMIT,
+  };
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [...LEADS_QUERY_KEY, queryParams],
+    queryFn: () => listLeads(queryParams),
+  });
+
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+    staleTime: 5 * 60 * 1000,
+  });
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+
+  const leads: LeadResponse[] = data?.data ?? [];
+  const total = data?.total ?? 0;
+
+  const createMutation = useMutation({
+    mutationFn: ({ values, force }: { values: LeadFormValues; force: boolean }) =>
+      createLead(
+        {
+          first_name: values.first_name,
+          last_name: values.last_name || undefined,
+          email: values.email,
+          phone: values.phone || undefined,
+          company_name: values.company_name || undefined,
+          lead_source: (values.lead_source as LeadFormValues['lead_source']) || undefined,
+          notes: values.notes || undefined,
+          owner_id: values.owner_id || undefined,
+        },
+        force,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
+      setShowForm(false);
+      setCreateError(null);
+      setDuplicateLead(null);
+      forceNextSubmit.current = false;
+      shouldRestoreFocusRef.current = true;
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as {
+        response?: {
+          status?: number;
+          data?: { duplicate?: DuplicateLeadInfo; error?: { message?: string } };
+        };
+      };
+      if (axiosErr?.response?.status === 409 && axiosErr.response.data?.duplicate) {
+        setDuplicateLead(axiosErr.response.data.duplicate);
+        setCreateError(null);
+      } else {
+        setCreateError(axiosErr?.response?.data?.error?.message ?? t('leads.createError'));
+        setDuplicateLead(null);
+      }
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateLead(id, { status: status as LeadResponse['status'] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
+      setEditingStatusId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteLead(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
+    },
+  });
+
+  function handleFormSubmit(values: LeadFormValues) {
+    const force = forceNextSubmit.current;
+    forceNextSubmit.current = false;
+    createMutation.mutate({ values, force });
+  }
+
+  function handleCreateAnyway() {
+    setDuplicateLead(null);
+    forceNextSubmit.current = true;
+    formRef.current?.requestSubmit();
+  }
+
+  function handleFormOpen() {
+    setShowForm(true);
+    setCreateError(null);
+    setDuplicateLead(null);
+    forceNextSubmit.current = false;
+    shouldRestoreFocusRef.current = false;
+  }
+
+  function handleFormClose() {
+    setShowForm(false);
+    setCreateError(null);
+    setDuplicateLead(null);
+    if (shouldRestoreFocusRef.current) {
+      newLeadButtonRef.current?.focus();
+    }
+  }
+
+  return (
+    <div>
+      <NavBar />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">{t('leads.pageTitle')}</h1>
+          {!showForm && (
+            <Button ref={newLeadButtonRef} onClick={handleFormOpen} data-testid="new-lead-button">
+              {t('leads.newLead')}
+            </Button>
+          )}
+        </div>
+
+        {/* Inline create form */}
+        {showForm && (
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">{t('leads.newLead')}</h2>
+
+            {duplicateLead && (
+              <div
+                className="mb-4 rounded border border-yellow-300 bg-yellow-50 p-4"
+                role="alert"
+                data-testid="duplicate-lead-warning"
+              >
+                <p className="text-sm font-medium text-yellow-800">
+                  {t('leads.duplicateWarningTitle')}
+                </p>
+                <p className="mt-1 text-sm text-yellow-700">
+                  {t('leads.duplicateWarningMessage', {
+                    name: `${duplicateLead.first_name}${duplicateLead.last_name ? ' ' + duplicateLead.last_name : ''}`,
+                  })}
+                </p>
+                <div className="mt-3 flex gap-3">
+                  <Link
+                    to={`/leads/${duplicateLead.id}`}
+                    className="text-sm font-medium text-yellow-800 underline"
+                    data-testid="duplicate-go-to-existing"
+                  >
+                    {t('leads.duplicateGoToExisting')}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleCreateAnyway}
+                    className="text-sm font-medium text-yellow-800 underline"
+                    data-testid="duplicate-create-anyway"
+                  >
+                    {t('leads.duplicateCreateAnyway')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {createError && (
+              <p className="mb-4 text-sm text-red-600" role="alert" data-testid="create-lead-error">
+                {createError}
+              </p>
+            )}
+
+            <LeadForm
+              ref={formRef}
+              activeUsers={activeUsers}
+              isAdmin={isAdmin}
+              onSubmit={handleFormSubmit}
+              isSubmitting={createMutation.isPending}
+              onCancel={handleFormClose}
+            />
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Owner toggle */}
+          <div className="flex rounded-md border border-gray-300 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setOwnerFilter('all');
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
+              data-testid="filter-owner-all"
+            >
+              {t('leads.filterAll')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOwnerFilter('me');
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
+              data-testid="filter-owner-me"
+            >
+              {t('leads.filterMine')}
+            </button>
+          </div>
+
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+            data-testid="filter-status"
+          >
+            <option value="">{t('leads.filterStatusAll')}</option>
+            {LEAD_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {t(`leads.status${s}`)}
+              </option>
+            ))}
+          </select>
+
+          {/* Source filter */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+            data-testid="filter-source"
+          >
+            <option value="">{t('leads.filterSourceAll')}</option>
+            {LEAD_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {t(`leads.source${s.replace(/\s+/g, '')}`)}
+              </option>
+            ))}
+          </select>
+
+          {/* Show disqualified toggle */}
+          <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={includeDisqualified}
+              onChange={(e) => {
+                setIncludeDisqualified(e.target.checked);
+                setPage(1);
+              }}
+              className="rounded border-gray-300"
+              data-testid="toggle-disqualified"
+            />
+            {t('leads.showDisqualified')}
+          </label>
+
+          {/* Show converted toggle */}
+          <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={includeConverted}
+              onChange={(e) => {
+                setIncludeConverted(e.target.checked);
+                setPage(1);
+              }}
+              className="rounded border-gray-300"
+              data-testid="toggle-converted"
+            />
+            {t('leads.showConverted')}
+          </label>
+        </div>
+
+        {/* Table */}
+        {isLoading && (
+          <p className="text-gray-500" data-testid="leads-loading">
+            {t('leads.loading')}
+          </p>
+        )}
+        {isError && (
+          <p className="text-red-600" data-testid="leads-error">
+            {t('leads.loadError')}
+          </p>
+        )}
+        {!isLoading && !isError && (
+          <>
+            {leads.length === 0 ? (
+              <p className="text-gray-500" data-testid="leads-empty">
+                {t('leads.empty')}
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnName')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnCompany')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnSource')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnStatus')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnOwner')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnCreated')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {t('leads.columnActions')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {leads.map((lead) => {
+                      const isConverted = Boolean(lead.converted_at);
+                      return (
+                        <tr
+                          key={lead.id}
+                          className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
+                          data-testid={`lead-row-${lead.id}`}
+                        >
+                          <td className="px-4 py-3 text-sm font-medium text-indigo-600">
+                            <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
+                              {lead.first_name}
+                              {lead.last_name ? ` ${lead.last_name}` : ''}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {lead.company_name ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {lead.lead_source
+                              ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {isConverted ? (
+                              <span
+                                className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800"
+                                data-testid={`badge-converted-${lead.id}`}
+                              >
+                                {t('leads.statusConverted')}
+                              </span>
+                            ) : editingStatusId === lead.id ? (
+                              <select
+                                ref={(el) => {
+                                  el?.focus();
+                                }}
+                                defaultValue={lead.status}
+                                onChange={(e) => {
+                                  updateStatusMutation.mutate({
+                                    id: lead.id,
+                                    status: e.target.value,
+                                  });
+                                }}
+                                onBlur={() => setEditingStatusId(null)}
+                                className="rounded border border-gray-300 py-0.5 text-xs"
+                                data-testid={`status-select-${lead.id}`}
+                              >
+                                {LEAD_STATUSES.map((s) => (
+                                  <option key={s} value={s}>
+                                    {t(`leads.status${s}`)}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingStatusId(lead.id)}
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                                data-testid={`status-badge-${lead.id}`}
+                                title={t('leads.clickToUpdateStatus')}
+                              >
+                                {t(`leads.status${lead.status}`)}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {resolveOwnerName(lead.owner_id, activeUsers) ??
+                              t('leads.ownerUnknown')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            {new Date(lead.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(t('leads.confirmDelete'))) {
+                                  deleteMutation.mutate(lead.id);
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                              disabled={deleteMutation.isPending}
+                              data-testid={`delete-lead-${lead.id}`}
+                              aria-label={t('leads.delete')}
+                            >
+                              {t('leads.delete')}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <Pagination
+              page={page}
+              limit={PAGINATION_DEFAULT_LIMIT}
+              total={total}
+              onPageChange={setPage}
+            />
+          </>
+        )}
+      </main>
+    </div>
+  );
+}

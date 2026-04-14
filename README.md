@@ -187,6 +187,19 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Password requirements: at least 8 characters, at least one letter, and at least one number (validated on both client and server via shared Zod schema)
 - Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
+### Leads (MINCRM-173, MINCRM-174, MINCRM-175)
+
+- Full CRUD for lead records with required fields (`first_name`, `email`) and optional fields (`last_name`, `phone`, `company_name`, `lead_source`, `notes`)
+- Lead status lifecycle: `New → Contacted → Qualified → Disqualified`; inline status update from list view with color-coded badges
+- Optional disqualification reason stored when status is set to `Disqualified`; disqualified leads hidden by default with a "Show disqualified" toggle
+- Status change history recorded in `lead_status_history` and displayed on the lead detail page
+- Atomic lead conversion (MINCRM-175): "Convert Lead" button creates a contact, account, and deal in a single transaction; converted leads hidden by default with a "Show converted" toggle
+- Conversion modal prefills contact and deal fields from the lead; supports creating a new account or linking an existing one via typeahead search
+- "Converted from lead" back-reference banner shown on the created contact and deal detail pages
+- Duplicate email warning on create (matching contact behavior); rep can dismiss or create anyway
+- Full CRUD REST API at `/api/leads`; conversion endpoint at `POST /api/leads/:id/convert`; status history at `GET /api/leads/:id/status-history`
+- Database migrations: `020_create_leads.js` adds `leads` and `lead_status_history` tables; adds `source_lead_id` FK column to `contacts` and `deals`
+
 ### Contacts (MINCRM-8, MINCRM-11, MINCRM-14)
 
 - List all contacts in a sortable table with owner column

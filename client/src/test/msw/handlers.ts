@@ -19,6 +19,7 @@ import type {
   AutomationRuleLogResponse,
 } from '@shared/schemas/automationSchema.js';
 import type { SearchResponse } from '@/api/search.js';
+import type { LeadResponse } from '@shared/schemas/leadSchema.js';
 
 /** Reusable fixture: an automation rule */
 export const AUTOMATION_RULE_1: AutomationRuleResponse = {
@@ -162,6 +163,27 @@ export const DEAL_1: DealResponse = {
   loss_reason: null,
   account_id: '00000000-0000-0000-0000-000000000201',
   owner_id: '00000000-0000-0000-0000-000000000001',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a lead record (MINCRM-173) */
+export const LEAD_1: LeadResponse = {
+  id: '00000000-0000-0000-0000-000000000801',
+  first_name: 'Carol',
+  last_name: 'White',
+  email: 'carol.white@example.com',
+  phone: '+1-555-0800',
+  company_name: 'Example Corp',
+  lead_source: 'Web',
+  status: 'New',
+  disqualification_reason: null,
+  notes: 'Met at conference',
+  owner_id: '00000000-0000-0000-0000-000000000001',
+  converted_at: null,
+  converted_contact_id: null,
+  converted_account_id: null,
+  converted_deal_id: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
@@ -932,6 +954,74 @@ export const handlers = [
   /** Settings: POST /api/settings/storage/test */
   http.post('/api/settings/storage/test', () => {
     return HttpResponse.json({ success: true });
+  }),
+
+  /** Leads: GET /api/leads — returns LEAD_1 by default (MINCRM-173) */
+  http.get('/api/leads', () => {
+    return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+  }),
+
+  /** Leads: POST /api/leads */
+  http.post('/api/leads', async ({ request }) => {
+    const body = (await request.json()) as Partial<LeadResponse>;
+    return HttpResponse.json(
+      {
+        lead: {
+          ...LEAD_1,
+          id: '00000000-0000-0000-0000-000000000802',
+          first_name: body.first_name ?? 'New',
+          last_name: body.last_name ?? null,
+          email: body.email ?? 'new@example.com',
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Leads: GET /api/leads/:id */
+  http.get('/api/leads/:id', ({ params }) => {
+    if (params.id === LEAD_1.id) {
+      return HttpResponse.json({ lead: LEAD_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'NOT_FOUND', message: 'Lead not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Leads: PATCH /api/leads/:id */
+  http.patch('/api/leads/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<LeadResponse>;
+    return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
+  }),
+
+  /** Leads: DELETE /api/leads/:id */
+  http.delete('/api/leads/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Leads: GET /api/leads/:id/status-history */
+  http.get('/api/leads/:id/status-history', () => {
+    return HttpResponse.json({ history: [] });
+  }),
+
+  /** Leads: POST /api/leads/:id/convert */
+  http.post('/api/leads/:id/convert', () => {
+    return HttpResponse.json(
+      {
+        conversion: {
+          contact_id: '00000000-0000-0000-0000-000000000101',
+          account_id: '00000000-0000-0000-0000-000000000201',
+          deal_id: '00000000-0000-0000-0000-000000000301',
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Leads: GET /api/leads/accounts/search */
+  http.get('/api/leads/accounts/search', () => {
+    return HttpResponse.json({ accounts: [{ id: ACCOUNT_1.id, name: ACCOUNT_1.name }] });
   }),
 
   /** Audit log: GET /api/audit-log/record — returns empty history by default */

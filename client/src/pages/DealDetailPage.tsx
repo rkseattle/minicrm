@@ -305,6 +305,18 @@ export default function DealDetailPage() {
           )}
         </div>
 
+        {/* Converted from lead banner (MINCRM-175) */}
+        {!isEditing && deal.source_lead_id && (
+          <div
+            className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
+            data-testid="converted-from-lead-banner"
+          >
+            <Link to={`/leads/${deal.source_lead_id}`} className="font-medium underline">
+              {t('deals.convertedFromLead')}
+            </Link>
+          </div>
+        )}
+
         {isEditing ? (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('deals.saveChanges')}</h2>
