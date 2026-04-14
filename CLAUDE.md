@@ -180,7 +180,7 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 ## Database
 
 - All schema changes require a migration file — no DDL in application code
-- Next migration: 029
+- Next migration: 031
 - Every migration has both `up` and `down`
 - Business integrity rules must be enforced at DB level (CHECK constraints) in addition to Zod (e.g., activities linked-record constraint — MINCRM-65)
 - `deal_contacts` requires composite PK: `PRIMARY KEY (deal_id, contact_id)`

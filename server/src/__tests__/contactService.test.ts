@@ -18,6 +18,10 @@ import {
   deleteContact,
   exportContactsForCsv,
   mergeContacts,
+  listContactAddresses,
+  addContactAddress,
+  removeContactAddress,
+  setDefaultContactAddress,
 } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
@@ -934,5 +938,117 @@ describe('mergeContacts', () => {
 
     // Cleanup deal
     await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
+  });
+
+  it('uses loser address and social field values when fieldChoices specifies loser', async () => {
+    const winner = await createContact({
+      ...BASE_CONTACT,
+      email: 'addr-winner@example.com',
+      owner_id: ownerId,
+      address_line1: 'Winner Street 1',
+      city: 'Winner City',
+      linkedin_url: 'https://linkedin.com/in/winner',
+    });
+    const loser = await createContact({
+      ...BASE_CONTACT,
+      email: 'addr-loser@example.com',
+      owner_id: ownerId,
+      address_line1: 'Loser Avenue 2',
+      city: 'Loser City',
+      linkedin_url: 'https://linkedin.com/in/loser',
+    });
+
+    await mergeContacts(
+      {
+        winnerId: winner.id,
+        loserId: loser.id,
+        fieldChoices: { address_line1: 'loser', city: 'loser', linkedin_url: 'loser' },
+      },
+      getActor(),
+    );
+
+    const updated = await findContactById(winner.id);
+    expect(updated!.address_line1).toBe('Loser Avenue 2');
+    expect(updated!.city).toBe('Loser City');
+    expect(updated!.linkedin_url).toBe('https://linkedin.com/in/loser');
+  });
+});
+
+// ── listContactAddresses / addContactAddress / removeContactAddress / setDefaultContactAddress ──
+
+describe('contact addresses', () => {
+  let contactId: string;
+
+  beforeEach(async () => {
+    const contact = await createContact({
+      ...BASE_CONTACT,
+      email: `addr-test-${Date.now()}@example.com`,
+      owner_id: ownerId,
+    });
+    contactId = contact.id;
+  });
+
+  it('returns empty list when no addresses exist', async () => {
+    const addresses = await listContactAddresses(contactId);
+    expect(addresses).toEqual([]);
+  });
+
+  it('adds an address and returns it', async () => {
+    const address = await addContactAddress(contactId, {
+      label: 'Work',
+      address_line1: '1 Market St',
+      city: 'San Francisco',
+      state_region: 'CA',
+      postal_code: '94105',
+      country: 'US',
+      is_default: true,
+    });
+
+    expect(address.contact_id).toBe(contactId);
+    expect(address.label).toBe('Work');
+    expect(address.city).toBe('San Francisco');
+    expect(address.is_default).toBe(true);
+  });
+
+  it('only one address is default when adding a second default', async () => {
+    await addContactAddress(contactId, { address_line1: 'First St', is_default: true });
+    await addContactAddress(contactId, { address_line1: 'Second St', is_default: true });
+
+    const addresses = await listContactAddresses(contactId);
+    const defaults = addresses.filter((a) => a.is_default);
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0].address_line1).toBe('Second St');
+  });
+
+  it('removes an address', async () => {
+    const address = await addContactAddress(contactId, { address_line1: 'To Delete' });
+    const deleted = await removeContactAddress(address.id, contactId);
+    expect(deleted).toBe(true);
+
+    const addresses = await listContactAddresses(contactId);
+    expect(addresses.find((a) => a.id === address.id)).toBeUndefined();
+  });
+
+  it('returns false when removing a non-existent address', async () => {
+    const deleted = await removeContactAddress('00000000-0000-0000-0000-000000000000', contactId);
+    expect(deleted).toBe(false);
+  });
+
+  it('sets a non-default address as default and clears others', async () => {
+    const first = await addContactAddress(contactId, {
+      address_line1: 'First',
+      is_default: true,
+    });
+    const second = await addContactAddress(contactId, {
+      address_line1: 'Second',
+      is_default: false,
+    });
+
+    const updated = await setDefaultContactAddress(second.id, contactId);
+    expect(updated!.is_default).toBe(true);
+
+    const addresses = await listContactAddresses(contactId);
+    const firstAfter = addresses.find((a) => a.id === first.id);
+    expect(firstAfter!.is_default).toBe(false);
   });
 });

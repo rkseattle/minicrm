@@ -43,6 +43,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   // Social profile URLs (MINCRM-190)
   'linkedin_url',
   'twitter_x_url',
+  'other_url',
 ]);
 
 /** Shape of a contact row returned from the database */
@@ -66,6 +67,7 @@ export interface ContactRow {
   // Social profile URLs (MINCRM-190)
   linkedin_url: string | null;
   twitter_x_url: string | null;
+  other_url: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -128,6 +130,7 @@ export async function createContact(
     country,
     linkedin_url,
     twitter_x_url,
+    other_url,
   } = params;
 
   const client: PoolClient = await pool.connect();
@@ -138,9 +141,9 @@ export async function createContact(
       `INSERT INTO contacts (
          first_name, last_name, email, phone, title, department, account_id, owner_id,
          address_line1, address_line2, city, state_region, postal_code, country,
-         linkedin_url, twitter_x_url
+         linkedin_url, twitter_x_url, other_url
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING *`,
       [
         first_name,
@@ -159,6 +162,7 @@ export async function createContact(
         country ?? null,
         linkedin_url ?? null,
         twitter_x_url ?? null,
+        other_url ?? null,
       ],
     );
 
@@ -403,6 +407,7 @@ export interface ContactExportRow {
   // Social profile URLs (MINCRM-190)
   linkedin_url: string | null;
   twitter_x_url: string | null;
+  other_url: string | null;
   account_name: string | null;
   owner_name: string;
   created_at: Date;
@@ -478,6 +483,7 @@ export async function exportContactsForCsv(
        c.country,
        c.linkedin_url,
        c.twitter_x_url,
+       c.other_url,
        a.name AS account_name,
        u.name AS owner_name,
        c.created_at,
@@ -569,7 +575,8 @@ export interface MergeContactsInput {
       | 'postal_code'
       | 'country'
       | 'linkedin_url'
-      | 'twitter_x_url',
+      | 'twitter_x_url'
+      | 'other_url',
       'winner' | 'loser'
     >
   >;
@@ -592,6 +599,7 @@ const MERGEABLE_FIELDS = [
   'country',
   'linkedin_url',
   'twitter_x_url',
+  'other_url',
 ] as const;
 
 /**
@@ -718,6 +726,207 @@ export async function mergeContacts(
 
     await client.query('COMMIT');
     return updatedWinner;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// ── Contact Addresses ──────────────────────────────────────────────────────────
+
+/** Shape of a contact_addresses row returned from the database */
+export interface ContactAddressRow {
+  id: string;
+  contact_id: string;
+  label: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  is_default: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/** Fields accepted when creating or updating a contact address */
+export interface ContactAddressInput {
+  label?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state_region?: string;
+  postal_code?: string;
+  country?: string;
+  is_default?: boolean;
+}
+
+/**
+ * Returns all addresses for a given contact, ordered by is_default DESC then created_at ASC.
+ *
+ * @param contactId - Contact UUID
+ * @returns Array of address rows
+ */
+export async function listContactAddresses(contactId: string): Promise<ContactAddressRow[]> {
+  const result = await pool.query<ContactAddressRow>(
+    `SELECT * FROM contact_addresses
+     WHERE contact_id = $1
+     ORDER BY is_default DESC, created_at ASC`,
+    [contactId],
+  );
+  return result.rows;
+}
+
+/**
+ * Adds a new address to a contact.
+ * If is_default is true, clears is_default on all other addresses for this contact first.
+ *
+ * @param contactId - Contact UUID
+ * @param input - Address fields
+ * @returns The inserted address row
+ */
+export async function addContactAddress(
+  contactId: string,
+  input: ContactAddressInput,
+): Promise<ContactAddressRow> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (input.is_default) {
+      await client.query(
+        'UPDATE contact_addresses SET is_default = false, updated_at = now() WHERE contact_id = $1',
+        [contactId],
+      );
+    }
+
+    const result = await client.query<ContactAddressRow>(
+      `INSERT INTO contact_addresses
+         (contact_id, label, address_line1, address_line2, city, state_region, postal_code, country, is_default)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        contactId,
+        input.label ?? null,
+        input.address_line1 ?? null,
+        input.address_line2 ?? null,
+        input.city ?? null,
+        input.state_region ?? null,
+        input.postal_code ?? null,
+        input.country ?? null,
+        input.is_default ?? false,
+      ],
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Updates an existing contact address.
+ * If is_default is set to true, clears is_default on all other addresses for this contact first.
+ *
+ * @param addressId - Address UUID
+ * @param contactId - Contact UUID (used to scope the update to prevent cross-contact writes)
+ * @param input - Fields to update
+ * @returns The updated address row, or null if not found
+ */
+export async function updateContactAddress(
+  addressId: string,
+  contactId: string,
+  input: ContactAddressInput,
+): Promise<ContactAddressRow | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (input.is_default) {
+      await client.query(
+        'UPDATE contact_addresses SET is_default = false, updated_at = now() WHERE contact_id = $1 AND id != $2',
+        [contactId, addressId],
+      );
+    }
+
+    const fields = Object.keys(input) as (keyof ContactAddressInput)[];
+    if (fields.length === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const setClauses = fields.map((f, i) => `${f} = $${i + 3}`).join(', ');
+    const result = await client.query<ContactAddressRow>(
+      `UPDATE contact_addresses
+       SET ${setClauses}, updated_at = now()
+       WHERE id = $1 AND contact_id = $2
+       RETURNING *`,
+      [addressId, contactId, ...fields.map((f) => input[f] ?? null)],
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0] ?? null;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Removes an address record.
+ * Returns true if a row was deleted, false if not found.
+ *
+ * @param addressId - Address UUID
+ * @param contactId - Contact UUID (scopes the delete)
+ */
+export async function removeContactAddress(addressId: string, contactId: string): Promise<boolean> {
+  const result = await pool.query(
+    'DELETE FROM contact_addresses WHERE id = $1 AND contact_id = $2',
+    [addressId, contactId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * Sets a specific address as the default for its contact,
+ * clearing is_default on all others in the same transaction.
+ *
+ * @param addressId - Address UUID to set as default
+ * @param contactId - Contact UUID (scopes the update)
+ * @returns The updated address row, or null if not found
+ */
+export async function setDefaultContactAddress(
+  addressId: string,
+  contactId: string,
+): Promise<ContactAddressRow | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      'UPDATE contact_addresses SET is_default = false, updated_at = now() WHERE contact_id = $1',
+      [contactId],
+    );
+
+    const result = await client.query<ContactAddressRow>(
+      `UPDATE contact_addresses
+       SET is_default = true, updated_at = now()
+       WHERE id = $1 AND contact_id = $2
+       RETURNING *`,
+      [addressId, contactId],
+    );
+
+    await client.query('COMMIT');
+    return result.rows[0] ?? null;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

@@ -188,7 +188,8 @@ export interface MergeContactsParams {
       | 'postal_code'
       | 'country'
       | 'linkedin_url'
-      | 'twitter_x_url',
+      | 'twitter_x_url'
+      | 'other_url',
       MergeFieldChoice
     >
   >;
@@ -209,4 +210,110 @@ export async function mergeContacts(
     fieldChoices,
   });
   return response.data as { contact: ContactResponse };
+}
+
+// ── Contact Addresses ──────────────────────────────────────────────────────────
+
+/** Shape of a contact address record */
+export interface ContactAddress {
+  id: string;
+  contact_id: string;
+  label: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country: string | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fields for creating or updating a contact address */
+export interface ContactAddressInput {
+  label?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state_region?: string;
+  postal_code?: string;
+  country?: string;
+  is_default?: boolean;
+}
+
+/**
+ * Returns all addresses for a contact.
+ *
+ * @param contactId - Contact UUID
+ */
+export async function listContactAddresses(
+  contactId: string,
+): Promise<{ addresses: ContactAddress[] }> {
+  const response = await apiClient.get<{ addresses: ContactAddress[] }>(
+    `/contacts/${contactId}/addresses`,
+  );
+  return response.data;
+}
+
+/**
+ * Adds a new address to a contact.
+ *
+ * @param contactId - Contact UUID
+ * @param data - Address fields
+ */
+export async function addContactAddress(
+  contactId: string,
+  data: ContactAddressInput,
+): Promise<{ address: ContactAddress }> {
+  const response = await apiClient.post<{ address: ContactAddress }>(
+    `/contacts/${contactId}/addresses`,
+    data,
+  );
+  return response.data;
+}
+
+/**
+ * Updates a contact address.
+ *
+ * @param contactId - Contact UUID
+ * @param addressId - Address UUID
+ * @param data - Fields to update
+ */
+export async function updateContactAddress(
+  contactId: string,
+  addressId: string,
+  data: ContactAddressInput,
+): Promise<{ address: ContactAddress }> {
+  const response = await apiClient.patch<{ address: ContactAddress }>(
+    `/contacts/${contactId}/addresses/${addressId}`,
+    data,
+  );
+  return response.data;
+}
+
+/**
+ * Deletes a contact address.
+ *
+ * @param contactId - Contact UUID
+ * @param addressId - Address UUID
+ */
+export async function deleteContactAddress(contactId: string, addressId: string): Promise<void> {
+  await apiClient.delete(`/contacts/${contactId}/addresses/${addressId}`);
+}
+
+/**
+ * Sets a contact address as the default.
+ *
+ * @param contactId - Contact UUID
+ * @param addressId - Address UUID
+ */
+export async function setDefaultContactAddress(
+  contactId: string,
+  addressId: string,
+): Promise<{ address: ContactAddress }> {
+  const response = await apiClient.post<{ address: ContactAddress }>(
+    `/contacts/${contactId}/addresses/${addressId}/set-default`,
+  );
+  return response.data;
 }
