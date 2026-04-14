@@ -26,6 +26,7 @@ import UsersPage from '@/pages/UsersPage.js';
 import AdminSettingsPage from '@/pages/AdminSettingsPage.js';
 import WinLossReportPage from '@/pages/WinLossReportPage.js';
 import ActivityVolumeReportPage from '@/pages/ActivityVolumeReportPage.js';
+import ActivitiesPage from '@/pages/ActivitiesPage.js';
 import AutomationRulesPage from '@/pages/AutomationRulesPage.js';
 import ProfilePage from '@/pages/ProfilePage.js';
 import AuditLogPage from '@/pages/AuditLogPage.js';
@@ -76,6 +77,7 @@ function AppRoutes() {
           {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
           <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
           <Route path="/tasks" element={<MyTasksPage />} />
+          <Route path="/activities" element={<ActivitiesPage />} />
           <Route path="/reports/activity-volume" element={<ActivityVolumeReportPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

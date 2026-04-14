@@ -55,6 +55,7 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/accounts': 'accounts',
   '/deals': 'deals',
   '/tasks': 'tasks',
+  '/activities': 'activities',
   '/users': 'users',
   '/reports/win-loss': 'win-loss',
   '/reports/activity-volume': 'activity-volume',

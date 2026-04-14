@@ -269,6 +269,47 @@ describe('DashboardPage', () => {
         expect(screen.getByTestId('recent-activity-empty')).toBeInTheDocument();
       });
     });
+
+    it('renders linked record name as plain text when linkedRecordPath is null', async () => {
+      const noPathActivity = {
+        ...RECENT_ACTIVITY_1,
+        id: 'no-path-activity-id',
+        linkedRecordPath: null,
+        linkedRecordName: 'Unlinked Record',
+      };
+      server.use(
+        http.get('/api/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [noPathActivity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        const cell = screen.getByTestId(`recent-activity-record-${noPathActivity.id}`);
+        expect(cell.tagName).not.toBe('A');
+        expect(cell).toHaveTextContent('Unlinked Record');
+      });
+    });
+
+    it('renders nothing for the record cell when both linkedRecordPath and linkedRecordName are null', async () => {
+      const noLinkActivity = {
+        ...RECENT_ACTIVITY_1,
+        id: 'no-link-activity-id',
+        linkedRecordPath: null,
+        linkedRecordName: null,
+      };
+      server.use(
+        http.get('/api/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [noLinkActivity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-${noLinkActivity.id}`)).toBeInTheDocument();
+        expect(
+          screen.queryByTestId(`recent-activity-record-${noLinkActivity.id}`),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('admin vs rep scope labels', () => {

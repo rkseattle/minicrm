@@ -889,5 +889,20 @@
     "viewContact": "查看联系人 →",
     "viewAccount": "查看客户 →",
     "viewDeal": "查看商机 →"
+  },
+  "activitiesPage": {
+    "pageTitle": "活动",
+    "loading": "正在加载活动…",
+    "errorLoad": "加载活动失败，请重试。",
+    "empty": "未找到活动。",
+    "columnType": "类型",
+    "columnSubject": "主题",
+    "columnRecord": "记录",
+    "columnDate": "日期",
+    "recordTypeContact": "联系人",
+    "recordTypeAccount": "公司",
+    "recordTypeDeal": "商机",
+    "from": "从",
+    "to": "至"
   }
 }

@@ -889,5 +889,20 @@
     "viewContact": "Kontakt anzeigen →",
     "viewAccount": "Konto anzeigen →",
     "viewDeal": "Deal anzeigen →"
+  },
+  "activitiesPage": {
+    "pageTitle": "Aktivitäten",
+    "loading": "Aktivitäten werden geladen…",
+    "errorLoad": "Aktivitäten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "empty": "Keine Aktivitäten gefunden.",
+    "columnType": "Typ",
+    "columnSubject": "Betreff",
+    "columnRecord": "Datensatz",
+    "columnDate": "Datum",
+    "recordTypeContact": "Kontakt",
+    "recordTypeAccount": "Unternehmen",
+    "recordTypeDeal": "Deal",
+    "from": "ab",
+    "to": "bis"
   }
 }

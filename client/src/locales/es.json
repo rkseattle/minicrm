@@ -889,5 +889,20 @@
     "viewContact": "Ver contacto →",
     "viewAccount": "Ver cuenta →",
     "viewDeal": "Ver trato →"
+  },
+  "activitiesPage": {
+    "pageTitle": "Actividades",
+    "loading": "Cargando actividades…",
+    "errorLoad": "No se pudieron cargar las actividades. Por favor, inténtelo de nuevo.",
+    "empty": "No se encontraron actividades.",
+    "columnType": "Tipo",
+    "columnSubject": "Asunto",
+    "columnRecord": "Registro",
+    "columnDate": "Fecha",
+    "recordTypeContact": "Contacto",
+    "recordTypeAccount": "Empresa",
+    "recordTypeDeal": "Oportunidad",
+    "from": "desde",
+    "to": "hasta"
   }
 }
