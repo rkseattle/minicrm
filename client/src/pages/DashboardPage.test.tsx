@@ -8,7 +8,12 @@ import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import DashboardPage from './DashboardPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
-import { ADMIN_USER, REP_USER, DASHBOARD_SUMMARY } from '../test/msw/handlers.js';
+import {
+  ADMIN_USER,
+  REP_USER,
+  DASHBOARD_SUMMARY,
+  RECENT_ACTIVITY_1,
+} from '../test/msw/handlers.js';
 import { server } from '../test/setup.js';
 
 describe('DashboardPage', () => {
@@ -189,6 +194,79 @@ describe('DashboardPage', () => {
         expect(screen.getByTestId('stage-breakdown-table')).toBeInTheDocument();
         // Prospecting row weighted value: $5,000.00
         expect(screen.getByTestId('stage-weighted-value-Prospecting')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('recent activity feed (MINCRM-185)', () => {
+    it('renders the recent activity feed section', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-feed')).toBeInTheDocument();
+      });
+    });
+
+    it('renders an activity entry for each recent activity', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-${RECENT_ACTIVITY_1.id}`)).toBeInTheDocument();
+      });
+    });
+
+    it('shows the activity subject', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`recent-activity-subject-${RECENT_ACTIVITY_1.id}`),
+        ).toHaveTextContent(RECENT_ACTIVITY_1.subject);
+      });
+    });
+
+    it('shows the activity type badge', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`recent-activity-type-${RECENT_ACTIVITY_1.id}`),
+        ).toHaveTextContent(RECENT_ACTIVITY_1.type);
+      });
+    });
+
+    it('renders the linked record as a link when a path is available', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        const link = screen.getByTestId(`recent-activity-record-${RECENT_ACTIVITY_1.id}`);
+        expect(link).toHaveAttribute('href', RECENT_ACTIVITY_1.linkedRecordPath);
+        expect(link).toHaveTextContent(RECENT_ACTIVITY_1.linkedRecordName!);
+      });
+    });
+
+    it('shows a relative timestamp on each entry', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        const timeEl = screen.getByTestId(`recent-activity-time-${RECENT_ACTIVITY_1.id}`);
+        expect(timeEl).toBeInTheDocument();
+        // Should contain "ago" since the fixture is 2 hours in the past
+        expect(timeEl.textContent).toMatch(/ago/);
+      });
+    });
+
+    it('shows the "View all" link pointing to activities', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        const viewAll = screen.getByTestId('recent-activity-view-all');
+        expect(viewAll).toHaveAttribute('href', '/activities');
+      });
+    });
+
+    it('shows the empty state when there are no recent activities', async () => {
+      server.use(
+        http.get('/api/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-empty')).toBeInTheDocument();
       });
     });
   });

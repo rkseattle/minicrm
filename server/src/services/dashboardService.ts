@@ -1,9 +1,38 @@
 /**
  * Dashboard service — business logic for the home dashboard summary.
  * All database access for dashboard metrics goes through this module.
+ * Implements MINCRM-185 (recent activity feed).
  */
 
 import pool from '../db.js';
+
+/** PostgreSQL row shape for the recent-activity query */
+interface RecentActivityRow {
+  id: string;
+  type: string;
+  subject: string;
+  created_at: string;
+  updated_at: string;
+  /** Name of the linked contact, account, or deal (whichever is set) */
+  linked_record_name: string | null;
+  /** Which association type provided the linked record name */
+  linked_record_type: 'contact' | 'account' | 'deal' | null;
+  /** UUID of the linked contact, account, or deal */
+  linked_record_id: string | null;
+}
+
+/** A single entry in the recent activity feed */
+export interface RecentActivityEntry {
+  id: string;
+  type: string;
+  subject: string;
+  /** ISO timestamp of the most recent change (updated_at) */
+  updatedAt: string;
+  /** Display name of the linked record */
+  linkedRecordName: string | null;
+  /** Route path for the linked record (e.g. "/contacts/uuid") */
+  linkedRecordPath: string | null;
+}
 
 /** PostgreSQL row shape for the task-count aggregation query */
 interface TaskCountRow {
@@ -53,6 +82,11 @@ export interface DashboardSummary {
   weightedPipelineValue: string;
   /** Per-stage breakdown of open deal count and total value, ordered by pipeline funnel position */
   stageBreakdown: StageBreakdownRow[];
+  /**
+   * The 10 most recently updated activities visible to this user.
+   * Scoped same as other dashboard metrics: rep sees own, admin sees all. (MINCRM-185)
+   */
+  recentActivities: RecentActivityEntry[];
 }
 
 /**
@@ -158,6 +192,89 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     weightedValue: row.weighted_value,
   }));
 
+  // ── Recent activities ─────────────────────────────────────────────────────
+  // Return the 10 most recently updated activities visible to this user.
+  // We COALESCE across all three FK columns to find the first non-null linked
+  // record name (contact full name, account name, or deal name). The order of
+  // preference is: contact → account → deal (matching typical display priority).
+  // (MINCRM-185)
+  const recentActivityQuery = ownerFilter
+    ? `SELECT
+         a.id,
+         a.type,
+         a.subject,
+         a.created_at,
+         a.updated_at,
+         CASE
+           WHEN a.contact_id IS NOT NULL THEN (con.first_name || ' ' || con.last_name)
+           WHEN a.account_id IS NOT NULL THEN acc.name
+           WHEN a.deal_id    IS NOT NULL THEN d.name
+         END AS linked_record_name,
+         CASE
+           WHEN a.contact_id IS NOT NULL THEN 'contact'
+           WHEN a.account_id IS NOT NULL THEN 'account'
+           WHEN a.deal_id    IS NOT NULL THEN 'deal'
+         END AS linked_record_type,
+         COALESCE(a.contact_id::text, a.account_id::text, a.deal_id::text) AS linked_record_id
+       FROM activities a
+       LEFT JOIN contacts con ON con.id = a.contact_id
+       LEFT JOIN accounts acc ON acc.id = a.account_id
+       LEFT JOIN deals    d   ON d.id   = a.deal_id
+       WHERE a.owner_id = $1
+       ORDER BY a.updated_at DESC
+       LIMIT 10`
+    : `SELECT
+         a.id,
+         a.type,
+         a.subject,
+         a.created_at,
+         a.updated_at,
+         CASE
+           WHEN a.contact_id IS NOT NULL THEN (con.first_name || ' ' || con.last_name)
+           WHEN a.account_id IS NOT NULL THEN acc.name
+           WHEN a.deal_id    IS NOT NULL THEN d.name
+         END AS linked_record_name,
+         CASE
+           WHEN a.contact_id IS NOT NULL THEN 'contact'
+           WHEN a.account_id IS NOT NULL THEN 'account'
+           WHEN a.deal_id    IS NOT NULL THEN 'deal'
+         END AS linked_record_type,
+         COALESCE(a.contact_id::text, a.account_id::text, a.deal_id::text) AS linked_record_id
+       FROM activities a
+       LEFT JOIN contacts con ON con.id = a.contact_id
+       LEFT JOIN accounts acc ON acc.id = a.account_id
+       LEFT JOIN deals    d   ON d.id   = a.deal_id
+       ORDER BY a.updated_at DESC
+       LIMIT 10`;
+
+  const recentActivityParams = ownerFilter ? [ownerId] : [];
+  const recentActivityResult = await pool.query<RecentActivityRow>(
+    recentActivityQuery,
+    recentActivityParams,
+  );
+
+  /**
+   * Maps a linked_record_type + linked_record_id to a client-side route path.
+   * @param type - 'contact', 'account', 'deal', or null
+   * @param id   - UUID of the linked record, or null
+   */
+  function toLinkedPath(type: string | null, id: string | null): string | null {
+    if (!type || !id) return null;
+    if (type === 'contact') return `/contacts/${id}`;
+    if (type === 'account') return `/accounts/${id}`;
+    if (type === 'deal') return `/deals/${id}`;
+    return null;
+  }
+
+  const recentActivities: RecentActivityEntry[] = recentActivityResult.rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    subject: row.subject,
+    updatedAt: row.updated_at,
+    linkedRecordName: row.linked_record_name,
+    linkedRecordPath: toLinkedPath(row.linked_record_type, row.linked_record_id),
+  }));
+
   return {
     overdueTasks,
     tasksDueToday,
@@ -165,5 +282,6 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     openPipelineValue,
     weightedPipelineValue,
     stageBreakdown,
+    recentActivities,
   };
 }

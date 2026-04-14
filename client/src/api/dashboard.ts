@@ -17,6 +17,19 @@ export interface StageBreakdown {
   weightedValue: string;
 }
 
+/** A single entry in the recent activity feed returned on the dashboard (MINCRM-185) */
+export interface RecentActivityEntry {
+  id: string;
+  type: string;
+  subject: string;
+  /** ISO timestamp of the most recent change */
+  updatedAt: string;
+  /** Display name of the linked record (contact, account, or deal) */
+  linkedRecordName: string | null;
+  /** Client-side route path for the linked record (e.g. "/contacts/uuid") */
+  linkedRecordPath: string | null;
+}
+
 /** Shape of the dashboard summary response from the API */
 export interface DashboardSummaryResponse {
   overdueTasks: number;
@@ -28,6 +41,8 @@ export interface DashboardSummaryResponse {
    */
   weightedPipelineValue: string;
   stageBreakdown: StageBreakdown[];
+  /** The 10 most recently updated activities visible to this user (MINCRM-185) */
+  recentActivities: RecentActivityEntry[];
 }
 
 /**

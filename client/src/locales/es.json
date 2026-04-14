@@ -9,6 +9,7 @@
     "myTasks": "Mis tareas",
     "users": "Usuarios",
     "winLossReport": "Informe de victorias/pérdidas",
+    "activityVolumeReport": "Informe de actividad",
     "automation": "Automatización",
     "adminSettings": "Configuración de administrador",
     "profileSettings": "Configuración de perfil",
@@ -135,7 +136,12 @@
     "columnValue": "Valor",
     "noDeals": "Aún no hay oportunidades abiertas.",
     "columnWeightedValue": "Valor ponderado",
-    "weightedPipelineValue": "Pipeline ponderada"
+    "weightedPipelineValue": "Pipeline ponderada",
+    "recentActivityHeading": "Actividad reciente",
+    "recentActivityViewAll": "Ver todo",
+    "recentActivityEmpty": "Sin actividad reciente — comienza registrando una llamada o nota.",
+    "recentActivityLoading": "Cargando actividad…",
+    "recentActivityUnlinked": "Registro sin vincular"
   },
   "contacts": {
     "pageTitle": "Contactos",
@@ -544,6 +550,32 @@
     }
   },
   "reports": {
+    "activityVolume": {
+      "pageTitle": "Informe de actividad",
+      "subtitle": "Recuento de actividades por representante y tipo para el período seleccionado.",
+      "dateRangeLabel": "Rango de fechas",
+      "presetThisWeek": "Esta semana",
+      "presetCurrentMonth": "Este mes",
+      "presetCurrentQuarter": "Este trimestre",
+      "presetCustom": "Rango personalizado",
+      "startDateLabel": "Fecha de inicio",
+      "endDateLabel": "Fecha de fin",
+      "dateRangeInvalid": "La fecha de inicio no puede ser posterior a la fecha de fin.",
+      "ownerFilterLabel": "Responsable",
+      "ownerFilterAll": "Todos los representantes",
+      "loading": "Cargando informe…",
+      "errorLoad": "Error al cargar el informe. Por favor, inténtalo de nuevo.",
+      "columnRep": "Representante",
+      "columnNote": "Nota",
+      "columnCall": "Llamada",
+      "columnEmail": "Correo electrónico",
+      "columnMeeting": "Reunión",
+      "columnTask": "Tarea",
+      "columnTotal": "Total",
+      "totalsRow": "Total",
+      "empty": "No se registraron actividades para este período.",
+      "exportCsv": "Exportar CSV"
+    },
     "winLoss": {
       "pageTitle": "Informe de victorias/pérdidas",
       "subtitle": "Rendimiento de tratos cerrados para el período seleccionado.",

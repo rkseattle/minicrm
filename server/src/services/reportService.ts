@@ -147,3 +147,140 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     lossReasonBreakdown,
   };
 }
+
+// ── Activity Volume Report ────────────────────────────────────────────────────
+
+/** Parameters for the activity volume report query */
+export interface ActivityVolumeReportParams {
+  /** Start of the date range (inclusive), YYYY-MM-DD, matched against activities.created_at */
+  startDate: string;
+  /** End of the date range (inclusive), YYYY-MM-DD, matched against activities.created_at */
+  endDate: string;
+  /**
+   * When provided, scopes the report to activities owned by this user.
+   * Pass null for team-wide data (admin only).
+   */
+  ownerId: string | null;
+}
+
+/** A single row in the activity volume result set — one row per (owner_id, type) combination */
+interface ActivityVolumeRow {
+  owner_id: string;
+  owner_name: string;
+  type: string;
+  count: string;
+}
+
+/** Count per activity type for a single rep row */
+export interface ActivityTypeCounts {
+  Note: number;
+  Call: number;
+  Email: number;
+  Meeting: number;
+  Task: number;
+}
+
+/** A single rep row in the activity volume report */
+export interface ActivityVolumeRepRow {
+  ownerId: string;
+  ownerName: string;
+  counts: ActivityTypeCounts;
+  /** Total activities logged across all types */
+  total: number;
+}
+
+/** Shape of the activity volume report returned to the controller */
+export interface ActivityVolumeReport {
+  /** Per-rep rows, sorted by owner name ascending */
+  rows: ActivityVolumeRepRow[];
+  /** Column totals across all reps */
+  totals: ActivityTypeCounts & { total: number };
+}
+
+/** The ordered set of activity types used as report columns (MINCRM-181) */
+const ACTIVITY_TYPES = ['Note', 'Call', 'Email', 'Meeting', 'Task'] as const;
+
+/**
+ * Returns an activity volume report for the given date range and optional owner scope.
+ * Counts are broken down by type (Note, Call, Email, Meeting, Task) and grouped by rep.
+ * Filtered by activities.created_at (not updated_at) per acceptance criteria.
+ *
+ * @param params - Query parameters (date range and optional owner scope)
+ * @returns ActivityVolumeReport summary
+ */
+export async function getActivityVolumeReport(
+  params: ActivityVolumeReportParams,
+): Promise<ActivityVolumeReport> {
+  const { startDate, endDate, ownerId } = params;
+  const ownerFilter = ownerId !== null;
+
+  // ── Raw counts per (owner, type) ──────────────────────────────────────────
+  // JOIN to users for the owner display name. Filter by created_at::date for
+  // a date-boundary comparison that ignores the time component.
+  const volumeQuery = ownerFilter
+    ? `SELECT
+         a.owner_id,
+         u.name AS owner_name,
+         a.type,
+         COUNT(*)::text AS count
+       FROM activities a
+       JOIN users u ON u.id = a.owner_id
+       WHERE a.created_at::date >= $1
+         AND a.created_at::date <= $2
+         AND a.owner_id = $3
+       GROUP BY a.owner_id, u.name, a.type
+       ORDER BY u.name ASC, a.type ASC`
+    : `SELECT
+         a.owner_id,
+         u.name AS owner_name,
+         a.type,
+         COUNT(*)::text AS count
+       FROM activities a
+       JOIN users u ON u.id = a.owner_id
+       WHERE a.created_at::date >= $1
+         AND a.created_at::date <= $2
+       GROUP BY a.owner_id, u.name, a.type
+       ORDER BY u.name ASC, a.type ASC`;
+
+  const volumeParams = ownerFilter ? [startDate, endDate, ownerId] : [startDate, endDate];
+  const volumeResult = await pool.query<ActivityVolumeRow>(volumeQuery, volumeParams);
+
+  // ── Pivot rows into per-rep objects ───────────────────────────────────────
+  // Build a map keyed by owner_id; fill in each type count as we iterate.
+  const repMap = new Map<string, ActivityVolumeRepRow>();
+  for (const row of volumeResult.rows) {
+    if (!repMap.has(row.owner_id)) {
+      repMap.set(row.owner_id, {
+        ownerId: row.owner_id,
+        ownerName: row.owner_name,
+        counts: { Note: 0, Call: 0, Email: 0, Meeting: 0, Task: 0 },
+        total: 0,
+      });
+    }
+    const repRow = repMap.get(row.owner_id)!;
+    const typeKey = row.type as keyof ActivityTypeCounts;
+    const countNum = parseInt(row.count, 10);
+    repRow.counts[typeKey] = countNum;
+    repRow.total += countNum;
+  }
+
+  const rows = Array.from(repMap.values()).sort((a, b) => a.ownerName.localeCompare(b.ownerName));
+
+  // ── Column totals ──────────────────────────────────────────────────────────
+  const totals: ActivityTypeCounts & { total: number } = {
+    Note: 0,
+    Call: 0,
+    Email: 0,
+    Meeting: 0,
+    Task: 0,
+    total: 0,
+  };
+  for (const repRow of rows) {
+    for (const type of ACTIVITY_TYPES) {
+      totals[type] += repRow.counts[type];
+    }
+    totals.total += repRow.total;
+  }
+
+  return { rows, totals };
+}

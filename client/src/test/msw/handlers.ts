@@ -13,7 +13,7 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import type { MyTaskResponse } from '@/api/activities.js';
 import type { DashboardSummaryResponse } from '@/api/dashboard.js';
-import type { WinLossReportResponse } from '@/api/reports.js';
+import type { WinLossReportResponse, ActivityVolumeReportResponse } from '@/api/reports.js';
 import type {
   AutomationRuleResponse,
   AutomationRuleLogResponse,
@@ -118,6 +118,16 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
   ],
 };
 
+/** Reusable fixture: a recent activity entry on the dashboard */
+export const RECENT_ACTIVITY_1 = {
+  id: '00000000-0000-0000-0000-000000000901',
+  type: 'Call',
+  subject: 'Intro call with Acme',
+  updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+  linkedRecordName: 'Jane Doe',
+  linkedRecordPath: '/contacts/00000000-0000-0000-0000-000000000301',
+};
+
 /** Reusable fixture: dashboard summary response */
 export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
   overdueTasks: 2,
@@ -129,6 +139,26 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
     { stage: 'Prospecting', count: 1, value: '50000.00', weightedValue: '5000.00' },
     { stage: 'Qualification', count: 2, value: '100000.00', weightedValue: '25000.00' },
   ],
+  recentActivities: [RECENT_ACTIVITY_1],
+};
+
+/** Reusable fixture: activity volume report response */
+export const ACTIVITY_VOLUME_REPORT: ActivityVolumeReportResponse = {
+  rows: [
+    {
+      ownerId: '00000000-0000-0000-0000-000000000001',
+      ownerName: 'Test Admin',
+      counts: { Note: 3, Call: 5, Email: 2, Meeting: 1, Task: 4 },
+      total: 15,
+    },
+    {
+      ownerId: '00000000-0000-0000-0000-000000000002',
+      ownerName: 'Test Rep',
+      counts: { Note: 1, Call: 2, Email: 0, Meeting: 0, Task: 1 },
+      total: 4,
+    },
+  ],
+  totals: { Note: 4, Call: 7, Email: 2, Meeting: 1, Task: 5, total: 19 },
 };
 
 /** Reusable fixture: admin user */
@@ -643,6 +673,11 @@ export const handlers = [
   /** Reports: GET /api/reports/win-loss — returns win/loss report */
   http.get('/api/reports/win-loss', () => {
     return HttpResponse.json(WIN_LOSS_REPORT);
+  }),
+
+  /** Reports: GET /api/reports/activity-volume — returns activity volume report (MINCRM-181) */
+  http.get('/api/reports/activity-volume', () => {
+    return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
   }),
 
   /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */

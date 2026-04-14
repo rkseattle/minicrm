@@ -9,6 +9,7 @@
     "myTasks": "Meine Aufgaben",
     "users": "Benutzer",
     "winLossReport": "Gewinn-/Verlustbericht",
+    "activityVolumeReport": "Aktivitätsbericht",
     "automation": "Automatisierung",
     "adminSettings": "Admin-Einstellungen",
     "profileSettings": "Profileinstellungen",
@@ -135,7 +136,12 @@
     "columnValue": "Wert",
     "noDeals": "Noch keine offenen Geschäfte.",
     "columnWeightedValue": "Gewichteter Wert",
-    "weightedPipelineValue": "Gewichtete Pipeline"
+    "weightedPipelineValue": "Gewichtete Pipeline",
+    "recentActivityHeading": "Letzte Aktivitäten",
+    "recentActivityViewAll": "Alle anzeigen",
+    "recentActivityEmpty": "Keine aktuellen Aktivitäten — starten Sie mit einem Anruf oder einer Notiz.",
+    "recentActivityLoading": "Aktivitäten werden geladen…",
+    "recentActivityUnlinked": "Nicht verknüpfter Datensatz"
   },
   "contacts": {
     "pageTitle": "Kontakte",
@@ -544,6 +550,32 @@
     }
   },
   "reports": {
+    "activityVolume": {
+      "pageTitle": "Aktivitätsbericht",
+      "subtitle": "Aktivitätsanzahl nach Vertreter und Typ für den ausgewählten Zeitraum.",
+      "dateRangeLabel": "Zeitraum",
+      "presetThisWeek": "Diese Woche",
+      "presetCurrentMonth": "Dieser Monat",
+      "presetCurrentQuarter": "Dieses Quartal",
+      "presetCustom": "Benutzerdefinierter Zeitraum",
+      "startDateLabel": "Startdatum",
+      "endDateLabel": "Enddatum",
+      "dateRangeInvalid": "Das Startdatum darf nicht nach dem Enddatum liegen.",
+      "ownerFilterLabel": "Verantwortlicher",
+      "ownerFilterAll": "Alle Vertriebsmitarbeiter",
+      "loading": "Bericht wird geladen…",
+      "errorLoad": "Bericht konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "columnRep": "Vertriebsmitarbeiter",
+      "columnNote": "Notiz",
+      "columnCall": "Anruf",
+      "columnEmail": "E-Mail",
+      "columnMeeting": "Besprechung",
+      "columnTask": "Aufgabe",
+      "columnTotal": "Gesamt",
+      "totalsRow": "Gesamt",
+      "empty": "Keine Aktivitäten für diesen Zeitraum.",
+      "exportCsv": "CSV exportieren"
+    },
     "winLoss": {
       "pageTitle": "Gewinn-/Verlustbericht",
       "subtitle": "Abgeschlossene Geschäfte für den ausgewählten Zeitraum.",

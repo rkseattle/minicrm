@@ -9,6 +9,7 @@
     "myTasks": "我的任务",
     "users": "用户",
     "winLossReport": "赢/输报告",
+    "activityVolumeReport": "活动报告",
     "automation": "自动化",
     "adminSettings": "管理设置",
     "profileSettings": "个人设置",
@@ -135,7 +136,12 @@
     "columnValue": "金额",
     "noDeals": "暂无进行中的商机。",
     "columnWeightedValue": "加权价值",
-    "weightedPipelineValue": "加权管道"
+    "weightedPipelineValue": "加权管道",
+    "recentActivityHeading": "最近活动",
+    "recentActivityViewAll": "查看全部",
+    "recentActivityEmpty": "暂无最近活动 — 请从记录通话或备注开始。",
+    "recentActivityLoading": "加载活动中…",
+    "recentActivityUnlinked": "未关联记录"
   },
   "contacts": {
     "pageTitle": "联系人",
@@ -544,6 +550,32 @@
     }
   },
   "reports": {
+    "activityVolume": {
+      "pageTitle": "活动报告",
+      "subtitle": "所选日期范围内按销售代表和活动类型的活动数量。",
+      "dateRangeLabel": "日期范围",
+      "presetThisWeek": "本周",
+      "presetCurrentMonth": "本月",
+      "presetCurrentQuarter": "本季度",
+      "presetCustom": "自定义范围",
+      "startDateLabel": "开始日期",
+      "endDateLabel": "结束日期",
+      "dateRangeInvalid": "开始日期不能晚于结束日期。",
+      "ownerFilterLabel": "负责人",
+      "ownerFilterAll": "所有销售代表",
+      "loading": "加载报告中…",
+      "errorLoad": "加载报告失败，请重试。",
+      "columnRep": "销售代表",
+      "columnNote": "备注",
+      "columnCall": "通话",
+      "columnEmail": "邮件",
+      "columnMeeting": "会议",
+      "columnTask": "任务",
+      "columnTotal": "合计",
+      "totalsRow": "合计",
+      "empty": "该时段内无活动记录。",
+      "exportCsv": "导出 CSV"
+    },
     "winLoss": {
       "pageTitle": "赢/输报告",
       "subtitle": "所选日期范围内的成交业绩。",

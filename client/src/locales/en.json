@@ -9,6 +9,7 @@
     "myTasks": "My Tasks",
     "users": "Users",
     "winLossReport": "Win/Loss Report",
+    "activityVolumeReport": "Activity Report",
     "automation": "Automation",
     "adminSettings": "Admin Settings",
     "profileSettings": "Profile Settings",
@@ -135,7 +136,12 @@
     "columnValue": "Value",
     "columnWeightedValue": "Weighted Value",
     "weightedPipelineValue": "Weighted pipeline",
-    "noDeals": "No open deals yet."
+    "noDeals": "No open deals yet.",
+    "recentActivityHeading": "Recent Activity",
+    "recentActivityViewAll": "View all",
+    "recentActivityEmpty": "No recent activity — start by logging a call or note.",
+    "recentActivityLoading": "Loading activity…",
+    "recentActivityUnlinked": "Unlinked record"
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -518,6 +524,32 @@
     }
   },
   "reports": {
+    "activityVolume": {
+      "pageTitle": "Activity Report",
+      "subtitle": "Activity counts by rep and type for the selected date range.",
+      "dateRangeLabel": "Date range",
+      "presetThisWeek": "This week",
+      "presetCurrentMonth": "This month",
+      "presetCurrentQuarter": "This quarter",
+      "presetCustom": "Custom range",
+      "startDateLabel": "Start date",
+      "endDateLabel": "End date",
+      "dateRangeInvalid": "Start date must not be after end date.",
+      "ownerFilterLabel": "Owner",
+      "ownerFilterAll": "All reps",
+      "loading": "Loading report…",
+      "errorLoad": "Failed to load report. Please try again.",
+      "columnRep": "Rep",
+      "columnNote": "Note",
+      "columnCall": "Call",
+      "columnEmail": "Email",
+      "columnMeeting": "Meeting",
+      "columnTask": "Task",
+      "columnTotal": "Total",
+      "totalsRow": "Total",
+      "empty": "No activities logged for this period.",
+      "exportCsv": "Export CSV"
+    },
     "winLoss": {
       "pageTitle": "Win/Loss Report",
       "subtitle": "Closed deal performance for the selected date range.",
