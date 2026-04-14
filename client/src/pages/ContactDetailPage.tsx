@@ -4,7 +4,7 @@
  * Supports toggling to an edit form (including owner reassignment) and deleting the contact.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,12 @@ import {
   listContactDeals,
   mergeContacts,
   listContacts,
+  listContactAddresses,
+  addContactAddress,
+  deleteContactAddress,
+  setDefaultContactAddress,
 } from '@/api/contacts.js';
+import type { ContactAddress, ContactAddressInput } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -31,7 +36,7 @@ import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
-import type { MergeFieldChoice, MergeContactsParams } from '@/api/contacts.js';
+import type { MergeFieldChoice } from '@/api/contacts.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
@@ -54,7 +59,8 @@ type MergeableField =
   | 'postal_code'
   | 'country'
   | 'linkedin_url'
-  | 'twitter_x_url';
+  | 'twitter_x_url'
+  | 'other_url';
 
 export default function ContactDetailPage() {
   const { t, i18n } = useTranslation();
@@ -64,21 +70,25 @@ export default function ContactDetailPage() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   // Merge state (MINCRM-187)
   const [isMerging, setIsMerging] = useState(false);
   const [mergeSearchQuery, setMergeSearchQuery] = useState('');
-  const [mergeLoserContact, setMergeLoserContact] = useState<MergeContactsParams['loserId'] | null>(
-    null,
-  );
+  const [mergeLoserContact, setMergeLoserContact] = useState<string | null>(null);
   const [mergeLoserData, setMergeLoserData] = useState<ContactResponse | null>(null);
   const [mergeFieldChoices, setMergeFieldChoices] = useState<
     Partial<Record<MergeableField, MergeFieldChoice>>
   >({});
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [mergeSearchResults, setMergeSearchResults] = useState<ContactResponse[]>([]);
+
+  // Address management state
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [newAddressFields, setNewAddressFields] = useState<ContactAddressInput>({});
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   const contactQueryKey = ['contacts', id] as const;
 
@@ -104,6 +114,15 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
+  const addressesQueryKey = ['contacts', id, 'addresses'] as const;
+  const { data: addressesData } = useQuery({
+    queryKey: addressesQueryKey,
+    queryFn: () => listContactAddresses(id!),
+    enabled: Boolean(id),
+  });
+
+  const contactAddresses: ContactAddress[] = addressesData?.addresses ?? [];
+
   const accounts = accountsData?.data ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
@@ -120,14 +139,9 @@ export default function ContactDetailPage() {
         department: values.department || undefined,
         account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
-        address_line1: values.address_line1 || undefined,
-        address_line2: values.address_line2 || undefined,
-        city: values.city || undefined,
-        state_region: values.state_region || undefined,
-        postal_code: values.postal_code || undefined,
-        country: values.country || undefined,
         linkedin_url: values.linkedin_url || undefined,
         twitter_x_url: values.twitter_x_url || undefined,
+        other_url: values.other_url || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactQueryKey });
@@ -170,6 +184,33 @@ export default function ContactDetailPage() {
       cancelled = true;
     };
   }, [mergeSearchQuery, id]);
+
+  const addAddressMutation = useMutation({
+    mutationFn: (input: ContactAddressInput) => addContactAddress(id!, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: addressesQueryKey });
+      setIsAddingAddress(false);
+      setNewAddressFields({});
+      setAddressError(null);
+    },
+    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+      setAddressError(error.response?.data?.error?.message ?? t('errors.generic'));
+    },
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: (addressId: string) => deleteContactAddress(id!, addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: addressesQueryKey });
+    },
+  });
+
+  const setDefaultAddressMutation = useMutation({
+    mutationFn: (addressId: string) => setDefaultContactAddress(id!, addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: addressesQueryKey });
+    },
+  });
 
   const mergeMutation = useMutation({
     mutationFn: () =>
@@ -271,7 +312,12 @@ export default function ContactDetailPage() {
                   variant="secondary"
                   size="sm"
                   data-testid="edit-contact-button"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    setIsEditing(true);
+                    setIsAddingAddress(false);
+                    setNewAddressFields({});
+                    setAddressError(null);
+                  }}
                 >
                   {t('contacts.edit')}
                 </Button>
@@ -309,9 +355,6 @@ export default function ContactDetailPage() {
 
         {isEditing ? (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">
-              {t('contacts.saveChanges')}
-            </h2>
             <ContactForm
               initialValues={contact}
               accounts={accountOptions}
@@ -320,14 +363,288 @@ export default function ContactDetailPage() {
                 setUpdateError(null);
                 updateMutation.mutate(values);
               }}
-              onCancel={() => {
-                setIsEditing(false);
-                setUpdateError(null);
-              }}
               isSubmitting={updateMutation.isPending}
-              submitLabel={t('contacts.saveChanges')}
-              error={updateError ?? undefined}
+              formRef={editFormRef}
+              hideActions
             />
+
+            {/* Addresses management — only available in edit mode */}
+            <div
+              className="mt-6 border border-gray-200 rounded-lg overflow-hidden"
+              data-testid="contact-addresses-section"
+            >
+              <div className="px-4 py-3 flex items-center justify-between bg-gray-50 border-b border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {t('contacts.addressesSection')}
+                </p>
+                {!isAddingAddress && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="add-address-button"
+                    onClick={() => {
+                      setIsAddingAddress(true);
+                      setNewAddressFields({});
+                      setAddressError(null);
+                    }}
+                    disabled={
+                      addAddressMutation.isPending ||
+                      deleteAddressMutation.isPending ||
+                      setDefaultAddressMutation.isPending
+                    }
+                  >
+                    {t('contacts.addAddress')}
+                  </Button>
+                )}
+              </div>
+
+              {contactAddresses.length === 0 && !isAddingAddress && (
+                <p className="px-4 py-4 text-sm text-gray-400" data-testid="no-addresses-message">
+                  {t('contacts.noAddresses')}
+                </p>
+              )}
+              {contactAddresses.map((addr) => (
+                <div
+                  key={addr.id}
+                  className="px-4 py-4 border-b border-gray-100 last:border-b-0"
+                  data-testid={`address-row-${addr.id}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="text-sm text-gray-900 space-y-0.5">
+                      {addr.label && (
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                          {addr.label}
+                        </p>
+                      )}
+                      {addr.address_line1 && <p>{addr.address_line1}</p>}
+                      {addr.address_line2 && <p>{addr.address_line2}</p>}
+                      {(addr.city || addr.state_region || addr.postal_code) && (
+                        <p>
+                          {[addr.city, addr.state_region, addr.postal_code]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </p>
+                      )}
+                      {addr.country && <p>{addr.country}</p>}
+                      {addr.is_default && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 mt-1"
+                          data-testid={`address-default-badge-${addr.id}`}
+                        >
+                          {t('contacts.addressDefault')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!addr.is_default && (
+                        <button
+                          type="button"
+                          data-testid={`set-default-address-${addr.id}`}
+                          className="text-xs text-indigo-600 hover:underline"
+                          onClick={() => setDefaultAddressMutation.mutate(addr.id)}
+                          disabled={
+                            setDefaultAddressMutation.isPending || deleteAddressMutation.isPending
+                          }
+                        >
+                          {t('contacts.setDefault')}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-testid={`remove-address-${addr.id}`}
+                        className="text-xs text-red-500 hover:underline"
+                        onClick={() => deleteAddressMutation.mutate(addr.id)}
+                        disabled={
+                          deleteAddressMutation.isPending || setDefaultAddressMutation.isPending
+                        }
+                      >
+                        {t('contacts.removeAddress')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {isAddingAddress && (
+                <div className="px-4 py-4 border-t border-gray-100" data-testid="add-address-form">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <input
+                      type="text"
+                      data-testid="new-address-label"
+                      placeholder={t('contacts.addressLabelPlaceholder')}
+                      className="col-span-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.label ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          label: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-line1"
+                      placeholder={t('contacts.addressLine1Placeholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.address_line1 ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          address_line1: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-line2"
+                      placeholder={t('contacts.addressLine2Placeholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.address_line2 ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          address_line2: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-city"
+                      placeholder={t('contacts.cityPlaceholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.city ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          city: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-state-region"
+                      placeholder={t('contacts.stateRegionPlaceholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.state_region ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          state_region: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-postal-code"
+                      placeholder={t('contacts.postalCodePlaceholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.postal_code ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          postal_code: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <input
+                      type="text"
+                      data-testid="new-address-country"
+                      placeholder={t('contacts.countryPlaceholder')}
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newAddressFields.country ?? ''}
+                      onChange={(e) =>
+                        setNewAddressFields((prev) => ({
+                          ...prev,
+                          country: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="new-address-is-default"
+                        data-testid="new-address-is-default"
+                        checked={newAddressFields.is_default ?? false}
+                        onChange={(e) =>
+                          setNewAddressFields((prev) => ({
+                            ...prev,
+                            is_default: e.target.checked,
+                          }))
+                        }
+                      />
+                      <label htmlFor="new-address-is-default" className="text-sm text-gray-700">
+                        {t('contacts.setAsDefault')}
+                      </label>
+                    </div>
+                  </div>
+                  {addressError && (
+                    <p role="alert" className="text-xs text-red-600 mb-2">
+                      {addressError}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      data-testid="save-address-button"
+                      onClick={() => addAddressMutation.mutate(newAddressFields)}
+                      disabled={addAddressMutation.isPending}
+                    >
+                      {addAddressMutation.isPending
+                        ? t('contacts.savingAddress')
+                        : t('contacts.saveAddress')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      data-testid="cancel-address-button"
+                      onClick={() => {
+                        setIsAddingAddress(false);
+                        setNewAddressFields({});
+                        setAddressError(null);
+                      }}
+                      disabled={addAddressMutation.isPending}
+                    >
+                      {t('contacts.cancel')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {updateError && (
+              <p role="alert" className="mt-4 text-sm text-red-600" data-testid="update-error">
+                {updateError}
+              </p>
+            )}
+
+            <div className="mt-6 flex items-center gap-3">
+              <Button
+                type="button"
+                data-testid="contact-form-submit"
+                disabled={updateMutation.isPending}
+                onClick={() => editFormRef.current?.requestSubmit()}
+              >
+                {updateMutation.isPending ? t('contacts.saving') : t('contacts.saveChanges')}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                data-testid="contact-form-cancel"
+                disabled={updateMutation.isPending}
+                onClick={() => {
+                  setIsEditing(false);
+                  setUpdateError(null);
+                  setIsAddingAddress(false);
+                  setNewAddressFields({});
+                  setAddressError(null);
+                }}
+              >
+                {t('contacts.cancel')}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
@@ -449,7 +766,7 @@ export default function ContactDetailPage() {
           )}
 
         {/* Social profile links — shown when at least one URL is set (MINCRM-190) */}
-        {!isEditing && (contact.linkedin_url || contact.twitter_x_url) && (
+        {!isEditing && (contact.linkedin_url || contact.twitter_x_url || contact.other_url) && (
           <div
             className="mt-6 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
             data-testid="contact-social-section"
@@ -503,6 +820,79 @@ export default function ContactDetailPage() {
                 </a>
               </div>
             )}
+            {contact.other_url && (
+              <div className="px-6 py-4 flex items-center gap-3" data-testid="detail-other-url">
+                {/* Generic link icon */}
+                <svg
+                  aria-hidden="true"
+                  className="w-4 h-4 shrink-0 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                <a
+                  href={contact.other_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-indigo-600 hover:underline truncate"
+                  data-testid="detail-other-link"
+                >
+                  {t('contacts.otherUrlLabel')}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Addresses — read-only view (edit in edit mode) */}
+        {!isEditing && contactAddresses.length > 0 && (
+          <div
+            className="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden"
+            data-testid="contact-addresses-section"
+          >
+            <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                {t('contacts.addressesSection')}
+              </p>
+            </div>
+            {contactAddresses.map((addr) => (
+              <div
+                key={addr.id}
+                className="px-6 py-4 border-b border-gray-100 last:border-b-0"
+                data-testid={`address-row-${addr.id}`}
+              >
+                <div className="text-sm text-gray-900 space-y-0.5">
+                  {addr.label && (
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      {addr.label}
+                    </p>
+                  )}
+                  {addr.address_line1 && <p>{addr.address_line1}</p>}
+                  {addr.address_line2 && <p>{addr.address_line2}</p>}
+                  {(addr.city || addr.state_region || addr.postal_code) && (
+                    <p>
+                      {[addr.city, addr.state_region, addr.postal_code].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                  {addr.country && <p>{addr.country}</p>}
+                  {addr.is_default && (
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 mt-1"
+                      data-testid={`address-default-badge-${addr.id}`}
+                    >
+                      {t('contacts.addressDefault')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

@@ -58,6 +58,14 @@ export default function AccountDetailPage() {
     enabled: Boolean(id),
   });
 
+  // Fetch parent account name so the edit form can display it (MINCRM-184)
+  const parentAccountQueryKey = ['accounts', data?.account?.parent_account_id] as const;
+  const { data: parentAccountData } = useQuery({
+    queryKey: parentAccountQueryKey,
+    queryFn: () => getAccount(data!.account.parent_account_id!),
+    enabled: Boolean(data?.account?.parent_account_id),
+  });
+
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
@@ -213,6 +221,7 @@ export default function AccountDetailPage() {
               initialContactIds={linkedContactsData?.data.map((c) => c.id) ?? []}
               accountId={id}
               users={activeUsers}
+              initialParentAccountName={parentAccountData?.account?.name}
               onSubmit={(values) => {
                 setUpdateError(null);
                 updateMutation.mutate(values);

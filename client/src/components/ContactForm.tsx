@@ -31,16 +31,10 @@ export interface ContactFormValues {
   account_id: string;
   /** UUID of the owner; populated only when users prop is provided (edit mode) */
   owner_id: string;
-  // Address fields (MINCRM-182)
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state_region: string;
-  postal_code: string;
-  country: string;
   // Social profile URLs (MINCRM-190)
   linkedin_url: string;
   twitter_x_url: string;
+  other_url: string;
 }
 
 interface ContactFormProps {
@@ -69,6 +63,8 @@ interface ContactFormProps {
   formRef?: React.RefObject<HTMLFormElement | null>;
   /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
   triggerRef?: React.RefObject<HTMLElement | null>;
+  /** When true, the built-in Save/Cancel buttons are not rendered (caller manages them externally) */
+  hideActions?: boolean;
 }
 
 /**
@@ -86,14 +82,9 @@ function buildInitialState(initial?: Partial<ContactResponse>): ContactFormValue
     department: initial?.department ?? '',
     account_id: initial?.account_id ?? '',
     owner_id: initial?.owner_id ?? '',
-    address_line1: initial?.address_line1 ?? '',
-    address_line2: initial?.address_line2 ?? '',
-    city: initial?.city ?? '',
-    state_region: initial?.state_region ?? '',
-    postal_code: initial?.postal_code ?? '',
-    country: initial?.country ?? '',
     linkedin_url: initial?.linkedin_url ?? '',
     twitter_x_url: initial?.twitter_x_url ?? '',
+    other_url: initial?.other_url ?? '',
   };
 }
 
@@ -112,24 +103,14 @@ export default function ContactForm({
   emailWarning = false,
   formRef,
   triggerRef,
+  hideActions = false,
 }: ContactFormProps) {
   const { t } = useTranslation();
   const firstInputRef = useRef<HTMLInputElement>(null);
-  const addressPanelId = useId();
   const socialPanelId = useId();
-  const [addressOpen, setAddressOpen] = useState<boolean>(
-    () =>
-      !!(
-        initialValues?.address_line1 ||
-        initialValues?.address_line2 ||
-        initialValues?.city ||
-        initialValues?.state_region ||
-        initialValues?.postal_code ||
-        initialValues?.country
-      ),
-  );
   const [socialOpen, setSocialOpen] = useState<boolean>(
-    () => !!(initialValues?.linkedin_url || initialValues?.twitter_x_url),
+    () =>
+      !!(initialValues?.linkedin_url || initialValues?.twitter_x_url || initialValues?.other_url),
   );
 
   const [formData, setFormData] = useState<ContactFormValues>(() =>
@@ -154,6 +135,15 @@ export default function ContactForm({
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  /** Prepends https:// on blur if the field has a value but no protocol yet. */
+  const handleUrlBlur = (event: React.FocusEvent<HTMLInputElement>): void => {
+    const { name, value } = event.target;
+    const trimmed = value.trim();
+    if (trimmed && !trimmed.match(/^https?:\/\//i)) {
+      setFormData((previous) => ({ ...previous, [name]: `https://${trimmed}` }));
+    }
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
@@ -274,101 +264,6 @@ export default function ContactForm({
         )}
       </div>
 
-      {/* Address section — collapsible (MINCRM-182) */}
-      <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          data-testid="contact-address-toggle"
-          aria-expanded={addressOpen}
-          aria-controls={addressPanelId}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100"
-          onClick={() => setAddressOpen((open) => !open)}
-          disabled={isSubmitting}
-        >
-          {t('contacts.addressSection')}
-          <svg
-            aria-hidden="true"
-            className={`w-4 h-4 transition-transform ${addressOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {addressOpen && (
-          <div id={addressPanelId} className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              id="contact-address-line1"
-              data-testid="contact-address-line1"
-              name="address_line1"
-              type="text"
-              label={t('contacts.addressLine1Label')}
-              placeholder={t('contacts.addressLine1Placeholder')}
-              value={formData.address_line1}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <Input
-              id="contact-address-line2"
-              data-testid="contact-address-line2"
-              name="address_line2"
-              type="text"
-              label={t('contacts.addressLine2Label')}
-              placeholder={t('contacts.addressLine2Placeholder')}
-              value={formData.address_line2}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <Input
-              id="contact-city"
-              data-testid="contact-city"
-              name="city"
-              type="text"
-              label={t('contacts.cityLabel')}
-              placeholder={t('contacts.cityPlaceholder')}
-              value={formData.city}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <Input
-              id="contact-state-region"
-              data-testid="contact-state-region"
-              name="state_region"
-              type="text"
-              label={t('contacts.stateRegionLabel')}
-              placeholder={t('contacts.stateRegionPlaceholder')}
-              value={formData.state_region}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <Input
-              id="contact-postal-code"
-              data-testid="contact-postal-code"
-              name="postal_code"
-              type="text"
-              label={t('contacts.postalCodeLabel')}
-              placeholder={t('contacts.postalCodePlaceholder')}
-              value={formData.postal_code}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-            <Input
-              id="contact-country"
-              data-testid="contact-country"
-              name="country"
-              type="text"
-              label={t('contacts.countryLabel')}
-              placeholder={t('contacts.countryPlaceholder')}
-              value={formData.country}
-              onChange={handleChange}
-              disabled={isSubmitting}
-            />
-          </div>
-        )}
-      </div>
-
       {/* Social Profiles section — collapsible (MINCRM-190) */}
       <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
         <button
@@ -403,6 +298,7 @@ export default function ContactForm({
               placeholder="https://linkedin.com/in/jane-smith"
               value={formData.linkedin_url}
               onChange={handleChange}
+              onBlur={handleUrlBlur}
               disabled={isSubmitting}
             />
             <Input
@@ -414,6 +310,19 @@ export default function ContactForm({
               placeholder="https://x.com/janesmith"
               value={formData.twitter_x_url}
               onChange={handleChange}
+              onBlur={handleUrlBlur}
+              disabled={isSubmitting}
+            />
+            <Input
+              id="contact-other-url"
+              data-testid="contact-other-url"
+              name="other_url"
+              type="url"
+              label={t('contacts.otherUrlLabel')}
+              placeholder="https://example.com/profile"
+              value={formData.other_url}
+              onChange={handleChange}
+              onBlur={handleUrlBlur}
               disabled={isSubmitting}
             />
           </div>
@@ -429,25 +338,27 @@ export default function ContactForm({
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" data-testid="contact-form-submit" disabled={isSubmitting}>
-          {isSubmitting ? t('contacts.saving') : resolvedSubmitLabel}
-        </Button>
-        {onCancel && (
-          <Button
-            type="button"
-            variant="ghost"
-            data-testid="contact-form-cancel"
-            onClick={() => {
-              returnFocus();
-              onCancel();
-            }}
-            disabled={isSubmitting}
-          >
-            {t('contacts.cancel')}
+      {!hideActions && (
+        <div className="flex items-center gap-3">
+          <Button type="submit" data-testid="contact-form-submit" disabled={isSubmitting}>
+            {isSubmitting ? t('contacts.saving') : resolvedSubmitLabel}
           </Button>
-        )}
-      </div>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              data-testid="contact-form-cancel"
+              onClick={() => {
+                returnFocus();
+                onCancel();
+              }}
+              disabled={isSubmitting}
+            >
+              {t('contacts.cancel')}
+            </Button>
+          )}
+        </div>
+      )}
     </form>
   );
 }
