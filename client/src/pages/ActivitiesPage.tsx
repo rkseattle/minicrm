@@ -96,8 +96,9 @@ export default function ActivitiesPage() {
     const rows = data?.data ?? [];
     return rows.filter((a) => {
       if (typeParam && a.type !== typeParam) return false;
-      if (startParam && a.updated_at.slice(0, 10) < startParam) return false;
-      if (endParam && a.updated_at.slice(0, 10) > endParam) return false;
+      const updatedDate = String(a.updated_at).slice(0, 10);
+      if (startParam && updatedDate < startParam) return false;
+      if (endParam && updatedDate > endParam) return false;
       return true;
     });
   }, [data, typeParam, startParam, endParam]);
@@ -240,7 +241,10 @@ export default function ActivitiesPage() {
                             className="px-6 py-4 text-sm text-gray-600"
                             data-testid={`activity-date-${activity.id}`}
                           >
-                            {formatLocalDate(activity.updated_at.slice(0, 10), i18n.language)}
+                            {formatLocalDate(
+                              String(activity.updated_at).slice(0, 10),
+                              i18n.language,
+                            )}
                           </td>
                         </tr>
                       );
