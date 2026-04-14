@@ -110,6 +110,8 @@ function activityTypeBadge(type: string): { label: string; className: string } {
  */
 function relativeTime(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime();
+  // Guard against clock skew or future timestamps
+  if (diffMs <= 0) return 'just now';
   const diffSeconds = Math.floor(diffMs / 1000);
   if (diffSeconds < 60) return 'just now';
   const diffMinutes = Math.floor(diffSeconds / 60);

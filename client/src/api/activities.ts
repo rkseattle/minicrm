@@ -41,8 +41,12 @@ export interface ListActivitiesFilters {
   accountId?: string;
   /** Filter by associated deal UUID */
   dealId?: string;
-  /** When 'me', only the current user's activities are returned */
-  owner?: 'me';
+  /**
+   * 'me' — scope to the current user.
+   * A UUID string — admin only; scope to a specific user (server silently falls back to
+   * current user if requester is a rep).
+   */
+  owner?: 'me' | string;
   /** 1-based page number */
   page?: number;
   /** Records per page */

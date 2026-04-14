@@ -891,5 +891,20 @@
       "parseFailed": "Could not parse CSV file",
       "runFailed": "Import failed — please try again"
     }
+  },
+  "activitiesPage": {
+    "pageTitle": "Activities",
+    "loading": "Loading activities…",
+    "errorLoad": "Failed to load activities. Please try again.",
+    "empty": "No activities found.",
+    "columnType": "Type",
+    "columnSubject": "Subject",
+    "columnRecord": "Record",
+    "columnDate": "Date",
+    "recordTypeContact": "Contact",
+    "recordTypeAccount": "Account",
+    "recordTypeDeal": "Deal",
+    "from": "from",
+    "to": "to"
   }
 }

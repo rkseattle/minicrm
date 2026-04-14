@@ -889,5 +889,20 @@
     "viewContact": "Voir le contact →",
     "viewAccount": "Voir le compte →",
     "viewDeal": "Voir l'affaire →"
+  },
+  "activitiesPage": {
+    "pageTitle": "Activités",
+    "loading": "Chargement des activités…",
+    "errorLoad": "Impossible de charger les activités. Veuillez réessayer.",
+    "empty": "Aucune activité trouvée.",
+    "columnType": "Type",
+    "columnSubject": "Sujet",
+    "columnRecord": "Enregistrement",
+    "columnDate": "Date",
+    "recordTypeContact": "Contact",
+    "recordTypeAccount": "Compte",
+    "recordTypeDeal": "Affaire",
+    "from": "du",
+    "to": "au"
   }
 }

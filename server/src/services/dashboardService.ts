@@ -34,6 +34,21 @@ export interface RecentActivityEntry {
   linkedRecordPath: string | null;
 }
 
+/**
+ * Maps a linked_record_type + linked_record_id to a client-side route path.
+ *
+ * @param type - 'contact', 'account', 'deal', or null
+ * @param id   - UUID of the linked record, or null
+ * @returns A route path like "/contacts/uuid", or null when either argument is absent
+ */
+function toLinkedPath(type: string | null, id: string | null): string | null {
+  if (!type || !id) return null;
+  if (type === 'contact') return `/contacts/${id}`;
+  if (type === 'account') return `/accounts/${id}`;
+  if (type === 'deal') return `/deals/${id}`;
+  return null;
+}
+
 /** PostgreSQL row shape for the task-count aggregation query */
 interface TaskCountRow {
   overdue_tasks: string;
@@ -252,19 +267,6 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     recentActivityQuery,
     recentActivityParams,
   );
-
-  /**
-   * Maps a linked_record_type + linked_record_id to a client-side route path.
-   * @param type - 'contact', 'account', 'deal', or null
-   * @param id   - UUID of the linked record, or null
-   */
-  function toLinkedPath(type: string | null, id: string | null): string | null {
-    if (!type || !id) return null;
-    if (type === 'contact') return `/contacts/${id}`;
-    if (type === 'account') return `/accounts/${id}`;
-    if (type === 'deal') return `/deals/${id}`;
-    return null;
-  }
 
   const recentActivities: RecentActivityEntry[] = recentActivityResult.rows.map((row) => ({
     id: row.id,

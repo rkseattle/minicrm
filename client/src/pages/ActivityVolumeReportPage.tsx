@@ -166,8 +166,8 @@ export default function ActivityVolumeReportPage() {
 
   // ── Date range state ────────────────────────────────────────────────────────
   const [preset, setPreset] = useState<DatePreset>('currentMonth');
-  const [customStart, setCustomStart] = useState<string>(startOfCurrentMonth);
-  const [customEnd, setCustomEnd] = useState<string>(endOfCurrentMonth);
+  const [customStart, setCustomStart] = useState<string>(startOfCurrentMonth());
+  const [customEnd, setCustomEnd] = useState<string>(endOfCurrentMonth());
 
   const { start, end } = useMemo<{ start: string; end: string }>(() => {
     if (preset === 'thisWeek') {

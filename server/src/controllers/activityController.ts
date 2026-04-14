@@ -87,7 +87,20 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
+  // ?owner=me — scope to the authenticated user
+  // ?owner=<uuid> — admin only; scope to a specific user
+  let ownerId: string | undefined;
+  const ownerParam = typeof req.query.owner === 'string' ? req.query.owner : undefined;
+  if (ownerParam === 'me') {
+    ownerId = req.user!.id;
+  } else if (ownerParam && uuidQuerySchema.safeParse(ownerParam).success) {
+    if (req.user!.role !== 'admin') {
+      // Reps may not filter by arbitrary owner UUID; silently scope to themselves
+      ownerId = req.user!.id;
+    } else {
+      ownerId = ownerParam;
+    }
+  }
 
   const paginationParsed = paginationParamsSchema.safeParse({
     page: req.query.page,

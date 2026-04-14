@@ -152,6 +152,15 @@ describe('ActivityVolumeReportPage', () => {
       });
     });
 
+    it('defaults to "This month" preset on mount and hides custom date inputs', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('date-preset-select')).toHaveValue('currentMonth');
+        expect(screen.queryByTestId('custom-start-input')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('custom-end-input')).not.toBeInTheDocument();
+      });
+    });
+
     it('shows custom date inputs when "Custom range" is selected', async () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => screen.getByTestId('date-preset-select'));
