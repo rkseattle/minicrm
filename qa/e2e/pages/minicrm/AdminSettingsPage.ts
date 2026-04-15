@@ -2,7 +2,8 @@
  * AdminSettingsPage — Page Object for the MiniCRM admin settings screen.
  *
  * Encapsulates all UI interactions on `/admin/settings`. Every element uses a
- * HealingLocator with at least 2 strategies.
+ * HealingLocator with at least 2 strategies. Text-based strategies call t()
+ * so selectors stay locale-correct when E2E_LOCALE is set.
  *
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
@@ -12,6 +13,7 @@
 
 import type { Page } from '@playwright/test';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -80,7 +82,7 @@ export class AdminSettingsPage {
       const resolved = await this.healPage
         .locate([
           { type: 'testId', value: 'email-notifications-section' },
-          { type: 'css', value: '[data-testid="email-notifications-section"]' },
+          { type: 'text', value: t('settings.emailNotifications.sectionTitle') },
         ])
         .resolve(this.testName);
       return resolved.isVisible();
