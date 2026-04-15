@@ -291,15 +291,15 @@ test.describe.serial('Layout-mutating tests', () => {
     }) => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-      const layoutSet = await setNavLayoutViaAPI('hamburger', restClient);
-      expect(layoutSet.success, 'hamburger layout API call must succeed before testing nav').toBe(
-        true,
-      );
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
-      // networkidle can resolve before the nav-layout API response has been
-      // processed by React. Use Playwright's native waitForSelector instead —
-      // it retries until the element appears or the timeout expires.
-      await page.waitForSelector('[data-testid="nav-menu-toggle"]', { timeout: 10_000 });
+      // Use the UI to switch layout so the app re-renders in place — avoids the
+      // race between a server-side PATCH and a subsequent page.goto where React
+      // may fetch a stale cached layout before the PATCH is reflected.
+      await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+      const layoutSet = await setNavLayoutViaUI('hamburger', { page, healPage, testName });
+      expect(layoutSet.clicked, 'hamburger layout option must be clickable').toBe(true);
+      // Navigate to the app root — hamburger toggle is already live in the React
+      // context so it will be present immediately after navigation.
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
