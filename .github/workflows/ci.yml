@@ -120,7 +120,9 @@ jobs:
 
       - name: Install dependencies
         # MINCRM-203: npm ci respects the lockfile for reproducible installs.
-        run: npm ci
+        # npm rebuild resolves platform-specific optional binaries (e.g. @rollup/rollup-linux-x64-gnu)
+        # that are omitted from the lockfile when it was generated on a non-Linux host.
+        run: npm ci && npm rebuild
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
