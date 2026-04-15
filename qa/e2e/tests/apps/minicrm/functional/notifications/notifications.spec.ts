@@ -50,7 +50,9 @@ if (!ADMIN_PASSWORD) throw new Error('[F10] E2E_ADMIN_PASSWORD is not set');
 // Profile page — notification preferences
 // ---------------------------------------------------------------------------
 
-test.describe('Profile page — notification preferences', () => {
+// All profile preference tests mutate the same admin user's preferences — run
+// serially to prevent parallel workers from contaminating each other's state.
+test.describe.serial('Profile page — notification preferences', () => {
   test('@functional F10-PP1: profile page renders with all three notification checkboxes', async ({
     page,
     healPage,

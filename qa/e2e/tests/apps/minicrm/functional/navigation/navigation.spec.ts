@@ -296,6 +296,22 @@ test.describe.serial('Layout-mutating tests', () => {
         true,
       );
       await page.goto('/', { waitUntil: 'networkidle' });
+      // Wait for the hamburger toggle to appear — networkidle fires when the
+      // API request completes but React may not have re-rendered yet.
+      // Evaluated as a string so TypeScript does not need the dom lib.
+      await page
+        .evaluate(
+          `new Promise((resolve, reject) => {
+            const deadline = Date.now() + 8000;
+            const tick = () => {
+              if (document.querySelector('[data-testid="nav-menu-toggle"]')) resolve();
+              else if (Date.now() > deadline) reject(new Error('nav-menu-toggle timeout'));
+              else setTimeout(tick, 100);
+            };
+            tick();
+          })`,
+        )
+        .catch(() => null); // Non-fatal — navigateViaNavLink will fail with a clear message if still missing.
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
