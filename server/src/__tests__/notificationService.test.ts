@@ -10,7 +10,7 @@
  */
 
 import 'dotenv/config';
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 import {
   sendOverdueDigests,
   queueAssignmentNotification,
@@ -289,7 +289,7 @@ describe('queueAssignmentNotification', () => {
     // Use a unique recipientId that won't collide with other test runs
     const uniqueRecipientId = `flush-test-${Date.now()}`;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       queueAssignmentNotification(uniqueRecipientId, ownerEmail, BASE_USER.name, {
         recordType: 'contact',
@@ -299,12 +299,12 @@ describe('queueAssignmentNotification', () => {
       });
 
       // Advance time past the 2-minute batch window and flush all pending microtasks
-      jest.runAllTimers();
+      vi.runAllTimers();
       // Allow the async flushAssignmentBatch to complete
       await Promise.resolve();
       await Promise.resolve();
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
     // No assertion beyond no-throw; flush path exercised for branch coverage
   });
@@ -319,7 +319,7 @@ describe('queueAssignmentNotification', () => {
 
     const uniqueRecipientId = `flush-disabled-${Date.now()}`;
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       queueAssignmentNotification(uniqueRecipientId, ownerEmail, BASE_USER.name, {
         recordType: 'deal',
@@ -328,11 +328,11 @@ describe('queueAssignmentNotification', () => {
         assignedByName: 'Admin',
       });
 
-      jest.runAllTimers();
+      vi.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
       // Restore global notifications
       await pool.query(
         `UPDATE system_settings SET value = 'true' WHERE key = 'email_notifications_enabled'`,
