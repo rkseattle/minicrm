@@ -1,0 +1,329 @@
+/**
+ * LeadsPage — Page Object for the MiniCRM leads list screen.
+ *
+ * Encapsulates all UI interactions on `/leads`. Every element uses a
+ * HealingLocator with at least 2 strategies. Text-based strategies call t()
+ * so selectors stay locale-correct when E2E_LOCALE is set.
+ *
+ * Page Objects interact with UI only — no business logic, no API calls,
+ * no assertions.
+ *
+ * MINCRM-192
+ */
+
+import type { Page } from '@playwright/test';
+import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import { t } from '@framework/i18n/locale.js';
+
+// ---------------------------------------------------------------------------
+// Fixture context accepted by this Page Object
+// ---------------------------------------------------------------------------
+
+/** Subset of Playwright fixtures required by LeadsPage. */
+export interface LeadsPageContext {
+  page: Page;
+  healPage: HealPage;
+  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
+  testName: string;
+}
+
+// ---------------------------------------------------------------------------
+// LeadsPage
+// ---------------------------------------------------------------------------
+
+/**
+ * Page Object for the MiniCRM leads list screen.
+ *
+ * Usage:
+ * ```ts
+ * const leadsPage = new LeadsPage({ page, healPage, testName });
+ * await leadsPage.navigate();
+ * await leadsPage.clickNew();
+ * ```
+ */
+export class LeadsPage {
+  private readonly page: Page;
+  private readonly healPage: HealPage;
+  private readonly testName: string;
+
+  /** The URL path for this page. */
+  static readonly PATH = '/leads';
+
+  /**
+   * @param context - Playwright fixture context containing page, healPage, and testName.
+   */
+  constructor(context: LeadsPageContext) {
+    this.page = context.page;
+    this.healPage = context.healPage;
+    this.testName = context.testName;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Navigates directly to the leads list URL.
+   */
+  async navigate(): Promise<void> {
+    await this.page.goto(LeadsPage.PATH);
+  }
+
+  // ---------------------------------------------------------------------------
+  // List interactions
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Clicks the "New Lead" button to open the lead creation form.
+   */
+  async clickNew(): Promise<void> {
+    await this.healPage.click([
+      { type: 'testId', value: 'new-lead-button' },
+      { type: 'role', value: 'button', options: { name: t('leads.new'), exact: false } },
+    ]);
+  }
+
+  /**
+   * Returns true when a lead row with the given ID is visible in the list.
+   *
+   * @param leadId - Lead UUID.
+   */
+  async leadRowIsVisible(leadId: string): Promise<boolean> {
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'testId', value: `lead-row-${leadId}` },
+          { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
+        ])
+        .resolve(this.testName);
+      return resolved.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks the status badge for the given lead to open the inline status selector.
+   *
+   * @param leadId - Lead UUID.
+   */
+  async clickStatusBadge(leadId: string): Promise<void> {
+    await this.healPage.click([
+      { type: 'testId', value: `status-badge-${leadId}` },
+      { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+    ]);
+  }
+
+  /**
+   * Selects a new status from the inline status selector for the given lead.
+   *
+   * @param leadId - Lead UUID.
+   * @param status - Status value to select (e.g. 'Contacted').
+   */
+  async selectStatus(leadId: string, status: string): Promise<void> {
+    const resolved = await this.healPage
+      .locate([
+        { type: 'testId', value: `status-select-${leadId}` },
+        { type: 'css', value: `[data-testid="status-select-${leadId}"]` },
+      ])
+      .resolve(this.testName);
+    await resolved.selectOption(status);
+  }
+
+  /**
+   * Returns the current text content of the status badge for the given lead.
+   *
+   * @param leadId - Lead UUID.
+   */
+  async statusBadgeText(leadId: string): Promise<string> {
+    const resolved = await this.healPage
+      .locate([
+        { type: 'testId', value: `status-badge-${leadId}` },
+        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+      ])
+      .resolve(this.testName);
+    return (await resolved.textContent()) ?? '';
+  }
+
+  /**
+   * Checks the "Show disqualified" toggle to reveal disqualified leads in the list.
+   */
+  async showDisqualified(): Promise<void> {
+    const resolved = await this.healPage
+      .locate([
+        { type: 'testId', value: 'toggle-disqualified' },
+        {
+          type: 'role',
+          value: 'checkbox',
+          options: { name: t('leads.showDisqualified'), exact: false },
+        },
+      ])
+      .resolve(this.testName);
+    await resolved.check();
+  }
+
+  /**
+   * Checks the "Show converted" toggle to reveal converted leads in the list.
+   */
+  async showConverted(): Promise<void> {
+    const resolved = await this.healPage
+      .locate([
+        { type: 'testId', value: 'toggle-converted' },
+        {
+          type: 'role',
+          value: 'checkbox',
+          options: { name: t('leads.showConverted'), exact: false },
+        },
+      ])
+      .resolve(this.testName);
+    await resolved.check();
+  }
+
+  /**
+   * Returns true when the "converted" badge is visible for the given lead.
+   *
+   * @param leadId - Lead UUID.
+   */
+  async convertedBadgeIsVisible(leadId: string): Promise<boolean> {
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'testId', value: `badge-converted-${leadId}` },
+          { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
+        ])
+        .resolve(this.testName);
+      return resolved.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Create form (inline on list page)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fills the lead first name field.
+   *
+   * @param value - First name to enter.
+   */
+  async fillFirstName(value: string): Promise<void> {
+    await this.healPage.fill(value, [
+      { type: 'testId', value: 'lead-first-name' },
+      { type: 'label', value: 'First name', options: { exact: false } },
+    ]);
+  }
+
+  /**
+   * Fills the lead last name field.
+   *
+   * @param value - Last name to enter.
+   */
+  async fillLastName(value: string): Promise<void> {
+    await this.healPage.fill(value, [
+      { type: 'testId', value: 'lead-last-name' },
+      { type: 'label', value: 'Last name', options: { exact: false } },
+    ]);
+  }
+
+  /**
+   * Fills the lead email field.
+   *
+   * @param value - Email address to enter.
+   */
+  async fillEmail(value: string): Promise<void> {
+    await this.healPage.fill(value, [
+      { type: 'testId', value: 'lead-email' },
+      { type: 'label', value: 'Email', options: { exact: false } },
+    ]);
+  }
+
+  /**
+   * Fills the lead phone field.
+   *
+   * @param value - Phone number to enter.
+   */
+  async fillPhone(value: string): Promise<void> {
+    await this.healPage.fill(value, [
+      { type: 'testId', value: 'lead-phone' },
+      { type: 'label', value: 'Phone', options: { exact: false } },
+    ]);
+  }
+
+  /**
+   * Fills the lead company name field.
+   *
+   * @param value - Company name to enter.
+   */
+  async fillCompanyName(value: string): Promise<void> {
+    await this.healPage.fill(value, [
+      { type: 'testId', value: 'lead-company-name' },
+      { type: 'label', value: 'Company', options: { exact: false } },
+    ]);
+  }
+
+  /**
+   * Submits the lead creation form.
+   */
+  async submitForm(): Promise<void> {
+    await this.healPage.click([
+      { type: 'testId', value: 'lead-form-submit' },
+      { type: 'role', value: 'button', options: { name: t('leads.save'), exact: false } },
+    ]);
+  }
+
+  /**
+   * Returns true when the lead creation form is currently visible.
+   */
+  async formIsVisible(): Promise<boolean> {
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'testId', value: 'lead-form' },
+          { type: 'css', value: '[data-testid="lead-form"]' },
+        ])
+        .resolve(this.testName);
+      return resolved.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns true when the duplicate lead warning is visible.
+   */
+  async duplicateWarningIsVisible(): Promise<boolean> {
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'testId', value: 'duplicate-lead-warning' },
+          { type: 'css', value: '[data-testid="duplicate-lead-warning"]' },
+        ])
+        .resolve(this.testName);
+      return resolved.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks "Create anyway" to proceed past the duplicate lead warning.
+   */
+  async clickCreateAnyway(): Promise<void> {
+    await this.healPage.click([
+      { type: 'testId', value: 'duplicate-create-anyway' },
+      { type: 'role', value: 'button', options: { name: t('leads.createAnyway'), exact: false } },
+    ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // State queries
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the current page URL.
+   */
+  url(): string {
+    return this.page.url();
+  }
+}

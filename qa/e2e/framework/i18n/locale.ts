@@ -82,6 +82,19 @@ const EN: LocaleMap = {
   'accounts.empty': 'No accounts yet. Add one to get started.',
   'accounts.linkedContactsEmpty': 'No contacts linked to this account.',
 
+  // Leads
+  'leads.new': 'New Lead',
+  'leads.save': 'Save',
+  'leads.delete': 'Delete',
+  'leads.convert': 'Convert Lead',
+  'leads.confirmConvert': 'Confirm',
+  'leads.createAnyway': 'Create anyway',
+  'leads.showDisqualified': 'Show disqualified',
+  'leads.showConverted': 'Show converted',
+
+  // Notifications / profile
+  'profile.save': 'Save',
+
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -143,6 +156,19 @@ const ES: LocaleMap = {
   'accounts.newAccount': 'Nueva cuenta',
   'accounts.empty': 'Aún no hay cuentas. Agrega una para empezar.',
   'accounts.linkedContactsEmpty': 'No hay contactos vinculados a esta cuenta.',
+
+  // Leads
+  'leads.new': 'Nuevo lead',
+  'leads.save': 'Guardar',
+  'leads.delete': 'Eliminar',
+  'leads.convert': 'Convertir lead',
+  'leads.confirmConvert': 'Confirmar',
+  'leads.createAnyway': 'Crear de todas formas',
+  'leads.showDisqualified': 'Mostrar descalificados',
+  'leads.showConverted': 'Mostrar convertidos',
+
+  // Notifications / profile
+  'profile.save': 'Guardar',
 
   // Common actions
   'common.save': 'Guardar',

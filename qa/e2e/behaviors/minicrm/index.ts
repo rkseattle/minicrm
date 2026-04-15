@@ -63,3 +63,69 @@ export type {
   InviteUserViaUIResult,
   UserIsVisibleInListResult,
 } from './users.behaviors.js';
+
+export {
+  navigateToLeads,
+  createLeadViaUI,
+  createLeadViaUIThenCreateAnyway,
+  updateLeadStatus,
+  showDisqualifiedLeads,
+  showConvertedLeads,
+  convertLead,
+  deleteLead,
+  leadRowIsHidden,
+} from './leads.behaviors.js';
+export type {
+  LeadsBehaviorContext,
+  NavigateToLeadsResult,
+  CreateLeadUIFields,
+  CreateLeadViaUIResult,
+  CreateLeadViaUIThenCreateAnywayResult,
+  UpdateLeadStatusResult,
+  ShowDisqualifiedLeadsResult,
+  ShowConvertedLeadsResult,
+  ConvertLeadResult,
+  DeleteLeadResult,
+  LeadRowIsHiddenResult,
+} from './leads.behaviors.js';
+
+export {
+  typeSearchQuery,
+  typeSearchQueryRaw,
+  getSearchResult,
+  clickSearchResult,
+  getSearchEmptyState,
+  getMinLengthHint,
+  checkNoResultsForQuery,
+  typeSearchQueryAndCheckPanel,
+} from './search.behaviors.js';
+export type {
+  SearchBehaviorContext,
+  TypeSearchQueryResult,
+  GetSearchResultResult,
+  ClickSearchResultResult,
+  GetSearchEmptyStateResult,
+  GetMinLengthHintResult,
+  CheckNoResultsForQueryResult,
+  TypeSearchQueryAndCheckPanelResult,
+} from './search.behaviors.js';
+
+export {
+  navigateToProfile,
+  getProfilePreferences,
+  uncheckAndSavePreference,
+  uncheckAllAndSave,
+  reloadAndGetProfilePreferences,
+  navigateToAdminSettings,
+  toggleAdminEmailNotifications,
+} from './notifications.behaviors.js';
+export type {
+  NotificationsBehaviorContext,
+  ProfilePreferences,
+  NavigateToProfileResult,
+  GetProfilePreferencesResult,
+  ToggleAndSavePreferenceResult,
+  UncheckAllAndSaveResult,
+  NavigateToAdminSettingsResult,
+  ToggleAdminEmailNotificationsResult,
+} from './notifications.behaviors.js';

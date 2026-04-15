@@ -15,7 +15,7 @@
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
- *   - No raw locators or Page Object calls in this file — all through behaviors
+ *   - All UI interactions via behaviors — no raw locators in this file
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
@@ -24,10 +24,19 @@
  *   - AC2: Admin kill switch is reflected in GET /api/settings/email-notifications
  *   - AC3: Recipient count reflects active users with that preference enabled
  *
- * MINCRM-161, MINCRM-162, MINCRM-163
+ * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import {
+  navigateToProfile,
+  getProfilePreferences,
+  uncheckAndSavePreference,
+  uncheckAllAndSave,
+  reloadAndGetProfilePreferences,
+  navigateToAdminSettings,
+  toggleAdminEmailNotifications,
+} from '@behaviors/minicrm/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -44,26 +53,46 @@ if (!ADMIN_PASSWORD) throw new Error('[F10] E2E_ADMIN_PASSWORD is not set');
 test.describe('Profile page — notification preferences', () => {
   test('@functional F10-PP1: profile page renders with all three notification checkboxes', async ({
     page,
+    healPage,
   }) => {
-    await page.goto('/profile');
-    await expect(page.getByTestId('profile-heading')).toBeVisible();
-    await expect(page.getByTestId('profile-notifications-section')).toBeVisible();
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeVisible();
-    await expect(page.getByTestId('notif-checkbox-notify_assignments')).toBeVisible();
-    await expect(page.getByTestId('notif-checkbox-notify_deal_stage_changes')).toBeVisible();
+    const testName = test.info().title;
+    const result = await navigateToProfile({ page, healPage, testName });
+
+    expect(result.loaded, 'profile heading should be visible').toBe(true);
+    expect(result.notificationsSectionVisible, 'notifications section should be visible').toBe(
+      true,
+    );
+    expect(result.allCheckboxesVisible, 'all three notification checkboxes should be visible').toBe(
+      true,
+    );
   });
 
-  test('@functional F10-PP2: checkboxes default to checked on first load', async ({ page }) => {
-    await page.goto('/profile');
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeChecked();
-    await expect(page.getByTestId('notif-checkbox-notify_assignments')).toBeChecked();
-    await expect(page.getByTestId('notif-checkbox-notify_deal_stage_changes')).toBeChecked();
+  test('@functional F10-PP2: checkboxes default to checked on first load', async ({
+    page,
+    healPage,
+  }) => {
+    const testName = test.info().title;
+    await navigateToProfile({ page, healPage, testName });
+
+    const prefs = await getProfilePreferences({ page, healPage, testName });
+    expect(prefs.preferences.notify_overdue_tasks, 'overdue tasks checkbox should be checked').toBe(
+      true,
+    );
+    expect(prefs.preferences.notify_assignments, 'assignments checkbox should be checked').toBe(
+      true,
+    );
+    expect(
+      prefs.preferences.notify_deal_stage_changes,
+      'deal stage changes checkbox should be checked',
+    ).toBe(true);
   });
 
   test('@functional F10-PP3: toggling a checkbox and saving persists the preference (AC1)', async ({
     page,
+    healPage,
     restClient,
   }) => {
+    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Reset preferences to all-true via API before the test
@@ -73,22 +102,23 @@ test.describe('Profile page — notification preferences', () => {
       notify_deal_stage_changes: true,
     });
 
-    await page.goto('/profile');
+    const result = await uncheckAndSavePreference('notify_overdue_tasks', {
+      page,
+      healPage,
+      testName,
+    });
 
-    // Wait for prefs to load
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeChecked();
-
-    // Uncheck "overdue tasks"
-    await page.getByTestId('notif-checkbox-notify_overdue_tasks').click();
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).not.toBeChecked();
-
-    // Save
-    await page.getByTestId('profile-prefs-save').click();
-    await expect(page.getByTestId('profile-prefs-success')).toBeVisible();
+    expect(result.saved, 'success message should appear after saving').toBe(true);
+    expect(result.isNowUnchecked, 'overdue tasks checkbox should be unchecked after save').toBe(
+      true,
+    );
 
     // Reload and verify preference persisted (AC1)
-    await page.reload();
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).not.toBeChecked();
+    const afterReload = await reloadAndGetProfilePreferences({ page, healPage, testName });
+    expect(
+      afterReload.preferences.notify_overdue_tasks,
+      'preference should persist after page reload (AC1)',
+    ).toBe(false);
 
     // Restore preferences
     await restClient.patch('/api/users/me/notification-preferences', {
@@ -100,8 +130,10 @@ test.describe('Profile page — notification preferences', () => {
 
   test('@functional F10-PP4: saving all preferences off and back on works correctly', async ({
     page,
+    healPage,
     restClient,
   }) => {
+    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     await restClient.patch('/api/users/me/notification-preferences', {
@@ -110,22 +142,23 @@ test.describe('Profile page — notification preferences', () => {
       notify_deal_stage_changes: true,
     });
 
-    await page.goto('/profile');
+    const result = await uncheckAllAndSave({ page, healPage, testName });
 
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeChecked();
+    expect(result.saved, 'success message should appear after saving').toBe(true);
+    expect(result.preferences.notify_overdue_tasks, 'overdue tasks should be unchecked').toBe(
+      false,
+    );
+    expect(result.preferences.notify_assignments, 'assignments should be unchecked').toBe(false);
+    expect(
+      result.preferences.notify_deal_stage_changes,
+      'deal stage changes should be unchecked',
+    ).toBe(false);
 
-    // Uncheck all three
-    await page.getByTestId('notif-checkbox-notify_overdue_tasks').click();
-    await page.getByTestId('notif-checkbox-notify_assignments').click();
-    await page.getByTestId('notif-checkbox-notify_deal_stage_changes').click();
-
-    await page.getByTestId('profile-prefs-save').click();
-    await expect(page.getByTestId('profile-prefs-success')).toBeVisible();
-
-    await page.reload();
-    await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).not.toBeChecked();
-    await expect(page.getByTestId('notif-checkbox-notify_assignments')).not.toBeChecked();
-    await expect(page.getByTestId('notif-checkbox-notify_deal_stage_changes')).not.toBeChecked();
+    // Reload and verify all off
+    const afterReload = await reloadAndGetProfilePreferences({ page, healPage, testName });
+    expect(afterReload.preferences.notify_overdue_tasks).toBe(false);
+    expect(afterReload.preferences.notify_assignments).toBe(false);
+    expect(afterReload.preferences.notify_deal_stage_changes).toBe(false);
 
     // Restore
     await restClient.patch('/api/users/me/notification-preferences', {
@@ -143,47 +176,59 @@ test.describe('Profile page — notification preferences', () => {
 test.describe('Admin Settings — global email notifications', () => {
   test('@functional F10-AS1: email notifications section is visible in admin settings', async ({
     page,
+    healPage,
   }) => {
-    await page.goto('/admin/settings');
-    await expect(page.getByTestId('email-notifications-section')).toBeVisible();
-    await expect(page.getByTestId('email-notif-toggle')).toBeVisible();
+    const testName = test.info().title;
+    const result = await navigateToAdminSettings({ page, healPage, testName });
+
+    expect(result.sectionVisible, 'email notifications section should be visible').toBe(true);
+    expect(result.toggleVisible, 'email notifications toggle should be visible').toBe(true);
   });
 
-  test('@functional F10-AS2: recipient count is displayed in admin settings', async ({ page }) => {
-    await page.goto('/admin/settings');
-    await expect(page.getByTestId('email-notif-recipient-count')).toBeVisible();
+  test('@functional F10-AS2: recipient count is displayed in admin settings', async ({
+    page,
+    healPage,
+  }) => {
+    const testName = test.info().title;
+    const result = await navigateToAdminSettings({ page, healPage, testName });
+
+    expect(result.recipientCountVisible, 'recipient count element should be visible').toBe(true);
   });
 
   test('@functional F10-AS3: toggling global email notifications off and back on persists via API (AC2)', async ({
     page,
+    healPage,
     restClient,
   }) => {
+    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Ensure enabled at start
     await restClient.patch('/api/settings/email-notifications', { enabled: true });
 
-    await page.goto('/admin/settings');
+    // Navigate to settings — toggle should show as enabled.
+    const initial = await navigateToAdminSettings({ page, healPage, testName });
+    expect(initial.toggleVisible, 'toggle should be visible').toBe(true);
 
     // Toggle off
-    const toggle = page.getByTestId('email-notif-toggle');
-    await expect(toggle).toHaveAttribute('aria-checked', 'true');
-    await toggle.click();
-    await expect(page.getByTestId('email-notif-success')).toBeVisible();
+    const disableResult = await toggleAdminEmailNotifications({ page, healPage, testName });
+    expect(disableResult.saved, 'success message should appear after toggling off').toBe(true);
+    expect(disableResult.isEnabled, 'toggle should now be off').toBe(false);
 
     // Verify via API (AC2)
     const afterDisable = await restClient.get<{ enabled: boolean }>(
       '/api/settings/email-notifications',
     );
-    expect(afterDisable.body.enabled).toBe(false);
+    expect(afterDisable.body.enabled, 'API should reflect disabled state (AC2)').toBe(false);
 
     // Toggle back on
-    await toggle.click();
-    await expect(page.getByTestId('email-notif-success')).toBeVisible();
+    const enableResult = await toggleAdminEmailNotifications({ page, healPage, testName });
+    expect(enableResult.saved, 'success message should appear after toggling on').toBe(true);
+    expect(enableResult.isEnabled, 'toggle should now be on').toBe(true);
 
     const afterEnable = await restClient.get<{ enabled: boolean }>(
       '/api/settings/email-notifications',
     );
-    expect(afterEnable.body.enabled).toBe(true);
+    expect(afterEnable.body.enabled, 'API should reflect enabled state (AC2)').toBe(true);
   });
 });
