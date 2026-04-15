@@ -295,23 +295,11 @@ test.describe.serial('Layout-mutating tests', () => {
       expect(layoutSet.success, 'hamburger layout API call must succeed before testing nav').toBe(
         true,
       );
-      await page.goto('/', { waitUntil: 'networkidle' });
-      // Wait for the hamburger toggle to appear — networkidle fires when the
-      // API request completes but React may not have re-rendered yet.
-      // Evaluated as a string so TypeScript does not need the dom lib.
-      await page
-        .evaluate(
-          `new Promise((resolve, reject) => {
-            const deadline = Date.now() + 8000;
-            const tick = () => {
-              if (document.querySelector('[data-testid="nav-menu-toggle"]')) resolve();
-              else if (Date.now() > deadline) reject(new Error('nav-menu-toggle timeout'));
-              else setTimeout(tick, 100);
-            };
-            tick();
-          })`,
-        )
-        .catch(() => null); // Non-fatal — navigateViaNavLink will fail with a clear message if still missing.
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      // networkidle can resolve before the nav-layout API response has been
+      // processed by React. Use Playwright's native waitForSelector instead —
+      // it retries until the element appears or the timeout expires.
+      await page.waitForSelector('[data-testid="nav-menu-toggle"]', { timeout: 10_000 });
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
