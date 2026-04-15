@@ -152,6 +152,7 @@ export default function NavTop() {
       {mobileMenuOpen && (
         <div
           id="mobile-nav-drawer"
+          data-testid="mobile-nav-drawer"
           ref={drawerRef}
           role="dialog"
           aria-label={t('nav.menu')}
