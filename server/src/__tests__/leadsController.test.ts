@@ -27,7 +27,7 @@ const BASE_LEAD = {
   last_name: 'Kim',
   email: 'dana.kim.ctrl@example.com',
   company_name: 'Acme',
-  lead_source: 'Web',
+  lead_source: 'Web' as const,
 };
 
 beforeAll(async () => {
