@@ -42,7 +42,10 @@ import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 // login() behavior can navigate to /login and authenticate as the correct role.
 // API-only tests in this spec (F7-AA*, F7-FA*) are unaffected by storageState but
 // the file-level override keeps behaviour consistent across the entire spec.
-test.use({ storageState: undefined });
+// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// from loading. `undefined` does not override the project config — an explicit empty
+// object is required to start each test with a fresh, unauthenticated browser context.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Environment

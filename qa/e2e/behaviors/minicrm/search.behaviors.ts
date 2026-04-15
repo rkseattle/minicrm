@@ -289,6 +289,15 @@ export async function typeSearchQueryAndCheckPanel(
   await searchPage.typeQuery(query);
 
   const panelVisible = await searchPage.panelIsVisible();
+
+  // After the panel appears, the debounce may still be in-flight. Wait for the
+  // min-length hint to disappear (it's absent for queries >= 2 chars once the
+  // component settles), then snapshot the final state.
+  await context.page
+    .getByTestId('search-min-length-hint')
+    .waitFor({ state: 'hidden', timeout: 5_000 })
+    .catch(() => null);
+
   const minLengthHintVisible = await searchPage.minLengthHintIsVisible();
   const noErrorAlert = await searchPage.noErrorAlertVisible();
 

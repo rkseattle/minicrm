@@ -32,7 +32,10 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 // MINCRM-192: Password-reset tests exercise unauthenticated flows (forgot-password,
 // reset link, auto-login on reset). They must not load the pre-authenticated
 // storageState — each test needs a fresh, unauthenticated browser context.
-test.use({ storageState: undefined });
+// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// from loading. `undefined` does not override the project config — an explicit empty
+// object is required to start each test with a fresh, unauthenticated browser context.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Environment

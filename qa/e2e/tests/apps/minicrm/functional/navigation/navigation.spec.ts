@@ -132,6 +132,9 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
+      // MINCRM-192: storageState loads cookies but does not navigate the page.
+      // Explicitly load the app root so the nav renders before link-click assertions.
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       // NavTop renders nav-top-* links only at the lg breakpoint (≥1024 px).
       // On mobile-web (393 px) those links are inside a collapsed drawer and are
@@ -181,6 +184,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Navigate to Contacts and verify the Contacts link carries the active class.
@@ -217,6 +221,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
@@ -250,6 +255,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Navigate to Accounts and verify the Accounts link carries the active class.
@@ -286,6 +292,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
@@ -320,6 +327,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Navigate to Deals via hamburger, then open menu again to check active state.
@@ -403,6 +411,7 @@ test.describe.serial('Layout-mutating tests', () => {
     }) => {
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Verify the left sidebar is active.
@@ -427,6 +436,7 @@ test.describe.serial('Layout-mutating tests', () => {
     }) => {
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Hamburger toggle must be visible.
@@ -462,6 +472,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Drawer should not be visible initially.
@@ -490,6 +501,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         await openHamburgerMenu({ page, healPage, testName });
@@ -517,6 +529,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         await openHamburgerMenu({ page, healPage, testName });
@@ -545,6 +558,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Open the hamburger menu and verify all admin destinations are visible.
@@ -574,6 +588,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
@@ -679,7 +694,10 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
 // MINCRM-192: F8-DL4 logs in as a rep via the UI — the browser must start
 // unauthenticated so the login() behavior can navigate to /login correctly.
 test.describe('Rep deep-link redirect', () => {
-  test.use({ storageState: undefined });
+  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // from loading. `undefined` does not override the project config — an explicit empty
+  // object is required to start each test with a fresh, unauthenticated browser context.
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@functional F8-DL4: deep link to admin-only route as rep redirects to dashboard', async ({
     page,
@@ -762,6 +780,9 @@ test('@functional F8-GU1: browser back and forward navigate correctly between vi
 
 test('@functional F8-GU2: browser tab title is set on load', async ({ page, restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  // MINCRM-192: storageState loads cookies but does not navigate. Load the app so the
+  // HTML shell (with <title>) is present before reading page.title().
+  await page.goto('/', { waitUntil: 'networkidle' });
 
   // The app uses a static <title>MiniCRM</title> in index.html (no per-page title updates).
   // Verify the title is present and non-empty on the dashboard.
