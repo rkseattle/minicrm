@@ -67,8 +67,17 @@ export class MyTasksPage {
    */
   async taskRowIsVisible(taskId: string): Promise<boolean> {
     await this.page.waitForLoadState('networkidle');
-    const row = this.page.locator(`[data-testid="task-row-${taskId}"]`);
-    return row.isVisible().catch(() => false);
+    try {
+      const row = await this.healPage
+        .locate([
+          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+        ])
+        .resolve(this.testName);
+      return row.isVisible().catch(() => false);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -87,8 +96,17 @@ export class MyTasksPage {
       { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
     ]);
     // Wait for the row to disappear (query refetch removes it from open-tasks view).
-    const row = this.page.locator(`[data-testid="task-row-${taskId}"]`);
-    await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
+    try {
+      const row = await this.healPage
+        .locate([
+          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+        ])
+        .resolve(this.testName);
+      await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
+    } catch {
+      // Row already gone — nothing to wait for.
+    }
   }
 
   /**

@@ -246,12 +246,24 @@ export async function createContactViaUI(
   const finalUrl = context.page.url();
 
   // Check for duplicate warning (form stays open with duplicate-contact-warning).
-  const duplicateLocator = context.page.locator('[data-testid="duplicate-contact-warning"]');
-  const duplicateWarning = await duplicateLocator.isVisible().catch(() => false);
+  const duplicateWarning = await context.healPage
+    .locate([
+      { type: 'testId', value: 'duplicate-contact-warning' },
+      { type: 'css', value: '[data-testid="duplicate-contact-warning"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.isVisible().catch(() => false))
+    .catch(() => false);
 
   // Check form still visible (either validation error or duplicate warning).
-  const formLocator = context.page.locator('[data-testid="contact-form"]');
-  const formStillVisible = await formLocator.isVisible().catch(() => false);
+  const formStillVisible = await context.healPage
+    .locate([
+      { type: 'testId', value: 'contact-form' },
+      { type: 'css', value: '[data-testid="contact-form"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.isVisible().catch(() => false))
+    .catch(() => false);
 
   // Created when form is gone and no duplicate warning.
   const created = !formStillVisible && !duplicateWarning;
@@ -449,25 +461,34 @@ export async function searchContacts(
   // wait until either a contact row OR the empty-state placeholder is attached
   // to the DOM — whichever appears first. This is more deterministic than a
   // hardcoded timeout and avoids double-networkidle races on slow CI machines.
+  const contactRowEl = await context.healPage
+    .locate([
+      { type: 'css', value: '[data-testid^="contact-link-"]' },
+      { type: 'css', value: '[data-testid="contacts-list"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
+  const emptyStateEl = await context.healPage
+    .locate([
+      { type: 'testId', value: 'contacts-empty-state' },
+      { type: 'text', value: t('contacts.empty') },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   await Promise.race([
-    context.page
-      .waitForSelector('[data-testid^="contact-link-"]', { timeout: 10_000 })
-      .catch(() => null),
-    context.page
-      .waitForSelector(`text=${t('contacts.empty')}`, { timeout: 10_000 })
-      .catch(() => null),
+    contactRowEl
+      ? contactRowEl.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => null)
+      : Promise.resolve(),
+    emptyStateEl
+      ? emptyStateEl.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => null)
+      : Promise.resolve(),
   ]);
 
   const rowCount = await contactsPage.rowCount();
 
   // The empty state is a <p> with the contacts.empty i18n text.
   const emptyStateVisible =
-    rowCount === 0 &&
-    (await context.page
-      .locator(`text=${t('contacts.empty')}`)
-      .first()
-      .isVisible()
-      .catch(() => false));
+    rowCount === 0 && ((await emptyStateEl?.isVisible().catch(() => false)) ?? false);
 
   const finalUrl = contactsPage.url();
 

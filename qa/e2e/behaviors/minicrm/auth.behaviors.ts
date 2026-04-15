@@ -95,14 +95,20 @@ export async function login(
   // condition where the alert can still be pending a React state update when
   // networkidle fires (the 401 response completes before the DOM updates).
   const LOGIN_TIMEOUT_MS = 10_000;
+  const loginAlert = await context.healPage
+    .locate([
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[role="alert"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   await Promise.race([
     context.page
       .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: LOGIN_TIMEOUT_MS })
       .catch(() => null),
-    context.page
-      .getByRole('alert')
-      .waitFor({ state: 'visible', timeout: LOGIN_TIMEOUT_MS })
-      .catch(() => null),
+    loginAlert
+      ? loginAlert.waitFor({ state: 'visible', timeout: LOGIN_TIMEOUT_MS }).catch(() => null)
+      : Promise.resolve(),
   ]);
 
   const finalUrl = context.page.url();
@@ -155,13 +161,27 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
   // For NavTop on mobile (hidden lg:inline-flex) it is not visible — in that
   // case open the hamburger drawer and click nav-logout-mobile instead.
   // For NavLeft and NavHamburger, nav-logout is always visible.
-  const desktopLogout = context.page.getByTestId('nav-logout');
+  const desktopLogout = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-logout' },
+      { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+    ])
+    .resolve(context.testName);
   const isDesktopVisible = await desktopLogout.isVisible().catch(() => false);
 
   if (!isDesktopVisible) {
-    // NavTop mobile: open drawer → wait for mobile logout button → click it.
-    await context.page.getByTestId('nav-menu-toggle').click();
-    const mobileLogout = context.page.getByTestId('nav-logout-mobile');
+    // NavTop mobile: click the menu toggle to mount the drawer, then resolve
+    // and click the mobile logout button inside it.
+    await context.healPage.click([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ]);
+    const mobileLogout = await context.healPage
+      .locate([
+        { type: 'testId', value: 'nav-logout-mobile' },
+        { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
+      ])
+      .resolve(context.testName);
     await mobileLogout.waitFor({ state: 'visible', timeout: 5_000 });
     await mobileLogout.click();
   } else {
@@ -246,16 +266,24 @@ export async function changePassword(
   await changePasswordPage.submit();
 
   const CHANGE_PASSWORD_TIMEOUT_MS = 10_000;
+  const changeAlert = await context.healPage
+    .locate([
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[role="alert"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   await Promise.race([
     context.page
       .waitForURL((url) => new URL(url).pathname !== '/change-password', {
         timeout: CHANGE_PASSWORD_TIMEOUT_MS,
       })
       .catch(() => null),
-    context.page
-      .getByRole('alert')
-      .waitFor({ state: 'visible', timeout: CHANGE_PASSWORD_TIMEOUT_MS })
-      .catch(() => null),
+    changeAlert
+      ? changeAlert
+          .waitFor({ state: 'visible', timeout: CHANGE_PASSWORD_TIMEOUT_MS })
+          .catch(() => null)
+      : Promise.resolve(),
   ]);
 
   const finalUrl = context.page.url();
@@ -358,10 +386,16 @@ export async function requestPasswordReset(
   await forgotPasswordPage.submit();
 
   const TIMEOUT_MS = 10_000;
-  await context.page
-    .getByTestId('forgot-password-success')
-    .waitFor({ state: 'visible', timeout: TIMEOUT_MS })
+  const successEl = await context.healPage
+    .locate([
+      { type: 'testId', value: 'forgot-password-success' },
+      { type: 'css', value: '[data-testid="forgot-password-success"]' },
+    ])
+    .resolve(context.testName)
     .catch(() => null);
+  if (successEl) {
+    await successEl.waitFor({ state: 'visible', timeout: TIMEOUT_MS }).catch(() => null);
+  }
 
   const finalUrl = context.page.url();
   const success = await forgotPasswordPage.successMessageVisible();
@@ -408,14 +442,20 @@ export async function resetPassword(
   await resetPage.submit();
 
   const TIMEOUT_MS = 10_000;
+  const resetError = await context.healPage
+    .locate([
+      { type: 'testId', value: 'reset-password-error' },
+      { type: 'css', value: '[data-testid="reset-password-error"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   await Promise.race([
     context.page
       .waitForURL((url) => new URL(url).pathname !== '/reset-password', { timeout: TIMEOUT_MS })
       .catch(() => null),
-    context.page
-      .getByTestId('reset-password-error')
-      .waitFor({ state: 'visible', timeout: TIMEOUT_MS })
-      .catch(() => null),
+    resetError
+      ? resetError.waitFor({ state: 'visible', timeout: TIMEOUT_MS }).catch(() => null)
+      : Promise.resolve(),
   ]);
 
   const finalUrl = context.page.url();

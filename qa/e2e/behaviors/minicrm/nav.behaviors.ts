@@ -94,9 +94,18 @@ export async function setNavLayoutViaUI(
   layout: NavLayout,
   context: NavBehaviorContext,
 ): Promise<SetNavLayoutViaUIResult> {
-  const { page } = context;
+  let button;
+  try {
+    button = await context.healPage
+      .locate([
+        { type: 'testId', value: `nav-layout-option-${layout}` },
+        { type: 'css', value: `[data-testid="nav-layout-option-${layout}"]` },
+      ])
+      .resolve(context.testName);
+  } catch {
+    return { clicked: false, successFeedbackVisible: false };
+  }
 
-  const button = page.getByTestId(`nav-layout-option-${layout}`);
   const isVisible = await button.isVisible().catch(() => false);
   if (!isVisible) {
     return { clicked: false, successFeedbackVisible: false };
@@ -108,13 +117,23 @@ export async function setNavLayoutViaUI(
   // PATCH has completed and the context has updated. Avoids fixed waitForTimeout.
   await button.waitFor({ state: 'visible' });
   let successFeedbackVisible = false;
-  await button
-    .and(page.locator('[aria-checked="true"]'))
-    .waitFor({ state: 'visible' })
-    .then(() => {
-      successFeedbackVisible = true;
-    })
+  // Use the resolved button locator with an and() filter for aria-checked.
+  // The CSS strategy resolves the same element with the attribute constraint.
+  const checkedButton = await context.healPage
+    .locate([
+      { type: 'css', value: `[data-testid="nav-layout-option-${layout}"][aria-checked="true"]` },
+      { type: 'testId', value: `nav-layout-option-${layout}` },
+    ])
+    .resolve(context.testName)
     .catch(() => null);
+  if (checkedButton) {
+    await checkedButton
+      .waitFor({ state: 'visible' })
+      .then(() => {
+        successFeedbackVisible = true;
+      })
+      .catch(() => null);
+  }
 
   return { clicked: true, successFeedbackVisible };
 }
@@ -139,14 +158,23 @@ export interface OpenHamburgerMenuResult {
 export async function openHamburgerMenu(
   context: NavBehaviorContext,
 ): Promise<OpenHamburgerMenuResult> {
-  const { page } = context;
-
-  await page.getByTestId('nav-menu-toggle').click();
-  const drawer = page.getByTestId('nav-hamburger-drawer');
+  await context.healPage.click([
+    { type: 'testId', value: 'nav-menu-toggle' },
+    { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+  ]);
+  // The hamburger drawer is conditionally rendered — click the toggle first,
+  // then resolve it once it's mounted.
+  const drawer = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-hamburger-drawer' },
+      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   // Wait for React to render the drawer — isVisible() after click() is a
   // snapshot that races React state updates (Greptile P1 finding).
-  await drawer.waitFor({ state: 'visible' }).catch(() => null);
-  const drawerVisible = await drawer.isVisible().catch(() => false);
+  await drawer?.waitFor({ state: 'visible' }).catch(() => null);
+  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
   return { drawerVisible };
 }
 
@@ -170,17 +198,23 @@ export interface CloseHamburgerMenuViaBackdropResult {
 export async function closeHamburgerMenuViaBackdrop(
   context: NavBehaviorContext,
 ): Promise<CloseHamburgerMenuViaBackdropResult> {
-  const { page } = context;
-
   // Click a point outside the drawer — top-right corner of the viewport is safe.
   // Use optional chaining to guard against null viewport (Greptile P2 finding).
-  const viewportWidth = page.viewportSize()?.width ?? 1024;
-  await page.mouse.click(viewportWidth - 10, 10);
+  const viewportWidth = context.page.viewportSize()?.width ?? 1024;
+  await context.page.mouse.click(viewportWidth - 10, 10);
 
-  const drawer = page.getByTestId('nav-hamburger-drawer');
+  // Drawer is conditionally rendered — resolve after the click that closed it.
+  // If it's already gone, resolve() will fail and we treat it as closed.
+  const drawer = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-hamburger-drawer' },
+      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   // Wait for the drawer to disappear rather than using a fixed timeout.
-  await drawer.waitFor({ state: 'hidden' }).catch(() => null);
-  const drawerVisible = await drawer.isVisible().catch(() => false);
+  await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
+  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
   return { drawerClosed: !drawerVisible };
 }
 
@@ -204,14 +238,23 @@ export interface CloseHamburgerMenuViaCloseButtonResult {
 export async function closeHamburgerMenuViaCloseButton(
   context: NavBehaviorContext,
 ): Promise<CloseHamburgerMenuViaCloseButtonResult> {
-  const { page } = context;
+  await context.healPage.click([
+    { type: 'testId', value: 'nav-hamburger-close' },
+    { type: 'css', value: '[data-testid="nav-hamburger-close"]' },
+  ]);
 
-  await page.getByTestId('nav-hamburger-close').click();
-
-  const drawer = page.getByTestId('nav-hamburger-drawer');
+  // Drawer is conditionally rendered — after clicking close it may already be
+  // unmounted. Resolve with a catch so a missing drawer counts as closed.
+  const drawer = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-hamburger-drawer' },
+      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
   // Wait for the drawer to disappear rather than using a fixed timeout.
-  await drawer.waitFor({ state: 'hidden' }).catch(() => null);
-  const drawerVisible = await drawer.isVisible().catch(() => false);
+  await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
+  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
   return { drawerClosed: !drawerVisible };
 }
 
@@ -243,30 +286,54 @@ export async function navigateViaNavLink(
   destination: string,
   context: NavBehaviorContext,
 ): Promise<NavigateViaNavLinkResult> {
-  const { page } = context;
-
   if (layout === 'hamburger') {
-    // Ensure menu is open before clicking a link.
-    const drawer = page.getByTestId('nav-hamburger-drawer');
-    const drawerVisible = await drawer.isVisible().catch(() => false);
+    // Ensure menu is open before clicking a link. The drawer is conditionally
+    // rendered, so check for it after clicking the toggle.
+    const drawerBeforeOpen = await context.healPage
+      .locate([
+        { type: 'testId', value: 'nav-hamburger-drawer' },
+        { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+      ])
+      .resolve(context.testName)
+      .catch(() => null);
+    const drawerVisible = (await drawerBeforeOpen?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
-      await page.getByTestId('nav-menu-toggle').click();
-      await page.getByTestId('nav-hamburger-drawer').waitFor({ state: 'visible' });
+      await context.healPage.click([
+        { type: 'testId', value: 'nav-menu-toggle' },
+        { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+      ]);
+      const drawer = await context.healPage
+        .locate([
+          { type: 'testId', value: 'nav-hamburger-drawer' },
+          { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+        ])
+        .resolve(context.testName);
+      await drawer.waitFor({ state: 'visible' });
     }
   }
 
   const testId = `nav-${layout}-${destination}`;
-  const link = page.getByTestId(testId);
-  const isVisible = await link.isVisible().catch(() => false);
+  let link;
+  try {
+    link = await context.healPage
+      .locate([
+        { type: 'testId', value: testId },
+        { type: 'css', value: `[data-testid="${testId}"]` },
+      ])
+      .resolve(context.testName);
+  } catch {
+    return { linkClicked: false, finalUrl: context.page.url() };
+  }
 
+  const isVisible = await link.isVisible().catch(() => false);
   if (!isVisible) {
-    return { linkClicked: false, finalUrl: page.url() };
+    return { linkClicked: false, finalUrl: context.page.url() };
   }
 
   await link.click();
 
   // After clicking a hamburger link the drawer closes; wait for navigation to settle.
-  await page.waitForLoadState('networkidle').catch(() => null);
+  await context.page.waitForLoadState('networkidle').catch(() => null);
 
-  return { linkClicked: true, finalUrl: page.url() };
+  return { linkClicked: true, finalUrl: context.page.url() };
 }
