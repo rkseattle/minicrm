@@ -162,7 +162,7 @@ async function findUserById(restClient: RestClient, userId: string): Promise<Use
 // Invitation tests
 // ---------------------------------------------------------------------------
 
-test('@functional F6-IN1: admin invites user with valid email and role → user appears in list with invited status', async ({
+test('@smoke @functional F6-IN1: admin invites user with valid email and role → user appears in list with invited status', async ({
   restClient,
 }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -347,7 +347,7 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
 // First login tests
 // ---------------------------------------------------------------------------
 
-test('@functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
+test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
   page,
   healPage,
   restClient,

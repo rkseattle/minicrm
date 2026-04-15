@@ -119,7 +119,7 @@ function daysFromToday(n: number): string {
 // F5-C — Activity Creation
 // ---------------------------------------------------------------------------
 
-test('@functional F5-C1: create Task → appears in my-tasks with type Task', async ({
+test('@smoke @functional F5-C1: create Task → appears in my-tasks with type Task', async ({
   restClient,
   testData,
 }) => {
@@ -734,7 +734,7 @@ test('@functional F5-FL3: combined filter (contact + account) → only activitie
 // F5-CP — Completion lifecycle
 // ---------------------------------------------------------------------------
 
-test('@functional F5-CP1: mark task complete via UI → removed from open list, API status=complete', async ({
+test('@smoke @functional F5-CP1: mark task complete via UI → removed from open list, API status=complete', async ({
   page,
   healPage,
   restClient,

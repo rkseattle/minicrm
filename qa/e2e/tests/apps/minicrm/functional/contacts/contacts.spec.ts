@@ -78,7 +78,7 @@ interface ContactSingleResponse {
 // Create tests
 // ---------------------------------------------------------------------------
 
-test('@functional F2-C1: all required fields submitted → contact created and appears in list', async ({
+test('@smoke @functional F2-C1: all required fields submitted → contact created and appears in list', async ({
   page,
   healPage,
   restClient,
@@ -272,7 +272,7 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
 // Read / List View tests
 // ---------------------------------------------------------------------------
 
-test('@functional F2-R1: contact list shows seeded records', async ({
+test('@smoke @functional F2-R1: contact list shows seeded records', async ({
   page,
   healPage,
   restClient,
@@ -464,7 +464,7 @@ test('@functional F2-R5: search non-matching term returns empty state', async ({
 // Update tests
 // ---------------------------------------------------------------------------
 
-test('@functional F2-U1: edit first name → change reflected in detail view and list', async ({
+test('@smoke @functional F2-U1: edit first name → change reflected in detail view and list', async ({
   page,
   healPage,
   restClient,
