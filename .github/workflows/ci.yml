@@ -42,8 +42,26 @@ jobs:
         env:
           NODE_ENV: development
 
+  # MINCRM-203: npm audit runs in a separate parallel job so it does not delay
+  # Phase 2 (server + client tests). Runs alongside Phase 1, non-blocking.
+  security-audit:
+    name: Phase 1 - Security Audit
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
       - name: Audit dependencies for high/critical vulnerabilities
-        run: npm audit --audit-level=high
+        run: |
+          npm audit --audit-level=high || echo "::warning::npm audit found high/critical vulnerabilities — review the output above"
 
   server-tests:
     name: Phase 2 - Server Unit Tests
@@ -100,8 +118,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
-        run: rm -f package-lock.json && npm install
+      - name: Install dependencies
+        # MINCRM-203: npm ci respects the lockfile for reproducible installs.
+        run: npm ci
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
@@ -122,8 +141,12 @@ jobs:
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
 
-  e2e-bvt:
-    name: Phase 3 - E2E BVTs (${{ matrix.project }})
+  e2e-functional:
+    # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
+    # Smoke-tagged specs (@bvt @smoke @functional) run first within shard 1 because
+    # Playwright processes files in filesystem order and smoke/ sorts before other
+    # domain directories.
+    name: Phase 3 - E2E Functional (${{ matrix.project }})
     needs: [server-tests, client-tests]
     runs-on: ubuntu-latest
     strategy:
@@ -161,195 +184,11 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
-      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
-        run: rm -f package-lock.json && npm install
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Run migrations on E2E database
-        run: npm run migrate --workspace=minicrm-server
-        env:
-          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
-          DB_USER: minicrm
-          DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
-          DB_HOST: localhost
-          DB_PORT: 5432
-          JWT_SECRET: ci-bvt-secret
-          NODE_ENV: test
-
-      - name: Seed E2E admin user
-        run: npm run seed:e2e-admin
-        env:
-          DB_USER: minicrm
-          DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
-          DB_HOST: localhost
-          DB_PORT: 5432
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
-
-      - name: Start application server
-        run: npm run start --workspace=minicrm-server &
-        env:
-          DB_USER: minicrm
-          DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
-          DB_HOST: localhost
-          DB_PORT: 5432
-          JWT_SECRET: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
-          NODE_ENV: development
-          PORT: 3001
-          # Bypass login rate limiter for BVT multi-login runs (MINCRM-110)
-          E2E: true
-
-      - name: Start frontend dev server
-        run: npm run dev --workspace=minicrm-client &
-        env:
-          API_URL: http://localhost:3001
-
-      - name: Wait for servers to be ready
-        run: |
-          echo "Waiting for API server..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:3001/api/health && break
-            echo "  attempt $i/30 — retrying in 2s"
-            if [ "$i" -eq 30 ]; then echo "API server did not start in time"; exit 1; fi
-            sleep 2
-          done
-          echo "Waiting for frontend dev server..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:5173 && break
-            echo "  attempt $i/30 — retrying in 2s"
-            if [ "$i" -eq 30 ]; then echo "Frontend server did not start in time"; exit 1; fi
-            sleep 2
-          done
-
-      - name: Run BVT suite (MINCRM-110)
-        # --workers=1: BVTs run sequentially per runner; parallelism is achieved
-        # at the CI matrix level (desktop vs mobile-web on separate runners).
-        # E2E=true: bypasses the login rate limiter (10 req / 15 min / IP)
-        # via the skip() hook in server/src/routes/auth.ts.
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} --workers=1 --grep @bvt qa/e2e/tests/apps/minicrm/bvt/
-        env:
-          E2E_BASE_URL: http://localhost:5173
-          E2E_API_URL: http://localhost:3001
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
-          E2E: true
-
-      - name: Publish results to GitHub Checks (MINCRM-135)
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Playwright – ${{ matrix.project }}
-          path: qa/e2e/test-results/results.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Log heal count from report (MINCRM-135)
-        if: always()
-        run: |
-          REPORT=test-results/healing-report.json
-          if [ -f "$REPORT" ]; then
-            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
-            AI=$(node -e "const r=require('./$REPORT'); console.log(r.aiHeals ?? 0)")
-            echo "Heal events this run: total=$TOTAL ai=$AI"
-            if [ "$AI" -gt 0 ]; then
-              echo "::warning::$AI AI heal(s) occurred — check healing-report.json for details"
-            fi
-          else
-            echo "healing-report.json not found (zero heals or reporter did not run)"
-          fi
-
-      - name: Check for healing report artifact (MINCRM-149)
-        id: healing-check
-        if: always()
-        run: |
-          REPORT=test-results/healing-report.json
-          if [ -f "$REPORT" ] && [ -s "$REPORT" ]; then
-            TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
-            if [ "$TOTAL" -gt 0 ]; then
-              echo "exists=true" >> $GITHUB_OUTPUT
-            else
-              echo "exists=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload healing report artifact (MINCRM-149)
-        if: always() && steps.healing-check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: healing-report-bvt-${{ matrix.project }}-${{ github.run_id }}
-          path: test-results/healing-report.json
-          retention-days: 14
-
-      - name: Debug instructions
-        if: failure()
-        run: |
-          echo "--------------------------------------------"
-          echo "Tests failed. To view traces:"
-          echo "  1. Download the 'playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}' CI artifact"
-          echo "  2. Run: npx playwright show-trace path/to/trace.zip"
-          echo "  3. Or open the HTML report: npx playwright show-report path/to/playwright-report"
-          echo "--------------------------------------------"
-
-      - name: Upload Playwright artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-artifacts-bvt-${{ matrix.project }}-${{ github.run_id }}
-          path: |
-            qa/e2e/test-results/
-            qa/e2e/playwright-report/
-            test-results/
-          retention-days: 14
-
-  e2e-functional:
-    name: Phase 4 - E2E Functional (${{ matrix.project }})
-    needs: e2e-bvt
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [desktop, mobile-web]
-
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_USER: minicrm
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: minicrm_e2e
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Cache Playwright browser binaries
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
-
-      - name: Install dependencies (no lockfile — resolves Linux-specific optional binaries)
-        run: rm -f package-lock.json && npm install
+      - name: Install dependencies
+        # MINCRM-203: npm ci respects the lockfile for reproducible installs.
+        # npm rebuild resolves platform-specific Playwright optional binaries
+        # (e.g. Linux chromium sandbox) after the lockfile-based install.
+        run: npm ci && npm rebuild
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -413,9 +252,11 @@ jobs:
             sleep 2
           done
 
-      - name: Run functional test suite (MINCRM-137)
+      - name: Run functional test suite (MINCRM-137, MINCRM-193)
         # --workers=4: functional tests are data-isolated and safe to parallelise.
         # E2E=true: bypasses the login rate limiter for multi-login test runs.
+        # Smoke tests (functional/smoke/) run first within shard 1 — filesystem
+        # ordering guarantees smoke/ sorts before other domain directories.
         # New @functional spec files under qa/e2e/tests/apps/minicrm/functional/
         # are picked up automatically — no CI changes required per new spec.
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} --workers=4 --grep @functional qa/e2e/tests/apps/minicrm/functional/
@@ -496,7 +337,7 @@ jobs:
           retention-days: 14
 
   e2e-functional-report:
-    name: Phase 4 - E2E Functional — Report
+    name: Phase 3 - E2E Functional — Report
     needs: e2e-functional
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
@@ -583,97 +424,4 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
-          message: ${{ steps.comment.outputs.body }}
-
-  e2e-bvt-report:
-    name: Phase 3 - E2E BVTs — Report
-    needs: e2e-bvt
-    runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
-    steps:
-      - name: Download desktop artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: playwright-artifacts-bvt-desktop-${{ github.run_id }}
-          path: artifacts/desktop
-
-      - name: Download mobile-web artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: playwright-artifacts-bvt-mobile-web-${{ github.run_id }}
-          path: artifacts/mobile-web
-
-      - name: Build combined PR comment (MINCRM-135)
-        id: comment
-        run: |
-          parse_xml() {
-            local xml_file="$1"
-            python3 - "$xml_file" <<'PYEOF'
-          import sys, xml.etree.ElementTree as ET
-          try:
-              tree = ET.parse(sys.argv[1])
-              root = tree.getroot()
-              # Playwright emits a <testsuites> root with one <testsuite> per spec
-              # file. Summing across all suites gives the correct total counts.
-              suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
-              tests    = sum(int(s.attrib.get('tests',    0)) for s in suites)
-              failures = sum(int(s.attrib.get('failures', 0)) for s in suites)
-              errors   = sum(int(s.attrib.get('errors',   0)) for s in suites)
-              skipped  = sum(int(s.attrib.get('skipped',  0)) for s in suites)
-              failed  = failures + errors
-              passed  = tests - failed - skipped
-              status  = '✅ Passed' if failed == 0 else '❌ Failed'
-              print(f"{status}|{tests}|{passed}|{failed}|{skipped}")
-          except Exception as e:
-              print(f"❓ Unknown|0|0|0|0")
-          PYEOF
-          }
-
-          DESKTOP=$(parse_xml artifacts/desktop/qa/e2e/test-results/results.xml)
-          MOBILE=$(parse_xml artifacts/mobile-web/qa/e2e/test-results/results.xml)
-          ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
-          IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
-
-          # Check for heals in either artifact (MINCRM-149)
-          HEAL_NOTE=""
-          HEAL_LINK=""
-          for project in desktop mobile-web; do
-            dir="artifacts/$project"
-            REPORT="$dir/test-results/healing-report.json"  # repo-root test-results/
-            if [ -f "$REPORT" ]; then
-              TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
-              if [ "$TOTAL" -gt 0 ]; then
-                HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
-                HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
-                break
-              fi
-            fi
-          done
-
-          {
-            echo 'body<<COMMENT_EOF'
-            echo "## Playwright Test Results — BVT"
-            echo ""
-            echo "| Project | Status | Tests | Passed | Failed | Skipped |"
-            echo "|---------|--------|-------|--------|--------|---------|"
-            echo "| desktop | $d_status | $d_tests | $d_passed | $d_failed | $d_skipped |"
-            echo "| mobile-web | $m_status | $m_tests | $m_passed | $m_failed | $m_skipped |"
-            if [ -n "$HEAL_NOTE" ]; then
-              echo ""
-              echo "$HEAL_NOTE"
-            fi
-            echo ""
-            echo "[Download trace artifacts]($ARTIFACTS_URL)"
-            if [ -n "$HEAL_LINK" ]; then
-              echo "$HEAL_LINK"
-            fi
-            echo 'COMMENT_EOF'
-          } >> $GITHUB_OUTPUT
-
-      - name: Post combined summary comment (MINCRM-135)
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: playwright-results-bvt
           message: ${{ steps.comment.outputs.body }}

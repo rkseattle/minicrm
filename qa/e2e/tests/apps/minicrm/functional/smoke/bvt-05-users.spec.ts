@@ -20,10 +20,10 @@
  *   /api/users/:id/deactivate (hard delete is not supported). User IDs are
  *   tracked locally and deactivated in a finally block.
  *
- * Tagged @bvt so the suite can be run in isolation:
- *   npx playwright test --grep @bvt
+ * Tagged @bvt @smoke @functional — runs in the merged functional suite.
+ * Can still be targeted in isolation: npx playwright test --grep @bvt
  *
- * MINCRM-110
+ * MINCRM-110, MINCRM-193
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -52,7 +52,7 @@ interface InviteResponse {
   inviteToken: string;
 }
 
-test('@bvt BVT-05: user management — invite, verify in list, login as invited user, teardown', async ({
+test('@bvt @smoke @functional BVT-05: user management — invite, verify in list, login as invited user, teardown', async ({
   page,
   healPage,
   restClient,

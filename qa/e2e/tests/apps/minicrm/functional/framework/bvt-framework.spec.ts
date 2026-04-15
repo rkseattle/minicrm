@@ -22,7 +22,10 @@
  *   - Zero @playwright/test imports — all from @apps/minicrm/fixtures.js
  *   - Zero direct Page Object calls, raw locator references, or HealingLocator instances
  *
- * MINCRM-131
+ * Tagged @bvt @smoke @functional — runs in the merged functional suite.
+ * Moved from tests/apps/minicrm/bvt.spec.ts (MINCRM-193).
+ *
+ * MINCRM-131, MINCRM-193
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -56,8 +59,8 @@ interface ContactListResponse {
 // BVT suite
 // ---------------------------------------------------------------------------
 
-test.describe('BVT — MiniCRM E2E framework integration', () => {
-  test('framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
+test.describe('@bvt @smoke @functional BVT — MiniCRM E2E framework integration', () => {
+  test('@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
     page,
     healPage,
     restClient,
