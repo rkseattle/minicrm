@@ -16,14 +16,24 @@
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
- *   - data-testid selectors only — no CSS class or positional selectors
+ *   - All UI interactions via behaviors — no raw locators in this file
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
- * MINCRM-173, MINCRM-174, MINCRM-175
+ * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import {
+  createLeadViaUI,
+  createLeadViaUIThenCreateAnyway,
+  updateLeadStatus,
+  showDisqualifiedLeads,
+  showConvertedLeads,
+  convertLead,
+  deleteLead,
+  leadRowIsHidden,
+} from '@behaviors/minicrm/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -78,55 +88,57 @@ interface ConversionResponse {
 
 test('@functional F9-C1: required fields submitted → lead created and visible in list', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  await page.goto('/leads');
-  await page.getByTestId('new-lead-button').click();
-
   const email = `f9c1-${uniqueSuffix}@example.com`;
-  await page.getByTestId('lead-first-name').fill('F9C1');
-  await page.getByTestId('lead-email').fill(email);
-  await page.getByTestId('lead-form-submit').click();
+  const result = await createLeadViaUI({ first_name: 'F9C1', email }, { page, healPage, testName });
 
-  await expect(page.getByTestId('lead-form')).not.toBeVisible();
+  expect(result.created, 'form should close after successful create').toBe(true);
 
   // Confirm via API
-  const result = await restClient.get<LeadListResponse>(
+  const apiResult = await restClient.get<LeadListResponse>(
     `/api/leads?includeDisqualified=true&includeConverted=true`,
   );
-  const found = result.body.data.find((l) => l.email === email);
+  const found = apiResult.body.data.find((l) => l.email === email);
   expect(found, 'lead should exist via API').toBeDefined();
   testData.register('lead', found!.id, `/api/leads/${found!.id}`);
 });
 
 test('@functional F9-C2: optional fields saved and displayed on detail page', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  await page.goto('/leads');
-  await page.getByTestId('new-lead-button').click();
-
   const email = `f9c2-${uniqueSuffix}@example.com`;
-  await page.getByTestId('lead-first-name').fill('F9C2');
-  await page.getByTestId('lead-last-name').fill('Optional');
-  await page.getByTestId('lead-email').fill(email);
-  await page.getByTestId('lead-phone').fill('+15550002222');
-  await page.getByTestId('lead-company-name').fill(`Corp-${uniqueSuffix}`);
-  await page.getByTestId('lead-form-submit').click();
+  const result = await createLeadViaUI(
+    {
+      first_name: 'F9C2',
+      last_name: 'Optional',
+      email,
+      phone: '+15550002222',
+      company_name: `Corp-${uniqueSuffix}`,
+    },
+    { page, healPage, testName },
+  );
+
+  expect(result.created, 'form should close after successful create').toBe(true);
 
   // Navigate to detail via API to confirm fields saved
-  const result = await restClient.get<LeadListResponse>(
+  const apiResult = await restClient.get<LeadListResponse>(
     `/api/leads?includeDisqualified=true&includeConverted=true`,
   );
-  const found = result.body.data.find((l) => l.email === email);
+  const found = apiResult.body.data.find((l) => l.email === email);
   expect(found).toBeDefined();
   testData.register('lead', found!.id, `/api/leads/${found!.id}`);
 
@@ -136,9 +148,11 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
 
 test('@functional F9-C3: duplicate email shows warning, Create Anyway creates duplicate', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -150,22 +164,25 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
   });
   testData.register('lead', existing.body.lead.id, `/api/leads/${existing.body.lead.id}`);
 
-  await page.goto('/leads');
-  await page.getByTestId('new-lead-button').click();
-  await page.getByTestId('lead-first-name').fill('Duplicate');
-  await page.getByTestId('lead-email').fill(email);
-  await page.getByTestId('lead-form-submit').click();
+  // First submit should show warning
+  const withWarning = await createLeadViaUI(
+    { first_name: 'Duplicate', email },
+    { page, healPage, testName },
+  );
+  expect(withWarning.duplicateWarning, 'duplicate warning should appear').toBe(true);
+  expect(withWarning.created, 'lead should not be created on first submit').toBe(false);
 
-  await expect(page.getByTestId('duplicate-lead-warning')).toBeVisible();
+  // Click "Create anyway" to proceed
+  const result = await createLeadViaUIThenCreateAnyway(
+    { first_name: 'Duplicate', email },
+    { page, healPage, testName },
+  );
+  expect(result.created, 'lead should be created after clicking Create anyway').toBe(true);
 
-  // Click "Create anyway"
-  await page.getByTestId('duplicate-create-anyway').click();
-  await expect(page.getByTestId('lead-form')).not.toBeVisible();
-
-  const result = await restClient.get<LeadListResponse>(
+  const apiResult = await restClient.get<LeadListResponse>(
     `/api/leads?includeDisqualified=true&includeConverted=true`,
   );
-  const withEmail = result.body.data.filter((l) => l.email === email);
+  const withEmail = apiResult.body.data.filter((l) => l.email === email);
   expect(withEmail.length, 'two leads with same email should exist').toBe(2);
   const secondId = withEmail.find((l) => l.id !== existing.body.lead.id)!.id;
   testData.register('lead', secondId, `/api/leads/${secondId}`);
@@ -177,9 +194,11 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
 
 test('@functional F9-S1: inline status update from list view updates badge', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -191,14 +210,9 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  await page.goto('/leads');
+  const result = await updateLeadStatus(leadId, 'Contacted', { page, healPage, testName });
 
-  // Click the status badge to open the inline selector
-  await page.getByTestId(`status-badge-${leadId}`).click();
-  await page.getByTestId(`status-select-${leadId}`).selectOption('Contacted');
-
-  // Badge should update
-  await expect(page.getByTestId(`status-badge-${leadId}`)).toHaveText('Contacted');
+  expect(result.badgeText, 'badge text should update to new status').toBe('Contacted');
 
   // Confirm via API
   const detail = await restClient.get<LeadSingleResponse>(`/api/leads/${leadId}`);
@@ -207,9 +221,11 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
 
 test('@functional F9-S2: disqualified leads hidden by default, shown with toggle', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -227,14 +243,13 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
     disqualification_reason: 'Not a fit',
   });
 
-  await page.goto('/leads');
-
   // Should not be visible by default
-  await expect(page.getByTestId(`lead-row-${leadId}`)).not.toBeVisible();
+  const hiddenResult = await leadRowIsHidden(leadId, { page, healPage, testName });
+  expect(hiddenResult.hidden, 'disqualified lead should be hidden by default').toBe(true);
 
   // Show disqualified
-  await page.getByTestId('toggle-disqualified').check();
-  await expect(page.getByTestId(`lead-row-${leadId}`)).toBeVisible();
+  const shownResult = await showDisqualifiedLeads(leadId, { page, healPage, testName });
+  expect(shownResult.leadVisible, 'disqualified lead should be visible after toggling').toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -243,9 +258,11 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
 
 test('@functional F9-V1: Convert Lead creates contact, account, and deal atomically', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -259,19 +276,15 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  await page.goto(`/leads/${leadId}`);
+  const result = await convertLead(leadId, { page, healPage, testName });
 
-  await page.getByTestId('convert-lead-button').click();
-
-  // Modal should be visible with prefilled fields
-  await expect(page.getByTestId('convert-contact-first-name')).toHaveValue('F9V1');
-  await expect(page.getByTestId('convert-contact-email')).toHaveValue(email);
-  await expect(page.getByTestId('convert-account-name')).toHaveValue(company);
-
-  await page.getByTestId('convert-confirm').click();
+  // Modal should have been prefilled
+  expect(result.prefillFirstName, 'first name should be prefilled').toBe('F9V1');
+  expect(result.prefillEmail, 'email should be prefilled').toBe(email);
+  expect(result.prefillAccountName, 'account name should be prefilled').toBe(company);
 
   // Should navigate to the new contact detail page
-  await page.waitForURL(/\/contacts\//);
+  expect(result.navigatedToContact, 'should navigate to contact after conversion').toBe(true);
 
   // Confirm lead is marked converted via API
   const leadDetail = await restClient.get<LeadSingleResponse>(`/api/leads/${leadId}`);
@@ -295,9 +308,11 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
 
 test('@functional F9-V2: Converted lead shows badge in list view', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -331,14 +346,16 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
     );
   }
 
-  await page.goto('/leads');
-
   // Converted leads hidden by default
-  await expect(page.getByTestId(`lead-row-${leadId}`)).not.toBeVisible();
+  const hiddenResult = await leadRowIsHidden(leadId, { page, healPage, testName });
+  expect(hiddenResult.hidden, 'converted lead should be hidden by default').toBe(true);
 
-  // Show converted
-  await page.getByTestId('toggle-converted').check();
-  await expect(page.getByTestId(`badge-converted-${leadId}`)).toBeVisible();
+  // Show converted and check badge
+  const shownResult = await showConvertedLeads(leadId, { page, healPage, testName });
+  expect(
+    shownResult.convertedBadgeVisible,
+    'converted badge should be visible after toggling',
+  ).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -347,8 +364,10 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
 
 test('@functional F9-D1: deleting a lead removes it from the list', async ({
   page,
+  healPage,
   restClient,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -359,16 +378,7 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   });
   const leadId = created.body.lead.id;
 
-  await page.goto(`/leads/${leadId}`);
+  const result = await deleteLead(leadId, { page, healPage, testName });
 
-  await page.getByTestId('delete-lead-button').click();
-  // ConfirmDeleteModal
-  await page
-    .getByRole('button', { name: /delete/i })
-    .last()
-    .click();
-
-  // Should navigate back to /leads
-  await page.waitForURL('/leads');
-  await expect(page.getByTestId(`lead-row-${leadId}`)).not.toBeVisible();
+  expect(result.deleted, 'browser should navigate back to /leads after deletion').toBe(true);
 });

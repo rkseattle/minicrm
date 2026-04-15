@@ -33,3 +33,19 @@ export type { ForgotPasswordPageContext } from './ForgotPasswordPage.js';
 
 export { ResetPasswordPage } from './ResetPasswordPage.js';
 export type { ResetPasswordPageContext } from './ResetPasswordPage.js';
+
+export { LeadsPage } from './LeadsPage.js';
+export type { LeadsPageContext } from './LeadsPage.js';
+
+export { LeadDetailPage } from './LeadDetailPage.js';
+export type { LeadDetailPageContext } from './LeadDetailPage.js';
+
+export { GlobalSearchPage } from './GlobalSearchPage.js';
+export type { GlobalSearchPageContext } from './GlobalSearchPage.js';
+
+export { ProfilePage } from './ProfilePage.js';
+export type { ProfilePageContext } from './ProfilePage.js';
+export type { NotificationPreferenceKey } from './ProfilePage.js';
+
+export { AdminSettingsPage } from './AdminSettingsPage.js';
+export type { AdminSettingsPageContext } from './AdminSettingsPage.js';
