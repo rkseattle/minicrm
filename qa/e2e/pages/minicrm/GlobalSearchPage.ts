@@ -6,7 +6,9 @@
  * this Page Object handles that branching internally so behaviors and specs
  * never need to know about the layout.
  *
- * Every element uses a HealingLocator with at least 2 strategies.
+ * Every interactive element uses a HealingLocator with at least 2 strategies.
+ * The mobile drawer container uses a raw page.locator() because it is
+ * conditionally rendered and must be referenced before being opened.
  *
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
@@ -68,7 +70,12 @@ export class GlobalSearchPage {
    * NavLeft and NavHamburger always render the input visibly. NavTop on desktop
    * also renders it visibly. Only NavTop on mobile hides it behind `hidden lg:block`.
    *
-   * All element resolution goes through HealingLocator — no raw page.* calls.
+   * The global-search-input is resolved via HealingLocator. The mobile drawer
+   * container (#mobile-nav-drawer) uses a raw page.locator() reference because
+   * it is conditionally rendered — only mounted when open — so HealingLocator
+   * would throw StrategyExhaustedError before the toggle has been clicked.
+   * The drawer is a structural scoping container, not an interactive element,
+   * so raw locator usage is appropriate here.
    */
   private async openInput(): Promise<Locator> {
     // Resolve the header input through the healing framework.
@@ -86,13 +93,10 @@ export class GlobalSearchPage {
 
     if (!isHeaderVisible) {
       // NavTop mobile: open the drawer which contains its own search input instance.
-      const drawer = await this.healPage
-        .locate([
-          { type: 'css', value: '#mobile-nav-drawer' },
-          { type: 'testId', value: 'mobile-nav-drawer' },
-        ])
-        .resolve(this.testName);
-
+      // Use page.locator() for the drawer container — it is conditionally rendered
+      // (only mounted when mobileMenuOpen is true), so HealingLocator.resolve()
+      // would exhaust all strategies before the toggle has been clicked to open it.
+      const drawer = this.page.locator('#mobile-nav-drawer');
       const drawerVisible = await drawer.isVisible().catch(() => false);
       if (!drawerVisible) {
         await this.healPage.click([
@@ -101,14 +105,9 @@ export class GlobalSearchPage {
         ]);
         await drawer.waitFor({ state: 'visible', timeout: 5_000 });
       }
-
-      const drawerInput = await this.healPage
-        .locate([
-          { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-          { type: 'testId', value: 'global-search-input' },
-        ])
-        .resolve(this.testName);
-
+      // Scope the input lookup to the drawer to avoid resolving to the header
+      // input, which is hidden on mobile but still attached to the DOM.
+      const drawerInput = drawer.getByTestId('global-search-input');
       await drawerInput.waitFor({ state: 'visible', timeout: 5_000 });
       return drawerInput;
     }
