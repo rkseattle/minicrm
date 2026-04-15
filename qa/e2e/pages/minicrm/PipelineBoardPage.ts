@@ -120,13 +120,20 @@ export class PipelineBoardPage {
     if (!mobile) {
       for (const slug of PipelineBoardPage.STAGE_SLUGS) {
         try {
+          // Both strategies are scoped to this specific column so a failed
+          // resolve means "card is not in this column" — never matches globally.
+          // The XPath fallback is semantically identical to the CSS primary, just
+          // expressed differently for the heal framework to prefer the CSS form.
           const cardInColumn = await this.healPage
             .locate([
               {
                 type: 'css',
                 value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
               },
-              { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+              {
+                type: 'xpath',
+                value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
+              },
             ])
             .resolve(this.testName);
           if ((await cardInColumn.count()) > 0) return slug;
@@ -333,18 +340,23 @@ export class PipelineBoardPage {
       }
     } else {
       try {
+        // Both strategies scoped to the target column — avoids matching the card
+        // in a stale column while React Query is still updating the board.
         const cardInTarget = await this.healPage
           .locate([
             {
               type: 'css',
               value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
             },
-            { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+            {
+              type: 'xpath',
+              value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
+            },
           ])
           .resolve(this.testName);
         await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
       } catch {
-        // Card not found — caller will verify state independently.
+        // Card not found in target column — caller will verify state independently.
       }
     }
   }

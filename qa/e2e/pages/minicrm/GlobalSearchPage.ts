@@ -95,9 +95,30 @@ export class GlobalSearchPage {
     }
 
     // NavTop mobile: the header input is hidden behind `hidden lg:block`.
-    // Click the menu toggle to mount and reveal the drawer, then resolve the
-    // input scoped inside it. The scoped CSS primary strategy is used so we
-    // never accidentally return the still-hidden header input.
+    // Before clicking the toggle, check whether the drawer is already open —
+    // if a prior call in the same test already opened it, clicking the toggle
+    // again would close it (it is a toggle, not an open-only button).
+    const drawerInputAlreadyVisible = await this.healPage
+      .locate([
+        { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
+        { type: 'testId', value: 'global-search-input' },
+      ])
+      .resolve(this.testName)
+      .then((el) => el.isVisible().catch(() => false))
+      .catch(() => false);
+
+    if (drawerInputAlreadyVisible) {
+      return this.healPage
+        .locate([
+          { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
+          { type: 'testId', value: 'global-search-input' },
+        ])
+        .resolve(this.testName);
+    }
+
+    // Drawer is not open — click the menu toggle to mount and reveal it,
+    // then resolve the input scoped inside it. The scoped CSS primary strategy
+    // ensures we never accidentally return the still-hidden header input.
     await this.healPage.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
