@@ -59,7 +59,11 @@ interface ContactListResponse {
 // BVT suite
 // ---------------------------------------------------------------------------
 
+// MINCRM-192: The BVT validates the login() behavior and LoginPage machinery as
+// part of its framework integration check. It must start with an unauthenticated
+// browser so the login flow can be exercised end-to-end.
 test.describe('BVT — MiniCRM E2E framework integration', () => {
+  test.use({ storageState: undefined });
   test('@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
     page,
     healPage,

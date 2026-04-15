@@ -55,6 +55,8 @@ qa/node_modules/
 qa/dist/
 qa/playwright-report/
 qa/test-results/
+# MINCRM-192: storageState auth artifacts — never commit session cookies
+qa/e2e/.auth/
 
 # ─── OS & Editor ──────────────────────────────────────────────────────────────
 .DS_Store

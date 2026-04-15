@@ -30,7 +30,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAccounts,
   editAccount,
@@ -87,7 +86,6 @@ test('@functional F3-C1: all required fields submitted → account created and a
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const name = `F3C1 Corp ${uniqueSuffix}`;
 
@@ -115,7 +113,6 @@ test('@functional F3-C2: optional fields included → all saved on detail page',
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const name = `F3C2 Corp ${uniqueSuffix}`;
   const result = await createAccountViaUI(
@@ -154,7 +151,6 @@ test('@functional F3-C3: missing required name field → inline validation error
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Submit a form with an empty name — the browser's required validation fires
   // before the form submits, keeping the form visible.
@@ -185,7 +181,6 @@ test('@functional F3-R1: seeded accounts are visible in the list', async ({
     name: `F3R1-Beta-${Date.now()}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const result = await navigateToAccounts({ page, healPage, testName });
 
   expect(result.loaded, 'accounts page should load').toBe(true);
@@ -215,7 +210,6 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
   await createTestAccount(testData, restClient, { name: `F3R2-AAA-${Date.now()}` });
   await createTestAccount(testData, restClient, { name: `F3R2-ZZZ-${Date.now()}` });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await navigateToAccounts({ page, healPage, testName });
 
   // Verify API returns correct sort order ascending.
@@ -244,7 +238,6 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const sentinel = 'F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL';
 
@@ -295,8 +288,6 @@ test('@functional F3-U1: edit account name → change reflected in detail view',
     name: `F3U1-Before-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const updatedName = `F3U1-After-${uniqueSuffix}`;
   const result = await editAccount(account.id, { name: updatedName }, { page, healPage, testName });
 
@@ -319,8 +310,6 @@ test('@functional F3-U2: edit industry field → change reflected in detail view
   const account = await createTestAccount(testData, restClient, {
     name: `F3U2-Corp-${Date.now()}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await editAccount(
     account.id,
@@ -345,8 +334,6 @@ test('@functional F3-U3: cancel edit → no change persisted', async ({
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, { name: originalName });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await cancelAccountEdit(account.id, 'F3U3-CANCELLED', {
     page,
@@ -377,8 +364,6 @@ test('@functional F3-D1: delete account with no contacts → removed from list, 
   const account = await createTestAccount(testData, restClient, {
     name: `F3D1-DeleteMe-${Date.now()}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await deleteAccountViaUI(account.id, { page, healPage, testName });
 
@@ -413,8 +398,6 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
   const contact = await createTestContact(testData, restClient, {
     account_id: account.id,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await deleteAccountViaUI(account.id, { page, healPage, testName });
 
@@ -453,8 +436,6 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
     name: `F3D3-CancelDelete-${Date.now()}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const result = await cancelDeleteAccount(account.id, { page, healPage, testName });
 
   expect(result.stillOnDetailPage, 'cancel should keep user on detail page').toBe(true);
@@ -470,11 +451,9 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
 
 test('@functional F3-A1: linked contacts appear on account detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -485,8 +464,6 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
     last_name: `Contact-${Date.now()}`,
     account_id: account.id,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Navigate to account detail page.
   await page.goto(`/accounts/${account.id}`);
@@ -502,18 +479,14 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
 test('@functional F3-A2: account with zero contacts shows empty contacts section, not an error', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F3A2-NoContacts-${Date.now()}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   await page.goto(`/accounts/${account.id}`);
   await page.waitForLoadState('networkidle');
@@ -529,11 +502,9 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
 
 test('@functional F3-A3: unlinking contact from contact side is reflected on account detail', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -545,8 +516,6 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
 
   // Unlink the contact by patching account_id to null via REST.
   await restClient.patch(`/api/contacts/${contact.id}`, { account_id: null });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   await page.goto(`/accounts/${account.id}`);
   await page.waitForLoadState('networkidle');

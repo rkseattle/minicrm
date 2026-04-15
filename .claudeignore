@@ -51,3 +51,5 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+# MINCRM-192: storageState auth artifacts — session cookies, never index
+qa/e2e/.auth/

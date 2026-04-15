@@ -345,134 +345,146 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
 
 // ---------------------------------------------------------------------------
 // First login tests
+// MINCRM-192: These tests log in via the UI as a newly-created test user to
+// exercise the forced-password-change flow. The browser must start unauthenticated.
 // ---------------------------------------------------------------------------
+test.describe('First login tests', () => {
+  test.use({ storageState: undefined });
 
-test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
-  const testName = test.info().title;
-  const TEMP_PASSWORD = 'F6TempPass1!';
+  test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const testName = test.info().title;
+    const TEMP_PASSWORD = 'F6TempPass1!';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  let userId: string | null = null;
-  try {
-    const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-    userId = user.id;
+    let userId: string | null = null;
+    try {
+      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
+      userId = user.id;
 
-    const loginResult = await login(
-      { email: user.email, password: TEMP_PASSWORD },
-      { page, healPage, testName },
-    );
+      const loginResult = await login(
+        { email: user.email, password: TEMP_PASSWORD },
+        { page, healPage, testName },
+      );
 
-    expect(loginResult.success, 'forced-change user login should succeed').toBe(true);
-    expect(
-      new URL(loginResult.finalUrl).pathname,
-      'forced-change user should land on /change-password',
-    ).toBe('/change-password');
-  } finally {
-    if (userId) {
-      await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
-        console.error(`[F6-FL1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
+      expect(loginResult.success, 'forced-change user login should succeed').toBe(true);
+      expect(
+        new URL(loginResult.finalUrl).pathname,
+        'forced-change user should land on /change-password',
+      ).toBe('/change-password');
+    } finally {
+      if (userId) {
+        await restClient
+          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .catch(() => null);
+        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+          console.error(`[F6-FL1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
+        });
+      }
     }
-  }
-});
+  });
 
-test('@functional F6-FL2: temp password rejected after forced password change', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
-  const testName = test.info().title;
-  const TEMP_PASSWORD = 'F6TempPass1!';
-  const NEW_PASSWORD = 'F6NewPass2@';
+  test('@functional F6-FL2: temp password rejected after forced password change', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const testName = test.info().title;
+    const TEMP_PASSWORD = 'F6TempPass1!';
+    const NEW_PASSWORD = 'F6NewPass2@';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  let userId: string | null = null;
-  try {
-    const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-    userId = user.id;
+    let userId: string | null = null;
+    try {
+      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
+      userId = user.id;
 
-    // Login — lands on /change-password.
-    await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
+      // Login — lands on /change-password.
+      await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
 
-    // Change the password.
-    const changeResult = await changePassword(
-      { currentPassword: TEMP_PASSWORD, newPassword: NEW_PASSWORD, confirmPassword: NEW_PASSWORD },
-      { page, healPage, testName },
-    );
-    expect(changeResult.success, 'password change should succeed').toBe(true);
+      // Change the password.
+      const changeResult = await changePassword(
+        {
+          currentPassword: TEMP_PASSWORD,
+          newPassword: NEW_PASSWORD,
+          confirmPassword: NEW_PASSWORD,
+        },
+        { page, healPage, testName },
+      );
+      expect(changeResult.success, 'password change should succeed').toBe(true);
 
-    // Log out so the old password can be tested.
-    await logout({ page, healPage, testName });
+      // Log out so the old password can be tested.
+      await logout({ page, healPage, testName });
 
-    // Old temp password must now be rejected.
-    const retryResult = await login(
-      { email: user.email, password: TEMP_PASSWORD },
-      { page, healPage, testName },
-    );
-    expect(retryResult.success, 'old temp password should be rejected after change').toBe(false);
-    expect(retryResult.errorMessage, 'error message should be present').not.toBeNull();
-  } finally {
-    if (userId) {
-      await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
-        console.error(`[F6-FL2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
+      // Old temp password must now be rejected.
+      const retryResult = await login(
+        { email: user.email, password: TEMP_PASSWORD },
+        { page, healPage, testName },
+      );
+      expect(retryResult.success, 'old temp password should be rejected after change').toBe(false);
+      expect(retryResult.errorMessage, 'error message should be present').not.toBeNull();
+    } finally {
+      if (userId) {
+        await restClient
+          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .catch(() => null);
+        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+          console.error(`[F6-FL2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
+        });
+      }
     }
-  }
-});
+  });
 
-test('@functional F6-FL3: weak new password on forced-change form → inline error, stays on /change-password', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
-  const testName = test.info().title;
-  const TEMP_PASSWORD = 'F6TempPass1!';
+  test('@functional F6-FL3: weak new password on forced-change form → inline error, stays on /change-password', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const testName = test.info().title;
+    const TEMP_PASSWORD = 'F6TempPass1!';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  let userId: string | null = null;
-  try {
-    const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-    userId = user.id;
+    let userId: string | null = null;
+    try {
+      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
+      userId = user.id;
 
-    // Login — lands on /change-password.
-    await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
+      // Login — lands on /change-password.
+      await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
 
-    // Submit a deliberately weak password.
-    const result = await changePassword(
-      { currentPassword: TEMP_PASSWORD, newPassword: 'weak', confirmPassword: 'weak' },
-      { page, healPage, testName },
-    );
+      // Submit a deliberately weak password.
+      const result = await changePassword(
+        { currentPassword: TEMP_PASSWORD, newPassword: 'weak', confirmPassword: 'weak' },
+        { page, healPage, testName },
+      );
 
-    expect(result.success, 'weak password should not navigate away').toBe(false);
-    expect(result.errorMessage, 'inline error should be present for weak password').not.toBeNull();
-    expect(
-      new URL(result.finalUrl).pathname,
-      'browser should stay on /change-password after weak password error',
-    ).toBe('/change-password');
-  } finally {
-    if (userId) {
-      await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
-        console.error(`[F6-FL3] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
+      expect(result.success, 'weak password should not navigate away').toBe(false);
+      expect(
+        result.errorMessage,
+        'inline error should be present for weak password',
+      ).not.toBeNull();
+      expect(
+        new URL(result.finalUrl).pathname,
+        'browser should stay on /change-password after weak password error',
+      ).toBe('/change-password');
+    } finally {
+      if (userId) {
+        await restClient
+          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .catch(() => null);
+        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+          console.error(`[F6-FL3] teardown: failed to deactivate user ${userId}: ${String(err)}`);
+        });
+      }
     }
-  }
-});
+  });
+}); // end test.describe('First login tests')
 
 // ---------------------------------------------------------------------------
 // Deactivation tests

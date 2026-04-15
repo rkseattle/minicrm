@@ -32,7 +32,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToContacts,
   editContact,
@@ -87,7 +86,6 @@ test('@smoke @functional F2-C1: all required fields submitted → contact create
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const firstName = `F2C1`;
   const lastName = `Create-${uniqueSuffix}`;
@@ -121,7 +119,6 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const lastName = `OptFields-${uniqueSuffix}`;
   const result = await createContactViaUI(
@@ -159,14 +156,11 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
 
 test('@functional F2-C3: missing required field → inline validation, contact not created', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Use a unique email so we can precisely verify whether this contact was created.
   const uniqueEmail = `f2c3-missing-${uniqueSuffix}@example.com`;
@@ -196,14 +190,11 @@ test('@functional F2-C3: missing required field → inline validation, contact n
 
 test('@functional F2-C4: invalid email format → inline validation, contact not created', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Use a unique last name to precisely identify whether this contact was created.
   const uniqueLastName = `InvalidEmailTest-${uniqueSuffix}`;
@@ -249,8 +240,6 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
     email: sharedEmail,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   // Try to create a second contact with the same email.
   const result = await createContactViaUI(
     { first_name: 'Duplicate', last_name: `Dup2-${uniqueSuffix}`, email: sharedEmail },
@@ -291,8 +280,6 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
     first_name: 'F2R1Beta',
     last_name: `List-${uniqueSuffix}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const navResult = await navigateToContacts({ page, healPage, testName });
   expect(navResult.loaded, 'contacts page should load').toBe(true);
@@ -355,7 +342,6 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   );
 
   // Also confirm the sort button is clickable via UI (desktop table only).
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToContacts({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
   // The sort button is only visible on desktop — the mobile card view has no sort headers.
@@ -418,8 +404,6 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
     last_name: `CIS-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   // Search with UPPERCASE variant to verify case-insensitivity (AC3).
   const result = await searchContacts(`CIS-${uniqueSuffix}`.toUpperCase(), {
     page,
@@ -447,7 +431,6 @@ test('@functional F2-R5: search non-matching term returns empty state', async ({
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await searchContacts('zzz-no-such-contact-xyzzy-99999', {
     page,
@@ -479,8 +462,6 @@ test('@smoke @functional F2-U1: edit first name → change reflected in detail v
     last_name: `Edit-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const updatedFirst = `UpdatedFirst-${uniqueSuffix}`;
   const editResult = await editContact(
     contact.id,
@@ -510,8 +491,6 @@ test('@functional F2-U2: edit last name → change reflected in detail view and 
     last_name: `OrigLast-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const updatedLast = `UpdatedLast-${uniqueSuffix}`;
   const editResult = await editContact(
     contact.id,
@@ -539,8 +518,6 @@ test('@functional F2-U3: cancel edit → no changes persisted', async ({
     first_name: 'CancelEditOrig',
     last_name: `CancelEdit-${uniqueSuffix}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const cancelResult = await cancelContactEdit(contact.id, 'THIS SHOULD NOT BE SAVED', {
     page,
@@ -579,8 +556,6 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
     last_name: `Del-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const deleteResult = await deleteContactViaUI(contact.id, { page, healPage, testName });
 
   expect(deleteResult.deleted, 'delete should navigate back to /contacts').toBe(true);
@@ -617,8 +592,6 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
     last_name: `CancelDel-${uniqueSuffix}`,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   const cancelResult = await cancelDeleteContact(contact.id, { page, healPage, testName });
 
   expect(cancelResult.stillOnDetailPage, 'should remain on detail page after cancel').toBe(true);
@@ -634,11 +607,9 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
 
 test('@functional F2-A1: link contact to account → contact appears in account contacts list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -654,7 +625,6 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await restClient.patch(`/api/contacts/${contact.id}`, { account_id: account.id });
 
   // Navigate to the contact detail page and confirm the account is shown.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForLoadState('networkidle');
 
@@ -701,11 +671,9 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
 
 test('@functional F2-A3: contact detail view shows associated account name with working link', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -718,7 +686,6 @@ test('@functional F2-A3: contact detail view shows associated account name with 
     account_id: account.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForLoadState('networkidle');
 
@@ -779,7 +746,6 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
 
   // Quick UI smoke: pagination controls appear when there are enough records.
   // We use the real default limit (50) here so we just confirm the navigation works.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToContacts({ page, healPage, testName });
   expect(navResult.loaded, 'contacts page should load').toBe(true);
 

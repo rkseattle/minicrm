@@ -139,8 +139,6 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
           if (isMobile) {
             // Verify the route is reachable via direct navigation.
@@ -185,8 +183,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('top', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Navigate to Contacts and verify the Contacts link carries the active class.
         await navigateViaNavLink('top', 'contacts', { page, healPage, testName });
 
@@ -223,8 +219,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('left', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
           const result = await navigateViaNavLink('left', destination, {
             page,
@@ -258,8 +252,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('left', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Navigate to Accounts and verify the Accounts link carries the active class.
         await navigateViaNavLink('left', 'accounts', { page, healPage, testName });
 
@@ -296,8 +288,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
           // navigateViaNavLink opens the menu automatically for the hamburger layout.
           const result = await navigateViaNavLink('hamburger', destination, {
@@ -332,8 +322,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Navigate to Deals via hamburger, then open menu again to check active state.
         await navigateViaNavLink('hamburger', 'deals', { page, healPage, testName });
 
@@ -382,8 +370,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('top', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Navigate to Admin Settings.
         await page.goto('/admin/settings', { waitUntil: 'networkidle' });
 
@@ -413,16 +399,12 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-LS2: selected layout persists after page refresh', async ({
       page,
-      healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Verify the left sidebar is active.
         const leftNavLink = page.getByTestId('nav-left-contacts');
         await expect(leftNavLink).toBeVisible();
@@ -441,16 +423,12 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-LS3: hamburger layout persists after page refresh', async ({
       page,
-      healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Hamburger toggle must be visible.
         const hamburgerToggle = page.getByTestId('nav-menu-toggle');
         await expect(hamburgerToggle).toBeVisible();
@@ -486,8 +464,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Drawer should not be visible initially.
         const drawer = page.getByTestId('nav-hamburger-drawer');
         await expect(drawer).not.toBeVisible();
@@ -516,8 +492,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         await openHamburgerMenu({ page, healPage, testName });
 
         const drawer = page.getByTestId('nav-hamburger-drawer');
@@ -545,8 +519,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         await openHamburgerMenu({ page, healPage, testName });
 
         const drawer = page.getByTestId('nav-hamburger-drawer');
@@ -575,8 +547,6 @@ test.describe.serial('Layout-mutating tests', () => {
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Open the hamburger menu and verify all admin destinations are visible.
         await openHamburgerMenu({ page, healPage, testName });
 
@@ -597,19 +567,15 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-HM5: hamburger menu is keyboard-accessible (tab + enter)', async ({
       page,
-      healPage,
       restClient,
     }) => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(!isMobile, 'F8-HM5 only runs under the mobile-web Playwright project');
 
-      const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
 
       try {
-        await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
         // Focus the hamburger toggle and activate it via keyboard.
         const toggle = page.getByTestId('nav-menu-toggle');
         await toggle.focus();
@@ -641,19 +607,15 @@ test.describe.serial('Layout-mutating tests', () => {
 
 test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F8DL1',
     last_name: `DeepLink-${Date.now()}`,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Navigate directly to the contact detail page without going through the list.
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
@@ -673,11 +635,9 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
 
 test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -687,8 +647,6 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
     name: `F8DL2 Deal ${Date.now()}`,
     account_id: account.id,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Navigate directly to the deal detail page.
   await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
@@ -704,13 +662,9 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
 
 test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful not-found state', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Use an ID that is extremely unlikely to exist.
   await page.goto('/contacts/00000000-0000-0000-0000-000000000000', { waitUntil: 'networkidle' });
@@ -722,45 +676,51 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await expect(alert).toBeVisible({ timeout: 10_000 });
 });
 
-test('@functional F8-DL4: deep link to admin-only route as rep redirects to dashboard', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+// MINCRM-192: F8-DL4 logs in as a rep via the UI — the browser must start
+// unauthenticated so the login() behavior can navigate to /login correctly.
+test.describe('Rep deep-link redirect', () => {
+  test.use({ storageState: undefined });
 
-  // Create a rep user for this test.
-  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const repEmail = `f8-rep-${uniqueSuffix}@example.com`;
-  const repPassword = 'F8RepPass1!';
+  test('@functional F8-DL4: deep link to admin-only route as rep redirects to dashboard', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  const inviteRes = await restClient.post<{ user: { id: string }; inviteToken: string }>(
-    '/api/users/invite',
-    { name: `F8 Rep ${uniqueSuffix}`, email: repEmail, role: 'rep' },
-  );
-  const { user: rep, inviteToken } = inviteRes.body;
-  await restClient.post('/api/users/set-password', { token: inviteToken, password: repPassword });
+    // Create a rep user for this test.
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const repEmail = `f8-rep-${uniqueSuffix}@example.com`;
+    const repPassword = 'F8RepPass1!';
 
-  try {
-    await login({ email: repEmail, password: repPassword }, { page, healPage, testName });
+    const inviteRes = await restClient.post<{ user: { id: string }; inviteToken: string }>(
+      '/api/users/invite',
+      { name: `F8 Rep ${uniqueSuffix}`, email: repEmail, role: 'rep' },
+    );
+    const { user: rep, inviteToken } = inviteRes.body;
+    await restClient.post('/api/users/set-password', { token: inviteToken, password: repPassword });
 
-    // Directly navigate to an admin-only route.
-    await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+    try {
+      await login({ email: repEmail, password: repPassword }, { page, healPage, testName });
 
-    // AdminRoute redirects non-admins to '/'.
-    await page
-      .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-      .catch(() => null);
+      // Directly navigate to an admin-only route.
+      await page.goto('/admin/settings', { waitUntil: 'networkidle' });
 
-    const finalPath = new URL(page.url()).pathname;
-    expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
-  } finally {
-    await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
-    await restClient.patch(`/api/users/${rep.id}/deactivate`).catch(() => null);
-  }
+      // AdminRoute redirects non-admins to '/'.
+      await page
+        .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
+        .catch(() => null);
+
+      const finalPath = new URL(page.url()).pathname;
+      expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
+    } finally {
+      await restClient
+        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .catch(() => null);
+      await restClient.patch(`/api/users/${rep.id}/deactivate`).catch(() => null);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -770,13 +730,9 @@ test('@functional F8-DL4: deep link to admin-only route as rep redirects to dash
 
 test('@functional F8-GU1: browser back and forward navigate correctly between viewed pages', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Build history using page.goto so the test is layout- and viewport-independent.
   await page.goto('/', { waitUntil: 'networkidle' });
@@ -804,15 +760,8 @@ test('@functional F8-GU1: browser back and forward navigate correctly between vi
   expect(pathname, 'browser forward again should navigate to /accounts').toBe('/accounts');
 });
 
-test('@functional F8-GU2: browser tab title is set on load', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
-  const testName = test.info().title;
+test('@functional F8-GU2: browser tab title is set on load', async ({ page, restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // The app uses a static <title>MiniCRM</title> in index.html (no per-page title updates).
   // Verify the title is present and non-empty on the dashboard.

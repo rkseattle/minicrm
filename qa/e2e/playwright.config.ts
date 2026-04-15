@@ -11,8 +11,15 @@ const IS_CI = Boolean(process.env.CI);
 // predictable regardless of the working directory when npx playwright runs.
 const E2E_DIR = __dirname;
 
+// MINCRM-192: Pre-authenticated admin session written by globalSetup.
+// Auth-specific specs opt out via test.use({ storageState: undefined }).
+const ADMIN_STORAGE_STATE = path.join(E2E_DIR, '.auth', 'admin.json');
+
 export default defineConfig({
   testDir: './tests',
+
+  // MINCRM-192: Run globalSetup once before all workers to save the admin session.
+  globalSetup: './globalSetup.ts',
 
   // Point to qa/tsconfig.json so Playwright's transform resolves @framework/* path aliases.
   // MINCRM-126
@@ -66,12 +73,18 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
+        // MINCRM-192: Load pre-authenticated admin session for all tests.
+        // Auth-specific specs opt out via test.use({ storageState: undefined }).
+        storageState: ADMIN_STORAGE_STATE,
       },
     },
     {
       name: 'mobile-web',
       use: {
         ...devices['Pixel 5'],
+        // MINCRM-192: Load pre-authenticated admin session for all tests.
+        // Auth-specific specs opt out via test.use({ storageState: undefined }).
+        storageState: ADMIN_STORAGE_STATE,
       },
     },
   ],

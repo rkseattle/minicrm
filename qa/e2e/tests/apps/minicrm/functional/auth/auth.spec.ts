@@ -40,6 +40,11 @@ import {
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
+// MINCRM-192: Auth tests exercise the real login flow and must not load the
+// pre-authenticated storageState — each test needs a fresh, unauthenticated
+// browser context so it can test login, logout, and session behaviour.
+test.use({ storageState: undefined });
+
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------

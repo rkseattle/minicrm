@@ -28,7 +28,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -45,10 +44,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F10] E2E_ADMIN_PASSWORD is not set');
 test.describe('Profile page — notification preferences', () => {
   test('@functional F10-PP1: profile page renders with all three notification checkboxes', async ({
     page,
-    healPage,
   }) => {
-    const testName = test.info().title;
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/profile');
     await expect(page.getByTestId('profile-heading')).toBeVisible();
     await expect(page.getByTestId('profile-notifications-section')).toBeVisible();
@@ -57,12 +53,7 @@ test.describe('Profile page — notification preferences', () => {
     await expect(page.getByTestId('notif-checkbox-notify_deal_stage_changes')).toBeVisible();
   });
 
-  test('@functional F10-PP2: checkboxes default to checked on first load', async ({
-    page,
-    healPage,
-  }) => {
-    const testName = test.info().title;
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
+  test('@functional F10-PP2: checkboxes default to checked on first load', async ({ page }) => {
     await page.goto('/profile');
     await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeChecked();
     await expect(page.getByTestId('notif-checkbox-notify_assignments')).toBeChecked();
@@ -71,10 +62,8 @@ test.describe('Profile page — notification preferences', () => {
 
   test('@functional F10-PP3: toggling a checkbox and saving persists the preference (AC1)', async ({
     page,
-    healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Reset preferences to all-true via API before the test
@@ -84,7 +73,6 @@ test.describe('Profile page — notification preferences', () => {
       notify_deal_stage_changes: true,
     });
 
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/profile');
 
     // Wait for prefs to load
@@ -112,10 +100,8 @@ test.describe('Profile page — notification preferences', () => {
 
   test('@functional F10-PP4: saving all preferences off and back on works correctly', async ({
     page,
-    healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     await restClient.patch('/api/users/me/notification-preferences', {
@@ -124,7 +110,6 @@ test.describe('Profile page — notification preferences', () => {
       notify_deal_stage_changes: true,
     });
 
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/profile');
 
     await expect(page.getByTestId('notif-checkbox-notify_overdue_tasks')).toBeChecked();
@@ -158,37 +143,26 @@ test.describe('Profile page — notification preferences', () => {
 test.describe('Admin Settings — global email notifications', () => {
   test('@functional F10-AS1: email notifications section is visible in admin settings', async ({
     page,
-    healPage,
   }) => {
-    const testName = test.info().title;
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/admin/settings');
     await expect(page.getByTestId('email-notifications-section')).toBeVisible();
     await expect(page.getByTestId('email-notif-toggle')).toBeVisible();
   });
 
-  test('@functional F10-AS2: recipient count is displayed in admin settings', async ({
-    page,
-    healPage,
-  }) => {
-    const testName = test.info().title;
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
+  test('@functional F10-AS2: recipient count is displayed in admin settings', async ({ page }) => {
     await page.goto('/admin/settings');
     await expect(page.getByTestId('email-notif-recipient-count')).toBeVisible();
   });
 
   test('@functional F10-AS3: toggling global email notifications off and back on persists via API (AC2)', async ({
     page,
-    healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     // Authenticate restClient to use API for setup/teardown
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     // Ensure enabled at start
     await restClient.patch('/api/settings/email-notifications', { enabled: true });
 
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
     await page.goto('/admin/settings');
 
     // Toggle off
