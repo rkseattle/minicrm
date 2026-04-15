@@ -25,6 +25,8 @@ export interface LocatorStrategyRecord {
   type: string;
   value: string;
   options?: Record<string, unknown>;
+  /** data-testid of the parent container, when the strategy was scoped. */
+  within?: string;
 }
 
 const OUTPUT_DIR = 'test-results';
