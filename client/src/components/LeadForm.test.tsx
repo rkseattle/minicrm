@@ -10,7 +10,8 @@ import { describe, it, expect, vi } from 'vitest';
 import LeadForm from './LeadForm.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 
-const noop = vi.fn();
+// Plain function — not a spy, so call counts don't accumulate across tests
+const noop = () => {};
 
 const ACTIVE_USERS = [
   { id: 'u-1', name: 'Alice Smith' },
@@ -67,6 +68,22 @@ describe('LeadForm', () => {
     it('last_name is not required', () => {
       renderWithProviders(<LeadForm onSubmit={noop} activeUsers={[]} isAdmin={false} />);
       expect(screen.getByTestId<HTMLInputElement>('lead-last-name')).not.toBeRequired();
+    });
+
+    it('does not call onSubmit when required fields are empty (user.click respects HTML5 required)', async () => {
+      const handleSubmit = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(<LeadForm onSubmit={handleSubmit} activeUsers={[]} isAdmin={false} />);
+      // Click the submit button — user-event triggers HTML5 constraint validation
+      await user.click(screen.getByTestId('lead-form-submit'));
+      expect(handleSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('email format validation', () => {
+    it('email input has type="email" for browser format enforcement', () => {
+      renderWithProviders(<LeadForm onSubmit={noop} activeUsers={[]} isAdmin={false} />);
+      expect(screen.getByTestId('lead-email')).toHaveAttribute('type', 'email');
     });
   });
 

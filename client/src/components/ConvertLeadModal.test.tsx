@@ -13,7 +13,8 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { LEAD_1, ACCOUNT_1 } from '../test/msw/handlers.js';
 
-const noop = vi.fn();
+// Plain function — not a spy, so call counts don't accumulate across tests
+const noop = () => {};
 
 describe('ConvertLeadModal', () => {
   describe('prefilled values from lead prop', () => {
@@ -221,6 +222,13 @@ describe('ConvertLeadModal', () => {
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument();
       expect(dialog).toHaveAttribute('aria-modal', 'true');
+    });
+  });
+
+  describe('email format validation', () => {
+    it('contact email input has type="email" for browser format enforcement', () => {
+      renderWithProviders(<ConvertLeadModal lead={LEAD_1} onClose={noop} onConverted={noop} />);
+      expect(screen.getByTestId('convert-contact-email')).toHaveAttribute('type', 'email');
     });
   });
 });

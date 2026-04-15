@@ -8,7 +8,8 @@ import { describe, it, expect, vi } from 'vitest';
 import ContactForm from './ContactForm.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 
-const noop = vi.fn();
+// Plain function — not a spy, so call counts don't accumulate across tests
+const noop = () => {};
 
 describe('ContactForm', () => {
   describe('field rendering', () => {
@@ -64,6 +65,39 @@ describe('ContactForm', () => {
       expect(screen.getByTestId<HTMLInputElement>('contact-phone').value).toBe('555-1234');
       expect(screen.getByTestId<HTMLInputElement>('contact-title').value).toBe('Manager');
       expect(screen.getByTestId<HTMLInputElement>('contact-department').value).toBe('Sales');
+    });
+  });
+
+  describe('required-field validation', () => {
+    it('first_name input is marked required', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.getByTestId<HTMLInputElement>('contact-first-name')).toBeRequired();
+    });
+
+    it('last_name input is marked required', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.getByTestId<HTMLInputElement>('contact-last-name')).toBeRequired();
+    });
+
+    it('email input is marked required', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.getByTestId<HTMLInputElement>('contact-email')).toBeRequired();
+    });
+
+    it('does not call onSubmit when required fields are empty (user.click respects HTML5 required)', async () => {
+      const handleSubmit = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(<ContactForm onSubmit={handleSubmit} />);
+      // Click the submit button — user-event triggers HTML5 constraint validation
+      await user.click(screen.getByTestId('contact-form-submit'));
+      expect(handleSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('email format validation', () => {
+    it('email input has type="email" for browser format enforcement', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.getByTestId('contact-email')).toHaveAttribute('type', 'email');
     });
   });
 

@@ -11,7 +11,8 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ACCOUNT_1 } from '../test/msw/handlers.js';
 
-const noop = vi.fn();
+// Plain function — not a spy, so call counts don't accumulate across tests
+const noop = () => {};
 
 describe('AccountForm', () => {
   describe('field rendering', () => {
@@ -122,12 +123,13 @@ describe('AccountForm', () => {
       );
     });
 
-    it('does not call onSubmit when the required name field is empty', () => {
+    it('does not call onSubmit when the required name field is empty (user.click respects HTML5 required)', async () => {
       const handleSubmit = vi.fn();
+      const user = userEvent.setup();
       renderWithProviders(<AccountForm onSubmit={handleSubmit} />);
-      // Attempt to submit with no name (HTML5 required prevents submission)
-      const nameInput = screen.getByTestId<HTMLInputElement>('account-name-input');
-      expect(nameInput).toBeRequired();
+      // Click the submit button — user-event triggers HTML5 constraint validation
+      await user.click(screen.getByTestId('account-form-submit'));
+      expect(handleSubmit).not.toHaveBeenCalled();
     });
   });
 
