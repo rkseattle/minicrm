@@ -120,10 +120,10 @@ jobs:
 
       - name: Install dependencies
         # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
-        # the macOS-generated lockfile. npm install alone re-uses the stale workspace
-        # node_modules and still misses it (npm workspace optional-deps bug). Removing
-        # client/node_modules first forces a clean resolution that picks up the Linux binary.
-        run: rm -rf client/node_modules && npm install
+        # the macOS-generated lockfile. Running npm install from within client/ bypasses
+        # the root workspace lockfile and forces fresh resolution of platform-specific
+        # optional binaries (npm workspace optional-deps bug).
+        run: npm ci && npm install --prefix client
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
@@ -187,11 +187,11 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        # rm -rf client/node_modules: forces re-resolution of @rollup/rollup-linux-x64-gnu,
-        # a platform-specific optional dep absent from the macOS-generated lockfile.
-        # The Vite dev server (started below) requires it; npm install alone re-uses
-        # the stale workspace tree and misses it (npm workspace optional-deps bug).
-        run: rm -rf client/node_modules && npm install
+        # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
+        # the macOS-generated lockfile. Running npm install from within client/ bypasses
+        # the root workspace lockfile and forces fresh resolution of platform-specific
+        # optional binaries (npm workspace optional-deps bug).
+        run: npm ci && npm install --prefix client
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
