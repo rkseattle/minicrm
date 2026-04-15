@@ -134,7 +134,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
           data-testid="nav-language-select"
           value={i18n.language}
           onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
-          className="text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
+          className="hidden lg:block text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
         >
           {SUPPORTED_LOCALES.map((locale) => (
             <option key={locale} value={locale}>
@@ -149,6 +149,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
           data-testid="nav-logout"
           onClick={() => logoutMutation.mutate()}
           disabled={logoutMutation.isPending}
+          className="hidden lg:inline-flex"
         >
           {t('nav.logout')}
         </Button>
