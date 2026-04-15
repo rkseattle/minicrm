@@ -103,7 +103,6 @@ describe('POST /api/leads', () => {
     const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(BASE_LEAD);
 
     expect(res.status).toBe(201);
-    expect(res.body.lead).toBeDefined();
     expect(res.body.lead.first_name).toBe('Dana');
     expect(res.body.lead.email).toBe('dana.kim.ctrl@example.com');
     expect(res.body.lead.owner_id).toBe(repId);
@@ -400,7 +399,6 @@ describe('POST /api/leads/:id/convert', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.conversion).toBeDefined();
     expect(res.body.conversion.contact_id).toBeDefined();
     expect(res.body.conversion.account_id).toBeDefined();
     expect(res.body.conversion.deal_id).toBeDefined();

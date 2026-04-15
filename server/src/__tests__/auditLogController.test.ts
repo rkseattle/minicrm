@@ -83,8 +83,9 @@ describe('GET /api/audit-log', () => {
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
+    expect(typeof res.body.total).toBe('number');
     expect(res.body.data.length).toBeGreaterThan(0);
-    // Every returned entry should be authored by the filtered user
+    // Every returned entry must be authored by the filtered user
     for (const entry of res.body.data as Array<{ changed_by_id: string }>) {
       expect(entry.changed_by_id).toBe(adminId);
     }
@@ -181,6 +182,10 @@ describe('GET /api/audit-log/actors', () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.actors)).toBe(true);
+    if (res.body.actors.length > 0) {
+      expect(res.body.actors[0]).toHaveProperty('id');
+      expect(res.body.actors[0]).toHaveProperty('name');
+    }
   });
 
   it('returns 403 when a rep requests actors', async () => {

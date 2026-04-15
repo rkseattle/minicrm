@@ -147,6 +147,12 @@ describe('PATCH /api/settings/nav-layout', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).patch('/api/settings/nav-layout').send({ layout: 'left' });
+
+    expect(res.status).toBe(401);
+  });
 });
 
 // ── GET /api/settings/email-notifications ────────────────────────────────────
@@ -217,5 +223,13 @@ describe('PATCH /api/settings/email-notifications', () => {
       .send({ enabled: false });
 
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app)
+      .patch('/api/settings/email-notifications')
+      .send({ enabled: true });
+
+    expect(res.status).toBe(401);
   });
 });

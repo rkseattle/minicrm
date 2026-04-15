@@ -55,7 +55,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up imported test data
+  // Clean up imported test data in FK-safe order (deals reference accounts/contacts)
+  await pool.query(`DELETE FROM deals WHERE name IN ('Deal One','Deal Two')`);
   await pool.query(`DELETE FROM accounts WHERE name IN ('Acme Corp','Beta Inc')`);
   await pool.query(
     `DELETE FROM contacts WHERE email IN ('alice.import@example.com','bob.import@example.com')`,

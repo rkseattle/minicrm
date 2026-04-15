@@ -147,9 +147,10 @@ describe('GET /api/attachments', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.attachments).toHaveLength(2);
-    expect(res.body.attachments[0].filename).toBeDefined();
-    expect(res.body.attachments[0].file_size).toBeDefined();
-    expect(res.body.attachments[0].mime_type).toBeDefined();
+    // Attachments are returned newest-first; verify shape of the first entry
+    expect(res.body.attachments[0].filename).toBe('doc2.pdf');
+    expect(res.body.attachments[0].file_size).toBe(1024);
+    expect(res.body.attachments[0].mime_type).toBe('application/pdf');
   });
 
   it('returns 400 when recordType is invalid', async () => {
