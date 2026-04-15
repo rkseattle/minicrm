@@ -63,7 +63,10 @@ interface ContactListResponse {
 // part of its framework integration check. It must start with an unauthenticated
 // browser so the login flow can be exercised end-to-end.
 test.describe('BVT — MiniCRM E2E framework integration', () => {
-  test.use({ storageState: undefined });
+  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // from loading. `undefined` does not override the project config — an explicit empty
+  // object is required to start each test with a fresh, unauthenticated browser context.
+  test.use({ storageState: { cookies: [], origins: [] } });
   test('@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
     page,
     healPage,

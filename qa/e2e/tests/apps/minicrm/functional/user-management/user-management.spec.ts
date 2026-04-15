@@ -349,7 +349,10 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
 // exercise the forced-password-change flow. The browser must start unauthenticated.
 // ---------------------------------------------------------------------------
 test.describe('First login tests', () => {
-  test.use({ storageState: undefined });
+  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // from loading. `undefined` does not override the project config — an explicit empty
+  // object is required to start each test with a fresh, unauthenticated browser context.
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
     page,

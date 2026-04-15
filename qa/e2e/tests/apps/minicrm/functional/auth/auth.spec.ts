@@ -43,7 +43,10 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 // MINCRM-192: Auth tests exercise the real login flow and must not load the
 // pre-authenticated storageState — each test needs a fresh, unauthenticated
 // browser context so it can test login, logout, and session behaviour.
-test.use({ storageState: undefined });
+// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// from loading. `undefined` does not override the project config — an explicit empty
+// object is required to start each test with a fresh, unauthenticated browser context.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Environment
