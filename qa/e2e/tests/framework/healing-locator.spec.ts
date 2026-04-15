@@ -6,8 +6,9 @@
  * 2. Primary fails, first valid fallback resolves — heal event logged.
  * 3. All strategies exhausted — StrategyExhaustedError thrown with all strategy names.
  * 4. Strategy priority order is enforced regardless of input order.
+ * 5. `within` scopes the lookup to a container element (MINCRM-204).
  *
- * MINCRM-124
+ * MINCRM-124, MINCRM-204
  */
 
 import { test, expect } from '@playwright/test';
@@ -40,9 +41,55 @@ function mockLocator(resolves: boolean): Locator {
  * index. The `resolveMap` maps call order (0-based) to whether the locator resolves.
  *
  * Each Playwright factory method (getByTestId, getByRole, etc.) pops from the
- * map in the order they are invoked.
+ * map in the order they are invoked — including calls made on container locators
+ * returned by getByTestId (the `within` path). This mirrors Playwright's API
+ * where Locator exposes the same factory methods as Page.
  */
 function mockPage(resolveMap: boolean[]): Page {
+  let callIndex = 0;
+
+  // A factory that consumes from the shared resolveMap regardless of whether
+  // it is called on the page or on a container locator.
+  const factory = () => {
+    const resolves = resolveMap[callIndex] ?? false;
+    callIndex++;
+    return mockLocator(resolves);
+  };
+
+  // A container locator: its factory methods share the same call-index queue
+  // as the page factories so callers can reason about total call order.
+  const containerLocator = {
+    getByTestId: factory,
+    getByRole: factory,
+    getByLabel: factory,
+    getByText: factory,
+    locator: factory,
+  } as unknown as Locator;
+
+  return {
+    // When `within` is used, buildLocator calls page.getByTestId(within) first
+    // to get the container, then calls a factory method on it. That first call
+    // must NOT consume a resolveMap slot — it always succeeds and returns the
+    // container locator. We detect the "container lookup" by checking whether
+    // the caller will chain further calls on the result.
+    //
+    // Implementation: getByTestId on the page returns the containerLocator
+    // without consuming from resolveMap. Subsequent factory calls on
+    // containerLocator consume from the map as usual.
+    getByTestId: (_value: string) => containerLocator,
+    getByRole: factory,
+    getByLabel: factory,
+    getByText: factory,
+    locator: factory,
+  } as unknown as Page;
+}
+
+/**
+ * Builds a mock Page where `getByTestId` on the page also consumes from the
+ * resolveMap — used by tests that exercise the non-`within` testId path to
+ * verify that the correct locator is tried first.
+ */
+function mockPageWithTestId(resolveMap: boolean[]): Page {
   let callIndex = 0;
   const factory = () => {
     const resolves = resolveMap[callIndex] ?? false;
@@ -70,7 +117,7 @@ test.describe('HealingLocator', () => {
   });
 
   test('primary strategy resolves — returns locator, no heal event recorded', async () => {
-    const page = mockPage([true]); // first call resolves
+    const page = mockPageWithTestId([true]); // first call resolves
     const locator = await new HealingLocator(page, [
       { type: 'testId', value: 'submit-btn' },
       { type: 'css', value: 'button[type="submit"]' },
@@ -82,7 +129,7 @@ test.describe('HealingLocator', () => {
 
   test('primary fails, first fallback resolves — heal event logged', async () => {
     // Call order: testId (fails), css (resolves)
-    const page = mockPage([false, true]);
+    const page = mockPageWithTestId([false, true]);
 
     const locator = await new HealingLocator(
       page,
@@ -107,7 +154,7 @@ test.describe('HealingLocator', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-test-'));
     process.env['PW_WORKER_INDEX'] = '99';
 
-    const page = mockPage([false, true]); // testId fails, css resolves
+    const page = mockPageWithTestId([false, true]); // testId fails, css resolves
     await new HealingLocator(
       page,
       [
@@ -153,7 +200,7 @@ test.describe('HealingLocator', () => {
 
   test('all strategies exhausted — throws StrategyExhaustedError listing all strategies', async () => {
     // All calls fail.
-    const page = mockPage([false, false, false]);
+    const page = mockPageWithTestId([false, false, false]);
 
     await expect(
       new HealingLocator(
@@ -169,7 +216,7 @@ test.describe('HealingLocator', () => {
   });
 
   test('StrategyExhaustedError message lists all attempted strategies', async () => {
-    const page = mockPage([false, false]);
+    const page = mockPageWithTestId([false, false]);
 
     let caughtError: unknown;
     try {
@@ -251,7 +298,7 @@ test.describe('HealingLocator', () => {
     const fs = await import('node:fs');
 
     process.env['PW_WORKER_INDEX'] = '88';
-    const page = mockPage([false, true]); // primary fails, fallback resolves
+    const page = mockPageWithTestId([false, true]); // primary fails, fallback resolves
     await new HealingLocator(
       page,
       [
@@ -279,5 +326,101 @@ test.describe('HealingLocator', () => {
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
     delete process.env['PW_WORKER_INDEX'];
+  });
+
+  // ---------------------------------------------------------------------------
+  // `within` scoping (MINCRM-204)
+  // ---------------------------------------------------------------------------
+
+  test('within: scoped testId resolves element inside container', async () => {
+    // The mock page's getByTestId always returns containerLocator.
+    // containerLocator's getByTestId consumes resolveMap[0] = true.
+    const page = mockPage([true]);
+    const locator = await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'search-input', within: 'nav-drawer' },
+        { type: 'css', value: '[data-testid="search-input"]', within: 'nav-drawer' },
+      ],
+      { fallbackTimeout: 100 },
+    ).resolve('within scoped test');
+
+    expect(locator).toBeDefined();
+    expect(HealingRegistry.instance.count).toBe(0); // primary resolved, no heal
+  });
+
+  test('within: scoped primary fails, scoped fallback resolves — heal event recorded', async () => {
+    // resolveMap[0] = false (container's getByTestId fails)
+    // resolveMap[1] = true  (container's locator/css resolves)
+    const page = mockPage([false, true]);
+    const locator = await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'search-input', within: 'nav-drawer' },
+        { type: 'css', value: '[data-testid="search-input"]', within: 'nav-drawer' },
+      ],
+      { fallbackTimeout: 100 },
+    ).resolve('within fallback test');
+
+    expect(locator).toBeDefined();
+    expect(HealingRegistry.instance.count).toBe(1);
+  });
+
+  test('within: heal event record includes `within` field', async () => {
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs');
+
+    process.env['PW_WORKER_INDEX'] = '77';
+    const page = mockPage([false, true]); // scoped testId fails, scoped css resolves
+
+    await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'search-input', within: 'nav-drawer' },
+        { type: 'css', value: '[data-testid="search-input"]', within: 'nav-drawer' },
+      ],
+      { fallbackTimeout: 100 },
+    ).resolve('within heal record test');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-test-within-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const writtenPath = path.join(tmpDir, 'test-results', 'healing-77.json');
+    const contents = JSON.parse(fs.readFileSync(writtenPath, 'utf-8')) as {
+      events: Array<{
+        originalStrategy: { type: string; value: string; within?: string };
+        healedStrategy: { type: string; value: string; within?: string };
+      }>;
+    };
+
+    expect(contents.events).toHaveLength(1);
+    expect(contents.events[0]?.originalStrategy.within).toBe('nav-drawer');
+    expect(contents.events[0]?.healedStrategy.within).toBe('nav-drawer');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
+  });
+
+  test('within: all strategies exhausted when element absent from container', async () => {
+    // Both container factory calls fail — element not in the container.
+    const page = mockPage([false, false]);
+
+    await expect(
+      new HealingLocator(
+        page,
+        [
+          { type: 'testId', value: 'missing-input', within: 'nav-drawer' },
+          { type: 'css', value: '[data-testid="missing-input"]', within: 'nav-drawer' },
+        ],
+        { fallbackTimeout: 100 },
+      ).resolve('within exhausted test'),
+    ).rejects.toThrow(StrategyExhaustedError);
   });
 });

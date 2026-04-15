@@ -8,10 +8,15 @@
  * Strategy priority order (enforced by STRATEGY_ORDER constant):
  *   testId → role → label → text → css → xpath
  *
+ * Each strategy may include an optional `within` field — the data-testid of a
+ * parent container. When set, the element factory is called on the container
+ * locator rather than on the page, scoping the lookup without requiring the
+ * caller to embed container selectors inside CSS or XPath strings.
+ *
  * The `intent` field is reserved for the AI tier (S3) to describe what the
  * locator is trying to find in natural language.
  *
- * MINCRM-124
+ * MINCRM-124, MINCRM-204
  */
 
 import type { Locator, Page } from '@playwright/test';
@@ -41,6 +46,22 @@ export interface LocatorStrategy {
   value: string;
   /** Optional extra options forwarded to the Playwright locator factory (e.g. `{ exact: true }`). */
   options?: Record<string, unknown>;
+  /**
+   * Optional data-testid of a parent container to scope this strategy to.
+   * When set, the element factory is called on `page.getByTestId(within)`
+   * rather than on `page` directly — equivalent to
+   * `page.getByTestId(within).getByTestId(value)` for a testId strategy.
+   *
+   * This avoids the need to embed container selectors inside CSS or XPath
+   * strings when two elements share the same data-testid in different parts
+   * of the DOM (e.g. a header input and a drawer input).
+   *
+   * @example
+   * ```ts
+   * { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' }
+   * ```
+   */
+  within?: string;
 }
 
 /** Options accepted by HealingLocator constructor. */
@@ -83,30 +104,40 @@ const DEFAULT_FALLBACK_TIMEOUT_MS = 2_000;
 /**
  * Builds a Playwright Locator from a LocatorStrategy using the correct
  * Playwright factory method for the strategy type.
+ *
+ * When `strategy.within` is set, the element factory is called on
+ * `page.getByTestId(within)` rather than on `page` directly, scoping the
+ * lookup to descendants of that container element.
  */
 function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
-  const { type, value, options } = strategy;
+  const { type, value, options, within } = strategy;
+  // When `within` is set, scope all factory calls to the container element.
+  // Playwright's Locator exposes the same factory methods as Page (getByTestId,
+  // getByRole, etc.), so the same switch works for both the scoped and unscoped
+  // cases — we only need to choose the root object.
+  const root: Page | Locator = within !== undefined ? page.getByTestId(within) : page;
+
   switch (type) {
     case 'testId':
       // getByTestId does not accept extra options
-      return page.getByTestId(value);
+      return root.getByTestId(value);
     case 'role':
       // value is the ARIA role; options may include { name, exact, ... }
-      return page.getByRole(
+      return root.getByRole(
         value as Parameters<Page['getByRole']>[0],
         options as Parameters<Page['getByRole']>[1],
       );
     case 'label':
-      return page.getByLabel(value, options as Parameters<Page['getByLabel']>[1]);
+      return root.getByLabel(value, options as Parameters<Page['getByLabel']>[1]);
     case 'text':
-      return page.getByText(value, options as Parameters<Page['getByText']>[1]);
+      return root.getByText(value, options as Parameters<Page['getByText']>[1]);
     case 'css':
-      return page.locator(value);
+      return root.locator(value);
     case 'xpath':
       // Use explicit xpath= engine prefix so all XPath expressions are treated
       // correctly — not just those starting with // or (//. Without the prefix,
       // page.locator() silently interprets non-rooted XPath as CSS.
-      return page.locator(`xpath=${value}`);
+      return root.locator(`xpath=${value}`);
     default: {
       // Exhaustive check — TypeScript will error if a new StrategyType is added
       // without updating this switch.
@@ -135,6 +166,7 @@ function toRecord(strategy: LocatorStrategy): LocatorStrategyRecord {
     type: strategy.type,
     value: strategy.value,
     ...(strategy.options !== undefined ? { options: strategy.options } : {}),
+    ...(strategy.within !== undefined ? { within: strategy.within } : {}),
   };
 }
 

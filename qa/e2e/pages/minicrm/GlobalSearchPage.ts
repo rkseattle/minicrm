@@ -99,18 +99,14 @@ export class GlobalSearchPage {
     // if a prior call in the same test already opened it, clicking the toggle
     // again would close it (it is a toggle, not an open-only button).
     //
-    // Use the scoped CSS strategy directly here: the healing framework sorts
-    // by STRATEGY_ORDER (testId=0 before css=4), so a mixed-type locate would
-    // probe testId("global-search-input") first and match the hidden header
-    // input — defeating the purpose of this check. A single css-only locate
-    // call is scoped to #mobile-nav-drawer and cannot match the header input.
+    // Use `within: 'mobile-nav-drawer'` to scope both strategies to the drawer
+    // container. This is safe to probe even when the drawer is closed — the
+    // container is not mounted yet, so probeLocator times out and resolves to
+    // false, falling through to the toggle-click path below.
     const drawerInputAlreadyVisible = await this.healPage
       .locate([
-        { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-        {
-          type: 'xpath',
-          value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
-        },
+        { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
       ])
       .resolve(this.testName)
       .then((el) => el.isVisible().catch(() => false))
@@ -119,35 +115,27 @@ export class GlobalSearchPage {
     if (drawerInputAlreadyVisible) {
       return this.healPage
         .locate([
-          { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
+          { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
           {
-            type: 'xpath',
-            value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
+            type: 'css',
+            value: '[data-testid="global-search-input"]',
+            within: 'mobile-nav-drawer',
           },
         ])
         .resolve(this.testName);
     }
 
     // Drawer is not open — click the menu toggle to mount and reveal it,
-    // then resolve the input scoped inside it. The scoped CSS primary strategy
-    // ensures we never accidentally return the still-hidden header input.
+    // then resolve the input scoped to the drawer via `within`.
     await this.healPage.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ]);
 
-    // After the toggle click the drawer is mounted — resolve the input inside
-    // it. Both strategies are scoped to #mobile-nav-drawer so neither can match
-    // the hidden header input. A testId fallback would be sorted to priority 0
-    // by the heal framework and probe the header input first — so XPath is used
-    // instead (priority 5), keeping css (priority 4) as the primary.
     return this.healPage
       .locate([
-        { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-        {
-          type: 'xpath',
-          value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
-        },
+        { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
       ])
       .resolve(this.testName);
   }
