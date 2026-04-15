@@ -330,7 +330,10 @@ export async function navigateViaNavLink(
     return { linkClicked: false, finalUrl: context.page.url() };
   }
 
-  await link.click();
+  // On hamburger layout, the drawer's focus-on-open effect causes a layout
+  // shift that triggers Playwright's stability check. Use force:true to bypass
+  // the stability wait — visibility has already been confirmed above.
+  await link.click({ force: layout === 'hamburger' });
 
   // After clicking a hamburger link the drawer closes; wait for navigation to settle.
   await context.page.waitForLoadState('networkidle').catch(() => null);
