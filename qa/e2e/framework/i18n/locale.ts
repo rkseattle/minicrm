@@ -95,6 +95,9 @@ const EN: LocaleMap = {
   // Notifications / profile
   'profile.save': 'Save',
 
+  // Admin settings — email notifications
+  'settings.emailNotifications.sectionTitle': 'Email Notifications',
+
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -169,6 +172,9 @@ const ES: LocaleMap = {
 
   // Notifications / profile
   'profile.save': 'Guardar',
+
+  // Admin settings — email notifications
+  'settings.emailNotifications.sectionTitle': 'Notificaciones de correo electrónico',
 
   // Common actions
   'common.save': 'Guardar',
