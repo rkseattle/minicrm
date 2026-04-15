@@ -44,14 +44,29 @@ beforeAll(async () => {
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
 });
 
-/** Ensure demo data is removed before and after each test to avoid cross-test state */
+/**
+ * Removes all demo-flagged records directly via SQL before each test.
+ * Using direct DB queries (rather than the HTTP DELETE endpoint) ensures teardown
+ * succeeds even if the route is broken, avoiding cascading test failures.
+ */
+async function clearDemoData(): Promise<void> {
+  await pool.query('DELETE FROM activities WHERE is_demo = true');
+  await pool.query(
+    `DELETE FROM deal_contacts
+     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
+        OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
+  );
+  await pool.query('DELETE FROM deals WHERE is_demo = true');
+  await pool.query('DELETE FROM contacts WHERE is_demo = true');
+  await pool.query('DELETE FROM accounts WHERE is_demo = true');
+}
+
 beforeEach(async () => {
-  // Best-effort teardown — ignore errors if demo data is not present
-  await request(app).delete('/api/admin/demo').set('Cookie', adminCookie);
+  await clearDemoData();
 });
 
 afterAll(async () => {
-  await request(app).delete('/api/admin/demo').set('Cookie', adminCookie);
+  await clearDemoData();
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
 });
 
@@ -69,6 +84,12 @@ describe('GET /api/admin/demo/status', () => {
     const res = await request(app).get('/api/admin/demo/status').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).get('/api/admin/demo/status');
+
+    expect(res.status).toBe(401);
   });
 });
 
@@ -98,6 +119,12 @@ describe('POST /api/admin/demo/seed', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).post('/api/admin/demo/seed');
+
+    expect(res.status).toBe(401);
+  });
 });
 
 // ── POST /api/admin/demo/reset ────────────────────────────────────────────────
@@ -117,6 +144,12 @@ describe('POST /api/admin/demo/reset', () => {
     const res = await request(app).post('/api/admin/demo/reset').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).post('/api/admin/demo/reset');
+
+    expect(res.status).toBe(401);
   });
 });
 
@@ -143,5 +176,11 @@ describe('DELETE /api/admin/demo', () => {
     const res = await request(app).delete('/api/admin/demo').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).delete('/api/admin/demo');
+
+    expect(res.status).toBe(401);
   });
 });

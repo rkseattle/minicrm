@@ -56,8 +56,11 @@ describe('GET /api/dashboard/summary', () => {
 
     expect(res.status).toBe(200);
     expect(typeof res.body.overdueTasks).toBe('number');
+    expect(res.body.overdueTasks).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.tasksDueToday).toBe('number');
+    expect(res.body.tasksDueToday).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.openDealCount).toBe('number');
+    expect(res.body.openDealCount).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.openPipelineValue).toBe('string');
     expect(Array.isArray(res.body.stageBreakdown)).toBe(true);
   });
@@ -67,8 +70,11 @@ describe('GET /api/dashboard/summary', () => {
 
     expect(res.status).toBe(200);
     expect(typeof res.body.overdueTasks).toBe('number');
+    expect(res.body.overdueTasks).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.tasksDueToday).toBe('number');
+    expect(res.body.tasksDueToday).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.openDealCount).toBe('number');
+    expect(res.body.openDealCount).toBeGreaterThanOrEqual(0);
     expect(typeof res.body.openPipelineValue).toBe('string');
     expect(Array.isArray(res.body.stageBreakdown)).toBe(true);
     expect(Array.isArray(res.body.recentActivities)).toBe(true);

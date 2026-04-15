@@ -83,7 +83,7 @@ describe('POST /api/automation/rules', () => {
       .send(BASE_RULE);
 
     expect(res.status).toBe(201);
-    expect(res.body.rule).toBeDefined();
+    expect(res.body.rule.id).toBeDefined();
     expect(res.body.rule.name).toBe('Test Rule');
     expect(res.body.rule.trigger_type).toBe('deal_created');
     expect(res.body.rule.action_type).toBe('create_task');
