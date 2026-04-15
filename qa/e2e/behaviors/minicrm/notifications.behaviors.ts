@@ -146,9 +146,13 @@ export async function uncheckAndSavePreference(
   await profilePage.savePreferences();
 
   // Wait for success message to appear.
-  await context.page
-    .getByTestId('profile-prefs-success')
-    .waitFor({ state: 'visible', timeout: 5_000 })
+  await context.healPage
+    .locate([
+      { type: 'testId', value: 'profile-prefs-success' },
+      { type: 'css', value: '[data-testid="profile-prefs-success"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 
   const saved = await profilePage.successMessageIsVisible();
@@ -191,9 +195,13 @@ export async function uncheckAllAndSave(
 
   await profilePage.savePreferences();
 
-  await context.page
-    .getByTestId('profile-prefs-success')
-    .waitFor({ state: 'visible', timeout: 5_000 })
+  await context.healPage
+    .locate([
+      { type: 'testId', value: 'profile-prefs-success' },
+      { type: 'css', value: '[data-testid="profile-prefs-success"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 
   const saved = await profilePage.successMessageIsVisible();
@@ -299,9 +307,13 @@ export async function toggleAdminEmailNotifications(
 
   await adminSettings.toggleEmailNotifications();
 
-  await context.page
-    .getByTestId('email-notif-success')
-    .waitFor({ state: 'visible', timeout: 5_000 })
+  await context.healPage
+    .locate([
+      { type: 'testId', value: 'email-notif-success' },
+      { type: 'css', value: '[data-testid="email-notif-success"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 
   const saved = await adminSettings.successMessageIsVisible();

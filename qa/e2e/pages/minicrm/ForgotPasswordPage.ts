@@ -72,9 +72,13 @@ export class ForgotPasswordPage {
    * Returns true when the success message is visible.
    */
   async successMessageVisible(): Promise<boolean> {
-    return this.page
-      .getByTestId('forgot-password-success')
-      .isVisible()
+    return this.healPage
+      .locate([
+        { type: 'testId', value: 'forgot-password-success' },
+        { type: 'css', value: '[data-testid="forgot-password-success"]' },
+      ])
+      .resolve(this.testName)
+      .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }
 

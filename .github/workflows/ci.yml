@@ -144,6 +144,15 @@ jobs:
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
 
+  e2e-page-object-purity:
+    name: Phase 1 - E2E Page Object Purity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check pages/ and behaviors/ use self-healing framework (MINCRM-204)
+        run: bash qa/scripts/check-page-object-purity.sh
+
   e2e-functional:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain

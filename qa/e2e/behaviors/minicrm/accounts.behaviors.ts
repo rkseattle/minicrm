@@ -238,15 +238,15 @@ export async function createAccountViaUI(
   // even 100ms networkidle can fire while a POST is still in-flight, causing
   // the race to resolve before React re-renders the button and yielding a false
   // `created: false` result (MINCRM-139).
-  await context.page
-    .waitForSelector('[data-testid="new-account-button"]', { state: 'visible', timeout: 10_000 })
-    .catch(() => null);
-
   // The New Account button being visible is the canonical success signal.
   // If it is not visible, the form is still open (validation error or server error).
-  const buttonVisible = await context.page
-    .locator('[data-testid="new-account-button"]')
-    .isVisible()
+  const buttonVisible = await context.healPage
+    .locate([
+      { type: 'testId', value: 'new-account-button' },
+      { type: 'css', value: '[data-testid="new-account-button"]' },
+    ])
+    .resolve(context.testName)
+    .then((el) => el.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true))
     .catch(() => false);
 
   const finalUrl = context.page.url();
