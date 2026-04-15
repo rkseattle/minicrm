@@ -10,13 +10,13 @@
  * MINCRM-139
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by AccountDetailPage. */
 export interface AccountDetailPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   testName: string;
 }
@@ -25,7 +25,7 @@ export interface AccountDetailPageContext {
  * Page Object for the MiniCRM account detail screen.
  */
 export class AccountDetailPage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

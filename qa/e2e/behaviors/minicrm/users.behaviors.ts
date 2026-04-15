@@ -11,7 +11,7 @@
  * MINCRM-110
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { UsersPage } from '@pages/minicrm/UsersPage.js';
 
@@ -21,7 +21,7 @@ import { UsersPage } from '@pages/minicrm/UsersPage.js';
 
 /** Fixtures required by user management behaviors. */
 export interface UsersBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   testName: string;
 }

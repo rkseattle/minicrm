@@ -10,12 +10,12 @@
  * MINCRM-110
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 /** Subset of Playwright fixtures required by UsersPage. */
 export interface UsersPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   testName: string;
 }
@@ -24,7 +24,7 @@ export interface UsersPageContext {
  * Page Object for the MiniCRM user management screen.
  */
 export class UsersPage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

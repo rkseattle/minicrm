@@ -12,12 +12,12 @@
  * MINCRM-110
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 /** Subset of Playwright fixtures required by PipelineBoardPage. */
 export interface PipelineBoardPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   testName: string;
 }
@@ -35,7 +35,7 @@ export type PipelineStage =
  * Page Object for the MiniCRM pipeline board.
  */
 export class PipelineBoardPage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

@@ -11,7 +11,7 @@
  * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -23,7 +23,7 @@ import type { NotificationPreferenceKey } from '@pages/minicrm/ProfilePage.js';
 
 /** Fixtures required by notifications behaviors. */
 export interface NotificationsBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name forwarded to Page Object constructors for heal audit records. */
   testName: string;

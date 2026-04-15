@@ -11,7 +11,7 @@
  * MINCRM-161, MINCRM-162, MINCRM-192
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { t } from '@framework/i18n/locale.js';
 
@@ -21,7 +21,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ProfilePage. */
 export interface ProfilePageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
   testName: string;
@@ -53,7 +53,7 @@ export type NotificationPreferenceKey =
  * ```
  */
 export class ProfilePage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

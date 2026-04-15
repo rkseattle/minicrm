@@ -11,7 +11,7 @@
  * MINCRM-130, MINCRM-110, MINCRM-137
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
@@ -25,7 +25,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Fixtures required by auth behaviors. */
 export interface AuthBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name forwarded to Page Object constructors for heal audit records. */
   testName: string;

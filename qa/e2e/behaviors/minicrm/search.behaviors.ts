@@ -11,7 +11,7 @@
  * MINCRM-145, MINCRM-168, MINCRM-192
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { GlobalSearchPage } from '@pages/minicrm/GlobalSearchPage.js';
 
@@ -21,7 +21,7 @@ import { GlobalSearchPage } from '@pages/minicrm/GlobalSearchPage.js';
 
 /** Fixtures required by search behaviors. */
 export interface SearchBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name forwarded to Page Object constructors for heal audit records. */
   testName: string;

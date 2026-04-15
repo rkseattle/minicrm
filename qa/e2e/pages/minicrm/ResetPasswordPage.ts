@@ -7,13 +7,13 @@
  * MINCRM-157
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ResetPasswordPage. */
 export interface ResetPasswordPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   testName: string;
 }
@@ -25,7 +25,7 @@ export class ResetPasswordPage {
   /** URL path for this page (without token query param). */
   static readonly PATH = '/reset-password';
 
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 
