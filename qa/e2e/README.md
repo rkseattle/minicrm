@@ -14,12 +14,12 @@ tests/       Spec files — mirrors the structure above
 
 ## Smoke-Level Coverage
 
-Smoke-level (sanity) E2E coverage is provided by the BVT suite — there is no separate smoke test file. The BVTs run in Phase 4 of CI and cover the critical end-to-end journeys (auth, contact CRUD, deal pipeline, task flow, user management) with self-healing locators, proper test-data teardown, and CI artifact reporting.
+Smoke-level (sanity) E2E coverage is provided by the BVT suite, which is merged into the functional suite (MINCRM-193). The BVTs run in Phase 3 of CI alongside all functional tests and cover the critical end-to-end journeys (auth, contact CRUD, deal pipeline, task flow, user management) with self-healing locators, proper test-data teardown, and CI artifact reporting.
 
-BVT specs live under `qa/e2e/tests/apps/minicrm/bvt/` and are tagged `@bvt`. To run them locally:
+BVT specs live under `qa/e2e/tests/apps/minicrm/functional/smoke/` and are tagged `@bvt @smoke @functional`. To run them locally:
 
 ```bash
-npx playwright test --config=qa/e2e/playwright.config.ts --grep @bvt qa/e2e/tests/apps/minicrm/bvt/
+npx playwright test --config=qa/e2e/playwright.config.ts --grep @bvt qa/e2e/tests/apps/minicrm/functional/smoke/
 ```
 
 ## Running Tests
@@ -31,8 +31,11 @@ npx playwright test --config=qa/e2e/playwright.config.ts
 # Desktop project only
 npx playwright test --config=qa/e2e/playwright.config.ts --project=desktop
 
-# Specific spec file
-npx playwright test --config=qa/e2e/playwright.config.ts qa/e2e/tests/apps/minicrm/bvt.spec.ts
+# Smoke tests only
+npx playwright test --config=qa/e2e/playwright.config.ts --grep @smoke qa/e2e/tests/apps/minicrm/functional/smoke/
+
+# Framework integration test only
+npx playwright test --config=qa/e2e/playwright.config.ts qa/e2e/tests/apps/minicrm/functional/framework/bvt-framework.spec.ts
 ```
 
 Copy `qa/e2e/.env.example` to `qa/e2e/.env` and fill in the required values before running against a live environment.

@@ -7,10 +7,10 @@
  *   3. Mark task complete → row disappears from open-tasks view
  *   4. Teardown via TestDataManager (surgical — pre-existing count unchanged)
  *
- * Tagged @bvt so the suite can be run in isolation:
- *   npx playwright test --grep @bvt
+ * Tagged @bvt @smoke @functional — runs in the merged functional suite.
+ * Can still be targeted in isolation: npx playwright test --grep @bvt
  *
- * MINCRM-110
+ * MINCRM-110, MINCRM-193
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -31,7 +31,7 @@ interface ActivityListResponse {
   total: number;
 }
 
-test('@bvt BVT-04: task flow — create, list, complete, teardown', async ({
+test('@bvt @smoke @functional BVT-04: task flow — create, list, complete, teardown', async ({
   page,
   healPage,
   restClient,
