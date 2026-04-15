@@ -113,7 +113,11 @@ export async function advanceDealStage(
   }
 
   await boardPage.selectDealStage(dealId, targetStage);
-  const columnSlug = await boardPage.getDealColumnSlug(dealId);
+  // selectDealStage already waits for the card to appear in the target column
+  // and navigates there on mobile. Derive the slug from the stage name rather
+  // than calling getDealColumnSlug, which rescans all stages from position 0
+  // and is prohibitively slow on mobile (up to 12 button clicks × timeouts).
+  const columnSlug = targetStage.toLowerCase().replace(/\s+/g, '-');
   return { columnSlug };
 }
 
