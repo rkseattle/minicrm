@@ -59,7 +59,7 @@ interface ContactListResponse {
 // BVT suite
 // ---------------------------------------------------------------------------
 
-test.describe('@bvt @smoke @functional BVT — MiniCRM E2E framework integration', () => {
+test.describe('BVT — MiniCRM E2E framework integration', () => {
   test('@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
     page,
     healPage,
