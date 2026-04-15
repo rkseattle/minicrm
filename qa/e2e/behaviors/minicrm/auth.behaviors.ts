@@ -170,19 +170,25 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
   const isDesktopVisible = await desktopLogout.isVisible().catch(() => false);
 
   if (!isDesktopVisible) {
-    // NavTop mobile: click the menu toggle to mount the drawer, then resolve
-    // and click the mobile logout button inside it.
+    // NavTop mobile: click the menu toggle to mount the drawer, wait for the
+    // drawer to be visible, then click the mobile logout button inside it.
     await context.healPage.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ]);
+    const drawer = await context.healPage
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve(context.testName);
+    await drawer.waitFor({ state: 'visible', timeout: 5_000 });
     const mobileLogout = await context.healPage
       .locate([
         { type: 'testId', value: 'nav-logout-mobile' },
         { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
       ])
       .resolve(context.testName);
-    await mobileLogout.waitFor({ state: 'visible', timeout: 5_000 });
     await mobileLogout.click();
   } else {
     await context.healPage.click([
