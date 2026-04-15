@@ -119,10 +119,12 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        # MINCRM-203: npm ci respects the lockfile for reproducible installs.
-        # npm rebuild resolves platform-specific optional binaries (e.g. @rollup/rollup-linux-x64-gnu)
-        # that are omitted from the lockfile when it was generated on a non-Linux host.
-        run: npm ci && npm rebuild
+        # npm install (not npm ci) is required here: @rollup/rollup-linux-x64-gnu is a
+        # platform-specific optional dep that npm omits from the lockfile on macOS.
+        # npm ci would skip it entirely; npm install resolves it from the registry.
+        # The E2E jobs use npm ci + npm rebuild because Playwright browser binaries are
+        # a separate install step — rollup is not involved there.
+        run: npm install
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
