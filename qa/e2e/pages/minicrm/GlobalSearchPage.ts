@@ -98,10 +98,19 @@ export class GlobalSearchPage {
     // Before clicking the toggle, check whether the drawer is already open —
     // if a prior call in the same test already opened it, clicking the toggle
     // again would close it (it is a toggle, not an open-only button).
+    //
+    // Use the scoped CSS strategy directly here: the healing framework sorts
+    // by STRATEGY_ORDER (testId=0 before css=4), so a mixed-type locate would
+    // probe testId("global-search-input") first and match the hidden header
+    // input — defeating the purpose of this check. A single css-only locate
+    // call is scoped to #mobile-nav-drawer and cannot match the header input.
     const drawerInputAlreadyVisible = await this.healPage
       .locate([
         { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-        { type: 'testId', value: 'global-search-input' },
+        {
+          type: 'xpath',
+          value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
+        },
       ])
       .resolve(this.testName)
       .then((el) => el.isVisible().catch(() => false))
@@ -111,7 +120,10 @@ export class GlobalSearchPage {
       return this.healPage
         .locate([
           { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-          { type: 'testId', value: 'global-search-input' },
+          {
+            type: 'xpath',
+            value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
+          },
         ])
         .resolve(this.testName);
     }
@@ -125,13 +137,17 @@ export class GlobalSearchPage {
     ]);
 
     // After the toggle click the drawer is mounted — resolve the input inside
-    // it. The CSS primary scopes to #mobile-nav-drawer so it cannot match the
-    // header input. The testId fallback is a broad safety net for healing if
-    // the drawer id changes (at that point only one input will be visible).
+    // it. Both strategies are scoped to #mobile-nav-drawer so neither can match
+    // the hidden header input. A testId fallback would be sorted to priority 0
+    // by the heal framework and probe the header input first — so XPath is used
+    // instead (priority 5), keeping css (priority 4) as the primary.
     return this.healPage
       .locate([
         { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
-        { type: 'testId', value: 'global-search-input' },
+        {
+          type: 'xpath',
+          value: '//*[@id="mobile-nav-drawer"]//*[@data-testid="global-search-input"]',
+        },
       ])
       .resolve(this.testName);
   }
