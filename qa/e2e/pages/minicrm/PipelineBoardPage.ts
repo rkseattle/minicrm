@@ -135,6 +135,9 @@ export class PipelineBoardPage {
     }
 
     // Mobile: navigate through each stage and check the single visible column.
+    // Stage navigation is pure React state — no network calls. Use a short
+    // waitForTimeout instead of waitForLoadState('networkidle') to avoid
+    // burning the 30s test timeout across 12+ button clicks.
     // First, rewind to stage 0 (Prospecting) by clicking prev until disabled.
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
       try {
@@ -146,7 +149,7 @@ export class PipelineBoardPage {
           .resolve(this.testName);
         if (!(await prevBtn.isEnabled().catch(() => false))) break;
         await prevBtn.click();
-        await this.page.waitForLoadState('networkidle');
+        await this.page.waitForTimeout(200);
       } catch {
         break;
       }
@@ -173,7 +176,7 @@ export class PipelineBoardPage {
           .resolve(this.testName);
         if (!(await nextBtn.isEnabled().catch(() => false))) break;
         await nextBtn.click();
-        await this.page.waitForLoadState('networkidle');
+        await this.page.waitForTimeout(200);
       } catch {
         break;
       }
@@ -210,7 +213,7 @@ export class PipelineBoardPage {
           .resolve(this.testName);
         if (await nextBtn.isEnabled().catch(() => false)) {
           await nextBtn.click();
-          await this.page.waitForLoadState('networkidle');
+          await this.page.waitForTimeout(200);
         }
       } catch {
         break;
@@ -296,7 +299,7 @@ export class PipelineBoardPage {
             .resolve(this.testName);
           if (!(await prevBtn.isEnabled().catch(() => false))) break;
           await prevBtn.click();
-          await this.page.waitForLoadState('networkidle');
+          await this.page.waitForTimeout(200);
         } catch {
           break;
         }
@@ -311,7 +314,7 @@ export class PipelineBoardPage {
             .resolve(this.testName);
           if (await nextBtn.isEnabled().catch(() => false)) {
             await nextBtn.click();
-            await this.page.waitForLoadState('networkidle');
+            await this.page.waitForTimeout(200);
           }
         } catch {
           break;
