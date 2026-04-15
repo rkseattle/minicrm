@@ -11,7 +11,7 @@
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "typecheck": "tsc --noEmit",
     "test": "DOTENV_CONFIG_PATH=../.env.test vitest run",
-    "test:coverage": "DOTENV_CONFIG_PATH=../.env.test vitest run --coverage",
+    "test:coverage": "npm test -- --coverage",
     "generate-spec": "tsx src/scripts/generateSpec.ts",
     "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json",
     "seed:e2e-admin": "tsx src/scripts/seed-e2e-admin.ts"
