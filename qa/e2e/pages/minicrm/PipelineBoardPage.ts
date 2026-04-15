@@ -86,8 +86,20 @@ export class PipelineBoardPage {
    * Detected by checking whether the mobile-prefixed stage column is visible.
    */
   private async isMobileView(): Promise<boolean> {
-    const mobileColumn = this.page.locator('[data-testid^="mobile-stage-column-"]').first();
-    return mobileColumn.isVisible().catch(() => false);
+    try {
+      const mobileColumn = await this.healPage
+        .locate([
+          { type: 'css', value: '[data-testid^="mobile-stage-column-"]' },
+          { type: 'css', value: '[data-testid="mobile-stage-column-prospecting"]' },
+        ])
+        .resolve(this.testName);
+      return mobileColumn
+        .first()
+        .isVisible()
+        .catch(() => false);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -107,10 +119,20 @@ export class PipelineBoardPage {
 
     if (!mobile) {
       for (const slug of PipelineBoardPage.STAGE_SLUGS) {
-        const cardInColumn = this.page.locator(
-          `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-        );
-        if ((await cardInColumn.count()) > 0) return slug;
+        try {
+          const cardInColumn = await this.healPage
+            .locate([
+              {
+                type: 'css',
+                value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+              },
+              { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+            ])
+            .resolve(this.testName);
+          if ((await cardInColumn.count()) > 0) return slug;
+        } catch {
+          // Card not in this column — continue.
+        }
       }
       return null;
     }
@@ -118,19 +140,46 @@ export class PipelineBoardPage {
     // Mobile: navigate through each stage and check the single visible column.
     // First, rewind to stage 0 (Prospecting) by clicking prev until disabled.
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
-      const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
-      if (!(await prevBtn.isEnabled().catch(() => false))) break;
-      await prevBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      try {
+        const prevBtn = await this.healPage
+          .locate([
+            { type: 'testId', value: 'pipeline-mobile-prev' },
+            { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
+          ])
+          .resolve(this.testName);
+        if (!(await prevBtn.isEnabled().catch(() => false))) break;
+        await prevBtn.click();
+        await this.page.waitForLoadState('networkidle');
+      } catch {
+        break;
+      }
     }
 
     for (const slug of PipelineBoardPage.STAGE_SLUGS) {
-      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
-      if (await card.isVisible().catch(() => false)) return slug;
-      const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
-      if (!(await nextBtn.isEnabled().catch(() => false))) break;
-      await nextBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      try {
+        const card = await this.healPage
+          .locate([
+            { type: 'testId', value: `mobile-deal-card-${dealId}` },
+            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+          ])
+          .resolve(this.testName);
+        if (await card.isVisible().catch(() => false)) return slug;
+      } catch {
+        // Card not visible in this column.
+      }
+      try {
+        const nextBtn = await this.healPage
+          .locate([
+            { type: 'testId', value: 'pipeline-mobile-next' },
+            { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+          ])
+          .resolve(this.testName);
+        if (!(await nextBtn.isEnabled().catch(() => false))) break;
+        await nextBtn.click();
+        await this.page.waitForLoadState('networkidle');
+      } catch {
+        break;
+      }
     }
     return null;
   }
@@ -144,12 +193,30 @@ export class PipelineBoardPage {
   private async mobileNavigateToStageWithDeal(dealId: string): Promise<void> {
     const STAGE_COUNT = PipelineBoardPage.STAGE_SLUGS.length;
     for (let i = 0; i < STAGE_COUNT; i++) {
-      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
-      if (await card.isVisible().catch(() => false)) return;
-      const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
-      if (await nextBtn.isEnabled().catch(() => false)) {
-        await nextBtn.click();
-        await this.page.waitForLoadState('networkidle');
+      try {
+        const card = await this.healPage
+          .locate([
+            { type: 'testId', value: `mobile-deal-card-${dealId}` },
+            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+          ])
+          .resolve(this.testName);
+        if (await card.isVisible().catch(() => false)) return;
+      } catch {
+        // Not visible in this column — try next.
+      }
+      try {
+        const nextBtn = await this.healPage
+          .locate([
+            { type: 'testId', value: 'pipeline-mobile-next' },
+            { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+          ])
+          .resolve(this.testName);
+        if (await nextBtn.isEnabled().catch(() => false)) {
+          await nextBtn.click();
+          await this.page.waitForLoadState('networkidle');
+        }
+      } catch {
+        break;
       }
     }
   }
@@ -174,16 +241,31 @@ export class PipelineBoardPage {
 
     const prefix = mobile ? 'mobile-' : '';
     const selectTestId = `${prefix}deal-card-stage-select-${dealId}`;
-    const select = this.page.locator(`[data-testid="${selectTestId}"]`);
+    const select = await this.healPage
+      .locate([
+        { type: 'testId', value: selectTestId },
+        { type: 'css', value: `[data-testid="${selectTestId}"]` },
+      ])
+      .resolve(this.testName);
     await select.selectOption(stage);
 
     const isTerminal = stage === 'Closed Won' || stage === 'Closed Lost';
     if (isTerminal) {
       // CloseDealModal opens — fill required close_date and confirm.
-      const modal = this.page.locator('[data-testid="close-deal-modal"]');
+      const modal = await this.healPage
+        .locate([
+          { type: 'testId', value: 'close-deal-modal' },
+          { type: 'css', value: '[data-testid="close-deal-modal"]' },
+        ])
+        .resolve(this.testName);
       await modal.waitFor({ state: 'visible' });
 
-      const dateInput = this.page.locator('[data-testid="close-deal-date-input"]');
+      const dateInput = await this.healPage
+        .locate([
+          { type: 'testId', value: 'close-deal-date-input' },
+          { type: 'css', value: '[data-testid="close-deal-date-input"]' },
+        ])
+        .resolve(this.testName);
       // Default to today's date in YYYY-MM-DD format.
       const today = new Date().toISOString().slice(0, 10);
       await dateInput.fill(today);
@@ -208,25 +290,62 @@ export class PipelineBoardPage {
         slug as (typeof PipelineBoardPage.STAGE_SLUGS)[number],
       );
       for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
-        const prevBtn = this.page.locator('[data-testid="pipeline-mobile-prev"]');
-        if (!(await prevBtn.isEnabled().catch(() => false))) break;
-        await prevBtn.click();
-        await this.page.waitForLoadState('networkidle');
-      }
-      for (let i = 0; i < targetSlugIndex; i++) {
-        const nextBtn = this.page.locator('[data-testid="pipeline-mobile-next"]');
-        if (await nextBtn.isEnabled().catch(() => false)) {
-          await nextBtn.click();
+        try {
+          const prevBtn = await this.healPage
+            .locate([
+              { type: 'testId', value: 'pipeline-mobile-prev' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
+            ])
+            .resolve(this.testName);
+          if (!(await prevBtn.isEnabled().catch(() => false))) break;
+          await prevBtn.click();
           await this.page.waitForLoadState('networkidle');
+        } catch {
+          break;
         }
       }
-      const card = this.page.locator(`[data-testid="mobile-deal-card-${dealId}"]`);
-      await card.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+      for (let i = 0; i < targetSlugIndex; i++) {
+        try {
+          const nextBtn = await this.healPage
+            .locate([
+              { type: 'testId', value: 'pipeline-mobile-next' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+            ])
+            .resolve(this.testName);
+          if (await nextBtn.isEnabled().catch(() => false)) {
+            await nextBtn.click();
+            await this.page.waitForLoadState('networkidle');
+          }
+        } catch {
+          break;
+        }
+      }
+      try {
+        const card = await this.healPage
+          .locate([
+            { type: 'testId', value: `mobile-deal-card-${dealId}` },
+            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+          ])
+          .resolve(this.testName);
+        await card.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+      } catch {
+        // Card not found — caller will verify state independently.
+      }
     } else {
-      const cardInTarget = this.page.locator(
-        `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-      );
-      await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+      try {
+        const cardInTarget = await this.healPage
+          .locate([
+            {
+              type: 'css',
+              value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+            },
+            { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+          ])
+          .resolve(this.testName);
+        await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+      } catch {
+        // Card not found — caller will verify state independently.
+      }
     }
   }
 

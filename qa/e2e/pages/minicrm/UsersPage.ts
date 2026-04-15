@@ -76,8 +76,13 @@ export class UsersPage {
       { type: 'testId', value: 'invite-email' },
       { type: 'label', value: 'Email', options: { exact: false } },
     ]);
-    // Role is a <select> — use selectOption directly; testId as CSS selector fallback.
-    const roleSelect = this.page.locator('[data-testid="invite-role"]');
+    // Role is a <select> — resolve via HealingLocator then call selectOption on the result.
+    const roleSelect = await this.healPage
+      .locate([
+        { type: 'testId', value: 'invite-role' },
+        { type: 'css', value: '[data-testid="invite-role"]' },
+      ])
+      .resolve(this.testName);
     await roleSelect.selectOption(role);
   }
 
@@ -102,13 +107,30 @@ export class UsersPage {
    */
   async userCardIsVisible(userId: string): Promise<boolean> {
     await this.page.waitForLoadState('networkidle');
-    const card = this.page.locator(`[data-testid="user-card-${userId}"]`);
-    // Desktop renders rows without user-card-* testids — fall back to email text.
-    const byCard = await card.count();
-    if (byCard > 0) return true;
-    // Row-level fallback: any element containing the userId (e.g. action buttons).
-    const byAction = await this.page.locator(`[data-testid="user-actions-${userId}"]`).count();
-    return byAction > 0;
+    // Try the mobile card testid first via HealingLocator.
+    try {
+      const card = await this.healPage
+        .locate([
+          { type: 'testId', value: `user-card-${userId}` },
+          { type: 'css', value: `[data-testid="user-card-${userId}"]` },
+        ])
+        .resolve(this.testName);
+      if ((await card.count()) > 0) return true;
+    } catch {
+      // No mobile card — try the desktop row action button fallback.
+    }
+    // Desktop renders rows without user-card-* testids — fall back to action button.
+    try {
+      const action = await this.healPage
+        .locate([
+          { type: 'testId', value: `user-actions-${userId}` },
+          { type: 'css', value: `[data-testid="user-actions-${userId}"]` },
+        ])
+        .resolve(this.testName);
+      return (await action.count()) > 0;
+    } catch {
+      return false;
+    }
   }
 
   /**
