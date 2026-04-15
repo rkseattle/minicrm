@@ -248,6 +248,29 @@ export class GlobalSearchPage {
   }
 
   /**
+   * Waits for the minimum-length hint to become hidden (i.e. the debounce has
+   * fired and the component has settled for a query >= 2 chars).
+   *
+   * Resolves silently if the hint was never present or does not hide within
+   * the timeout — callers check `minLengthHintIsVisible()` for the final state.
+   *
+   * @param timeout - Maximum ms to wait. Defaults to 5 000.
+   */
+  async waitForMinLengthHintHidden(timeout = 5_000): Promise<void> {
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'testId', value: 'search-min-length-hint' },
+          { type: 'css', value: '[data-testid="search-min-length-hint"]' },
+        ])
+        .resolve(this.testName);
+      await resolved.waitFor({ state: 'hidden', timeout });
+    } catch {
+      // Element absent or timed out — treat as already hidden.
+    }
+  }
+
+  /**
    * Returns true when there is no error alert visible on the page.
    */
   async noErrorAlertVisible(): Promise<boolean> {
