@@ -168,9 +168,13 @@ export class ChangePasswordPage {
    * @returns true if the banner is visible, false otherwise.
    */
   async contextBannerVisible(): Promise<boolean> {
-    return this.page
-      .getByTestId('change-password-context-banner')
-      .isVisible()
+    return this.healPage
+      .locate([
+        { type: 'testId', value: 'change-password-context-banner' },
+        { type: 'css', value: '[data-testid="change-password-context-banner"]' },
+      ])
+      .resolve(this.testName)
+      .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }
 

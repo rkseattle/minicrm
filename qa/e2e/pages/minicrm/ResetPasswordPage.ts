@@ -104,9 +104,13 @@ export class ResetPasswordPage {
    * Returns true when the invalid-token error element is visible.
    */
   async invalidTokenVisible(): Promise<boolean> {
-    return this.page
-      .getByTestId('reset-password-invalid-token')
-      .isVisible()
+    return this.healPage
+      .locate([
+        { type: 'testId', value: 'reset-password-invalid-token' },
+        { type: 'css', value: '[data-testid="reset-password-invalid-token"]' },
+      ])
+      .resolve(this.testName)
+      .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }
 
