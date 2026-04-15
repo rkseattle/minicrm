@@ -67,14 +67,32 @@ export class GlobalSearchPage {
    *
    * NavLeft and NavHamburger always render the input visibly. NavTop on desktop
    * also renders it visibly. Only NavTop on mobile hides it behind `hidden lg:block`.
+   *
+   * All element resolution goes through HealingLocator — no raw page.* calls.
    */
   private async openInput(): Promise<Locator> {
-    const headerInput = this.page.getByTestId('global-search-input').first();
-    const isHeaderVisible = await headerInput.isVisible().catch(() => false);
+    // Resolve the header input through the healing framework.
+    const headerInput = await this.healPage
+      .locate([
+        { type: 'testId', value: 'global-search-input' },
+        { type: 'css', value: '[data-testid="global-search-input"]' },
+      ])
+      .resolve(this.testName);
+
+    const isHeaderVisible = await headerInput
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     if (!isHeaderVisible) {
       // NavTop mobile: open the drawer which contains its own search input instance.
-      const drawer = this.page.locator('#mobile-nav-drawer');
+      const drawer = await this.healPage
+        .locate([
+          { type: 'css', value: '#mobile-nav-drawer' },
+          { type: 'testId', value: 'mobile-nav-drawer' },
+        ])
+        .resolve(this.testName);
+
       const drawerVisible = await drawer.isVisible().catch(() => false);
       if (!drawerVisible) {
         await this.healPage.click([
@@ -83,12 +101,19 @@ export class GlobalSearchPage {
         ]);
         await drawer.waitFor({ state: 'visible', timeout: 5_000 });
       }
-      const drawerInput = drawer.getByTestId('global-search-input');
+
+      const drawerInput = await this.healPage
+        .locate([
+          { type: 'css', value: '#mobile-nav-drawer [data-testid="global-search-input"]' },
+          { type: 'testId', value: 'global-search-input' },
+        ])
+        .resolve(this.testName);
+
       await drawerInput.waitFor({ state: 'visible', timeout: 5_000 });
       return drawerInput;
     }
 
-    return headerInput;
+    return headerInput.first();
   }
 
   // ---------------------------------------------------------------------------
@@ -112,10 +137,8 @@ export class GlobalSearchPage {
 
     // Wait for the dropdown to appear before returning.
     // Callers that require specific results must assert visibility separately.
-    await this.page
-      .getByTestId('search-results-panel')
-      .waitFor({ state: 'visible', timeout })
-      .catch(() => null);
+    // Use panelIsVisible() so the wait goes through HealingLocator, not raw page.*.
+    await this.panelIsVisible(timeout);
   }
 
   /**
@@ -274,8 +297,18 @@ export class GlobalSearchPage {
    * Returns true when there is no error alert visible on the page.
    */
   async noErrorAlertVisible(): Promise<boolean> {
-    const alert = this.page.getByRole('alert');
-    return !(await alert.isVisible().catch(() => false));
+    try {
+      const resolved = await this.healPage
+        .locate([
+          { type: 'role', value: 'alert' },
+          { type: 'css', value: '[role="alert"]' },
+        ])
+        .resolve(this.testName);
+      return !(await resolved.isVisible().catch(() => false));
+    } catch {
+      // No alert element found — treat as no error visible.
+      return true;
+    }
   }
 
   /**
@@ -283,8 +316,18 @@ export class GlobalSearchPage {
    * inside the results panel.
    */
   async noSpinnerInPanel(): Promise<boolean> {
-    const panel = this.page.getByTestId('search-results-panel');
-    const spinner = panel.locator('[role="progressbar"], [aria-busy="true"]');
-    return !(await spinner.isVisible().catch(() => false));
+    try {
+      const panel = await this.healPage
+        .locate([
+          { type: 'testId', value: 'search-results-panel' },
+          { type: 'css', value: '[data-testid="search-results-panel"]' },
+        ])
+        .resolve(this.testName);
+      const spinner = panel.locator('[role="progressbar"], [aria-busy="true"]');
+      return !(await spinner.isVisible().catch(() => false));
+    } catch {
+      // Panel not found — no spinner possible.
+      return true;
+    }
   }
 }
