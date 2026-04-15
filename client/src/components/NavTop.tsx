@@ -12,8 +12,10 @@ import { useTranslation } from 'react-i18next';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
+import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { Button } from '@/components/ui/Button.js';
-import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
 import NavHeader from './NavHeader.js';
 
 /**
@@ -48,7 +50,7 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
  * Top navigation bar layout component. (MINCRM-133)
  */
 export default function NavTop() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -63,6 +65,27 @@ export default function NavTop() {
       navigate('/login', { replace: true });
     },
   });
+
+  const previousLocaleRef = useRef<string | null>(null);
+  const languageMutation = useMutation({
+    mutationFn: (locale: SupportedLocale) => setMyLanguage(locale),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
+      previousLocaleRef.current = null;
+    },
+    onError: () => {
+      if (previousLocaleRef.current) {
+        void i18n.changeLanguage(previousLocaleRef.current);
+        previousLocaleRef.current = null;
+      }
+    },
+  });
+
+  function handleLanguageChange(locale: SupportedLocale): void {
+    previousLocaleRef.current = i18n.language;
+    void i18n.changeLanguage(locale);
+    languageMutation.mutate(locale);
+  }
 
   /** Close mobile drawer. */
   const closeMobileMenu = useCallback((): void => {
@@ -146,7 +169,20 @@ export default function NavTop() {
               {t(link.labelKey)}
             </NavLink>
           ))}
-          <div className="pt-2 border-t border-gray-100">
+          <div className="pt-2 border-t border-gray-100 space-y-1">
+            <select
+              aria-label={t('nav.languageSelector')}
+              data-testid="nav-language-select-mobile"
+              value={i18n.language}
+              onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
+              className="w-full px-4 py-3 text-base text-gray-700 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer min-h-[44px]"
+            >
+              {SUPPORTED_LOCALES.map((locale) => (
+                <option key={locale} value={locale}>
+                  {LOCALE_NATIVE_NAME[locale]}
+                </option>
+              ))}
+            </select>
             <Button
               type="button"
               variant="ghost"
