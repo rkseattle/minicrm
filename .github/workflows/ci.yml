@@ -143,9 +143,8 @@ jobs:
 
   e2e-functional:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
-    # Smoke-tagged specs (@bvt @smoke @functional) run first within shard 1 because
-    # Playwright processes files in filesystem order and smoke/ sorts before other
-    # domain directories.
+    # Smoke tests (@smoke @functional) are individual tests distributed across domain
+    # suites; they run alongside all functional tests in the same phase.
     name: Phase 3 - E2E Functional (${{ matrix.project }})
     needs: [server-tests, client-tests]
     runs-on: ubuntu-latest
@@ -255,8 +254,8 @@ jobs:
       - name: Run functional test suite (MINCRM-137, MINCRM-193)
         # --workers=4: functional tests are data-isolated and safe to parallelise.
         # E2E=true: bypasses the login rate limiter for multi-login test runs.
-        # Smoke tests (functional/smoke/) run first within shard 1 — filesystem
-        # ordering guarantees smoke/ sorts before other domain directories.
+        # Smoke tests (@smoke @functional) are individual tests in domain suites —
+        # use --grep @smoke to run them in isolation locally.
         # New @functional spec files under qa/e2e/tests/apps/minicrm/functional/
         # are picked up automatically — no CI changes required per new spec.
         run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} --workers=4 --grep @functional qa/e2e/tests/apps/minicrm/functional/

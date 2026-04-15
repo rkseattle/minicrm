@@ -162,9 +162,10 @@ Every interactable element requires a unique `data-testid`. Row-scoped format: `
 - `data-testid` selectors only — no CSS class or positional selectors
 - Dedicated `minicrm_e2e` DB, reset between runs
 - Five required journeys: auth, contact CRUD, deal pipeline (2+ stage moves → close Won), task flow, user management
-- BVT (smoke) specs live under `qa/e2e/tests/apps/minicrm/functional/smoke/`, tagged `@bvt @smoke @functional` (MINCRM-193)
+- Smoke tests are individual functional tests tagged `@smoke @functional`, distributed across domain suites (MINCRM-193); run with `--grep @smoke`
 - Functional specs live under `qa/e2e/tests/apps/minicrm/functional/<domain>/`, tagged `@functional`
-- CI runs all functional tests (including smoke BVTs) in Phase 3 (`needs: [server-tests, client-tests]`)
+- Framework integration spec: `functional/framework/bvt-framework.spec.ts` (tagged `@bvt @smoke @functional`)
+- CI runs all functional tests (including smoke tests) in Phase 3 (`needs: [server-tests, client-tests]`)
 - **Any new `@functional` spec file placed under `functional/` is picked up automatically — no CI changes required**
 - **Every story implementation must add or update a functional E2E spec** — do not mark a ticket done without E2E coverage for the new behavior
 

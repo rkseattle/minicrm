@@ -196,7 +196,7 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
 // Opportunity (Deal) Creation tests
 // ---------------------------------------------------------------------------
 
-test('@functional F4-OC1: create deal with required fields → appears on pipeline board', async ({
+test('@smoke @functional F4-OC1: create deal with required fields → appears on pipeline board', async ({
   page,
   healPage,
   restClient,
@@ -270,7 +270,7 @@ test('@functional F4-OC3: missing required name field → API 400', async ({
 // Opportunity Pipeline tests
 // ---------------------------------------------------------------------------
 
-test('@functional F4-OP1: advance deal through pipeline stages in sequence → stage updates on board', async ({
+test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequence → stage updates on board', async ({
   page,
   healPage,
   restClient,
@@ -329,7 +329,7 @@ test('@functional F4-OP2: regress deal to a previous stage → allowed, reflecte
   expect(result.columnSlug, 'deal should have moved back to Qualification').toBe('qualification');
 });
 
-test('@functional F4-OP3: close deal as Won → marked Won, moved to closed-won column', async ({
+test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to closed-won column', async ({
   page,
   healPage,
   restClient,

@@ -103,7 +103,7 @@ async function createUserWithForcedPasswordChange(
 // Login tests
 // ---------------------------------------------------------------------------
 
-test('@functional F1-L1: valid credentials → authenticated, dashboard visible', async ({
+test('@smoke @functional F1-L1: valid credentials → authenticated, dashboard visible', async ({
   page,
   healPage,
 }) => {
@@ -119,7 +119,7 @@ test('@functional F1-L1: valid credentials → authenticated, dashboard visible'
   expect(new URL(result.finalUrl).pathname, 'browser should leave /login').not.toBe('/login');
 });
 
-test('@functional F1-L2: invalid password → error shown, stays on login page', async ({
+test('@smoke @functional F1-L2: invalid password → error shown, stays on login page', async ({
   page,
   healPage,
 }) => {
@@ -267,7 +267,7 @@ test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', 
 // Logout tests
 // ---------------------------------------------------------------------------
 
-test('@functional F1-O1: logout clears session cookie → subsequent API requests return 401 (AC3)', async ({
+test('@smoke @functional F1-O1: logout clears session cookie → subsequent API requests return 401 (AC3)', async ({
   page,
   healPage,
   restClient,
