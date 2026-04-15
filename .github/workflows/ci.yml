@@ -187,10 +187,11 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        # MINCRM-203: npm ci respects the lockfile for reproducible installs.
-        # npm rebuild resolves platform-specific Playwright optional binaries
-        # (e.g. Linux chromium sandbox) after the lockfile-based install.
-        run: npm ci && npm rebuild
+        # rm -rf client/node_modules: forces re-resolution of @rollup/rollup-linux-x64-gnu,
+        # a platform-specific optional dep absent from the macOS-generated lockfile.
+        # The Vite dev server (started below) requires it; npm install alone re-uses
+        # the stale workspace tree and misses it (npm workspace optional-deps bug).
+        run: rm -rf client/node_modules && npm install
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
