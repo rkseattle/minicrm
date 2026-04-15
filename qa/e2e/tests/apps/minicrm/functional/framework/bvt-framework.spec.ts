@@ -117,12 +117,10 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     expect(navResult.finalUrl).toContain('/contacts');
 
     // ── Step 5: Assert setup data appears in the contacts list ────────────
-    // Verify the contact total increased by exactly 1 after setup.
-    const duringResponse = await restClient.get<ContactListResponse>('/api/contacts');
-    expect(duringResponse.body.total).toBe(countBefore + 1);
-
     // Search by the unique last name to confirm this specific contact is
     // queryable — avoids pagination concerns with large contact lists.
+    // Note: asserting total == countBefore + 1 is racey with --workers=4
+    // because other workers may create contacts between the two reads.
     const searchResponse = await restClient.get<ContactListResponse>(
       `/api/contacts?search=${encodeURIComponent(contact.last_name)}`,
     );

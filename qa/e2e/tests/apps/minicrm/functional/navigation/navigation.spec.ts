@@ -291,7 +291,10 @@ test.describe.serial('Layout-mutating tests', () => {
     }) => {
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-      await setNavLayoutViaAPI('hamburger', restClient);
+      const layoutSet = await setNavLayoutViaAPI('hamburger', restClient);
+      expect(layoutSet.success, 'hamburger layout API call must succeed before testing nav').toBe(
+        true,
+      );
       await page.goto('/', { waitUntil: 'networkidle' });
 
       try {

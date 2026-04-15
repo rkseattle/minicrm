@@ -70,8 +70,17 @@ test.describe('Profile page — notification preferences', () => {
   test('@functional F10-PP2: checkboxes default to checked on first load', async ({
     page,
     healPage,
+    restClient,
   }) => {
     const testName = test.info().title;
+    // Reset preferences to all-true via API before reading — parallel workers
+    // running PP3/PP4 may have unchecked them, causing this assertion to flake.
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.patch('/api/users/me/notification-preferences', {
+      notify_overdue_tasks: true,
+      notify_assignments: true,
+      notify_deal_stage_changes: true,
+    });
     await navigateToProfile({ page, healPage, testName });
 
     const prefs = await getProfilePreferences({ page, healPage, testName });

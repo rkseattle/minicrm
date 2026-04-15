@@ -83,23 +83,13 @@ export class PipelineBoardPage {
 
   /**
    * Returns true when running in the mobile single-stage view.
-   * Detected by checking whether the mobile-prefixed stage column is visible.
+   * Detected by checking viewport width — the mobile board renders below
+   * Tailwind's `md` breakpoint (768 px). Using viewportSize() is deterministic
+   * and avoids DOM-visibility races that occur when the board is still rendering.
    */
-  private async isMobileView(): Promise<boolean> {
-    try {
-      const mobileColumn = await this.healPage
-        .locate([
-          { type: 'css', value: '[data-testid^="mobile-stage-column-"]' },
-          { type: 'css', value: '[data-testid="mobile-stage-column-prospecting"]' },
-        ])
-        .resolve(this.testName);
-      return mobileColumn
-        .first()
-        .isVisible()
-        .catch(() => false);
-    } catch {
-      return false;
-    }
+  private isMobileView(): boolean {
+    const size = this.page.viewportSize();
+    return size !== null && size.width < 768;
   }
 
   /**
@@ -115,7 +105,7 @@ export class PipelineBoardPage {
   async getDealColumnSlug(dealId: string): Promise<string | null> {
     await this.page.waitForLoadState('networkidle');
 
-    const mobile = await this.isMobileView();
+    const mobile = this.isMobileView();
 
     if (!mobile) {
       for (const slug of PipelineBoardPage.STAGE_SLUGS) {
@@ -240,7 +230,7 @@ export class PipelineBoardPage {
    * @param stage - Target stage value.
    */
   async selectDealStage(dealId: string, stage: PipelineStage): Promise<void> {
-    const mobile = await this.isMobileView();
+    const mobile = this.isMobileView();
 
     if (mobile) {
       await this.mobileNavigateToStageWithDeal(dealId);
