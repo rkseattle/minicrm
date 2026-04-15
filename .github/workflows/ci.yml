@@ -106,6 +106,13 @@ jobs:
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
 
+      - name: Upload client coverage report (MINCRM-194)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-coverage-${{ github.run_id }}
+          path: client/coverage/lcov.info
+
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
     runs-on: ubuntu-latest

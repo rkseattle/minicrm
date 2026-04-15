@@ -25,7 +25,9 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     coverage: {
       provider: 'v8',
+      all: true,
       include: ['src/components/**', 'src/pages/**'],
+      reporter: ['text', 'lcov'],
       thresholds: {
         lines: 70,
         functions: 70,
