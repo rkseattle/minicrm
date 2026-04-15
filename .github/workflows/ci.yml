@@ -23,7 +23,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint (root + server + client)
         run: npm run lint --workspaces --if-present
@@ -57,7 +57,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Audit dependencies for high/critical vulnerabilities
         run: |
@@ -93,7 +93,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run server tests with coverage
         run: npm run test:coverage --workspace=minicrm-server
