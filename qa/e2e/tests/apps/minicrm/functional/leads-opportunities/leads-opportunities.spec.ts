@@ -34,7 +34,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { createContactViaUI } from '@behaviors/minicrm/contacts.behaviors.js';
 import { openDeal, advanceDealStage, closeDealAsWon } from '@behaviors/minicrm/deals.behaviors.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
@@ -92,7 +91,6 @@ test('@functional F4-LC1: create contact with all required fields → appears in
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const email = `f4lc1-${uniqueSuffix}@example.com`;
   const result = await createContactViaUI(
@@ -121,7 +119,6 @@ test('@functional F4-LC2: missing required email field → inline validation err
   const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   // Submit with empty email — browser required validation fires before submission.
   const result = await createContactViaUI(
@@ -171,8 +168,6 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   const linkResponse = await restClient.post(`/api/deals/${deal.id}/contacts/${contact.id}`, {});
   expect(linkResponse.status, 'linking contact to deal should return 200').toBe(200);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
-
   // Verify deal is accessible on the pipeline board.
   const dealResult = await openDeal(deal.id, { page, healPage, testName });
   expect(dealResult.loaded, 'pipeline board should load').toBe(true);
@@ -213,8 +208,6 @@ test('@smoke @functional F4-OC1: create deal with required fields → appears on
     stage: 'Prospecting',
     account_id: account.id,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const result = await openDeal(deal.id, { page, healPage, testName });
   expect(result.loaded, 'pipeline board should load').toBe(true);
@@ -288,7 +281,6 @@ test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequenc
     account_id: account.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await openDeal(deal.id, { page, healPage, testName });
 
   // Advance through each open stage.
@@ -321,7 +313,6 @@ test('@functional F4-OP2: regress deal to a previous stage → allowed, reflecte
     account_id: account.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await openDeal(deal.id, { page, healPage, testName });
 
   // Regress to Qualification — free movement is permitted in MiniCRM.
@@ -347,7 +338,6 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
     account_id: account.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await openDeal(deal.id, { page, healPage, testName });
 
   const result = await closeDealAsWon(deal.id, { page, healPage, testName });
@@ -376,7 +366,6 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
     account_id: account.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await openDeal(deal.id, { page, healPage, testName });
 
   const result = await advanceDealStage(deal.id, 'Closed Lost', { page, healPage, testName });
@@ -407,7 +396,6 @@ test('@functional F4-OP5: reopen closed-won deal → returns to open stage on bo
     close_date: new Date().toISOString().slice(0, 10),
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await openDeal(deal.id, { page, healPage, testName });
 
   // Reopen by moving back to Negotiation — MiniCRM permits free stage movement.

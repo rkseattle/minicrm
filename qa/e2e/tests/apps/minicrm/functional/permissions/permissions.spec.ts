@@ -37,6 +37,13 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 
+// MINCRM-192: Permissions tests log in via the UI as dynamically-created rep users,
+// not as admin. Browser contexts in this spec must start unauthenticated so the
+// login() behavior can navigate to /login and authenticate as the correct role.
+// API-only tests in this spec (F7-AA*, F7-FA*) are unaffected by storageState but
+// the file-level override keeps behaviour consistent across the entire spec.
+test.use({ storageState: undefined });
+
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------

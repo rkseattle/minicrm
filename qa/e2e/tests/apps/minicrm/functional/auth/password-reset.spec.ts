@@ -29,6 +29,11 @@ import { logout, requestPasswordReset, resetPassword } from '@behaviors/minicrm/
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
+// MINCRM-192: Password-reset tests exercise unauthenticated flows (forgot-password,
+// reset link, auto-login on reset). They must not load the pre-authenticated
+// storageState — each test needs a fresh, unauthenticated browser context.
+test.use({ storageState: undefined });
+
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------

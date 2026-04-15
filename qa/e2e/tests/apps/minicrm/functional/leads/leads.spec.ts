@@ -24,7 +24,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -79,14 +78,11 @@ interface ConversionResponse {
 
 test('@functional F9-C1: required fields submitted → lead created and visible in list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   await page.goto('/leads');
   await page.getByTestId('new-lead-button').click();
@@ -109,14 +105,11 @@ test('@functional F9-C1: required fields submitted → lead created and visible 
 
 test('@functional F9-C2: optional fields saved and displayed on detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   await page.goto('/leads');
   await page.getByTestId('new-lead-button').click();
@@ -143,11 +136,9 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
 
 test('@functional F9-C3: duplicate email shows warning, Create Anyway creates duplicate', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -159,7 +150,6 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
   });
   testData.register('lead', existing.body.lead.id, `/api/leads/${existing.body.lead.id}`);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto('/leads');
   await page.getByTestId('new-lead-button').click();
   await page.getByTestId('lead-first-name').fill('Duplicate');
@@ -187,11 +177,9 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
 
 test('@functional F9-S1: inline status update from list view updates badge', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -203,7 +191,6 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto('/leads');
 
   // Click the status badge to open the inline selector
@@ -220,11 +207,9 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
 
 test('@functional F9-S2: disqualified leads hidden by default, shown with toggle', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -242,7 +227,6 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
     disqualification_reason: 'Not a fit',
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto('/leads');
 
   // Should not be visible by default
@@ -259,11 +243,9 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
 
 test('@functional F9-V1: Convert Lead creates contact, account, and deal atomically', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -277,7 +259,6 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto(`/leads/${leadId}`);
 
   await page.getByTestId('convert-lead-button').click();
@@ -314,11 +295,9 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
 
 test('@functional F9-V2: Converted lead shows badge in list view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -352,7 +331,6 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
     );
   }
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto('/leads');
 
   // Converted leads hidden by default
@@ -369,10 +347,8 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
 
 test('@functional F9-D1: deleting a lead removes it from the list', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -383,7 +359,6 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   });
   const leadId = created.body.lead.id;
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   await page.goto(`/leads/${leadId}`);
 
   await page.getByTestId('delete-lead-button').click();

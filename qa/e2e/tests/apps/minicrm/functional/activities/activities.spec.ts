@@ -33,7 +33,6 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToMyTasks,
   taskIsVisible,
@@ -470,7 +469,6 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
     contact_id: contact.id,
   });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
@@ -517,7 +515,6 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   ).toBe(true);
 
   // Verify UI shows the overdue badge.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
@@ -551,7 +548,6 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   expect(detail.body.activity.due_date, 'due_date should be null').toBeNull();
   expect(detail.body.activity.status, 'status should be open').toBe('open');
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
 
@@ -589,7 +585,6 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be complete').toBe('complete');
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
 
@@ -753,8 +748,6 @@ test('@smoke @functional F5-CP1: mark task complete via UI → removed from open
     subject: `F5-CP1 Complete Task ${uniqueSuffix}`,
     contact_id: contact.id,
   });
-
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
 
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
