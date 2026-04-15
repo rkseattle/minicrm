@@ -1,5 +1,5 @@
 /**
- * Tests for the ContactForm component.
+ * Tests for the ContactForm component. (MINCRM-198)
  */
 
 import { screen, fireEvent } from '@testing-library/react';
@@ -11,6 +11,134 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 const noop = vi.fn();
 
 describe('ContactForm', () => {
+  describe('field rendering', () => {
+    it('renders all core fields', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.getByTestId('contact-first-name')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-last-name')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-email')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-phone')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-title')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-department')).toBeInTheDocument();
+      expect(screen.getByTestId('contact-account-select')).toBeInTheDocument();
+    });
+
+    it('does not render owner selector when users prop is omitted', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.queryByTestId('contact-owner-select')).not.toBeInTheDocument();
+    });
+
+    it('renders owner selector when users prop is provided', () => {
+      renderWithProviders(
+        <ContactForm onSubmit={noop} users={[{ id: 'u-1', name: 'Alice Smith' }]} />,
+      );
+      expect(screen.getByTestId('contact-owner-select')).toBeInTheDocument();
+    });
+
+    it('renders account options from accounts prop', () => {
+      renderWithProviders(
+        <ContactForm onSubmit={noop} accounts={[{ id: 'acc-1', name: 'Acme Corp' }]} />,
+      );
+      expect(screen.getByRole('option', { name: 'Acme Corp' })).toBeInTheDocument();
+    });
+  });
+
+  describe('initialValues population', () => {
+    it('pre-populates all fields from initialValues', () => {
+      renderWithProviders(
+        <ContactForm
+          onSubmit={noop}
+          initialValues={{
+            first_name: 'Jane',
+            last_name: 'Doe',
+            email: 'jane@example.com',
+            phone: '555-1234',
+            title: 'Manager',
+            department: 'Sales',
+          }}
+        />,
+      );
+      expect(screen.getByTestId<HTMLInputElement>('contact-first-name').value).toBe('Jane');
+      expect(screen.getByTestId<HTMLInputElement>('contact-last-name').value).toBe('Doe');
+      expect(screen.getByTestId<HTMLInputElement>('contact-email').value).toBe('jane@example.com');
+      expect(screen.getByTestId<HTMLInputElement>('contact-phone').value).toBe('555-1234');
+      expect(screen.getByTestId<HTMLInputElement>('contact-title').value).toBe('Manager');
+      expect(screen.getByTestId<HTMLInputElement>('contact-department').value).toBe('Sales');
+    });
+  });
+
+  describe('onSubmit', () => {
+    it('calls onSubmit with all form values when submitted', () => {
+      const handleSubmit = vi.fn();
+      renderWithProviders(<ContactForm onSubmit={handleSubmit} />);
+
+      fireEvent.change(screen.getByTestId('contact-first-name'), {
+        target: { name: 'first_name', value: 'Jane' },
+      });
+      fireEvent.change(screen.getByTestId('contact-last-name'), {
+        target: { name: 'last_name', value: 'Doe' },
+      });
+      fireEvent.change(screen.getByTestId('contact-email'), {
+        target: { name: 'email', value: 'jane@example.com' },
+      });
+
+      fireEvent.submit(screen.getByTestId('contact-form'));
+
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          first_name: 'Jane',
+          last_name: 'Doe',
+          email: 'jane@example.com',
+        }),
+      );
+    });
+  });
+
+  describe('cancel button', () => {
+    it('calls onCancel when the Cancel button is clicked', async () => {
+      const handleCancel = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(<ContactForm onSubmit={noop} onCancel={handleCancel} />);
+
+      await user.click(screen.getByTestId('contact-form-cancel'));
+      expect(handleCancel).toHaveBeenCalledOnce();
+    });
+
+    it('does not render Cancel button when onCancel is not provided', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.queryByTestId('contact-form-cancel')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('isSubmitting state', () => {
+    it('disables all inputs and shows saving label when isSubmitting is true', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} isSubmitting />);
+      expect(screen.getByTestId('contact-first-name')).toBeDisabled();
+      expect(screen.getByTestId('contact-last-name')).toBeDisabled();
+      expect(screen.getByTestId('contact-email')).toBeDisabled();
+      expect(screen.getByTestId('contact-form-submit')).toBeDisabled();
+    });
+  });
+
+  describe('error display', () => {
+    it('renders the error message in an alert when error prop is set', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} error="Something went wrong" />);
+      expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
+    });
+
+    it('does not render an alert when error prop is absent', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('emailWarning prop', () => {
+    it('renders the email input regardless of emailWarning value', () => {
+      renderWithProviders(<ContactForm onSubmit={noop} emailWarning />);
+      expect(screen.getByTestId('contact-email')).toBeInTheDocument();
+    });
+  });
+
   describe('social URL auto-prepend', () => {
     it('opens the social section when a social URL is pre-populated', () => {
       renderWithProviders(
