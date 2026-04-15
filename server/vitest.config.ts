@@ -1,59 +1,57 @@
 /**
  * Vitest configuration for the MiniCRM server test suite (MINCRM-191).
  *
- * Runs all *.test.ts files under src/__tests__ in parallel using the threads
- * pool, matching the architecture the client suite already uses successfully.
- * Each test file gets its own worker, so concurrent DB access relies on the
- * per-file beforeAll/beforeEach cleanup patterns already in place.
+ * Replaces Jest (--runInBand --forceExit) with Vitest's native ESM/TS
+ * compilation. All test files execute sequentially (fileParallelism: false)
+ * because 28 of 33 files use broad `DELETE FROM <table>` statements without
+ * per-file owner scoping; true parallel file execution requires scoping those
+ * DELETEs and is tracked as follow-up work.
+ *
+ * Wall-clock improvement comes from dropping ts-jest + --experimental-vm-modules
+ * in favour of Vitest's built-in esbuild transform (~15 s vs ~8-10 min locally).
  */
 
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     /**
-     * fileParallelism: false — test files execute sequentially (like Jest's
-     * --runInBand) because the existing test suite uses broad
-     * `DELETE FROM <table>` statements without owner scoping, making true
-     * parallel execution against a shared DB unsafe without broader test
-     * refactoring. Vitest's native ESM/TS compilation still delivers a
-     * significant wall-clock improvement over ts-jest + --experimental-vm-modules.
-     *
-     * Full parallel file execution (--pool=forks, no fileParallelism constraint)
-     * requires scoping all broad DELETEs to per-file email namespaces.
-     * Tracked for follow-up.
+     * fileParallelism: false — test files execute sequentially.
+     * See header comment for why parallel execution is not yet safe.
      */
     fileParallelism: false,
     include: ['src/__tests__/**/*.test.ts'],
 
     /**
-     * globalSetup runs once before all workers are spawned.
-     * Creates the test DB if absent and applies all migrations.
+     * globalSetup runs once in the main Vitest process before any worker is
+     * spawned. Creates the test DB if absent and applies all migrations.
+     * DB credentials are loaded from .env.test via the DOTENV_CONFIG_PATH env
+     * var set in the npm scripts (required for local runs; CI injects real vars).
      */
-    globalSetup: ['./src/__tests__/globalSetup.ts'],
-
-    /**
-     * Load .env.test before any test file is imported.
-     * DOTENV_CONFIG_PATH is no longer needed; Vitest's dotenv option handles it.
-     */
-    env: {
-      DOTENV_CONFIG_PATH: '../.env.test',
-    },
+    globalSetup: './src/__tests__/globalSetup.ts',
 
     coverage: {
       provider: 'v8',
       include: ['src/services/**/*.ts', 'src/controllers/**/*.ts'],
       thresholds: {
-        'src/services/': {
+        /**
+         * Glob keys are matched by picomatch against relative file paths.
+         * Trailing-slash patterns (e.g. 'src/services/') never match file
+         * paths — use '**' to cover all files in the directory.
+         */
+        'src/services/**': {
           lines: 80,
           functions: 80,
           branches: 80,
           statements: 80,
         },
-        'src/controllers/': {
+        'src/controllers/**': {
           lines: 0,
           functions: 0,
           branches: 0,
@@ -65,7 +63,13 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      /** Mirror the Jest moduleNameMapper for shared schema imports */
+      /**
+       * Subsumes both Jest moduleNameMapper patterns:
+       *   ^@minicrm/shared/schemas/(.*)\\.js$  (with extension)
+       *   ^@minicrm/shared/schemas/(.*)$       (without extension)
+       * Vitest's Rollup-based resolver treats this as a prefix substitution
+       * so both import forms resolve correctly via the single entry.
+       */
       '@minicrm/shared/schemas': resolve(__dirname, '../shared/schemas'),
     },
   },

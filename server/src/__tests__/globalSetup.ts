@@ -1,6 +1,10 @@
 /**
- * Jest global setup — runs once before all test suites.
+ * Vitest global setup — runs once before all test suites.
  * Creates the test database if it doesn't exist and applies all migrations.
+ *
+ * DB credentials are read from .env.test via the DOTENV_CONFIG_PATH env var,
+ * which must be set by the caller (the npm test scripts handle this for local
+ * runs; CI injects real vars directly).
  */
 
 import 'dotenv/config';
