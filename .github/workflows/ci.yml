@@ -119,12 +119,11 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        # npm install (not npm ci) is required here: @rollup/rollup-linux-x64-gnu is a
-        # platform-specific optional dep that npm omits from the lockfile on macOS.
-        # npm ci would skip it entirely; npm install resolves it from the registry.
-        # The E2E jobs use npm ci + npm rebuild because Playwright browser binaries are
-        # a separate install step — rollup is not involved there.
-        run: npm install
+        # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
+        # the macOS-generated lockfile. npm install alone re-uses the stale workspace
+        # node_modules and still misses it (npm workspace optional-deps bug). Removing
+        # client/node_modules first forces a clean resolution that picks up the Linux binary.
+        run: rm -rf client/node_modules && npm install
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
