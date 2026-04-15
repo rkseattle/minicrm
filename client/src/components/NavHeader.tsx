@@ -45,12 +45,6 @@ export interface NavHeaderProps {
    * Omit for NavLeft, which has no hamburger.
    */
   hamburger?: HamburgerProps;
-  /**
-   * When true, the search bar and desktop logout button are hidden on mobile
-   * (search gets `hidden lg:block`, logout gets `hidden lg:inline-flex`).
-   * Only NavTop passes true — the other layouts always show both.
-   */
-  mobileHidden?: boolean;
 }
 
 /** Hamburger / close icon SVG paths. */
@@ -61,7 +55,7 @@ const CLOSE_PATH = 'M6 18L18 6M6 6l12 12';
  * Shared navigation header bar. Handles language and logout mutations
  * internally; callers only supply hamburger toggle state where needed.
  */
-export default function NavHeader({ hamburger, mobileHidden = false }: NavHeaderProps) {
+export default function NavHeader({ hamburger }: NavHeaderProps) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -102,9 +96,6 @@ export default function NavHeader({ hamburger, mobileHidden = false }: NavHeader
     languageMutation.mutate(locale);
   }
 
-  const searchClass = mobileHidden ? 'hidden lg:block flex-1' : 'flex-1';
-  const logoutClass = mobileHidden ? 'hidden lg:inline-flex' : undefined;
-
   // Destructure hamburger props so the linter doesn't flag plain value accesses
   // as "ref access during render" due to the co-located toggleEl RefObject.
   const hamburgerIsOpen = hamburger?.isOpen ?? false;
@@ -127,7 +118,7 @@ export default function NavHeader({ hamburger, mobileHidden = false }: NavHeader
       </span>
 
       {/* Search */}
-      <div className={searchClass}>
+      <div className="flex-1">
         <GlobalSearch />
       </div>
 
@@ -158,7 +149,6 @@ export default function NavHeader({ hamburger, mobileHidden = false }: NavHeader
           data-testid="nav-logout"
           onClick={() => logoutMutation.mutate()}
           disabled={logoutMutation.isPending}
-          className={logoutClass}
         >
           {t('nav.logout')}
         </Button>

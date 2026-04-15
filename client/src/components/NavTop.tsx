@@ -14,7 +14,6 @@ import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { Button } from '@/components/ui/Button.js';
 import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
-import GlobalSearch from './GlobalSearch.js';
 import NavHeader from './NavHeader.js';
 
 /**
@@ -100,7 +99,6 @@ export default function NavTop() {
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <NavHeader
-        mobileHidden
         hamburger={{
           isOpen: mobileMenuOpen,
           onToggle: () => setMobileMenuOpen((open) => !open),
@@ -136,10 +134,6 @@ export default function NavTop() {
           aria-label={t('nav.menu')}
           className="lg:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-1"
         >
-          {/* Search — mobile only (hidden in header on mobile) */}
-          <div className="pb-2">
-            <GlobalSearch />
-          </div>
           {visibleLinks.map((link) => (
             <NavLink
               key={link.to}
