@@ -11,7 +11,7 @@
  * MINCRM-130, MINCRM-110, MINCRM-138
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { t } from '@framework/i18n/locale.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
@@ -23,7 +23,7 @@ import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
 /** Fixtures required by contacts behaviors. */
 export interface ContactsBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name forwarded to Page Object constructors for heal audit records. */
   testName: string;

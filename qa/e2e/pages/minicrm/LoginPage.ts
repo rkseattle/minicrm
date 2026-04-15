@@ -11,7 +11,7 @@
  * MINCRM-130
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import { t } from '@framework/i18n/locale.js';
 
@@ -21,7 +21,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by LoginPage. */
 export interface LoginPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
   testName: string;
@@ -44,7 +44,7 @@ export interface LoginPageContext {
  * ```
  */
 export class LoginPage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

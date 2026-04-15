@@ -79,3 +79,6 @@ Thumbs.db
 *.BASE.*
 *.LOCAL.*
 *.REMOTE.*
+# CI artifact downloads (coverage reports, healing reports)
+client-coverage-*/
+healing-report-*/

@@ -14,7 +14,8 @@
  * MINCRM-192
  */
 
-import type { Page, Locator } from '@playwright/test';
+import type { Locator } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +24,7 @@ import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 /** Subset of Playwright fixtures required by GlobalSearchPage. */
 export interface GlobalSearchPageContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
   testName: string;
@@ -44,7 +45,7 @@ export interface GlobalSearchPageContext {
  * ```
  */
 export class GlobalSearchPage {
-  private readonly page: Page;
+  private readonly page: SafePage;
   private readonly healPage: HealPage;
   private readonly testName: string;
 

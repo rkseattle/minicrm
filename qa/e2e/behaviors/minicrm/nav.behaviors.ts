@@ -11,7 +11,7 @@
  * MINCRM-144
  */
 
-import type { Page } from '@playwright/test';
+import type { SafePage } from '@framework/fixtures/index.js';
 import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -24,7 +24,7 @@ export type NavLayout = 'top' | 'left' | 'hamburger';
 
 /** Fixtures required by navigation behaviors. */
 export interface NavBehaviorContext {
-  page: Page;
+  page: SafePage;
   healPage: HealPage;
   /** Current test name forwarded to Page Object constructors for heal audit records. */
   testName: string;

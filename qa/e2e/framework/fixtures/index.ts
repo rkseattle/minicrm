@@ -27,3 +27,4 @@ export { expect } from '@playwright/test';
 export type { HealPage, LocateOptions } from './heal-page.fixture.js';
 export type { RestClientFixtures } from './rest-client.fixture.js';
 export type { GrpcClientFixtures } from './grpc-client.fixture.js';
+export type { SafePage } from '../types/safe-page.js';
