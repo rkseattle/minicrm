@@ -305,6 +305,9 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
     buffer: Buffer.from('delete me'),
   });
 
+  // Wait for the upload to complete before querying the API for the attachment ID
+  await expect(page.locator('[data-testid="attachments-list"]')).toBeVisible({ timeout: 10_000 });
+
   const listResponse = await restClient.get<AttachmentListResponse>(
     `/api/attachments?recordType=contact&recordId=${contact.id}`,
   );
@@ -362,6 +365,9 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     mimeType: 'text/plain',
     buffer: Buffer.from('admin content'),
   });
+
+  // Wait for the upload to complete before querying the API for the attachment ID
+  await expect(page.locator('[data-testid="attachments-list"]')).toBeVisible({ timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
     `/api/attachments?recordType=contact&recordId=${contact.id}`,

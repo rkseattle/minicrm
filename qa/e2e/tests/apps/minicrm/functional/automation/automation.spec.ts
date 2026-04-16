@@ -78,7 +78,7 @@ async function pollForTask(
     await new Promise((resolve) => setTimeout(resolve, backoff));
     backoff = Math.min(backoff * 2, 2_000);
 
-    const query = dealId ? `/api/activities?type=Task&deal=${dealId}` : `/api/activities?type=Task`;
+    const query = dealId ? `/api/activities?deal=${dealId}` : `/api/activities`;
 
     const response = await restClient.get<ActivityListResponse>(query);
     const match = response.body.data.find((a) => a.subject === subject && a.type === 'Task');
@@ -194,8 +194,10 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
   // Wait a reasonable window and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>('/api/activities?type=Task');
-  const spuriousTask = response.body.data.find((a) => a.subject === taskSubject);
+  const response = await restClient.get<ActivityListResponse>('/api/activities');
+  const spuriousTask = response.body.data.find(
+    (a) => a.subject === taskSubject && a.type === 'Task',
+  );
   expect(spuriousTask, 'disabled rule should not create a task').toBeUndefined();
 });
 
@@ -290,10 +292,10 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
   // Wait briefly and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>(
-    `/api/activities?type=Task&deal=${deal.id}`,
+  const response = await restClient.get<ActivityListResponse>(`/api/activities?deal=${deal.id}`);
+  const spuriousTask = response.body.data.find(
+    (a) => a.subject === taskSubject && a.type === 'Task',
   );
-  const spuriousTask = response.body.data.find((a) => a.subject === taskSubject);
   expect(
     spuriousTask,
     'rule should not fire when deal moves to a non-matching stage',

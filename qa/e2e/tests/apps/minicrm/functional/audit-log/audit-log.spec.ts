@@ -38,15 +38,23 @@ if (!REP_PASSWORD) throw new Error('[F12-audit-log] E2E_REP_PASSWORD is not set'
 // Shared types
 // ---------------------------------------------------------------------------
 
+/**
+ * Each audit log row represents a single field change — one row per changed
+ * field. The server uses a one-entry-per-field model (not a nested changes
+ * array). changed_by_id and changed_by_name are the actor's identifiers.
+ */
 interface AuditLogEntry {
   id: string;
   event_type: string;
   record_type: string;
-  record_id: string;
-  changed_by: string;
-  changed_by_name: string;
+  record_id: string | null;
+  record_name: string | null;
+  field_name: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  changed_by_id: string | null;
+  changed_by_name: string | null;
   created_at: string;
-  changes: Array<{ field: string; old_value: string | null; new_value: string | null }> | null;
 }
 
 interface AuditLogListResponse {
@@ -158,7 +166,7 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   );
 });
 
-test('@functional F12-AL3: Audit log — expand a row to see field-level change detail', async ({
+test('@functional F12-AL3: Audit log — field-level change detail recorded for updated contact', async ({
   page,
   restClient,
   testData,
@@ -170,44 +178,44 @@ test('@functional F12-AL3: Audit log — expand a row to see field-level change 
     last_name: 'DetailTest',
   });
 
-  // Update to generate a change entry
+  // Update to generate change entries (one row per changed field in the audit log)
   await restClient.patch(`/api/contacts/${contact.id}`, { first_name: 'F12AL3Updated' });
 
-  // Get the audit entry ID for this contact
+  // Find the first_name change entry for this contact via API
+  // Audit log uses one-row-per-field model: each changed field is its own AuditLogEntry
   const auditResponse = await restClient.get<AuditLogListResponse>(
     `/api/audit-log?recordType=contact`,
   );
-  const entry = auditResponse.body.data.find(
-    (e) => e.record_id === contact.id && e.event_type === 'updated',
+  const firstNameEntry = auditResponse.body.data.find(
+    (e) =>
+      e.record_id === contact.id && e.event_type === 'updated' && e.field_name === 'first_name',
   );
-  expect(entry, 'audit entry for updated contact should exist').toBeDefined();
-  if (!entry) return;
+  expect(firstNameEntry, 'first_name change entry should exist in audit log').toBeDefined();
+  if (!firstNameEntry) return;
 
+  expect(firstNameEntry.new_value, 'new_value should reflect the updated first_name').toBe(
+    'F12AL3Updated',
+  );
+  expect(firstNameEntry.old_value, 'old_value should reflect the original first_name').toBe(
+    'F12AL3',
+  );
+
+  // Navigate to the audit log page and verify the entry is renderable in the UI
   await page.goto('/admin/audit-log');
   await expect(page.locator('[data-testid="audit-log-heading"]')).toBeVisible();
 
-  // Filter by record type to make the specific row more likely to be on first page
   await page.locator('[data-testid="filter-record-type"]').selectOption('contact');
   await page.locator('[data-testid="apply-filters-button"]').click();
+  await expect(page.locator('[data-testid="audit-log-list"]')).toBeVisible({ timeout: 10_000 });
 
-  // Click expand button for this entry if visible in the UI
-  const expandButton = page.locator(`[data-testid="audit-log-row-button-${entry.id}"]`);
+  // If the specific row is on the first page, expand it and verify the detail section
+  const expandButton = page.locator(`[data-testid="audit-log-row-button-${firstNameEntry.id}"]`);
   const isVisible = await expandButton.isVisible().catch(() => false);
-
   if (isVisible) {
     await expandButton.click();
-    // Detail section should become visible
-    await expect(page.locator(`[data-testid="audit-log-detail-${entry.id}"]`)).toBeVisible({
-      timeout: 3_000,
-    });
-  } else {
-    // Entry may be on page 2+ — verify field detail exists in the API response
-    expect(entry.changes, 'updated entry should have field-level changes').not.toBeNull();
-    if (entry.changes) {
-      const firstNameChange = entry.changes.find((c) => c.field === 'first_name');
-      expect(firstNameChange, 'first_name change should be recorded').toBeDefined();
-      expect(firstNameChange?.new_value).toBe('F12AL3Updated');
-    }
+    await expect(page.locator(`[data-testid="audit-log-detail-${firstNameEntry.id}"]`)).toBeVisible(
+      { timeout: 3_000 },
+    );
   }
 });
 
