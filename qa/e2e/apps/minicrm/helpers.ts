@@ -226,12 +226,14 @@ export async function createTestDeal(
 ): Promise<TestDeal> {
   // Optional fields must be omitted when unset — the server Zod schema rejects
   // explicit null for value (expects number) and close_date (expects string).
-  const payload: Record<string, string> = {
+  // value is a string in the overrides interface for caller convenience but the
+  // server Zod schema requires z.number(), so we coerce here. (MINCRM-189)
+  const payload: Record<string, string | number> = {
     name: overrides.name ?? `Test Deal ${Date.now()}`,
     stage: overrides.stage ?? 'Prospecting',
     account_id: overrides.account_id,
   };
-  if (overrides.value !== undefined) payload['value'] = overrides.value;
+  if (overrides.value !== undefined) payload['value'] = parseFloat(overrides.value);
   if (overrides.currency !== undefined) payload['currency'] = overrides.currency;
   if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
