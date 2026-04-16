@@ -359,7 +359,8 @@
     "probabilityDefaultHint": "Phasenstandard wird verwendet: {{pct}}%",
     "probabilityOverriddenHint": "Überschreibung aktiv — Phasenstandard ignoriert",
     "probabilityPct": "{{pct}} %",
-    "probabilityInvalid": "Wahrscheinlichkeit muss eine ganze Zahl zwischen 0 und 100 sein"
+    "probabilityInvalid": "Wahrscheinlichkeit muss eine ganze Zahl zwischen 0 und 100 sein",
+    "currencyLabel": "Währung"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",
@@ -370,6 +371,7 @@
     "nextStage": "Nächste Phase",
     "stageOf": "Phase {{current}} von {{total}}",
     "emptyStage": "Keine Geschäfte in dieser Phase",
+    "mixedCurrency": "Mehrere Währungen — Werte werden nicht summiert",
     "closeDeal": {
       "title": "Als {{stage}} abschließen",
       "closeDateLabel": "Abschlussdatum",
@@ -502,6 +504,13 @@
       "recipientCount_other": "{{count}} aktive Benutzer haben Benachrichtigungen aktiviert",
       "saveSuccess": "Einstellung für E-Mail-Benachrichtigungen aktualisiert.",
       "saveError": "Aktualisierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+    },
+    "defaultCurrency": {
+      "sectionTitle": "Standardwährung",
+      "sectionHint": "Legt die Standardwährung für neue Geschäfte fest. Jedes Geschäft kann beim Erstellen oder Bearbeiten eine eigene Währung haben.",
+      "selectLabel": "Standardwährung",
+      "saveSuccess": "Standardwährung aktualisiert.",
+      "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut."
     },
     "storage": {
       "sectionTitle": "Dateispeicher",

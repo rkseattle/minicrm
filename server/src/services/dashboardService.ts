@@ -60,6 +60,10 @@ interface DealTotalsRow {
   open_deal_count: string;
   open_pipeline_value: string | null;
   weighted_pipeline_value: string | null;
+  /** COUNT(DISTINCT currency) > 1 means mixed currencies (MINCRM-189) */
+  currency_count: string;
+  /** Single currency code when all open deals share the same currency (MINCRM-189) */
+  single_currency: string | null;
 }
 
 /** PostgreSQL row shape for the per-stage breakdown query */
@@ -69,6 +73,10 @@ interface StageQueryRow {
   value: string;
   weighted_value: string;
   sort_order: string;
+  /** COUNT(DISTINCT currency) for deals with a value in this stage (MINCRM-189) */
+  currency_count: string;
+  /** Single currency code when all deals in the stage share the same currency (MINCRM-189) */
+  single_currency: string | null;
 }
 
 /** A per-stage aggregate row returned from the database */
@@ -78,6 +86,13 @@ export interface StageBreakdownRow {
   value: string; // PostgreSQL SUM(numeric) returns a string
   /** Sum of (value × effective_probability / 100) for deals in this stage */
   weightedValue: string;
+  /** True when deals in this stage span more than one currency (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /**
+   * The currency code when all deals in the stage share one currency; null when mixed.
+   * Use this to format monetary totals correctly. (MINCRM-189)
+   */
+  currency: string | null;
 }
 
 /** Shape of the dashboard summary returned to the controller */
@@ -95,6 +110,13 @@ export interface DashboardSummary {
    * effective_probability = deal.probability override if set, else stage default. (MINCRM-179)
    */
   weightedPipelineValue: string;
+  /** True when open deals span more than one currency; totals are not meaningful in that case (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /**
+   * The currency code when all open deals share one currency; null when mixed or no deals.
+   * Pair with mixedCurrencies to decide whether to format monetary totals. (MINCRM-189)
+   */
+  currency: string | null;
   /** Per-stage breakdown of open deal count and total value, ordered by pipeline funnel position */
   stageBreakdown: StageBreakdownRow[];
   /**
@@ -152,14 +174,18 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     ? `SELECT
          COUNT(*) AS open_deal_count,
          COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value,
+         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
+         MIN(d.currency) AS single_currency
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1`
     : `SELECT
          COUNT(*) AS open_deal_count,
          COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value
+         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value,
+         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
+         MIN(d.currency) AS single_currency
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')`;
@@ -180,7 +206,9 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
          COUNT(*) AS count,
          COALESCE(SUM(d.value), 0)::text AS value,
          COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_value,
-         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order
+         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order,
+         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
+         MIN(d.currency) AS single_currency
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1
@@ -191,7 +219,9 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
          COUNT(*) AS count,
          COALESCE(SUM(d.value), 0)::text AS value,
          COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_value,
-         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order
+         COALESCE(MAX(ps.sort_order), 2147483647)::text AS sort_order,
+         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
+         MIN(d.currency) AS single_currency
        FROM deals d
        LEFT JOIN pipeline_stages ps ON ps.name = d.stage
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')
@@ -200,12 +230,17 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
 
   const stageResult = await pool.query<StageQueryRow>(stageQuery, dealParams);
 
-  const stageBreakdown: StageBreakdownRow[] = stageResult.rows.map((row) => ({
-    stage: row.stage,
-    count: parseInt(row.count, 10),
-    value: row.value,
-    weightedValue: row.weighted_value,
-  }));
+  const stageBreakdown: StageBreakdownRow[] = stageResult.rows.map((row) => {
+    const mixed = parseInt(row.currency_count, 10) > 1;
+    return {
+      stage: row.stage,
+      count: parseInt(row.count, 10),
+      value: row.value,
+      weightedValue: row.weighted_value,
+      mixedCurrencies: mixed,
+      currency: mixed ? null : (row.single_currency ?? null),
+    };
+  });
 
   // ── Recent activities ─────────────────────────────────────────────────────
   // Return the 10 most recently updated activities visible to this user.
@@ -277,12 +312,17 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     linkedRecordPath: toLinkedPath(row.linked_record_type, row.linked_record_id),
   }));
 
+  const mixedCurrencies = parseInt(dealTotalsRow.currency_count, 10) > 1;
+  const currency = mixedCurrencies ? null : (dealTotalsRow.single_currency ?? null);
+
   return {
     overdueTasks,
     tasksDueToday,
     openDealCount,
     openPipelineValue,
     weightedPipelineValue,
+    mixedCurrencies,
+    currency,
     stageBreakdown,
     recentActivities,
   };

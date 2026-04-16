@@ -325,6 +325,20 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `DELETE /api/settings/pipeline-stages/:id` — admin only, returns `{ id }` on success; 409 if open deals exist
 - Database migration: `021_create_pipeline_stages.js` creates the `pipeline_stages` table, seeds the six default stages, and drops the hardcoded `deals_stage_check` constraint
 
+### Multi-Currency Deal Values (MINCRM-189)
+
+- Each deal now stores an ISO 4217 currency code (`USD`, `EUR`, `GBP`, `CAD`, `AUD`, `JPY`, `CHF`) alongside its value
+- The **Deal Form** includes a currency selector; new deals default to the system-wide default currency (see below)
+- **Deal cards** and **deal detail pages** format the value with the correct currency symbol and locale-appropriate number format via `Intl.NumberFormat`
+- **Pipeline board stage columns** and **dashboard summary cards** detect mixed currencies in a stage: when deals with different currencies are present, totals are replaced with "Multiple currencies — values not summed" to avoid misleading cross-currency arithmetic
+- **Win/loss report** similarly shows the mixed-currency note when the filtered deals span multiple currencies
+- Admin can set a system-wide **default currency** on the **Admin Settings** page; new deals without an explicit currency pick up the system default at creation time
+- **CSV export** includes a `Currency` column alongside `Value`
+- API endpoints:
+  - `GET /api/settings/default-currency` — public, returns `{ currency }` (used at deal creation time); cached client-side for 5 minutes via `DEFAULT_CURRENCY_QUERY_KEY`
+  - `PATCH /api/settings/default-currency` — admin only, body `{ currency }`, returns `{ currency }`
+- Database migration: `031_add_currency_to_deals.js` adds `currency VARCHAR(3) NOT NULL DEFAULT 'USD'` to the `deals` table
+
 ### User Language Preference (MINCRM-31)
 
 - Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar

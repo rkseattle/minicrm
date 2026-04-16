@@ -15,6 +15,8 @@ import {
   setNavLayoutHandler,
   getEmailNotificationsEnabledHandler,
   setEmailNotificationsEnabledHandler,
+  getDefaultCurrencyHandler,
+  setDefaultCurrencyHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -390,6 +392,66 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(testStorageConfigHandler),
+);
+
+// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/default-currency:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getDefaultCurrency
+ *     summary: Get the system default currency (MINCRM-189)
+ *     description: >
+ *       Returns the current system-wide default currency. Public endpoint —
+ *       needed by the deal create form before auth resolves.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Current default currency
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 currency: { type: string, example: USD }
+ */
+router.get('/default-currency', asyncHandler(getDefaultCurrencyHandler));
+
+/**
+ * @openapi
+ * /api/settings/default-currency:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setDefaultCurrency
+ *     summary: Set the system default currency (admin only, MINCRM-189)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currency]
+ *             properties:
+ *               currency: { type: string, example: EUR }
+ *     responses:
+ *       200:
+ *         description: Default currency updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/default-currency',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setDefaultCurrencyHandler),
 );
 
 // ── Pipeline stage configuration (MINCRM-180) ────────────────────────────────

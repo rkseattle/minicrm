@@ -364,7 +364,8 @@
     "probabilityDefaultHint": "Using stage default: {{pct}}%",
     "probabilityOverriddenHint": "Override active — stage default ignored",
     "probabilityPct": "{{pct}}%",
-    "probabilityInvalid": "Probability must be a whole number between 0 and 100"
+    "probabilityInvalid": "Probability must be a whole number between 0 and 100",
+    "currencyLabel": "Currency"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",
@@ -376,6 +377,7 @@
     "nextStage": "Next stage",
     "stageOf": "Stage {{current}} of {{total}}",
     "emptyStage": "No deals in this stage",
+    "mixedCurrency": "Multiple currencies — values not summed",
     "closeDeal": {
       "title": "Close as {{stage}}",
       "closeDateLabel": "Close date",
@@ -507,6 +509,13 @@
       "recipientCount_other": "{{count}} active users have notifications enabled",
       "saveSuccess": "Email notification setting updated.",
       "saveError": "Failed to update. Please try again."
+    },
+    "defaultCurrency": {
+      "sectionTitle": "Default Currency",
+      "sectionHint": "Sets the default currency for new deals. Each deal can have its own currency set at creation or edit time.",
+      "selectLabel": "Default currency",
+      "saveSuccess": "Default currency updated.",
+      "saveError": "Failed to save. Please try again."
     },
     "storage": {
       "sectionTitle": "File Storage",

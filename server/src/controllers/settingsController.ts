@@ -11,10 +11,13 @@ import {
   setNavLayout,
   getEmailNotificationsEnabled,
   setEmailNotificationsEnabled,
+  getDefaultCurrency,
+  setDefaultCurrency,
 } from '../services/settingsService.js';
 import {
   setDefaultLanguageSchema,
   setNavLayoutSchema,
+  setDefaultCurrencySchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
@@ -166,6 +169,56 @@ export async function setEmailNotificationsEnabledHandler(
     fieldName: 'Email Notifications',
     oldValue: String(previousEnabled),
     newValue: String(enabled),
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+
+/**
+ * GET /api/settings/default-currency
+ * Returns the current system-wide default currency.
+ * Public endpoint — deal create form needs this before auth resolves.
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getDefaultCurrencyHandler(_req: Request, res: Response): Promise<void> {
+  const currency = await getDefaultCurrency();
+  res.status(200).json({ currency });
+}
+
+/**
+ * PATCH /api/settings/default-currency
+ * Updates the system-wide default currency. Admin only. (MINCRM-189)
+ *
+ * @param req - Express request with body `{ currency: SupportedCurrency }`.
+ * @param res - Express response.
+ */
+export async function setDefaultCurrencyHandler(req: Request, res: Response): Promise<void> {
+  const parsed = setDefaultCurrencySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
+    });
+    return;
+  }
+
+  const previousCurrency = await getDefaultCurrency();
+  const currency = await setDefaultCurrency(parsed.data.currency);
+  res.status(200).json({ currency });
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Default Currency',
+    eventType: 'updated',
+    fieldName: 'Default Currency',
+    oldValue: previousCurrency,
+    newValue: currency,
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));

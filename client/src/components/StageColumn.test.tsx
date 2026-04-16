@@ -15,6 +15,7 @@ const DEAL_FIXTURE: DealResponse = {
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000',
+  currency: 'USD',
   close_date: null,
   loss_reason: null,
   account_id: '00000000-0000-0000-0000-000000000101',
@@ -147,5 +148,46 @@ describe('StageColumn', () => {
       />,
     );
     expect(screen.getByTestId('stage-column-weighted-prospecting')).toHaveTextContent('$0.00');
+  });
+});
+
+// ── Mixed currency (MINCRM-189) ───────────────────────────────────────────────
+
+const DEAL_EUR: DealResponse = {
+  ...DEAL_FIXTURE,
+  id: '00000000-0000-0000-0000-000000000302',
+  currency: 'EUR',
+};
+
+describe('StageColumn — mixed currency (MINCRM-189)', () => {
+  it('shows the mixed-currency note instead of totals when deals have different currencies', () => {
+    renderWithProviders(
+      <StageColumn
+        stage="Prospecting"
+        deals={[DEAL_FIXTURE, DEAL_EUR]}
+        accountNames={accountNames}
+        onStageChange={noop}
+        onCloseRequested={noop}
+        updatingDealIds={new Set()}
+      />,
+    );
+    // total testid is present but shows mixed-currency text, weighted testid is absent
+    expect(screen.getByTestId('stage-column-total-prospecting')).toBeInTheDocument();
+    expect(screen.queryByTestId('stage-column-weighted-prospecting')).not.toBeInTheDocument();
+  });
+
+  it('shows the normal total when all deals share the same currency', () => {
+    renderWithProviders(
+      <StageColumn
+        stage="Prospecting"
+        deals={[DEAL_FIXTURE]}
+        accountNames={accountNames}
+        onStageChange={noop}
+        onCloseRequested={noop}
+        updatingDealIds={new Set()}
+      />,
+    );
+    expect(screen.getByTestId('stage-column-total-prospecting')).toBeInTheDocument();
+    expect(screen.getByTestId('stage-column-weighted-prospecting')).toBeInTheDocument();
   });
 });

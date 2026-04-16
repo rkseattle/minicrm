@@ -4,15 +4,18 @@
  * Used by DealsPage (create) and DealDetailPage (edit).
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
+import { SUPPORTED_CURRENCIES } from '@shared/schemas/settingsSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
+import { getDefaultCurrency, DEFAULT_CURRENCY_QUERY_KEY } from '@/api/settings.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -22,6 +25,8 @@ export interface DealFormValues {
   name: string;
   stage: string;
   value: string;
+  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  currency: string;
   close_date: string;
   account_id: string;
   /** UUID of the owner; populated only when users prop is provided (edit mode) */
@@ -81,11 +86,15 @@ interface DealFormProps {
  *
  * @param initial - Optional existing deal values to pre-populate
  */
-function buildInitialState(initial?: Partial<DealResponse>): DealFormValues {
+function buildInitialState(
+  initial?: Partial<DealResponse>,
+  defaultCurrency = 'USD',
+): DealFormValues {
   return {
     name: initial?.name ?? '',
     stage: initial?.stage ?? PIPELINE_STAGES[0], // fallback; overridden once live stages load
     value: initial?.value ?? '',
+    currency: initial?.currency ?? defaultCurrency,
     close_date: initial?.close_date ?? '',
     account_id: initial?.account_id ?? '',
     owner_id: initial?.owner_id ?? '',
@@ -114,7 +123,26 @@ export default function DealForm({
   const { stageNames, terminalStageNames, stages } = usePipelineStages();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState<DealFormValues>(() => buildInitialState(initialValues));
+  const { data: defaultCurrencyData } = useQuery({
+    queryKey: DEFAULT_CURRENCY_QUERY_KEY,
+    queryFn: getDefaultCurrency,
+    staleTime: 5 * 60 * 1000,
+  });
+  const defaultCurrency = defaultCurrencyData?.currency ?? 'USD';
+
+  const [formData, setFormData] = useState<DealFormValues>(() =>
+    buildInitialState(initialValues, 'USD'),
+  );
+
+  // True once the user explicitly picks a currency from the selector (or when editing
+  // an existing deal that already has a currency set). Until touched, we display the
+  // system default from the async query rather than the hardcoded 'USD' placeholder
+  // that useState was initialised with.
+  const [currencyTouched, setCurrencyTouched] = useState(!!initialValues?.currency);
+
+  // For new deals, display the system default currency until the user explicitly
+  // selects a different one. For existing deals, always trust the form state.
+  const activeCurrency = currencyTouched ? formData.currency : defaultCurrency;
   const [probabilityError, setProbabilityError] = useState<string | null>(null);
 
   // Move focus to the first input when the form mounts (WCAG 2.4.3)
@@ -135,6 +163,7 @@ export default function DealForm({
 
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
+    if (name === 'currency') setCurrencyTouched(true);
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
@@ -149,7 +178,7 @@ export default function DealForm({
       }
     }
     setProbabilityError(null);
-    onSubmit(formData);
+    onSubmit({ ...formData, currency: activeCurrency });
   };
 
   const resolvedSubmitLabel = submitLabel ?? t('deals.save');
@@ -208,6 +237,22 @@ export default function DealForm({
           onChange={handleChange}
           disabled={isSubmitting}
         />
+
+        <Select
+          id="deal-currency"
+          data-testid="deal-currency-select"
+          name="currency"
+          label={t('deals.currencyLabel')}
+          value={activeCurrency}
+          onChange={handleSelectChange}
+          disabled={isSubmitting}
+        >
+          {SUPPORTED_CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </Select>
 
         <Input
           id="deal-close-date"

@@ -68,32 +68,57 @@ function columnHeaderClass(stage: string): string {
 }
 
 /**
- * Computes the sum of deal values and formats it as a USD currency string
- * using the active locale for number formatting.
+ * Returns true when the deals in a column have more than one distinct currency. (MINCRM-189)
  *
- * @param deals - Deals to sum
+ * @param deals - Deals to check
+ */
+function hasMixedCurrencies(deals: DealResponse[]): boolean {
+  const dealsWithValue = deals.filter((d) => d.value);
+  if (dealsWithValue.length === 0) return false;
+  const currencies = new Set(dealsWithValue.map((d) => d.currency));
+  return currencies.size > 1;
+}
+
+/**
+ * Returns the single currency used by all deals, or null when mixed. (MINCRM-189)
+ *
+ * @param deals - Deals to inspect
+ */
+function singleCurrency(deals: DealResponse[]): string | null {
+  const dealsWithValue = deals.filter((d) => d.value);
+  if (dealsWithValue.length === 0) return null;
+  const currencies = new Set(dealsWithValue.map((d) => d.currency));
+  return currencies.size === 1 ? [...currencies][0] : null;
+}
+
+/**
+ * Computes the sum of deal values and formats it using the deals' shared currency. (MINCRM-189)
+ *
+ * @param deals - Deals to sum (caller must ensure all share the same currency)
  * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
- * @returns Locale-formatted USD currency string
+ * @returns Locale-formatted currency string
  */
 function sumValues(deals: DealResponse[], locale: string): string {
+  const currency = singleCurrency(deals) ?? 'USD';
   const total = deals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(total);
 }
 
 /**
  * Computes the weighted pipeline value (sum of value × probability / 100) for a set of deals
- * and formats it as a USD currency string.
+ * and formats it using the deals' shared currency. (MINCRM-189)
  *
- * @param deals - Deals to sum
+ * @param deals - Deals to sum (caller must ensure all share the same currency)
  * @param locale - BCP 47 locale tag from i18next
- * @returns Locale-formatted USD currency string
+ * @returns Locale-formatted currency string
  */
 function sumWeightedValues(deals: DealResponse[], locale: string): string {
+  const currency = singleCurrency(deals) ?? 'USD';
   const total = deals.reduce((acc, d) => {
     const value = d.value ? parseFloat(d.value) : 0;
     return acc + (value * (d.effective_probability ?? 0)) / 100;
   }, 0);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(total);
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(total);
 }
 
 /** Kebab-case version of a stage name used in data-testid attributes */
@@ -142,18 +167,29 @@ export default function StageColumn({
             {deals.length}
           </span>
         </div>
-        <p
-          data-testid={`${testIdPrefix}stage-column-total-${slug}`}
-          className="text-xs opacity-75 mt-0.5"
-        >
-          {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
-        </p>
-        <p
-          data-testid={`${testIdPrefix}stage-column-weighted-${slug}`}
-          className="text-xs opacity-60 mt-0.5"
-        >
-          {t('pipeline.weightedValue', { value: sumWeightedValues(deals, i18n.language) })}
-        </p>
+        {hasMixedCurrencies(deals) ? (
+          <p
+            data-testid={`${testIdPrefix}stage-column-total-${slug}`}
+            className="text-xs opacity-75 mt-0.5"
+          >
+            {t('pipeline.mixedCurrency')}
+          </p>
+        ) : (
+          <>
+            <p
+              data-testid={`${testIdPrefix}stage-column-total-${slug}`}
+              className="text-xs opacity-75 mt-0.5"
+            >
+              {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
+            </p>
+            <p
+              data-testid={`${testIdPrefix}stage-column-weighted-${slug}`}
+              className="text-xs opacity-60 mt-0.5"
+            >
+              {t('pipeline.weightedValue', { value: sumWeightedValues(deals, i18n.language) })}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Deal cards */}

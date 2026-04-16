@@ -14,6 +14,9 @@ import {
   getDefaultLanguage,
   setDefaultLanguage,
   DEFAULT_LANGUAGE_QUERY_KEY,
+  getDefaultCurrency,
+  setDefaultCurrency,
+  DEFAULT_CURRENCY_QUERY_KEY,
 } from '@/api/settings.js';
 import {
   getDemoStatus,
@@ -31,8 +34,16 @@ import {
   getNotificationRecipientCount,
   NOTIFICATION_RECIPIENT_COUNT_QUERY_KEY,
 } from '@/api/users.js';
-import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@shared/schemas/settingsSchema.js';
-import type { SupportedLocale, NavLayout } from '@shared/schemas/settingsSchema.js';
+import {
+  SUPPORTED_LOCALES,
+  NAV_LAYOUTS,
+  SUPPORTED_CURRENCIES,
+} from '@shared/schemas/settingsSchema.js';
+import type {
+  SupportedLocale,
+  NavLayout,
+  SupportedCurrency,
+} from '@shared/schemas/settingsSchema.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
@@ -278,6 +289,51 @@ export default function AdminSettingsPage() {
   }
 
   const emailNotifEnabled = emailNotifData?.enabled ?? true;
+
+  // ── Default currency (MINCRM-189) ────────────────────────────────────────────
+
+  const {
+    data: currencyData,
+    isLoading: currencyLoading,
+    isError: currencyLoadError,
+  } = useQuery({
+    queryKey: DEFAULT_CURRENCY_QUERY_KEY,
+    queryFn: getDefaultCurrency,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [pendingCurrency, setPendingCurrency] = useState<SupportedCurrency | null>(null);
+  const [currencySaveSuccess, setCurrencySaveSuccess] = useState(false);
+  const [currencySaveError, setCurrencySaveError] = useState(false);
+
+  const currencyMutation = useMutation({
+    mutationFn: setDefaultCurrency,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(DEFAULT_CURRENCY_QUERY_KEY, saved);
+      void queryClient.invalidateQueries({ queryKey: DEFAULT_CURRENCY_QUERY_KEY });
+      setPendingCurrency(null);
+      setCurrencySaveSuccess(true);
+      setCurrencySaveError(false);
+    },
+    onError: () => {
+      setCurrencySaveError(true);
+      setCurrencySaveSuccess(false);
+    },
+  });
+
+  const selectedCurrency: SupportedCurrency = pendingCurrency ?? currencyData?.currency ?? 'USD';
+
+  /**
+   * Handles form submission to persist the selected currency.
+   *
+   * @param e - The form submit event.
+   */
+  function handleCurrencySubmit(e: React.FormEvent<HTMLFormElement>): void {
+    e.preventDefault();
+    setCurrencySaveSuccess(false);
+    setCurrencySaveError(false);
+    currencyMutation.mutate(selectedCurrency);
+  }
 
   // ── Import Data ──────────────────────────────────────────────────────────────
 
@@ -805,6 +861,76 @@ export default function AdminSettingsPage() {
                 </p>
               )}
             </div>
+          )}
+        </div>
+
+        {/* ── Default Currency section (MINCRM-189) ─────────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="currency-section"
+        >
+          <h2
+            className="text-lg font-semibold text-gray-900 mb-1"
+            data-testid="currency-section-title"
+          >
+            {t('settings.defaultCurrency.sectionTitle')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">{t('settings.defaultCurrency.sectionHint')}</p>
+
+          {currencyLoading && (
+            <p className="text-sm text-gray-500" data-testid="currency-loading">
+              {t('settings.loading')}
+            </p>
+          )}
+          {currencyLoadError && (
+            <p className="text-sm text-red-600" data-testid="currency-load-error">
+              {t('settings.loadError')}
+            </p>
+          )}
+          {!currencyLoading && !currencyLoadError && (
+            <form onSubmit={handleCurrencySubmit} className="flex items-end gap-3">
+              <div className="flex-1">
+                <Select
+                  id="default-currency-select"
+                  data-testid="default-currency-select"
+                  label={t('settings.defaultCurrency.selectLabel')}
+                  value={selectedCurrency}
+                  onChange={(e) => {
+                    setPendingCurrency(e.target.value as SupportedCurrency);
+                    setCurrencySaveSuccess(false);
+                    setCurrencySaveError(false);
+                  }}
+                  disabled={currencyMutation.isPending}
+                >
+                  {SUPPORTED_CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button
+                type="submit"
+                data-testid="currency-save-button"
+                disabled={currencyMutation.isPending}
+              >
+                {currencyMutation.isPending ? t('settings.saving') : t('settings.saveButton')}
+              </Button>
+            </form>
+          )}
+          {currencySaveSuccess && (
+            <p
+              role="status"
+              className="mt-2 text-sm text-green-600"
+              data-testid="currency-save-success"
+            >
+              {t('settings.defaultCurrency.saveSuccess')}
+            </p>
+          )}
+          {currencySaveError && (
+            <p role="alert" className="mt-2 text-sm text-red-600" data-testid="currency-save-error">
+              {t('settings.defaultCurrency.saveError')}
+            </p>
           )}
         </div>
 

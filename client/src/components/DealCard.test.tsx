@@ -17,6 +17,7 @@ const DEAL_DEFAULT_PROB: DealResponse = {
   name: 'Stage Default Deal',
   stage: 'Prospecting',
   value: '50000.00',
+  currency: 'USD',
   close_date: null,
   loss_reason: null,
   account_id: null,

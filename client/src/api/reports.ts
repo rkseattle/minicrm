@@ -34,6 +34,10 @@ export interface WinLossReportResponse {
   /** Win rate as a decimal 0–1, or null when no closed deals exist */
   winRate: number | null;
   lossReasonBreakdown: LossReasonBreakdown[];
+  /** True when closed deals span more than one currency (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /** Currency code when all closed deals share one currency; null when mixed or no deals (MINCRM-189) */
+  currency: string | null;
 }
 
 /**

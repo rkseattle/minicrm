@@ -15,6 +15,8 @@ import {
   setNavLayout,
   getEmailNotificationsEnabled,
   setEmailNotificationsEnabled,
+  getDefaultCurrency,
+  setDefaultCurrency,
 } from '../services/settingsService.js';
 import pool from '../db.js';
 
@@ -168,5 +170,61 @@ describe('setEmailNotificationsEnabled', () => {
     const result = await setEmailNotificationsEnabled(true);
     expect(result).toBe(true);
     expect(await getEmailNotificationsEnabled()).toBe(true);
+  });
+});
+
+// ── getDefaultCurrency (MINCRM-189) ───────────────────────────────────────────
+
+describe('getDefaultCurrency', () => {
+  beforeEach(async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'default_currency'`);
+  });
+
+  it('returns "USD" when the row is missing', async () => {
+    const currency = await getDefaultCurrency();
+    expect(currency).toBe('USD');
+  });
+
+  it('returns the stored currency when set', async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('default_currency', 'EUR', now())`,
+    );
+    const currency = await getDefaultCurrency();
+    expect(currency).toBe('EUR');
+  });
+
+  it('falls back to "USD" when the stored value is unsupported', async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('default_currency', 'XYZ', now())`,
+    );
+    const currency = await getDefaultCurrency();
+    expect(currency).toBe('USD');
+  });
+});
+
+// ── setDefaultCurrency (MINCRM-189) ───────────────────────────────────────────
+
+describe('setDefaultCurrency', () => {
+  beforeEach(async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'default_currency'`);
+  });
+
+  it('persists and returns the new currency', async () => {
+    const result = await setDefaultCurrency('GBP');
+    expect(result).toBe('GBP');
+    expect(await getDefaultCurrency()).toBe('GBP');
+  });
+
+  it('overwrites a previously set currency', async () => {
+    await setDefaultCurrency('EUR');
+    await setDefaultCurrency('JPY');
+    expect(await getDefaultCurrency()).toBe('JPY');
+  });
+
+  it('handles all supported currencies without error', async () => {
+    const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'] as const;
+    for (const code of currencies) {
+      await expect(setDefaultCurrency(code)).resolves.toBe(code);
+    }
   });
 });

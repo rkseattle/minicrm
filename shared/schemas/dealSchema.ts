@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import { SUPPORTED_CURRENCIES } from './settingsSchema.js';
 
 /**
  * Seed pipeline stage names — used for bootstrapping and as the fallback when the
@@ -42,6 +43,8 @@ export const createDealSchema = z.object({
    */
   stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
   value: z.number().nonnegative('Value must be 0 or greater').optional(),
+  /** ISO 4217 currency code for the deal value. Defaults to the system default currency. (MINCRM-189) */
+  currency: z.enum(SUPPORTED_CURRENCIES).optional(),
   close_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Close date must be in YYYY-MM-DD format')
@@ -78,6 +81,7 @@ export const updateDealSchema = createDealSchema
   .extend({
     // Allow null to explicitly clear these nullable columns
     value: z.number().nonnegative('Value must be 0 or greater').nullable().optional(),
+    currency: z.enum(SUPPORTED_CURRENCIES).optional(),
     close_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Close date must be in YYYY-MM-DD format')
@@ -119,6 +123,8 @@ export const dealResponseSchema = z.object({
   name: z.string(),
   stage: z.string(),
   value: z.string().nullable(), // pg returns numeric as string
+  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  currency: z.string(),
   close_date: z.string().nullable(),
   loss_reason: z.string().nullable(),
   account_id: z.string().uuid().nullable(),

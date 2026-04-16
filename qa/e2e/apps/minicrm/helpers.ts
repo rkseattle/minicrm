@@ -190,6 +190,7 @@ export interface TestDeal {
   name: string;
   stage: DealStage;
   value: string | null;
+  currency: string;
   close_date: string | null;
   loss_reason: string | null;
   account_id: string;
@@ -201,6 +202,7 @@ export interface CreateDealOverrides {
   name?: string;
   stage?: DealStage;
   value?: string;
+  currency?: string;
   close_date?: string;
   account_id?: string;
 }
@@ -230,6 +232,7 @@ export async function createTestDeal(
     account_id: overrides.account_id,
   };
   if (overrides.value !== undefined) payload['value'] = overrides.value;
+  if (overrides.currency !== undefined) payload['currency'] = overrides.currency;
   if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
   // Server returns { deal: DealRow } — unwrap.
