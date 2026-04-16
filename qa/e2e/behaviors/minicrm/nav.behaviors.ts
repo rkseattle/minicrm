@@ -106,11 +106,7 @@ export async function setNavLayoutViaUI(
     return { clicked: false, successFeedbackVisible: false };
   }
 
-  const isVisible = await button.isVisible().catch(() => false);
-  if (!isVisible) {
-    return { clicked: false, successFeedbackVisible: false };
-  }
-
+  await button.scrollIntoViewIfNeeded();
   await button.click();
 
   // Poll until aria-checked="true" on the selected button, which confirms the
@@ -287,16 +283,20 @@ export async function navigateViaNavLink(
   context: NavBehaviorContext,
 ): Promise<NavigateViaNavLinkResult> {
   if (layout === 'hamburger') {
-    // Ensure menu is open before clicking a link. The drawer is conditionally
-    // rendered, so check for it after clicking the toggle.
-    const drawerBeforeOpen = await context.healPage
-      .locate([
-        { type: 'testId', value: 'nav-hamburger-drawer' },
-        { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-      ])
+    // Check whether the drawer is already open using a short-timeout probe —
+    // the drawer either exists in the DOM right now or it doesn't. A 200 ms
+    // fallbackTimeout fails fast when closed without burning the test budget.
+    const drawerLocator = await context.healPage
+      .locate(
+        [
+          { type: 'testId', value: 'nav-hamburger-drawer' },
+          { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+        ],
+        { fallbackTimeout: 200 },
+      )
       .resolve(context.testName)
       .catch(() => null);
-    const drawerVisible = (await drawerBeforeOpen?.isVisible().catch(() => false)) ?? false;
+    const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
       await context.healPage.click([
         { type: 'testId', value: 'nav-menu-toggle' },
