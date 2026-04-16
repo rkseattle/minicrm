@@ -8,6 +8,7 @@
  */
 
 import 'dotenv/config';
+import { Readable } from 'stream';
 import { vi } from 'vitest';
 import pool from '../db.js';
 
@@ -18,9 +19,16 @@ const mockGetObject = vi.fn();
 const mockRemoveObject = vi.fn().mockResolvedValue(undefined);
 const mockBucketExists = vi.fn().mockResolvedValue(true);
 
+// Captured constructor options — lets buildClient parsing tests assert on
+// the exact hostname/port/useSSL values forwarded to the MinIO constructor.
+const mockClientCtorArgs: unknown[] = [];
+
 vi.mock('minio', () => {
   // Must use a class so `new Client(...)` works — arrow functions cannot be constructors.
   class MockClient {
+    constructor(opts: unknown) {
+      mockClientCtorArgs.push(opts);
+    }
     putObject = mockPutObject;
     getObject = mockGetObject;
     removeObject = mockRemoveObject;
@@ -58,6 +66,7 @@ async function seedStorageConfig(): Promise<void> {
 beforeEach(async () => {
   await clearStorageSettings();
   vi.clearAllMocks();
+  mockClientCtorArgs.length = 0;
 });
 
 afterAll(async () => {
@@ -237,7 +246,6 @@ describe('getObjectStream', () => {
 
   it('calls getObject with the correct bucket and key', async () => {
     await seedStorageConfig();
-    const { Readable } = await import('stream');
     const fakeStream = Readable.from(['data']);
     mockGetObject.mockResolvedValueOnce(fakeStream);
 
@@ -329,16 +337,10 @@ describe('testStorageConnection', () => {
   });
 });
 
-// ── buildClient (endpoint parsing) — verified via successful operation ────────
+// ── buildClient (endpoint parsing) ───────────────────────────────────────────
 
-describe('buildClient endpoint parsing (via uploadObject)', () => {
-  beforeEach(async () => {
-    await clearStorageSettings();
-    vi.clearAllMocks();
-    mockPutObject.mockResolvedValue(undefined);
-  });
-
-  async function uploadWithEndpoint(endpoint: string): Promise<void> {
+describe('buildClient endpoint parsing', () => {
+  async function buildClientWithEndpoint(endpoint: string): Promise<unknown> {
     const { setStorageConfig, uploadObject } = await import('../services/storageService.js');
     await setStorageConfig({
       endpoint,
@@ -347,61 +349,46 @@ describe('buildClient endpoint parsing (via uploadObject)', () => {
       secretAccessKey: 's',
     });
     await uploadObject('test/key', Buffer.alloc(1), 'text/plain');
+    return mockClientCtorArgs.at(-1);
   }
 
-  it('builds a valid client for http endpoint with explicit port', async () => {
-    await uploadWithEndpoint('http://minio:9000');
-    // If the client was constructed and putObject was called, parsing succeeded
-    expect(mockPutObject).toHaveBeenCalledWith(
-      'parse-test-bucket',
-      'test/key',
-      expect.any(Buffer),
-      1,
-      expect.any(Object),
-    );
+  it('parses http endpoint with explicit port', async () => {
+    const opts = await buildClientWithEndpoint('http://minio:9000');
+    expect(opts).toMatchObject({ endPoint: 'minio', port: 9000, useSSL: false });
   });
 
-  it('builds a valid client for http endpoint with no port', async () => {
-    await uploadWithEndpoint('http://storage.example.com');
-    expect(mockPutObject).toHaveBeenCalledWith(
-      'parse-test-bucket',
-      'test/key',
-      expect.any(Buffer),
-      1,
-      expect.any(Object),
-    );
+  it('defaults to port 80 for http with no port', async () => {
+    const opts = await buildClientWithEndpoint('http://storage.example.com');
+    expect(opts).toMatchObject({ endPoint: 'storage.example.com', port: 80, useSSL: false });
   });
 
-  it('builds a valid client for https endpoint with no port', async () => {
-    await uploadWithEndpoint('https://storage.example.com');
-    expect(mockPutObject).toHaveBeenCalledWith(
-      'parse-test-bucket',
-      'test/key',
-      expect.any(Buffer),
-      1,
-      expect.any(Object),
-    );
+  it('defaults to port 443 and useSSL=true for https with no port', async () => {
+    const opts = await buildClientWithEndpoint('https://storage.example.com');
+    expect(opts).toMatchObject({ endPoint: 'storage.example.com', port: 443, useSSL: true });
   });
 
-  it('builds a valid client for https endpoint with explicit port', async () => {
-    await uploadWithEndpoint('https://secure-minio:9443');
-    expect(mockPutObject).toHaveBeenCalledWith(
-      'parse-test-bucket',
-      'test/key',
-      expect.any(Buffer),
-      1,
-      expect.any(Object),
-    );
+  it('parses https endpoint with explicit port', async () => {
+    const opts = await buildClientWithEndpoint('https://secure-minio:9443');
+    expect(opts).toMatchObject({ endPoint: 'secure-minio', port: 9443, useSSL: true });
   });
 
-  it('builds a valid client for a bare hostname (no scheme)', async () => {
-    await uploadWithEndpoint('minio:9000');
-    expect(mockPutObject).toHaveBeenCalledWith(
-      'parse-test-bucket',
-      'test/key',
-      expect.any(Buffer),
-      1,
-      expect.any(Object),
-    );
+  it('parses a bare hostname (no scheme) as http', async () => {
+    const opts = await buildClientWithEndpoint('minio:9000');
+    expect(opts).toMatchObject({ endPoint: 'minio', useSSL: false });
+  });
+
+  it('forwards accessKey and secretKey from config', async () => {
+    const { setStorageConfig, uploadObject } = await import('../services/storageService.js');
+    await setStorageConfig({
+      endpoint: 'http://minio:9000',
+      bucket: 'b',
+      accessKeyId: 'my-access-key',
+      secretAccessKey: 'my-secret-key',
+    });
+    await uploadObject('k', Buffer.alloc(1), 'text/plain');
+    expect(mockClientCtorArgs.at(-1)).toMatchObject({
+      accessKey: 'my-access-key',
+      secretKey: 'my-secret-key',
+    });
   });
 });
