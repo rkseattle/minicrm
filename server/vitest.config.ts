@@ -36,9 +36,17 @@ export default defineConfig({
      */
     globalSetup: './src/__tests__/globalSetup.ts',
 
+    // JUnit XML for dorny/test-reporter in CI; 'default' keeps console output.
+    reporters: ['default', 'junit'],
+    outputFile: { junit: 'test-results/junit.xml' },
+
     coverage: {
       provider: 'v8',
       include: ['src/services/**/*.ts', 'src/controllers/**/*.ts'],
+      // text: console summary; lcov: for tooling; json-summary: machine-readable
+      // totals parsed by the CI coverage-comment step.
+      reporter: ['text', 'lcov', 'json-summary'],
+      reportsDirectory: 'coverage',
       thresholds: {
         /**
          * Glob keys are matched by picomatch against relative file paths.
