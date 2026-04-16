@@ -511,9 +511,11 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
     .resolve(testName);
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
-  // No error alert should be present.
-  const errorLocator = await healPage.locate([{ type: 'role', value: 'alert' }]).resolve(testName);
-  expect(await errorLocator.count(), 'no error alerts should be present').toBe(0);
+  // No error alert should be present (doesNotExist — safe when element is absent).
+  expect(
+    await healPage.doesNotExist([{ type: 'role', value: 'alert' }]),
+    'no error alerts should be present',
+  ).toBe(true);
 });
 
 test('@functional F3-A3: unlinking contact from contact side is reflected on account detail', async ({
@@ -545,13 +547,10 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
   // The previously linked contact should not appear in the list.
-  const linkedContactLocator = await healPage
-    .locate([{ type: 'testId', value: `linked-contact-${contact.id}` }])
-    .resolve(testName);
   expect(
-    await linkedContactLocator.isVisible().catch(() => false),
+    await healPage.doesNotExist([{ type: 'testId', value: `linked-contact-${contact.id}` }]),
     'contact should no longer appear in linked contacts list',
-  ).toBe(false);
+  ).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

@@ -197,14 +197,12 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // Update to generate change entries (one row per changed field in the audit log)
   await restClient.patch(`/api/contacts/${contact.id}`, { first_name: 'F12AL3Updated' });
 
-  // Find the first_name change entry for this contact via API
-  // Audit log uses one-row-per-field model: each changed field is its own AuditLogEntry
-  const auditResponse = await restClient.get<AuditLogListResponse>(
-    `/api/audit-log?recordType=contact`,
+  // Use the record-scoped endpoint to avoid pagination gaps in the system-wide list.
+  const auditResponse = await restClient.get<{ entries: AuditLogEntry[] }>(
+    `/api/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
   );
-  const firstNameEntry = auditResponse.body.data.find(
-    (e) =>
-      e.record_id === contact.id && e.event_type === 'updated' && e.field_name === 'first_name',
+  const firstNameEntry = auditResponse.body.entries.find(
+    (e) => e.event_type === 'updated' && e.field_name === 'first_name',
   );
   expect(firstNameEntry, 'first_name change entry should exist in audit log').toBeDefined();
   if (!firstNameEntry) return;

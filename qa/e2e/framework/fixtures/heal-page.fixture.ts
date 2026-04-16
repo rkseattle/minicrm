@@ -21,7 +21,7 @@
  */
 
 import { test as base, type Page } from '@playwright/test';
-import { HealingLocator, HealingRegistry } from '../healing/index.js';
+import { HealingLocator, HealingRegistry, buildLocator, STRATEGY_ORDER } from '../healing/index.js';
 import type { LocatorStrategy } from '../healing/index.js';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +70,30 @@ export interface HealPage {
    * @param options - Optional intent and fallback timeout.
    */
   fill(value: string, strategies: LocatorStrategy[], options?: LocateOptions): Promise<void>;
+
+  /**
+   * Returns true when the element identified by the first strategy is NOT
+   * attached to the DOM. Never throws — safe to call when the element is
+   * expected to be absent. Does not record a heal event.
+   *
+   * Use for assertions like: expect(await healPage.doesNotExist([...])).toBe(true)
+   *
+   * @param strategies - One or more LocatorStrategy objects (only the first is used).
+   * @param timeoutMs  - How long to wait before concluding the element is absent (default 2000 ms).
+   */
+  doesNotExist(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
+
+  /**
+   * Returns true when the element identified by the first strategy is either
+   * absent from the DOM or present but not visible. Never throws.
+   * Does not record a heal event.
+   *
+   * Use for assertions like: expect(await healPage.isNotVisible([...])).toBe(true)
+   *
+   * @param strategies - One or more LocatorStrategy objects (only the first is used).
+   * @param timeoutMs  - How long to wait before concluding the element is absent (default 2000 ms).
+   */
+  isNotVisible(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +142,34 @@ export function buildHealPage(page: Page, testName: string): HealPage {
       });
       const resolved = await locator.resolve(testName);
       await resolved.fill(value);
+    },
+
+    async doesNotExist(strategies: LocatorStrategy[], timeoutMs = 2_000): Promise<boolean> {
+      if (strategies.length === 0) throw new Error('doesNotExist requires at least one strategy');
+      const sorted = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      const locator = buildLocator(page, sorted[0]!);
+      try {
+        await locator.waitFor({ state: 'attached', timeout: timeoutMs });
+        return false;
+      } catch {
+        return true;
+      }
+    },
+
+    async isNotVisible(strategies: LocatorStrategy[], timeoutMs = 2_000): Promise<boolean> {
+      if (strategies.length === 0) throw new Error('isNotVisible requires at least one strategy');
+      const sorted = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      const locator = buildLocator(page, sorted[0]!);
+      try {
+        await locator.waitFor({ state: 'visible', timeout: timeoutMs });
+        return false;
+      } catch {
+        return true;
+      }
     },
   };
 }

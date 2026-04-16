@@ -492,14 +492,14 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // Hamburger layout must still be active after reload.
         await expect(hamburgerToggle).toBeVisible();
-        const topNavLink = await healPage
-          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
-          .resolve(testName);
-        await expect(topNavLink).not.toBeVisible();
-        const leftNavLink = await healPage
-          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
-          .resolve(testName);
-        await expect(leftNavLink).not.toBeVisible();
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          'nav-top-contacts should not be visible in hamburger layout',
+        ).toBe(true);
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
+          'nav-left-contacts should not be visible in hamburger layout',
+        ).toBe(true);
       } finally {
         await resetNavLayout(restClient, 'F8-LS3');
       }
@@ -701,15 +701,18 @@ test.describe('Mobile nav mechanics', () => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     await page.goto('/', { waitUntil: 'networkidle' });
 
-    const drawer = await healPage
-      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
-      .resolve(testName);
-    await expect(drawer).not.toBeVisible();
+    // Drawer is hidden initially (isNotVisible — safe when element is absent or hidden).
+    expect(
+      await healPage.isNotVisible([{ type: 'testId', value: 'mobile-nav-drawer' }]),
+      'mobile nav drawer should be hidden before toggle tap',
+    ).toBe(true);
 
     const result = await openMobileNav({ page, healPage, testName });
 
     expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
-    await expect(drawer).toBeVisible();
+    await expect(
+      await healPage.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve(testName),
+    ).toBeVisible();
   });
 
   test('@functional F8-MN3: mobile nav drawer closes on toggle tap when open', async ({
@@ -909,9 +912,11 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
 
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
   // The page must not be blank or show an unhandled 500.
-  // React Query's error state may render after networkidle, so give it extra time.
-  const alert = await healPage.locate([{ type: 'role', value: 'alert' }]).resolve(testName);
-  await expect(alert).toBeVisible({ timeout: 10_000 });
+  // React Query's error state may render after networkidle, so use a longer probe timeout.
+  const alert = await healPage
+    .locate([{ type: 'role', value: 'alert' }], { fallbackTimeout: 10_000 })
+    .resolve(testName);
+  await expect(alert).toBeVisible();
 });
 
 // MINCRM-192: F8-DL4 logs in as a rep via the UI — the browser must start

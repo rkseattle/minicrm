@@ -5,7 +5,12 @@
  *   import { HealingLocator, HealingRegistry, HealingReporter, AiHealer } from '@framework/healing';
  */
 
-export { HealingLocator, StrategyExhaustedError, STRATEGY_ORDER } from './healing-locator.js';
+export {
+  HealingLocator,
+  StrategyExhaustedError,
+  STRATEGY_ORDER,
+  buildLocator,
+} from './healing-locator.js';
 export type { LocatorStrategy, StrategyType, HealingLocatorOptions } from './healing-locator.js';
 
 export { HealingRegistry } from './healing-registry.js';

@@ -124,13 +124,11 @@ function dealsCsv(rows: Array<{ name: string; stage: string; account_name: strin
 // ---------------------------------------------------------------------------
 
 interface ImportSummaryResponse {
-  summary: {
-    total: number;
-    created: number;
-    updated: number;
-    skipped: number;
-    failed: number;
-  };
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
   errorCsv: string | null;
 }
 
@@ -170,8 +168,8 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
 
   const ran = await importRun(request, 'contacts', csvBuffer, mapping);
   expect(ran.status, 'run should succeed').toBe(200);
-  expect(ran.body.summary.created, 'two contacts should be created').toBe(2);
-  expect(ran.body.summary.failed, 'no failures expected').toBe(0);
+  expect(ran.body.created, 'two contacts should be created').toBe(2);
+  expect(ran.body.failed, 'no failures expected').toBe(0);
 
   // Verify contacts are queryable via API
   const listResponse = await restClient.get<ContactListResponse>(
@@ -211,9 +209,9 @@ test('@functional F11-IC2: Upload a contacts CSV with a missing required field (
   expect([200, 400], 'run should indicate failure for missing email').toContain(ran.status);
 
   if (ran.status === 200) {
-    expect(ran.body.summary.created, 'no contacts should be created without email').toBe(0);
+    expect(ran.body.created, 'no contacts should be created without email').toBe(0);
     expect(
-      ran.body.summary.failed + ran.body.summary.skipped,
+      ran.body.failed + ran.body.skipped,
       'row should be counted as failed or skipped',
     ).toBeGreaterThan(0);
   }
@@ -240,8 +238,8 @@ test('@functional F11-IC3: Upload a contacts CSV with a duplicate email — row 
 
   const ran = await importRun(request, 'contacts', csvBuffer, mapping);
   expect(ran.status).toBe(200);
-  expect(ran.body.summary.created, 'no new contact should be created for duplicate').toBe(0);
-  expect(ran.body.summary.skipped, 'duplicate row should be skipped').toBeGreaterThan(0);
+  expect(ran.body.created, 'no new contact should be created for duplicate').toBe(0);
+  expect(ran.body.skipped, 'duplicate row should be skipped').toBeGreaterThan(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -264,7 +262,7 @@ test('@functional F11-IA1: Upload a valid accounts CSV — accounts created and 
 
   const ran = await importRun(request, 'accounts', csvBuffer, mapping);
   expect(ran.status).toBe(200);
-  expect(ran.body.summary.created, 'one account should be created').toBeGreaterThanOrEqual(1);
+  expect(ran.body.created, 'one account should be created').toBeGreaterThanOrEqual(1);
 
   // Verify and register for teardown
   const listResponse = await restClient.get<AccountListResponse>(
@@ -302,7 +300,7 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
 
   const ran = await importRun(request, 'deals', csvBuffer, mapping);
   expect(ran.status).toBe(200);
-  expect(ran.body.summary.created, 'deal should be created').toBeGreaterThanOrEqual(1);
+  expect(ran.body.created, 'deal should be created').toBeGreaterThanOrEqual(1);
 });
 
 test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and skip flag — deal skipped', async ({
@@ -324,9 +322,9 @@ test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and
 
   const ran = await importRun(request, 'deals', csvBuffer, mapping);
   expect(ran.status).toBe(200);
-  expect(ran.body.summary.created, 'deal with bad account should not be created').toBe(0);
+  expect(ran.body.created, 'deal with bad account should not be created').toBe(0);
   expect(
-    ran.body.summary.skipped,
+    ran.body.skipped,
     'deal row should be skipped when account is unresolvable',
   ).toBeGreaterThan(0);
 });

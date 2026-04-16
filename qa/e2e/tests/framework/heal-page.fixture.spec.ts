@@ -122,6 +122,68 @@ test.describe('healPage.fill()', () => {
 });
 
 // ---------------------------------------------------------------------------
+// doesNotExist() — returns true when element is absent from DOM
+// ---------------------------------------------------------------------------
+
+test.describe('healPage.doesNotExist()', () => {
+  test('element absent — returns true without throwing', async () => {
+    const page = mockPage([false]);
+    const hp = buildHealPage(page, 'doesNotExist absent');
+
+    const result = await hp.doesNotExist([{ type: 'testId', value: 'ghost' }], 100);
+    expect(result).toBe(true);
+  });
+
+  test('element present — returns false', async () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'doesNotExist present');
+
+    const result = await hp.doesNotExist([{ type: 'testId', value: 'ghost' }], 100);
+    expect(result).toBe(false);
+  });
+
+  test('does not record heal events', async () => {
+    HealingRegistry.instance._reset();
+    const page = mockPage([false]);
+    const hp = buildHealPage(page, 'doesNotExist no heal');
+
+    await hp.doesNotExist([{ type: 'testId', value: 'x' }], 100);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isNotVisible() — returns true when element is absent or hidden
+// ---------------------------------------------------------------------------
+
+test.describe('healPage.isNotVisible()', () => {
+  test('element not visible — returns true without throwing', async () => {
+    const page = mockPage([false]);
+    const hp = buildHealPage(page, 'isNotVisible hidden');
+
+    const result = await hp.isNotVisible([{ type: 'testId', value: 'hidden-el' }], 100);
+    expect(result).toBe(true);
+  });
+
+  test('element visible — returns false', async () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'isNotVisible visible');
+
+    const result = await hp.isNotVisible([{ type: 'testId', value: 'visible-el' }], 100);
+    expect(result).toBe(false);
+  });
+
+  test('does not record heal events', async () => {
+    HealingRegistry.instance._reset();
+    const page = mockPage([false]);
+    const hp = buildHealPage(page, 'isNotVisible no heal');
+
+    await hp.isNotVisible([{ type: 'testId', value: 'x' }], 100);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AC2 — Registry flushed in teardown even when test body throws
 //
 // These tests run serially so the second test can assert post-teardown state
