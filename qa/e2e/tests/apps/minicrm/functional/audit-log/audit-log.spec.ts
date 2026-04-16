@@ -19,7 +19,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestContact, createTestAccount } from '@apps/minicrm/helpers.js';
+import { createTestContact, createTestAccount, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -30,9 +30,7 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F12-audit-log] E2E_ADMIN_PASSWORD is not set');
 
-const REP_EMAIL = process.env['E2E_REP_EMAIL'] ?? 'rep@example.com';
-const REP_PASSWORD = process.env['E2E_REP_PASSWORD'];
-if (!REP_PASSWORD) throw new Error('[F12-audit-log] E2E_REP_PASSWORD is not set');
+const REP_PASSWORD = 'BvtPassword1!';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -220,16 +218,24 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
 });
 
 test('@functional F12-AL4: Rep navigating to audit log is blocked', async ({ restClient }) => {
-  // Verify rep cannot access the audit log API endpoint
-  await restClient.post('/api/auth/login', { email: REP_EMAIL, password: REP_PASSWORD });
+  // Create a rep dynamically so this test does not depend on E2E_REP_PASSWORD being set
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
-  let got403 = false;
   try {
-    await restClient.get<AuditLogListResponse>('/api/audit-log');
-  } catch (err) {
-    if (err instanceof RestClientError && err.status === 403) got403 = true;
+    await restClient.post('/api/auth/login', { email: rep.email, password: REP_PASSWORD });
+
+    let got403 = false;
+    try {
+      await restClient.get<AuditLogListResponse>('/api/audit-log');
+    } catch (err) {
+      if (err instanceof RestClientError && err.status === 403) got403 = true;
+    }
+    expect(got403, 'rep should get 403 when accessing audit log').toBe(true);
+  } finally {
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.patch(`/api/users/${rep.id}/deactivate`, {}).catch(() => null);
   }
-  expect(got403, 'rep should get 403 when accessing audit log').toBe(true);
 });
 
 // ---------------------------------------------------------------------------
