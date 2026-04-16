@@ -34,6 +34,7 @@ import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
@@ -268,7 +269,7 @@ export default function DealsPage() {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
         value: values.value !== '' ? parseFloat(values.value) : undefined,
-        currency: (values.currency as DealResponse['currency']) || undefined,
+        currency: values.currency ? (values.currency as SupportedCurrency) : undefined,
         close_date: values.close_date || undefined,
         account_id: values.account_id || undefined,
         // Pass probability override only when the field is non-empty (MINCRM-179)
