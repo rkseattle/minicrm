@@ -111,9 +111,12 @@ describe('decrypt', () => {
 
   it('throws on a tampered ciphertext', () => {
     const encrypted = encrypt('value');
-    const [iv, authTag] = encrypted.split(':');
-    const tamperedCiphertext = 'ff'.repeat(8);
-    const tampered = `${iv}:${authTag}:${tamperedCiphertext}`;
+    const [iv, authTag, ciphertext] = encrypted.split(':');
+    // Flip the last byte of the original-length ciphertext so the auth tag
+    // catches data mutation rather than a length mismatch triggering first.
+    const lastByte = parseInt(ciphertext.slice(-2), 16);
+    const flippedByte = (lastByte ^ 0xff).toString(16).padStart(2, '0');
+    const tampered = `${iv}:${authTag}:${ciphertext.slice(0, -2)}${flippedByte}`;
     expect(() => decrypt(tampered)).toThrow();
   });
 
