@@ -201,10 +201,12 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   const auditResponse = await restClient.get<{ entries: AuditLogEntry[] }>(
     `/api/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
   );
+  // The audit service stores the display name via getFieldDisplayName(), so
+  // 'first_name' (DB column) is stored as 'First Name' in field_name.
   const firstNameEntry = auditResponse.body.entries.find(
-    (e) => e.event_type === 'updated' && e.field_name === 'first_name',
+    (e) => e.event_type === 'updated' && e.field_name === 'First Name',
   );
-  expect(firstNameEntry, 'first_name change entry should exist in audit log').toBeDefined();
+  expect(firstNameEntry, 'First Name change entry should exist in audit log').toBeDefined();
   if (!firstNameEntry) return;
 
   expect(firstNameEntry.new_value, 'new_value should reflect the updated first_name').toBe(

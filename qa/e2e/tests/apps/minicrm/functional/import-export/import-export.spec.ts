@@ -103,19 +103,19 @@ function contactsCsv(
   rows: Array<{ first_name: string; last_name: string; email: string }>,
 ): Buffer {
   const header = 'first_name,last_name,email\n';
-  const body = rows.map((r) => `${r.first_name},${r.last_name},${r.email}`).join('\n');
+  const body = rows.map((r) => `${r.first_name},${r.last_name},${r.email}`).join('\n') + '\n';
   return Buffer.from(header + body, 'utf-8');
 }
 
 function accountsCsv(rows: Array<{ name: string }>): Buffer {
   const header = 'name\n';
-  const body = rows.map((r) => r.name).join('\n');
+  const body = rows.map((r) => r.name).join('\n') + '\n';
   return Buffer.from(header + body, 'utf-8');
 }
 
 function dealsCsv(rows: Array<{ name: string; stage: string; account_name: string }>): Buffer {
   const header = 'name,stage,account_name\n';
-  const body = rows.map((r) => `${r.name},${r.stage},${r.account_name}`).join('\n');
+  const body = rows.map((r) => `${r.name},${r.stage},${r.account_name}`).join('\n') + '\n';
   return Buffer.from(header + body, 'utf-8');
 }
 

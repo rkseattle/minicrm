@@ -419,10 +419,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await expect(leftNavLink).toBeVisible();
 
         // Top nav links should no longer be present.
-        const topNavLink = await healPage
-          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
-          .resolve(testName);
-        await expect(topNavLink).not.toBeVisible();
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          'nav-top-contacts should not be visible after switching to left layout',
+        ).toBe(true);
 
         // Switch to hamburger layout.
         await setNavLayoutViaUI('hamburger', { page, healPage, testName });
@@ -432,8 +432,14 @@ test.describe.serial('Layout-mutating tests', () => {
           .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
           .resolve(testName);
         await expect(hamburgerToggle).toBeVisible();
-        await expect(topNavLink).not.toBeVisible();
-        await expect(leftNavLink).not.toBeVisible();
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          'nav-top-contacts should not be visible in hamburger layout',
+        ).toBe(true);
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
+          'nav-left-contacts should not be visible in hamburger layout',
+        ).toBe(true);
       } finally {
         await resetNavLayout(restClient, 'F8-LS1');
       }
