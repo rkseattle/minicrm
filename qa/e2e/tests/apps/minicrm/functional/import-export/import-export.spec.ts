@@ -61,7 +61,7 @@ async function importRun(
   request: APIRequestContext,
   entity: 'contacts' | 'accounts' | 'deals',
   csvBuffer: Buffer,
-  mapping: Record<string, string>,
+  mapping: Record<string, string | boolean>,
 ): Promise<{ status: number; body: ImportSummaryResponse }> {
   const response = await request.post(`${BASE_URL}/api/admin/import/${entity}/run`, {
     multipart: {
@@ -73,12 +73,16 @@ async function importRun(
   return { status: response.status(), body };
 }
 
-/** Builds a column mapping by matching CSV header names to field keys. */
+/**
+ * Builds a column mapping for the import run endpoint.
+ * The API expects { crmFieldKey: csvHeaderName } — e.g. { name: 'name', stage: 'stage' }.
+ * Headers that match a known CRM field key (case-insensitive, spaces→underscore) are included.
+ */
 function buildMapping(headers: string[], fields: Array<{ key: string }>): Record<string, string> {
   const mapping: Record<string, string> = {};
   for (const field of fields) {
-    const idx = headers.findIndex((h) => h.toLowerCase().replace(/\s+/g, '_') === field.key);
-    if (idx !== -1) mapping[String(idx)] = field.key;
+    const matched = headers.find((h) => h.toLowerCase().replace(/\s+/g, '_') === field.key);
+    if (matched) mapping[field.key] = matched;
   }
   return mapping;
 }
@@ -301,7 +305,7 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
   expect(ran.body.summary.created, 'deal should be created').toBeGreaterThanOrEqual(1);
 });
 
-test('@functional F11-ID2: Upload a deals CSV with unresolvable account name — deal flagged as error in summary', async ({
+test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and skip flag — deal skipped', async ({
   request,
   restClient,
 }) => {
@@ -312,14 +316,18 @@ test('@functional F11-ID2: Upload a deals CSV with unresolvable account name —
   ]);
 
   const parsed = await importParse(request, 'deals', csvBuffer);
-  const mapping = buildMapping(parsed.body.headers, parsed.body.fields);
+  // Include skip_unresolvable_accounts: true so the row is skipped rather than imported with null account
+  const mapping = {
+    ...buildMapping(parsed.body.headers, parsed.body.fields),
+    skip_unresolvable_accounts: true,
+  };
 
   const ran = await importRun(request, 'deals', csvBuffer, mapping);
   expect(ran.status).toBe(200);
   expect(ran.body.summary.created, 'deal with bad account should not be created').toBe(0);
   expect(
-    ran.body.summary.failed + ran.body.summary.skipped,
-    'deal row should be flagged as failed or skipped',
+    ran.body.summary.skipped,
+    'deal row should be skipped when account is unresolvable',
   ).toBeGreaterThan(0);
 });
 
