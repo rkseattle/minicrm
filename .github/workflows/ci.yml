@@ -107,6 +107,25 @@ jobs:
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
 
+      - name: Publish server test results to GitHub Checks
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Vitest – server
+          path: server/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload server coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            server/coverage/lcov.info
+            server/coverage/coverage-summary.json
+          retention-days: 14
+
   client-tests:
     name: Phase 2 - Client Unit Tests
     needs: lint-and-typecheck
@@ -128,12 +147,24 @@ jobs:
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
 
-      - name: Upload client coverage report (MINCRM-194)
+      - name: Publish client test results to GitHub Checks
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Vitest – client
+          path: client/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload client coverage artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
-          path: client/coverage/lcov.info
+          path: |
+            client/coverage/lcov.info
+            client/coverage/coverage-summary.json
+          retention-days: 14
 
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
@@ -427,4 +458,72 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
+          message: ${{ steps.comment.outputs.body }}
+
+  unit-test-report:
+    name: Phase 2 - Unit Tests — Coverage Report
+    needs: [server-tests, client-tests]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Download server coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: server-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/server-coverage
+
+      - name: Download client coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/client-coverage
+
+      - name: Build coverage comment
+        id: comment
+        run: |
+          parse_summary() {
+            local json_file="$1"
+            python3 - "$json_file" <<'PYEOF'
+          import sys, json
+          try:
+              with open(sys.argv[1]) as f:
+                  data = json.load(f)
+              # json-summary format: { "total": { "lines": { "pct": N }, ... } }
+              t = data.get("total", {})
+              lines  = t.get("lines",      {}).get("pct", "?")
+              funcs  = t.get("functions",  {}).get("pct", "?")
+              branch = t.get("branches",   {}).get("pct", "?")
+              stmts  = t.get("statements", {}).get("pct", "?")
+              print(f"{lines}|{funcs}|{branch}|{stmts}")
+          except Exception as e:
+              print("?|?|?|?")
+          PYEOF
+          }
+
+          SERVER=$(parse_summary artifacts/server-coverage/coverage-summary.json)
+          CLIENT=$(parse_summary artifacts/client-coverage/coverage-summary.json)
+          ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          IFS='|' read -r s_lines s_funcs s_branch s_stmts <<< "$SERVER"
+          IFS='|' read -r c_lines c_funcs c_branch c_stmts <<< "$CLIENT"
+
+          {
+            echo 'body<<COMMENT_EOF'
+            echo "## Unit Test Coverage"
+            echo ""
+            echo "| Package | Lines | Functions | Branches | Statements |"
+            echo "|---------|-------|-----------|----------|------------|"
+            echo "| server  | ${s_lines}% | ${s_funcs}% | ${s_branch}% | ${s_stmts}% |"
+            echo "| client  | ${c_lines}% | ${c_funcs}% | ${c_branch}% | ${c_stmts}% |"
+            echo ""
+            echo "> Thresholds: server services ≥ 80% · client components/pages ≥ 70%"
+            echo ""
+            echo "[Download coverage artifacts]($ARTIFACTS_URL)"
+            echo 'COMMENT_EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Post coverage comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: unit-test-coverage
           message: ${{ steps.comment.outputs.body }}
