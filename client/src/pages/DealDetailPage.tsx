@@ -35,6 +35,7 @@ import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
@@ -112,7 +113,7 @@ export default function DealDetailPage() {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
         value: values.value !== '' ? parseFloat(values.value) : null,
-        currency: (values.currency as DealResponse['currency']) || undefined,
+        currency: values.currency ? (values.currency as SupportedCurrency) : undefined,
         close_date: values.close_date || null,
         account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
