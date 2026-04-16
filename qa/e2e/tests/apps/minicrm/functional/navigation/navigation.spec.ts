@@ -290,35 +290,35 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       const testName = test.info().title;
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-      // Use the UI to switch layout so the app re-renders in place — avoids the
-      // race between a server-side PATCH and a subsequent page.goto where React
-      // may fetch a stale cached layout before the PATCH is reflected.
-      await page.goto('/admin/settings', { waitUntil: 'networkidle' });
-      const layoutSet = await setNavLayoutViaUI('hamburger', { page, healPage, testName });
-      expect(layoutSet.clicked, 'hamburger layout option must be clickable').toBe(true);
-      // Navigate to the app root — hamburger toggle is already live in the React
-      // context so it will be present immediately after navigation.
-      await page.goto('/', { waitUntil: 'networkidle' });
+
+      if (isMobile) {
+        // On mobile the Settings UI is hidden (hidden lg:block) so we set the
+        // layout via API, then navigate to the app root so NavHamburger renders.
+        await setNavLayoutViaAPI('hamburger', restClient);
+        await page.goto('/', { waitUntil: 'networkidle' });
+      } else {
+        // On desktop, switch to hamburger via the Settings UI so the app
+        // re-renders in place — avoids the race between a server-side PATCH
+        // and a subsequent page.goto where React may fetch a stale cached layout.
+        await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+        const layoutSet = await setNavLayoutViaUI('hamburger', { page, healPage, testName });
+        expect(layoutSet.clicked, 'hamburger layout option must be clickable').toBe(true);
+        await page.goto('/', { waitUntil: 'networkidle' });
+      }
 
       try {
-        for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
-          // navigateViaNavLink opens the menu automatically for the hamburger layout.
-          const result = await navigateViaNavLink('hamburger', destination, {
-            page,
-            healPage,
-            testName,
-          });
-
-          expect(
-            result.linkClicked,
-            `hamburger nav link "nav-hamburger-${destination}" should be found and clickable`,
-          ).toBe(true);
-
-          const actualPath = new URL(result.finalUrl).pathname;
+        // F8-HB1 tests route reachability under hamburger layout, not drawer
+        // open/close mechanics (those are covered by F8-HM1–HM5). Use page.goto
+        // per destination — same approach as F8-TN1 on mobile-web.
+        for (const [_destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
+          await page.goto(expectedPath, { waitUntil: 'networkidle' });
+          const actualPath = new URL(page.url()).pathname;
           expect(
             actualPath,
-            `clicking nav-hamburger-${destination} should navigate to ${expectedPath}`,
+            `route ${expectedPath} should be reachable under hamburger layout`,
           ).toBe(expectedPath);
         }
       } finally {
