@@ -156,9 +156,11 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
 
 test('@functional F2-C3: missing required field → inline validation, contact not created', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -169,15 +171,17 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   // validation catches the empty required field client-side.
   await page.goto('/contacts');
   await page.waitForLoadState('networkidle');
-  await page.click('[data-testid="new-contact-button"]');
-  await page.fill('[data-testid="contact-first-name"]', 'F2C3Only');
-  await page.fill('[data-testid="contact-email"]', uniqueEmail);
+  await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await healPage.fill('F2C3Only', [{ type: 'testId', value: 'contact-first-name' }]);
+  await healPage.fill(uniqueEmail, [{ type: 'testId', value: 'contact-email' }]);
   // Intentionally leave last_name empty. Submit to trigger HTML5 required validation.
-  await page.click('[data-testid="contact-form-submit"]');
+  await healPage.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
   // HTML5 validation is synchronous — no network request fires. Use a DOM-based
   // wait so the assertion retries automatically instead of sleeping a fixed amount.
-  await expect(page.locator('[data-testid="contact-form"]')).toBeVisible();
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'contact-form' }]).resolve(testName),
+  ).toBeVisible();
 
   // Verify no contact was created by searching for the unique email.
   const check = await restClient.get<ContactListResponse>(
@@ -190,28 +194,32 @@ test('@functional F2-C3: missing required field → inline validation, contact n
 
 test('@functional F2-C4: invalid email format → inline validation, contact not created', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Use a unique last name to precisely identify whether this contact was created.
   const uniqueLastName = `InvalidEmailTest-${uniqueSuffix}`;
 
-  // Use the page directly since createContactViaUI waits for networkidle which
+  // Use healPage interactions since createContactViaUI waits for networkidle which
   // may never settle on a validation error (no network request is made).
   await page.goto('/contacts');
   await page.waitForLoadState('networkidle');
-  await page.click('[data-testid="new-contact-button"]');
-  await page.fill('[data-testid="contact-first-name"]', 'F2C4');
-  await page.fill('[data-testid="contact-last-name"]', uniqueLastName);
-  await page.fill('[data-testid="contact-email"]', 'not-an-email');
-  await page.click('[data-testid="contact-form-submit"]');
+  await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await healPage.fill('F2C4', [{ type: 'testId', value: 'contact-first-name' }]);
+  await healPage.fill(uniqueLastName, [{ type: 'testId', value: 'contact-last-name' }]);
+  await healPage.fill('not-an-email', [{ type: 'testId', value: 'contact-email' }]);
+  await healPage.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
   // HTML5 email validation is synchronous — use a DOM-based wait instead of a
   // fixed timeout so the assertion retries automatically.
-  await expect(page.locator('[data-testid="contact-form"]')).toBeVisible();
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'contact-form' }]).resolve(testName),
+  ).toBeVisible();
 
   // Verify no contact was created by searching for the unique last name.
   const check = await restClient.get<ContactListResponse>(
@@ -345,7 +353,9 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   const navResult = await navigateToContacts({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
   // The sort button is only visible on desktop — the mobile card view has no sort headers.
-  const sortButton = page.locator('[data-testid="contacts-sort-name"]');
+  const sortButton = await healPage
+    .locate([{ type: 'testId', value: 'contacts-sort-name' }])
+    .resolve(testName);
   const isSortVisible = await sortButton.isVisible();
   if (isSortVisible) {
     await sortButton.click();
@@ -607,9 +617,11 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
 
 test('@functional F2-A1: link contact to account → contact appears in account contacts list', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -629,7 +641,9 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await page.waitForLoadState('networkidle');
 
   // The detail-account element should show the account name.
-  const accountLocator = page.locator('[data-testid="detail-account"]');
+  const accountLocator = await healPage
+    .locate([{ type: 'testId', value: 'detail-account' }])
+    .resolve(testName);
   await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
   const accountText = await accountLocator.textContent();
   expect(accountText, 'detail view should show the linked account name').toContain(
@@ -671,9 +685,11 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
 
 test('@functional F2-A3: contact detail view shows associated account name with working link', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
@@ -690,7 +706,9 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   await page.waitForLoadState('networkidle');
 
   // Confirm account name is a link pointing to the account's detail page.
-  const accountLink = page.locator('[data-testid="detail-account"]');
+  const accountLink = await healPage
+    .locate([{ type: 'testId', value: 'detail-account' }])
+    .resolve(testName);
   await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
   const href = await accountLink.getAttribute('href');
   expect(href, 'account link should point to /accounts/:id').toContain(`/accounts/${account.id}`);
@@ -752,7 +770,9 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   // If the total (all contacts in db) exceeds 50 the pagination component is shown.
   const total = (await restClient.get<ContactListResponse>('/api/contacts')).body.total;
   if (total > 50) {
-    const paginationLocator = page.locator('[data-testid="pagination"]');
+    const paginationLocator = await healPage
+      .locate([{ type: 'testId', value: 'pagination' }])
+      .resolve(testName);
     await expect(paginationLocator).toBeVisible();
   }
 });

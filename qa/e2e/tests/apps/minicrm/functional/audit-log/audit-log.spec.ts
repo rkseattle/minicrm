@@ -13,7 +13,7 @@
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
- *   - UI interaction via page.locator with data-testid selectors only
+ *   - UI interaction via healPage.locate / click / fill with data-testid strategies only
  *
  * MINCRM-201
  */
@@ -93,9 +93,11 @@ interface LeadSingleResponse {
 
 test('@functional F12-AL1: Perform a tracked action — audit log shows entry with correct user and record type', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create a contact, then update it — both actions should generate audit entries
@@ -109,14 +111,20 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
 
   // Navigate to audit log
   await page.goto('/admin/audit-log');
-  await expect(page.locator('[data-testid="audit-log-heading"]')).toBeVisible();
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(testName),
+  ).toBeVisible();
 
   // Filter by record type = contact so the list is manageable
-  await page.locator('[data-testid="filter-record-type"]').selectOption('contact');
-  await page.locator('[data-testid="apply-filters-button"]').click();
+  await (
+    await healPage.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve(testName)
+  ).selectOption('contact');
+  await healPage.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
   // The audit list should show at least one entry
-  await expect(page.locator('[data-testid="audit-log-list"]')).toBeVisible({ timeout: 10_000 });
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(testName),
+  ).toBeVisible({ timeout: 10_000 });
 
   // Verify via API that the entry exists
   const auditResponse = await restClient.get<AuditLogListResponse>(
@@ -134,9 +142,11 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
 
 test('@functional F12-AL2: Audit log — filter by record type shows only that type', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Ensure there are at least one contact and one account action in the log
@@ -146,13 +156,19 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   void account;
 
   await page.goto('/admin/audit-log');
-  await expect(page.locator('[data-testid="audit-log-heading"]')).toBeVisible();
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(testName),
+  ).toBeVisible();
 
   // Filter to account only
-  await page.locator('[data-testid="filter-record-type"]').selectOption('account');
-  await page.locator('[data-testid="apply-filters-button"]').click();
+  await (
+    await healPage.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve(testName)
+  ).selectOption('account');
+  await healPage.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
-  await expect(page.locator('[data-testid="audit-log-list"]')).toBeVisible({ timeout: 10_000 });
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(testName),
+  ).toBeVisible({ timeout: 10_000 });
 
   // Check via API that the filtered results only contain account entries
   const auditResponse = await restClient.get<AuditLogListResponse>(
@@ -166,9 +182,11 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 
 test('@functional F12-AL3: Audit log — field-level change detail recorded for updated contact', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
@@ -200,20 +218,30 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
 
   // Navigate to the audit log page and verify the entry is renderable in the UI
   await page.goto('/admin/audit-log');
-  await expect(page.locator('[data-testid="audit-log-heading"]')).toBeVisible();
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(testName),
+  ).toBeVisible();
 
-  await page.locator('[data-testid="filter-record-type"]').selectOption('contact');
-  await page.locator('[data-testid="apply-filters-button"]').click();
-  await expect(page.locator('[data-testid="audit-log-list"]')).toBeVisible({ timeout: 10_000 });
+  await (
+    await healPage.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve(testName)
+  ).selectOption('contact');
+  await healPage.click([{ type: 'testId', value: 'apply-filters-button' }]);
+  await expect(
+    await healPage.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(testName),
+  ).toBeVisible({ timeout: 10_000 });
 
   // If the specific row is on the first page, expand it and verify the detail section
-  const expandButton = page.locator(`[data-testid="audit-log-row-button-${firstNameEntry.id}"]`);
+  const expandButton = await healPage
+    .locate([{ type: 'testId', value: `audit-log-row-button-${firstNameEntry.id}` }])
+    .resolve(testName);
   const isVisible = await expandButton.isVisible().catch(() => false);
   if (isVisible) {
     await expandButton.click();
-    await expect(page.locator(`[data-testid="audit-log-detail-${firstNameEntry.id}"]`)).toBeVisible(
-      { timeout: 3_000 },
-    );
+    await expect(
+      await healPage
+        .locate([{ type: 'testId', value: `audit-log-detail-${firstNameEntry.id}` }])
+        .resolve(testName),
+    ).toBeVisible({ timeout: 3_000 });
   }
 });
 

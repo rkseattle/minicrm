@@ -461,7 +461,9 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({
 
     for (const dest of adminDestinations) {
       for (const prefix of navPrefixes) {
-        const link = page.getByTestId(`${prefix}-${dest}`);
+        const link = await healPage
+          .locate([{ type: 'testId', value: `${prefix}-${dest}` }])
+          .resolve(testName);
         const isVisible = await link.isVisible().catch(() => false);
         expect(isVisible, `nav link "${prefix}-${dest}" should not be visible to a rep`).toBe(
           false,

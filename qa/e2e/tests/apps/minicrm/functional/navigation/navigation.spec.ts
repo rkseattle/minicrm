@@ -193,7 +193,9 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Contacts and verify the Contacts link carries the active class.
         await navigateViaNavLink('top', 'contacts', { page, healPage, testName });
 
-        const contactsLink = page.getByTestId('nav-top-contacts');
+        const contactsLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
+          .resolve(testName);
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -202,7 +204,9 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const dealsLink = page.getByTestId('nav-top-deals');
+        const dealsLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-top-deals' }])
+          .resolve(testName);
         await expect(
           dealsLink,
           'inactive nav-top-deals should not carry the active indigo class',
@@ -264,7 +268,9 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Accounts and verify the Accounts link carries the active class.
         await navigateViaNavLink('left', 'accounts', { page, healPage, testName });
 
-        const accountsLink = page.getByTestId('nav-left-accounts');
+        const accountsLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-left-accounts' }])
+          .resolve(testName);
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -273,7 +279,9 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const tasksLink = page.getByTestId('nav-left-tasks');
+        const tasksLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-left-tasks' }])
+          .resolve(testName);
         await expect(
           tasksLink,
           'inactive nav-left-tasks should not carry the active indigo class',
@@ -352,7 +360,9 @@ test.describe.serial('Layout-mutating tests', () => {
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page, healPage, testName });
 
-        const dealsLink = page.getByTestId('nav-hamburger-deals');
+        const dealsLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-deals' }])
+          .resolve(testName);
         const classAttr = await dealsLink.getAttribute('class');
 
         // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
@@ -361,7 +371,9 @@ test.describe.serial('Layout-mutating tests', () => {
         );
 
         // A non-active link should not carry the active class.
-        const contactsLink = page.getByTestId('nav-hamburger-contacts');
+        const contactsLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-contacts' }])
+          .resolve(testName);
         const contactsClass = await contactsLink.getAttribute('class');
         expect(
           contactsClass,
@@ -401,18 +413,24 @@ test.describe.serial('Layout-mutating tests', () => {
         await setNavLayoutViaUI('left', { page, healPage, testName });
 
         // The sidebar nav links should now be visible without a page reload.
-        const leftNavLink = page.getByTestId('nav-left-contacts');
+        const leftNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
+          .resolve(testName);
         await expect(leftNavLink).toBeVisible();
 
         // Top nav links should no longer be present.
-        const topNavLink = page.getByTestId('nav-top-contacts');
+        const topNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
+          .resolve(testName);
         await expect(topNavLink).not.toBeVisible();
 
         // Switch to hamburger layout.
         await setNavLayoutViaUI('hamburger', { page, healPage, testName });
 
         // Hamburger toggle should now be visible; top and left nav links should not.
-        const hamburgerToggle = page.getByTestId('nav-menu-toggle');
+        const hamburgerToggle = await healPage
+          .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
+          .resolve(testName);
         await expect(hamburgerToggle).toBeVisible();
         await expect(topNavLink).not.toBeVisible();
         await expect(leftNavLink).not.toBeVisible();
@@ -423,15 +441,19 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-LS2: selected layout persists after page refresh', async ({
       page,
+      healPage,
       restClient,
     }) => {
+      const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
       await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Verify the left sidebar is active.
-        const leftNavLink = page.getByTestId('nav-left-contacts');
+        const leftNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
+          .resolve(testName);
         await expect(leftNavLink).toBeVisible();
 
         // Full page reload.
@@ -439,7 +461,9 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // Left sidebar must still be active after reload — not reverted to default.
         await expect(leftNavLink).toBeVisible();
-        const topNavLink = page.getByTestId('nav-top-contacts');
+        const topNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
+          .resolve(testName);
         await expect(topNavLink).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-LS2');
@@ -448,15 +472,19 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-LS3: hamburger layout persists after page refresh', async ({
       page,
+      healPage,
       restClient,
     }) => {
+      const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
       await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
         // Hamburger toggle must be visible.
-        const hamburgerToggle = page.getByTestId('nav-menu-toggle');
+        const hamburgerToggle = await healPage
+          .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
+          .resolve(testName);
         await expect(hamburgerToggle).toBeVisible();
 
         // Full page reload.
@@ -464,9 +492,13 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // Hamburger layout must still be active after reload.
         await expect(hamburgerToggle).toBeVisible();
-        const topNavLink = page.getByTestId('nav-top-contacts');
+        const topNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
+          .resolve(testName);
         await expect(topNavLink).not.toBeVisible();
-        const leftNavLink = page.getByTestId('nav-left-contacts');
+        const leftNavLink = await healPage
+          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
+          .resolve(testName);
         await expect(leftNavLink).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-LS3');
@@ -494,7 +526,9 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Drawer should not be visible initially.
-        const drawer = page.getByTestId('nav-hamburger-drawer');
+        const drawer = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .resolve(testName);
         await expect(drawer).not.toBeVisible();
 
         const result = await openHamburgerMenu({ page, healPage, testName });
@@ -524,7 +558,9 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page, healPage, testName });
 
-        const drawer = page.getByTestId('nav-hamburger-drawer');
+        const drawer = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .resolve(testName);
         await expect(drawer).toBeVisible();
 
         const result = await closeHamburgerMenuViaBackdrop({ page, healPage, testName });
@@ -552,7 +588,9 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page, healPage, testName });
 
-        const drawer = page.getByTestId('nav-hamburger-drawer');
+        const drawer = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .resolve(testName);
         await expect(drawer).toBeVisible();
 
         // Click a link — the NavLink onClick calls closeMenu().
@@ -583,7 +621,9 @@ test.describe.serial('Layout-mutating tests', () => {
         await openHamburgerMenu({ page, healPage, testName });
 
         for (const destination of Object.keys(ALL_ADMIN_DESTINATIONS)) {
-          const link = page.getByTestId(`nav-hamburger-${destination}`);
+          const link = await healPage
+            .locate([{ type: 'testId', value: `nav-hamburger-${destination}` }])
+            .resolve(testName);
           await expect(
             link,
             `nav-hamburger-${destination} should be visible inside the open menu`,
@@ -599,8 +639,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
     test('@functional F8-HM5: hamburger menu is keyboard-accessible (tab + enter)', async ({
       page,
+      healPage,
       restClient,
     }) => {
+      const testName = test.info().title;
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM5: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
@@ -610,12 +652,16 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
-        const toggle = page.getByTestId('nav-menu-toggle');
+        const toggle = await healPage
+          .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
+          .resolve(testName);
         await toggle.focus();
         await page.keyboard.press('Enter');
 
         // Drawer should open.
-        const drawer = page.getByTestId('nav-hamburger-drawer');
+        const drawer = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .resolve(testName);
         await expect(drawer).toBeVisible();
 
         // Focus should move into the drawer on open (NavHamburger.tsx focuses first link).
@@ -655,7 +701,9 @@ test.describe('Mobile nav mechanics', () => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
     await page.goto('/', { waitUntil: 'networkidle' });
 
-    const drawer = page.getByTestId('mobile-nav-drawer');
+    const drawer = await healPage
+      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
+      .resolve(testName);
     await expect(drawer).not.toBeVisible();
 
     const result = await openMobileNav({ page, healPage, testName });
@@ -678,7 +726,9 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page, healPage, testName });
 
-    const drawer = page.getByTestId('mobile-nav-drawer');
+    const drawer = await healPage
+      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
+      .resolve(testName);
     await expect(drawer).toBeVisible();
 
     const result = await closeMobileNavViaToggle({ page, healPage, testName });
@@ -701,7 +751,9 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page, healPage, testName });
 
-    const drawer = page.getByTestId('mobile-nav-drawer');
+    const drawer = await healPage
+      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
+      .resolve(testName);
     await expect(drawer).toBeVisible();
 
     await navigateViaMobileNavLink('contacts', { page, healPage, testName });
@@ -724,11 +776,15 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page, healPage, testName });
 
-    const drawer = page.getByTestId('mobile-nav-drawer');
+    const drawer = await healPage
+      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
+      .resolve(testName);
     await expect(drawer).toBeVisible();
 
     for (const destination of Object.keys(REP_DESTINATIONS)) {
-      const link = page.getByTestId(`nav-top-${destination}-mobile`);
+      const link = await healPage
+        .locate([{ type: 'testId', value: `nav-top-${destination}-mobile` }])
+        .resolve(testName);
       await expect(
         link,
         `nav-top-${destination}-mobile should be visible in the open mobile drawer`,
@@ -752,15 +808,19 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page, healPage, testName });
 
-    const drawer = page.getByTestId('mobile-nav-drawer');
+    const drawer = await healPage
+      .locate([{ type: 'testId', value: 'mobile-nav-drawer' }])
+      .resolve(testName);
     await expect(drawer).toBeVisible();
 
     await expect(
-      page.getByTestId('nav-logout-mobile'),
+      await healPage.locate([{ type: 'testId', value: 'nav-logout-mobile' }]).resolve(testName),
       'logout button should be present in mobile nav drawer',
     ).toBeVisible();
     await expect(
-      page.getByTestId('nav-language-select-mobile'),
+      await healPage
+        .locate([{ type: 'testId', value: 'nav-language-select-mobile' }])
+        .resolve(testName),
       'language selector should be present in mobile nav drawer',
     ).toBeVisible();
 
@@ -775,9 +835,11 @@ test.describe('Mobile nav mechanics', () => {
 
 test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact detail view', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
@@ -789,7 +851,9 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // The contact name heading is rendered once data loads.
-  const nameHeading = page.getByTestId('contact-name');
+  const nameHeading = await healPage
+    .locate([{ type: 'testId', value: 'contact-name' }])
+    .resolve(testName);
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(contact.first_name);
   await expect(nameHeading).toContainText(contact.last_name);
@@ -803,9 +867,11 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
 
 test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail view', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -820,7 +886,9 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
 
   // The deal name heading is rendered once data loads.
-  const nameHeading = page.getByTestId('deal-name');
+  const nameHeading = await healPage
+    .locate([{ type: 'testId', value: 'deal-name' }])
+    .resolve(testName);
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(deal.name);
 
@@ -830,8 +898,10 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
 
 test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful not-found state', async ({
   page,
+  healPage,
   restClient,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Use an ID that is extremely unlikely to exist.
@@ -840,7 +910,7 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
   // The page must not be blank or show an unhandled 500.
   // React Query's error state may render after networkidle, so give it extra time.
-  const alert = page.getByRole('alert');
+  const alert = await healPage.locate([{ type: 'role', value: 'alert' }]).resolve(testName);
   await expect(alert).toBeVisible({ timeout: 10_000 });
 });
 

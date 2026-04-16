@@ -13,6 +13,7 @@ import nodePlugin from 'eslint-plugin-n';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
+import noPageForbiddenMethods from './eslint-plugins/no-page-forbidden-methods.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
@@ -173,6 +174,19 @@ const testConfig = {
   },
 };
 
+// ── E2E spec files — enforce SafePage/HealPage usage ─────────────────────────
+// Spec files must never call forbidden Playwright Page methods directly.
+// All element interactions must go through healPage.locate / click / fill.
+const e2eSpecConfig = {
+  files: ['qa/**/*.spec.ts'],
+  plugins: {
+    local: { rules: { 'no-page-forbidden-methods': noPageForbiddenMethods } },
+  },
+  rules: {
+    'local/no-page-forbidden-methods': 'error',
+  },
+};
+
 // ── Scripts (seed-demo, remove-demo, etc.) — use scripts tsconfig ─────────────
 const scriptsConfig = {
   files: ['scripts/**/*.ts'],
@@ -194,6 +208,7 @@ export default [
   swaggerDevConfig,
   routeJsdocConfig,
   testConfig,
+  e2eSpecConfig,
   scriptsConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,
