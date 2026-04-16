@@ -78,15 +78,10 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const fileContent = Buffer.from('hello world');
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'test-upload.txt',
     mimeType: 'text/plain',
-    buffer: fileContent,
+    buffer: Buffer.from('hello world'),
   });
 
   // Wait for attachment row to appear
@@ -118,11 +113,7 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   await page.goto(`/accounts/${account.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'account-doc.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('account document'),
@@ -151,11 +142,7 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   await page.goto(`/deals/${deal.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'deal-proposal.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('deal proposal content'),
@@ -183,11 +170,7 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'malware.exe',
     mimeType: 'application/octet-stream',
     buffer: Buffer.from('MZ'),
@@ -220,11 +203,7 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   // 26 MB — exceeds the 25 MB server limit; client guard fires first
   const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, 'x');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'huge-file.pdf',
     mimeType: 'application/pdf',
     buffer: oversizedBuffer,
@@ -251,11 +230,7 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'download-test.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('downloadable content'),
@@ -298,11 +273,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   await page.goto(`/contacts/${contact.id}`);
   await page.waitForSelector('[data-testid="attachments-section"]');
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
+  await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
     name: 'to-be-deleted.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('delete me'),
@@ -362,11 +333,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     await page.goto(`/contacts/${contact.id}`);
     await page.waitForSelector('[data-testid="attachments-section"]');
 
-    const [fileChooser] = await Promise.all([
-      page.waitForEvent('filechooser'),
-      page.click('[data-testid="attachments-upload-zone"]'),
-    ]);
-    await fileChooser.setFiles({
+    await page.locator('[data-testid="attachments-file-input"]').setInputFiles({
       name: 'admin-uploaded.txt',
       mimeType: 'text/plain',
       buffer: Buffer.from('admin content'),
