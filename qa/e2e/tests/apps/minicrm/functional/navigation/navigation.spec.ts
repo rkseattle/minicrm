@@ -467,10 +467,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // Left sidebar must still be active after reload — not reverted to default.
         await expect(leftNavLink).toBeVisible();
-        const topNavLink = await healPage
-          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
-          .resolve(testName);
-        await expect(topNavLink).not.toBeVisible();
+        expect(
+          await healPage.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          'nav-top-contacts should not be visible after reload in left layout',
+        ).toBe(true);
       } finally {
         await resetNavLayout(restClient, 'F8-LS2');
       }

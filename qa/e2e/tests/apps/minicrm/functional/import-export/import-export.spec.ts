@@ -123,12 +123,17 @@ function dealsCsv(rows: Array<{ name: string; stage: string; account_name: strin
 // Shared types
 // ---------------------------------------------------------------------------
 
+interface ImportFailure {
+  row: number;
+  data: Record<string, string>;
+  reason: string;
+}
+
 interface ImportSummaryResponse {
-  total: number;
   created: number;
-  updated: number;
   skipped: number;
-  failed: number;
+  failedCount: number;
+  failed: ImportFailure[];
   errorCsv: string | null;
 }
 
@@ -169,7 +174,7 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
   const ran = await importRun(request, 'contacts', csvBuffer, mapping);
   expect(ran.status, 'run should succeed').toBe(200);
   expect(ran.body.created, 'two contacts should be created').toBe(2);
-  expect(ran.body.failed, 'no failures expected').toBe(0);
+  expect(ran.body.failedCount, 'no failures expected').toBe(0);
 
   // Verify contacts are queryable via API
   const listResponse = await restClient.get<ContactListResponse>(
@@ -211,7 +216,7 @@ test('@functional F11-IC2: Upload a contacts CSV with a missing required field (
   if (ran.status === 200) {
     expect(ran.body.created, 'no contacts should be created without email').toBe(0);
     expect(
-      ran.body.failed + ran.body.skipped,
+      ran.body.failedCount + ran.body.skipped,
       'row should be counted as failed or skipped',
     ).toBeGreaterThan(0);
   }
