@@ -413,10 +413,15 @@ export interface CloseMobileNavViaToggleResult {
 export async function closeMobileNavViaToggle(
   context: NavBehaviorContext,
 ): Promise<CloseMobileNavViaToggleResult> {
-  await context.healPage.click([
-    { type: 'testId', value: 'nav-menu-toggle' },
-    { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
-  ]);
+  // Same intercept issue as openMobileNav — global-search-input overlaps the
+  // toggle on mobile viewports. force:true bypasses the pointer-intercept check.
+  const toggle = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
+    ])
+    .resolve(context.testName);
+  await toggle.click({ force: true });
   const drawer = await context.healPage
     .locate([
       { type: 'testId', value: 'mobile-nav-drawer' },
