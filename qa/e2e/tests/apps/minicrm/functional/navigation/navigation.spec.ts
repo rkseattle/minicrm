@@ -51,6 +51,9 @@ import {
   closeHamburgerMenuViaBackdrop,
   closeHamburgerMenuViaCloseButton,
   navigateViaNavLink,
+  openMobileNav,
+  closeMobileNavViaToggle,
+  navigateViaMobileNavLink,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { createTestContact, createTestDeal, createTestAccount } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -331,6 +334,12 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
+      // NavHamburger only renders on desktop — mobile always uses NavTop regardless
+      // of the stored layout setting. Active link styling inside the hamburger drawer
+      // is a desktop-only concern.
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-HB2: NavHamburger is desktop-only; mobile always renders NavTop');
+
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
@@ -473,8 +482,10 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
+      // NavHamburger is desktop-only — mobile always renders NavTop regardless of
+      // the layout setting. Mobile nav drawer mechanics are covered by F8-MN tests.
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-HM1 only runs under the mobile-web Playwright project');
+      test.skip(isMobile, 'F8-HM1: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -503,7 +514,7 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-HM2 only runs under the mobile-web Playwright project');
+      test.skip(isMobile, 'F8-HM2: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -531,7 +542,7 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-HM3 only runs under the mobile-web Playwright project');
+      test.skip(isMobile, 'F8-HM3: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -560,7 +571,7 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-HM4 only runs under the mobile-web Playwright project');
+      test.skip(isMobile, 'F8-HM4: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
       const testName = test.info().title;
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -591,7 +602,7 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-HM5 only runs under the mobile-web Playwright project');
+      test.skip(isMobile, 'F8-HM5: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
       await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
@@ -621,6 +632,141 @@ test.describe.serial('Layout-mutating tests', () => {
     });
   }); // end Hamburger Menu mechanics
 }); // end Layout-mutating tests
+
+// ---------------------------------------------------------------------------
+// Mobile nav mechanics (mobile-web project only)
+//
+// On mobile viewports NavBar always renders NavTop regardless of the stored
+// layout setting. These tests exercise the mobile nav drawer (mobile-nav-drawer)
+// which is NavTop's built-in mobile hamburger drawer. No layout API calls needed.
+// All interactions use the mobile nav behaviors.
+// ---------------------------------------------------------------------------
+
+test.describe('Mobile nav mechanics', () => {
+  test('@functional F8-MN1: mobile nav drawer opens on toggle tap', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    test.skip(!isMobile, 'F8-MN1 only runs under the mobile-web Playwright project');
+
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    const drawer = page.getByTestId('mobile-nav-drawer');
+    await expect(drawer).not.toBeVisible();
+
+    const result = await openMobileNav({ page, healPage, testName });
+
+    expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
+    await expect(drawer).toBeVisible();
+  });
+
+  test('@functional F8-MN3: mobile nav drawer closes on toggle tap when open', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    test.skip(!isMobile, 'F8-MN3 only runs under the mobile-web Playwright project');
+
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await openMobileNav({ page, healPage, testName });
+
+    const drawer = page.getByTestId('mobile-nav-drawer');
+    await expect(drawer).toBeVisible();
+
+    const result = await closeMobileNavViaToggle({ page, healPage, testName });
+
+    expect(result.drawerClosed, 'mobile nav drawer should close on toggle tap').toBe(true);
+    await expect(drawer).not.toBeVisible();
+  });
+
+  test('@functional F8-MN4: mobile nav drawer closes on navigation', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    test.skip(!isMobile, 'F8-MN4 only runs under the mobile-web Playwright project');
+
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await openMobileNav({ page, healPage, testName });
+
+    const drawer = page.getByTestId('mobile-nav-drawer');
+    await expect(drawer).toBeVisible();
+
+    await navigateViaMobileNavLink('contacts', { page, healPage, testName });
+
+    // NavTop's NavLink onClick calls closeMobileMenu() — drawer should be gone.
+    await expect(drawer).not.toBeVisible();
+  });
+
+  test('@functional F8-MN5: mobile nav drawer — all rep destinations accessible', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    test.skip(!isMobile, 'F8-MN5 only runs under the mobile-web Playwright project');
+
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await openMobileNav({ page, healPage, testName });
+
+    const drawer = page.getByTestId('mobile-nav-drawer');
+    await expect(drawer).toBeVisible();
+
+    for (const destination of Object.keys(REP_DESTINATIONS)) {
+      const link = page.getByTestId(`nav-top-${destination}-mobile`);
+      await expect(
+        link,
+        `nav-top-${destination}-mobile should be visible in the open mobile drawer`,
+      ).toBeVisible();
+    }
+
+    await closeMobileNavViaToggle({ page, healPage, testName });
+  });
+
+  test('@functional F8-MN6: mobile nav drawer — logout and language selector present', async ({
+    page,
+    healPage,
+    restClient,
+  }) => {
+    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    test.skip(!isMobile, 'F8-MN6 only runs under the mobile-web Playwright project');
+
+    const testName = test.info().title;
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    await openMobileNav({ page, healPage, testName });
+
+    const drawer = page.getByTestId('mobile-nav-drawer');
+    await expect(drawer).toBeVisible();
+
+    await expect(
+      page.getByTestId('nav-logout-mobile'),
+      'logout button should be present in mobile nav drawer',
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('nav-language-select-mobile'),
+      'language selector should be present in mobile nav drawer',
+    ).toBeVisible();
+
+    await closeMobileNavViaToggle({ page, healPage, testName });
+  });
+}); // end Mobile nav mechanics
 
 // ---------------------------------------------------------------------------
 // Deep linking — these tests use page.goto and do not touch nav-layout,

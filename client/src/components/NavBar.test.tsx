@@ -3,11 +3,12 @@
  *
  * NavBar reads the active layout from NavLayoutContext and renders the
  * appropriate layout component. These tests verify that the dispatch logic
- * works correctly for each layout value.
+ * works correctly for each layout value, and that mobile viewports always
+ * render NavTop regardless of the stored layout setting.
  */
 
 import { screen, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -40,7 +41,39 @@ function renderNavBar(layout: 'top' | 'left' | 'hamburger') {
   );
 }
 
-describe('NavBar dispatcher', () => {
+/**
+ * Mocks window.matchMedia to simulate a given viewport state.
+ * jsdom does not implement matchMedia, so we define it directly on window.
+ *
+ * @param matches - Whether the mobile media query should match.
+ */
+function mockMatchMedia(matches: boolean): void {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
+describe('NavBar dispatcher — desktop viewport', () => {
+  beforeEach(() => {
+    // Desktop: mobile query does not match.
+    mockMatchMedia(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('renders NavTop when layout is "top"', async () => {
     renderNavBar('top');
     await waitFor(() => {
@@ -69,5 +102,43 @@ describe('NavBar dispatcher', () => {
       expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
     });
     expect(screen.queryByTestId('nav-menu-toggle')).not.toBeInTheDocument();
+  });
+});
+
+describe('NavBar dispatcher — mobile viewport', () => {
+  beforeEach(() => {
+    // Mobile: mobile query matches regardless of stored layout.
+    mockMatchMedia(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders NavTop when layout is "top"', async () => {
+    renderNavBar('top');
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+  });
+
+  it('renders NavTop (not NavHamburger) when layout is "hamburger"', async () => {
+    renderNavBar('hamburger');
+    // Mobile always renders NavTop — the stored layout setting is ignored.
+    // NavTop's mobile drawer has the canonical mobile nav (logout, language selector).
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+    // NavHamburger-specific elements should not be present.
+    expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
+  });
+
+  it('renders NavTop (not null) when layout is "left"', async () => {
+    renderNavBar('left');
+    // On mobile the left sidebar setting is ignored — NavTop renders instead.
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('nav-left-dashboard')).not.toBeInTheDocument();
   });
 });
