@@ -63,6 +63,24 @@ interface AttachmentListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Storage availability guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Skip the test when storage is not configured in the environment.
+ * AttachmentsSection renders "not configured" state and the upload UI is
+ * hidden, making upload/download/delete assertions unreachable.
+ */
+async function skipIfStorageNotConfigured(restClient: {
+  get: <T>(path: string) => Promise<{ body: T }>;
+}): Promise<void> {
+  const res = await restClient.get<{ configured: boolean }>('/api/settings/storage/status');
+  if (!res.body.configured) {
+    test.skip(true, 'Storage not configured in this environment — skipping attachment tests');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Upload — F10-U
 // ---------------------------------------------------------------------------
 
@@ -74,6 +92,7 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const contact = await createTestContact(testData, restClient);
 
@@ -117,6 +136,7 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const account = await createTestAccount(testData, restClient);
 
@@ -153,6 +173,7 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
@@ -190,6 +211,7 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const contact = await createTestContact(testData, restClient);
 
@@ -230,6 +252,7 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const contact = await createTestContact(testData, restClient);
 
@@ -270,6 +293,7 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const contact = await createTestContact(testData, restClient);
 
@@ -321,6 +345,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 }) => {
   const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const contact = await createTestContact(testData, restClient);
 
@@ -360,14 +385,13 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   // Confirm deletion in dialog
   await healPage.click([{ type: 'testId', value: 'attachment-delete-confirm' }]);
 
-  // Row should be gone
-  await expect(
-    await healPage
-      .locate([{ type: 'testId', value: `attachment-row-${attachmentId}` }])
-      .resolve(testName),
-  ).not.toBeVisible({
-    timeout: 5_000,
-  });
+  // Row should be gone (isNotVisible — safe when element is removed from DOM).
+  await expect
+    .poll(
+      () => healPage.isNotVisible([{ type: 'testId', value: `attachment-row-${attachmentId}` }]),
+      { timeout: 5_000 },
+    )
+    .toBe(true);
 
   // API should return 404
   let got404 = false;
@@ -392,6 +416,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   const testName = test.info().title;
   // Admin uploads the attachment
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
 
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 

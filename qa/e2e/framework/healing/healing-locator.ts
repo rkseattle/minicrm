@@ -108,8 +108,11 @@ const DEFAULT_FALLBACK_TIMEOUT_MS = 2_000;
  * When `strategy.within` is set, the element factory is called on
  * `page.getByTestId(within)` rather than on `page` directly, scoping the
  * lookup to descendants of that container element.
+ *
+ * Exported so HealPage can build locators for absence checks without going
+ * through resolve() (which throws when the element is not found).
  */
-function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
+export function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
   const { type, value, options, within } = strategy;
   // When `within` is set, scope all factory calls to the container element.
   // Playwright's Locator exposes the same factory methods as Page (getByTestId,

@@ -472,11 +472,11 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  // Overdue badge should NOT be present.
-  const overdueBadge = await healPage
-    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
-    .resolve(testName);
-  await expect(overdueBadge, 'future task should not show overdue badge').not.toBeVisible();
+  // Overdue badge should NOT be present (isNotVisible — safe when element is absent).
+  expect(
+    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    'future task should not show overdue badge',
+  ).toBe(true);
 
   const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be open').toBe('open');
@@ -555,13 +555,10 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
 
-  const overdueBadge = await healPage
-    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
-    .resolve(testName);
-  await expect(
-    overdueBadge,
+  expect(
+    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
     'task with no due date should not show overdue badge',
-  ).not.toBeVisible();
+  ).toBe(true);
 });
 
 test('@functional F5-DS4: completed task with past due date → not shown as overdue', async ({
@@ -602,10 +599,10 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
     .resolve(testName);
   await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
 
-  const overdueBadge = await healPage
-    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
-    .resolve(testName);
-  await expect(overdueBadge, 'completed task must not show overdue badge').not.toBeVisible();
+  expect(
+    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    'completed task must not show overdue badge',
+  ).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
