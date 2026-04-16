@@ -15,6 +15,10 @@ export interface StageBreakdown {
   value: string;
   /** Sum of (value × effective_probability / 100) for deals in this stage (MINCRM-179) */
   weightedValue: string;
+  /** True when deals in this stage span more than one currency (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /** Currency code when all deals in the stage share one currency; null when mixed (MINCRM-189) */
+  currency: string | null;
 }
 
 /** A single entry in the recent activity feed returned on the dashboard (MINCRM-185) */
@@ -40,6 +44,10 @@ export interface DashboardSummaryResponse {
    * Sum of (value × effective_probability / 100) for all open deals. (MINCRM-179)
    */
   weightedPipelineValue: string;
+  /** True when open deals span more than one currency (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /** Currency code when all open deals share one currency; null when mixed or no deals (MINCRM-189) */
+  currency: string | null;
   stageBreakdown: StageBreakdown[];
   /** The 10 most recently updated activities visible to this user (MINCRM-185) */
   recentActivities: RecentActivityEntry[];

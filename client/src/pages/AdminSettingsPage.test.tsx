@@ -515,6 +515,63 @@ describe('AdminSettingsPage', () => {
     });
   });
 
+  // ── Default currency section (MINCRM-189) ──────────────────────────────────
+
+  describe('default currency section', () => {
+    it('renders the currency section', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('currency-section')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the currency select with USD pre-selected', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        const select = screen.getByTestId('default-currency-select') as HTMLSelectElement;
+        expect(select).toBeInTheDocument();
+        expect(select.value).toBe('USD');
+      });
+    });
+
+    it('shows success message after a successful currency save', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('default-currency-select')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('default-currency-select'), 'EUR');
+      await user.click(screen.getByTestId('currency-save-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('currency-save-success')).toBeInTheDocument();
+      });
+    });
+
+    it('shows error message when the currency save request fails', async () => {
+      server.use(
+        http.patch('/api/settings/default-currency', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('default-currency-select')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('currency-save-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('currency-save-error')).toBeInTheDocument();
+      });
+    });
+  });
+
   describe('demo data section — remove failure', () => {
     it('shows error feedback when remove fails', async () => {
       server.use(

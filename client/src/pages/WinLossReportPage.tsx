@@ -53,15 +53,16 @@ function endOfCurrentQuarter(): string {
 }
 
 /**
- * Formats a numeric string as a USD currency amount using the active i18next locale.
+ * Formats a numeric string as a currency amount using the active i18next locale.
  *
  * @param value - Numeric string from the API (e.g. "87000.00")
  * @param locale - BCP 47 language tag from i18next (e.g. "en", "de", "zh")
+ * @param currency - ISO 4217 currency code (e.g. "USD", "EUR") (MINCRM-189)
  */
-function formatCurrency(value: string, locale: string): string {
+function formatCurrency(value: string, locale: string, currency: string): string {
   const number = parseFloat(value);
-  if (isNaN(number)) return '$0.00';
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(number);
+  if (isNaN(number)) return '—';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(number);
 }
 
 /**
@@ -283,7 +284,9 @@ export default function WinLossReportPage() {
                   className="text-2xl font-bold text-green-600 break-words"
                   data-testid="stat-won-value-value"
                 >
-                  {formatCurrency(report.wonValue, i18n.language)}
+                  {report.mixedCurrencies
+                    ? t('pipeline.mixedCurrency')
+                    : formatCurrency(report.wonValue, i18n.language, report.currency ?? 'USD')}
                 </p>
               </div>
 
@@ -312,7 +315,9 @@ export default function WinLossReportPage() {
                   className="text-2xl font-bold text-red-600 break-words"
                   data-testid="stat-lost-value-value"
                 >
-                  {formatCurrency(report.lostValue, i18n.language)}
+                  {report.mixedCurrencies
+                    ? t('pipeline.mixedCurrency')
+                    : formatCurrency(report.lostValue, i18n.language, report.currency ?? 'USD')}
                 </p>
               </div>
 

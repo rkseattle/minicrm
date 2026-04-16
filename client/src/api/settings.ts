@@ -10,6 +10,8 @@ import type {
   SupportedLocale,
   NavLayoutResponse,
   NavLayout,
+  DefaultCurrencyResponse,
+  SupportedCurrency,
 } from '@shared/schemas/settingsSchema.js';
 
 /** React Query cache key for the default language setting */
@@ -91,5 +93,33 @@ export async function setEmailNotificationsEnabled(
     '/settings/email-notifications',
     { enabled },
   );
+  return response.data;
+}
+
+// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+
+/** React Query cache key for the default currency setting */
+export const DEFAULT_CURRENCY_QUERY_KEY = ['settings', 'defaultCurrency'] as const;
+
+/**
+ * Returns the current system-wide default currency.
+ * Called before auth resolves so the deal form can pre-select the right currency.
+ */
+export async function getDefaultCurrency(): Promise<DefaultCurrencyResponse> {
+  const response = await apiClient.get<DefaultCurrencyResponse>('/settings/default-currency');
+  return response.data;
+}
+
+/**
+ * Updates the system-wide default currency. Admin only. (MINCRM-189)
+ *
+ * @param currency - One of the supported ISO 4217 currency codes.
+ */
+export async function setDefaultCurrency(
+  currency: SupportedCurrency,
+): Promise<DefaultCurrencyResponse> {
+  const response = await apiClient.patch<DefaultCurrencyResponse>('/settings/default-currency', {
+    currency,
+  });
   return response.data;
 }

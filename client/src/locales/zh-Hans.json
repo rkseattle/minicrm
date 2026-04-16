@@ -359,7 +359,8 @@
     "probabilityDefaultHint": "使用阶段默认值：{{pct}}%",
     "probabilityOverriddenHint": "覆盖已激活 — 阶段默认值已忽略",
     "probabilityPct": "{{pct}}%",
-    "probabilityInvalid": "概率必须是 0 到 100 之间的整数"
+    "probabilityInvalid": "概率必须是 0 到 100 之间的整数",
+    "currencyLabel": "货币"
   },
   "pipeline": {
     "pageTitle": "管道看板",
@@ -370,6 +371,7 @@
     "nextStage": "下一阶段",
     "stageOf": "第 {{current}} 阶段，共 {{total}} 个",
     "emptyStage": "此阶段暂无商机",
+    "mixedCurrency": "多种货币 — 金额不予汇总",
     "closeDeal": {
       "title": "标记为{{stage}}",
       "closeDateLabel": "成交日期",
@@ -502,6 +504,13 @@
       "recipientCount_other": "{{count}} 位活跃用户已启用通知",
       "saveSuccess": "邮件通知设置已更新。",
       "saveError": "更新失败，请重试。"
+    },
+    "defaultCurrency": {
+      "sectionTitle": "默认货币",
+      "sectionHint": "设置新商机的默认货币。每笔商机可在创建或编辑时设置各自的货币。",
+      "selectLabel": "默认货币",
+      "saveSuccess": "默认货币已更新。",
+      "saveError": "保存失败，请重试。"
     },
     "storage": {
       "sectionTitle": "文件存储",

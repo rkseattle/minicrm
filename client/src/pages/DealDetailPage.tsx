@@ -41,18 +41,19 @@ import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
- * Formats a deal value as a USD currency string using the active locale.
+ * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
  *
  * @param value - Numeric string from the API, or null
+ * @param currency - ISO 4217 currency code stored on the deal
  * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
- * @returns Locale-formatted USD currency string, or '—' when value is absent
+ * @returns Locale-formatted currency string, or '—' when value is absent
  */
-function formatDealValue(value: string | null, locale: string): string {
+function formatDealValue(value: string | null, currency: string, locale: string): string {
   if (!value) return '—';
   const num = parseFloat(value);
   return isNaN(num)
     ? '—'
-    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
+    : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num);
 }
 
 /**
@@ -111,6 +112,7 @@ export default function DealDetailPage() {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
         value: values.value !== '' ? parseFloat(values.value) : null,
+        currency: (values.currency as DealResponse['currency']) || undefined,
         close_date: values.close_date || null,
         account_id: values.account_id || null,
         owner_id: values.owner_id || undefined,
@@ -354,7 +356,7 @@ export default function DealDetailPage() {
               />
               <DetailRow
                 label={t('deals.valueLabel')}
-                value={formatDealValue(deal.value, i18n.language)}
+                value={formatDealValue(deal.value, deal.currency, i18n.language)}
                 testId="detail-value"
               />
               <DetailRow

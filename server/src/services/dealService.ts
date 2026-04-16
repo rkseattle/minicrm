@@ -10,6 +10,7 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 import { fireAutomationTrigger } from './automationService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditEntryInput } from './auditService.js';
+import { getDefaultCurrency } from './settingsService.js';
 
 /** Actor info required to write audit entries on write operations */
 export interface AuditActor {
@@ -25,6 +26,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
   'name',
   'stage',
   'value',
+  'currency',
   'close_date',
   'account_id',
   'owner_id',
@@ -38,6 +40,8 @@ export interface DealRow {
   name: string;
   stage: string;
   value: string | null; // pg returns numeric as string
+  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  currency: string;
   close_date: string | null;
   loss_reason: string | null;
   account_id: string | null;
@@ -91,7 +95,10 @@ export async function createDeal(
   params: CreateDealInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<DealRow> {
-  const { name, stage, value, close_date, account_id, owner_id, probability } = params;
+  const { name, stage, value, currency, close_date, account_id, owner_id, probability } = params;
+
+  // Fall back to the system default currency when not specified on the deal (MINCRM-189)
+  const resolvedCurrency = currency ?? (await getDefaultCurrency());
 
   const client: PoolClient = await pool.connect();
   try {
@@ -101,13 +108,14 @@ export async function createDeal(
     // effective_probability and probability_is_overridden are resolved correctly.
     // (MINCRM-179)
     const insertResult = await client.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, probability)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO deals (name, stage, value, currency, close_date, account_id, owner_id, probability)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
       [
         name,
         stage,
         value ?? null,
+        resolvedCurrency,
         close_date ?? null,
         account_id ?? null,
         owner_id,
@@ -174,7 +182,7 @@ export async function findDealById(id: string): Promise<DealRow | null> {
  * probability_is_overridden = true when d.probability IS NOT NULL.
  * (MINCRM-179)
  */
-const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
+const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
   COALESCE(d.probability, ps.probability, 0) AS effective_probability,
   (d.probability IS NOT NULL) AS probability_is_overridden,
   d.created_at, d.updated_at`;
@@ -339,6 +347,8 @@ export interface DealExportRow {
   name: string;
   stage: string;
   value: string | null;
+  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  currency: string;
   close_date: string | null;
   loss_reason: string | null;
   account_name: string | null;
@@ -387,6 +397,7 @@ export async function exportDealsForCsv(
        d.name,
        d.stage,
        d.value,
+       d.currency,
        d.close_date::text,
        d.loss_reason,
        a.name AS account_name,
@@ -437,7 +448,7 @@ export async function deleteDeal(
          DELETE FROM deals WHERE id = $1 RETURNING *
        )
        SELECT
-         deleted.id, deleted.name, deleted.stage, deleted.value,
+         deleted.id, deleted.name, deleted.stage, deleted.value, deleted.currency,
          deleted.close_date::text, deleted.loss_reason, deleted.account_id, deleted.owner_id,
          COALESCE(deleted.probability, ps.probability, 0) AS effective_probability,
          (deleted.probability IS NOT NULL) AS probability_is_overridden,

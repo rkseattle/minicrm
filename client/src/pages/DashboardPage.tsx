@@ -26,15 +26,15 @@ import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 
 /**
  * Formats a numeric string as a currency amount using the active i18next locale.
- * Currency is always USD for this alpha; the locale controls separators and symbol placement.
  *
  * @param value - Numeric string from the API (e.g. "150000.00")
  * @param locale - BCP 47 language tag from i18next (e.g. "en", "de", "zh")
+ * @param currency - ISO 4217 currency code (e.g. "USD", "EUR") (MINCRM-189)
  */
-function formatCurrency(value: string, locale: string): string {
+function formatCurrency(value: string, locale: string, currency: string): string {
   const number = parseFloat(value);
-  if (isNaN(number)) return '$0.00';
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(number);
+  if (isNaN(number)) return '—';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(number);
 }
 
 /** A single summary stat card. */
@@ -279,12 +279,24 @@ export default function DashboardPage() {
               <StatCard
                 testId="stat-pipeline-value"
                 label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.pipelineValue')}`}
-                value={formatCurrency(data.openPipelineValue, i18n.language)}
+                value={
+                  data.mixedCurrencies
+                    ? t('pipeline.mixedCurrency')
+                    : formatCurrency(data.openPipelineValue, i18n.language, data.currency ?? 'USD')
+                }
               />
               <StatCard
                 testId="stat-weighted-pipeline-value"
                 label={`${isAdmin ? t('dashboard.teamScope') : t('dashboard.myScope')} ${t('dashboard.weightedPipelineValue')}`}
-                value={formatCurrency(data.weightedPipelineValue, i18n.language)}
+                value={
+                  data.mixedCurrencies
+                    ? t('pipeline.mixedCurrency')
+                    : formatCurrency(
+                        data.weightedPipelineValue,
+                        i18n.language,
+                        data.currency ?? 'USD',
+                      )
+                }
               />
             </div>
 
@@ -356,13 +368,21 @@ export default function DashboardPage() {
                             className="px-6 py-4 text-sm text-gray-600 text-end"
                             data-testid={`stage-value-${row.stage}`}
                           >
-                            {formatCurrency(row.value, i18n.language)}
+                            {row.mixedCurrencies
+                              ? t('pipeline.mixedCurrency')
+                              : formatCurrency(row.value, i18n.language, row.currency ?? 'USD')}
                           </td>
                           <td
                             className="px-6 py-4 text-sm text-gray-600 text-end"
                             data-testid={`stage-weighted-value-${row.stage}`}
                           >
-                            {formatCurrency(row.weightedValue, i18n.language)}
+                            {row.mixedCurrencies
+                              ? t('pipeline.mixedCurrency')
+                              : formatCurrency(
+                                  row.weightedValue,
+                                  i18n.language,
+                                  row.currency ?? 'USD',
+                                )}
                           </td>
                         </tr>
                       ))}

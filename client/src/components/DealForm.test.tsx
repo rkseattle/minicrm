@@ -22,6 +22,7 @@ const DEAL_WITH_OVERRIDE: Partial<DealResponse> = {
   name: 'Override Deal',
   stage: 'Prospecting',
   value: '50000.00',
+  currency: 'USD',
   close_date: null,
   effective_probability: 75,
   probability_is_overridden: true,
@@ -245,5 +246,48 @@ describe('DealForm — probability hint text (MINCRM-179)', () => {
     });
     // Overridden hint is present as non-error p element
     expect(hints.length).toBeGreaterThan(0);
+  });
+});
+
+describe('DealForm — currency selector (MINCRM-189)', () => {
+  it('renders the currency selector', async () => {
+    renderWithProviders(<DealForm onSubmit={noop} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-currency-select')).toBeInTheDocument();
+    });
+  });
+
+  it('defaults to USD when no initialValues currency is provided', async () => {
+    renderWithProviders(<DealForm onSubmit={noop} />);
+    await waitFor(() => {
+      const select = screen.getByTestId<HTMLSelectElement>('deal-currency-select');
+      expect(select.value).toBe('USD');
+    });
+  });
+
+  it('pre-populates currency from initialValues', async () => {
+    renderWithProviders(
+      <DealForm initialValues={{ ...DEAL_WITH_OVERRIDE, currency: 'EUR' }} onSubmit={noop} />,
+    );
+    await waitFor(() => {
+      const select = screen.getByTestId<HTMLSelectElement>('deal-currency-select');
+      expect(select.value).toBe('EUR');
+    });
+  });
+
+  it('includes the selected currency in the submit payload', async () => {
+    const onSubmit = vi.fn();
+    renderWithProviders(<DealForm onSubmit={onSubmit} />);
+    await waitFor(() => expect(screen.getByTestId('deal-currency-select')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByTestId('deal-name-input'), {
+      target: { name: 'name', value: 'Test Deal' },
+    });
+    fireEvent.change(screen.getByTestId('deal-currency-select'), {
+      target: { name: 'currency', value: 'GBP' },
+    });
+    fireEvent.submit(screen.getByTestId('deal-form'));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ currency: 'GBP' }));
   });
 });

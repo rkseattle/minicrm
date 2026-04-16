@@ -714,3 +714,54 @@ describe('deal probability — effective_probability and probability_is_overridd
     expect(found!.effective_probability).toBe(30);
   });
 });
+
+// ── currency field (MINCRM-189) ───────────────────────────────────────────────
+// Reset default_currency to USD before each test so the suite is independent of
+// settingsService.test.ts which may leave a non-USD default_currency in the DB.
+
+beforeEach(async () => {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at) VALUES ('default_currency', 'USD', now())
+     ON CONFLICT (key) DO UPDATE SET value = 'USD', updated_at = now()`,
+  );
+});
+
+describe('createDeal — currency field', () => {
+  it('defaults to USD when no currency is specified', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    expect(deal.currency).toBe('USD');
+  });
+
+  it('stores an explicit currency on the deal', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, currency: 'EUR', owner_id: ownerId });
+    expect(deal.currency).toBe('EUR');
+  });
+
+  it('stores GBP currency on the deal', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, currency: 'GBP', owner_id: ownerId });
+    expect(deal.currency).toBe('GBP');
+  });
+});
+
+describe('updateDeal — currency field', () => {
+  it('updates the currency on an existing deal', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    expect(deal.currency).toBe('USD');
+    const updated = await updateDeal(deal.id, { currency: 'CAD' });
+    expect(updated!.currency).toBe('CAD');
+  });
+
+  it('leaves currency unchanged when not in the update payload', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, currency: 'JPY', owner_id: ownerId });
+    const updated = await updateDeal(deal.id, { name: 'Renamed Deal' });
+    expect(updated!.currency).toBe('JPY');
+  });
+});
+
+describe('exportDealsForCsv — currency field', () => {
+  it('includes currency in the export row', async () => {
+    await createDeal({ ...BASE_DEAL, currency: 'AUD', owner_id: ownerId });
+    const rows = await exportDealsForCsv({ ownerId });
+    expect(rows[0].currency).toBe('AUD');
+  });
+});

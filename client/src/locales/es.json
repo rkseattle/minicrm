@@ -359,7 +359,8 @@
     "probabilityDefaultHint": "Usando el valor predeterminado de la etapa: {{pct}}%",
     "probabilityOverriddenHint": "Anulación activa — valor predeterminado ignorado",
     "probabilityPct": "{{pct}} %",
-    "probabilityInvalid": "La probabilidad debe ser un número entero entre 0 y 100"
+    "probabilityInvalid": "La probabilidad debe ser un número entero entre 0 y 100",
+    "currencyLabel": "Moneda"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",
@@ -370,6 +371,7 @@
     "nextStage": "Etapa siguiente",
     "stageOf": "Etapa {{current}} de {{total}}",
     "emptyStage": "No hay oportunidades en esta etapa",
+    "mixedCurrency": "Múltiples divisas — valores no sumados",
     "closeDeal": {
       "title": "Cerrar como {{stage}}",
       "closeDateLabel": "Fecha de cierre",
@@ -502,6 +504,13 @@
       "recipientCount_other": "{{count}} usuarios activos tienen las notificaciones activadas",
       "saveSuccess": "Configuración de notificaciones actualizada.",
       "saveError": "Error al actualizar. Por favor, inténtalo de nuevo."
+    },
+    "defaultCurrency": {
+      "sectionTitle": "Moneda predeterminada",
+      "sectionHint": "Establece la moneda predeterminada para las nuevas oportunidades. Cada oportunidad puede tener su propia moneda al crearla o editarla.",
+      "selectLabel": "Moneda predeterminada",
+      "saveSuccess": "Moneda predeterminada actualizada.",
+      "saveError": "Error al guardar. Por favor, inténtalo de nuevo."
     },
     "storage": {
       "sectionTitle": "Almacenamiento de archivos",

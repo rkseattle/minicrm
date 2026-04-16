@@ -359,7 +359,8 @@
     "probabilityDefaultHint": "Défaut de l'étape utilisé : {{pct}} %",
     "probabilityOverriddenHint": "Remplacement actif — défaut ignoré",
     "probabilityPct": "{{pct}} %",
-    "probabilityInvalid": "La probabilité doit être un nombre entier compris entre 0 et 100"
+    "probabilityInvalid": "La probabilité doit être un nombre entier compris entre 0 et 100",
+    "currencyLabel": "Devise"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",
@@ -370,6 +371,7 @@
     "nextStage": "Étape suivante",
     "stageOf": "Étape {{current}} sur {{total}}",
     "emptyStage": "Aucune opportunité dans cette étape",
+    "mixedCurrency": "Plusieurs devises — valeurs non additionnées",
     "closeDeal": {
       "title": "Clôturer comme {{stage}}",
       "closeDateLabel": "Date de clôture",
@@ -502,6 +504,13 @@
       "recipientCount_other": "{{count}} utilisateurs actifs ont les notifications activées",
       "saveSuccess": "Paramètre de notification mis à jour.",
       "saveError": "Échec de la mise à jour. Veuillez réessayer."
+    },
+    "defaultCurrency": {
+      "sectionTitle": "Devise par défaut",
+      "sectionHint": "Définit la devise par défaut pour les nouvelles opportunités. Chaque opportunité peut avoir sa propre devise à la création ou à la modification.",
+      "selectLabel": "Devise par défaut",
+      "saveSuccess": "Devise par défaut mise à jour.",
+      "saveError": "Échec de l'enregistrement. Veuillez réessayer."
     },
     "storage": {
       "sectionTitle": "Stockage de fichiers",

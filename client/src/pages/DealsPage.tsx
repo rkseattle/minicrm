@@ -51,18 +51,19 @@ interface PendingClose {
 }
 
 /**
- * Formats a deal value as a USD currency string using the active locale.
+ * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
  *
  * @param value - Numeric string from the API (pg returns numeric as string)
+ * @param currency - ISO 4217 currency code stored on the deal
  * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
- * @returns Locale-formatted USD currency string, or '—' when value is absent
+ * @returns Locale-formatted currency string, or '—' when value is absent
  */
-function formatDealValue(value: string | null, locale: string): string {
+function formatDealValue(value: string | null, currency: string, locale: string): string {
   if (!value) return '—';
   const num = parseFloat(value);
   return isNaN(num)
     ? '—'
-    : new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(num);
+    : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num);
 }
 
 /** Today's date in YYYY-MM-DD format, used as default close date in the close modal */
@@ -246,8 +247,13 @@ export default function DealsPage() {
     const deals = listData?.data ?? [];
     return openStages.map((s) => {
       const stageDeals = deals.filter((d) => d.stage === s.name);
-      const total = stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
-      return { stage: s.name, count: stageDeals.length, total };
+      const currencies = new Set(stageDeals.filter((d) => d.value).map((d) => d.currency));
+      const mixedCurrency = currencies.size > 1;
+      const total = mixedCurrency
+        ? null
+        : stageDeals.reduce((acc, d) => acc + (d.value ? parseFloat(d.value) : 0), 0);
+      const currency = currencies.size === 1 ? [...currencies][0] : null;
+      return { stage: s.name, count: stageDeals.length, total, currency, mixedCurrency };
     });
   }, [listData?.data, viewMode, openStages]);
 
@@ -262,6 +268,7 @@ export default function DealsPage() {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
         value: values.value !== '' ? parseFloat(values.value) : undefined,
+        currency: (values.currency as DealResponse['currency']) || undefined,
         close_date: values.close_date || undefined,
         account_id: values.account_id || undefined,
         // Pass probability override only when the field is non-empty (MINCRM-179)
@@ -673,7 +680,7 @@ export default function DealsPage() {
                 aria-label={t('deals.pipelineSummaryLabel')}
                 className="mb-4 flex flex-wrap gap-2"
               >
-                {pipelineSummary.map(({ stage, count, total }) => (
+                {pipelineSummary.map(({ stage, count, total, currency, mixedCurrency }) => (
                   <div
                     key={stage}
                     data-testid={`pipeline-summary-${stage.toLowerCase().replace(/\s+/g, '-')}`}
@@ -684,12 +691,14 @@ export default function DealsPage() {
                     <span>{count}</span>
                     <span className="text-gray-400">·</span>
                     <span className="text-gray-500">
-                      {new Intl.NumberFormat(i18n.language, {
-                        style: 'currency',
-                        currency: 'USD',
-                        notation: 'compact',
-                        maximumFractionDigits: 1,
-                      }).format(total)}
+                      {mixedCurrency
+                        ? t('pipeline.mixedCurrency')
+                        : new Intl.NumberFormat(i18n.language, {
+                            style: 'currency',
+                            currency: currency ?? 'USD',
+                            notation: 'compact',
+                            maximumFractionDigits: 1,
+                          }).format(total ?? 0)}
                     </span>
                   </div>
                 ))}
@@ -740,7 +749,7 @@ export default function DealsPage() {
                             {getStageDisplayName(deal.stage, t)}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {formatDealValue(deal.value, i18n.language)}
+                            {formatDealValue(deal.value, deal.currency, i18n.language)}
                           </p>
                           <p
                             className="text-xs text-gray-400 mt-1"
@@ -853,7 +862,7 @@ export default function DealsPage() {
                               {getStageDisplayName(deal.stage, t)}
                             </td>
                             <td className="px-4 py-3 text-gray-500">
-                              {formatDealValue(deal.value, i18n.language)}
+                              {formatDealValue(deal.value, deal.currency, i18n.language)}
                             </td>
                             <td className="px-4 py-3 text-gray-500">
                               {formatLocalDate(deal.close_date, i18n.language)}

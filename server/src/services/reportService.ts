@@ -30,6 +30,10 @@ interface WinLossAggRow {
   won_value: string;
   lost_count: string;
   lost_value: string;
+  /** COUNT(DISTINCT currency) across all closed deals with a value (MINCRM-189) */
+  currency_count: string;
+  /** Single currency code when all closed deals share the same currency (MINCRM-189) */
+  single_currency: string | null;
 }
 
 /** A single entry in the loss reason breakdown */
@@ -55,6 +59,13 @@ export interface WinLossReport {
   winRate: number | null;
   /** Top loss reasons by count, descending. Empty when no loss reasons were captured. */
   lossReasonBreakdown: LossReasonBreakdown[];
+  /** True when closed deals span more than one currency; totals are not meaningful (MINCRM-189) */
+  mixedCurrencies: boolean;
+  /**
+   * The currency code when all closed deals share one currency; null when mixed or no deals.
+   * Pair with mixedCurrencies to format monetary totals correctly. (MINCRM-189)
+   */
+  currency: string | null;
 }
 
 /**
@@ -75,7 +86,9 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
          COUNT(*) FILTER (WHERE stage = 'Closed Won')                       AS won_count,
          COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Won'), 0)::text  AS won_value,
          COUNT(*) FILTER (WHERE stage = 'Closed Lost')                      AS lost_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value
+         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value,
+         COUNT(DISTINCT CASE WHEN value IS NOT NULL THEN currency END)::text AS currency_count,
+         MIN(currency) AS single_currency
        FROM deals
        WHERE stage IN ('Closed Won', 'Closed Lost')
          AND close_date >= $1
@@ -85,7 +98,9 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
          COUNT(*) FILTER (WHERE stage = 'Closed Won')                       AS won_count,
          COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Won'), 0)::text  AS won_value,
          COUNT(*) FILTER (WHERE stage = 'Closed Lost')                      AS lost_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value
+         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value,
+         COUNT(DISTINCT CASE WHEN value IS NOT NULL THEN currency END)::text AS currency_count,
+         MIN(currency) AS single_currency
        FROM deals
        WHERE stage IN ('Closed Won', 'Closed Lost')
          AND close_date >= $1
@@ -99,6 +114,8 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   const wonValue = aggRow.won_value;
   const lostCount = parseInt(aggRow.lost_count, 10);
   const lostValue = aggRow.lost_value;
+  const mixedCurrencies = parseInt(aggRow.currency_count, 10) > 1;
+  const currency = mixedCurrencies ? null : (aggRow.single_currency ?? null);
 
   const totalClosed = wonCount + lostCount;
   const winRate = totalClosed > 0 ? wonCount / totalClosed : null;
@@ -145,6 +162,8 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     lostValue,
     winRate,
     lossReasonBreakdown,
+    mixedCurrencies,
+    currency,
   };
 }
 

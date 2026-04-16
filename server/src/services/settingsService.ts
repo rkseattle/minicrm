@@ -5,8 +5,16 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
-import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
-import type { SupportedLocale, NavLayout } from '@minicrm/shared/schemas/settingsSchema.js';
+import {
+  SUPPORTED_LOCALES,
+  NAV_LAYOUTS,
+  SUPPORTED_CURRENCIES,
+} from '@minicrm/shared/schemas/settingsSchema.js';
+import type {
+  SupportedLocale,
+  NavLayout,
+  SupportedCurrency,
+} from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** A row from the system_settings table */
 interface SystemSettingRow {
@@ -23,6 +31,9 @@ const NAV_LAYOUT_KEY = 'nav_layout';
 
 /** The key used to store the global email notifications enabled setting (MINCRM-163) */
 const EMAIL_NOTIFICATIONS_ENABLED_KEY = 'email_notifications_enabled';
+
+/** The key used to store the default currency setting (MINCRM-189) */
+const DEFAULT_CURRENCY_KEY = 'default_currency';
 
 /**
  * Retrieves the current system-wide default language.
@@ -138,4 +149,44 @@ export async function setEmailNotificationsEnabled(enabled: boolean): Promise<bo
     [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled)],
   );
   return enabled;
+}
+
+// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+
+/**
+ * Retrieves the current system-wide default currency.
+ * Falls back to 'USD' if the row is missing.
+ *
+ * @returns The stored default currency code.
+ */
+export async function getDefaultCurrency(): Promise<SupportedCurrency> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [DEFAULT_CURRENCY_KEY],
+  );
+  if (!result.rows[0]) {
+    return 'USD';
+  }
+  const raw = result.rows[0].value;
+  if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(raw)) {
+    logger.warn(`system_settings default_currency '${raw}' is unsupported — falling back to USD`);
+    return 'USD';
+  }
+  return raw as SupportedCurrency;
+}
+
+/**
+ * Persists a new system-wide default currency. Admin only. (MINCRM-189)
+ *
+ * @param currency - One of the supported ISO 4217 currency codes.
+ * @returns The updated currency code.
+ */
+export async function setDefaultCurrency(currency: SupportedCurrency): Promise<SupportedCurrency> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [DEFAULT_CURRENCY_KEY, currency],
+  );
+  return currency;
 }

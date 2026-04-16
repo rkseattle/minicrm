@@ -116,6 +116,8 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
     { reason: 'Price too high', count: 1 },
     { reason: 'Lost to competitor', count: 1 },
   ],
+  mixedCurrencies: false,
+  currency: 'USD',
 };
 
 /** Reusable fixture: a recent activity entry on the dashboard */
@@ -135,9 +137,25 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
   openDealCount: 3,
   openPipelineValue: '150000.00',
   weightedPipelineValue: '52500.00',
+  mixedCurrencies: false,
+  currency: 'USD',
   stageBreakdown: [
-    { stage: 'Prospecting', count: 1, value: '50000.00', weightedValue: '5000.00' },
-    { stage: 'Qualification', count: 2, value: '100000.00', weightedValue: '25000.00' },
+    {
+      stage: 'Prospecting',
+      count: 1,
+      value: '50000.00',
+      weightedValue: '5000.00',
+      mixedCurrencies: false,
+      currency: 'USD',
+    },
+    {
+      stage: 'Qualification',
+      count: 2,
+      value: '100000.00',
+      weightedValue: '25000.00',
+      mixedCurrencies: false,
+      currency: 'USD',
+    },
   ],
   recentActivities: [RECENT_ACTIVITY_1],
 };
@@ -261,6 +279,7 @@ export const DEAL_1: DealResponse = {
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000.00',
+  currency: 'USD',
   close_date: '2026-12-31',
   loss_reason: null,
   account_id: '00000000-0000-0000-0000-000000000201',
@@ -852,6 +871,17 @@ export const handlers = [
   http.patch('/api/settings/email-notifications', async ({ request }) => {
     const body = (await request.json()) as { enabled: boolean };
     return HttpResponse.json({ enabled: body.enabled });
+  }),
+
+  /** Settings: GET /api/settings/default-currency (MINCRM-189) */
+  http.get('/api/settings/default-currency', () => {
+    return HttpResponse.json({ currency: 'USD' });
+  }),
+
+  /** Settings: PATCH /api/settings/default-currency (MINCRM-189) */
+  http.patch('/api/settings/default-currency', async ({ request }) => {
+    const body = (await request.json()) as { currency: string };
+    return HttpResponse.json({ currency: body.currency });
   }),
 
   /** Users: GET /api/users/notification-recipient-count (MINCRM-163) */
