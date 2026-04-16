@@ -26,7 +26,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestDeal,
+  createTestUser,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -37,9 +42,7 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F10-attachments] E2E_ADMIN_PASSWORD is not set');
 
-const REP_EMAIL = process.env['E2E_REP_EMAIL'] ?? 'rep@example.com';
-const REP_PASSWORD = process.env['E2E_REP_PASSWORD'];
-if (!REP_PASSWORD) throw new Error('[F10-attachments] E2E_REP_PASSWORD is not set');
+const REP_PASSWORD = 'BvtPassword1!';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -351,43 +354,48 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   // Admin uploads the attachment
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
+  const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
+
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
-  await page.waitForSelector('[data-testid="attachments-section"]');
-
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-testid="attachments-upload-zone"]'),
-  ]);
-  await fileChooser.setFiles({
-    name: 'admin-uploaded.txt',
-    mimeType: 'text/plain',
-    buffer: Buffer.from('admin content'),
-  });
-
-  // Wait for the upload to complete before querying the API for the attachment ID
-  await expect(page.locator('[data-testid="attachments-list"]')).toBeVisible({ timeout: 10_000 });
-
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/attachments?recordType=contact&recordId=${contact.id}`,
-  );
-  expect(listResponse.body.attachments.length, 'attachment exists').toBeGreaterThan(0);
-  const attachmentId = listResponse.body.attachments[0]!.id;
-  testData.register('attachment', attachmentId, `/api/attachments/${attachmentId}`);
-
-  // Switch to rep session
-  await restClient.post('/api/auth/login', { email: REP_EMAIL, password: REP_PASSWORD });
-
-  // Rep tries to delete via API — should get 403
-  let got403 = false;
   try {
-    await restClient.delete(`/api/attachments/${attachmentId}`);
-  } catch (err) {
-    if (err instanceof RestClientError && err.status === 403) got403 = true;
-  }
-  expect(got403, 'rep should get 403 when deleting another user attachment').toBe(true);
+    await page.goto(`/contacts/${contact.id}`);
+    await page.waitForSelector('[data-testid="attachments-section"]');
 
-  // Restore admin session so teardown succeeds
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.click('[data-testid="attachments-upload-zone"]'),
+    ]);
+    await fileChooser.setFiles({
+      name: 'admin-uploaded.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('admin content'),
+    });
+
+    // Wait for the upload to complete before querying the API for the attachment ID
+    await expect(page.locator('[data-testid="attachments-list"]')).toBeVisible({ timeout: 10_000 });
+
+    const listResponse = await restClient.get<AttachmentListResponse>(
+      `/api/attachments?recordType=contact&recordId=${contact.id}`,
+    );
+    expect(listResponse.body.attachments.length, 'attachment exists').toBeGreaterThan(0);
+    const attachmentId = listResponse.body.attachments[0]!.id;
+    testData.register('attachment', attachmentId, `/api/attachments/${attachmentId}`);
+
+    // Switch to rep session
+    await restClient.post('/api/auth/login', { email: rep.email, password: REP_PASSWORD });
+
+    // Rep tries to delete via API — should get 403
+    let got403 = false;
+    try {
+      await restClient.delete(`/api/attachments/${attachmentId}`);
+    } catch (err) {
+      if (err instanceof RestClientError && err.status === 403) got403 = true;
+    }
+    expect(got403, 'rep should get 403 when deleting another user attachment').toBe(true);
+  } finally {
+    // Restore admin session so teardown succeeds, then deactivate the rep
+    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.patch(`/api/users/${rep.id}/deactivate`, {}).catch(() => null);
+  }
 });
