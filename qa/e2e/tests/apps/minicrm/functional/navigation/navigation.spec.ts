@@ -531,17 +531,20 @@ test.describe.serial('Layout-mutating tests', () => {
       await page.goto('/', { waitUntil: 'networkidle' });
 
       try {
-        // Drawer should not be visible initially.
-        const drawer = await healPage
-          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
-          .resolve(testName);
-        await expect(drawer).not.toBeVisible();
+        // Drawer is conditionally rendered — not in DOM when closed.
+        expect(
+          await healPage.doesNotExist([{ type: 'testId', value: 'nav-hamburger-drawer' }]),
+          'hamburger drawer should not exist before toggle tap',
+        ).toBe(true);
 
         const result = await openHamburgerMenu({ page, healPage, testName });
 
         expect(result.drawerVisible, 'hamburger drawer should be visible after toggle tap').toBe(
           true,
         );
+        const drawer = await healPage
+          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .resolve(testName);
         await expect(drawer).toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM1');
