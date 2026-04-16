@@ -253,8 +253,16 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   // Wait for either an account row or the empty-state text to appear (same
   // pattern as contacts.spec.ts searchContacts behavior).
   await Promise.race([
-    page.waitForSelector('[data-testid^="account-link-"]', { timeout: 10_000 }).catch(() => null),
-    page.waitForSelector(`text=${t('accounts.empty')}`, { timeout: 10_000 }).catch(() => null),
+    healPage
+      .locate([{ type: 'css', value: '[data-testid^="account-link-"]' }])
+      .resolve(testName)
+      .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
+      .catch(() => null),
+    healPage
+      .locate([{ type: 'text', value: t('accounts.empty') }])
+      .resolve(testName)
+      .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
+      .catch(() => null),
   ]);
 
   // Verify via API that the search returns zero results.
@@ -265,7 +273,7 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 
   // The empty state paragraph should now be visible.
   await expect(
-    page.locator(`text=${t('accounts.empty')}`).first(),
+    await healPage.locate([{ type: 'text', value: t('accounts.empty') }]).resolve(testName),
     'empty state text should be visible',
   ).toBeVisible();
 });
@@ -451,9 +459,11 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
 
 test('@functional F3-A1: linked contacts appear on account detail page', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -470,7 +480,9 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   await page.waitForLoadState('networkidle');
 
   // The linked contacts list should contain the contact.
-  const linkedContactLocator = page.locator(`[data-testid="linked-contact-${contact.id}"]`);
+  const linkedContactLocator = await healPage
+    .locate([{ type: 'testId', value: `linked-contact-${contact.id}` }])
+    .resolve(testName);
   await expect(
     linkedContactLocator,
     'linked contact should be visible on account detail',
@@ -479,9 +491,11 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
 test('@functional F3-A2: account with zero contacts shows empty contacts section, not an error', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -492,19 +506,23 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   await page.waitForLoadState('networkidle');
 
   // Empty state should be visible, no error.
-  const emptyLocator = page.locator('[data-testid="linked-contacts-empty"]');
+  const emptyLocator = await healPage
+    .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
+    .resolve(testName);
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
   // No error alert should be present.
-  const errorLocator = page.locator('[role="alert"]');
+  const errorLocator = await healPage.locate([{ type: 'role', value: 'alert' }]).resolve(testName);
   expect(await errorLocator.count(), 'no error alerts should be present').toBe(0);
 });
 
 test('@functional F3-A3: unlinking contact from contact side is reflected on account detail', async ({
   page,
+  healPage,
   restClient,
   testData,
 }) => {
+  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -521,11 +539,15 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   await page.waitForLoadState('networkidle');
 
   // After unlinking, the linked contacts list should be empty.
-  const emptyLocator = page.locator('[data-testid="linked-contacts-empty"]');
+  const emptyLocator = await healPage
+    .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
+    .resolve(testName);
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
   // The previously linked contact should not appear in the list.
-  const linkedContactLocator = page.locator(`[data-testid="linked-contact-${contact.id}"]`);
+  const linkedContactLocator = await healPage
+    .locate([{ type: 'testId', value: `linked-contact-${contact.id}` }])
+    .resolve(testName);
   expect(
     await linkedContactLocator.isVisible().catch(() => false),
     'contact should no longer appear in linked contacts list',

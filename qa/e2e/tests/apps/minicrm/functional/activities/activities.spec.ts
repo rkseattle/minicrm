@@ -473,7 +473,9 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
   // Overdue badge should NOT be present.
-  const overdueBadge = page.locator(`[data-testid="task-overdue-badge-${activity.id}"]`);
+  const overdueBadge = await healPage
+    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
+    .resolve(testName);
   await expect(overdueBadge, 'future task should not show overdue badge').not.toBeVisible();
 
   const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
@@ -518,7 +520,9 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  const overdueBadge = page.locator(`[data-testid="task-overdue-badge-${activity.id}"]`);
+  const overdueBadge = await healPage
+    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
+    .resolve(testName);
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
 
@@ -551,7 +555,9 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   const navResult = await navigateToMyTasks({ page, healPage, testName });
   expect(navResult.loaded).toBe(true);
 
-  const overdueBadge = page.locator(`[data-testid="task-overdue-badge-${activity.id}"]`);
+  const overdueBadge = await healPage
+    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
+    .resolve(testName);
   await expect(
     overdueBadge,
     'task with no due date should not show overdue badge',
@@ -589,13 +595,16 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   expect(navResult.loaded).toBe(true);
 
   // Toggle is required — completed tasks are hidden by default.
-  await page.click('[data-testid="toggle-completed-button"]');
+  await healPage.click([{ type: 'testId', value: 'toggle-completed-button' }]);
   // Wait for the completed row to appear before asserting the badge is absent.
-  await page
-    .locator(`[data-testid="task-row-${activity.id}"]`)
-    .waitFor({ state: 'visible', timeout: 10_000 });
+  const taskRow = await healPage
+    .locate([{ type: 'testId', value: `task-row-${activity.id}` }])
+    .resolve(testName);
+  await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
 
-  const overdueBadge = page.locator(`[data-testid="task-overdue-badge-${activity.id}"]`);
+  const overdueBadge = await healPage
+    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
+    .resolve(testName);
   await expect(overdueBadge, 'completed task must not show overdue badge').not.toBeVisible();
 });
 
