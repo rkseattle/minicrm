@@ -340,3 +340,153 @@ export async function navigateViaNavLink(
 
   return { linkClicked: true, finalUrl: context.page.url() };
 }
+
+// ---------------------------------------------------------------------------
+// Mobile nav behaviors (NavTop mobile drawer)
+//
+// These behaviors operate on the mobile nav drawer rendered by NavTop at
+// viewports below the lg breakpoint. The drawer is identified by
+// data-testid="mobile-nav-drawer" and nav links by "nav-top-{dest}-mobile".
+// NavTop has no separate close button — the drawer closes via the toggle or
+// an outside tap.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// openMobileNav()
+// ---------------------------------------------------------------------------
+
+/** Result returned by openMobileNav. */
+export interface OpenMobileNavResult {
+  /** True if the mobile nav drawer became visible after the toggle click. */
+  drawerVisible: boolean;
+}
+
+/**
+ * Opens the mobile nav drawer by clicking the toggle button and waits for
+ * the drawer to become visible.
+ *
+ * @param context - Behavior context with page and healPage.
+ * @returns Result indicating whether the drawer appeared.
+ */
+export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMobileNavResult> {
+  await context.healPage.click([
+    { type: 'testId', value: 'nav-menu-toggle' },
+    { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+  ]);
+  // The drawer is conditionally rendered — resolve after the click that mounts it.
+  const drawer = await context.healPage
+    .locate([
+      { type: 'testId', value: 'mobile-nav-drawer' },
+      { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
+  await drawer?.waitFor({ state: 'visible' }).catch(() => null);
+  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
+  return { drawerVisible };
+}
+
+// ---------------------------------------------------------------------------
+// closeMobileNavViaToggle()
+// ---------------------------------------------------------------------------
+
+/** Result returned by closeMobileNavViaToggle. */
+export interface CloseMobileNavViaToggleResult {
+  /** True if the drawer is no longer visible after clicking the toggle. */
+  drawerClosed: boolean;
+}
+
+/**
+ * Closes the mobile nav drawer by clicking the toggle button (which shows an X
+ * when open). Assumes the drawer is already open.
+ *
+ * @param context - Behavior context with page and healPage.
+ * @returns Result indicating whether the drawer closed.
+ */
+export async function closeMobileNavViaToggle(
+  context: NavBehaviorContext,
+): Promise<CloseMobileNavViaToggleResult> {
+  await context.healPage.click([
+    { type: 'testId', value: 'nav-menu-toggle' },
+    { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
+  ]);
+  const drawer = await context.healPage
+    .locate([
+      { type: 'testId', value: 'mobile-nav-drawer' },
+      { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+    ])
+    .resolve(context.testName)
+    .catch(() => null);
+  await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
+  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
+  return { drawerClosed: !drawerVisible };
+}
+
+// ---------------------------------------------------------------------------
+// navigateViaMobileNavLink()
+// ---------------------------------------------------------------------------
+
+/** Result returned by navigateViaMobileNavLink. */
+export interface NavigateViaMobileNavLinkResult {
+  /** True if the nav link was found and clicked. */
+  linkClicked: boolean;
+  /** The URL the browser settled on after the click. */
+  finalUrl: string;
+}
+
+/**
+ * Opens the mobile nav drawer (if not already open) and clicks a nav link
+ * identified by its mobile data-testid (`nav-top-{destination}-mobile`).
+ *
+ * @param destination - The destination slug (e.g. 'contacts', 'deals').
+ * @param context - Behavior context with page and healPage.
+ * @returns Result with link-clicked flag and final URL.
+ */
+export async function navigateViaMobileNavLink(
+  destination: string,
+  context: NavBehaviorContext,
+): Promise<NavigateViaMobileNavLinkResult> {
+  // Open the drawer if it is not already visible (short probe — it's either
+  // mounted right now or it isn't).
+  const drawerLocator = await context.healPage
+    .locate(
+      [
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ],
+      { fallbackTimeout: 200 },
+    )
+    .resolve(context.testName)
+    .catch(() => null);
+  const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
+  if (!drawerVisible) {
+    await context.healPage.click([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ]);
+    const drawer = await context.healPage
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve(context.testName);
+    await drawer.waitFor({ state: 'visible' });
+  }
+
+  const testId = `nav-top-${destination}-mobile`;
+  let link;
+  try {
+    link = await context.healPage
+      .locate([
+        { type: 'testId', value: testId },
+        { type: 'css', value: `[data-testid="${testId}"]` },
+      ])
+      .resolve(context.testName);
+  } catch {
+    return { linkClicked: false, finalUrl: context.page.url() };
+  }
+
+  await link.click();
+  await context.page.waitForLoadState('networkidle').catch(() => null);
+  return { linkClicked: true, finalUrl: context.page.url() };
+}
