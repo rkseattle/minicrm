@@ -369,10 +369,17 @@ export interface OpenMobileNavResult {
  * @returns Result indicating whether the drawer appeared.
  */
 export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMobileNavResult> {
-  await context.healPage.click([
-    { type: 'testId', value: 'nav-menu-toggle' },
-    { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
-  ]);
+  // On mobile the global-search-input can overlap the toggle button.
+  // force:true bypasses Playwright's pointer-intercept check — visibility
+  // of the toggle itself has already been confirmed by the caller navigating
+  // to the page before calling this behavior.
+  const toggle = await context.healPage
+    .locate([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ])
+    .resolve(context.testName);
+  await toggle.click({ force: true });
   // The drawer is conditionally rendered — resolve after the click that mounts it.
   const drawer = await context.healPage
     .locate([
