@@ -14,6 +14,7 @@ import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
 import noPageForbiddenMethods from './eslint-plugins/no-page-forbidden-methods.mjs';
+import noPlaywrightImports from './eslint-plugins/no-playwright-imports.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
@@ -174,16 +175,28 @@ const testConfig = {
   },
 };
 
-// ── E2E spec files — enforce SafePage/HealPage usage ─────────────────────────
-// Spec files must never call forbidden Playwright Page methods directly.
-// All element interactions must go through healPage.locate / click / fill.
+// ── E2E spec and behavior files — enforce SafePage/HealPage usage ────────────
+// Spec and behavior files must never call forbidden Playwright Page methods
+// directly, and must not import Playwright test primitives (test, expect, Page,
+// Locator, etc.) from @playwright/test. All element interactions must go through
+// healPage.locate / click / fill. test/expect must come from app fixtures.
+//
+// Framework internals (qa/e2e/framework/**) and framework self-tests
+// (qa/e2e/tests/framework/**) are intentionally excluded — they wrap Playwright
+// directly and need access to its primitives.
 const e2eSpecConfig = {
-  files: ['qa/**/*.spec.ts'],
+  files: ['qa/e2e/tests/apps/**/*.spec.ts', 'qa/e2e/behaviors/**/*.ts'],
   plugins: {
-    local: { rules: { 'no-page-forbidden-methods': noPageForbiddenMethods } },
+    local: {
+      rules: {
+        'no-page-forbidden-methods': noPageForbiddenMethods,
+        'no-playwright-imports': noPlaywrightImports,
+      },
+    },
   },
   rules: {
     'local/no-page-forbidden-methods': 'error',
+    'local/no-playwright-imports': 'error',
   },
 };
 
