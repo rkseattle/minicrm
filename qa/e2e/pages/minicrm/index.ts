@@ -49,3 +49,9 @@ export type { NotificationPreferenceKey } from './ProfilePage.js';
 
 export { AdminSettingsPage } from './AdminSettingsPage.js';
 export type { AdminSettingsPageContext } from './AdminSettingsPage.js';
+
+export { AdminTagsPage } from './AdminTagsPage.js';
+export type { AdminTagsPageContext } from './AdminTagsPage.js';
+
+export { TagInputWidget } from './TagInputWidget.js';
+export type { TagInputWidgetContext } from './TagInputWidget.js';

@@ -261,15 +261,26 @@ export function ConnectedTagInput({
       const { detachDealTag } = await import('@/api/tags.js');
       return detachDealTag(entityId, tagId);
     },
+    onMutate: async (tagId: string) => {
+      await queryClient.cancelQueries({ queryKey: tagsQueryKey });
+      const previous = queryClient.getQueryData<{ tags: TagResponse[] }>(tagsQueryKey);
+      queryClient.setQueryData<{ tags: TagResponse[] }>(tagsQueryKey, (old) => ({
+        tags: (old?.tags ?? []).filter((t) => t.id !== tagId),
+      }));
+      return { previous };
+    },
     onSuccess: (_data, tagId) => {
       detachingIdsRef.current.delete(tagId);
       setDetachingIds(new Set(detachingIdsRef.current));
       void queryClient.invalidateQueries({ queryKey: tagsQueryKey });
       void queryClient.invalidateQueries({ queryKey: entityQueryKey });
     },
-    onError: (_err, tagId) => {
+    onError: (_err, tagId, context) => {
       detachingIdsRef.current.delete(tagId);
       setDetachingIds(new Set(detachingIdsRef.current));
+      if (context?.previous) {
+        queryClient.setQueryData(tagsQueryKey, context.previous);
+      }
     },
   });
 
