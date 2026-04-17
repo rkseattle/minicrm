@@ -59,7 +59,7 @@ export async function updateTagHandler(req: Request, res: Response): Promise<voi
     });
     return;
   }
-  const tag = await updateTag(req.params.id, parsed.data);
+  const tag = await updateTag(String(req.params['id']), parsed.data);
   if (!tag) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Tag not found' } });
     return;
@@ -72,7 +72,7 @@ export async function updateTagHandler(req: Request, res: Response): Promise<voi
  * Deletes a tag and removes it from all records. Admin only.
  */
 export async function deleteTagHandler(req: Request, res: Response): Promise<void> {
-  const deleted = await deleteTag(req.params.id);
+  const deleted = await deleteTag(String(req.params['id']));
   if (!deleted) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Tag not found' } });
     return;
@@ -89,17 +89,17 @@ export async function deleteTagHandler(req: Request, res: Response): Promise<voi
  * Returns all tags attached to the record.
  */
 export async function listContactTagsHandler(req: Request, res: Response): Promise<void> {
-  const tags = await listEntityTags('contact', req.params.id);
+  const tags = await listEntityTags('contact', String(req.params['id']));
   res.json({ tags });
 }
 
 export async function listAccountTagsHandler(req: Request, res: Response): Promise<void> {
-  const tags = await listEntityTags('account', req.params.id);
+  const tags = await listEntityTags('account', String(req.params['id']));
   res.json({ tags });
 }
 
 export async function listDealTagsHandler(req: Request, res: Response): Promise<void> {
-  const tags = await listEntityTags('deal', req.params.id);
+  const tags = await listEntityTags('deal', String(req.params['id']));
   res.json({ tags });
 }
 
@@ -117,7 +117,7 @@ export async function attachContactTagHandler(req: Request, res: Response): Prom
     });
     return;
   }
-  const tag = await attachTag('contact', req.params.id, parsed.data);
+  const tag = await attachTag('contact', String(req.params['id']), parsed.data);
   res.status(201).json({ tag });
 }
 
@@ -129,7 +129,7 @@ export async function attachAccountTagHandler(req: Request, res: Response): Prom
     });
     return;
   }
-  const tag = await attachTag('account', req.params.id, parsed.data);
+  const tag = await attachTag('account', String(req.params['id']), parsed.data);
   res.status(201).json({ tag });
 }
 
@@ -141,7 +141,7 @@ export async function attachDealTagHandler(req: Request, res: Response): Promise
     });
     return;
   }
-  const tag = await attachTag('deal', req.params.id, parsed.data);
+  const tag = await attachTag('deal', String(req.params['id']), parsed.data);
   res.status(201).json({ tag });
 }
 
@@ -152,17 +152,17 @@ export async function attachDealTagHandler(req: Request, res: Response): Promise
  * Detaches a tag from the record.
  */
 export async function detachContactTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('contact', req.params.id, req.params.tagId);
+  await detachTag('contact', String(req.params['id']), String(req.params['tagId']));
   res.status(204).end();
 }
 
 export async function detachAccountTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('account', req.params.id, req.params.tagId);
+  await detachTag('account', String(req.params['id']), String(req.params['tagId']));
   res.status(204).end();
 }
 
 export async function detachDealTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('deal', req.params.id, req.params.tagId);
+  await detachTag('deal', String(req.params['id']), String(req.params['tagId']));
   res.status(204).end();
 }
 
@@ -171,7 +171,7 @@ export async function detachDealTagHandler(req: Request, res: Response): Promise
  * Returns a single tag by ID.
  */
 export async function getTagHandler(req: Request, res: Response): Promise<void> {
-  const tag = await findTagById(req.params.id);
+  const tag = await findTagById(String(req.params['id']));
   if (!tag) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Tag not found' } });
     return;

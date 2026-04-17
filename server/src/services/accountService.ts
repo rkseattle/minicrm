@@ -293,7 +293,7 @@ export async function listAccounts(
     const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
     options.tagIds.forEach((tid) => values.push(tid));
     conditions.push(
-      `EXISTS (SELECT 1 FROM account_tags at2 WHERE at2.account_id = id AND at2.tag_id IN (${placeholders}))`,
+      `EXISTS (SELECT 1 FROM account_tags at2 WHERE at2.account_id = accounts.id AND at2.tag_id IN (${placeholders}))`,
     );
   }
 

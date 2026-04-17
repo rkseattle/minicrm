@@ -5,11 +5,16 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import type { TagResponse } from '@shared/schemas/tagSchema.js';
+
+/** Minimal tag shape required by TagBadge — compatible with both TagResponse and embedded list tags */
+interface TagLike {
+  id: string;
+  name: string;
+}
 
 interface TagBadgeProps {
   /** The tag to display */
-  tag: TagResponse;
+  tag: TagLike;
   /**
    * When provided, renders a remove button that calls this handler.
    * Omit on list views where tags are read-only.
