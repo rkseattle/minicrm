@@ -1276,6 +1276,23 @@ export const handlers = [
     return HttpResponse.json({ id: params.id });
   }),
 
+  // ── Bulk operations (MINCRM-188) ─────────────────────────────────────────────
+
+  /** Bulk: POST /api/contacts/bulk — returns affected count */
+  http.post('/api/contacts/bulk', () => {
+    return HttpResponse.json({ affected: 1 });
+  }),
+
+  /** Bulk: POST /api/accounts/bulk — returns affected count */
+  http.post('/api/accounts/bulk', () => {
+    return HttpResponse.json({ affected: 1 });
+  }),
+
+  /** Bulk: POST /api/deals/bulk — returns affected count */
+  http.post('/api/deals/bulk', () => {
+    return HttpResponse.json({ affected: 1 });
+  }),
+
   // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
 
   /** Tags: GET /api/tags — returns empty list by default */

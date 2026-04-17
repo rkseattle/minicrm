@@ -13,6 +13,7 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { DEAL_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 import * as dealsApi from '../api/deals.js';
+import * as bulkApi from '../api/bulk.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 
 describe('DealsPage', () => {
@@ -606,6 +607,118 @@ describe('DealsPage', () => {
       });
       await user.click(screen.getByTestId('deals-export-all-button'));
       expect(dealsApi.exportDealsCsv).toHaveBeenCalledWith({ all: true });
+    });
+  });
+
+  // ── Bulk selection (list view only) ────────────────────────────────────────
+
+  describe('bulk selection', () => {
+    const DEAL_2 = {
+      ...DEAL_1,
+      id: '00000000-0000-0000-0000-000000000302',
+      name: 'Second Deal',
+    };
+
+    async function switchToListView(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => {
+        expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('deals-view-toggle'));
+    }
+
+    beforeEach(() => {
+      server.use(
+        http.get('/api/deals', () =>
+          HttpResponse.json({ data: [DEAL_1, DEAL_2], total: 2, page: 1, limit: 50 }),
+        ),
+      );
+    });
+
+    const getRowCheckbox = (id: string) => screen.getAllByTestId(`bulk-select-${id}`)[0]!;
+
+    it('shows row checkboxes in the deal list view', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('shows the bulk action bar after selecting a row', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(DEAL_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    });
+
+    it('does not show the bulk action bar before any rows are selected', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('select-all checkbox shows bulk action bar with all rows selected', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_2.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(screen.getAllByTestId('bulk-select-all')[0]!);
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('2');
+    });
+
+    it('clear selection hides the bulk action bar', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(DEAL_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      await user.click(screen.getByTestId('bulk-clear-selection'));
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('bulk delete calls the API and clears selection on success', async () => {
+      vi.spyOn(bulkApi, 'bulkDeals').mockResolvedValue({ affected: 1 });
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await switchToListView(user);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${DEAL_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(DEAL_1.id));
+      await user.click(screen.getByTestId('bulk-delete-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+      await waitFor(() => {
+        expect(bulkApi.bulkDeals).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'delete', ids: [DEAL_1.id] }),
+          expect.anything(),
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+      });
     });
   });
 });

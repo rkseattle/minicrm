@@ -11,6 +11,7 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ACCOUNT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 import * as accountsApi from '../api/accounts.js';
+import * as bulkApi from '../api/bulk.js';
 
 describe('AccountsPage', () => {
   it('renders the page heading', async () => {
@@ -226,6 +227,103 @@ describe('AccountsPage', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('account-form')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Bulk selection ──────────────────────────────────────────────────────────
+
+  describe('bulk selection', () => {
+    const ACCOUNT_2 = {
+      ...ACCOUNT_1,
+      id: '00000000-0000-0000-0000-000000000202',
+      name: 'Beta Corp',
+    };
+
+    beforeEach(() => {
+      server.use(
+        http.get('/api/accounts', () =>
+          HttpResponse.json({ data: [ACCOUNT_1, ACCOUNT_2], total: 2, page: 1, limit: 50 }),
+        ),
+      );
+    });
+
+    const getRowCheckbox = (id: string) => screen.getAllByTestId(`bulk-select-${id}`)[0]!;
+
+    it('shows row checkboxes in the account list', async () => {
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('shows the bulk action bar after selecting a row', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(ACCOUNT_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    });
+
+    it('does not show the bulk action bar before any rows are selected', async () => {
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('select-all checkbox shows bulk action bar with all rows selected', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_2.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(screen.getAllByTestId('bulk-select-all')[0]!);
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('2');
+    });
+
+    it('clear selection hides the bulk action bar', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(ACCOUNT_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      await user.click(screen.getByTestId('bulk-clear-selection'));
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('bulk delete calls the API and clears selection on success', async () => {
+      vi.spyOn(bulkApi, 'bulkAccounts').mockResolvedValue({ affected: 1 });
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${ACCOUNT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(ACCOUNT_1.id));
+      await user.click(screen.getByTestId('bulk-delete-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+      await waitFor(() => {
+        expect(bulkApi.bulkAccounts).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'delete', ids: [ACCOUNT_1.id] }),
+          expect.anything(),
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+      });
     });
   });
 

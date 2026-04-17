@@ -123,13 +123,16 @@ export async function bulkContacts(
 
     const actualIds = rows.map((r) => r.id);
 
-    if (action === 'delete') {
-      const nameResult = await client.query<{ id: string; first_name: string; last_name: string }>(
-        'SELECT id, first_name, last_name FROM contacts WHERE id = ANY($1)',
-        [actualIds],
-      );
-      const nameMap = new Map(nameResult.rows.map((r) => [r.id, `${r.first_name} ${r.last_name}`]));
+    // Fetch names for audit + notifications (reassign needs owner_id too)
+    const nameResult = await client.query<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      owner_id: string;
+    }>('SELECT id, first_name, last_name, owner_id FROM contacts WHERE id = ANY($1)', [actualIds]);
+    const nameMap = new Map(nameResult.rows.map((r) => [r.id, `${r.first_name} ${r.last_name}`]));
 
+    if (action === 'delete') {
       await client.query('DELETE FROM contacts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -144,15 +147,6 @@ export async function bulkContacts(
       }
     } else {
       // reassign
-      const nameResult = await client.query<{
-        id: string;
-        first_name: string;
-        last_name: string;
-        owner_id: string;
-      }>('SELECT id, first_name, last_name, owner_id FROM contacts WHERE id = ANY($1)', [
-        actualIds,
-      ]);
-
       await client.query(
         'UPDATE contacts SET owner_id = $1, updated_at = now() WHERE id = ANY($2)',
         [owner_id, actualIds],
@@ -181,7 +175,7 @@ export async function bulkContacts(
         for (const id of actualIds) {
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'contact',
-            recordName: '',
+            recordName: nameMap.get(id) ?? '',
             recordPath: `/contacts/${id}`,
             assignedByName: actor.name,
           });
@@ -232,13 +226,14 @@ export async function bulkAccounts(
 
     const actualIds = rows.map((r) => r.id);
 
-    if (action === 'delete') {
-      const nameResult = await client.query<{ id: string; name: string }>(
-        'SELECT id, name FROM accounts WHERE id = ANY($1)',
-        [actualIds],
-      );
-      const nameMap = new Map(nameResult.rows.map((r) => [r.id, r.name]));
+    // Fetch names for audit + notifications
+    const nameResult = await client.query<{ id: string; name: string; owner_id: string }>(
+      'SELECT id, name, owner_id FROM accounts WHERE id = ANY($1)',
+      [actualIds],
+    );
+    const nameMap = new Map(nameResult.rows.map((r) => [r.id, r.name]));
 
+    if (action === 'delete') {
       await client.query('DELETE FROM accounts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -253,11 +248,6 @@ export async function bulkAccounts(
       }
     } else {
       // reassign
-      const nameResult = await client.query<{ id: string; name: string; owner_id: string }>(
-        'SELECT id, name, owner_id FROM accounts WHERE id = ANY($1)',
-        [actualIds],
-      );
-
       await client.query(
         'UPDATE accounts SET owner_id = $1, updated_at = now() WHERE id = ANY($2)',
         [owner_id, actualIds],
@@ -285,7 +275,7 @@ export async function bulkAccounts(
         for (const id of actualIds) {
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'account',
-            recordName: '',
+            recordName: nameMap.get(id) ?? '',
             recordPath: `/accounts/${id}`,
             assignedByName: actor.name,
           });
@@ -346,13 +336,17 @@ export async function bulkDeals(
 
     const actualIds = rows.map((r) => r.id);
 
-    if (action === 'delete') {
-      const nameResult = await client.query<{ id: string; name: string }>(
-        'SELECT id, name FROM deals WHERE id = ANY($1)',
-        [actualIds],
-      );
-      const nameMap = new Map(nameResult.rows.map((r) => [r.id, r.name]));
+    // Fetch names + owner_id for audit + notifications + automation triggers
+    const beforeResult = await client.query<{
+      id: string;
+      name: string;
+      stage: string;
+      owner_id: string;
+    }>('SELECT id, name, stage, owner_id FROM deals WHERE id = ANY($1)', [actualIds]);
+    const nameMap = new Map(beforeResult.rows.map((r) => [r.id, r.name]));
+    const ownerMap = new Map(beforeResult.rows.map((r) => [r.id, r.owner_id]));
 
+    if (action === 'delete') {
       await client.query('DELETE FROM deals WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -366,17 +360,12 @@ export async function bulkDeals(
         });
       }
     } else if (action === 'reassign') {
-      const nameResult = await client.query<{ id: string; name: string; owner_id: string }>(
-        'SELECT id, name, owner_id FROM deals WHERE id = ANY($1)',
-        [actualIds],
-      );
-
       await client.query('UPDATE deals SET owner_id = $1, updated_at = now() WHERE id = ANY($2)', [
         owner_id,
         actualIds,
       ]);
 
-      for (const row of nameResult.rows) {
+      for (const row of beforeResult.rows) {
         await writeAuditEntry(client, {
           recordType: 'deal',
           recordId: row.id,
@@ -390,13 +379,6 @@ export async function bulkDeals(
       }
     } else {
       // change_stage
-      const beforeResult = await client.query<{
-        id: string;
-        name: string;
-        stage: string;
-        owner_id: string;
-      }>('SELECT id, name, stage, owner_id FROM deals WHERE id = ANY($1)', [actualIds]);
-
       await client.query('UPDATE deals SET stage = $1, updated_at = now() WHERE id = ANY($2)', [
         stage,
         actualIds,
@@ -426,7 +408,7 @@ export async function bulkDeals(
         for (const id of actualIds) {
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'deal',
-            recordName: '',
+            recordName: nameMap.get(id) ?? '',
             recordPath: `/deals/${id}`,
             assignedByName: actor.name,
           });
@@ -435,15 +417,11 @@ export async function bulkDeals(
     }
 
     if (action === 'change_stage') {
-      const afterResult = await pool.query<{ id: string; owner_id: string }>(
-        'SELECT id, owner_id FROM deals WHERE id = ANY($1)',
-        [actualIds],
-      );
-      for (const row of afterResult.rows) {
+      for (const id of actualIds) {
         void fireAutomationTrigger('deal_stage_changed', {
-          recordId: row.id,
+          recordId: id,
           recordType: 'deal',
-          ownerId: row.owner_id,
+          ownerId: ownerMap.get(id) ?? '',
           newStage: stage!,
         });
       }
