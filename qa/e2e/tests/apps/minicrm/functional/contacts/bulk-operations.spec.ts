@@ -15,7 +15,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { navigateToContacts } from '@behaviors/minicrm/contacts.behaviors.js';
+import { navigateToContacts, waitForContactInList } from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -75,8 +75,10 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
     email: `bk1b-${uniqueSuffix}@example.com`,
   });
 
-  // Navigate to contacts list and wait for the rows to appear.
+  // Navigate to contacts list and wait for the newly created rows to appear.
   await navigateToContacts({ page, healPage, testName });
+  await waitForContactInList(c1.id, { page, healPage, testName });
+  await waitForContactInList(c2.id, { page, healPage, testName });
 
   // Select both contact rows via their checkboxes.
   await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
@@ -144,8 +146,10 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
     email: `bk2b-${uniqueSuffix}@example.com`,
   });
 
-  // Navigate to contacts list.
+  // Navigate to contacts list and wait for the newly created rows to appear.
   await navigateToContacts({ page, healPage, testName });
+  await waitForContactInList(c1.id, { page, healPage, testName });
+  await waitForContactInList(c2.id, { page, healPage, testName });
 
   // Select both rows.
   await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);

@@ -20,6 +20,7 @@ export type {
 
 export {
   navigateToContacts,
+  waitForContactInList,
   editContact,
   createContactViaUI,
   deleteContactViaUI,
