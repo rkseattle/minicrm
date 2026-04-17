@@ -139,7 +139,7 @@ system_settings  key (PK), value text, updated_at
 overdue_task_notifications  activity_id, notified_date  ← dedup for email digests
 ```
 
-**Migration rule:** Every schema change requires a migration file. Next number: **032**.
+**Migration rule:** Every schema change requires a migration file. Next number: **034**.
 Every migration needs both `up` and `down`. Integrity rules go in DB CHECK constraints
 in addition to Zod.
 
