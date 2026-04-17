@@ -170,13 +170,15 @@ export class ContactsPage {
 
   /**
    * Clicks the bulk-select checkbox for a specific contact.
-   * Scopes to the visible instance only (both mobile and desktop views render
-   * the checkbox; the bare testId would match two elements).
+   * Scopes to the visible instance only — both mobile-card and desktop-table
+   * views render the checkbox, so the bare testId matches two elements.
    *
    * @param id - The contact UUID whose checkbox to click.
    */
   async clickBulkCheckbox(id: string): Promise<void> {
-    await this.page.locator(`[data-testid="bulk-select-${id}"]:visible`).click();
+    await this.healPage.click([
+      { type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` },
+    ]);
   }
 
   /**
