@@ -756,6 +756,7 @@
   "bulk": {
     "selectedCount": "{{count}} seleccionado",
     "selectedCount_other": "{{count}} seleccionados",
+    "selectAll": "Seleccionar todo",
     "clearSelection": "Borrar selección",
     "reassignButton": "Reasignar propietario",
     "deleteButton": "Eliminar",
@@ -774,8 +775,6 @@
     "selectStage": "— Seleccionar etapa —",
     "changeStageConfirm": "Cambiar etapa",
     "changingStagePending": "Cambiando…",
-    "deleteTitle": "¿Eliminar {{count}} registro?",
-    "deleteTitle_other": "¿Eliminar {{count}} registros?",
     "deleteMessage": "Esto eliminará permanentemente {{count}} registro. Esta acción no se puede deshacer.",
     "deleteMessage_other": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
     "errorGeneric": "La operación masiva falló. Por favor, inténtelo de nuevo."

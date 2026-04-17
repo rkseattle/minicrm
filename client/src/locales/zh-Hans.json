@@ -755,6 +755,7 @@
   },
   "bulk": {
     "selectedCount": "已选择 {{count}} 条",
+    "selectAll": "全选",
     "clearSelection": "清除选择",
     "reassignButton": "重新分配负责人",
     "deleteButton": "删除",
@@ -773,8 +774,6 @@
     "selectStage": "— 选择阶段 —",
     "changeStageConfirm": "更改阶段",
     "changingStagePending": "正在更改…",
-    "deleteTitle": "删除 {{count}} 条记录？",
-    "deleteTitle_other": "删除 {{count}} 条记录？",
     "deleteMessage": "这将永久删除 {{count}} 条记录，无法撤销。",
     "deleteMessage_other": "这将永久删除 {{count}} 条记录，无法撤销。",
     "errorGeneric": "批量操作失败，请重试。"

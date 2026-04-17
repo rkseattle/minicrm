@@ -732,6 +732,7 @@
   },
   "bulk": {
     "selectedCount": "{{count}} selected",
+    "selectAll": "Select all",
     "clearSelection": "Clear selection",
     "reassignButton": "Reassign owner",
     "deleteButton": "Delete",
@@ -750,8 +751,6 @@
     "selectStage": "— Select stage —",
     "changeStageConfirm": "Change stage",
     "changingStagePending": "Changing…",
-    "deleteTitle": "Delete {{count}} record?",
-    "deleteTitle_other": "Delete {{count}} records?",
     "deleteMessage": "This will permanently delete {{count}} record. This cannot be undone.",
     "deleteMessage_other": "This will permanently delete {{count}} records. This cannot be undone.",
     "errorGeneric": "Bulk operation failed. Please try again."

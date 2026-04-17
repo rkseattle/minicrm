@@ -756,6 +756,7 @@
   "bulk": {
     "selectedCount": "{{count}} sélectionné",
     "selectedCount_other": "{{count}} sélectionnés",
+    "selectAll": "Tout sélectionner",
     "clearSelection": "Effacer la sélection",
     "reassignButton": "Réaffecter le propriétaire",
     "deleteButton": "Supprimer",
@@ -774,8 +775,6 @@
     "selectStage": "— Sélectionner une étape —",
     "changeStageConfirm": "Changer l'étape",
     "changingStagePending": "Modification…",
-    "deleteTitle": "Supprimer {{count}} enregistrement ?",
-    "deleteTitle_other": "Supprimer {{count}} enregistrements ?",
     "deleteMessage": "Cela supprimera définitivement {{count}} enregistrement. Cette action est irréversible.",
     "deleteMessage_other": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
     "errorGeneric": "L'opération en masse a échoué. Veuillez réessayer."

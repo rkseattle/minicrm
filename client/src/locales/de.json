@@ -755,6 +755,7 @@
   },
   "bulk": {
     "selectedCount": "{{count}} ausgewählt",
+    "selectAll": "Alle auswählen",
     "clearSelection": "Auswahl aufheben",
     "reassignButton": "Inhaber zuweisen",
     "deleteButton": "Löschen",
@@ -773,8 +774,6 @@
     "selectStage": "— Phase auswählen —",
     "changeStageConfirm": "Phase ändern",
     "changingStagePending": "Wird geändert…",
-    "deleteTitle": "{{count}} Datensatz löschen?",
-    "deleteTitle_other": "{{count}} Datensätze löschen?",
     "deleteMessage": "Dadurch wird {{count}} Datensatz dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "deleteMessage_other": "Dadurch werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "errorGeneric": "Massenvorgang fehlgeschlagen. Bitte versuchen Sie es erneut."

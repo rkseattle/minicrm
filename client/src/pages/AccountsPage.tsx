@@ -205,6 +205,8 @@ export default function AccountsPage() {
     });
   }
 
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
   const bulkMutation = useMutation({
     mutationFn: bulkAccounts,
     onSuccess: () => {
@@ -212,6 +214,10 @@ export default function AccountsPage() {
       setSelectedIds(new Set());
       setShowBulkReassign(false);
       setShowBulkDelete(false);
+      setBulkError(null);
+    },
+    onError: () => {
+      setBulkError(t('bulk.errorGeneric'));
     },
   });
 
@@ -409,6 +415,13 @@ export default function AccountsPage() {
           </div>
         )}
 
+        {/* Bulk error message (MINCRM-188) */}
+        {bulkError && (
+          <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
+            {bulkError}
+          </p>
+        )}
+
         {/* Bulk action bar (MINCRM-188) */}
         {selectedIds.size > 0 && (
           <BulkActionBar
@@ -478,7 +491,7 @@ export default function AccountsPage() {
                     data-testid="bulk-select-all"
                     checked={allVisibleSelected}
                     onChange={toggleSelectAll}
-                    aria-label={t('bulk.selectedCount', { count: allVisibleIds.length })}
+                    aria-label={t('bulk.selectAll')}
                     className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="text-xs text-gray-500">
@@ -551,7 +564,7 @@ export default function AccountsPage() {
                           data-testid="bulk-select-all"
                           checked={allVisibleSelected}
                           onChange={toggleSelectAll}
-                          aria-label={t('bulk.selectedCount', { count: allVisibleIds.length })}
+                          aria-label={t('bulk.selectAll')}
                           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                       </th>

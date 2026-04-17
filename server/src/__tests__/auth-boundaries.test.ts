@@ -440,6 +440,78 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
   });
 });
 
+// ── MINCRM-188: Bulk endpoint auth boundaries ─────────────────────────────────
+
+describe('MINCRM-188 — bulk endpoints require authentication', () => {
+  it('returns 401 when unauthenticated POST to /api/contacts/bulk', async () => {
+    const res = await request(app).post('/api/contacts/bulk').send({ action: 'delete', ids: [] });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when unauthenticated POST to /api/accounts/bulk', async () => {
+    const res = await request(app).post('/api/accounts/bulk').send({ action: 'delete', ids: [] });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when unauthenticated POST to /api/deals/bulk', async () => {
+    const res = await request(app).post('/api/deals/bulk').send({ action: 'delete', ids: [] });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
+  it('returns 403 when rep B tries to bulk-delete rep A contacts', async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Bulk Contact',
+      email: 'bounds-contact-bulk-a@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .post('/api/contacts/bulk')
+      .set('Cookie', repBCookie)
+      .send({ action: 'delete', ids: [contact.id] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('returns 403 when rep B tries to bulk-reassign rep A contacts', async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Bulk Reassign',
+      email: 'bounds-contact-bulk-reassign@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .post('/api/contacts/bulk')
+      .set('Cookie', repBCookie)
+      .send({ action: 'reassign', ids: [contact.id], owner_id: repAId });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('allows admin to bulk-delete any contacts', async () => {
+    const contact = await createContact({
+      first_name: 'Rep',
+      last_name: 'A Bulk Admin Delete',
+      email: 'bounds-contact-bulk-admin@example.com',
+      owner_id: repAId,
+    });
+
+    const res = await request(app)
+      .post('/api/contacts/bulk')
+      .set('Cookie', adminCookie)
+      .send({ action: 'delete', ids: [contact.id] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.affected).toBe(1);
+  });
+});
+
 // ── Ownership from req.user, not request body ─────────────────────────────────
 
 describe('MINCRM-88 — ownership check uses req.user, not request body', () => {
