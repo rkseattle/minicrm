@@ -130,6 +130,27 @@ export async function waitForBulkCheckbox(
 }
 
 // ---------------------------------------------------------------------------
+// clickBulkCheckbox()
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the bulk-select checkbox for a specific contact row.
+ * Scopes to the visible checkbox only — both the mobile-card and desktop-table
+ * views render the same checkbox, which would cause a strict-mode error if
+ * selected by testId alone.
+ *
+ * @param id - The contact UUID whose checkbox to click.
+ * @param context - Playwright fixture context.
+ */
+export async function clickBulkCheckbox(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.clickBulkCheckbox(id);
+}
+
+// ---------------------------------------------------------------------------
 // filterContactsByTerm()
 // ---------------------------------------------------------------------------
 
