@@ -21,6 +21,8 @@ export type {
 export {
   navigateToContacts,
   waitForContactInList,
+  waitForBulkCheckbox,
+  filterContactsByTerm,
   editContact,
   createContactViaUI,
   deleteContactViaUI,
