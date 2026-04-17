@@ -149,6 +149,36 @@ export class ContactsPage {
   }
 
   /**
+   * Waits until the bulk-select checkbox for a specific contact is attached to
+   * the DOM. Use this before clicking a bulk-select checkbox to avoid the 2s
+   * default probe expiring during a React Query background refetch.
+   *
+   * @param id - The contact UUID whose checkbox to wait for.
+   * @param timeout - Maximum wait in ms (default 15 000).
+   */
+  async waitForBulkCheckbox(id: string, timeout = 15_000): Promise<void> {
+    await this.healPage
+      .locate([{ type: 'testId', value: `bulk-select-${id}` }], { fallbackTimeout: timeout })
+      .resolve(this.testName);
+  }
+
+  /**
+   * Types a search term into the contacts search box and waits for the debounce
+   * to settle. Use this to narrow the visible rows to a known subset before
+   * interacting with specific contacts.
+   *
+   * @param term - The string to type into the search input.
+   */
+  async search(term: string): Promise<void> {
+    await this.healPage.fill(term, [
+      { type: 'testId', value: 'contacts-search' },
+      { type: 'css', value: '[data-testid="contacts-search"]' },
+    ]);
+    // Wait for the debounce (300 ms) + one React render cycle.
+    await this.page.waitForTimeout(400);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

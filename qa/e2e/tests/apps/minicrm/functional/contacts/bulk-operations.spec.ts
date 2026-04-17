@@ -15,7 +15,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { navigateToContacts, waitForContactInList } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  navigateToContacts,
+  waitForContactInList,
+  waitForBulkCheckbox,
+  filterContactsByTerm,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -75,13 +80,18 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
     email: `bk1b-${uniqueSuffix}@example.com`,
   });
 
-  // Navigate to contacts list and wait for the newly created rows to appear.
+  // Navigate to contacts list, filter to just the test contacts so they are
+  // guaranteed on page 1 regardless of total DB size or sort order, then wait
+  // for both rows and their checkboxes before clicking.
   await navigateToContacts({ page, healPage, testName });
+  await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
   await waitForContactInList(c1.id, { page, healPage, testName });
   await waitForContactInList(c2.id, { page, healPage, testName });
 
   // Select both contact rows via their checkboxes.
+  await waitForBulkCheckbox(c1.id, { page, healPage, testName });
   await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+  await waitForBulkCheckbox(c2.id, { page, healPage, testName });
   await healPage.click([{ type: 'testId', value: `bulk-select-${c2.id}` }]);
 
   // Bulk action bar should be visible.
@@ -146,13 +156,18 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
     email: `bk2b-${uniqueSuffix}@example.com`,
   });
 
-  // Navigate to contacts list and wait for the newly created rows to appear.
+  // Navigate to contacts list, filter to just the test contacts so they are
+  // guaranteed on page 1 regardless of total DB size or sort order, then wait
+  // for both rows and their checkboxes before clicking.
   await navigateToContacts({ page, healPage, testName });
+  await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
   await waitForContactInList(c1.id, { page, healPage, testName });
   await waitForContactInList(c2.id, { page, healPage, testName });
 
   // Select both rows.
+  await waitForBulkCheckbox(c1.id, { page, healPage, testName });
   await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+  await waitForBulkCheckbox(c2.id, { page, healPage, testName });
   await healPage.click([{ type: 'testId', value: `bulk-select-${c2.id}` }]);
 
   await expect(

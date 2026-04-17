@@ -103,6 +103,59 @@ export async function waitForContactInList(
 }
 
 // ---------------------------------------------------------------------------
+// waitForBulkCheckbox()
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits until the bulk-select checkbox for a specific contact is attached to
+ * the DOM. Call this immediately before clicking a bulk-select checkbox to
+ * avoid the 2 s default HealingLocator probe expiring during a background
+ * refetch.
+ *
+ * @param id - UUID of the contact whose checkbox to wait for.
+ * @param context - Playwright fixture context.
+ *
+ * @example
+ * ```ts
+ * await waitForBulkCheckbox(c1.id, { page, healPage, testName });
+ * await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+ * ```
+ */
+export async function waitForBulkCheckbox(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.waitForBulkCheckbox(id);
+}
+
+// ---------------------------------------------------------------------------
+// filterContactsByTerm()
+// ---------------------------------------------------------------------------
+
+/**
+ * Types a search term into the contacts search box so only matching rows are
+ * visible. Use this before selecting specific contacts to ensure they appear on
+ * page 1 regardless of total data volume or sort order.
+ *
+ * @param term - The string to filter by (e.g. a unique email suffix).
+ * @param context - Playwright fixture context.
+ *
+ * @example
+ * ```ts
+ * await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
+ * await waitForContactInList(c1.id, { page, healPage, testName });
+ * ```
+ */
+export async function filterContactsByTerm(
+  term: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.search(term);
+}
+
+// ---------------------------------------------------------------------------
 // editContact()
 // ---------------------------------------------------------------------------
 
