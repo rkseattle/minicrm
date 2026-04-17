@@ -434,7 +434,9 @@ export default function ContactsPage() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {contacts.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-gray-400">{t('contacts.empty')}</p>
+                <p className="text-sm text-gray-400" data-testid="contacts-empty-state">
+                  {t('contacts.empty')}
+                </p>
               </div>
             ) : (
               <>

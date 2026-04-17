@@ -29,7 +29,7 @@ import {
   setDefaultContactAddress,
 } from '@/api/contacts.js';
 import type { ContactAddress, ContactAddressInput } from '@/api/contacts.js';
-import { listAccounts } from '@/api/accounts.js';
+import { listAccounts, getAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
@@ -99,9 +99,16 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  const { data: accountsData, isLoading: accountsLoading } = useQuery({
+  const { data: accountsData } = useQuery({
     queryKey: ACCOUNTS_QUERY_KEY,
     queryFn: () => listAccounts(),
+  });
+
+  const linkedAccountId = data?.contact?.account_id ?? null;
+  const { data: linkedAccountData, isLoading: linkedAccountLoading } = useQuery({
+    queryKey: ['accounts', linkedAccountId],
+    queryFn: () => getAccount(linkedAccountId!),
+    enabled: Boolean(linkedAccountId),
   });
 
   const { data: activeUsersData } = useQuery({
@@ -126,6 +133,7 @@ export default function ContactDetailPage() {
 
   const accounts = accountsData?.data ?? [];
   const accountOptions = accounts.map((a) => ({ id: a.id, name: a.name }));
+  const linkedAccount = linkedAccountData?.account ?? null;
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
   const linkedDeals = contactDealsData?.deals ?? [];
 
@@ -272,9 +280,6 @@ export default function ContactDetailPage() {
   }
 
   const contact = data.contact;
-  const linkedAccount = contact.account_id
-    ? accounts.find((a) => a.id === contact.account_id)
-    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -673,7 +678,7 @@ export default function ContactDetailPage() {
               <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
                 {t('contacts.accountLabel')}
               </span>
-              {accountsLoading ? (
+              {linkedAccountLoading ? (
                 <span className="text-sm text-gray-400" data-testid="detail-account">
                   …
                 </span>

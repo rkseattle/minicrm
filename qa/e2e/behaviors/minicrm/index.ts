@@ -111,6 +111,22 @@ export type {
 } from './search.behaviors.js';
 
 export {
+  navigateToAdminTags,
+  renameTagViaUI,
+  deleteTagViaUI,
+  attachTagViaUI,
+  detachTagViaUI,
+} from './tags.behaviors.js';
+export type {
+  TagsBehaviorContext,
+  NavigateToAdminTagsResult,
+  RenameTagViaUIResult,
+  DeleteTagViaUIResult,
+  AttachTagViaUIResult,
+  DetachTagViaUIResult,
+} from './tags.behaviors.js';
+
+export {
   navigateToProfile,
   getProfilePreferences,
   uncheckAndSavePreference,

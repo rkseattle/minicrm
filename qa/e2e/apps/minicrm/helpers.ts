@@ -246,6 +246,55 @@ export async function createTestDeal(
 }
 
 // ---------------------------------------------------------------------------
+// Tag helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal representation of a MiniCRM tag as returned by POST /api/tags.
+ */
+export interface TestTag {
+  id: string;
+  name: string;
+}
+
+/** Fields accepted when creating a tag. */
+export interface CreateTagOverrides {
+  name?: string;
+}
+
+/**
+ * Creates a tag via the REST API, registers it with TestDataManager, and
+ * returns the created tag.
+ *
+ * Tag creation is idempotent on the server — if the name already exists the
+ * existing tag is returned. The helper always registers the returned ID so
+ * teardown deletes it regardless.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Authenticated RestClient instance (admin required for delete).
+ * @param overrides - Optional field overrides for the tag payload.
+ * @returns The created tag as returned by the server.
+ */
+export async function createTestTag(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: CreateTagOverrides = {},
+): Promise<TestTag> {
+  const payload = {
+    name: overrides.name ?? `test-tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  };
+
+  // Server returns { tag: TagRow } on 201.
+  const response = await restClient.post<{ tag: TestTag }>('/api/tags', payload);
+  const tag = response.body.tag;
+
+  // Tags require admin to delete (DELETE /api/tags/:id is admin-only).
+  testData.register('tag', tag.id, `/api/tags/${tag.id}`);
+
+  return tag;
+}
+
+// ---------------------------------------------------------------------------
 // Activity / task helper
 // ---------------------------------------------------------------------------
 

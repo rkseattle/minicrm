@@ -98,6 +98,14 @@ const EN: LocaleMap = {
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'Email Notifications',
 
+  // Tags (MINCRM-186)
+  'tags.pageTitle': 'Tag Management',
+  'tags.empty': 'No tags yet.',
+  'tags.delete': 'Delete',
+  'tags.save': 'Save',
+  'tags.renameInputLabel': 'New tag name',
+  'tags.inputLabel': 'Add tags',
+
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -175,6 +183,14 @@ const ES: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'Notificaciones de correo electrónico',
+
+  // Tags (MINCRM-186)
+  'tags.pageTitle': 'Gestión de etiquetas',
+  'tags.empty': 'Aún no hay etiquetas.',
+  'tags.delete': 'Eliminar',
+  'tags.save': 'Guardar',
+  'tags.renameInputLabel': 'Nuevo nombre de etiqueta',
+  'tags.inputLabel': 'Añadir etiquetas',
 
   // Common actions
   'common.save': 'Guardar',
