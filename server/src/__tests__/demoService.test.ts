@@ -42,6 +42,7 @@ async function cleanDemoData(): Promise<void> {
        AND id NOT IN (SELECT tag_id FROM account_tags)
        AND id NOT IN (SELECT tag_id FROM deal_tags)`,
   );
+  await pool.query('DELETE FROM automation_rules WHERE is_demo = true');
   await pool.query(`DELETE FROM activities WHERE is_demo = true`);
   await pool.query(
     `DELETE FROM deal_contacts
@@ -97,6 +98,9 @@ afterAll(async () => {
          AND id NOT IN (SELECT tag_id FROM account_tags)
          AND id NOT IN (SELECT tag_id FROM deal_tags)`,
     );
+    await pool.query(`DELETE FROM automation_rules WHERE is_demo = true OR created_by = $1`, [
+      adminId,
+    ]);
     await pool.query(`DELETE FROM activities WHERE is_demo = true OR owner_id = $1`, [adminId]);
     await pool.query(
       `DELETE FROM deal_contacts
@@ -343,6 +347,18 @@ describe('seedDemo', () => {
     );
     expect(ar.rowCount).toBe(1);
   });
+
+  it('inserts exactly 3 automation rules with correct trigger types', async () => {
+    await seedDemo();
+
+    const rules = await pool.query<{ trigger_type: string }>(
+      `SELECT trigger_type FROM automation_rules WHERE is_demo = true`,
+    );
+    expect(rules.rowCount).toBe(3);
+
+    const triggerTypes = rules.rows.map((r) => r.trigger_type).sort();
+    expect(triggerTypes).toEqual(['contact_created', 'deal_created', 'deal_stage_changed'].sort());
+  });
 });
 
 // ── removeDemo ────────────────────────────────────────────────────────────────
@@ -369,6 +385,14 @@ describe('removeDemo', () => {
 
     const leads = await pool.query(`SELECT id FROM leads WHERE is_demo = true`);
     expect(leads.rowCount).toBe(0);
+  });
+
+  it('removes demo automation rules', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const rules = await pool.query(`SELECT id FROM automation_rules WHERE is_demo = true`);
+    expect(rules.rowCount).toBe(0);
   });
 
   it('removes contact_addresses linked to demo contacts', async () => {
