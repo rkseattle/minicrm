@@ -339,6 +339,28 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `PATCH /api/settings/default-currency` — admin only, body `{ currency }`, returns `{ currency }`
 - Database migration: `031_add_currency_to_deals.js` adds `currency VARCHAR(3) NOT NULL DEFAULT 'USD'` to the `deals` table
 
+### Tags / Labels (MINCRM-186)
+
+- **Tags** are freeform labels that can be attached to any contact, account, or deal
+- **Tag input** on detail pages (`ContactDetailPage`, `AccountDetailPage`, `DealDetailPage`): type to create or search existing tags, press Enter or comma to confirm, × to remove; matching existing tags appear as a suggestion dropdown (combobox pattern, keyboard-accessible)
+- **Tag badges** on list views (`ContactsPage`, `AccountsPage`, and `DealsPage` list view): compact `#tag-name` badges rendered alongside each row; mobile card views also show badges
+- **Tag filter** on list views: a dropdown lets users filter to records tagged with one or more tags (any-match); active filters appear as removable badge chips; resets to page 1 on change
+- **Admin Tags page** at `/admin/tags`: admins can rename or delete tags globally; accessible from admin nav
+- Tag names are stored lowercase; creating a tag that already exists (case-insensitive) returns the existing tag (idempotent upsert)
+- Filter uses `EXISTS` subquery in SQL — does not break existing queries when no tags are selected
+- List responses embed tags via `JSON_AGG` lateral subquery to avoid N+1 queries
+- Database migration: `032_create_tags.js` creates `tags`, `contact_tags`, `account_tags`, and `deal_tags` tables; junction tables have composite PKs and `ON DELETE CASCADE`
+- API endpoints:
+  - `GET /api/tags` — list all tags
+  - `POST /api/tags` — create a tag (name required)
+  - `GET /api/tags/:id` — get a tag by ID
+  - `PATCH /api/tags/:id` — rename a tag (admin only)
+  - `DELETE /api/tags/:id` — delete a tag and all its junction rows (admin only)
+  - `GET /api/contacts/:id/tags` — list tags attached to a contact
+  - `POST /api/contacts/:id/tags` — attach a tag by name (creates tag if new)
+  - `DELETE /api/contacts/:id/tags/:tagId` — detach a tag from a contact
+  - Same pattern applies to `/api/accounts/:id/tags` and `/api/deals/:id/tags`
+
 ### User Language Preference (MINCRM-31)
 
 - Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar

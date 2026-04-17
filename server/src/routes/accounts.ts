@@ -16,6 +16,11 @@ import {
   listChildAccountsHandler,
   searchAccountsHandler,
 } from '../controllers/accountController.js';
+import {
+  listAccountTagsHandler,
+  attachAccountTagHandler,
+  detachAccountTagHandler,
+} from '../controllers/tagController.js';
 
 const router = Router();
 
@@ -458,5 +463,16 @@ router.delete('/:id', authenticate, asyncHandler(deleteAccountHandler));
  *         description: Account not found
  */
 router.get('/:id/children', authenticate, asyncHandler(listChildAccountsHandler));
+
+// ── Account Tag Routes (MINCRM-186) ───────────────────────────────────────────
+
+/** List all tags on an account. */
+router.get('/:id/tags', authenticate, asyncHandler(listAccountTagsHandler));
+
+/** Attach a tag to an account by name, creating the tag if it does not exist. */
+router.post('/:id/tags', authenticate, asyncHandler(attachAccountTagHandler));
+
+/** Detach a tag from an account. */
+router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachAccountTagHandler));
 
 export default router;

@@ -59,6 +59,8 @@ export interface DealRow {
   probability_is_overridden: boolean;
   created_at: Date;
   updated_at: Date;
+  /** Tags attached to this deal — only populated in list responses (MINCRM-186) */
+  tags?: Array<{ id: string; name: string }>;
 }
 
 /** Columns that may be used for ORDER BY in listDeals */
@@ -81,6 +83,8 @@ interface ListDealsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+  /** When provided, only deals tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  tagIds?: string[];
 }
 
 /**
@@ -216,6 +220,15 @@ export async function listDeals(
     conditions.push(`d.stage NOT IN ('Closed Won', 'Closed Lost')`);
   }
 
+  // Tag filter (MINCRM-186) — any-match: deal must have at least one of the given tag IDs
+  if (options.tagIds && options.tagIds.length > 0) {
+    const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
+    options.tagIds.forEach((tid) => values.push(tid));
+    conditions.push(
+      `EXISTS (SELECT 1 FROM deal_tags dta WHERE dta.deal_id = d.id AND dta.tag_id IN (${placeholders}))`,
+    );
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
@@ -228,10 +241,18 @@ export async function listDeals(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
+  // Embed tags via lateral subquery (MINCRM-186)
+  const dealTagsSubquery = `
+    COALESCE((
+      SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
+      FROM deal_tags dta INNER JOIN tags t ON t.id = dta.tag_id
+      WHERE dta.deal_id = d.id
+    ), '[]'::json) AS tags`;
+
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM ${DEAL_FROM} ${where}`, values),
     pool.query<DealRow>(
-      `SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} ${where} ORDER BY d.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT ${DEAL_SELECT}, ${dealTagsSubquery} FROM ${DEAL_FROM} ${where} ORDER BY d.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     ),
   ]);

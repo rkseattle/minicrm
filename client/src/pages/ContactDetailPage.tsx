@@ -13,6 +13,7 @@ import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
+import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import {
@@ -1117,6 +1118,28 @@ export default function ContactDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Tags (MINCRM-186) */}
+        {!isEditing && id && (
+          <section
+            className="mt-8"
+            aria-labelledby="contact-tags-heading"
+            data-testid="contact-tags-section"
+          >
+            <h2
+              id="contact-tags-heading"
+              className="text-sm font-semibold text-gray-900 mb-3"
+              data-testid="contact-tags-heading"
+            >
+              {t('tags.sectionTitle')}
+            </h2>
+            <ConnectedTagInput
+              entityId={id}
+              entityType="contact"
+              entityQueryKey={CONTACTS_QUERY_KEY}
+            />
+          </section>
         )}
 
         {/* Activity timeline */}

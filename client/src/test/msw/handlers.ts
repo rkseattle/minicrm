@@ -1275,4 +1275,126 @@ export const handlers = [
   http.delete('/api/settings/pipeline-stages/:id', ({ params }) => {
     return HttpResponse.json({ id: params.id });
   }),
+
+  // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
+
+  /** Tags: GET /api/tags — returns empty list by default */
+  http.get('/api/tags', () => {
+    return HttpResponse.json({ tags: [] });
+  }),
+
+  /** Tags: POST /api/tags */
+  http.post('/api/tags', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json(
+      {
+        tag: {
+          id: '00000000-0000-0000-0000-000000000b01',
+          name: body.name,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Tags: GET /api/tags/:id */
+  http.get('/api/tags/:id', ({ params }) => {
+    return HttpResponse.json({
+      tag: {
+        id: params.id,
+        name: 'sample-tag',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Tags: PATCH /api/tags/:id — admin rename */
+  http.patch('/api/tags/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json({
+      tag: {
+        id: params.id,
+        name: body.name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Tags: DELETE /api/tags/:id — admin delete */
+  http.delete('/api/tags/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Contacts: GET /api/contacts/:id/tags — returns empty list by default */
+  http.get('/api/contacts/:id/tags', () => {
+    return HttpResponse.json({ tags: [] });
+  }),
+
+  /** Contacts: POST /api/contacts/:id/tags — attach a tag */
+  http.post('/api/contacts/:id/tags', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json({
+      tag: {
+        id: '00000000-0000-0000-0000-000000000b02',
+        name: body.name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Contacts: DELETE /api/contacts/:id/tags/:tagId — detach a tag */
+  http.delete('/api/contacts/:id/tags/:tagId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Accounts: GET /api/accounts/:id/tags — returns empty list by default */
+  http.get('/api/accounts/:id/tags', () => {
+    return HttpResponse.json({ tags: [] });
+  }),
+
+  /** Accounts: POST /api/accounts/:id/tags — attach a tag */
+  http.post('/api/accounts/:id/tags', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json({
+      tag: {
+        id: '00000000-0000-0000-0000-000000000b03',
+        name: body.name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Accounts: DELETE /api/accounts/:id/tags/:tagId — detach a tag */
+  http.delete('/api/accounts/:id/tags/:tagId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Deals: GET /api/deals/:id/tags — returns empty list by default */
+  http.get('/api/deals/:id/tags', () => {
+    return HttpResponse.json({ tags: [] });
+  }),
+
+  /** Deals: POST /api/deals/:id/tags — attach a tag */
+  http.post('/api/deals/:id/tags', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json({
+      tag: {
+        id: '00000000-0000-0000-0000-000000000b04',
+        name: body.name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Deals: DELETE /api/deals/:id/tags/:tagId — detach a tag */
+  http.delete('/api/deals/:id/tags/:tagId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

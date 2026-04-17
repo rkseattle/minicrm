@@ -50,6 +50,8 @@ export interface AccountRow {
   parent_account_id: string | null;
   created_at: Date;
   updated_at: Date;
+  /** Tags attached to this account — only populated in list responses (MINCRM-186) */
+  tags?: Array<{ id: string; name: string }>;
 }
 
 /** Columns that may be used for ORDER BY in listAccounts */
@@ -80,6 +82,8 @@ interface ListAccountsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+  /** When provided, only accounts tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  tagIds?: string[];
 }
 
 /**
@@ -284,6 +288,15 @@ export async function listAccounts(
     conditions.push(`account_type = $${values.length}`);
   }
 
+  // Tag filter (MINCRM-186) — any-match: account must have at least one of the given tag IDs
+  if (options.tagIds && options.tagIds.length > 0) {
+    const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
+    options.tagIds.forEach((tid) => values.push(tid));
+    conditions.push(
+      `EXISTS (SELECT 1 FROM account_tags at2 WHERE at2.account_id = id AND at2.tag_id IN (${placeholders}))`,
+    );
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
@@ -296,10 +309,18 @@ export async function listAccounts(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
+  // Embed tags via lateral subquery (MINCRM-186) — avoids N+1 without separate API calls
+  const tagsSubquery = `
+    COALESCE((
+      SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
+      FROM account_tags at2 INNER JOIN tags t ON t.id = at2.tag_id
+      WHERE at2.account_id = accounts.id
+    ), '[]'::json) AS tags`;
+
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM accounts ${whereClause}`, values),
     pool.query<AccountRow>(
-      `SELECT * FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT *, ${tagsSubquery} FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     ),
   ]);

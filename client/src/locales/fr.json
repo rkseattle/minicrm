@@ -18,7 +18,8 @@
     "menu": "Menu",
     "close": "Fermer",
     "collapseSidebar": "Réduire la barre latérale",
-    "expandSidebar": "Développer la barre latérale"
+    "expandSidebar": "Développer la barre latérale",
+    "tags": "Étiquettes"
   },
   "login": {
     "title": "Connectez-vous à votre compte",
@@ -977,5 +978,27 @@
     "recordTypeDeal": "Affaire",
     "from": "du",
     "to": "au"
+  },
+  "tags": {
+    "pageTitle": "Gestion des étiquettes",
+    "pageHint": "Listez, renommez et supprimez les étiquettes utilisées pour les contacts, comptes et affaires.",
+    "loading": "Chargement des étiquettes…",
+    "loadError": "Impossible de charger les étiquettes. Veuillez réessayer.",
+    "empty": "Aucune étiquette pour l’instant.",
+    "rename": "Renommer",
+    "delete": "Supprimer",
+    "deleting": "Suppression…",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "renameRequired": "Le nom de l’étiquette est obligatoire.",
+    "renameError": "Impossible de renommer l’étiquette. Veuillez réessayer.",
+    "deleteError": "Impossible de supprimer l’étiquette. Veuillez réessayer.",
+    "renameInputLabel": "Nouveau nom d’étiquette",
+    "inputLabel": "Ajouter des étiquettes",
+    "inputPlaceholder": "Saisissez une étiquette et appuyez sur Entrée ou virgule…",
+    "suggestionsLabel": "Étiquettes existantes",
+    "removeTag": "Supprimer l’étiquette {{name}}",
+    "sectionTitle": "Étiquettes"
   }
 }

@@ -18,7 +18,8 @@
     "menu": "Menü",
     "close": "Schließen",
     "collapseSidebar": "Seitenleiste zuklappen",
-    "expandSidebar": "Seitenleiste aufklappen"
+    "expandSidebar": "Seitenleiste aufklappen",
+    "tags": "Tags"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",
@@ -977,5 +978,27 @@
     "recordTypeDeal": "Deal",
     "from": "ab",
     "to": "bis"
+  },
+  "tags": {
+    "pageTitle": "Tag-Verwaltung",
+    "pageHint": "Tags für Kontakte, Firmen und Deals auflisten, umbenennen und löschen.",
+    "loading": "Tags werden geladen…",
+    "loadError": "Tags konnten nicht geladen werden. Bitte erneut versuchen.",
+    "empty": "Noch keine Tags.",
+    "rename": "Umbenennen",
+    "delete": "Löschen",
+    "deleting": "Wird gelöscht…",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "cancel": "Abbrechen",
+    "renameRequired": "Tag-Name ist erforderlich.",
+    "renameError": "Tag konnte nicht umbenannt werden. Bitte erneut versuchen.",
+    "deleteError": "Tag konnte nicht gelöscht werden. Bitte erneut versuchen.",
+    "renameInputLabel": "Neuer Tag-Name",
+    "inputLabel": "Tags hinzufügen",
+    "inputPlaceholder": "Tag eingeben und Enter oder Komma drücken…",
+    "suggestionsLabel": "Vorhandene Tags",
+    "removeTag": "Tag {{name}} entfernen",
+    "sectionTitle": "Tags"
   }
 }

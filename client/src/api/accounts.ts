@@ -35,6 +35,8 @@ export interface ListAccountsParams {
   page?: number;
   /** Records per page */
   limit?: number;
+  /** Tag IDs to filter by (any-match). MINCRM-186. */
+  tags?: string[];
 }
 
 /**
@@ -54,6 +56,7 @@ export async function listAccounts(
   if (params.dir) queryParams.dir = params.dir;
   if (params.page !== undefined) queryParams.page = String(params.page);
   if (params.limit !== undefined) queryParams.limit = String(params.limit);
+  if (params.tags && params.tags.length > 0) queryParams.tags = params.tags.join(',');
   const response = await apiClient.get<PaginatedResponse<AccountResponse>>('/accounts', {
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });

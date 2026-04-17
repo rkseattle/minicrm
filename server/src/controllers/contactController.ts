@@ -135,6 +135,15 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     : undefined;
   const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
 
+  // Tag filter (MINCRM-186): ?tags=uuid,uuid — comma-separated tag IDs (any-match)
+  const tagIds =
+    typeof req.query.tags === 'string' && req.query.tags.trim().length > 0
+      ? req.query.tags
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
+
   const result = await listContacts({
     ownerId,
     accountId,
@@ -142,6 +151,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     accountSearch,
     sort,
     dir,
+    tagIds,
     ...paginationParsed.data,
   });
   res.status(200).json(result);

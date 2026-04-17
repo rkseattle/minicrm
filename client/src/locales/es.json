@@ -18,7 +18,8 @@
     "menu": "Menú",
     "close": "Cerrar",
     "collapseSidebar": "Contraer barra lateral",
-    "expandSidebar": "Expandir barra lateral"
+    "expandSidebar": "Expandir barra lateral",
+    "tags": "Etiquetas"
   },
   "login": {
     "title": "Inicia sesión en tu cuenta",
@@ -977,5 +978,27 @@
     "recordTypeDeal": "Oportunidad",
     "from": "desde",
     "to": "hasta"
+  },
+  "tags": {
+    "pageTitle": "Gestión de etiquetas",
+    "pageHint": "Liste, renombre y elimine etiquetas usadas en contactos, cuentas y negocios.",
+    "loading": "Cargando etiquetas…",
+    "loadError": "No se pudieron cargar las etiquetas. Inténtelo de nuevo.",
+    "empty": "Aún no hay etiquetas.",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando…",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "renameRequired": "El nombre de la etiqueta es obligatorio.",
+    "renameError": "No se pudo renombrar la etiqueta. Inténtelo de nuevo.",
+    "deleteError": "No se pudo eliminar la etiqueta. Inténtelo de nuevo.",
+    "renameInputLabel": "Nuevo nombre de etiqueta",
+    "inputLabel": "Añadir etiquetas",
+    "inputPlaceholder": "Escribe una etiqueta y pulsa Enter o coma…",
+    "suggestionsLabel": "Etiquetas existentes",
+    "removeTag": "Eliminar etiqueta {{name}}",
+    "sectionTitle": "Etiquetas"
   }
 }

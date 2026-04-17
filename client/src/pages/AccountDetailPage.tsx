@@ -13,6 +13,7 @@ import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
+import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount, listChildAccounts } from '@/api/accounts.js';
@@ -296,6 +297,28 @@ export default function AccountDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {/* Tags (MINCRM-186) */}
+            {id && (
+              <section
+                className="mt-8"
+                aria-labelledby="account-tags-heading"
+                data-testid="account-tags-section"
+              >
+                <h2
+                  id="account-tags-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="account-tags-heading"
+                >
+                  {t('tags.sectionTitle')}
+                </h2>
+                <ConnectedTagInput
+                  entityId={id}
+                  entityType="account"
+                  entityQueryKey={ACCOUNTS_QUERY_KEY}
+                />
+              </section>
+            )}
 
             {/* Activity timeline */}
             <ActivityTimeline accountId={id} />
