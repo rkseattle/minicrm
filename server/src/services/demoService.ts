@@ -574,6 +574,49 @@ const DEMO_TAGS = [
   },
 ];
 
+// Demo automation rules showcasing trigger/action variety (MINCRM-206)
+// Note: trigger_config.stage for deal_stage_changed must match the PIPELINE_STAGES bootstrap
+// constant (not the live DB table) because dealStageChangedConfigSchema validates against the
+// static enum at rule evaluation time.
+const DEMO_AUTOMATION_RULES = [
+  {
+    name: 'Follow up after Closed Won',
+    enabled: true,
+    trigger_type: 'deal_stage_changed',
+    trigger_config: { stage: 'Closed Won' },
+    action_type: 'create_task',
+    action_config: {
+      subject: 'Send onboarding welcome email',
+      task_type: 'Email',
+      assignee_type: 'owner',
+      due_date_offset_days: 1,
+    },
+  },
+  {
+    name: 'New deal intake checklist',
+    enabled: true,
+    trigger_type: 'deal_created',
+    trigger_config: {},
+    action_type: 'create_task',
+    action_config: {
+      subject: 'Schedule discovery call',
+      task_type: 'Call',
+      assignee_type: 'owner',
+      due_date_offset_days: 2,
+    },
+  },
+  {
+    name: 'New contact notification',
+    enabled: true,
+    trigger_type: 'contact_created',
+    trigger_config: {},
+    action_type: 'send_notification',
+    action_config: {
+      message: 'A new contact has been added — review and assign.',
+    },
+  },
+] as const;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -656,6 +699,9 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
        AND id NOT IN (SELECT tag_id FROM deal_tags)`,
   );
 
+  // automation_rule_logs cascade automatically via ON DELETE CASCADE when rules are deleted
+  await client.query(`DELETE FROM automation_rules WHERE is_demo = true`);
+
   await client.query(`DELETE FROM activities WHERE is_demo = true`);
   await client.query(
     `DELETE FROM deal_contacts
@@ -701,7 +747,25 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     accountIds[1],
   ]);
 
-  // 2. Contacts — first 10 → account 0 (Acme), next 10 → account 1 (Globex)
+  // 2. Automation rules — no FK dependency on contacts/deals/activities
+  for (const rule of DEMO_AUTOMATION_RULES) {
+    await client.query(
+      `INSERT INTO automation_rules
+         (name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)`,
+      [
+        rule.name,
+        rule.enabled,
+        rule.trigger_type,
+        JSON.stringify(rule.trigger_config),
+        rule.action_type,
+        JSON.stringify(rule.action_config),
+        adminId,
+      ],
+    );
+  }
+
+  // 3. Contacts — first 10 → account 0 (Acme), next 10 → account 1 (Globex)
   const contactIds: string[] = [];
   for (let i = 0; i < DEMO_CONTACTS.length; i++) {
     const contact = DEMO_CONTACTS[i];
@@ -728,7 +792,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     contactIds.push(result.rows[0].id);
   }
 
-  // 3. Contact addresses (contact_addresses table, not inline fields)
+  // 4. Contact addresses (contact_addresses table, not inline fields)
   for (const addr of DEMO_CONTACT_ADDRESSES) {
     await client.query(
       `INSERT INTO contact_addresses
@@ -747,7 +811,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     );
   }
 
-  // 4. Deals — first 5 → account 0 (Acme), next 5 → account 1 (Globex)
+  // 5. Deals — first 5 → account 0 (Acme), next 5 → account 1 (Globex)
   const dealIds: string[] = [];
   for (let i = 0; i < DEMO_DEALS.length; i++) {
     const deal = DEMO_DEALS[i];
@@ -775,7 +839,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     dealIds.push(result.rows[0].id);
   }
 
-  // 5. Link primary contact to each deal
+  // 6. Link primary contact to each deal
   for (let i = 0; i < DEMO_DEALS.length; i++) {
     const primaryContactIndex = i < 5 ? i : i + 5;
     await client.query(
@@ -784,7 +848,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     );
   }
 
-  // 6. Activities
+  // 7. Activities
   for (const activity of DEMO_ACTIVITIES) {
     const dealId = dealIds[activity.dealIndex];
     const contactId = contactIds[activity.contactIndex];
@@ -805,7 +869,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     );
   }
 
-  // 7. Leads — showcase full status lifecycle and source variety
+  // 8. Leads — showcase full status lifecycle and source variety
   for (const lead of DEMO_LEADS) {
     await client.query(
       `INSERT INTO leads
@@ -824,7 +888,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     );
   }
 
-  // 8. Tags — insert tags then junction rows
+  // 9. Tags — insert tags then junction rows
   for (const tag of DEMO_TAGS) {
     const tagResult = await client.query<{ id: string }>(
       `INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
