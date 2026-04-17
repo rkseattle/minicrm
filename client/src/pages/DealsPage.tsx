@@ -18,6 +18,11 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { listDeals, createDeal, updateDeal, exportDealsCsv, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { bulkDeals } from '@/api/bulk.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkReassignModal from '@/components/BulkReassignModal.js';
+import BulkChangeStageModal from '@/components/BulkChangeStageModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
 import TagBadge from '@/components/TagBadge.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -410,6 +415,51 @@ export default function DealsPage() {
 
   const isClosing = stageMutation.isPending && pendingClose !== null;
 
+  // ── Bulk selection state (MINCRM-188) — only available in list view ──────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showBulkChangeStage, setShowBulkChangeStage] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [ownerFilter, showClosed, sortCol, sortDir, listPage, selectedTagIds.join(','), viewMode]);
+
+  const allVisibleDealIds = sortedDeals.map((d) => d.id);
+  const allVisibleSelected =
+    allVisibleDealIds.length > 0 && allVisibleDealIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleDealIds));
+    }
+  }
+
+  function toggleRow(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: bulkDeals,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
+      setSelectedIds(new Set());
+      setShowBulkReassign(false);
+      setShowBulkDelete(false);
+      setShowBulkChangeStage(false);
+    },
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -776,6 +826,82 @@ export default function DealsPage() {
               </div>
             )}
 
+            {/* Bulk action bar (MINCRM-188) */}
+            {selectedIds.size > 0 && (
+              <BulkActionBar
+                selectedCount={selectedIds.size}
+                actions={[
+                  {
+                    key: 'reassign',
+                    labelKey: 'bulk.reassignButton',
+                    testId: 'bulk-reassign-button',
+                    variant: 'secondary',
+                  },
+                  {
+                    key: 'change_stage',
+                    labelKey: 'bulk.changeStageButton',
+                    testId: 'bulk-change-stage-button',
+                    variant: 'secondary',
+                  },
+                  {
+                    key: 'delete',
+                    labelKey: 'bulk.deleteButton',
+                    testId: 'bulk-delete-button',
+                    variant: 'danger',
+                  },
+                ]}
+                onAction={(key) => {
+                  if (key === 'reassign') setShowBulkReassign(true);
+                  if (key === 'change_stage') setShowBulkChangeStage(true);
+                  if (key === 'delete') setShowBulkDelete(true);
+                }}
+                onClearSelection={() => setSelectedIds(new Set())}
+              />
+            )}
+
+            {/* Bulk reassign modal */}
+            <BulkReassignModal
+              isOpen={showBulkReassign}
+              selectedCount={selectedIds.size}
+              users={activeUsers}
+              isPending={bulkMutation.isPending}
+              onConfirm={(ownerId) => {
+                bulkMutation.mutate({
+                  action: 'reassign',
+                  ids: Array.from(selectedIds),
+                  owner_id: ownerId,
+                });
+              }}
+              onCancel={() => setShowBulkReassign(false)}
+            />
+
+            {/* Bulk change stage modal */}
+            <BulkChangeStageModal
+              isOpen={showBulkChangeStage}
+              selectedCount={selectedIds.size}
+              stages={pipelineStages}
+              isPending={bulkMutation.isPending}
+              onConfirm={(stage) => {
+                bulkMutation.mutate({
+                  action: 'change_stage',
+                  ids: Array.from(selectedIds),
+                  stage,
+                });
+              }}
+              onCancel={() => setShowBulkChangeStage(false)}
+            />
+
+            {/* Bulk delete confirmation modal */}
+            <ConfirmDeleteModal
+              isOpen={showBulkDelete}
+              message={t('bulk.deleteMessage', { count: selectedIds.size })}
+              isDeleting={bulkMutation.isPending}
+              onConfirm={() => {
+                bulkMutation.mutate({ action: 'delete', ids: Array.from(selectedIds) });
+              }}
+              onCancel={() => setShowBulkDelete(false)}
+            />
+
             {!isLoading && !isError && (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 {sortedDeals.length === 0 ? (
@@ -785,43 +911,72 @@ export default function DealsPage() {
                 ) : (
                   <>
                     {/* Mobile card view — visible below md */}
+                    {/* Mobile select-all (MINCRM-188) */}
+                    <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                      <input
+                        type="checkbox"
+                        data-testid="bulk-select-all"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        aria-label={t('bulk.selectedCount', { count: allVisibleDealIds.length })}
+                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-xs text-gray-500">
+                        {t('bulk.selectedCount', { count: selectedIds.size })}
+                      </span>
+                    </div>
                     <ul className="md:hidden divide-y divide-gray-100">
                       {sortedDeals.map((deal) => (
                         <li
                           key={deal.id}
-                          className="px-4 py-3"
+                          className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
                           data-testid={`deal-list-card-${deal.id}`}
                         >
-                          <Link
-                            to={`/deals/${deal.id}`}
-                            data-testid={`deal-list-card-link-${deal.id}`}
-                            className="block font-medium text-indigo-600 hover:underline mb-1"
-                          >
-                            {deal.name}
-                          </Link>
-                          <p className="text-sm text-gray-700">
-                            {getStageDisplayName(deal.stage, t)}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {formatDealValue(deal.value, deal.currency, i18n.language)}
-                          </p>
-                          <p
-                            className="text-xs text-gray-400 mt-1"
-                            data-testid={`deal-list-card-owner-${deal.id}`}
-                          >
-                            {t('deals.columnOwner')}:{' '}
-                            {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
-                          </p>
-                          {deal.tags && deal.tags.length > 0 && (
-                            <div
-                              className="flex flex-wrap gap-1 mt-1"
-                              data-testid={`deal-list-card-tags-${deal.id}`}
+                          {/* Mobile row checkbox (MINCRM-188) */}
+                          <input
+                            type="checkbox"
+                            data-testid={`bulk-select-${deal.id}`}
+                            checked={selectedIds.has(deal.id)}
+                            onChange={() => toggleRow(deal.id)}
+                            aria-label={deal.name}
+                            className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              to={`/deals/${deal.id}`}
+                              data-testid={`deal-list-card-link-${deal.id}`}
+                              className="block font-medium text-indigo-600 hover:underline mb-1"
                             >
-                              {deal.tags.map((tag) => (
-                                <TagBadge key={tag.id} tag={tag} />
-                              ))}
-                            </div>
-                          )}
+                              {deal.name}
+                            </Link>
+                            <p className="text-sm text-gray-700">
+                              {getStageDisplayName(deal.stage, t)}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {formatDealValue(deal.value, deal.currency, i18n.language)}
+                            </p>
+                            <p
+                              className="text-xs text-gray-400 mt-1"
+                              data-testid={`deal-list-card-owner-${deal.id}`}
+                            >
+                              {t('deals.columnOwner')}:{' '}
+                              {resolveOwnerName(
+                                deal.owner_id,
+                                activeUsers,
+                                t('deals.ownerUnknown'),
+                              )}
+                            </p>
+                            {deal.tags && deal.tags.length > 0 && (
+                              <div
+                                className="flex flex-wrap gap-1 mt-1"
+                                data-testid={`deal-list-card-tags-${deal.id}`}
+                              >
+                                {deal.tags.map((tag) => (
+                                  <TagBadge key={tag.id} tag={tag} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -830,6 +985,19 @@ export default function DealsPage() {
                     <table className="hidden md:table w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50">
+                          {/* Bulk select-all checkbox (MINCRM-188) */}
+                          <th className="w-10 ps-4 py-3">
+                            <input
+                              type="checkbox"
+                              data-testid="bulk-select-all"
+                              checked={allVisibleSelected}
+                              onChange={toggleSelectAll}
+                              aria-label={t('bulk.selectedCount', {
+                                count: allVisibleDealIds.length,
+                              })}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </th>
                           <th
                             className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                             aria-sort={sortCol === 'name' ? sortDir : 'none'}
@@ -915,7 +1083,21 @@ export default function DealsPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {sortedDeals.map((deal) => (
-                          <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
+                          <tr
+                            key={deal.id}
+                            className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
+                          >
+                            {/* Row checkbox (MINCRM-188) */}
+                            <td className="w-10 ps-4 py-3">
+                              <input
+                                type="checkbox"
+                                data-testid={`bulk-select-${deal.id}`}
+                                checked={selectedIds.has(deal.id)}
+                                onChange={() => toggleRow(deal.id)}
+                                aria-label={deal.name}
+                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                            </td>
                             <td className="px-4 py-3 font-medium text-indigo-600">
                               <Link
                                 to={`/deals/${deal.id}`}

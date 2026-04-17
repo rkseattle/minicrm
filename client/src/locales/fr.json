@@ -753,6 +753,33 @@
     "errorDelete": "Échec de la suppression — veuillez réessayer.",
     "errorLoad": "Impossible de charger les pièces jointes."
   },
+  "bulk": {
+    "selectedCount": "{{count}} sélectionné",
+    "selectedCount_other": "{{count}} sélectionnés",
+    "clearSelection": "Effacer la sélection",
+    "reassignButton": "Réaffecter le propriétaire",
+    "deleteButton": "Supprimer",
+    "changeStageButton": "Changer l'étape",
+    "reassignTitle": "Réaffecter le propriétaire",
+    "reassignMessage": "Réaffecter {{count}} enregistrement à un nouveau propriétaire.",
+    "reassignMessage_other": "Réaffecter {{count}} enregistrements à un nouveau propriétaire.",
+    "newOwnerLabel": "Nouveau propriétaire",
+    "selectOwner": "— Sélectionner le propriétaire —",
+    "reassignConfirm": "Réaffecter",
+    "reassigning": "Réaffectation…",
+    "changeStageTitle": "Changer l'étape",
+    "changeStageMessage": "Déplacer {{count}} affaire vers une nouvelle étape.",
+    "changeStageMessage_other": "Déplacer {{count}} affaires vers une nouvelle étape.",
+    "newStageLabel": "Nouvelle étape",
+    "selectStage": "— Sélectionner une étape —",
+    "changeStageConfirm": "Changer l'étape",
+    "changingStagePending": "Modification…",
+    "deleteTitle": "Supprimer {{count}} enregistrement ?",
+    "deleteTitle_other": "Supprimer {{count}} enregistrements ?",
+    "deleteMessage": "Cela supprimera définitivement {{count}} enregistrement. Cette action est irréversible.",
+    "deleteMessage_other": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
+    "errorGeneric": "L'opération en masse a échoué. Veuillez réessayer."
+  },
   "common": {
     "ownerToggle": {
       "label": "Filtrer par propriétaire",

@@ -21,6 +21,7 @@ import {
   attachDealTagHandler,
   detachDealTagHandler,
 } from '../controllers/tagController.js';
+import { bulkDealsHandler } from '../controllers/bulkController.js';
 
 const router = Router();
 
@@ -128,6 +129,64 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *         description: Not authenticated
  */
 router.get('/export', authenticate, asyncHandler(exportDealsHandler));
+
+/**
+ * @openapi
+ * /api/deals/bulk:
+ *   post:
+ *     tags: [Deals]
+ *     operationId: bulkDeals
+ *     summary: Bulk reassign, delete, or change stage on deals
+ *     description: >
+ *       Performs a bulk action on the specified deal IDs in a single transaction.
+ *       Reps may only act on deals they own; any unowned ID returns 403.
+ *       Admins may act on any deals.
+ *       Stage is validated against the live pipeline_stages table.
+ *       (MINCRM-188)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action, ids]
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [reassign, delete, change_stage]
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *               owner_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Required when action is 'reassign'
+ *               stage:
+ *                 type: string
+ *                 description: Required when action is 'change_stage'. Must be a valid pipeline stage name.
+ *     responses:
+ *       200:
+ *         description: Bulk operation succeeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 affected:
+ *                   type: integer
+ *       400:
+ *         description: Validation error or invalid stage
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Rep attempting to act on deals they do not own
+ */
+router.post('/bulk', authenticate, asyncHandler(bulkDealsHandler));
 
 /**
  * @openapi

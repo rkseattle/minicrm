@@ -26,6 +26,7 @@ import {
   attachContactTagHandler,
   detachContactTagHandler,
 } from '../controllers/tagController.js';
+import { bulkContactsHandler } from '../controllers/bulkController.js';
 
 const router = Router();
 
@@ -151,6 +152,60 @@ router.get('/', authenticate, asyncHandler(listContactsHandler));
  *         description: Not authenticated
  */
 router.get('/export', authenticate, asyncHandler(exportContactsHandler));
+
+/**
+ * @openapi
+ * /api/contacts/bulk:
+ *   post:
+ *     tags: [Contacts]
+ *     operationId: bulkContacts
+ *     summary: Bulk reassign or delete contacts
+ *     description: >
+ *       Performs a bulk action on the specified contact IDs in a single transaction.
+ *       Reps may only act on contacts they own; any unowned ID returns 403.
+ *       Admins may act on any contacts.
+ *       (MINCRM-188)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action, ids]
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [reassign, delete]
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *               owner_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Required when action is 'reassign'
+ *     responses:
+ *       200:
+ *         description: Bulk operation succeeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 affected:
+ *                   type: integer
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Rep attempting to act on contacts they do not own
+ */
+router.post('/bulk', authenticate, asyncHandler(bulkContactsHandler));
 
 /**
  * @openapi

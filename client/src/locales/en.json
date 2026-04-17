@@ -730,6 +730,32 @@
     "errorDelete": "Delete failed — please try again.",
     "errorLoad": "Could not load attachments."
   },
+  "bulk": {
+    "selectedCount": "{{count}} selected",
+    "clearSelection": "Clear selection",
+    "reassignButton": "Reassign owner",
+    "deleteButton": "Delete",
+    "changeStageButton": "Change stage",
+    "reassignTitle": "Reassign owner",
+    "reassignMessage": "Reassign {{count}} record to a new owner.",
+    "reassignMessage_other": "Reassign {{count}} records to a new owner.",
+    "newOwnerLabel": "New owner",
+    "selectOwner": "— Select owner —",
+    "reassignConfirm": "Reassign",
+    "reassigning": "Reassigning…",
+    "changeStageTitle": "Change stage",
+    "changeStageMessage": "Move {{count}} deal to a new stage.",
+    "changeStageMessage_other": "Move {{count}} deals to a new stage.",
+    "newStageLabel": "New stage",
+    "selectStage": "— Select stage —",
+    "changeStageConfirm": "Change stage",
+    "changingStagePending": "Changing…",
+    "deleteTitle": "Delete {{count}} record?",
+    "deleteTitle_other": "Delete {{count}} records?",
+    "deleteMessage": "This will permanently delete {{count}} record. This cannot be undone.",
+    "deleteMessage_other": "This will permanently delete {{count}} records. This cannot be undone.",
+    "errorGeneric": "Bulk operation failed. Please try again."
+  },
   "common": {
     "ownerToggle": {
       "label": "Filter by owner",

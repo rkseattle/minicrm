@@ -753,6 +753,33 @@
     "errorDelete": "Error al eliminar — inténtalo de nuevo.",
     "errorLoad": "No se pudieron cargar los adjuntos."
   },
+  "bulk": {
+    "selectedCount": "{{count}} seleccionado",
+    "selectedCount_other": "{{count}} seleccionados",
+    "clearSelection": "Borrar selección",
+    "reassignButton": "Reasignar propietario",
+    "deleteButton": "Eliminar",
+    "changeStageButton": "Cambiar etapa",
+    "reassignTitle": "Reasignar propietario",
+    "reassignMessage": "Reasignar {{count}} registro a un nuevo propietario.",
+    "reassignMessage_other": "Reasignar {{count}} registros a un nuevo propietario.",
+    "newOwnerLabel": "Nuevo propietario",
+    "selectOwner": "— Seleccionar propietario —",
+    "reassignConfirm": "Reasignar",
+    "reassigning": "Reasignando…",
+    "changeStageTitle": "Cambiar etapa",
+    "changeStageMessage": "Mover {{count}} trato a una nueva etapa.",
+    "changeStageMessage_other": "Mover {{count}} tratos a una nueva etapa.",
+    "newStageLabel": "Nueva etapa",
+    "selectStage": "— Seleccionar etapa —",
+    "changeStageConfirm": "Cambiar etapa",
+    "changingStagePending": "Cambiando…",
+    "deleteTitle": "¿Eliminar {{count}} registro?",
+    "deleteTitle_other": "¿Eliminar {{count}} registros?",
+    "deleteMessage": "Esto eliminará permanentemente {{count}} registro. Esta acción no se puede deshacer.",
+    "deleteMessage_other": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
+    "errorGeneric": "La operación masiva falló. Por favor, inténtelo de nuevo."
+  },
   "common": {
     "ownerToggle": {
       "label": "Filtrar por propietario",
