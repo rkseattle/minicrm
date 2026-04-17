@@ -74,6 +74,35 @@ export async function navigateToContacts(
 }
 
 // ---------------------------------------------------------------------------
+// waitForContactInList()
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits until a specific contact row is visible in the contacts list.
+ *
+ * Use this after navigateToContacts() when the contact was created via API
+ * immediately before navigation — the list may still be loading when the
+ * test tries to interact with a row.
+ *
+ * @param id - UUID of the contact to wait for.
+ * @param context - Playwright fixture context.
+ *
+ * @example
+ * ```ts
+ * await navigateToContacts({ page, healPage, testName });
+ * await waitForContactInList(c1.id, { page, healPage, testName });
+ * await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+ * ```
+ */
+export async function waitForContactInList(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.waitForContact(id);
+}
+
+// ---------------------------------------------------------------------------
 // editContact()
 // ---------------------------------------------------------------------------
 

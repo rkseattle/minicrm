@@ -129,6 +129,26 @@ export class ContactsPage {
   }
 
   /**
+   * Waits until a specific contact row is visible in the list, identified by
+   * its contact-link-{id} testId. Use this after navigating to the contacts
+   * list when you need to interact with a row that was just created via API.
+   *
+   * @param id - The contact UUID to wait for.
+   * @param timeout - Maximum wait per strategy attempt in ms (default 15 000).
+   */
+  async waitForContact(id: string, timeout = 15_000): Promise<void> {
+    await this.healPage
+      .locate(
+        [
+          { type: 'testId', value: `contact-link-${id}` },
+          { type: 'css', value: `[data-testid="contact-link-${id}"]` },
+        ],
+        { fallbackTimeout: timeout },
+      )
+      .resolve(this.testName);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {
