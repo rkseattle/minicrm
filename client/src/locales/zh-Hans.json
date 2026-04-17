@@ -753,6 +753,32 @@
     "errorDelete": "删除失败，请重试。",
     "errorLoad": "无法加载附件。"
   },
+  "bulk": {
+    "selectedCount": "已选择 {{count}} 条",
+    "clearSelection": "清除选择",
+    "reassignButton": "重新分配负责人",
+    "deleteButton": "删除",
+    "changeStageButton": "更改阶段",
+    "reassignTitle": "重新分配负责人",
+    "reassignMessage": "将 {{count}} 条记录重新分配给新负责人。",
+    "reassignMessage_other": "将 {{count}} 条记录重新分配给新负责人。",
+    "newOwnerLabel": "新负责人",
+    "selectOwner": "— 选择负责人 —",
+    "reassignConfirm": "确认分配",
+    "reassigning": "正在分配…",
+    "changeStageTitle": "更改阶段",
+    "changeStageMessage": "将 {{count}} 个交易移至新阶段。",
+    "changeStageMessage_other": "将 {{count}} 个交易移至新阶段。",
+    "newStageLabel": "新阶段",
+    "selectStage": "— 选择阶段 —",
+    "changeStageConfirm": "更改阶段",
+    "changingStagePending": "正在更改…",
+    "deleteTitle": "删除 {{count}} 条记录？",
+    "deleteTitle_other": "删除 {{count}} 条记录？",
+    "deleteMessage": "这将永久删除 {{count}} 条记录，无法撤销。",
+    "deleteMessage_other": "这将永久删除 {{count}} 条记录，无法撤销。",
+    "errorGeneric": "批量操作失败，请重试。"
+  },
   "common": {
     "ownerToggle": {
       "label": "按负责人筛选",

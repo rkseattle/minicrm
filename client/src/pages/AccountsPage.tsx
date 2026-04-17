@@ -17,9 +17,13 @@ import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.js';
+import { bulkAccounts } from '@/api/bulk.js';
 import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import TagBadge from '@/components/TagBadge.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkReassignModal from '@/components/BulkReassignModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse, AccountType } from '@shared/schemas/accountSchema.js';
@@ -160,6 +164,56 @@ export default function AccountsPage() {
 
   // Server handles sorting and pagination — use data as-is
   const accounts: AccountResponse[] = data?.data ?? [];
+
+  // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [
+    debouncedSearch,
+    debouncedIndustry,
+    ownerFilter,
+    accountTypeFilter,
+    page,
+    selectedTagIds.join(','),
+  ]);
+
+  const allVisibleIds = accounts.map((a) => a.id);
+  const allVisibleSelected =
+    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  }
+
+  function toggleRow(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: bulkAccounts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+      setSelectedIds(new Set());
+      setShowBulkReassign(false);
+      setShowBulkDelete(false);
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -355,6 +409,59 @@ export default function AccountsPage() {
           </div>
         )}
 
+        {/* Bulk action bar (MINCRM-188) */}
+        {selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            actions={[
+              {
+                key: 'reassign',
+                labelKey: 'bulk.reassignButton',
+                testId: 'bulk-reassign-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'delete',
+                labelKey: 'bulk.deleteButton',
+                testId: 'bulk-delete-button',
+                variant: 'danger',
+              },
+            ]}
+            onAction={(key) => {
+              if (key === 'reassign') setShowBulkReassign(true);
+              if (key === 'delete') setShowBulkDelete(true);
+            }}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
+        )}
+
+        {/* Bulk reassign modal */}
+        <BulkReassignModal
+          isOpen={showBulkReassign}
+          selectedCount={selectedIds.size}
+          users={activeUsers}
+          isPending={bulkMutation.isPending}
+          onConfirm={(ownerId) => {
+            bulkMutation.mutate({
+              action: 'reassign',
+              ids: Array.from(selectedIds),
+              owner_id: ownerId,
+            });
+          }}
+          onCancel={() => setShowBulkReassign(false)}
+        />
+
+        {/* Bulk delete confirmation modal */}
+        <ConfirmDeleteModal
+          isOpen={showBulkDelete}
+          message={t('bulk.deleteMessage', { count: selectedIds.size })}
+          isDeleting={bulkMutation.isPending}
+          onConfirm={() => {
+            bulkMutation.mutate({ action: 'delete', ids: Array.from(selectedIds) });
+          }}
+          onCancel={() => setShowBulkDelete(false)}
+        />
+
         {/* Accounts list */}
         {!isLoading && !isError && (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -365,47 +472,70 @@ export default function AccountsPage() {
             ) : (
               <>
                 {/* Mobile card view — visible below md */}
+                <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                  <input
+                    type="checkbox"
+                    data-testid="bulk-select-all"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    aria-label={t('bulk.selectedCount', { count: allVisibleIds.length })}
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs text-gray-500">
+                    {t('bulk.selectedCount', { count: selectedIds.size })}
+                  </span>
+                </div>
                 <ul className="md:hidden divide-y divide-gray-100">
                   {accounts.map((account) => (
                     <li
                       key={account.id}
-                      className="px-4 py-3"
+                      className={`px-4 py-3 flex items-start gap-3${selectedIds.has(account.id) ? ' bg-indigo-50' : ''}`}
                       data-testid={`account-card-${account.id}`}
                     >
-                      <Link
-                        to={`/accounts/${account.id}`}
-                        data-testid={`account-card-link-${account.id}`}
-                        className="block font-medium text-indigo-600 hover:underline mb-1"
-                      >
-                        {account.name}
-                      </Link>
-                      {account.industry && (
-                        <p className="text-sm text-gray-500">{account.industry}</p>
-                      )}
-                      {account.website && (
-                        <p className="text-sm text-gray-400">{account.website}</p>
-                      )}
-                      <p
-                        className="text-xs text-gray-400 mt-1"
-                        data-testid={`account-card-owner-${account.id}`}
-                      >
-                        {t('accounts.columnOwner')}:{' '}
-                        {resolveOwnerName(
-                          account.owner_id,
-                          activeUsers,
-                          t('accounts.ownerUnknown'),
-                        )}
-                      </p>
-                      {account.tags && account.tags.length > 0 && (
-                        <div
-                          className="flex flex-wrap gap-1 mt-1"
-                          data-testid={`account-card-tags-${account.id}`}
+                      <input
+                        type="checkbox"
+                        data-testid={`bulk-select-${account.id}`}
+                        checked={selectedIds.has(account.id)}
+                        onChange={() => toggleRow(account.id)}
+                        aria-label={account.name}
+                        className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={`/accounts/${account.id}`}
+                          data-testid={`account-card-link-${account.id}`}
+                          className="block font-medium text-indigo-600 hover:underline mb-1"
                         >
-                          {account.tags.map((tag) => (
-                            <TagBadge key={tag.id} tag={tag} />
-                          ))}
-                        </div>
-                      )}
+                          {account.name}
+                        </Link>
+                        {account.industry && (
+                          <p className="text-sm text-gray-500">{account.industry}</p>
+                        )}
+                        {account.website && (
+                          <p className="text-sm text-gray-400">{account.website}</p>
+                        )}
+                        <p
+                          className="text-xs text-gray-400 mt-1"
+                          data-testid={`account-card-owner-${account.id}`}
+                        >
+                          {t('accounts.columnOwner')}:{' '}
+                          {resolveOwnerName(
+                            account.owner_id,
+                            activeUsers,
+                            t('accounts.ownerUnknown'),
+                          )}
+                        </p>
+                        {account.tags && account.tags.length > 0 && (
+                          <div
+                            className="flex flex-wrap gap-1 mt-1"
+                            data-testid={`account-card-tags-${account.id}`}
+                          >
+                            {account.tags.map((tag) => (
+                              <TagBadge key={tag.id} tag={tag} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -414,6 +544,17 @@ export default function AccountsPage() {
                 <table className="hidden md:table w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
+                      {/* Bulk select-all checkbox (MINCRM-188) */}
+                      <th className="w-10 ps-4 py-3">
+                        <input
+                          type="checkbox"
+                          data-testid="bulk-select-all"
+                          checked={allVisibleSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t('bulk.selectedCount', { count: allVisibleIds.length })}
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </th>
                       <th
                         className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
                         aria-sort={sortDir}
@@ -464,7 +605,21 @@ export default function AccountsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {accounts.map((account) => (
-                      <tr key={account.id} className="hover:bg-gray-50 transition-colors">
+                      <tr
+                        key={account.id}
+                        className={`hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-indigo-50' : ''}`}
+                      >
+                        {/* Row checkbox (MINCRM-188) */}
+                        <td className="w-10 ps-4 py-3">
+                          <input
+                            type="checkbox"
+                            data-testid={`bulk-select-${account.id}`}
+                            checked={selectedIds.has(account.id)}
+                            onChange={() => toggleRow(account.id)}
+                            aria-label={account.name}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
                         <td className="px-4 py-3 font-medium text-indigo-600">
                           <Link
                             to={`/accounts/${account.id}`}

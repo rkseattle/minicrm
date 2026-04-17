@@ -753,6 +753,32 @@
     "errorDelete": "Löschen fehlgeschlagen — bitte versuchen Sie es erneut.",
     "errorLoad": "Anhänge konnten nicht geladen werden."
   },
+  "bulk": {
+    "selectedCount": "{{count}} ausgewählt",
+    "clearSelection": "Auswahl aufheben",
+    "reassignButton": "Inhaber zuweisen",
+    "deleteButton": "Löschen",
+    "changeStageButton": "Phase ändern",
+    "reassignTitle": "Inhaber zuweisen",
+    "reassignMessage": "{{count}} Datensatz einem neuen Inhaber zuweisen.",
+    "reassignMessage_other": "{{count}} Datensätze einem neuen Inhaber zuweisen.",
+    "newOwnerLabel": "Neuer Inhaber",
+    "selectOwner": "— Inhaber auswählen —",
+    "reassignConfirm": "Zuweisen",
+    "reassigning": "Wird zugewiesen…",
+    "changeStageTitle": "Phase ändern",
+    "changeStageMessage": "{{count}} Deal in eine neue Phase verschieben.",
+    "changeStageMessage_other": "{{count}} Deals in eine neue Phase verschieben.",
+    "newStageLabel": "Neue Phase",
+    "selectStage": "— Phase auswählen —",
+    "changeStageConfirm": "Phase ändern",
+    "changingStagePending": "Wird geändert…",
+    "deleteTitle": "{{count}} Datensatz löschen?",
+    "deleteTitle_other": "{{count}} Datensätze löschen?",
+    "deleteMessage": "Dadurch wird {{count}} Datensatz dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+    "deleteMessage_other": "Dadurch werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+    "errorGeneric": "Massenvorgang fehlgeschlagen. Bitte versuchen Sie es erneut."
+  },
   "common": {
     "ownerToggle": {
       "label": "Nach Inhaber filtern",

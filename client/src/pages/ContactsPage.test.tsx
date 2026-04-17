@@ -9,8 +9,9 @@ import { http, HttpResponse } from 'msw';
 import ContactsPage from './ContactsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import { CONTACT_1, CONTACT_2, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 import * as contactsApi from '../api/contacts.js';
+import * as bulkApi from '../api/bulk.js';
 
 describe('ContactsPage', () => {
   it('renders the page heading', async () => {
@@ -422,6 +423,97 @@ describe('ContactsPage', () => {
       });
       await user.click(screen.getByTestId('contacts-export-all-button'));
       expect(contactsApi.exportContactsCsv).toHaveBeenCalledWith({ all: true });
+    });
+  });
+
+  // ── Bulk selection ──────────────────────────────────────────────────────────
+
+  describe('bulk selection', () => {
+    // Checkboxes render in both mobile card and desktop table — use getAllByTestId
+    // and take the first match (either works for interaction purposes).
+    const getRowCheckbox = (id: string) => screen.getAllByTestId(`bulk-select-${id}`)[0]!;
+
+    it('shows row checkboxes in the contact list', async () => {
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('shows the bulk action bar after selecting a row', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(CONTACT_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    });
+
+    it('does not show the bulk action bar before any rows are selected', async () => {
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('select-all checkbox shows bulk action bar with all rows selected', async () => {
+      // Default handler returns [CONTACT_1, CONTACT_2] — no override needed
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      // Wait for both contacts to appear before clicking select-all
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_2.id}`).length).toBeGreaterThan(0);
+      });
+      // Click the mobile select-all checkbox (first in DOM)
+      await user.click(screen.getAllByTestId('bulk-select-all')[0]!);
+      // Bulk action bar should appear, showing 2 selected
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('2');
+    });
+
+    it('clear selection hides the bulk action bar', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(CONTACT_1.id));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('bulk-clear-selection'));
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('bulk delete calls the API and clears selection on success', async () => {
+      vi.spyOn(bulkApi, 'bulkContacts').mockResolvedValue({ affected: 1 });
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(getRowCheckbox(CONTACT_1.id));
+      await user.click(screen.getByTestId('bulk-delete-button'));
+
+      // confirm dialog appears
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+      await waitFor(() => {
+        expect(bulkApi.bulkContacts).toHaveBeenCalledWith(
+          expect.objectContaining({ action: 'delete', ids: [CONTACT_1.id] }),
+          expect.anything(),
+        );
+      });
+      await waitFor(() => {
+        expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+      });
     });
   });
 });

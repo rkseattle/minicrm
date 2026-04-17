@@ -21,6 +21,7 @@ import {
   attachAccountTagHandler,
   detachAccountTagHandler,
 } from '../controllers/tagController.js';
+import { bulkAccountsHandler } from '../controllers/bulkController.js';
 
 const router = Router();
 
@@ -131,6 +132,60 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  *         description: Not authenticated
  */
 router.get('/export', authenticate, asyncHandler(exportAccountsHandler));
+
+/**
+ * @openapi
+ * /api/accounts/bulk:
+ *   post:
+ *     tags: [Accounts]
+ *     operationId: bulkAccounts
+ *     summary: Bulk reassign or delete accounts
+ *     description: >
+ *       Performs a bulk action on the specified account IDs in a single transaction.
+ *       Reps may only act on accounts they own; any unowned ID returns 403.
+ *       Admins may act on any accounts.
+ *       (MINCRM-188)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [action, ids]
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [reassign, delete]
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *               owner_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Required when action is 'reassign'
+ *     responses:
+ *       200:
+ *         description: Bulk operation succeeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 affected:
+ *                   type: integer
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Rep attempting to act on accounts they do not own
+ */
+router.post('/bulk', authenticate, asyncHandler(bulkAccountsHandler));
 
 /**
  * @openapi
