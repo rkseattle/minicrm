@@ -421,9 +421,10 @@ export default function DealsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showBulkChangeStage, setShowBulkChangeStage] = useState(false);
 
+  const selectedTagKey = selectedTagIds.join(',');
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [ownerFilter, showClosed, sortCol, sortDir, listPage, selectedTagIds.join(','), viewMode]);
+  }, [ownerFilter, showClosed, sortCol, sortDir, listPage, selectedTagKey, viewMode]);
 
   const allVisibleDealIds = sortedDeals.map((d) => d.id);
   const allVisibleSelected =
