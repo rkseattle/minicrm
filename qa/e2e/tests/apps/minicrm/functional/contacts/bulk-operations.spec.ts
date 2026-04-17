@@ -19,6 +19,7 @@ import {
   navigateToContacts,
   waitForContactInList,
   waitForBulkCheckbox,
+  clickBulkCheckbox,
   filterContactsByTerm,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
@@ -90,9 +91,9 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 
   // Select both contact rows via their checkboxes.
   await waitForBulkCheckbox(c1.id, { page, healPage, testName });
-  await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+  await clickBulkCheckbox(c1.id, { page, healPage, testName });
   await waitForBulkCheckbox(c2.id, { page, healPage, testName });
-  await healPage.click([{ type: 'testId', value: `bulk-select-${c2.id}` }]);
+  await clickBulkCheckbox(c2.id, { page, healPage, testName });
 
   // Bulk action bar should be visible.
   await expect(
@@ -166,9 +167,9 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
 
   // Select both rows.
   await waitForBulkCheckbox(c1.id, { page, healPage, testName });
-  await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+  await clickBulkCheckbox(c1.id, { page, healPage, testName });
   await waitForBulkCheckbox(c2.id, { page, healPage, testName });
-  await healPage.click([{ type: 'testId', value: `bulk-select-${c2.id}` }]);
+  await clickBulkCheckbox(c2.id, { page, healPage, testName });
 
   await expect(
     await healPage.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(testName),

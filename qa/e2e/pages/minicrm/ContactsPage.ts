@@ -149,17 +149,34 @@ export class ContactsPage {
   }
 
   /**
-   * Waits until the bulk-select checkbox for a specific contact is attached to
-   * the DOM. Use this before clicking a bulk-select checkbox to avoid the 2s
-   * default probe expiring during a React Query background refetch.
+   * Waits until the bulk-select checkbox for a specific contact is visible and
+   * interactable. Use this before clicking a bulk-select checkbox to avoid
+   * acting on stale rows during a React Query refetch.
    *
    * @param id - The contact UUID whose checkbox to wait for.
    * @param timeout - Maximum wait in ms (default 15 000).
    */
   async waitForBulkCheckbox(id: string, timeout = 15_000): Promise<void> {
-    await this.healPage
-      .locate([{ type: 'testId', value: `bulk-select-${id}` }], { fallbackTimeout: timeout })
+    // Both mobile-card and desktop-table views render this checkbox, so the
+    // bare testId selector matches two elements and triggers Playwright's strict
+    // mode error. Scope to the visible one only.
+    const locator = await this.healPage
+      .locate([{ type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` }], {
+        fallbackTimeout: timeout,
+      })
       .resolve(this.testName);
+    await locator.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Clicks the bulk-select checkbox for a specific contact.
+   * Scopes to the visible instance only (both mobile and desktop views render
+   * the checkbox; the bare testId would match two elements).
+   *
+   * @param id - The contact UUID whose checkbox to click.
+   */
+  async clickBulkCheckbox(id: string): Promise<void> {
+    await this.page.locator(`[data-testid="bulk-select-${id}"]:visible`).click();
   }
 
   /**
@@ -174,8 +191,9 @@ export class ContactsPage {
       { type: 'testId', value: 'contacts-search' },
       { type: 'css', value: '[data-testid="contacts-search"]' },
     ]);
-    // Wait for the debounce (300 ms) + one React render cycle.
-    await this.page.waitForTimeout(400);
+    // Wait for the debounce to fire, the request to complete, and React to
+    // repopulate the list — matches the pattern used in rowCount().
+    await this.page.waitForLoadState('networkidle');
   }
 
   /**

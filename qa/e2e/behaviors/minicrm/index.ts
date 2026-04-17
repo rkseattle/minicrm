@@ -22,6 +22,7 @@ export {
   navigateToContacts,
   waitForContactInList,
   waitForBulkCheckbox,
+  clickBulkCheckbox,
   filterContactsByTerm,
   editContact,
   createContactViaUI,
