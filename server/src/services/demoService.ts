@@ -1,16 +1,14 @@
 /**
  * Demo data service.
  * Provides seed, remove, reset, and status operations for demo-flagged records.
- * Delegates to the same SQL logic used by the CLI scripts (MINCRM-102) so there
- * is no duplicated seeding/removal code. (MINCRM-103)
+ * All fixture data lives here — the CLI scripts (seed-demo.ts, remove-demo.ts) are
+ * thin wrappers that call these functions. (MINCRM-102, MINCRM-103, MINCRM-206)
  */
 
 import pool from '../db.js';
 import type pg from 'pg';
 
-// ── Fixtures (mirrored from scripts/seed-demo.ts) ───────────────────────────
-// These are defined here rather than imported from the script so the script
-// can remain a self-contained CLI entry point.
+// ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const DEMO_ACCOUNTS = [
   {
@@ -19,6 +17,7 @@ const DEMO_ACCOUNTS = [
     website: 'https://www.acme-demo.example.com',
     employee_range: '201-500',
     revenue_range: '50M-100M',
+    account_type: 'Customer',
   },
   {
     name: 'Globex Industries',
@@ -26,6 +25,8 @@ const DEMO_ACCOUNTS = [
     website: 'https://www.globex-demo.example.com',
     employee_range: '51-200',
     revenue_range: '10M-50M',
+    account_type: 'Prospect',
+    // parent_account_id is set dynamically after Acme is inserted
   },
 ];
 
@@ -37,6 +38,7 @@ const DEMO_CONTACTS = [
     phone: '+1-555-0101',
     title: 'VP of Sales',
     department: 'Sales',
+    linkedin_url: 'https://www.linkedin.com/in/alice-chen-demo',
   },
   {
     first_name: 'Bob',
@@ -109,6 +111,8 @@ const DEMO_CONTACTS = [
     phone: '+1-555-0110',
     title: 'CEO',
     department: 'Executive',
+    linkedin_url: 'https://www.linkedin.com/in/jack-wilson-demo',
+    twitter_x_url: 'https://twitter.com/jackwilsondemo',
   },
   {
     first_name: 'Karen',
@@ -133,6 +137,7 @@ const DEMO_CONTACTS = [
     phone: '+1-555-0203',
     title: 'Sales Director',
     department: 'Sales',
+    linkedin_url: 'https://www.linkedin.com/in/mia-thompson-demo',
   },
   {
     first_name: 'Noah',
@@ -189,6 +194,32 @@ const DEMO_CONTACTS = [
     phone: '+1-555-0210',
     title: 'CEO',
     department: 'Executive',
+    linkedin_url: 'https://www.linkedin.com/in/tina-clark-demo',
+  },
+];
+
+// Contact index references for contact_addresses (MINCRM-206)
+// Index 0 = Alice Chen (Acme), Index 10 = Karen Taylor (Globex)
+const DEMO_CONTACT_ADDRESSES = [
+  {
+    contactIndex: 0,
+    label: 'Work',
+    address_line1: '100 Technology Drive',
+    city: 'San Francisco',
+    state_region: 'CA',
+    postal_code: '94105',
+    country: 'USA',
+    is_default: true,
+  },
+  {
+    contactIndex: 10,
+    label: 'Work',
+    address_line1: '500 Industrial Way',
+    city: 'Chicago',
+    state_region: 'IL',
+    postal_code: '60601',
+    country: 'USA',
+    is_default: true,
   },
 ];
 
@@ -224,12 +255,19 @@ const DEMO_DEALS = [
     value: 120000,
     close_date: futureMonths(3),
   },
-  { name: 'Acme — Security Upgrade', stage: 'Proposal', value: 45000, close_date: futureMonths(2) },
+  {
+    name: 'Acme — Security Upgrade',
+    stage: 'Proposal',
+    value: 45000,
+    close_date: futureMonths(2),
+  },
   {
     name: 'Acme — Analytics Add-on',
     stage: 'Negotiation',
     value: 28000,
     close_date: futureMonths(1),
+    // Rep is more confident than the stage default (75%)
+    probability: 85,
   },
   {
     name: 'Acme — Training Package',
@@ -241,11 +279,18 @@ const DEMO_DEALS = [
     name: 'Acme — Support Contract',
     stage: 'Closed Won',
     value: 36000,
-    // Closed earlier this month — visible in Win/Loss report with default "current month" filter
     close_date: relativeDate(-5),
     loss_reason: null,
   },
-  { name: 'Globex — ERP Migration', stage: 'Proposal', value: 200000, close_date: futureMonths(4) },
+  {
+    name: 'Globex — ERP Migration',
+    stage: 'Proposal',
+    value: 200000,
+    close_date: futureMonths(4),
+    // Rep is less confident than the stage default (50%)
+    probability: 40,
+    currency: 'GBP',
+  },
   {
     name: 'Globex — Cloud Infrastructure',
     stage: 'Qualification',
@@ -262,7 +307,6 @@ const DEMO_DEALS = [
     name: 'Globex — Mobile App',
     stage: 'Closed Lost',
     value: 40000,
-    // Closed earlier this month — visible in Win/Loss report with default "current month" filter
     close_date: relativeDate(-2),
     loss_reason: 'Lost to competitor',
   },
@@ -271,6 +315,7 @@ const DEMO_DEALS = [
     stage: 'Negotiation',
     value: 95000,
     close_date: futureMonths(2),
+    currency: 'EUR',
   },
 ];
 
@@ -436,6 +481,99 @@ const DEMO_ACTIVITIES: Array<{
   },
 ];
 
+// Demo leads showcasing the full status lifecycle and source variety (MINCRM-206)
+const DEMO_LEADS = [
+  {
+    first_name: 'Tyler',
+    last_name: 'Brooks',
+    email: 'tyler.brooks.demo@pinnacle-demo.example.com',
+    company_name: 'Pinnacle Systems',
+    lead_source: 'Web',
+    status: 'New',
+  },
+  {
+    first_name: 'Sandra',
+    last_name: 'Okafor',
+    email: 'sandra.okafor.demo@meridian-demo.example.com',
+    company_name: 'Meridian Labs',
+    lead_source: 'Referral',
+    status: 'Contacted',
+  },
+  {
+    first_name: 'Derek',
+    last_name: 'Walsh',
+    email: 'derek.walsh.demo@vertex-demo.example.com',
+    company_name: 'Vertex Solutions',
+    lead_source: 'Trade Show',
+    status: 'Qualified',
+  },
+  {
+    first_name: 'Priya',
+    last_name: 'Nair',
+    email: 'priya.nair.demo@harbor-demo.example.com',
+    company_name: 'Harbor Logistics',
+    lead_source: 'Cold Outreach',
+    status: 'Disqualified',
+    disqualification_reason: 'Not the right fit — too small',
+  },
+  {
+    // Left as Qualified so a demo user can exercise the conversion flow
+    first_name: 'Marcus',
+    last_name: 'Chen',
+    email: 'marcus.chen.demo@apex-demo.example.com',
+    company_name: 'Apex Technologies',
+    lead_source: 'Web',
+    status: 'Qualified',
+  },
+];
+
+// Tags and their associations across entity types (MINCRM-206, MINCRM-186)
+// contactIndex/accountIndex/dealIndex reference their respective fixture arrays.
+const DEMO_TAGS = [
+  {
+    name: 'vip',
+    contactIndices: [0, 9], // Alice Chen, Jack Wilson
+    accountIndices: [0], // Acme Corporation
+    dealIndices: [],
+  },
+  {
+    name: 'conference-2026',
+    contactIndices: [0, 12], // Alice Chen, Mia Thompson
+    accountIndices: [],
+    dealIndices: [],
+  },
+  {
+    name: 'decision-maker',
+    contactIndices: [9, 19, 13], // Jack Wilson, Tina Clark, Noah Garcia
+    accountIndices: [],
+    dealIndices: [],
+  },
+  {
+    name: 'needs-renewal',
+    contactIndices: [],
+    accountIndices: [],
+    dealIndices: [4], // Acme — Support Contract
+  },
+  {
+    name: 'at-risk',
+    contactIndices: [],
+    accountIndices: [],
+    dealIndices: [5], // Globex — ERP Migration
+  },
+  {
+    name: 'enterprise',
+    contactIndices: [],
+    accountIndices: [0], // Acme Corporation
+    dealIndices: [],
+  },
+  {
+    name: 'key-account',
+    contactIndices: [],
+    accountIndices: [0, 1], // Acme Corporation, Globex Industries
+    dealIndices: [],
+  },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -483,11 +621,41 @@ export async function getDemoStatus(): Promise<{ active: boolean }> {
 
 /**
  * Removes all demo-flagged records from the database inside a single transaction.
- * Respects foreign key ordering: activities → deal_contacts → deals → contacts → accounts.
+ * Deletion order respects FK constraints.
  *
  * @param client - Active DB client (must already be inside a transaction).
  */
 async function removeDemoData(client: pg.PoolClient): Promise<void> {
+  // lead_status_history cascades automatically when leads are deleted
+  await client.query(`DELETE FROM leads WHERE is_demo = true`);
+
+  await client.query(
+    `DELETE FROM contact_addresses
+     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
+  );
+
+  await client.query(
+    `DELETE FROM contact_tags
+     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
+  );
+  await client.query(
+    `DELETE FROM account_tags
+     WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true)`,
+  );
+  await client.query(
+    `DELETE FROM deal_tags
+     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)`,
+  );
+
+  // Prune tags that are no longer referenced by any junction table row.
+  // Tags have no is_demo flag — we preserve tags independently created by real users.
+  await client.query(
+    `DELETE FROM tags
+     WHERE id NOT IN (SELECT tag_id FROM contact_tags)
+       AND id NOT IN (SELECT tag_id FROM account_tags)
+       AND id NOT IN (SELECT tag_id FROM deal_tags)`,
+  );
+
   await client.query(`DELETE FROM activities WHERE is_demo = true`);
   await client.query(
     `DELETE FROM deal_contacts
@@ -507,12 +675,12 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
  * @param adminId - UUID to use as owner_id for all inserted records.
  */
 async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<void> {
-  // 1. Accounts
+  // 1. Accounts — Acme first so we have its ID for Globex's parent_account_id
   const accountIds: string[] = [];
   for (const account of DEMO_ACCOUNTS) {
     const result = await client.query<{ id: string }>(
-      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, owner_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, true)
+      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, account_type, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
        RETURNING id`,
       [
         account.name,
@@ -520,20 +688,29 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
         account.website,
         account.employee_range,
         account.revenue_range,
+        account.account_type,
         adminId,
       ],
     );
     accountIds.push(result.rows[0].id);
   }
 
-  // 2. Contacts — first 10 → account 0, next 10 → account 1
+  // Link Globex (index 1) as a subsidiary of Acme (index 0)
+  await client.query(`UPDATE accounts SET parent_account_id = $1 WHERE id = $2`, [
+    accountIds[0],
+    accountIds[1],
+  ]);
+
+  // 2. Contacts — first 10 → account 0 (Acme), next 10 → account 1 (Globex)
   const contactIds: string[] = [];
   for (let i = 0; i < DEMO_CONTACTS.length; i++) {
     const contact = DEMO_CONTACTS[i];
     const accountId = accountIds[i < 10 ? 0 : 1];
     const result = await client.query<{ id: string }>(
-      `INSERT INTO contacts (first_name, last_name, email, phone, title, department, account_id, owner_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+      `INSERT INTO contacts
+         (first_name, last_name, email, phone, title, department,
+          linkedin_url, twitter_x_url, account_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
        RETURNING id`,
       [
         contact.first_name,
@@ -542,6 +719,8 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
         contact.phone,
         contact.title,
         contact.department,
+        (contact as { linkedin_url?: string }).linkedin_url ?? null,
+        (contact as { twitter_x_url?: string }).twitter_x_url ?? null,
         accountId,
         adminId,
       ],
@@ -549,22 +728,54 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     contactIds.push(result.rows[0].id);
   }
 
-  // 3. Deals — first 5 → account 0, next 5 → account 1
+  // 3. Contact addresses (contact_addresses table, not inline fields)
+  for (const addr of DEMO_CONTACT_ADDRESSES) {
+    await client.query(
+      `INSERT INTO contact_addresses
+         (contact_id, label, address_line1, city, state_region, postal_code, country, is_default)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        contactIds[addr.contactIndex],
+        addr.label,
+        addr.address_line1,
+        addr.city,
+        addr.state_region,
+        addr.postal_code,
+        addr.country,
+        addr.is_default,
+      ],
+    );
+  }
+
+  // 4. Deals — first 5 → account 0 (Acme), next 5 → account 1 (Globex)
   const dealIds: string[] = [];
   for (let i = 0; i < DEMO_DEALS.length; i++) {
     const deal = DEMO_DEALS[i];
     const accountId = accountIds[i < 5 ? 0 : 1];
     const lossReason = (deal as { loss_reason?: string | null }).loss_reason ?? null;
+    const probability = (deal as { probability?: number }).probability ?? null;
+    const currency = (deal as { currency?: string }).currency ?? 'USD';
     const result = await client.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+      `INSERT INTO deals
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
        RETURNING id`,
-      [deal.name, deal.stage, deal.value, deal.close_date, lossReason, accountId, adminId],
+      [
+        deal.name,
+        deal.stage,
+        deal.value,
+        probability,
+        currency,
+        deal.close_date,
+        lossReason,
+        accountId,
+        adminId,
+      ],
     );
     dealIds.push(result.rows[0].id);
   }
 
-  // 4. Link primary contact to each deal
+  // 5. Link primary contact to each deal
   for (let i = 0; i < DEMO_DEALS.length; i++) {
     const primaryContactIndex = i < 5 ? i : i + 5;
     await client.query(
@@ -573,7 +784,7 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
     );
   }
 
-  // 5. Activities
+  // 6. Activities
   for (const activity of DEMO_ACTIVITIES) {
     const dealId = dealIds[activity.dealIndex];
     const contactId = contactIds[activity.contactIndex];
@@ -592,6 +803,53 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
         adminId,
       ],
     );
+  }
+
+  // 7. Leads — showcase full status lifecycle and source variety
+  for (const lead of DEMO_LEADS) {
+    await client.query(
+      `INSERT INTO leads
+         (first_name, last_name, email, company_name, lead_source, status, disqualification_reason, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+      [
+        lead.first_name,
+        lead.last_name,
+        lead.email,
+        lead.company_name,
+        lead.lead_source,
+        lead.status,
+        (lead as { disqualification_reason?: string }).disqualification_reason ?? null,
+        adminId,
+      ],
+    );
+  }
+
+  // 8. Tags — insert tags then junction rows
+  for (const tag of DEMO_TAGS) {
+    const tagResult = await client.query<{ id: string }>(
+      `INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+      [tag.name],
+    );
+    const tagId = tagResult.rows[0].id;
+
+    for (const contactIndex of tag.contactIndices) {
+      await client.query(
+        `INSERT INTO contact_tags (contact_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [contactIds[contactIndex], tagId],
+      );
+    }
+    for (const accountIndex of tag.accountIndices) {
+      await client.query(
+        `INSERT INTO account_tags (account_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [accountIds[accountIndex], tagId],
+      );
+    }
+    for (const dealIndex of tag.dealIndices) {
+      await client.query(
+        `INSERT INTO deal_tags (deal_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [dealIds[dealIndex], tagId],
+      );
+    }
   }
 }
 
