@@ -17,7 +17,9 @@ import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.js';
+import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import TagBadge from '@/components/TagBadge.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import type { AccountResponse, AccountType } from '@shared/schemas/accountSchema.js';
@@ -48,6 +50,7 @@ export default function AccountsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | ''>('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
   /**
@@ -100,6 +103,7 @@ export default function AccountsPage() {
       account_type: accountTypeFilter || undefined,
       sort: 'name' as const,
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
+      tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       page,
     },
   ] as const;
@@ -114,9 +118,16 @@ export default function AccountsPage() {
         account_type: accountTypeFilter || undefined,
         sort: 'name',
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         page,
         limit: PAGINATION_DEFAULT_LIMIT,
       }),
+  });
+
+  const { data: tagsData } = useQuery({
+    queryKey: TAGS_QUERY_KEY,
+    queryFn: listTags,
+    staleTime: 60_000,
   });
 
   const { data: activeUsersData } = useQuery({
@@ -281,6 +292,48 @@ export default function AccountsPage() {
             onChange={setOwnerFilter}
             testIdPrefix="accounts-owner-filter"
           />
+          {/* Tag filter (MINCRM-186) */}
+          {tagsData && tagsData.tags.length > 0 && (
+            <select
+              aria-label={t('tags.sectionTitle')}
+              data-testid="accounts-tag-filter"
+              value=""
+              onChange={(e) => {
+                const tagId = e.target.value;
+                if (tagId && !selectedTagIds.includes(tagId)) {
+                  setSelectedTagIds((prev) => [...prev, tagId]);
+                  setPage(1);
+                }
+              }}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">{t('tags.sectionTitle')}</option>
+              {tagsData.tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {/* Active tag filter chips */}
+          {selectedTagIds.length > 0 && (
+            <div className="flex flex-wrap gap-1" data-testid="accounts-active-tag-filters">
+              {selectedTagIds.map((tagId) => {
+                const tag = tagsData?.tags.find((tg) => tg.id === tagId);
+                if (!tag) return null;
+                return (
+                  <TagBadge
+                    key={tag.id}
+                    tag={tag}
+                    onRemove={(id) => {
+                      setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
+                      setPage(1);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Loading state */}
@@ -343,6 +396,16 @@ export default function AccountsPage() {
                           t('accounts.ownerUnknown'),
                         )}
                       </p>
+                      {account.tags && account.tags.length > 0 && (
+                        <div
+                          className="flex flex-wrap gap-1 mt-1"
+                          data-testid={`account-card-tags-${account.id}`}
+                        >
+                          {account.tags.map((tag) => (
+                            <TagBadge key={tag.id} tag={tag} />
+                          ))}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -394,6 +457,9 @@ export default function AccountsPage() {
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {t('accounts.columnOwner')}
                       </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('tags.sectionTitle')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -430,6 +496,13 @@ export default function AccountsPage() {
                             activeUsers,
                             t('accounts.ownerUnknown'),
                           )}
+                        </td>
+                        <td className="px-4 py-3" data-testid={`account-tags-${account.id}`}>
+                          <div className="flex flex-wrap gap-1">
+                            {account.tags?.map((tag) => (
+                              <TagBadge key={tag.id} tag={tag} />
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}

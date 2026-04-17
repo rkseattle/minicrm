@@ -18,7 +18,8 @@
     "menu": "Menu",
     "close": "Close",
     "collapseSidebar": "Collapse sidebar",
-    "expandSidebar": "Expand sidebar"
+    "expandSidebar": "Expand sidebar",
+    "tags": "Tags"
   },
   "login": {
     "title": "Sign in to your account",
@@ -982,5 +983,27 @@
     "recordTypeDeal": "Deal",
     "from": "from",
     "to": "to"
+  },
+  "tags": {
+    "pageTitle": "Tag Management",
+    "pageHint": "List, rename, and delete tags used across contacts, accounts, and deals.",
+    "loading": "Loading tags…",
+    "loadError": "Failed to load tags. Please try again.",
+    "empty": "No tags yet.",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "renameRequired": "Tag name is required.",
+    "renameError": "Failed to rename tag. Please try again.",
+    "deleteError": "Failed to delete tag. Please try again.",
+    "renameInputLabel": "New tag name",
+    "inputLabel": "Add tags",
+    "inputPlaceholder": "Type a tag and press Enter or comma…",
+    "suggestionsLabel": "Existing tags",
+    "removeTag": "Remove tag {{name}}",
+    "sectionTitle": "Tags"
   }
 }

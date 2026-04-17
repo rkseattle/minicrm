@@ -16,6 +16,11 @@ import {
   unlinkContactHandler,
   exportDealsHandler,
 } from '../controllers/dealController.js';
+import {
+  listDealTagsHandler,
+  attachDealTagHandler,
+  detachDealTagHandler,
+} from '../controllers/tagController.js';
 
 const router = Router();
 
@@ -518,5 +523,16 @@ router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHa
  *                 message: Deal not found
  */
 router.delete('/:id/contacts/:contactId', authenticate, asyncHandler(unlinkContactHandler));
+
+// ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────
+
+/** List all tags on a deal. */
+router.get('/:id/tags', authenticate, asyncHandler(listDealTagsHandler));
+
+/** Attach a tag to a deal by name, creating the tag if it does not exist. */
+router.post('/:id/tags', authenticate, asyncHandler(attachDealTagHandler));
+
+/** Detach a tag from a deal. */
+router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachDealTagHandler));
 
 export default router;

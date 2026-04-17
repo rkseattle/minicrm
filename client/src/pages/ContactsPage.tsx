@@ -17,6 +17,8 @@ import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listContacts, createContact, exportContactsCsv } from '@/api/contacts.js';
+import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
+import TagBadge from '@/components/TagBadge.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -57,6 +59,7 @@ export default function ContactsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   /**
    * Updates the ?owner query param and resets to page 1. (MINCRM-55)
@@ -119,6 +122,7 @@ export default function ContactsPage() {
       sort: sortCol,
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
       page,
+      tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     },
   ] as const;
 
@@ -133,7 +137,14 @@ export default function ContactsPage() {
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         page,
         limit: PAGINATION_DEFAULT_LIMIT,
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       }),
+  });
+
+  const { data: tagsData } = useQuery({
+    queryKey: TAGS_QUERY_KEY,
+    queryFn: listTags,
+    staleTime: 60_000,
   });
 
   const { data: accountsData } = useQuery({
@@ -355,6 +366,48 @@ export default function ContactsPage() {
             onChange={setOwnerFilter}
             testIdPrefix="contacts-owner-filter"
           />
+          {/* Tag filter (MINCRM-186) */}
+          {tagsData && tagsData.tags.length > 0 && (
+            <select
+              aria-label={t('tags.sectionTitle')}
+              data-testid="contacts-tag-filter"
+              value=""
+              onChange={(e) => {
+                const tagId = e.target.value;
+                if (tagId && !selectedTagIds.includes(tagId)) {
+                  setSelectedTagIds((prev) => [...prev, tagId]);
+                  setPage(1);
+                }
+              }}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">{t('tags.sectionTitle')}</option>
+              {tagsData.tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {/* Active tag filter chips */}
+          {selectedTagIds.length > 0 && (
+            <div className="flex flex-wrap gap-1" data-testid="contacts-active-tag-filters">
+              {selectedTagIds.map((tagId) => {
+                const tag = tagsData?.tags.find((t) => t.id === tagId);
+                if (!tag) return null;
+                return (
+                  <TagBadge
+                    key={tag.id}
+                    tag={tag}
+                    onRemove={(id) => {
+                      setSelectedTagIds((prev) => prev.filter((t) => t !== id));
+                      setPage(1);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Loading state */}
@@ -413,6 +466,16 @@ export default function ContactsPage() {
                           t('contacts.ownerUnknown'),
                         )}
                       </p>
+                      {contact.tags && contact.tags.length > 0 && (
+                        <div
+                          className="flex flex-wrap gap-1 mt-1"
+                          data-testid={`contact-card-tags-${contact.id}`}
+                        >
+                          {contact.tags.map((tag) => (
+                            <TagBadge key={tag.id} tag={tag} />
+                          ))}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -495,6 +558,9 @@ export default function ContactsPage() {
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {t('contacts.columnOwner')}
                       </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {t('tags.sectionTitle')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -522,6 +588,13 @@ export default function ContactsPage() {
                             activeUsers,
                             t('contacts.ownerUnknown'),
                           )}
+                        </td>
+                        <td className="px-4 py-3" data-testid={`contact-tags-${contact.id}`}>
+                          <div className="flex flex-wrap gap-1">
+                            {contact.tags?.map((tag) => (
+                              <TagBadge key={tag.id} tag={tag} />
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}

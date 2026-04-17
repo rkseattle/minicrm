@@ -21,6 +21,11 @@ import {
   deleteContactAddressHandler,
   setDefaultContactAddressHandler,
 } from '../controllers/contactController.js';
+import {
+  listContactTagsHandler,
+  attachContactTagHandler,
+  detachContactTagHandler,
+} from '../controllers/tagController.js';
 
 const router = Router();
 
@@ -566,5 +571,16 @@ router.post(
   authenticate,
   asyncHandler(setDefaultContactAddressHandler),
 );
+
+// ── Contact Tag Routes (MINCRM-186) ───────────────────────────────────────────
+
+/** List all tags on a contact. */
+router.get('/:id/tags', authenticate, asyncHandler(listContactTagsHandler));
+
+/** Attach a tag to a contact by name, creating the tag if it does not exist. */
+router.post('/:id/tags', authenticate, asyncHandler(attachContactTagHandler));
+
+/** Detach a tag from a contact. */
+router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachContactTagHandler));
 
 export default router;

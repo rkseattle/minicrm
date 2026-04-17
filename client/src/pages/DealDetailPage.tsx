@@ -15,6 +15,7 @@ import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
+import { ConnectedTagInput } from '@/components/TagInput.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { Button } from '@/components/ui/Button.js';
@@ -398,6 +399,28 @@ export default function DealDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {/* Tags (MINCRM-186) */}
+            {id && (
+              <section
+                className="mt-8"
+                aria-labelledby="deal-tags-heading"
+                data-testid="deal-tags-section"
+              >
+                <h2
+                  id="deal-tags-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="deal-tags-heading"
+                >
+                  {t('tags.sectionTitle')}
+                </h2>
+                <ConnectedTagInput
+                  entityId={id}
+                  entityType="deal"
+                  entityQueryKey={DEALS_QUERY_KEY}
+                />
+              </section>
+            )}
 
             {/* Activity timeline */}
             <ActivityTimeline dealId={id} />

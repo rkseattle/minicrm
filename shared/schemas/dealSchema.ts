@@ -144,6 +144,8 @@ export const dealResponseSchema = z.object({
   probability_is_overridden: z.boolean(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
+  /** Tags attached to this deal — only present in list responses (MINCRM-186) */
+  tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 
 // ── Inferred types ─────────────────────────────────────────────────────────────

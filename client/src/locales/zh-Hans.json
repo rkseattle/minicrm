@@ -18,7 +18,8 @@
     "menu": "菜单",
     "close": "关闭",
     "collapseSidebar": "收起侧栏",
-    "expandSidebar": "展开侧栏"
+    "expandSidebar": "展开侧栏",
+    "tags": "标签"
   },
   "login": {
     "title": "登录您的账户",
@@ -977,5 +978,27 @@
     "recordTypeDeal": "商机",
     "from": "从",
     "to": "至"
+  },
+  "tags": {
+    "pageTitle": "标签管理",
+    "pageHint": "查看、重命名和删除联系人、客户和商机中使用的标签。",
+    "loading": "正在加载标签…",
+    "loadError": "无法加载标签，请重试。",
+    "empty": "暂无标签。",
+    "rename": "重命名",
+    "delete": "删除",
+    "deleting": "删除中…",
+    "save": "保存",
+    "saving": "保存中…",
+    "cancel": "取消",
+    "renameRequired": "标签名称为必填项。",
+    "renameError": "重命名标签失败，请重试。",
+    "deleteError": "删除标签失败，请重试。",
+    "renameInputLabel": "新标签名称",
+    "inputLabel": "添加标签",
+    "inputPlaceholder": "输入标签后按 Enter 或逗号…",
+    "suggestionsLabel": "现有标签",
+    "removeTag": "移除标签 {{name}}",
+    "sectionTitle": "标签"
   }
 }

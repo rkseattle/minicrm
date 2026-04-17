@@ -41,6 +41,7 @@ export const NAV_LINKS: NavLinkDef[] = [
   { to: '/reports/win-loss', labelKey: 'nav.winLossReport', adminOnly: true },
   { to: '/reports/activity-volume', labelKey: 'nav.activityVolumeReport', adminOnly: false },
   { to: '/admin/automation', labelKey: 'nav.automation', adminOnly: true },
+  { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true },
   { to: '/admin/settings', labelKey: 'nav.adminSettings', adminOnly: true },
 ];
 
@@ -60,5 +61,6 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/reports/win-loss': 'win-loss',
   '/reports/activity-volume': 'activity-volume',
   '/admin/automation': 'automation',
+  '/admin/tags': 'tags',
   '/admin/settings': 'settings',
 };

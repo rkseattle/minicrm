@@ -46,6 +46,12 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   'other_url',
 ]);
 
+/** Minimal tag shape embedded in list responses */
+export interface EmbeddedTag {
+  id: string;
+  name: string;
+}
+
 /** Shape of a contact row returned from the database */
 export interface ContactRow {
   id: string;
@@ -70,6 +76,8 @@ export interface ContactRow {
   other_url: string | null;
   created_at: Date;
   updated_at: Date;
+  /** Tags attached to this contact — only populated in list responses (MINCRM-186) */
+  tags?: EmbeddedTag[];
 }
 
 /** Columns that may be used for ORDER BY in listContacts */
@@ -100,6 +108,8 @@ interface ListContactsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+  /** When provided, only contacts tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  tagIds?: string[];
 }
 
 /**
@@ -275,6 +285,15 @@ export async function listContacts(
     conditions.push(`a.name ILIKE $${values.length}`);
   }
 
+  // Tag filter (MINCRM-186) — any-match: contact must have at least one of the given tag IDs
+  if (options.tagIds && options.tagIds.length > 0) {
+    const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
+    options.tagIds.forEach((tid) => values.push(tid));
+    conditions.push(
+      `EXISTS (SELECT 1 FROM contact_tags ct WHERE ct.contact_id = c.id AND ct.tag_id IN (${placeholders}))`,
+    );
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const fromClause = needsAccountJoin
@@ -291,6 +310,14 @@ export async function listContacts(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
+  // Embed tags via lateral subquery (MINCRM-186) — avoids N+1 without separate API calls
+  const tagsSubquery = `
+    COALESCE((
+      SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
+      FROM contact_tags ct INNER JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.contact_id = c.id
+    ), '[]'::json) AS tags`;
+
   // Run count and data queries in parallel (MINCRM-68)
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>(
@@ -298,7 +325,7 @@ export async function listContacts(
       values,
     ),
     pool.query<ContactRow>(
-      `SELECT c.* ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT c.*, ${tagsSubquery} ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     ),
   ]);

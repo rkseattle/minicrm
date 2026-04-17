@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { listDeals, createDeal, updateDeal, exportDealsCsv, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
+import TagBadge from '@/components/TagBadge.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import {
   PAGINATION_DEFAULT_LIMIT,
@@ -118,6 +120,7 @@ export default function DealsPage() {
 
   // ── List view state ────────────────────────────────────────────────────────
   const [listPage, setListPage] = useState(1);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   type SortColumn = 'name' | 'close_date';
   type SortDir = 'ascending' | 'descending';
@@ -159,6 +162,7 @@ export default function DealsPage() {
       hideClosed: !showClosed,
       sort: sortCol,
       dir: sortDir,
+      tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       page: listPage,
     },
   ] as const;
@@ -189,10 +193,17 @@ export default function DealsPage() {
         hideClosed: !showClosed || undefined,
         sort: sortCol,
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         page: listPage,
         limit: PAGINATION_DEFAULT_LIMIT,
       }),
     enabled: viewMode === 'list',
+  });
+
+  const { data: tagsData } = useQuery({
+    queryKey: TAGS_QUERY_KEY,
+    queryFn: listTags,
+    staleTime: 60_000,
   });
 
   // Unified aliases used by shared code below
@@ -652,7 +663,7 @@ export default function DealsPage() {
         {viewMode === 'list' && (
           <>
             {/* List toolbar — filter controls (MINCRM-176) */}
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <OwnerToggle
                 value={ownerFilter}
                 onChange={setOwnerFilter}
@@ -671,6 +682,48 @@ export default function DealsPage() {
                   ? t('pipeline.closeDeal.hideClosed')
                   : t('pipeline.closeDeal.showClosed')}
               </Button>
+              {/* Tag filter (MINCRM-186) */}
+              {tagsData && tagsData.tags.length > 0 && (
+                <select
+                  aria-label={t('tags.sectionTitle')}
+                  data-testid="deals-tag-filter"
+                  value=""
+                  onChange={(e) => {
+                    const tagId = e.target.value;
+                    if (tagId && !selectedTagIds.includes(tagId)) {
+                      setSelectedTagIds((prev) => [...prev, tagId]);
+                      setListPage(1);
+                    }
+                  }}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="">{t('tags.sectionTitle')}</option>
+                  {tagsData.tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {/* Active tag filter chips */}
+              {selectedTagIds.length > 0 && (
+                <div className="flex flex-wrap gap-1" data-testid="deals-active-tag-filters">
+                  {selectedTagIds.map((tagId) => {
+                    const tag = tagsData?.tags.find((tg) => tg.id === tagId);
+                    if (!tag) return null;
+                    return (
+                      <TagBadge
+                        key={tag.id}
+                        tag={tag}
+                        onRemove={(id) => {
+                          setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
+                          setListPage(1);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Pipeline summary bar — shows open-stage deal counts and totals (MINCRM-56) */}
@@ -759,6 +812,16 @@ export default function DealsPage() {
                             {t('deals.columnOwner')}:{' '}
                             {resolveOwnerName(deal.owner_id, activeUsers, t('deals.ownerUnknown'))}
                           </p>
+                          {deal.tags && deal.tags.length > 0 && (
+                            <div
+                              className="flex flex-wrap gap-1 mt-1"
+                              data-testid={`deal-list-card-tags-${deal.id}`}
+                            >
+                              {deal.tags.map((tag) => (
+                                <TagBadge key={tag.id} tag={tag} />
+                              ))}
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -845,6 +908,9 @@ export default function DealsPage() {
                           <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             {t('deals.columnOwner')}
                           </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('tags.sectionTitle')}
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -880,6 +946,13 @@ export default function DealsPage() {
                                 activeUsers,
                                 t('deals.ownerUnknown'),
                               )}
+                            </td>
+                            <td className="px-4 py-3" data-testid={`deal-tags-${deal.id}`}>
+                              <div className="flex flex-wrap gap-1">
+                                {deal.tags?.map((tag) => (
+                                  <TagBadge key={tag.id} tag={tag} />
+                                ))}
+                              </div>
                             </td>
                           </tr>
                         ))}

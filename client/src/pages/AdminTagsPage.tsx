@@ -1,0 +1,220 @@
+/**
+ * Admin Tags page — manage all tags in the system (MINCRM-186).
+ * Lists every tag, allows renaming and deleting. Admin only.
+ */
+
+import { useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import NavBar from '@/components/NavBar.js';
+import { Button } from '@/components/ui/Button.js';
+import { Input } from '@/components/ui/Input.js';
+import { listTags, updateTag, deleteTag, TAGS_QUERY_KEY } from '@/api/tags.js';
+import type { TagResponse } from '@shared/schemas/tagSchema.js';
+
+/**
+ * Admin-only page for listing, renaming, and deleting tags.
+ */
+export default function AdminTagsPage() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: TAGS_QUERY_KEY,
+    queryFn: listTags,
+  });
+
+  const tags = data?.tags ?? [];
+
+  // ── Rename state ──────────────────────────────────────────────────────────────
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateTag(id, name),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });
+      setEditingId(null);
+      setEditName('');
+      setRenameError(null);
+    },
+    onError: () => {
+      setRenameError(t('tags.renameError'));
+    },
+  });
+
+  function startEdit(tag: TagResponse) {
+    setEditingId(tag.id);
+    setEditName(tag.name);
+    setRenameError(null);
+    // Focus is set via autoFocus on the rendered input
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditName('');
+    setRenameError(null);
+  }
+
+  function handleRenameSubmit(id: string) {
+    const trimmed = editName.trim().toLowerCase();
+    if (!trimmed) {
+      setRenameError(t('tags.renameRequired'));
+      return;
+    }
+    renameMutation.mutate({ id, name: trimmed });
+  }
+
+  // ── Delete state ──────────────────────────────────────────────────────────────
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTag(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });
+      setDeletingId(null);
+      setDeleteError(null);
+    },
+    onError: () => {
+      setDeleteError(t('tags.deleteError'));
+      setDeletingId(null);
+    },
+  });
+
+  function handleDelete(id: string) {
+    setDeletingId(id);
+    setDeleteError(null);
+    deleteMutation.mutate(id);
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1" data-testid="admin-tags-heading">
+          {t('tags.pageTitle')}
+        </h1>
+        <p className="text-sm text-gray-500 mb-6" data-testid="admin-tags-hint">
+          {t('tags.pageHint')}
+        </p>
+
+        {isLoading && (
+          <p className="text-sm text-gray-500" data-testid="admin-tags-loading">
+            {t('tags.loading')}
+          </p>
+        )}
+
+        {isError && (
+          <div role="alert" className="text-sm text-red-600" data-testid="admin-tags-error">
+            {t('tags.loadError')}
+          </div>
+        )}
+
+        {deleteError && (
+          <div
+            role="alert"
+            className="mb-4 text-sm text-red-600"
+            data-testid="admin-tags-delete-error"
+          >
+            {deleteError}
+          </div>
+        )}
+
+        {!isLoading && !isError && tags.length === 0 && (
+          <p className="text-sm text-gray-500" data-testid="admin-tags-empty">
+            {t('tags.empty')}
+          </p>
+        )}
+
+        {!isLoading && !isError && tags.length > 0 && (
+          <ul
+            className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white"
+            data-testid="admin-tags-list"
+          >
+            {tags.map((tag) => (
+              <li
+                key={tag.id}
+                className="flex items-center gap-3 px-4 py-3"
+                data-testid={`admin-tag-row-${tag.id}`}
+              >
+                {editingId === tag.id ? (
+                  <form
+                    className="flex flex-1 items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleRenameSubmit(tag.id);
+                    }}
+                    data-testid={`rename-form-${tag.id}`}
+                  >
+                    <Input
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      autoFocus
+                      ref={editInputRef}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      aria-label={t('tags.renameInputLabel')}
+                      data-testid={`rename-input-${tag.id}`}
+                    />
+                    {renameError && (
+                      <span className="text-xs text-red-600" role="alert">
+                        {renameError}
+                      </span>
+                    )}
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={renameMutation.isPending}
+                      data-testid={`rename-save-${tag.id}`}
+                    >
+                      {renameMutation.isPending ? t('tags.saving') : t('tags.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={cancelEdit}
+                      data-testid={`rename-cancel-${tag.id}`}
+                    >
+                      {t('tags.cancel')}
+                    </Button>
+                  </form>
+                ) : (
+                  <>
+                    <span
+                      className="flex-1 text-sm font-medium text-gray-900"
+                      data-testid={`tag-name-${tag.id}`}
+                    >
+                      {tag.name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEdit(tag)}
+                      data-testid={`rename-tag-${tag.id}`}
+                    >
+                      {t('tags.rename')}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      disabled={deletingId === tag.id}
+                      onClick={() => handleDelete(tag.id)}
+                      data-testid={`delete-tag-${tag.id}`}
+                    >
+                      {deletingId === tag.id ? t('tags.deleting') : t('tags.delete')}
+                    </Button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,172 @@
+/**
+ * Tag routes — global tag management endpoints (MINCRM-186).
+ * All endpoints require authentication.
+ * PATCH /:id and DELETE /:id are admin-only.
+ *
+ * Entity-scoped tag endpoints (attach/detach/list per contact, account, deal)
+ * are registered on the respective entity routers (contacts.ts, accounts.ts, deals.ts).
+ */
+
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import {
+  listTagsHandler,
+  createTagHandler,
+  getTagHandler,
+  updateTagHandler,
+  deleteTagHandler,
+} from '../controllers/tagController.js';
+
+const router = Router();
+
+/**
+ * @openapi
+ * /api/tags:
+ *   get:
+ *     tags: [Tags]
+ *     operationId: listTags
+ *     summary: List all tags
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of tags
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tags:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Tag'
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/', authenticate, asyncHandler(listTagsHandler));
+
+/**
+ * @openapi
+ * /api/tags:
+ *   post:
+ *     tags: [Tags]
+ *     operationId: createTag
+ *     summary: Create a tag
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Tag created (or returned if already existing)
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         description: Not authenticated
+ */
+router.post('/', authenticate, asyncHandler(createTagHandler));
+
+/**
+ * @openapi
+ * /api/tags/{id}:
+ *   get:
+ *     tags: [Tags]
+ *     operationId: getTag
+ *     summary: Get a single tag
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Tag record
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Tag not found
+ */
+router.get('/:id', authenticate, asyncHandler(getTagHandler));
+
+/**
+ * @openapi
+ * /api/tags/{id}:
+ *   patch:
+ *     tags: [Tags]
+ *     operationId: updateTag
+ *     summary: Rename a tag (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Updated tag
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ *       404:
+ *         description: Tag not found
+ */
+router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateTagHandler));
+
+/**
+ * @openapi
+ * /api/tags/{id}:
+ *   delete:
+ *     tags: [Tags]
+ *     operationId: deleteTag
+ *     summary: Delete a tag (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Tag deleted
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ *       404:
+ *         description: Tag not found
+ */
+router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteTagHandler));
+
+export default router;
