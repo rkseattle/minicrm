@@ -172,13 +172,13 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   ).not.toBeVisible();
 
   // Verify both contacts return 404 via API.
-  await expect(
-    restClient.get<ContactSingleResponse>(`/api/contacts/${c1.id}`),
-    'c1 should be deleted',
-  ).rejects.toSatisfy((err: unknown) => err instanceof RestClientError && err.status === 404);
+  const err1 = await restClient
+    .get<ContactSingleResponse>(`/api/contacts/${c1.id}`)
+    .catch((e: unknown) => e);
+  expect(err1 instanceof RestClientError && err1.status === 404, 'c1 should be deleted').toBe(true);
 
-  await expect(
-    restClient.get<ContactSingleResponse>(`/api/contacts/${c2.id}`),
-    'c2 should be deleted',
-  ).rejects.toSatisfy((err: unknown) => err instanceof RestClientError && err.status === 404);
+  const err2 = await restClient
+    .get<ContactSingleResponse>(`/api/contacts/${c2.id}`)
+    .catch((e: unknown) => e);
+  expect(err2 instanceof RestClientError && err2.status === 404, 'c2 should be deleted').toBe(true);
 });
