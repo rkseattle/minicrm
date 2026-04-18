@@ -127,7 +127,8 @@ test.describe('healPage.fill()', () => {
 
 test.describe('healPage.doesNotExist()', () => {
   test('element absent — returns true without throwing', async () => {
-    const page = mockPage([false]);
+    // waitFor({state:'detached'}) resolves when element is absent → true
+    const page = mockPage([true]);
     const hp = buildHealPage(page, 'doesNotExist absent');
 
     const result = await hp.doesNotExist([{ type: 'testId', value: 'ghost' }], 100);
@@ -135,7 +136,8 @@ test.describe('healPage.doesNotExist()', () => {
   });
 
   test('element present — returns false', async () => {
-    const page = mockPage([true]);
+    // waitFor({state:'detached'}) times out when element stays in DOM → false
+    const page = mockPage([false]);
     const hp = buildHealPage(page, 'doesNotExist present');
 
     const result = await hp.doesNotExist([{ type: 'testId', value: 'ghost' }], 100);
@@ -144,7 +146,7 @@ test.describe('healPage.doesNotExist()', () => {
 
   test('does not record heal events', async () => {
     HealingRegistry.instance._reset();
-    const page = mockPage([false]);
+    const page = mockPage([true]);
     const hp = buildHealPage(page, 'doesNotExist no heal');
 
     await hp.doesNotExist([{ type: 'testId', value: 'x' }], 100);
