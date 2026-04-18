@@ -79,7 +79,7 @@ export interface HealPage {
    * Use for assertions like: expect(await healPage.doesNotExist([...])).toBe(true)
    *
    * @param strategies - One or more LocatorStrategy objects (only the first is used).
-   * @param timeoutMs  - How long to wait before concluding the element is absent (default 2000 ms).
+   * @param timeoutMs  - How long to wait for the element to detach (default 10 000 ms).
    */
   doesNotExist(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
 
@@ -147,17 +147,20 @@ export function buildHealPage(page: Page, testName: string): HealPage {
       await resolved.fill(value);
     },
 
-    async doesNotExist(strategies: LocatorStrategy[], timeoutMs = 2_000): Promise<boolean> {
+    async doesNotExist(strategies: LocatorStrategy[], timeoutMs = 10_000): Promise<boolean> {
       if (strategies.length === 0) throw new Error('doesNotExist requires at least one strategy');
       const sorted = [...strategies].sort(
         (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
       );
       const locator = buildLocator(page, sorted[0]!);
       try {
-        await locator.waitFor({ state: 'attached', timeout: timeoutMs });
-        return false;
-      } catch {
+        // Poll until detached rather than snapshotting current DOM presence.
+        // waitFor({state:'attached'}) resolves immediately if the element is already
+        // in the DOM, so it cannot detect future removal. (MINCRM-211)
+        await locator.waitFor({ state: 'detached', timeout: timeoutMs });
         return true;
+      } catch {
+        return false;
       }
     },
 
