@@ -158,7 +158,8 @@ test.describe('healPage.doesNotExist()', () => {
 
 test.describe('healPage.isNotVisible()', () => {
   test('element not visible — returns true without throwing', async () => {
-    const page = mockPage([false]);
+    // waitFor({state:'hidden'}) resolves when element is absent/hidden → true
+    const page = mockPage([true]);
     const hp = buildHealPage(page, 'isNotVisible hidden');
 
     const result = await hp.isNotVisible([{ type: 'testId', value: 'hidden-el' }], 100);
@@ -166,7 +167,8 @@ test.describe('healPage.isNotVisible()', () => {
   });
 
   test('element visible — returns false', async () => {
-    const page = mockPage([true]);
+    // waitFor({state:'hidden'}) times out when element stays visible → false
+    const page = mockPage([false]);
     const hp = buildHealPage(page, 'isNotVisible visible');
 
     const result = await hp.isNotVisible([{ type: 'testId', value: 'visible-el' }], 100);

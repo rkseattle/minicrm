@@ -88,10 +88,13 @@ export interface HealPage {
    * absent from the DOM or present but not visible. Never throws.
    * Does not record a heal event.
    *
+   * Waits up to timeoutMs for the element to become hidden/absent — use this
+   * after an action that should remove or hide the element (MINCRM-211).
+   *
    * Use for assertions like: expect(await healPage.isNotVisible([...])).toBe(true)
    *
    * @param strategies - One or more LocatorStrategy objects (only the first is used).
-   * @param timeoutMs  - How long to wait before concluding the element is absent (default 2000 ms).
+   * @param timeoutMs  - How long to wait for the element to disappear (default 10 000 ms).
    */
   isNotVisible(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
 }
@@ -158,17 +161,20 @@ export function buildHealPage(page: Page, testName: string): HealPage {
       }
     },
 
-    async isNotVisible(strategies: LocatorStrategy[], timeoutMs = 2_000): Promise<boolean> {
+    async isNotVisible(strategies: LocatorStrategy[], timeoutMs = 10_000): Promise<boolean> {
       if (strategies.length === 0) throw new Error('isNotVisible requires at least one strategy');
       const sorted = [...strategies].sort(
         (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
       );
       const locator = buildLocator(page, sorted[0]!);
       try {
-        await locator.waitFor({ state: 'visible', timeout: timeoutMs });
-        return false;
-      } catch {
+        // Poll until hidden/absent rather than snapshotting current visibility.
+        // waitFor({state:'visible'}) resolves immediately if the element is already
+        // visible, so it cannot detect future disappearance. (MINCRM-211)
+        await locator.waitFor({ state: 'hidden', timeout: timeoutMs });
         return true;
+      } catch {
+        return false;
       }
     },
   };
