@@ -214,10 +214,11 @@ export default function ContactsPage() {
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
+  const selectedTagKey = selectedTagIds.join(',');
   // Clear selection whenever filters or page change
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, selectedTagIds.join(',')]);
+  }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, selectedTagKey]);
 
   const allVisibleIds = contacts.map((c) => c.id);
   const allVisibleSelected =

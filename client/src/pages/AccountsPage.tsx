@@ -170,16 +170,10 @@ export default function AccountsPage() {
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
+  const selectedTagKey = selectedTagIds.join(',');
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [
-    debouncedSearch,
-    debouncedIndustry,
-    ownerFilter,
-    accountTypeFilter,
-    page,
-    selectedTagIds.join(','),
-  ]);
+  }, [debouncedSearch, debouncedIndustry, ownerFilter, accountTypeFilter, page, selectedTagKey]);
 
   const allVisibleIds = accounts.map((a) => a.id);
   const allVisibleSelected =

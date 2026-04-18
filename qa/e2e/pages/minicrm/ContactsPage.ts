@@ -169,7 +169,11 @@ export class ContactsPage {
   }
 
   /**
-   * Clicks the bulk-select checkbox for a specific contact.
+   * Clicks the bulk-select checkbox for a specific contact and waits for the
+   * bulk-action-bar to appear before returning. Without this wait, the bar may
+   * not yet be in the DOM when the caller's next assertion runs, causing
+   * intermittent StrategyExhaustedError on testId("bulk-action-bar"). (MINCRM-211)
+   *
    * Scopes to the visible instance only — both mobile-card and desktop-table
    * views render the checkbox, so the bare testId matches two elements.
    *
@@ -179,6 +183,12 @@ export class ContactsPage {
     await this.healPage.click([
       { type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` },
     ]);
+    // Wait for React to flush the selection state update. The bulk-action-bar
+    // appearing in the DOM is the authoritative signal that toggleRow has run.
+    const bar = await this.healPage
+      .locate([{ type: 'testId', value: 'bulk-action-bar' }])
+      .resolve(this.testName);
+    await bar.waitFor({ state: 'visible' });
   }
 
   /**
