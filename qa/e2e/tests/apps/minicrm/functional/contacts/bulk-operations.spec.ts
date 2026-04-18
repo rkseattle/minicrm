@@ -119,9 +119,10 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   await healPage.click([{ type: 'testId', value: 'bulk-reassign-confirm' }]);
 
   // Bulk action bar should disappear after success.
-  await expect(
-    await healPage.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(testName),
-  ).not.toBeVisible();
+  // healPage.isNotVisible() is used here because resolve() throws
+  // StrategyExhaustedError when the element is absent — it cannot be used for
+  // not.toBeVisible() assertions. (MINCRM-211)
+  expect(await healPage.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify via API that both contacts now have the new owner.
   const r1 = await restClient.get<ContactSingleResponse>(`/api/contacts/${c1.id}`);
@@ -187,9 +188,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   await healPage.click([{ type: 'testId', value: 'confirm-delete-confirm' }]);
 
   // Bulk action bar should disappear.
-  await expect(
-    await healPage.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(testName),
-  ).not.toBeVisible();
+  expect(await healPage.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify both contacts return 404 via API.
   const err1 = await restClient
