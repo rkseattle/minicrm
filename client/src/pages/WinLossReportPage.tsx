@@ -256,7 +256,7 @@ export default function WinLossReportPage() {
           <>
             {/* Summary stat cards */}
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
               data-testid="report-stat-cards"
             >
               {/* Closed Won count */}
@@ -329,7 +329,10 @@ export default function WinLossReportPage() {
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {t('reports.winLoss.winRateLabel')}
                 </p>
-                <p className="text-3xl font-bold text-gray-900" data-testid="stat-win-rate-value">
+                <p
+                  className="text-2xl font-bold text-gray-900 break-words"
+                  data-testid="stat-win-rate-value"
+                >
                   {formatWinRate(report.winRate)}
                 </p>
               </div>
