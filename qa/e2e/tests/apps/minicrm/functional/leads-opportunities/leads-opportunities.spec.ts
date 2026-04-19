@@ -444,10 +444,9 @@ test('@functional F4-OV2: open deal contributes to pipeline value total via API 
   const deal = { id: created.body.deal.id };
   testData.register('deal', deal.id, `/api/deals/${deal.id}`);
 
-  // Retrieve all open deals (non-closed) and verify our deal's value is included.
-  const listResult = await restClient.get<DealListResponse>(
-    `/api/deals?search=${encodeURIComponent(uniquePrefix)}`,
-  );
+  // Retrieve open deals scoped to the test account and verify our deal's value is included.
+  // ?search is not supported by the deals endpoint — use ?account=<id> to scope reliably.
+  const listResult = await restClient.get<DealListResponse>(`/api/deals?account=${account.id}`);
   expect(listResult.status, 'list endpoint should return 200').toBe(200);
 
   const ourDeal = listResult.body.data.find((d) => d.id === deal.id);
