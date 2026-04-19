@@ -146,6 +146,33 @@ export class LeadsPage {
   }
 
   /**
+   * Waits until the status badge for the given lead displays the expected text,
+   * then returns it. Avoids the one-shot textContent() race against the React
+   * Query mutation re-render that updates the badge after a status change.
+   *
+   * @param leadId - Lead UUID.
+   * @param expected - The status text to wait for (e.g. 'Contacted').
+   * @param timeout - Maximum ms to wait (default 5 000).
+   */
+  async waitForStatusBadgeText(leadId: string, expected: string, timeout = 5_000): Promise<string> {
+    const resolved = await this.healPage
+      .locate([
+        { type: 'testId', value: `status-badge-${leadId}` },
+        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+      ])
+      .resolve(this.testName);
+    // Poll until the text matches — avoids snapshot racing the React re-render.
+    await resolved.waitFor({ state: 'visible', timeout });
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const text = ((await resolved.textContent()) ?? '').trim();
+      if (text === expected) return text;
+      await resolved.page().waitForTimeout(50);
+    }
+    return ((await resolved.textContent()) ?? '').trim();
+  }
+
+  /**
    * Checks the "Show disqualified" toggle to reveal disqualified leads in the list.
    */
   async showDisqualified(): Promise<void> {

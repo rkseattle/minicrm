@@ -408,7 +408,8 @@ export async function createTestUser(
   restClient: RestClient,
   overrides: CreateUserOverrides = {},
 ): Promise<TestUser> {
-  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  // crypto.randomUUID() is cryptographically random — collision-safe under high parallelism.
+  const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const payload = {
     name: overrides.name ?? `BVT User ${uniqueSuffix}`,
     email: overrides.email ?? `bvt-user-${uniqueSuffix}@example.com`,
@@ -431,6 +432,27 @@ export async function createTestUser(
   await restClient.post('/api/users/set-password', { token: inviteToken, password });
 
   return { ...user, status: 'active' };
+}
+
+/**
+ * Logs in via the REST API and verifies the session is active before returning.
+ *
+ * Use this instead of a bare `restClient.post('/api/auth/login', ...)` when the
+ * client will immediately make authenticated requests — the GET /api/auth/me call
+ * confirms the session cookie has been set and the server has accepted it, which
+ * prevents race conditions under parallel CI load.
+ *
+ * @param restClient - RestClient instance to authenticate.
+ * @param email - User email address.
+ * @param password - User password.
+ */
+export async function loginAndVerify(
+  restClient: RestClient,
+  email: string,
+  password: string,
+): Promise<void> {
+  await restClient.post('/api/auth/login', { email, password });
+  await restClient.get('/api/auth/me');
 }
 
 // ---------------------------------------------------------------------------

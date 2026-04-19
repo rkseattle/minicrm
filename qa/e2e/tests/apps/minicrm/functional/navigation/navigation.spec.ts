@@ -370,22 +370,23 @@ test.describe.serial('Layout-mutating tests', () => {
         const dealsLink = await healPage
           .locate([{ type: 'testId', value: 'nav-hamburger-deals' }])
           .resolve(testName);
-        const classAttr = await dealsLink.getAttribute('class');
 
         // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
-        expect(classAttr, 'active nav-hamburger-deals should carry indigo active class').toContain(
-          'text-indigo-700',
-        );
+        // toHaveClass retries until the assertion passes (up to default timeout), avoiding the
+        // one-shot getAttribute race with React reconciliation after navigation.
+        await expect(
+          dealsLink,
+          'active nav-hamburger-deals should carry indigo active class',
+        ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
         const contactsLink = await healPage
           .locate([{ type: 'testId', value: 'nav-hamburger-contacts' }])
           .resolve(testName);
-        const contactsClass = await contactsLink.getAttribute('class');
-        expect(
-          contactsClass,
+        await expect(
+          contactsLink,
           'inactive nav-hamburger-contacts should not carry the active indigo class',
-        ).not.toContain('text-indigo-700');
+        ).not.toHaveClass(/text-indigo-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-HB2');
       }
@@ -880,12 +881,16 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await page.goto('/contacts/00000000-0000-0000-0000-000000000000', { waitUntil: 'networkidle' });
 
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
+  // React Query fires its error state after the server 404 response arrives, which may
+  // land after networkidle under CI load. Waiting for networkidle a second time ensures
+  // the 404 response has been processed before we start probing for the alert.
+  await page.waitForLoadState('networkidle');
+
   // The page must not be blank or show an unhandled 500.
-  // React Query's error state may render after networkidle, so use a longer probe timeout.
   const alert = await healPage
     .locate([{ type: 'role', value: 'alert' }], { fallbackTimeout: 10_000 })
     .resolve(testName);
-  await expect(alert).toBeVisible();
+  await expect(alert).toBeVisible({ timeout: 15_000 });
 });
 
 // MINCRM-192: F8-DL4 logs in as a rep via the UI — the browser must start

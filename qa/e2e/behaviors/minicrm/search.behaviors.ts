@@ -283,16 +283,18 @@ export interface TypeSearchQueryAndCheckPanelResult {
  *
  * @param query - The query string (should be >= 2 chars).
  * @param context - Playwright fixture context.
+ * @param panelTimeout - Maximum ms to wait for the results panel (default 10 000).
  * @returns TypeSearchQueryAndCheckPanelResult.
  */
 export async function typeSearchQueryAndCheckPanel(
   query: string,
   context: SearchBehaviorContext,
+  panelTimeout = 10_000,
 ): Promise<TypeSearchQueryAndCheckPanelResult> {
   const searchPage = new GlobalSearchPage(context);
-  await searchPage.typeQuery(query);
+  await searchPage.typeQuery(query, panelTimeout);
 
-  const panelVisible = await searchPage.panelIsVisible();
+  const panelVisible = await searchPage.panelIsVisible(panelTimeout);
 
   // After the panel appears, the debounce may still be in-flight. Wait for the
   // min-length hint to disappear (it's absent for queries >= 2 chars once the
@@ -303,4 +305,16 @@ export async function typeSearchQueryAndCheckPanel(
   const noErrorAlert = await searchPage.noErrorAlertVisible();
 
   return { panelVisible, noMinLengthHint: !minLengthHintVisible, noErrorAlert };
+}
+
+/**
+ * Clears the global search input and waits for the results panel to close.
+ * Call between successive typeSearchQueryAndCheckPanel calls to ensure each
+ * query starts from a clean panel state.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function clearSearchQuery(context: SearchBehaviorContext): Promise<void> {
+  const searchPage = new GlobalSearchPage(context);
+  await searchPage.clearQuery();
 }

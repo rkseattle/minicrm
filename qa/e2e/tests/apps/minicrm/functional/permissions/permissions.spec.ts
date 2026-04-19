@@ -34,6 +34,7 @@ import {
   createTestAccount,
   createTestActivity,
   createTestUser,
+  loginAndVerify,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 
@@ -95,7 +96,8 @@ async function createActivatedUser(
   restClient: RestClient,
   role: 'admin' | 'rep' = 'rep',
 ): Promise<{ user: UserRow; password: string }> {
-  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  // crypto.randomUUID() is cryptographically random — collision-safe under high parallelism.
+  const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const user = await createTestUser(restClient, {
     name: `F7 User ${uniqueSuffix}`,
     email: `f7-user-${uniqueSuffix}@example.com`,
@@ -153,7 +155,7 @@ test('@functional F7-AA5: admin can read a contact owned by a rep', async ({
   const repClient = new RestClient(repRequestContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
     const contact = await createTestContact(testData, repClient, {
       first_name: 'F7AA5',
       last_name: `Rep-Owned-${Date.now()}`,
@@ -182,7 +184,7 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
   const repClient = new RestClient(repRequestContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     // Contact is registered with testData for automatic teardown; if the admin delete
     // succeeds first, testData's DELETE will harmlessly return 404.
@@ -218,7 +220,7 @@ test('@functional F7-RP1: rep can create and read their own contact', async ({
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     const contact = await createTestContact(testData, repClient, {
       first_name: 'F7RP1',
@@ -249,14 +251,14 @@ test('@functional F7-RP2: rep can read a contact owned by another rep', async ({
 
   try {
     // rep1 creates a contact.
-    await rep1Client.post('/api/auth/login', { email: rep1.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(rep1Client, rep1.email, TEST_USER_PASSWORD);
     const contact = await createTestContact(testData, rep1Client, {
       first_name: 'F7RP2',
       last_name: `Rep1-Owned-${Date.now()}`,
     });
 
     // rep2 should be able to read rep1's contact (product spec permits read).
-    await rep2Client.post('/api/auth/login', { email: rep2.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(rep2Client, rep2.email, TEST_USER_PASSWORD);
     const res = await rep2Client.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
     expect(res.status, 'rep2 should be able to read a contact owned by rep1').toBe(200);
     expect(res.body.contact.id).toBe(contact.id);
@@ -281,7 +283,7 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     // Need an account to link the activity to.
     const account = await createTestAccount(testData, repClient, {
@@ -468,7 +470,7 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -496,7 +498,7 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -530,7 +532,7 @@ test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -561,7 +563,7 @@ test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 4
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -594,7 +596,7 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -626,7 +628,7 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -657,7 +659,7 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -686,7 +688,7 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -720,7 +722,7 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -748,7 +750,7 @@ test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 4
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -786,14 +788,14 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
 
   try {
     // rep1 creates a contact.
-    await rep1Client.post('/api/auth/login', { email: rep1.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(rep1Client, rep1.email, TEST_USER_PASSWORD);
     const contact = await createTestContact(testData, rep1Client, {
       first_name: 'F7FA11',
       last_name: `Rep1-Owned-${Date.now()}`,
     });
 
     // rep2 attempts to delete rep1's contact.
-    await rep2Client.post('/api/auth/login', { email: rep2.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(rep2Client, rep2.email, TEST_USER_PASSWORD);
 
     let errorStatus: number | null = null;
     try {
@@ -836,7 +838,7 @@ test('@functional F7-EH1: forbidden API response includes structured error body'
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: TEST_USER_PASSWORD });
+    await loginAndVerify(repClient, rep.email, TEST_USER_PASSWORD);
 
     let errorBody: unknown = null;
     let errorStatus: number | null = null;
