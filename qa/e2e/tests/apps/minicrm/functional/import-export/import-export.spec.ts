@@ -96,6 +96,14 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F11-import-export] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
+// Shared setup — admin auth
+// ---------------------------------------------------------------------------
+
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+// ---------------------------------------------------------------------------
 // CSV builders
 // ---------------------------------------------------------------------------
 
@@ -156,8 +164,6 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const email1 = `f11ic1a-${suffix}@example.com`;
   const email2 = `f11ic1b-${suffix}@example.com`;
@@ -193,10 +199,7 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
 
 test('@functional F11-IC2: Upload a contacts CSV with a missing required field (email) — row in error report, contact not created', async ({
   request,
-  restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // CSV has first_name/last_name but no email column
   const csvBuffer = Buffer.from('first_name,last_name\nNoEmail,User\n', 'utf-8');
 
@@ -227,8 +230,6 @@ test('@functional F11-IC3: Upload a contacts CSV with a duplicate email — row 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const existing = await createTestContact(testData, restClient, {
     first_name: 'Existing',
     last_name: 'F11IC3',
@@ -256,8 +257,6 @@ test('@functional F11-IA1: Upload a valid accounts CSV — accounts created and 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const accountName = `F11IA1 Corp ${suffix}`;
   const csvBuffer = accountsCsv([{ name: accountName }]);
@@ -290,8 +289,6 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const account = await createTestAccount(testData, restClient);
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const dealName = `F11ID1 Deal ${suffix}`;
@@ -310,10 +307,7 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
 
 test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and skip flag — deal skipped', async ({
   request,
-  restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const csvBuffer = dealsCsv([
     { name: 'Orphan Deal', stage: 'Prospecting', account_name: 'NONEXISTENT_CORP_XYZ_12345' },
   ]);
@@ -342,7 +336,6 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
   request,
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const repUser = await createTestUser(restClient, { role: 'rep' });
 
   try {
@@ -375,8 +368,6 @@ test('@functional F11-EC1: Export contacts CSV — download triggered with corre
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Seed a known contact so there is at least one row in the export
   await createTestContact(testData, restClient, { first_name: 'F11EC1', last_name: 'Export' });
 
@@ -397,8 +388,6 @@ test('@functional F11-EC2: Export contacts with active search filter — filtere
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const uniqueName = `F11EC2FilterTarget${suffix}`;
 
@@ -434,8 +423,6 @@ test('@functional F11-EA1: Export accounts CSV — download triggered', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   await createTestAccount(testData, restClient, { name: 'F11EA1 ExportCo' });
 
   const response = await request.get(`${BASE_URL}/api/accounts/export`);
@@ -454,8 +441,6 @@ test('@functional F11-ED1: Export deals CSV — download triggered', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const account = await createTestAccount(testData, restClient);
   await createTestDeal(testData, restClient, {
     account_id: account.id,

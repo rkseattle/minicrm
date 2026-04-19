@@ -30,6 +30,18 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F12-audit-log] E2E_ADMIN_PASSWORD is not set');
 
+// ---------------------------------------------------------------------------
+// Shared setup — admin auth + test name capture
+// ---------------------------------------------------------------------------
+
+let testName: string;
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
 const REP_PASSWORD = 'BvtPassword1!';
 
 // ---------------------------------------------------------------------------
@@ -97,9 +109,6 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Create a contact, then update it — both actions should generate audit entries
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F12AL1',
@@ -146,9 +155,6 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Ensure there are at least one contact and one account action in the log
   const contact = await createTestContact(testData, restClient, { first_name: 'F12AL2C' });
   const account = await createTestAccount(testData, restClient, { name: 'F12AL2A Corp' });
@@ -186,9 +192,6 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F12AL3',
     last_name: 'DetailTest',
@@ -247,7 +250,6 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
 
 test('@functional F12-AL4: Rep navigating to audit log is blocked', async ({ restClient }) => {
   // Create a rep dynamically so this test does not depend on E2E_REP_PASSWORD being set
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
   try {
@@ -274,8 +276,6 @@ test('@functional F12-V1: Lead conversion — contact, account, and deal all exi
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const leadEmail = `f12v1-${suffix}@example.com`;
   const companyName = `F12V1 Corp ${suffix}`;
@@ -336,8 +336,6 @@ test('@functional F12-V2: Converted lead does not appear in default list but app
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const leadEmail = `f12v2-${suffix}@example.com`;
 

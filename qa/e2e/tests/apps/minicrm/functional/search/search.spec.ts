@@ -33,7 +33,13 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestDeal,
+  navigateToDashboard,
+  navigateToContacts,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import {
   typeSearchQuery,
@@ -64,6 +70,19 @@ interface SearchApiResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Shared setup
+// ---------------------------------------------------------------------------
+
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+let testName: string;
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
+// ---------------------------------------------------------------------------
 // Result Coverage tests
 // ---------------------------------------------------------------------------
 
@@ -73,16 +92,14 @@ test('@functional @search F9-RC1: search by contact name returns matching contac
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F9RC1',
     last_name: `ContactSearch-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await getSearchResult(`ContactSearch-${suffix}`, 'contact', contact.id, {
     page,
@@ -107,15 +124,13 @@ test('@functional @search F9-RC2: search by account name returns matching accoun
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F9RC2 AccountSearch-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await getSearchResult(`AccountSearch-${suffix}`, 'account', account.id, {
     page,
@@ -140,9 +155,7 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F9RC3 Account ${suffix}`,
@@ -152,7 +165,7 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
     account_id: account.id,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await getSearchResult(`DealSearch-${suffix}`, 'deal', deal.id, {
     page,
@@ -177,10 +190,8 @@ test('@functional @search F9-RC4: query matching across entity types shows resul
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   // Use a shared prefix that will be part of the contact name, account name, and deal name.
   const prefix = `F9RC4Cross-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: prefix,
@@ -194,7 +205,7 @@ test('@functional @search F9-RC4: query matching across entity types shows resul
     account_id: account.id,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Type the query once then check all three result links.
   await typeSearchQuery(prefix, { page, healPage, testName });
@@ -227,9 +238,7 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create a contact with a very unique name that the search term will NOT match.
   const unrelated = await createTestContact(testData, restClient, {
@@ -237,7 +246,7 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
     last_name: `Xyzzy-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Search for a term that should only match a different set of records.
   const result = await checkNoResultsForQuery(`F9RA1-no-match-${suffix}`, 'contact', unrelated.id, {
@@ -266,9 +275,7 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create the contact with a mixed-case last name.
   const contact = await createTestContact(testData, restClient, {
@@ -276,7 +283,7 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
     last_name: `CaseSensitive-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Search using UPPERCASE variant.
   const uppercaseQuery = `CASESENSITIVE-${suffix}`.toUpperCase();
@@ -303,9 +310,7 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Account name contains a unique suffix — search for just the suffix portion
   // to verify partial-word matching while still isolating from other test runs.
@@ -313,7 +318,7 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
     name: `F9RA3Corp-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Search for the unique suffix only (not the full name) to exercise partial matching.
   const result = await getSearchResult(suffix, 'account', account.id, { page, healPage, testName });
@@ -335,16 +340,14 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F9RA4Exact',
     last_name: `ExactMatch-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Use the full last name as the exact search term.
   const result = await getSearchResult(`ExactMatch-${suffix}`, 'contact', contact.id, {
@@ -375,13 +378,9 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
 test('@functional @search F9-ES1: query with no matching records shows explicit empty state message', async ({
   page,
   healPage,
-  restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // A term that extremely unlikely matches any real record.
   const result = await getSearchEmptyState('zzzF9ES1NoMatchXyzzy99999', {
@@ -400,13 +399,9 @@ test('@functional @search F9-ES1: query with no matching records shows explicit 
 test('@functional @search F9-ES2: empty state is not a blank area — it contains text', async ({
   page,
   healPage,
-  restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await getSearchEmptyState('zzzF9ES2NothingHereAtAll', {
     page,
@@ -433,16 +428,14 @@ test('@functional @search F9-RN1: clicking a contact result navigates to the cor
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F9RN1',
     last_name: `NavContact-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await clickSearchResult(`NavContact-${suffix}`, 'contact', contact.id, {
     page,
@@ -461,15 +454,13 @@ test('@functional @search F9-RN2: clicking an account result navigates to the co
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F9RN2 NavAccount-${suffix}`,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await clickSearchResult(`NavAccount-${suffix}`, 'account', account.id, {
     page,
@@ -488,9 +479,7 @@ test('@functional @search F9-RN3: clicking a deal result navigates to the correc
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F9RN3 Account ${suffix}`,
@@ -500,7 +489,7 @@ test('@functional @search F9-RN3: clicking a deal result navigates to the correc
     account_id: account.id,
   });
 
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   const result = await clickSearchResult(`NavDeal-${suffix}`, 'deal', deal.id, {
     page,
@@ -517,9 +506,7 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F9RN4',
@@ -527,7 +514,7 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
   });
 
   // Navigate to the contacts list page first so back leads somewhere meaningful.
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
+  await navigateToContacts(page);
   const priorPath = new URL(page.url()).pathname;
 
   // Search and click a result.
@@ -553,13 +540,9 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
 test('@functional @search F9-EC1: single-character query shows minimum-length hint, no error', async ({
   page,
   healPage,
-  restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Type a single character — below the 2-char minimum.
   const result = await getMinLengthHint('a', { page, healPage, testName });
@@ -574,13 +557,9 @@ test('@functional @search F9-EC1: single-character query shows minimum-length hi
 test('@functional @search F9-EC2: two-character query is accepted — results or empty state shown, no error', async ({
   page,
   healPage,
-  restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Two characters is at the minimum threshold — should be accepted and trigger a search.
   const result = await typeSearchQueryAndCheckPanel('zq', { page, healPage, testName });
@@ -598,10 +577,7 @@ test('@functional @search F9-EC3: query with special characters is handled grace
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // Special-character queries that have historically caused issues.
   const specialQueries = ["O'Brien", 'Smith & Co'];
@@ -639,10 +615,7 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // 500-character query — well beyond any realistic search term.
   const longQuery = 'a'.repeat(500);

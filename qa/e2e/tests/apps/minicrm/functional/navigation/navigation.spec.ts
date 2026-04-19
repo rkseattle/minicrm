@@ -55,7 +55,17 @@ import {
   closeMobileNavViaToggle,
   navigateViaMobileNavLink,
 } from '@behaviors/minicrm/nav.behaviors.js';
-import { createTestContact, createTestDeal, createTestAccount } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestDeal,
+  createTestAccount,
+  navigateToDashboard,
+  navigateToAdminSettings,
+  navigateToContacts,
+  navigateToAccounts,
+  navigateToContact,
+  navigateToDeal,
+} from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -114,6 +124,16 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
 }
 
 // ---------------------------------------------------------------------------
+// Shared setup — admin auth + test name capture
+// ---------------------------------------------------------------------------
+
+let testName: string;
+test.beforeEach(async ({ restClient }, testInfo) => {
+  testName = testInfo.title;
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+// ---------------------------------------------------------------------------
 // Layout-mutating tests — single outer serial block
 //
 // All tests that call setNavLayoutViaAPI / setNavLayoutViaUI mutate the single
@@ -132,12 +152,10 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
       // MINCRM-192: storageState loads cookies but does not navigate the page.
       // Explicitly load the app root so the nav renders before link-click assertions.
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       // NavTop renders nav-top-* links only at the lg breakpoint (≥1024 px).
       // On mobile-web (393 px) those links are inside a collapsed drawer and are
@@ -184,10 +202,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-TN2: nav-top-* desktop links are not visible on mobile-web viewport');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Navigate to Contacts and verify the Contacts link carries the active class.
@@ -225,10 +241,8 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
@@ -259,10 +273,8 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Navigate to Accounts and verify the Accounts link carries the active class.
@@ -300,24 +312,21 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
       if (isMobile) {
         // On mobile the Settings UI is hidden (hidden lg:block) so we set the
         // layout via API, then navigate to the app root so NavHamburger renders.
         await setNavLayoutViaAPI('hamburger', restClient);
-        await page.goto('/', { waitUntil: 'networkidle' });
+        await navigateToDashboard(page);
       } else {
         // On desktop, switch to hamburger via the Settings UI so the app
         // re-renders in place — avoids the race between a server-side PATCH
         // and a subsequent page.goto where React may fetch a stale cached layout.
-        await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+        await navigateToAdminSettings(page);
         const layoutSet = await setNavLayoutViaUI('hamburger', { page, healPage, testName });
         expect(layoutSet.clicked, 'hamburger layout option must be clickable').toBe(true);
-        await page.goto('/', { waitUntil: 'networkidle' });
+        await navigateToDashboard(page);
       }
 
       try {
@@ -348,10 +357,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HB2: NavHamburger is desktop-only; mobile always renders NavTop');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Navigate to Deals via hamburger, then open menu again to check active state.
@@ -401,13 +408,11 @@ test.describe.serial('Layout-mutating tests', () => {
         'F8-LS1: nav layout selector is desktop-only (hidden lg:block on mobile)',
       );
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('top', restClient);
 
       try {
         // Navigate to Admin Settings.
-        await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+        await navigateToAdminSettings(page);
 
         // Switch to Left Nav.
         await setNavLayoutViaUI('left', { page, healPage, testName });
@@ -450,10 +455,8 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('left', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Verify the left sidebar is active.
@@ -481,10 +484,8 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Hamburger toggle must be visible.
@@ -525,10 +526,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM1: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Drawer is conditionally rendered — not in DOM when closed.
@@ -559,10 +558,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM2: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         await openHamburgerMenu({ page, healPage, testName });
@@ -589,10 +586,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM3: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         await openHamburgerMenu({ page, healPage, testName });
@@ -620,10 +615,8 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM4: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      const testName = test.info().title;
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Open the hamburger menu and verify all admin destinations are visible.
@@ -651,13 +644,11 @@ test.describe.serial('Layout-mutating tests', () => {
       healPage,
       restClient,
     }) => {
-      const testName = test.info().title;
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM5: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
       await setNavLayoutViaAPI('hamburger', restClient);
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToDashboard(page);
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
@@ -698,17 +689,11 @@ test.describe.serial('Layout-mutating tests', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Mobile nav mechanics', () => {
-  test('@functional F8-MN1: mobile nav drawer opens on toggle tap', async ({
-    page,
-    healPage,
-    restClient,
-  }) => {
+  test('@functional F8-MN1: mobile nav drawer opens on toggle tap', async ({ page, healPage }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F8-MN1 only runs under the mobile-web Playwright project');
 
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToDashboard(page);
 
     // Drawer is hidden initially (isNotVisible — safe when element is absent or hidden).
     expect(
@@ -727,14 +712,11 @@ test.describe('Mobile nav mechanics', () => {
   test('@functional F8-MN3: mobile nav drawer closes on toggle tap when open', async ({
     page,
     healPage,
-    restClient,
   }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F8-MN3 only runs under the mobile-web Playwright project');
 
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToDashboard(page);
 
     await openMobileNav({ page, healPage, testName });
 
@@ -749,17 +731,11 @@ test.describe('Mobile nav mechanics', () => {
     await expect(drawer).not.toBeVisible();
   });
 
-  test('@functional F8-MN4: mobile nav drawer closes on navigation', async ({
-    page,
-    healPage,
-    restClient,
-  }) => {
+  test('@functional F8-MN4: mobile nav drawer closes on navigation', async ({ page, healPage }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F8-MN4 only runs under the mobile-web Playwright project');
 
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToDashboard(page);
 
     await openMobileNav({ page, healPage, testName });
 
@@ -777,14 +753,11 @@ test.describe('Mobile nav mechanics', () => {
   test('@functional F8-MN5: mobile nav drawer — all rep destinations accessible', async ({
     page,
     healPage,
-    restClient,
   }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F8-MN5 only runs under the mobile-web Playwright project');
 
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToDashboard(page);
 
     await openMobileNav({ page, healPage, testName });
 
@@ -809,14 +782,11 @@ test.describe('Mobile nav mechanics', () => {
   test('@functional F8-MN6: mobile nav drawer — logout and language selector present', async ({
     page,
     healPage,
-    restClient,
   }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F8-MN6 only runs under the mobile-web Playwright project');
 
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToDashboard(page);
 
     await openMobileNav({ page, healPage, testName });
 
@@ -851,16 +821,13 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F8DL1',
     last_name: `DeepLink-${Date.now()}`,
   });
 
   // Navigate directly to the contact detail page without going through the list.
-  await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+  await navigateToContact(page, contact.id);
 
   // The contact name heading is rendered once data loads.
   const nameHeading = await healPage
@@ -883,9 +850,6 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const account = await createTestAccount(testData, restClient, {
     name: `F8DL2 Account ${Date.now()}`,
   });
@@ -895,7 +859,7 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   });
 
   // Navigate directly to the deal detail page.
-  await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
+  await navigateToDeal(page, deal.id);
 
   // The deal name heading is rendered once data loads.
   const nameHeading = await healPage
@@ -911,11 +875,7 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
 test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful not-found state', async ({
   page,
   healPage,
-  restClient,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Use an ID that is extremely unlikely to exist.
   await page.goto('/contacts/00000000-0000-0000-0000-000000000000', { waitUntil: 'networkidle' });
 
@@ -941,9 +901,6 @@ test.describe('Rep deep-link redirect', () => {
     healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
     // Create a rep user for this test.
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const repEmail = `f8-rep-${uniqueSuffix}@example.com`;
@@ -960,7 +917,7 @@ test.describe('Rep deep-link redirect', () => {
       await login({ email: repEmail, password: repPassword }, { page, healPage, testName });
 
       // Directly navigate to an admin-only route.
-      await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+      await navigateToAdminSettings(page);
 
       // AdminRoute redirects non-admins to '/'.
       await page
@@ -985,14 +942,11 @@ test.describe('Rep deep-link redirect', () => {
 
 test('@functional F8-GU1: browser back and forward navigate correctly between viewed pages', async ({
   page,
-  restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Build history using page.goto so the test is layout- and viewport-independent.
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
-  await page.goto('/accounts', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
+  await navigateToContacts(page);
+  await navigateToAccounts(page);
 
   // Go back to contacts.
   await page.goBack({ waitUntil: 'networkidle' });
@@ -1015,11 +969,10 @@ test('@functional F8-GU1: browser back and forward navigate correctly between vi
   expect(pathname, 'browser forward again should navigate to /accounts').toBe('/accounts');
 });
 
-test('@functional F8-GU2: browser tab title is set on load', async ({ page, restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+test('@functional F8-GU2: browser tab title is set on load', async ({ page }) => {
   // MINCRM-192: storageState loads cookies but does not navigate. Load the app so the
   // HTML shell (with <title>) is present before reading page.title().
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToDashboard(page);
 
   // The app uses a static <title>MiniCRM</title> in index.html (no per-page title updates).
   // Verify the title is present and non-empty on the dashboard.
