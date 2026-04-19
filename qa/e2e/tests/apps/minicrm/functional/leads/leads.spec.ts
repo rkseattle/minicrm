@@ -47,12 +47,8 @@ if (!ADMIN_PASSWORD) throw new Error('[F9-leads] E2E_ADMIN_PASSWORD is not set')
 // Shared setup — admin auth + test name capture
 // ---------------------------------------------------------------------------
 
-let testName: string;
 test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-});
-test.beforeEach(({}, testInfo) => {
-  testName = testInfo.title;
 });
 
 // ---------------------------------------------------------------------------
@@ -100,14 +96,13 @@ interface ConversionResponse {
 
 test('@functional F9-C1: required fields submitted → lead created and visible in list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9c1-${uniqueSuffix}@example.com`;
-  const result = await createLeadViaUI({ first_name: 'F9C1', email }, { page, healPage, testName });
+  const result = await createLeadViaUI({ first_name: 'F9C1', email }, { page });
 
   expect(result.created, 'form should close after successful create').toBe(true);
 
@@ -122,7 +117,6 @@ test('@functional F9-C1: required fields submitted → lead created and visible 
 
 test('@functional F9-C2: optional fields saved and displayed on detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -137,7 +131,7 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
       phone: '+15550002222',
       company_name: `Corp-${uniqueSuffix}`,
     },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'form should close after successful create').toBe(true);
@@ -156,7 +150,6 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
 
 test('@functional F9-C3: duplicate email shows warning, Create Anyway creates duplicate', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -171,17 +164,14 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
   testData.register('lead', existing.body.lead.id, `/api/leads/${existing.body.lead.id}`);
 
   // First submit should show warning
-  const withWarning = await createLeadViaUI(
-    { first_name: 'Duplicate', email },
-    { page, healPage, testName },
-  );
+  const withWarning = await createLeadViaUI({ first_name: 'Duplicate', email }, { page });
   expect(withWarning.duplicateWarning, 'duplicate warning should appear').toBe(true);
   expect(withWarning.created, 'lead should not be created on first submit').toBe(false);
 
   // Click "Create anyway" to proceed
   const result = await createLeadViaUIThenCreateAnyway(
     { first_name: 'Duplicate', email },
-    { page, healPage, testName },
+    { page },
   );
   expect(result.created, 'lead should be created after clicking Create anyway').toBe(true);
 
@@ -200,7 +190,6 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
 
 test('@functional F9-S1: inline status update from list view updates badge', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -214,7 +203,7 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  const result = await updateLeadStatus(leadId, 'Contacted', { page, healPage, testName });
+  const result = await updateLeadStatus(leadId, 'Contacted', { page });
 
   expect(result.badgeText, 'badge text should update to new status').toBe('Contacted');
 
@@ -225,7 +214,6 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
 
 test('@functional F9-S2: disqualified leads hidden by default, shown with toggle', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -246,11 +234,11 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
   });
 
   // Should not be visible by default
-  const hiddenResult = await leadRowIsHidden(leadId, { page, healPage, testName });
+  const hiddenResult = await leadRowIsHidden(leadId, { page });
   expect(hiddenResult.hidden, 'disqualified lead should be hidden by default').toBe(true);
 
   // Show disqualified
-  const shownResult = await showDisqualifiedLeads(leadId, { page, healPage, testName });
+  const shownResult = await showDisqualifiedLeads(leadId, { page });
   expect(shownResult.leadVisible, 'disqualified lead should be visible after toggling').toBe(true);
 });
 
@@ -260,7 +248,6 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
 
 test('@functional F9-V1: Convert Lead creates contact, account, and deal atomically', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -276,7 +263,7 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/leads/${leadId}`);
 
-  const result = await convertLead(leadId, { page, healPage, testName });
+  const result = await convertLead(leadId, { page });
 
   // Modal should have been prefilled
   expect(result.prefillFirstName, 'first name should be prefilled').toBe('F9V1');
@@ -308,7 +295,6 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
 
 test('@functional F9-V2: Converted lead shows badge in list view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -345,11 +331,11 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
   }
 
   // Converted leads hidden by default
-  const hiddenResult = await leadRowIsHidden(leadId, { page, healPage, testName });
+  const hiddenResult = await leadRowIsHidden(leadId, { page });
   expect(hiddenResult.hidden, 'converted lead should be hidden by default').toBe(true);
 
   // Show converted and check badge
-  const shownResult = await showConvertedLeads(leadId, { page, healPage, testName });
+  const shownResult = await showConvertedLeads(leadId, { page });
   expect(
     shownResult.convertedBadgeVisible,
     'converted badge should be visible after toggling',
@@ -362,7 +348,6 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
 
 test('@functional F9-D1: deleting a lead removes it from the list', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -374,7 +359,7 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   });
   const leadId = created.body.lead.id;
 
-  const result = await deleteLead(leadId, { page, healPage, testName });
+  const result = await deleteLead(leadId, { page });
 
   expect(result.deleted, 'browser should navigate back to /leads after deletion').toBe(true);
 });

@@ -2,11 +2,11 @@
  * Barrel export for the E2E fixture layer.
  *
  * All test specs and behaviors must import `test` and `expect` from here
- * rather than directly from `@playwright/test`. This ensures the healPage,
- * restClient, and grpcClient fixtures are always available and that imports
- * don't bypass the fixture layer.
+ * rather than directly from `@playwright/test`. This ensures the page
+ * (PageFacade), restClient, and grpcClient fixtures are always available and
+ * that imports don't bypass the fixture layer.
  *
- * MINCRM-126, MINCRM-127, MINCRM-128, MINCRM-209
+ * MINCRM-126, MINCRM-127, MINCRM-128, MINCRM-209, MINCRM-210
  */
 
 import { mergeTests } from '@playwright/test';
@@ -16,8 +16,8 @@ import { test as grpcClientTest } from './grpc-client.fixture.js';
 
 /**
  * Merged test object that includes all framework fixtures:
- * - `healPage` (MINCRM-126)
- * - `pageFacade` (MINCRM-209)
+ * - `page` — PageFacade: unified SafePage + HealMethods (MINCRM-209, MINCRM-210)
+ * - `healPage` — legacy HealMethods fixture, kept for framework-level tests (MINCRM-126)
  * - `restClient` (MINCRM-127)
  * - `grpcClient` (MINCRM-128)
  */
@@ -30,4 +30,3 @@ export type { RestClientFixtures } from './rest-client.fixture.js';
 export type { GrpcClientFixtures } from './grpc-client.fixture.js';
 export type { SafePage } from '../types/safe-page.js';
 export type { PageFacade } from '../types/page-facade.js';
-export { createPageFacade } from '../types/page-facade.js';

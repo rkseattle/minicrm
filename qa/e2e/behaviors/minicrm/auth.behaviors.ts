@@ -11,8 +11,7 @@
  * MINCRM-130, MINCRM-110, MINCRM-137
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
@@ -25,10 +24,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Fixtures required by auth behaviors. */
 export interface AuthBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,12 +91,12 @@ export async function login(
   // condition where the alert can still be pending a React state update when
   // networkidle fires (the 401 response completes before the DOM updates).
   const LOGIN_TIMEOUT_MS = 10_000;
-  const loginAlert = await context.healPage
+  const loginAlert = await context.page
     .locate([
       { type: 'role', value: 'alert' },
       { type: 'css', value: '[role="alert"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await Promise.race([
     context.page
@@ -161,37 +157,37 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
   // For NavTop on mobile (hidden lg:inline-flex) it is not visible — in that
   // case open the hamburger drawer and click nav-logout-mobile instead.
   // For NavLeft and NavHamburger, nav-logout is always visible.
-  const desktopLogout = await context.healPage
+  const desktopLogout = await context.page
     .locate([
       { type: 'testId', value: 'nav-logout' },
       { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
     ])
-    .resolve(context.testName);
+    .resolve();
   const isDesktopVisible = await desktopLogout.isVisible().catch(() => false);
 
   if (!isDesktopVisible) {
     // NavTop mobile: click the menu toggle to mount the drawer, wait for the
     // drawer to be visible, then click the mobile logout button inside it.
-    await context.healPage.click([
+    await context.page.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ]);
-    const drawer = await context.healPage
+    const drawer = await context.page
       .locate([
         { type: 'testId', value: 'mobile-nav-drawer' },
         { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
       ])
-      .resolve(context.testName);
+      .resolve();
     await drawer.waitFor({ state: 'visible', timeout: 5_000 });
-    const mobileLogout = await context.healPage
+    const mobileLogout = await context.page
       .locate([
         { type: 'testId', value: 'nav-logout-mobile' },
         { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
       ])
-      .resolve(context.testName);
+      .resolve();
     await mobileLogout.click();
   } else {
-    await context.healPage.click([
+    await context.page.click([
       { type: 'testId', value: 'nav-logout' },
       { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
     ]);
@@ -272,12 +268,12 @@ export async function changePassword(
   await changePasswordPage.submit();
 
   const CHANGE_PASSWORD_TIMEOUT_MS = 10_000;
-  const changeAlert = await context.healPage
+  const changeAlert = await context.page
     .locate([
       { type: 'role', value: 'alert' },
       { type: 'css', value: '[role="alert"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await Promise.race([
     context.page
@@ -392,12 +388,12 @@ export async function requestPasswordReset(
   await forgotPasswordPage.submit();
 
   const TIMEOUT_MS = 10_000;
-  const successEl = await context.healPage
+  const successEl = await context.page
     .locate([
       { type: 'testId', value: 'forgot-password-success' },
       { type: 'css', value: '[data-testid="forgot-password-success"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   if (successEl) {
     await successEl.waitFor({ state: 'visible', timeout: TIMEOUT_MS }).catch(() => null);
@@ -448,12 +444,12 @@ export async function resetPassword(
   await resetPage.submit();
 
   const TIMEOUT_MS = 10_000;
-  const resetError = await context.healPage
+  const resetError = await context.page
     .locate([
       { type: 'testId', value: 'reset-password-error' },
       { type: 'css', value: '[data-testid="reset-password-error"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await Promise.race([
     context.page

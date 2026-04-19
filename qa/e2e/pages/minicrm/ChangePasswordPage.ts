@@ -11,8 +11,7 @@
  * MINCRM-137
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ChangePasswordPage. */
 export interface ChangePasswordPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,17 +44,13 @@ export class ChangePasswordPage {
   /** URL path for this page. */
   static readonly PATH = '/change-password';
 
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: ChangePasswordPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -82,7 +74,7 @@ export class ChangePasswordPage {
    * @param password - The user's current (old) password.
    */
   async fillCurrentPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'change-password-current' },
       {
         type: 'label',
@@ -98,7 +90,7 @@ export class ChangePasswordPage {
    * @param password - The desired new password.
    */
   async fillNewPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'change-password-new' },
       { type: 'label', value: t('changePassword.newPasswordLabel'), options: { exact: true } },
     ]);
@@ -110,7 +102,7 @@ export class ChangePasswordPage {
    * @param password - Must match the value supplied to fillNewPassword().
    */
   async fillConfirmPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'change-password-confirm' },
       {
         type: 'label',
@@ -124,7 +116,7 @@ export class ChangePasswordPage {
    * Clicks the submit button to attempt a password change.
    */
   async submit(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'change-password-submit' },
       {
         type: 'role',
@@ -147,12 +139,12 @@ export class ChangePasswordPage {
    * @returns Error message text, or null when no alert is present.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.healPage.locate([
+    const locator = this.page.locate([
       { type: 'role', value: 'alert' },
       { type: 'css', value: '[role="alert"]' },
     ]);
     try {
-      const resolved = await locator.resolve(this.testName);
+      const resolved = await locator.resolve();
       const count = await resolved.count();
       if (count === 0) return null;
       return resolved.first().textContent();
@@ -168,12 +160,12 @@ export class ChangePasswordPage {
    * @returns true if the banner is visible, false otherwise.
    */
   async contextBannerVisible(): Promise<boolean> {
-    return this.healPage
+    return this.page
       .locate([
         { type: 'testId', value: 'change-password-context-banner' },
         { type: 'css', value: '[data-testid="change-password-context-banner"]' },
       ])
-      .resolve(this.testName)
+      .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }

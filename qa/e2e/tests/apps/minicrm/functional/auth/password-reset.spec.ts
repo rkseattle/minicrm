@@ -106,25 +106,17 @@ async function getDevResetToken(restClient: RestClient, email: string): Promise<
 
 test('@functional F1-PR1: forgot-password form — submission shows success message (no user enumeration)', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   // Submit with a known email — should show success.
-  const resultKnown = await requestPasswordReset(ADMIN_EMAIL, { page, healPage, testName });
+  const resultKnown = await requestPasswordReset(ADMIN_EMAIL, { page });
   expect(resultKnown.success, 'known email should show success message').toBe(true);
 });
 
 test('@functional F1-PR2: forgot-password form — unknown email shows same success message (no user enumeration)', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   const result = await requestPasswordReset('no-such-user-xyz-e2e@example.com', {
     page,
-    healPage,
-    testName,
   });
   expect(result.success, 'unknown email should still show success message').toBe(true);
 });
@@ -135,14 +127,9 @@ test('@functional F1-PR2: forgot-password form — unknown email shows same succ
 
 test('@functional F1-PR3: reset-password — invalid token shows error with re-request link', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   const result = await resetPassword('completely-invalid-token-xyz', 'NewPass1', 'NewPass1', {
     page,
-    healPage,
-    testName,
   });
 
   expect(result.success, 'invalid token reset should not succeed').toBe(false);
@@ -154,10 +141,8 @@ test('@functional F1-PR3: reset-password — invalid token shows error with re-r
 
 test('@functional F1-PR4: reset-password — mismatched passwords shows inline validation error', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const INITIAL_PASSWORD = 'InitPass1!';
 
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -171,8 +156,6 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
 
     const result = await resetPassword(token, 'NewPass1!', 'DifferentPass2!', {
       page,
-      healPage,
-      testName,
     });
 
     expect(result.success, 'mismatched confirmation should not succeed').toBe(false);
@@ -194,10 +177,8 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
 
 test('@functional F1-PR5: reset-password — successful reset logs user in and redirects to dashboard', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
@@ -214,8 +195,6 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
     // ── 1. Use the reset link ─────────────────────────────────────────────────
     const resetResult = await resetPassword(token, NEW_PASSWORD, NEW_PASSWORD, {
       page,
-      healPage,
-      testName,
     });
 
     expect(resetResult.success, 'password reset should succeed').toBe(true);
@@ -233,12 +212,10 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
 
     // ── 3. Old token must be invalidated (single-use) ─────────────────────────
     // Navigate away first so we can test the old token.
-    await logout({ page, healPage, testName });
+    await logout({ page });
 
     const replayResult = await resetPassword(token, 'AnotherPass3@', 'AnotherPass3@', {
       page,
-      healPage,
-      testName,
     });
     expect(replayResult.success, 'replaying used token should fail').toBe(false);
     expect(replayResult.errorMessage, 'replay error should be present').not.toBeNull();
@@ -256,10 +233,8 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
 
 test('@functional F1-PR6: reset-password — old password rejected after reset, confirming password change (MINCRM-157)', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
@@ -285,7 +260,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     const token = await getDevResetToken(restClient, email);
 
     // Do the reset in the browser — this sets password_changed_at.
-    await resetPassword(token, NEW_PASSWORD, NEW_PASSWORD, { page, healPage, testName });
+    await resetPassword(token, NEW_PASSWORD, NEW_PASSWORD, { page });
 
     // ── 3. restClient session (issued before reset) must be invalidated ────────
     // Log the test user back in on restClient to refresh to the old session cookie.

@@ -1,25 +1,23 @@
 /**
  * healPage fixture — exposes HealingLocator through Playwright's fixture system.
  *
- * Provides zero-boilerplate access to self-healing interactions from any test
- * spec or behavior file. The fixture teardown always flushes HealingRegistry,
- * even when the test throws.
+ * Also provides the unified `page` fixture (PageFacade) that combines SafePage
+ * with HealMethods via a Proxy, making testName implicit.
  *
  * Usage:
  * ```ts
  * import { test, expect } from '@framework/fixtures';
  *
- * test('example', async ({ healPage }) => {
- *   await healPage.click(
- *     [{ type: 'testId', value: 'submit-btn' }],
- *   );
+ * test('example', async ({ page }) => {
+ *   await page.click([{ type: 'testId', value: 'submit-btn' }]);
  * });
  * ```
  *
- * MINCRM-126, MINCRM-209
+ * MINCRM-126, MINCRM-209, MINCRM-210
  */
 
 import { test as base } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { HealingRegistry } from '../healing/index.js';
 import type { PageFacade } from '../types/page-facade.js';
 import { createPageFacade } from '../types/page-facade.js';
@@ -33,38 +31,44 @@ export { buildHealPage } from './heal-methods.js';
 // Fixture types
 // ---------------------------------------------------------------------------
 
-/** Fixtures added by this module. */
-interface HealPageFixtures {
+/** Legacy healPage fixture — kept for framework-level unit tests only. */
+interface HealPageOnlyFixtures {
+  /** @deprecated Use `page` (PageFacade) instead. */
   healPage: HealMethods;
 }
 
 // ---------------------------------------------------------------------------
-// Extended test object
+// Step 1: extend base with `healPage` — receives the raw Playwright Page.
 // ---------------------------------------------------------------------------
 
-/**
- * Playwright test extended with the `healPage` and `pageFacade` fixtures.
- *
- * Import `test` and `expect` from `@framework/fixtures` rather than
- * `@playwright/test` in all application spec and behavior files.
- */
-export const test = base.extend<HealPageFixtures & { pageFacade: PageFacade }>({
+const withHealPage = base.extend<HealPageOnlyFixtures>({
   healPage: async ({ page }, use, testInfo) => {
-    const healPage = buildHealPage(page, testInfo.title);
-
+    const hp = buildHealPage(page, testInfo.title);
     try {
-      await use(healPage);
+      await use(hp);
     } finally {
-      // Always flush the registry, even on test failure or unhandled throw.
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
     }
   },
+});
 
-  pageFacade: async ({ page }, use, testInfo) => {
-    const facade = createPageFacade(page, testInfo.title);
+// ---------------------------------------------------------------------------
+// Step 2: extend withHealPage to override `page` with PageFacade.
+//
+// Playwright passes the raw built-in `page` (Page) into the override
+// implementation even though it is being replaced, so rawPage is a Page here.
+// The `as any` cast on `use(facade)` is required because TypeScript infers
+// `use`'s parameter as `Page` from the built-in fixture definition, while our
+// intent is to serve a PageFacade to callers.
+// ---------------------------------------------------------------------------
+
+export const test = withHealPage.extend<{ page: PageFacade }>({
+  page: async ({ page: rawPage }: { page: Page }, use, testInfo) => {
+    const facade = createPageFacade(rawPage, testInfo.title);
     try {
-      await use(facade);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (use as (v: any) => Promise<void>)(facade);
     } finally {
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();

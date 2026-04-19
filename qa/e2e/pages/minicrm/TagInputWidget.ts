@@ -10,15 +10,12 @@
  * MINCRM-186
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by TagInputWidget. */
 export interface TagInputWidgetContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
@@ -28,9 +25,7 @@ export interface TagInputWidgetContext {
  * data-testid attributes as `tag-input-{entityId}`, `tag-list-{entityId}`, etc.
  */
 export class TagInputWidget {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
   private readonly entityId: string;
 
   /**
@@ -39,8 +34,6 @@ export class TagInputWidget {
    */
   constructor(context: TagInputWidgetContext, entityId: string) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
     this.entityId = entityId;
   }
 
@@ -49,7 +42,7 @@ export class TagInputWidget {
    */
   async isVisible(): Promise<boolean> {
     try {
-      const el = await this.healPage
+      const el = await this.page
         .locate([
           { type: 'testId', value: `tag-input-${this.entityId}` },
           {
@@ -58,7 +51,7 @@ export class TagInputWidget {
             options: { name: t('tags.inputLabel'), exact: false },
           },
         ])
-        .resolve(this.testName);
+        .resolve();
       return el.isVisible().catch(() => false);
     } catch {
       return false;
@@ -71,7 +64,7 @@ export class TagInputWidget {
    * @param tagName - Tag name to type and confirm.
    */
   async typeAndConfirm(tagName: string): Promise<void> {
-    await this.healPage.fill(tagName, [
+    await this.page.fill(tagName, [
       { type: 'testId', value: `tag-input-${this.entityId}` },
       { type: 'role', value: 'combobox', options: { name: t('tags.inputLabel'), exact: false } },
     ]);
@@ -87,12 +80,12 @@ export class TagInputWidget {
    */
   async isBadgeVisible(tagId: string): Promise<boolean> {
     try {
-      const el = await this.healPage
+      const el = await this.page
         .locate([
           { type: 'testId', value: `tag-badge-${tagId}` },
           { type: 'css', value: `[data-testid="tag-badge-${tagId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       return el.isVisible().catch(() => false);
     } catch {
       return false;
@@ -105,13 +98,13 @@ export class TagInputWidget {
    * @param tagId - Tag UUID.
    */
   async removeBadge(tagId: string): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: `remove-tag-${tagId}` },
       { type: 'css', value: `[data-testid="remove-tag-${tagId}"]` },
     ]);
     // Wait for the badge to leave the DOM — more reliable than networkidle for
     // React Query optimistic removals which can re-render before network settles.
-    await this.healPage.doesNotExist(
+    await this.page.doesNotExist(
       [
         { type: 'testId', value: `tag-badge-${tagId}` },
         { type: 'css', value: `[data-testid="tag-badge-${tagId}"]` },

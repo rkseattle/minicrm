@@ -11,8 +11,7 @@
  * MINCRM-130
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by LoginPage. */
 export interface LoginPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,17 +40,13 @@ export interface LoginPageContext {
  * ```
  */
 export class LoginPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: LoginPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -78,7 +70,7 @@ export class LoginPage {
    * @param email - Email address to enter.
    */
   async fillEmail(email: string): Promise<void> {
-    await this.healPage.fill(email, [
+    await this.page.fill(email, [
       { type: 'testId', value: 'login-email' },
       { type: 'label', value: t('login.emailLabel'), options: { exact: true } },
     ]);
@@ -90,7 +82,7 @@ export class LoginPage {
    * @param password - Password to enter.
    */
   async fillPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'login-password' },
       { type: 'label', value: t('login.passwordLabel'), options: { exact: true } },
     ]);
@@ -100,7 +92,7 @@ export class LoginPage {
    * Clicks the submit button to attempt login.
    */
   async submit(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'login-submit' },
       { type: 'role', value: 'button', options: { name: t('login.submitButton'), exact: true } },
     ]);
@@ -117,12 +109,12 @@ export class LoginPage {
    * Object contract. The alert element has no testId, so role + css are used.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.healPage.locate([
+    const locator = this.page.locate([
       { type: 'role', value: 'alert' },
       { type: 'css', value: '[role="alert"]' },
     ]);
     try {
-      const resolved = await locator.resolve(this.testName);
+      const resolved = await locator.resolve();
       const count = await resolved.count();
       if (count === 0) return null;
       return resolved.first().textContent();

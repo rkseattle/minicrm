@@ -11,8 +11,7 @@
  * MINCRM-110
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
 
@@ -22,9 +21,7 @@ import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
 
 /** Fixtures required by deal behaviors. */
 export interface DealsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------

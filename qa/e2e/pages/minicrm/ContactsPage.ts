@@ -11,8 +11,7 @@
  * MINCRM-130
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ContactsPage. */
 export interface ContactsPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,20 +38,16 @@ export interface ContactsPageContext {
  * ```
  */
 export class ContactsPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /** The URL path for this page. */
   static readonly PATH = '/contacts';
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: ContactsPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -73,7 +65,7 @@ export class ContactsPage {
    * Clicks the "New Contact" button to open the contact creation form.
    */
   async clickNewContact(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'new-contact-button' },
       { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
     ]);
@@ -94,12 +86,12 @@ export class ContactsPage {
     // contact-link-{id} rows are dynamic; css prefix-match is the primary
     // strategy. xpath is the fallback with equivalent semantics.
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'css', value: '[data-testid^="contact-link-"]' },
           { type: 'xpath', value: '//*[starts-with(@data-testid,"contact-link-")]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.count();
     } catch {
       // StrategyExhaustedError means no rows are present.
@@ -116,12 +108,12 @@ export class ContactsPage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.healPage
+      await this.page
         .locate([
           { type: 'testId', value: 'new-contact-button' },
           { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
         ])
-        .resolve(this.testName);
+        .resolve();
       return true;
     } catch {
       return false;
@@ -137,7 +129,7 @@ export class ContactsPage {
    * @param timeout - Maximum wait per strategy attempt in ms (default 15 000).
    */
   async waitForContact(id: string, timeout = 15_000): Promise<void> {
-    await this.healPage
+    await this.page
       .locate(
         [
           { type: 'testId', value: `contact-link-${id}` },
@@ -145,7 +137,7 @@ export class ContactsPage {
         ],
         { fallbackTimeout: timeout },
       )
-      .resolve(this.testName);
+      .resolve();
   }
 
   /**
@@ -160,11 +152,11 @@ export class ContactsPage {
     // Both mobile-card and desktop-table views render this checkbox, so the
     // bare testId selector matches two elements and triggers Playwright's strict
     // mode error. Scope to the visible one only.
-    const locator = await this.healPage
+    const locator = await this.page
       .locate([{ type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` }], {
         fallbackTimeout: timeout,
       })
-      .resolve(this.testName);
+      .resolve();
     await locator.waitFor({ state: 'visible', timeout });
   }
 
@@ -180,14 +172,10 @@ export class ContactsPage {
    * @param id - The contact UUID whose checkbox to click.
    */
   async clickBulkCheckbox(id: string): Promise<void> {
-    await this.healPage.click([
-      { type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` },
-    ]);
+    await this.page.click([{ type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` }]);
     // Wait for React to flush the selection state update. The bulk-action-bar
     // appearing in the DOM is the authoritative signal that toggleRow has run.
-    const bar = await this.healPage
-      .locate([{ type: 'testId', value: 'bulk-action-bar' }])
-      .resolve(this.testName);
+    const bar = await this.page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve();
     await bar.waitFor({ state: 'visible' });
   }
 
@@ -199,7 +187,7 @@ export class ContactsPage {
    * @param term - The string to type into the search input.
    */
   async search(term: string): Promise<void> {
-    await this.healPage.fill(term, [
+    await this.page.fill(term, [
       { type: 'testId', value: 'contacts-search' },
       { type: 'css', value: '[data-testid="contacts-search"]' },
     ]);

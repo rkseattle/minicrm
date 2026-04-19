@@ -81,18 +81,12 @@ test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
-let testName: string;
-test.beforeEach(({}, testInfo) => {
-  testName = testInfo.title;
-});
-
 // ---------------------------------------------------------------------------
 // Create tests
 // ---------------------------------------------------------------------------
 
 test('@functional F3-C1: all required fields submitted → account created and appears in list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -100,7 +94,7 @@ test('@functional F3-C1: all required fields submitted → account created and a
 
   const name = `F3C1 Corp ${uniqueSuffix}`;
 
-  const result = await createAccountViaUI({ name }, { page, healPage, testName });
+  const result = await createAccountViaUI({ name }, { page });
 
   expect(result.created, 'account creation should succeed').toBe(true);
   expect(result.validationError, 'no validation error expected').toBe(false);
@@ -117,7 +111,6 @@ test('@functional F3-C1: all required fields submitted → account created and a
 
 test('@functional F3-C2: optional fields included → all saved on detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -132,7 +125,7 @@ test('@functional F3-C2: optional fields included → all saved on detail page',
       employee_range: '51-200',
       revenue_range: '10M-50M',
     },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'account with optional fields should be created').toBe(true);
@@ -155,11 +148,10 @@ test('@functional F3-C2: optional fields included → all saved on detail page',
 
 test('@functional F3-C3: missing required name field → inline validation error, no navigation', async ({
   page,
-  healPage,
 }) => {
   // Submit a form with an empty name — the browser's required validation fires
   // before the form submits, keeping the form visible.
-  const result = await createAccountViaUI({ name: '' }, { page, healPage, testName });
+  const result = await createAccountViaUI({ name: '' }, { page });
 
   expect(result.created, 'account should not be created when name is missing').toBe(false);
   expect(result.validationError, 'validation error should be shown').toBe(true);
@@ -171,7 +163,6 @@ test('@functional F3-C3: missing required name field → inline validation error
 
 test('@functional F3-R1: seeded accounts are visible in the list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -183,7 +174,7 @@ test('@functional F3-R1: seeded accounts are visible in the list', async ({
     name: `F3R1-Beta-${Date.now()}`,
   });
 
-  const result = await navigateToAccounts({ page, healPage, testName });
+  const result = await navigateToAccounts({ page });
 
   expect(result.loaded, 'accounts page should load').toBe(true);
 
@@ -201,7 +192,6 @@ test('@functional F3-R1: seeded accounts are visible in the list', async ({
 
 test('@functional F3-R2: sort by name ascending then descending', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -209,7 +199,7 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
   await createTestAccount(testData, restClient, { name: `F3R2-AAA-${Date.now()}` });
   await createTestAccount(testData, restClient, { name: `F3R2-ZZZ-${Date.now()}` });
 
-  await navigateToAccounts({ page, healPage, testName });
+  await navigateToAccounts({ page });
 
   // Verify API returns correct sort order ascending.
   const ascResult = await restClient.get<AccountListResponse>(
@@ -232,16 +222,15 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
 
 test('@functional F3-R3: empty state shown when no accounts exist', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const sentinel = 'F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL';
 
-  await navigateToAccounts({ page, healPage, testName });
+  await navigateToAccounts({ page });
 
   // Type a sentinel into the search box — AccountsPage uses controlled useState
   // for search (not URL params), so this is the correct way to trigger filtering.
-  await healPage.fill(sentinel, [
+  await page.fill(sentinel, [
     { type: 'testId', value: 'accounts-search' },
     { type: 'label', value: 'Search', options: { exact: false } },
   ]);
@@ -249,14 +238,14 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   // Wait for either an account row or the empty-state text to appear (same
   // pattern as contacts.spec.ts searchContacts behavior).
   await Promise.race([
-    healPage
+    page
       .locate([{ type: 'css', value: '[data-testid^="account-link-"]' }])
-      .resolve(testName)
+      .resolve()
       .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
       .catch(() => null),
-    healPage
+    page
       .locate([{ type: 'text', value: t('accounts.empty') }])
-      .resolve(testName)
+      .resolve()
       .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
       .catch(() => null),
   ]);
@@ -269,7 +258,7 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 
   // The empty state paragraph should now be visible.
   await expect(
-    await healPage.locate([{ type: 'text', value: t('accounts.empty') }]).resolve(testName),
+    await page.locate([{ type: 'text', value: t('accounts.empty') }]).resolve(),
     'empty state text should be visible',
   ).toBeVisible();
 });
@@ -280,7 +269,6 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 
 test('@functional F3-U1: edit account name → change reflected in detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -291,7 +279,7 @@ test('@functional F3-U1: edit account name → change reflected in detail view',
   });
 
   const updatedName = `F3U1-After-${uniqueSuffix}`;
-  const result = await editAccount(account.id, { name: updatedName }, { page, healPage, testName });
+  const result = await editAccount(account.id, { name: updatedName }, { page });
 
   expect(result.saved, 'edit should save successfully').toBe(true);
 
@@ -302,7 +290,6 @@ test('@functional F3-U1: edit account name → change reflected in detail view',
 
 test('@functional F3-U2: edit industry field → change reflected in detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -310,11 +297,7 @@ test('@functional F3-U2: edit industry field → change reflected in detail view
     name: `F3U2-Corp-${Date.now()}`,
   });
 
-  const result = await editAccount(
-    account.id,
-    { industry: 'Healthcare' },
-    { page, healPage, testName },
-  );
+  const result = await editAccount(account.id, { industry: 'Healthcare' }, { page });
 
   expect(result.saved, 'edit should save successfully').toBe(true);
 
@@ -324,7 +307,6 @@ test('@functional F3-U2: edit industry field → change reflected in detail view
 
 test('@functional F3-U3: cancel edit → no change persisted', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -334,8 +316,6 @@ test('@functional F3-U3: cancel edit → no change persisted', async ({
 
   const result = await cancelAccountEdit(account.id, 'F3U3-CANCELLED', {
     page,
-    healPage,
-    testName,
   });
 
   expect(result.backToReadMode, 'cancel should return to read mode').toBe(true);
@@ -351,7 +331,6 @@ test('@functional F3-U3: cancel edit → no change persisted', async ({
 
 test('@functional F3-D1: delete account with no contacts → removed from list, returns 404 via API (AC1)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -359,7 +338,7 @@ test('@functional F3-D1: delete account with no contacts → removed from list, 
     name: `F3D1-DeleteMe-${Date.now()}`,
   });
 
-  const result = await deleteAccountViaUI(account.id, { page, healPage, testName });
+  const result = await deleteAccountViaUI(account.id, { page });
 
   expect(result.deleted, 'delete should navigate back to accounts list').toBe(true);
   expect(new URL(result.finalUrl).pathname, 'should land on /accounts').toBe('/accounts');
@@ -378,7 +357,6 @@ test('@functional F3-D1: delete account with no contacts → removed from list, 
 
 test('@functional F3-D2: delete account with associated contacts → contacts unlinked, not deleted (AC3)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -390,7 +368,7 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
     account_id: account.id,
   });
 
-  const result = await deleteAccountViaUI(account.id, { page, healPage, testName });
+  const result = await deleteAccountViaUI(account.id, { page });
 
   expect(result.deleted, 'delete should navigate back to accounts list').toBe(true);
 
@@ -416,7 +394,6 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
 
 test('@functional F3-D3: cancel confirmation dialog → account not deleted', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -424,7 +401,7 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
     name: `F3D3-CancelDelete-${Date.now()}`,
   });
 
-  const result = await cancelDeleteAccount(account.id, { page, healPage, testName });
+  const result = await cancelDeleteAccount(account.id, { page });
 
   expect(result.stillOnDetailPage, 'cancel should keep user on detail page').toBe(true);
 
@@ -439,7 +416,6 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
 
 test('@functional F3-A1: linked contacts appear on account detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -456,9 +432,9 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   await navigateToAccount(page, account.id);
 
   // The linked contacts list should contain the contact.
-  const linkedContactLocator = await healPage
+  const linkedContactLocator = await page
     .locate([{ type: 'testId', value: `linked-contact-${contact.id}` }])
-    .resolve(testName);
+    .resolve();
   await expect(
     linkedContactLocator,
     'linked contact should be visible on account detail',
@@ -467,7 +443,6 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
 test('@functional F3-A2: account with zero contacts shows empty contacts section, not an error', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -478,21 +453,20 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   await navigateToAccount(page, account.id);
 
   // Empty state should be visible, no error.
-  const emptyLocator = await healPage
+  const emptyLocator = await page
     .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
-    .resolve(testName);
+    .resolve();
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
   // No error alert should be present (doesNotExist — safe when element is absent).
   expect(
-    await healPage.doesNotExist([{ type: 'role', value: 'alert' }]),
+    await page.doesNotExist([{ type: 'role', value: 'alert' }]),
     'no error alerts should be present',
   ).toBe(true);
 });
 
 test('@functional F3-A3: unlinking contact from contact side is reflected on account detail', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -509,14 +483,14 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   await navigateToAccount(page, account.id);
 
   // After unlinking, the linked contacts list should be empty.
-  const emptyLocator = await healPage
+  const emptyLocator = await page
     .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
-    .resolve(testName);
+    .resolve();
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
   // The previously linked contact should not appear in the list.
   expect(
-    await healPage.doesNotExist([{ type: 'testId', value: `linked-contact-${contact.id}` }]),
+    await page.doesNotExist([{ type: 'testId', value: `linked-contact-${contact.id}` }]),
     'contact should no longer appear in linked contacts list',
   ).toBe(true);
 });

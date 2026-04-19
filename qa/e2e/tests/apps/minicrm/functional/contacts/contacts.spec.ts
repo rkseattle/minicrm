@@ -86,18 +86,12 @@ test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
-let testName: string;
-test.beforeEach(({}, testInfo) => {
-  testName = testInfo.title;
-});
-
 // ---------------------------------------------------------------------------
 // Create tests
 // ---------------------------------------------------------------------------
 
 test('@smoke @functional F2-C1: all required fields submitted → contact created and appears in list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -109,7 +103,7 @@ test('@smoke @functional F2-C1: all required fields submitted → contact create
 
   const result = await createContactViaUI(
     { first_name: firstName, last_name: lastName, email },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'contact creation should succeed').toBe(true);
@@ -128,7 +122,6 @@ test('@smoke @functional F2-C1: all required fields submitted → contact create
 
 test('@functional F2-C2: optional fields included → all saved and displayed on detail page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -144,7 +137,7 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
       title: 'VP Engineering',
       department: 'Engineering',
     },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'contact with optional fields should be created').toBe(true);
@@ -170,7 +163,6 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
 
 test('@functional F2-C3: missing required field → inline validation, contact not created', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -182,16 +174,16 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   // Submit with empty last_name by typing a space then clearing — browser HTML5
   // validation catches the empty required field client-side.
   await navigateToContactsPage(page);
-  await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
-  await healPage.fill('F2C3Only', [{ type: 'testId', value: 'contact-first-name' }]);
-  await healPage.fill(uniqueEmail, [{ type: 'testId', value: 'contact-email' }]);
+  await page.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await page.fill('F2C3Only', [{ type: 'testId', value: 'contact-first-name' }]);
+  await page.fill(uniqueEmail, [{ type: 'testId', value: 'contact-email' }]);
   // Intentionally leave last_name empty. Submit to trigger HTML5 required validation.
-  await healPage.click([{ type: 'testId', value: 'contact-form-submit' }]);
+  await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
   // HTML5 validation is synchronous — no network request fires. Use a DOM-based
   // wait so the assertion retries automatically instead of sleeping a fixed amount.
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'contact-form' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'contact-form' }]).resolve(),
   ).toBeVisible();
 
   // Verify no contact was created by searching for the unique email.
@@ -205,7 +197,6 @@ test('@functional F2-C3: missing required field → inline validation, contact n
 
 test('@functional F2-C4: invalid email format → inline validation, contact not created', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -217,16 +208,16 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
   // Use healPage interactions since createContactViaUI waits for networkidle which
   // may never settle on a validation error (no network request is made).
   await navigateToContactsPage(page);
-  await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
-  await healPage.fill('F2C4', [{ type: 'testId', value: 'contact-first-name' }]);
-  await healPage.fill(uniqueLastName, [{ type: 'testId', value: 'contact-last-name' }]);
-  await healPage.fill('not-an-email', [{ type: 'testId', value: 'contact-email' }]);
-  await healPage.click([{ type: 'testId', value: 'contact-form-submit' }]);
+  await page.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await page.fill('F2C4', [{ type: 'testId', value: 'contact-first-name' }]);
+  await page.fill(uniqueLastName, [{ type: 'testId', value: 'contact-last-name' }]);
+  await page.fill('not-an-email', [{ type: 'testId', value: 'contact-email' }]);
+  await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
   // HTML5 email validation is synchronous — use a DOM-based wait instead of a
   // fixed timeout so the assertion retries automatically.
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'contact-form' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'contact-form' }]).resolve(),
   ).toBeVisible();
 
   // Verify no contact was created by searching for the unique last name.
@@ -240,7 +231,6 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
 
 test('@functional F2-C5: duplicate email address → duplicate warning shown', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -257,7 +247,7 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
   // Try to create a second contact with the same email.
   const result = await createContactViaUI(
     { first_name: 'Duplicate', last_name: `Dup2-${uniqueSuffix}`, email: sharedEmail },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'duplicate should not be silently created').toBe(false);
@@ -277,7 +267,6 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
 
 test('@smoke @functional F2-R1: contact list shows seeded records', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -293,13 +282,13 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
     last_name: `List-${uniqueSuffix}`,
   });
 
-  const navResult = await navigateToContacts({ page, healPage, testName });
+  const navResult = await navigateToContacts({ page });
   expect(navResult.loaded, 'contacts page should load').toBe(true);
 
   // Verify both seeded contacts are visible in the UI. Use the search behavior
   // to filter the list, then assert on the API total (stable) and that the
   // empty state is NOT shown (UI signal that results rendered).
-  const uiResult = await searchContacts(`List-${uniqueSuffix}`, { page, healPage, testName });
+  const uiResult = await searchContacts(`List-${uniqueSuffix}`, { page });
   expect(uiResult.emptyStateVisible, 'empty state should not be shown when records exist').toBe(
     false,
   );
@@ -313,7 +302,6 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
 
 test('@functional F2-R2: sort by first name ascending returns alphabetical order', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -352,12 +340,10 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   );
 
   // Also confirm the sort button is clickable via UI (desktop table only).
-  const navResult = await navigateToContacts({ page, healPage, testName });
+  const navResult = await navigateToContacts({ page });
   expect(navResult.loaded).toBe(true);
   // The sort button is only visible on desktop — the mobile card view has no sort headers.
-  const sortButton = await healPage
-    .locate([{ type: 'testId', value: 'contacts-sort-name' }])
-    .resolve(testName);
+  const sortButton = await page.locate([{ type: 'testId', value: 'contacts-sort-name' }]).resolve();
   const isSortVisible = await sortButton.isVisible();
   if (isSortVisible) {
     await sortButton.click();
@@ -402,7 +388,6 @@ test('@functional F2-R3: sort by email ascending returns correct order', async (
 
 test('@functional F2-R4: search matching name returns results (AC3 — case-insensitive)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -414,11 +399,7 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
   });
 
   // Search with UPPERCASE variant to verify case-insensitivity (AC3).
-  const result = await searchContacts(`CIS-${uniqueSuffix}`.toUpperCase(), {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await searchContacts(`CIS-${uniqueSuffix}`.toUpperCase(), { page });
   expect(result.rowCount, 'at least one row should match case-insensitive search').toBeGreaterThan(
     0,
   );
@@ -434,15 +415,10 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
 
 test('@functional F2-R5: search non-matching term returns empty state', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const result = await searchContacts('zzz-no-such-contact-xyzzy-99999', {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await searchContacts('zzz-no-such-contact-xyzzy-99999', { page });
   expect(result.rowCount, 'no rows should match non-existent term').toBe(0);
   expect(result.emptyStateVisible, 'empty state should be visible for no results').toBe(true);
 
@@ -456,7 +432,6 @@ test('@functional F2-R5: search non-matching term returns empty state', async ({
 
 test('@smoke @functional F2-U1: edit first name → change reflected in detail view and list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -468,11 +443,7 @@ test('@smoke @functional F2-U1: edit first name → change reflected in detail v
   });
 
   const updatedFirst = `UpdatedFirst-${uniqueSuffix}`;
-  const editResult = await editContact(
-    contact.id,
-    { first_name: updatedFirst },
-    { page, healPage, testName },
-  );
+  const editResult = await editContact(contact.id, { first_name: updatedFirst }, { page });
 
   expect(editResult.saved, 'edit should save successfully').toBe(true);
 
@@ -483,7 +454,6 @@ test('@smoke @functional F2-U1: edit first name → change reflected in detail v
 
 test('@functional F2-U2: edit last name → change reflected in detail view and list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -495,11 +465,7 @@ test('@functional F2-U2: edit last name → change reflected in detail view and 
   });
 
   const updatedLast = `UpdatedLast-${uniqueSuffix}`;
-  const editResult = await editContact(
-    contact.id,
-    { last_name: updatedLast },
-    { page, healPage, testName },
-  );
+  const editResult = await editContact(contact.id, { last_name: updatedLast }, { page });
 
   expect(editResult.saved, 'edit should save successfully').toBe(true);
 
@@ -509,7 +475,6 @@ test('@functional F2-U2: edit last name → change reflected in detail view and 
 
 test('@functional F2-U3: cancel edit → no changes persisted', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -520,11 +485,7 @@ test('@functional F2-U3: cancel edit → no changes persisted', async ({
     last_name: `CancelEdit-${uniqueSuffix}`,
   });
 
-  const cancelResult = await cancelContactEdit(contact.id, 'THIS SHOULD NOT BE SAVED', {
-    page,
-    healPage,
-    testName,
-  });
+  const cancelResult = await cancelContactEdit(contact.id, 'THIS SHOULD NOT BE SAVED', { page });
 
   expect(cancelResult.backToReadMode, 'page should return to read mode after cancel').toBe(true);
   expect(new URL(cancelResult.finalUrl).pathname, 'should remain on the detail page').toBe(
@@ -544,7 +505,6 @@ test('@functional F2-U3: cancel edit → no changes persisted', async ({
 
 test('@functional F2-D1: delete contact → removed from list and returns 404 from API (AC1)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -555,7 +515,7 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
     last_name: `Del-${uniqueSuffix}`,
   });
 
-  const deleteResult = await deleteContactViaUI(contact.id, { page, healPage, testName });
+  const deleteResult = await deleteContactViaUI(contact.id, { page });
 
   expect(deleteResult.deleted, 'delete should navigate back to /contacts').toBe(true);
 
@@ -578,7 +538,6 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
 
 test('@functional F2-D2: cancel confirmation dialog → contact not deleted, remains in list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -589,7 +548,7 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
     last_name: `CancelDel-${uniqueSuffix}`,
   });
 
-  const cancelResult = await cancelDeleteContact(contact.id, { page, healPage, testName });
+  const cancelResult = await cancelDeleteContact(contact.id, { page });
 
   expect(cancelResult.stillOnDetailPage, 'should remain on detail page after cancel').toBe(true);
 
@@ -604,7 +563,6 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
 
 test('@functional F2-A1: link contact to account → contact appears in account contacts list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -625,9 +583,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await navigateToContact(page, contact.id);
 
   // The detail-account element should show the account name.
-  const accountLocator = await healPage
-    .locate([{ type: 'testId', value: 'detail-account' }])
-    .resolve(testName);
+  const accountLocator = await page.locate([{ type: 'testId', value: 'detail-account' }]).resolve();
   await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
   const accountText = await accountLocator.textContent();
   expect(accountText, 'detail view should show the linked account name').toContain(
@@ -668,7 +624,6 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
 
 test('@functional F2-A3: contact detail view shows associated account name with working link', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -686,9 +641,7 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   await navigateToContact(page, contact.id);
 
   // Confirm account name is a link pointing to the account's detail page.
-  const accountLink = await healPage
-    .locate([{ type: 'testId', value: 'detail-account' }])
-    .resolve(testName);
+  const accountLink = await page.locate([{ type: 'testId', value: 'detail-account' }]).resolve();
   await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
   const href = await accountLink.getAttribute('href');
   expect(href, 'account link should point to /accounts/:id').toContain(`/accounts/${account.id}`);
@@ -705,7 +658,6 @@ test('@functional F2-A3: contact detail view shows associated account name with 
 
 test('@functional F2-P1: pagination — navigating pages returns correct records (AC2 — sort stable)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -742,15 +694,15 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
 
   // Quick UI smoke: pagination controls appear when there are enough records.
   // We use the real default limit (50) here so we just confirm the navigation works.
-  const navResult = await navigateToContacts({ page, healPage, testName });
+  const navResult = await navigateToContacts({ page });
   expect(navResult.loaded, 'contacts page should load').toBe(true);
 
   // If the total (all contacts in db) exceeds 50 the pagination component is shown.
   const total = (await restClient.get<ContactListResponse>('/api/contacts')).body.total;
   if (total > 50) {
-    const paginationLocator = await healPage
+    const paginationLocator = await page
       .locate([{ type: 'testId', value: 'pagination' }])
-      .resolve(testName);
+      .resolve();
     await expect(paginationLocator).toBeVisible();
   }
 });

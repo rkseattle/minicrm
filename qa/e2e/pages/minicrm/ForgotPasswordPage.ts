@@ -7,15 +7,12 @@
  * MINCRM-156
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ForgotPasswordPage. */
 export interface ForgotPasswordPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
@@ -25,14 +22,10 @@ export class ForgotPasswordPage {
   /** URL path for this page. */
   static readonly PATH = '/forgot-password';
 
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   constructor(context: ForgotPasswordPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   /**
@@ -48,7 +41,7 @@ export class ForgotPasswordPage {
    * @param email - Email address to enter.
    */
   async fillEmail(email: string): Promise<void> {
-    await this.healPage.fill(email, [
+    await this.page.fill(email, [
       { type: 'testId', value: 'forgot-password-email' },
       { type: 'label', value: t('forgotPassword.emailLabel'), options: { exact: true } },
     ]);
@@ -58,7 +51,7 @@ export class ForgotPasswordPage {
    * Clicks the submit button.
    */
   async submit(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'forgot-password-submit' },
       {
         type: 'role',
@@ -72,12 +65,12 @@ export class ForgotPasswordPage {
    * Returns true when the success message is visible.
    */
   async successMessageVisible(): Promise<boolean> {
-    return this.healPage
+    return this.page
       .locate([
         { type: 'testId', value: 'forgot-password-success' },
         { type: 'css', value: '[data-testid="forgot-password-success"]' },
       ])
-      .resolve(this.testName)
+      .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }

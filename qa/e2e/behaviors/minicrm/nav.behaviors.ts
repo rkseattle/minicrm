@@ -11,8 +11,7 @@
  * MINCRM-144
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 /** Navigation layout modes supported by MiniCRM (MINCRM-133). */
@@ -24,10 +23,7 @@ export type NavLayout = 'top' | 'left' | 'hamburger';
 
 /** Fixtures required by navigation behaviors. */
 export interface NavBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,12 +92,12 @@ export async function setNavLayoutViaUI(
 ): Promise<SetNavLayoutViaUIResult> {
   let button;
   try {
-    button = await context.healPage
+    button = await context.page
       .locate([
         { type: 'testId', value: `nav-layout-option-${layout}` },
         { type: 'css', value: `[data-testid="nav-layout-option-${layout}"]` },
       ])
-      .resolve(context.testName);
+      .resolve();
   } catch {
     return { clicked: false, successFeedbackVisible: false };
   }
@@ -115,12 +111,12 @@ export async function setNavLayoutViaUI(
   let successFeedbackVisible = false;
   // Use the resolved button locator with an and() filter for aria-checked.
   // The CSS strategy resolves the same element with the attribute constraint.
-  const checkedButton = await context.healPage
+  const checkedButton = await context.page
     .locate([
       { type: 'css', value: `[data-testid="nav-layout-option-${layout}"][aria-checked="true"]` },
       { type: 'testId', value: `nav-layout-option-${layout}` },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   if (checkedButton) {
     await checkedButton
@@ -154,18 +150,18 @@ export interface OpenHamburgerMenuResult {
 export async function openHamburgerMenu(
   context: NavBehaviorContext,
 ): Promise<OpenHamburgerMenuResult> {
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'nav-menu-toggle' },
     { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
   ]);
   // The hamburger drawer is conditionally rendered — click the toggle first,
   // then resolve it once it's mounted.
-  const drawer = await context.healPage
+  const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
       { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   // Wait for React to render the drawer — isVisible() after click() is a
   // snapshot that races React state updates (Greptile P1 finding).
@@ -201,12 +197,12 @@ export async function closeHamburgerMenuViaBackdrop(
 
   // Drawer is conditionally rendered — resolve after the click that closed it.
   // If it's already gone, resolve() will fail and we treat it as closed.
-  const drawer = await context.healPage
+  const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
       { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   // Wait for the drawer to disappear rather than using a fixed timeout.
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
@@ -234,19 +230,19 @@ export interface CloseHamburgerMenuViaCloseButtonResult {
 export async function closeHamburgerMenuViaCloseButton(
   context: NavBehaviorContext,
 ): Promise<CloseHamburgerMenuViaCloseButtonResult> {
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'nav-hamburger-close' },
     { type: 'css', value: '[data-testid="nav-hamburger-close"]' },
   ]);
 
   // Drawer is conditionally rendered — after clicking close it may already be
   // unmounted. Resolve with a catch so a missing drawer counts as closed.
-  const drawer = await context.healPage
+  const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
       { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   // Wait for the drawer to disappear rather than using a fixed timeout.
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
@@ -286,7 +282,7 @@ export async function navigateViaNavLink(
     // Check whether the drawer is already open using a short-timeout probe —
     // the drawer either exists in the DOM right now or it doesn't. A 200 ms
     // fallbackTimeout fails fast when closed without burning the test budget.
-    const drawerLocator = await context.healPage
+    const drawerLocator = await context.page
       .locate(
         [
           { type: 'testId', value: 'nav-hamburger-drawer' },
@@ -294,20 +290,20 @@ export async function navigateViaNavLink(
         ],
         { fallbackTimeout: 200 },
       )
-      .resolve(context.testName)
+      .resolve()
       .catch(() => null);
     const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
-      await context.healPage.click([
+      await context.page.click([
         { type: 'testId', value: 'nav-menu-toggle' },
         { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
       ]);
-      const drawer = await context.healPage
+      const drawer = await context.page
         .locate([
           { type: 'testId', value: 'nav-hamburger-drawer' },
           { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
         ])
-        .resolve(context.testName);
+        .resolve();
       await drawer.waitFor({ state: 'visible' });
     }
   }
@@ -315,12 +311,12 @@ export async function navigateViaNavLink(
   const testId = `nav-${layout}-${destination}`;
   let link;
   try {
-    link = await context.healPage
+    link = await context.page
       .locate([
         { type: 'testId', value: testId },
         { type: 'css', value: `[data-testid="${testId}"]` },
       ])
-      .resolve(context.testName);
+      .resolve();
   } catch {
     return { linkClicked: false, finalUrl: context.page.url() };
   }
@@ -373,20 +369,20 @@ export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMo
   // force:true bypasses Playwright's pointer-intercept check — visibility
   // of the toggle itself has already been confirmed by the caller navigating
   // to the page before calling this behavior.
-  const toggle = await context.healPage
+  const toggle = await context.page
     .locate([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ])
-    .resolve(context.testName);
+    .resolve();
   await toggle.click({ force: true });
   // The drawer is conditionally rendered — resolve after the click that mounts it.
-  const drawer = await context.healPage
+  const drawer = await context.page
     .locate([
       { type: 'testId', value: 'mobile-nav-drawer' },
       { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await drawer?.waitFor({ state: 'visible' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
@@ -415,19 +411,19 @@ export async function closeMobileNavViaToggle(
 ): Promise<CloseMobileNavViaToggleResult> {
   // Same intercept issue as openMobileNav — global-search-input overlaps the
   // toggle on mobile viewports. force:true bypasses the pointer-intercept check.
-  const toggle = await context.healPage
+  const toggle = await context.page
     .locate([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
     ])
-    .resolve(context.testName);
+    .resolve();
   await toggle.click({ force: true });
-  const drawer = await context.healPage
+  const drawer = await context.page
     .locate([
       { type: 'testId', value: 'mobile-nav-drawer' },
       { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
@@ -460,7 +456,7 @@ export async function navigateViaMobileNavLink(
 ): Promise<NavigateViaMobileNavLinkResult> {
   // Open the drawer if it is not already visible (short probe — it's either
   // mounted right now or it isn't).
-  const drawerLocator = await context.healPage
+  const drawerLocator = await context.page
     .locate(
       [
         { type: 'testId', value: 'mobile-nav-drawer' },
@@ -468,32 +464,32 @@ export async function navigateViaMobileNavLink(
       ],
       { fallbackTimeout: 200 },
     )
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
   if (!drawerVisible) {
-    await context.healPage.click([
+    await context.page.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ]);
-    const drawer = await context.healPage
+    const drawer = await context.page
       .locate([
         { type: 'testId', value: 'mobile-nav-drawer' },
         { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
       ])
-      .resolve(context.testName);
+      .resolve();
     await drawer.waitFor({ state: 'visible' });
   }
 
   const testId = `nav-top-${destination}-mobile`;
   let link;
   try {
-    link = await context.healPage
+    link = await context.page
       .locate([
         { type: 'testId', value: testId },
         { type: 'css', value: `[data-testid="${testId}"]` },
       ])
-      .resolve(context.testName);
+      .resolve();
   } catch {
     return { linkClicked: false, finalUrl: context.page.url() };
   }

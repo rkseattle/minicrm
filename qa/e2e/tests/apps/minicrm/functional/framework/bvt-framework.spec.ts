@@ -69,12 +69,9 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   test('@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown', async ({
     page,
-    healPage,
     restClient,
     testData,
   }) => {
-    const testName = test.info().title;
-
     // ── Step 0: Authenticate the REST client ──────────────────────────────
     // POST /api/auth/login sets the JWT cookie on the Playwright
     // APIRequestContext, so all subsequent restClient calls are authenticated.
@@ -98,10 +95,7 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     // ── Step 3: Login via behavior ────────────────────────────────────────
     // No Page Object methods, raw locators, or HealingLocator instances here.
     // The behavior internally uses LoginPage with 2-strategy HealingLocators.
-    const loginResult = await login(
-      { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-      { page, healPage, testName },
-    );
+    const loginResult = await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
 
     expect(loginResult.success).toBe(true);
     expect(loginResult.errorMessage).toBeNull();
@@ -109,7 +103,7 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     // ── Step 4: Navigate to contacts via behavior ─────────────────────────
     // ContactsPage.isLoaded() uses a 2-strategy HealingLocator (testId + role)
     // to confirm the page is ready, satisfying the fallback-chain requirement.
-    const navResult = await navigateToContacts({ page, healPage, testName });
+    const navResult = await navigateToContacts({ page });
 
     expect(navResult.loaded).toBe(true);
     expect(navResult.finalUrl).toContain('/contacts');

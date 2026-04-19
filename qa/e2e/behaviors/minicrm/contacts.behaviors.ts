@@ -11,8 +11,7 @@
  * MINCRM-130, MINCRM-110, MINCRM-138
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -23,10 +22,7 @@ import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
 /** Fixtures required by contacts behaviors. */
 export interface ContactsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,41 +300,41 @@ export async function createContactViaUI(
   await contactsPage.clickNewContact();
 
   // Fill required fields.
-  await context.healPage.fill(fields.first_name, [
+  await context.page.fill(fields.first_name, [
     { type: 'testId', value: 'contact-first-name' },
     { type: 'label', value: 'First name', options: { exact: false } },
   ]);
-  await context.healPage.fill(fields.last_name, [
+  await context.page.fill(fields.last_name, [
     { type: 'testId', value: 'contact-last-name' },
     { type: 'label', value: 'Last name', options: { exact: false } },
   ]);
-  await context.healPage.fill(fields.email, [
+  await context.page.fill(fields.email, [
     { type: 'testId', value: 'contact-email' },
     { type: 'label', value: 'Email', options: { exact: false } },
   ]);
 
   // Fill optional fields when provided.
   if (fields.phone !== undefined) {
-    await context.healPage.fill(fields.phone, [
+    await context.page.fill(fields.phone, [
       { type: 'testId', value: 'contact-phone' },
       { type: 'label', value: 'Phone', options: { exact: false } },
     ]);
   }
   if (fields.title !== undefined) {
-    await context.healPage.fill(fields.title, [
+    await context.page.fill(fields.title, [
       { type: 'testId', value: 'contact-title' },
       { type: 'label', value: 'Title', options: { exact: false } },
     ]);
   }
   if (fields.department !== undefined) {
-    await context.healPage.fill(fields.department, [
+    await context.page.fill(fields.department, [
       { type: 'testId', value: 'contact-department' },
       { type: 'label', value: 'Department', options: { exact: false } },
     ]);
   }
 
   // Submit the form.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'contact-form-submit' },
     { type: 'role', value: 'button', options: { name: t('contacts.save'), exact: false } },
   ]);
@@ -349,22 +345,22 @@ export async function createContactViaUI(
   const finalUrl = context.page.url();
 
   // Check for duplicate warning (form stays open with duplicate-contact-warning).
-  const duplicateWarning = await context.healPage
+  const duplicateWarning = await context.page
     .locate([
       { type: 'testId', value: 'duplicate-contact-warning' },
       { type: 'css', value: '[data-testid="duplicate-contact-warning"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.isVisible().catch(() => false))
     .catch(() => false);
 
   // Check form still visible (either validation error or duplicate warning).
-  const formStillVisible = await context.healPage
+  const formStillVisible = await context.page
     .locate([
       { type: 'testId', value: 'contact-form' },
       { type: 'css', value: '[data-testid="contact-form"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.isVisible().catch(() => false))
     .catch(() => false);
 
@@ -407,13 +403,13 @@ export async function deleteContactViaUI(
   await detailPage.navigate(id);
 
   // Click the Delete button to open the confirmation modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'delete-contact-button' },
     { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
   ]);
 
   // Confirm deletion in the modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'confirm-delete-confirm' },
     { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
   ]);
@@ -456,13 +452,13 @@ export async function cancelDeleteContact(
   await detailPage.navigate(id);
 
   // Click the Delete button.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'delete-contact-button' },
     { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
   ]);
 
   // Click Cancel in the confirmation modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'confirm-delete-cancel' },
     { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
   ]);
@@ -513,7 +509,7 @@ export async function cancelContactEdit(
   await detailPage.fillField('contact-first-name', 'First name', fieldValue);
 
   // Click Cancel.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'contact-form-cancel' },
     { type: 'role', value: 'button', options: { name: t('contacts.cancel'), exact: false } },
   ]);
@@ -554,7 +550,7 @@ export async function searchContacts(
   const contactsPage = new ContactsPage(context);
   await contactsPage.navigate();
 
-  await context.healPage.fill(searchTerm, [
+  await context.page.fill(searchTerm, [
     { type: 'testId', value: 'contacts-search' },
     { type: 'label', value: 'Search', options: { exact: false } },
   ]);
@@ -564,19 +560,19 @@ export async function searchContacts(
   // wait until either a contact row OR the empty-state placeholder is attached
   // to the DOM — whichever appears first. This is more deterministic than a
   // hardcoded timeout and avoids double-networkidle races on slow CI machines.
-  const contactRowEl = await context.healPage
+  const contactRowEl = await context.page
     .locate([
       { type: 'css', value: '[data-testid^="contact-link-"]' },
       { type: 'css', value: '[data-testid="contacts-list"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
-  const emptyStateEl = await context.healPage
+  const emptyStateEl = await context.page
     .locate([
       { type: 'testId', value: 'contacts-empty-state' },
       { type: 'text', value: t('contacts.empty') },
     ])
-    .resolve(context.testName)
+    .resolve()
     .catch(() => null);
   await Promise.race([
     contactRowEl

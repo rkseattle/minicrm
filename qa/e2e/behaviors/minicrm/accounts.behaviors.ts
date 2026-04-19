@@ -11,8 +11,7 @@
  * MINCRM-139
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
@@ -23,10 +22,7 @@ import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 
 /** Fixtures required by accounts behaviors. */
 export interface AccountsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,39 +181,39 @@ export async function createAccountViaUI(
   await accountsPage.clickNewAccount();
 
   // Fill required name field.
-  await context.healPage.fill(fields.name, [
+  await context.page.fill(fields.name, [
     { type: 'testId', value: 'account-name-input' },
     { type: 'label', value: 'Company name', options: { exact: false } },
   ]);
 
   // Fill optional fields when provided.
   if (fields.industry !== undefined) {
-    await context.healPage.fill(fields.industry, [
+    await context.page.fill(fields.industry, [
       { type: 'testId', value: 'account-industry' },
       { type: 'label', value: 'Industry', options: { exact: false } },
     ]);
   }
   if (fields.website !== undefined) {
-    await context.healPage.fill(fields.website, [
+    await context.page.fill(fields.website, [
       { type: 'testId', value: 'account-website' },
       { type: 'label', value: 'Website', options: { exact: false } },
     ]);
   }
   if (fields.employee_range !== undefined) {
-    await context.healPage.fill(fields.employee_range, [
+    await context.page.fill(fields.employee_range, [
       { type: 'testId', value: 'account-employee-range' },
       { type: 'label', value: 'Employee count', options: { exact: false } },
     ]);
   }
   if (fields.revenue_range !== undefined) {
-    await context.healPage.fill(fields.revenue_range, [
+    await context.page.fill(fields.revenue_range, [
       { type: 'testId', value: 'account-revenue-range' },
       { type: 'label', value: 'Revenue range', options: { exact: false } },
     ]);
   }
 
   // Submit the form.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'account-form-submit' },
     { type: 'role', value: 'button', options: { name: t('accounts.save'), exact: false } },
   ]);
@@ -240,12 +236,12 @@ export async function createAccountViaUI(
   // `created: false` result (MINCRM-139).
   // The New Account button being visible is the canonical success signal.
   // If it is not visible, the form is still open (validation error or server error).
-  const buttonVisible = await context.healPage
+  const buttonVisible = await context.page
     .locate([
       { type: 'testId', value: 'new-account-button' },
       { type: 'css', value: '[data-testid="new-account-button"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true))
     .catch(() => false);
 
@@ -286,13 +282,13 @@ export async function deleteAccountViaUI(
   await detailPage.navigate(id);
 
   // Click the Delete button to open the confirmation modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'delete-account-button' },
     { type: 'role', value: 'button', options: { name: t('accounts.delete'), exact: false } },
   ]);
 
   // Confirm deletion in the modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'confirm-delete-confirm' },
     { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
   ]);
@@ -335,13 +331,13 @@ export async function cancelDeleteAccount(
   await detailPage.navigate(id);
 
   // Click the Delete button.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'delete-account-button' },
     { type: 'role', value: 'button', options: { name: t('accounts.delete'), exact: false } },
   ]);
 
   // Click Cancel in the confirmation modal.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'confirm-delete-cancel' },
     { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
   ]);
@@ -390,7 +386,7 @@ export async function cancelAccountEdit(
   await detailPage.fillField('account-name-input', 'Company name', fieldValue);
 
   // Click Cancel.
-  await context.healPage.click([
+  await context.page.click([
     { type: 'testId', value: 'account-form-cancel' },
     { type: 'role', value: 'button', options: { name: t('accounts.cancel'), exact: false } },
   ]);

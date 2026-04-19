@@ -50,9 +50,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F6] E2E_ADMIN_PASSWORD is not set');
 // Shared setup — admin auth + test name capture
 // ---------------------------------------------------------------------------
 
-let testName: string;
-test.beforeEach(async ({ restClient }, testInfo) => {
-  testName = testInfo.title;
+test.beforeEach(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
@@ -354,7 +352,6 @@ test.describe('First login tests', () => {
 
   test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
     page,
-    healPage,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
@@ -364,10 +361,7 @@ test.describe('First login tests', () => {
       const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
       userId = user.id;
 
-      const loginResult = await login(
-        { email: user.email, password: TEMP_PASSWORD },
-        { page, healPage, testName },
-      );
+      const loginResult = await login({ email: user.email, password: TEMP_PASSWORD }, { page });
 
       expect(loginResult.success, 'forced-change user login should succeed').toBe(true);
       expect(
@@ -388,7 +382,6 @@ test.describe('First login tests', () => {
 
   test('@functional F6-FL2: temp password rejected after forced password change', async ({
     page,
-    healPage,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
@@ -400,7 +393,7 @@ test.describe('First login tests', () => {
       userId = user.id;
 
       // Login — lands on /change-password.
-      await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
+      await login({ email: user.email, password: TEMP_PASSWORD }, { page });
 
       // Change the password.
       const changeResult = await changePassword(
@@ -409,18 +402,15 @@ test.describe('First login tests', () => {
           newPassword: NEW_PASSWORD,
           confirmPassword: NEW_PASSWORD,
         },
-        { page, healPage, testName },
+        { page },
       );
       expect(changeResult.success, 'password change should succeed').toBe(true);
 
       // Log out so the old password can be tested.
-      await logout({ page, healPage, testName });
+      await logout({ page });
 
       // Old temp password must now be rejected.
-      const retryResult = await login(
-        { email: user.email, password: TEMP_PASSWORD },
-        { page, healPage, testName },
-      );
+      const retryResult = await login({ email: user.email, password: TEMP_PASSWORD }, { page });
       expect(retryResult.success, 'old temp password should be rejected after change').toBe(false);
       expect(retryResult.errorMessage, 'error message should be present').not.toBeNull();
     } finally {
@@ -437,7 +427,6 @@ test.describe('First login tests', () => {
 
   test('@functional F6-FL3: weak new password on forced-change form → inline error, stays on /change-password', async ({
     page,
-    healPage,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
@@ -448,12 +437,12 @@ test.describe('First login tests', () => {
       userId = user.id;
 
       // Login — lands on /change-password.
-      await login({ email: user.email, password: TEMP_PASSWORD }, { page, healPage, testName });
+      await login({ email: user.email, password: TEMP_PASSWORD }, { page });
 
       // Submit a deliberately weak password.
       const result = await changePassword(
         { currentPassword: TEMP_PASSWORD, newPassword: 'weak', confirmPassword: 'weak' },
-        { page, healPage, testName },
+        { page },
       );
 
       expect(result.success, 'weak password should not navigate away').toBe(false);

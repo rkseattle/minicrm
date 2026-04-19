@@ -1,23 +1,22 @@
 /**
  * Custom ESLint rule: no-page-forbidden-methods
  *
- * Enforces that E2E spec files do not call forbidden Playwright Page methods
- * directly on the `page` fixture. All element location and interaction must
- * go through healPage.locate / healPage.click / healPage.fill so that
- * self-healing strategies are applied uniformly.
+ * Enforces that E2E spec files do not call raw Playwright Page methods
+ * directly on the `page` fixture. Since MINCRM-210, `page` is a PageFacade
+ * (SafePage & HealMethods), so healing methods like click(), fill(), locate()
+ * etc. are valid on `page`. Only raw Playwright locator/query methods that
+ * bypass the healing layer remain forbidden.
  *
- * Allowed page methods (navigation and browser-state primitives):
+ * Allowed page methods (healing layer + navigation and browser-state primitives):
+ *   locate, click, fill, waitFor, textContent, getAttribute, count, selectOption,
+ *   check, uncheck, hover, doesNotExist, isNotVisible (HealMethods)
  *   goto, url, waitForURL, waitForLoadState, waitForTimeout, reload,
  *   goBack, goForward, keyboard, mouse, title, context, viewportSize,
  *   evaluate, waitForEvent, waitForFunction, waitForRequest, waitForResponse,
- *   screenshot, pdf, viewportSize, setViewportSize, addInitScript,
- *   exposeFunction, route, on, once, removeListener, close, pause,
- *   bringToFront, emulateMedia, setExtraHTTPHeaders, addCookies,
- *   clearCookies, addScriptTag, addStyleTag, setContent, content,
- *   mainFrame, frames, frame, workers, serviceWorker, opener, isClosed,
- *   skip, title (test.info) -- these are NOT page method calls
+ *   screenshot, setViewportSize, route, on, once, removeListener, close, pause,
+ *   bringToFront, emulateMedia, setExtraHTTPHeaders, mainFrame, frames
  *
- * MINCRM-204
+ * MINCRM-204, MINCRM-210
  */
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -26,21 +25,27 @@ const noPageForbiddenMethods = {
     type: 'problem',
     docs: {
       description:
-        'Disallow calling forbidden Playwright Page methods directly in E2E spec files. ' +
-        'Use healPage.locate / healPage.click / healPage.fill instead.',
+        'Disallow calling raw Playwright Page locator methods directly in E2E spec files. ' +
+        'Use page.locate([...]).resolve() for assertions, page.click([...]) for clicks, ' +
+        'and page.fill(value, [...]) for input.',
       recommended: false,
     },
     schema: [],
     messages: {
       forbidden:
         'page.{{ method }}() is forbidden in spec files. ' +
-        'Use healPage.locate([{type:"testId",value:"..."}]).resolve(testName) for assertions, ' +
-        'healPage.click([...]) for clicks, and healPage.fill(value,[...]) for input. ' +
+        'Use page.locate([{type:"testId",value:"..."}]).resolve() for assertions, ' +
+        'page.click([...]) for clicks, and page.fill(value,[...]) for input. ' +
         'See MINCRM-204 for the full migration guide.',
     },
   },
 
   create(context) {
+    // Only raw Playwright locator/query methods that bypass the healing layer.
+    // HealMethods (click, fill, check, uncheck, selectOption, hover, textContent,
+    // getAttribute, locate, count, waitFor, doesNotExist, isNotVisible) are
+    // allowed because page is now a PageFacade that routes them through
+    // the healing layer. (MINCRM-210)
     const FORBIDDEN_METHODS = new Set([
       'getByTestId',
       'getByRole',
@@ -51,21 +56,13 @@ const noPageForbiddenMethods = {
       'getByTitle',
       'locator',
       'waitForSelector',
-      'click',
-      'fill',
       'type',
-      'check',
-      'uncheck',
-      'selectOption',
-      'hover',
       'focus',
       'tap',
       'dispatchEvent',
       'innerHTML',
       'innerText',
       'inputValue',
-      'textContent',
-      'getAttribute',
       'isVisible',
       'isEnabled',
       'isChecked',
