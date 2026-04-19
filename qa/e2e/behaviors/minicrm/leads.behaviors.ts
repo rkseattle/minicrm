@@ -207,7 +207,7 @@ export async function updateLeadStatus(
   await leadsPage.clickStatusBadge(leadId);
   await leadsPage.selectStatus(leadId, status);
 
-  const badgeText = await leadsPage.statusBadgeText(leadId);
+  const badgeText = await leadsPage.waitForStatusBadgeText(leadId, status);
   const finalUrl = leadsPage.url();
 
   return { badgeText, finalUrl };

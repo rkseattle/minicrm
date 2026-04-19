@@ -179,6 +179,31 @@ export class GlobalSearchPage {
   }
 
   /**
+   * Clears the search input and waits for the results panel to close.
+   * Use between successive typeQuery calls in the same test to ensure each
+   * query starts from a clean panel state.
+   *
+   * @param timeout - Maximum ms to wait for the panel to close.
+   */
+  async clearQuery(timeout = 3_000): Promise<void> {
+    const input = await this.openInput();
+    await input.click();
+    await input.fill('');
+    // Wait for the panel to disappear so the next typeQuery starts clean.
+    try {
+      const panel = await this.healPage
+        .locate([
+          { type: 'testId', value: 'search-results-panel' },
+          { type: 'css', value: '[data-testid="search-results-panel"]' },
+        ])
+        .resolve(this.testName);
+      await panel.waitFor({ state: 'hidden', timeout });
+    } catch {
+      // Panel was not present or already hidden — proceed.
+    }
+  }
+
+  /**
    * Clicks the search result link for the given entity type and ID.
    *
    * @param entity - Entity type: 'contact', 'account', or 'deal'.

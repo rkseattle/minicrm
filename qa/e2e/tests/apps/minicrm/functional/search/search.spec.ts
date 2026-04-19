@@ -49,6 +49,7 @@ import {
   getMinLengthHint,
   checkNoResultsForQuery,
   typeSearchQueryAndCheckPanel,
+  clearSearchQuery,
 } from '@behaviors/minicrm/index.js';
 
 // ---------------------------------------------------------------------------
@@ -580,9 +581,15 @@ test('@functional @search F9-EC3: query with special characters is handled grace
   await navigateToDashboard(page);
 
   // Special-character queries that have historically caused issues.
+  // Clear between iterations so each query starts from a clean panel state (no
+  // leftover results from the previous query causing a false panel-visible reading).
   const specialQueries = ["O'Brien", 'Smith & Co'];
 
-  for (const query of specialQueries) {
+  for (let i = 0; i < specialQueries.length; i++) {
+    if (i > 0) {
+      await clearSearchQuery({ page, healPage, testName });
+    }
+    const query = specialQueries[i] as string;
     const panelResult = await typeSearchQueryAndCheckPanel(query, { page, healPage, testName });
     expect(
       panelResult.noErrorAlert,

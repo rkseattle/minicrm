@@ -102,6 +102,7 @@ export {
   getMinLengthHint,
   checkNoResultsForQuery,
   typeSearchQueryAndCheckPanel,
+  clearSearchQuery,
 } from './search.behaviors.js';
 export type {
   SearchBehaviorContext,
