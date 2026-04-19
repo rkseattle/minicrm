@@ -11,176 +11,31 @@
  *
  * test('example', async ({ healPage }) => {
  *   await healPage.click(
- *     { type: 'testId', value: 'submit-btn' },
- *     { type: 'role', value: 'button', options: { name: t('common.save') } },
+ *     [{ type: 'testId', value: 'submit-btn' }],
  *   );
  * });
  * ```
  *
- * MINCRM-126
+ * MINCRM-126, MINCRM-209
  */
 
-import { test as base, type Page } from '@playwright/test';
-import { HealingLocator, HealingRegistry, buildLocator, STRATEGY_ORDER } from '../healing/index.js';
-import type { LocatorStrategy } from '../healing/index.js';
+import { test as base } from '@playwright/test';
+import { HealingRegistry } from '../healing/index.js';
+import type { PageFacade } from '../types/page-facade.js';
+import { createPageFacade } from '../types/page-facade.js';
+import { buildHealPage } from './heal-methods.js';
+
+export type { LocateOptions, HealMethods, HealPage } from './heal-methods.js';
+export { buildHealPage } from './heal-methods.js';
+import type { HealMethods } from './heal-methods.js';
 
 // ---------------------------------------------------------------------------
-// HealPage interface
-// ---------------------------------------------------------------------------
-
-/** Options accepted by locate() in addition to the strategies array. */
-export interface LocateOptions {
-  /**
-   * Natural-language description of what the locator is looking for.
-   * Passed to HealingLocator's AI tier (S3) when all static strategies fail.
-   */
-  intent?: string;
-  /**
-   * Milliseconds to wait when probing a fallback strategy.
-   * Defaults to HealingLocator's internal default (2000 ms).
-   */
-  fallbackTimeout?: number;
-}
-
-/**
- * The healPage fixture object injected into every test using the extended `test`.
- */
-export interface HealPage {
-  /**
-   * Returns a HealingLocator for the given strategies.
-   *
-   * @param strategies - One or more LocatorStrategy objects (sorted by priority internally).
-   * @param options - Optional intent string and fallback timeout.
-   */
-  locate(strategies: LocatorStrategy[], options?: LocateOptions): HealingLocator;
-
-  /**
-   * Resolves the locator from the given strategies and clicks the element.
-   *
-   * @param strategies - One or more LocatorStrategy objects.
-   * @param options - Optional intent and fallback timeout.
-   */
-  click(strategies: LocatorStrategy[], options?: LocateOptions): Promise<void>;
-
-  /**
-   * Resolves the locator from the given strategies and fills the element with value.
-   *
-   * @param value - The string to type into the element.
-   * @param strategies - One or more LocatorStrategy objects.
-   * @param options - Optional intent and fallback timeout.
-   */
-  fill(value: string, strategies: LocatorStrategy[], options?: LocateOptions): Promise<void>;
-
-  /**
-   * Returns true when the element identified by the first strategy is NOT
-   * attached to the DOM. Never throws — safe to call when the element is
-   * expected to be absent. Does not record a heal event.
-   *
-   * Use for assertions like: expect(await healPage.doesNotExist([...])).toBe(true)
-   *
-   * @param strategies - One or more LocatorStrategy objects (only the first is used).
-   * @param timeoutMs  - How long to wait for the element to detach (default 10 000 ms).
-   */
-  doesNotExist(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
-
-  /**
-   * Returns true when the element identified by the first strategy is either
-   * absent from the DOM or present but not visible. Never throws.
-   * Does not record a heal event.
-   *
-   * Waits up to timeoutMs for the element to become hidden/absent — use this
-   * after an action that should remove or hide the element (MINCRM-211).
-   *
-   * Use for assertions like: expect(await healPage.isNotVisible([...])).toBe(true)
-   *
-   * @param strategies - One or more LocatorStrategy objects (only the first is used).
-   * @param timeoutMs  - How long to wait for the element to disappear (default 10 000 ms).
-   */
-  isNotVisible(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
-}
-
-// ---------------------------------------------------------------------------
-// Fixture implementation
+// Fixture types
 // ---------------------------------------------------------------------------
 
 /** Fixtures added by this module. */
 interface HealPageFixtures {
-  healPage: HealPage;
-}
-
-/**
- * Builds a HealPage implementation bound to the given Playwright Page.
- * Extracted so it can be unit-tested without the full fixture machinery.
- *
- * @param page - The Playwright Page object for the current test.
- * @param testName - The name of the currently running test (passed to HealingLocator.resolve).
- * @returns A HealPage instance.
- */
-export function buildHealPage(page: Page, testName: string): HealPage {
-  return {
-    locate(strategies: LocatorStrategy[], options: LocateOptions = {}): HealingLocator {
-      return new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-      });
-    },
-
-    async click(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.click();
-    },
-
-    async fill(
-      value: string,
-      strategies: LocatorStrategy[],
-      options: LocateOptions = {},
-    ): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.fill(value);
-    },
-
-    async doesNotExist(strategies: LocatorStrategy[], timeoutMs = 10_000): Promise<boolean> {
-      if (strategies.length === 0) throw new Error('doesNotExist requires at least one strategy');
-      const sorted = [...strategies].sort(
-        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
-      );
-      const locator = buildLocator(page, sorted[0]!);
-      try {
-        // Poll until detached rather than snapshotting current DOM presence.
-        // waitFor({state:'attached'}) resolves immediately if the element is already
-        // in the DOM, so it cannot detect future removal. (MINCRM-211)
-        await locator.waitFor({ state: 'detached', timeout: timeoutMs });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-
-    async isNotVisible(strategies: LocatorStrategy[], timeoutMs = 10_000): Promise<boolean> {
-      if (strategies.length === 0) throw new Error('isNotVisible requires at least one strategy');
-      const sorted = [...strategies].sort(
-        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
-      );
-      const locator = buildLocator(page, sorted[0]!);
-      try {
-        // Poll until hidden/absent rather than snapshotting current visibility.
-        // waitFor({state:'visible'}) resolves immediately if the element is already
-        // visible, so it cannot detect future disappearance. (MINCRM-211)
-        await locator.waitFor({ state: 'hidden', timeout: timeoutMs });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  };
+  healPage: HealMethods;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,12 +43,12 @@ export function buildHealPage(page: Page, testName: string): HealPage {
 // ---------------------------------------------------------------------------
 
 /**
- * Playwright test extended with the `healPage` fixture.
+ * Playwright test extended with the `healPage` and `pageFacade` fixtures.
  *
  * Import `test` and `expect` from `@framework/fixtures` rather than
  * `@playwright/test` in all application spec and behavior files.
  */
-export const test = base.extend<HealPageFixtures>({
+export const test = base.extend<HealPageFixtures & { pageFacade: PageFacade }>({
   healPage: async ({ page }, use, testInfo) => {
     const healPage = buildHealPage(page, testInfo.title);
 
@@ -201,6 +56,16 @@ export const test = base.extend<HealPageFixtures>({
       await use(healPage);
     } finally {
       // Always flush the registry, even on test failure or unhandled throw.
+      HealingRegistry.instance.flush();
+      HealingRegistry.instance._reset();
+    }
+  },
+
+  pageFacade: async ({ page }, use, testInfo) => {
+    const facade = createPageFacade(page, testInfo.title);
+    try {
+      await use(facade);
+    } finally {
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
     }
