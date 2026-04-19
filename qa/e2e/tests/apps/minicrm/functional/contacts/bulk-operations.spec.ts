@@ -53,11 +53,9 @@ interface ContactSingleResponse {
 
 test('@functional F2-BK1: select multiple contacts → bulk reassign → new owner reflected via API', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -84,45 +82,43 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   // Navigate to contacts list, filter to just the test contacts so they are
   // guaranteed on page 1 regardless of total DB size or sort order, then wait
   // for both rows and their checkboxes before clicking.
-  await navigateToContacts({ page, healPage, testName });
-  await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
-  await waitForContactInList(c1.id, { page, healPage, testName });
-  await waitForContactInList(c2.id, { page, healPage, testName });
+  await navigateToContacts({ page });
+  await filterContactsByTerm(uniqueSuffix, { page });
+  await waitForContactInList(c1.id, { page });
+  await waitForContactInList(c2.id, { page });
 
   // Select both contact rows via their checkboxes.
-  await waitForBulkCheckbox(c1.id, { page, healPage, testName });
-  await clickBulkCheckbox(c1.id, { page, healPage, testName });
-  await waitForBulkCheckbox(c2.id, { page, healPage, testName });
-  await clickBulkCheckbox(c2.id, { page, healPage, testName });
+  await waitForBulkCheckbox(c1.id, { page });
+  await clickBulkCheckbox(c1.id, { page });
+  await waitForBulkCheckbox(c2.id, { page });
+  await clickBulkCheckbox(c2.id, { page });
 
   // Bulk action bar should be visible.
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(),
   ).toBeVisible();
 
   // Click "Reassign".
-  await healPage.click([{ type: 'testId', value: 'bulk-reassign-button' }]);
+  await page.click([{ type: 'testId', value: 'bulk-reassign-button' }]);
 
   // Reassign modal should appear.
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'bulk-reassign-modal' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'bulk-reassign-modal' }]).resolve(),
   ).toBeVisible();
 
   // Select the new owner in the dropdown.
   await (
-    await healPage
-      .locate([{ type: 'testId', value: 'bulk-reassign-owner-select' }])
-      .resolve(testName)
+    await page.locate([{ type: 'testId', value: 'bulk-reassign-owner-select' }]).resolve()
   ).selectOption({ label: newOwner.name });
 
   // Confirm.
-  await healPage.click([{ type: 'testId', value: 'bulk-reassign-confirm' }]);
+  await page.click([{ type: 'testId', value: 'bulk-reassign-confirm' }]);
 
   // Bulk action bar should disappear after success.
-  // healPage.isNotVisible() is used here because resolve() throws
+  // page.isNotVisible() is used here because resolve() throws
   // StrategyExhaustedError when the element is absent — it cannot be used for
   // not.toBeVisible() assertions. (MINCRM-211)
-  expect(await healPage.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
+  expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify via API that both contacts now have the new owner.
   const r1 = await restClient.get<ContactSingleResponse>(`/api/contacts/${c1.id}`);
@@ -137,11 +133,9 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 
 test('@functional F2-BK2: select multiple contacts → bulk delete → contacts return 404 via API', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -161,34 +155,34 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   // Navigate to contacts list, filter to just the test contacts so they are
   // guaranteed on page 1 regardless of total DB size or sort order, then wait
   // for both rows and their checkboxes before clicking.
-  await navigateToContacts({ page, healPage, testName });
-  await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
-  await waitForContactInList(c1.id, { page, healPage, testName });
-  await waitForContactInList(c2.id, { page, healPage, testName });
+  await navigateToContacts({ page });
+  await filterContactsByTerm(uniqueSuffix, { page });
+  await waitForContactInList(c1.id, { page });
+  await waitForContactInList(c2.id, { page });
 
   // Select both rows.
-  await waitForBulkCheckbox(c1.id, { page, healPage, testName });
-  await clickBulkCheckbox(c1.id, { page, healPage, testName });
-  await waitForBulkCheckbox(c2.id, { page, healPage, testName });
-  await clickBulkCheckbox(c2.id, { page, healPage, testName });
+  await waitForBulkCheckbox(c1.id, { page });
+  await clickBulkCheckbox(c1.id, { page });
+  await waitForBulkCheckbox(c2.id, { page });
+  await clickBulkCheckbox(c2.id, { page });
 
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(),
   ).toBeVisible();
 
   // Click "Delete".
-  await healPage.click([{ type: 'testId', value: 'bulk-delete-button' }]);
+  await page.click([{ type: 'testId', value: 'bulk-delete-button' }]);
 
   // Confirm delete modal should appear.
   await expect(
-    await healPage.locate([{ type: 'testId', value: 'confirm-delete-modal' }]).resolve(testName),
+    await page.locate([{ type: 'testId', value: 'confirm-delete-modal' }]).resolve(),
   ).toBeVisible();
 
   // Confirm deletion.
-  await healPage.click([{ type: 'testId', value: 'confirm-delete-confirm' }]);
+  await page.click([{ type: 'testId', value: 'confirm-delete-confirm' }]);
 
   // Bulk action bar should disappear.
-  expect(await healPage.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
+  expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify both contacts return 404 via API.
   const err1 = await restClient

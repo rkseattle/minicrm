@@ -11,8 +11,7 @@
  * MINCRM-110
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 
 // ---------------------------------------------------------------------------
@@ -21,9 +20,7 @@ import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 
 /** Fixtures required by task behaviors. */
 export interface TasksBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------

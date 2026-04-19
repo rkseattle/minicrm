@@ -10,30 +10,23 @@
  * MINCRM-110
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 /** Subset of Playwright fixtures required by UsersPage. */
 export interface UsersPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
  * Page Object for the MiniCRM user management screen.
  */
 export class UsersPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   static readonly PATH = '/users';
 
   constructor(context: UsersPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   /**
@@ -48,12 +41,12 @@ export class UsersPage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.healPage
+      await this.page
         .locate([
           { type: 'testId', value: 'invite-submit' },
           { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
         ])
-        .resolve(this.testName);
+        .resolve();
       return true;
     } catch {
       return false;
@@ -68,21 +61,21 @@ export class UsersPage {
    * @param role - 'admin' | 'rep'.
    */
   async fillInviteForm(name: string, email: string, role: 'admin' | 'rep'): Promise<void> {
-    await this.healPage.fill(name, [
+    await this.page.fill(name, [
       { type: 'testId', value: 'invite-name' },
       { type: 'label', value: 'Name', options: { exact: false } },
     ]);
-    await this.healPage.fill(email, [
+    await this.page.fill(email, [
       { type: 'testId', value: 'invite-email' },
       { type: 'label', value: 'Email', options: { exact: false } },
     ]);
     // Role is a <select> — resolve via HealingLocator then call selectOption on the result.
-    const roleSelect = await this.healPage
+    const roleSelect = await this.page
       .locate([
         { type: 'testId', value: 'invite-role' },
         { type: 'css', value: '[data-testid="invite-role"]' },
       ])
-      .resolve(this.testName);
+      .resolve();
     await roleSelect.selectOption(role);
   }
 
@@ -90,7 +83,7 @@ export class UsersPage {
    * Submits the invite form.
    */
   async submitInvite(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'invite-submit' },
       { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
     ]);
@@ -109,24 +102,24 @@ export class UsersPage {
     await this.page.waitForLoadState('networkidle');
     // Try the mobile card testid first via HealingLocator.
     try {
-      const card = await this.healPage
+      const card = await this.page
         .locate([
           { type: 'testId', value: `user-card-${userId}` },
           { type: 'css', value: `[data-testid="user-card-${userId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       if ((await card.count()) > 0) return true;
     } catch {
       // No mobile card — try the desktop row action button fallback.
     }
     // Desktop renders rows without user-card-* testids — fall back to action button.
     try {
-      const action = await this.healPage
+      const action = await this.page
         .locate([
           { type: 'testId', value: `user-actions-${userId}` },
           { type: 'css', value: `[data-testid="user-actions-${userId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       return (await action.count()) > 0;
     } catch {
       return false;

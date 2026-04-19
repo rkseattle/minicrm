@@ -11,8 +11,7 @@
  * MINCRM-163, MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by AdminSettingsPage. */
 export interface AdminSettingsPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,20 +39,16 @@ export interface AdminSettingsPageContext {
  * ```
  */
 export class AdminSettingsPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /** The URL path for this page. */
   static readonly PATH = '/admin/settings';
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: AdminSettingsPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -79,12 +71,12 @@ export class AdminSettingsPage {
    */
   async emailNotificationsSectionIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'email-notifications-section' },
           { type: 'text', value: t('settings.emailNotifications.sectionTitle') },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -96,12 +88,12 @@ export class AdminSettingsPage {
    */
   async emailNotificationsToggleIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'email-notif-toggle' },
           { type: 'css', value: '[data-testid="email-notif-toggle"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -113,12 +105,12 @@ export class AdminSettingsPage {
    */
   async emailNotificationsIsEnabled(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'email-notif-toggle' },
           { type: 'css', value: '[data-testid="email-notif-toggle"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       const ariaChecked = await resolved.getAttribute('aria-checked');
       return ariaChecked === 'true';
     } catch {
@@ -131,12 +123,12 @@ export class AdminSettingsPage {
    */
   async recipientCountIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'email-notif-recipient-count' },
           { type: 'css', value: '[data-testid="email-notif-recipient-count"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -148,12 +140,12 @@ export class AdminSettingsPage {
    */
   async successMessageIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'email-notif-success' },
           { type: 'css', value: '[data-testid="email-notif-success"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -175,7 +167,7 @@ export class AdminSettingsPage {
    * Clicks the email notifications toggle to switch its state.
    */
   async toggleEmailNotifications(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'email-notif-toggle' },
       { type: 'css', value: '[data-testid="email-notif-toggle"]' },
     ]);

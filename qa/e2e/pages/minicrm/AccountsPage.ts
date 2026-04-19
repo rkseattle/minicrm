@@ -11,8 +11,7 @@
  * MINCRM-139
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by AccountsPage. */
 export interface AccountsPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,20 +38,16 @@ export interface AccountsPageContext {
  * ```
  */
 export class AccountsPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /** The URL path for this page. */
   static readonly PATH = '/accounts';
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: AccountsPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -73,7 +65,7 @@ export class AccountsPage {
    * Clicks the "New Account" button to open the account creation form.
    */
   async clickNewAccount(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'new-account-button' },
       { type: 'role', value: 'button', options: { name: t('accounts.newAccount'), exact: false } },
     ]);
@@ -90,12 +82,12 @@ export class AccountsPage {
   async rowCount(): Promise<number> {
     await this.page.waitForLoadState('networkidle');
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'css', value: '[data-testid^="account-link-"]' },
           { type: 'xpath', value: '//*[starts-with(@data-testid,"account-link-")]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.count();
     } catch {
       // StrategyExhaustedError means no rows are present.
@@ -109,7 +101,7 @@ export class AccountsPage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.healPage
+      await this.page
         .locate([
           { type: 'testId', value: 'new-account-button' },
           {
@@ -118,7 +110,7 @@ export class AccountsPage {
             options: { name: t('accounts.newAccount'), exact: false },
           },
         ])
-        .resolve(this.testName);
+        .resolve();
       return true;
     } catch {
       return false;

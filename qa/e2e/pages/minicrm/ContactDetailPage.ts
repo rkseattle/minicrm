@@ -10,29 +10,22 @@
  * MINCRM-110
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ContactDetailPage. */
 export interface ContactDetailPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
  * Page Object for the MiniCRM contact detail screen.
  */
 export class ContactDetailPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   constructor(context: ContactDetailPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   /**
@@ -48,7 +41,7 @@ export class ContactDetailPage {
    * Clicks the Edit button to enter edit mode.
    */
   async clickEdit(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'edit-contact-button' },
       { type: 'role', value: 'button', options: { name: t('common.edit'), exact: false } },
     ]);
@@ -62,7 +55,7 @@ export class ContactDetailPage {
    * @param value - Value to type.
    */
   async fillField(testId: string, label: string, value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: testId },
       { type: 'label', value: label, options: { exact: false } },
     ]);
@@ -72,7 +65,7 @@ export class ContactDetailPage {
    * Clicks the Save button to submit the edit form.
    */
   async save(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'contact-form-submit' },
       { type: 'role', value: 'button', options: { name: t('contacts.saveChanges'), exact: false } },
     ]);
@@ -87,12 +80,12 @@ export class ContactDetailPage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.healPage
+      await this.page
         .locate([
           { type: 'testId', value: 'edit-contact-button' },
           { type: 'role', value: 'button', options: { name: t('common.edit'), exact: false } },
         ])
-        .resolve(this.testName);
+        .resolve();
       return true;
     } catch {
       return false;

@@ -84,18 +84,16 @@ interface DealSingleResponse {
 
 test('@functional F4-LC1: create contact with all required fields → appears in contacts list', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f4lc1-${uniqueSuffix}@example.com`;
   const result = await createContactViaUI(
     { first_name: 'F4LC1', last_name: `Lead-${uniqueSuffix}`, email },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'contact creation should succeed').toBe(true);
@@ -113,17 +111,15 @@ test('@functional F4-LC1: create contact with all required fields → appears in
 
 test('@functional F4-LC2: missing required email field → inline validation error, no navigation', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Submit with empty email — browser required validation fires before submission.
   const result = await createContactViaUI(
     { first_name: 'F4LC2', last_name: `NoEmail-${uniqueSuffix}`, email: '' },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.created, 'contact should not be created when email is missing').toBe(false);
@@ -140,11 +136,9 @@ test('@functional F4-LC2: missing required email field → inline validation err
 
 test('@functional F4-LV1: contact linked to deal → both accessible via their respective views', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create account (required for deal).
@@ -169,7 +163,7 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   expect(linkResponse.status, 'linking contact to deal should return 200').toBe(200);
 
   // Verify deal is accessible on the pipeline board.
-  const dealResult = await openDeal(deal.id, { page, healPage, testName });
+  const dealResult = await openDeal(deal.id, { page });
   expect(dealResult.loaded, 'pipeline board should load').toBe(true);
   expect(dealResult.columnSlug, 'deal should be in Prospecting column').toBe('prospecting');
 
@@ -193,11 +187,9 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
 
 test('@smoke @functional F4-OC1: create deal with required fields → appears on pipeline board', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -209,7 +201,7 @@ test('@smoke @functional F4-OC1: create deal with required fields → appears on
     account_id: account.id,
   });
 
-  const result = await openDeal(deal.id, { page, healPage, testName });
+  const result = await openDeal(deal.id, { page });
   expect(result.loaded, 'pipeline board should load').toBe(true);
   expect(result.columnSlug, 'deal should be in Prospecting column').toBe('prospecting');
 });
@@ -265,11 +257,9 @@ test('@functional F4-OC3: missing required name field → API 400', async ({
 
 test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequence → stage updates on board', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -281,7 +271,7 @@ test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequenc
     account_id: account.id,
   });
 
-  await openDeal(deal.id, { page, healPage, testName });
+  await openDeal(deal.id, { page });
 
   // Advance through each open stage.
   for (const [stage, expectedSlug] of [
@@ -289,18 +279,16 @@ test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequenc
     ['Proposal', 'proposal'],
     ['Negotiation', 'negotiation'],
   ] as const) {
-    const result = await advanceDealStage(deal.id, stage, { page, healPage, testName });
+    const result = await advanceDealStage(deal.id, stage, { page });
     expect(result.columnSlug, `deal should be in ${stage} column`).toBe(expectedSlug);
   }
 });
 
 test('@functional F4-OP2: regress deal to a previous stage → allowed, reflected on board', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -313,20 +301,18 @@ test('@functional F4-OP2: regress deal to a previous stage → allowed, reflecte
     account_id: account.id,
   });
 
-  await openDeal(deal.id, { page, healPage, testName });
+  await openDeal(deal.id, { page });
 
   // Regress to Qualification — free movement is permitted in MiniCRM.
-  const result = await advanceDealStage(deal.id, 'Qualification', { page, healPage, testName });
+  const result = await advanceDealStage(deal.id, 'Qualification', { page });
   expect(result.columnSlug, 'deal should have moved back to Qualification').toBe('qualification');
 });
 
 test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to closed-won column', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -338,9 +324,9 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
     account_id: account.id,
   });
 
-  await openDeal(deal.id, { page, healPage, testName });
+  await openDeal(deal.id, { page });
 
-  const result = await closeDealAsWon(deal.id, { page, healPage, testName });
+  const result = await closeDealAsWon(deal.id, { page });
   expect(result.columnSlug, 'deal should be in closed-won column').toBe('closed-won');
 
   // Confirm via API.
@@ -350,11 +336,9 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
 
 test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lost column', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -366,9 +350,9 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
     account_id: account.id,
   });
 
-  await openDeal(deal.id, { page, healPage, testName });
+  await openDeal(deal.id, { page });
 
-  const result = await advanceDealStage(deal.id, 'Closed Lost', { page, healPage, testName });
+  const result = await advanceDealStage(deal.id, 'Closed Lost', { page });
   expect(result.columnSlug, 'deal should be in closed-lost column').toBe('closed-lost');
 
   // Confirm via API.
@@ -378,11 +362,9 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
 
 test('@functional F4-OP5: reopen closed-won deal → returns to open stage on board', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -396,10 +378,10 @@ test('@functional F4-OP5: reopen closed-won deal → returns to open stage on bo
     close_date: new Date().toISOString().slice(0, 10),
   });
 
-  await openDeal(deal.id, { page, healPage, testName });
+  await openDeal(deal.id, { page });
 
   // Reopen by moving back to Negotiation — MiniCRM permits free stage movement.
-  const result = await advanceDealStage(deal.id, 'Negotiation', { page, healPage, testName });
+  const result = await advanceDealStage(deal.id, 'Negotiation', { page });
   expect(result.columnSlug, 'deal should have moved back to Negotiation').toBe('negotiation');
 
   const detail = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);

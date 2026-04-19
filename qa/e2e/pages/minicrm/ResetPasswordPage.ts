@@ -7,15 +7,12 @@
  * MINCRM-157
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by ResetPasswordPage. */
 export interface ResetPasswordPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
@@ -25,14 +22,10 @@ export class ResetPasswordPage {
   /** URL path for this page (without token query param). */
   static readonly PATH = '/reset-password';
 
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   constructor(context: ResetPasswordPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   /**
@@ -50,7 +43,7 @@ export class ResetPasswordPage {
    * @param password - The desired new password.
    */
   async fillNewPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'reset-password-new' },
       { type: 'label', value: t('resetPassword.newPasswordLabel'), options: { exact: true } },
     ]);
@@ -62,7 +55,7 @@ export class ResetPasswordPage {
    * @param password - Must match the value supplied to fillNewPassword().
    */
   async fillConfirmPassword(password: string): Promise<void> {
-    await this.healPage.fill(password, [
+    await this.page.fill(password, [
       { type: 'testId', value: 'reset-password-confirm' },
       { type: 'label', value: t('resetPassword.confirmPasswordLabel'), options: { exact: true } },
     ]);
@@ -72,7 +65,7 @@ export class ResetPasswordPage {
    * Clicks the submit button.
    */
   async submit(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'reset-password-submit' },
       {
         type: 'role',
@@ -86,12 +79,12 @@ export class ResetPasswordPage {
    * Returns the text content of the error alert, or null if no error is shown.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.healPage.locate([
+    const locator = this.page.locate([
       { type: 'testId', value: 'reset-password-error' },
       { type: 'role', value: 'alert' },
     ]);
     try {
-      const resolved = await locator.resolve(this.testName);
+      const resolved = await locator.resolve();
       const count = await resolved.count();
       if (count === 0) return null;
       return resolved.first().textContent();
@@ -104,12 +97,12 @@ export class ResetPasswordPage {
    * Returns true when the invalid-token error element is visible.
    */
   async invalidTokenVisible(): Promise<boolean> {
-    return this.healPage
+    return this.page
       .locate([
         { type: 'testId', value: 'reset-password-invalid-token' },
         { type: 'css', value: '[data-testid="reset-password-invalid-token"]' },
       ])
-      .resolve(this.testName)
+      .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
   }

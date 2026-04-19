@@ -111,11 +111,6 @@ test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
-let testName: string;
-test.beforeEach(({}, testInfo) => {
-  testName = testInfo.title;
-});
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -449,7 +444,6 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
 
 test('@functional F5-DS1: task with future due date → not shown as overdue in UI', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -467,12 +461,12 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
     contact_id: contact.id,
   });
 
-  const navResult = await navigateToMyTasks({ page, healPage, testName });
+  const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
   // Overdue badge should NOT be present (isNotVisible — safe when element is absent).
   expect(
-    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
     'future task should not show overdue badge',
   ).toBe(true);
 
@@ -486,7 +480,6 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
 
 test('@functional F5-DS2: task with past due date → overdue badge visible in UI (AC1)', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -513,18 +506,17 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   ).toBe(true);
 
   // Verify UI shows the overdue badge.
-  const navResult = await navigateToMyTasks({ page, healPage, testName });
+  const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  const overdueBadge = await healPage
+  const overdueBadge = await page
     .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
-    .resolve(testName);
+    .resolve();
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
 
 test('@functional F5-DS3: task with no due date → no overdue state in UI or API', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -546,18 +538,17 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   expect(detail.body.activity.due_date, 'due_date should be null').toBeNull();
   expect(detail.body.activity.status, 'status should be open').toBe('open');
 
-  const navResult = await navigateToMyTasks({ page, healPage, testName });
+  const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded).toBe(true);
 
   expect(
-    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
     'task with no due date should not show overdue badge',
   ).toBe(true);
 });
 
 test('@functional F5-DS4: completed task with past due date → not shown as overdue', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -580,19 +571,19 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be complete').toBe('complete');
 
-  const navResult = await navigateToMyTasks({ page, healPage, testName });
+  const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded).toBe(true);
 
   // Toggle is required — completed tasks are hidden by default.
-  await healPage.click([{ type: 'testId', value: 'toggle-completed-button' }]);
+  await page.click([{ type: 'testId', value: 'toggle-completed-button' }]);
   // Wait for the completed row to appear before asserting the badge is absent.
-  const taskRow = await healPage
+  const taskRow = await page
     .locate([{ type: 'testId', value: `task-row-${activity.id}` }])
-    .resolve(testName);
+    .resolve();
   await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
 
   expect(
-    await healPage.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
     'completed task must not show overdue badge',
   ).toBe(true);
 });
@@ -726,7 +717,6 @@ test('@functional F5-FL3: combined filter (contact + account) → only activitie
 
 test('@smoke @functional F5-CP1: mark task complete via UI → removed from open list, API status=complete', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -742,13 +732,13 @@ test('@smoke @functional F5-CP1: mark task complete via UI → removed from open
     contact_id: contact.id,
   });
 
-  const navResult = await navigateToMyTasks({ page, healPage, testName });
+  const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded).toBe(true);
 
-  const visibleBefore = await taskIsVisible(activity.id, { page, healPage, testName });
+  const visibleBefore = await taskIsVisible(activity.id, { page });
   expect(visibleBefore.visible, 'task should be visible before completion').toBe(true);
 
-  const completeResult = await completeTask(activity.id, { page, healPage, testName });
+  const completeResult = await completeTask(activity.id, { page });
   expect(
     completeResult.rowHidden,
     'task row should be hidden from open list after completion',

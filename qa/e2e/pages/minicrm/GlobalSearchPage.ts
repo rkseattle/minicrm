@@ -15,8 +15,7 @@
  */
 
 import type { Locator } from '@playwright/test';
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -24,10 +23,7 @@ import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 /** Subset of Playwright fixtures required by GlobalSearchPage. */
 export interface GlobalSearchPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,17 +41,13 @@ export interface GlobalSearchPageContext {
  * ```
  */
 export class GlobalSearchPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: GlobalSearchPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -79,12 +71,12 @@ export class GlobalSearchPage {
     // NavHamburger / NavTop desktop this will succeed immediately.
     // The testId strategy matches all instances (including the hidden header
     // input on NavTop mobile), so we check isVisible() on the result.
-    const anyInput = await this.healPage
+    const anyInput = await this.page
       .locate([
         { type: 'testId', value: 'global-search-input' },
         { type: 'css', value: '[data-testid="global-search-input"]' },
       ])
-      .resolve(this.testName);
+      .resolve();
 
     const isVisible = await anyInput
       .first()
@@ -104,17 +96,17 @@ export class GlobalSearchPage {
     // container. This is safe to probe even when the drawer is closed — the
     // container is not mounted yet, so probeLocator times out and resolves to
     // false, falling through to the toggle-click path below.
-    const drawerInputAlreadyVisible = await this.healPage
+    const drawerInputAlreadyVisible = await this.page
       .locate([
         { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
         { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
       ])
-      .resolve(this.testName)
+      .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
 
     if (drawerInputAlreadyVisible) {
-      return this.healPage
+      return this.page
         .locate([
           { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
           {
@@ -123,22 +115,22 @@ export class GlobalSearchPage {
             within: 'mobile-nav-drawer',
           },
         ])
-        .resolve(this.testName);
+        .resolve();
     }
 
     // Drawer is not open — click the menu toggle to mount and reveal it,
     // then resolve the input scoped to the drawer via `within`.
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'nav-menu-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ]);
 
-    return this.healPage
+    return this.page
       .locate([
         { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
         { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
       ])
-      .resolve(this.testName);
+      .resolve();
   }
 
   // ---------------------------------------------------------------------------
@@ -191,12 +183,12 @@ export class GlobalSearchPage {
     await input.fill('');
     // Wait for the panel to disappear so the next typeQuery starts clean.
     try {
-      const panel = await this.healPage
+      const panel = await this.page
         .locate([
           { type: 'testId', value: 'search-results-panel' },
           { type: 'css', value: '[data-testid="search-results-panel"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       await panel.waitFor({ state: 'hidden', timeout });
     } catch {
       // Panel was not present or already hidden — proceed.
@@ -210,7 +202,7 @@ export class GlobalSearchPage {
    * @param id - Entity UUID.
    */
   async clickResult(entity: 'contact' | 'account' | 'deal', id: string): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: `search-result-${entity}-${id}` },
       { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
     ]);
@@ -227,12 +219,12 @@ export class GlobalSearchPage {
    */
   async panelIsVisible(timeout = 5_000): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'search-results-panel' },
           { type: 'css', value: '[data-testid="search-results-panel"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -253,12 +245,12 @@ export class GlobalSearchPage {
     timeout = 10_000,
   ): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: `search-result-${entity}-${id}` },
           { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -273,12 +265,12 @@ export class GlobalSearchPage {
    */
   async emptyStateIsVisible(timeout = 10_000): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'search-empty-state' },
           { type: 'css', value: '[data-testid="search-empty-state"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -291,12 +283,12 @@ export class GlobalSearchPage {
    */
   async emptyStateText(): Promise<string | null> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'search-empty-state' },
           { type: 'css', value: '[data-testid="search-empty-state"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.textContent();
     } catch {
       return null;
@@ -308,12 +300,12 @@ export class GlobalSearchPage {
    */
   async minLengthHintIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'search-min-length-hint' },
           { type: 'css', value: '[data-testid="search-min-length-hint"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -331,12 +323,12 @@ export class GlobalSearchPage {
    */
   async waitForMinLengthHintHidden(timeout = 5_000): Promise<void> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'search-min-length-hint' },
           { type: 'css', value: '[data-testid="search-min-length-hint"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       await resolved.waitFor({ state: 'hidden', timeout });
     } catch {
       // Element absent or timed out — treat as already hidden.
@@ -348,12 +340,12 @@ export class GlobalSearchPage {
    */
   async noErrorAlertVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'role', value: 'alert' },
           { type: 'css', value: '[role="alert"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return !(await resolved.isVisible().catch(() => false));
     } catch {
       // No alert element found — treat as no error visible.
@@ -367,12 +359,12 @@ export class GlobalSearchPage {
    */
   async noSpinnerInPanel(): Promise<boolean> {
     try {
-      const panel = await this.healPage
+      const panel = await this.page
         .locate([
           { type: 'testId', value: 'search-results-panel' },
           { type: 'css', value: '[data-testid="search-results-panel"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       const spinner = panel.locator('[role="progressbar"], [aria-busy="true"]');
       return !(await spinner.isVisible().catch(() => false));
     } catch {

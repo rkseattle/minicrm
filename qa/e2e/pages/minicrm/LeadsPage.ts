@@ -11,8 +11,7 @@
  * MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by LeadsPage. */
 export interface LeadsPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,20 +38,16 @@ export interface LeadsPageContext {
  * ```
  */
 export class LeadsPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /** The URL path for this page. */
   static readonly PATH = '/leads';
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: LeadsPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -77,7 +69,7 @@ export class LeadsPage {
    * Clicks the "New Lead" button to open the lead creation form.
    */
   async clickNew(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'new-lead-button' },
       { type: 'role', value: 'button', options: { name: t('leads.new'), exact: false } },
     ]);
@@ -90,12 +82,12 @@ export class LeadsPage {
    */
   async leadRowIsVisible(leadId: string): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: `lead-row-${leadId}` },
           { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -108,7 +100,7 @@ export class LeadsPage {
    * @param leadId - Lead UUID.
    */
   async clickStatusBadge(leadId: string): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: `status-badge-${leadId}` },
       { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
     ]);
@@ -121,12 +113,12 @@ export class LeadsPage {
    * @param status - Status value to select (e.g. 'Contacted').
    */
   async selectStatus(leadId: string, status: string): Promise<void> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: `status-select-${leadId}` },
         { type: 'css', value: `[data-testid="status-select-${leadId}"]` },
       ])
-      .resolve(this.testName);
+      .resolve();
     await resolved.selectOption(status);
   }
 
@@ -136,12 +128,12 @@ export class LeadsPage {
    * @param leadId - Lead UUID.
    */
   async statusBadgeText(leadId: string): Promise<string> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: `status-badge-${leadId}` },
         { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
       ])
-      .resolve(this.testName);
+      .resolve();
     return (await resolved.textContent()) ?? '';
   }
 
@@ -155,12 +147,12 @@ export class LeadsPage {
    * @param timeout - Maximum ms to wait (default 5 000).
    */
   async waitForStatusBadgeText(leadId: string, expected: string, timeout = 5_000): Promise<string> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: `status-badge-${leadId}` },
         { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
       ])
-      .resolve(this.testName);
+      .resolve();
     // Poll until the text matches — avoids snapshot racing the React re-render.
     await resolved.waitFor({ state: 'visible', timeout });
     const deadline = Date.now() + timeout;
@@ -176,7 +168,7 @@ export class LeadsPage {
    * Checks the "Show disqualified" toggle to reveal disqualified leads in the list.
    */
   async showDisqualified(): Promise<void> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: 'toggle-disqualified' },
         {
@@ -185,7 +177,7 @@ export class LeadsPage {
           options: { name: t('leads.showDisqualified'), exact: false },
         },
       ])
-      .resolve(this.testName);
+      .resolve();
     await resolved.check();
   }
 
@@ -193,7 +185,7 @@ export class LeadsPage {
    * Checks the "Show converted" toggle to reveal converted leads in the list.
    */
   async showConverted(): Promise<void> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: 'toggle-converted' },
         {
@@ -202,7 +194,7 @@ export class LeadsPage {
           options: { name: t('leads.showConverted'), exact: false },
         },
       ])
-      .resolve(this.testName);
+      .resolve();
     await resolved.check();
   }
 
@@ -213,12 +205,12 @@ export class LeadsPage {
    */
   async convertedBadgeIsVisible(leadId: string): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: `badge-converted-${leadId}` },
           { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -235,7 +227,7 @@ export class LeadsPage {
    * @param value - First name to enter.
    */
   async fillFirstName(value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: 'lead-first-name' },
       { type: 'label', value: 'First name', options: { exact: false } },
     ]);
@@ -247,7 +239,7 @@ export class LeadsPage {
    * @param value - Last name to enter.
    */
   async fillLastName(value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: 'lead-last-name' },
       { type: 'label', value: 'Last name', options: { exact: false } },
     ]);
@@ -259,7 +251,7 @@ export class LeadsPage {
    * @param value - Email address to enter.
    */
   async fillEmail(value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: 'lead-email' },
       { type: 'label', value: 'Email', options: { exact: false } },
     ]);
@@ -271,7 +263,7 @@ export class LeadsPage {
    * @param value - Phone number to enter.
    */
   async fillPhone(value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: 'lead-phone' },
       { type: 'label', value: 'Phone', options: { exact: false } },
     ]);
@@ -283,7 +275,7 @@ export class LeadsPage {
    * @param value - Company name to enter.
    */
   async fillCompanyName(value: string): Promise<void> {
-    await this.healPage.fill(value, [
+    await this.page.fill(value, [
       { type: 'testId', value: 'lead-company-name' },
       { type: 'label', value: 'Company', options: { exact: false } },
     ]);
@@ -293,7 +285,7 @@ export class LeadsPage {
    * Submits the lead creation form.
    */
   async submitForm(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'lead-form-submit' },
       { type: 'role', value: 'button', options: { name: t('leads.save'), exact: false } },
     ]);
@@ -304,12 +296,12 @@ export class LeadsPage {
    */
   async formIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'lead-form' },
           { type: 'css', value: '[data-testid="lead-form"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -321,12 +313,12 @@ export class LeadsPage {
    */
   async duplicateWarningIsVisible(): Promise<boolean> {
     try {
-      const resolved = await this.healPage
+      const resolved = await this.page
         .locate([
           { type: 'testId', value: 'duplicate-lead-warning' },
           { type: 'css', value: '[data-testid="duplicate-lead-warning"]' },
         ])
-        .resolve(this.testName);
+        .resolve();
       return resolved.isVisible();
     } catch {
       return false;
@@ -337,7 +329,7 @@ export class LeadsPage {
    * Clicks "Create anyway" to proceed past the duplicate lead warning.
    */
   async clickCreateAnyway(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'duplicate-create-anyway' },
       { type: 'role', value: 'button', options: { name: t('leads.createAnyway'), exact: false } },
     ]);

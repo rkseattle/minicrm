@@ -18,8 +18,8 @@
  * MINCRM-129, MINCRM-110
  */
 
-import type { Page } from '@playwright/test';
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
 
 // ---------------------------------------------------------------------------
@@ -459,30 +459,30 @@ export async function loginAndVerify(
 // Navigation helpers (MINCRM-205)
 // ---------------------------------------------------------------------------
 
-export async function navigateToContact(page: Page, id: string): Promise<void> {
+export async function navigateToContact(page: SafePage, id: string): Promise<void> {
   await page.goto(`/contacts/${id}`, { waitUntil: 'networkidle' });
 }
 
-export async function navigateToAccount(page: Page, id: string): Promise<void> {
+export async function navigateToAccount(page: SafePage, id: string): Promise<void> {
   await page.goto(`/accounts/${id}`, { waitUntil: 'networkidle' });
 }
 
-export async function navigateToDeal(page: Page, id: string): Promise<void> {
+export async function navigateToDeal(page: SafePage, id: string): Promise<void> {
   await page.goto(`/deals/${id}`, { waitUntil: 'networkidle' });
 }
 
-export async function navigateToContacts(page: Page): Promise<void> {
+export async function navigateToContacts(page: SafePage): Promise<void> {
   await page.goto('/contacts', { waitUntil: 'networkidle' });
 }
 
-export async function navigateToAccounts(page: Page): Promise<void> {
+export async function navigateToAccounts(page: SafePage): Promise<void> {
   await page.goto('/accounts', { waitUntil: 'networkidle' });
 }
 
-export async function navigateToDashboard(page: Page): Promise<void> {
+export async function navigateToDashboard(page: SafePage): Promise<void> {
   await page.goto('/', { waitUntil: 'networkidle' });
 }
 
-export async function navigateToAdminSettings(page: Page): Promise<void> {
+export async function navigateToAdminSettings(page: SafePage): Promise<void> {
   await page.goto('/admin/settings', { waitUntil: 'networkidle' });
 }

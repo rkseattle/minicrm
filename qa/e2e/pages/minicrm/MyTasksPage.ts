@@ -10,30 +10,23 @@
  * MINCRM-110
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 /** Subset of Playwright fixtures required by MyTasksPage. */
 export interface MyTasksPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  testName: string;
+  page: PageFacade;
 }
 
 /**
  * Page Object for the MiniCRM My Tasks screen.
  */
 export class MyTasksPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   static readonly PATH = '/tasks';
 
   constructor(context: MyTasksPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   /**
@@ -48,12 +41,12 @@ export class MyTasksPage {
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.healPage
+      await this.page
         .locate([
           { type: 'testId', value: 'my-tasks-heading' },
           { type: 'role', value: 'heading', options: { level: 1 } },
         ])
-        .resolve(this.testName);
+        .resolve();
       return true;
     } catch {
       return false;
@@ -68,12 +61,12 @@ export class MyTasksPage {
   async taskRowIsVisible(taskId: string): Promise<boolean> {
     await this.page.waitForLoadState('networkidle');
     try {
-      const row = await this.healPage
+      const row = await this.page
         .locate([
           { type: 'testId', value: `task-row-${taskId}` },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       return row.isVisible().catch(() => false);
     } catch {
       return false;
@@ -91,18 +84,18 @@ export class MyTasksPage {
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: `mark-complete-${taskId}` },
       { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
     ]);
     // Wait for the row to disappear (query refetch removes it from open-tasks view).
     try {
-      const row = await this.healPage
+      const row = await this.page
         .locate([
           { type: 'testId', value: `task-row-${taskId}` },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
-        .resolve(this.testName);
+        .resolve();
       await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
     } catch {
       // Row already gone — nothing to wait for.

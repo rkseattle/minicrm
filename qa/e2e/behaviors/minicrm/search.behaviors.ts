@@ -11,8 +11,7 @@
  * MINCRM-145, MINCRM-168, MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { GlobalSearchPage } from '@pages/minicrm/GlobalSearchPage.js';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +20,7 @@ import { GlobalSearchPage } from '@pages/minicrm/GlobalSearchPage.js';
 
 /** Fixtures required by search behaviors. */
 export interface SearchBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,12 +207,12 @@ export async function getMinLengthHint(
   await searchPage.typeQueryRaw(query);
 
   // Wait briefly for the panel to appear (it renders immediately for any non-empty query).
-  await context.healPage
+  await context.page
     .locate([
       { type: 'testId', value: 'search-results-panel' },
       { type: 'css', value: '[data-testid="search-results-panel"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 

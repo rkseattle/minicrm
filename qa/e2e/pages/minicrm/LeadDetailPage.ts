@@ -10,8 +10,7 @@
  * MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -20,10 +19,7 @@ import { t } from '@framework/i18n/locale.js';
 
 /** Subset of Playwright fixtures required by LeadDetailPage. */
 export interface LeadDetailPageContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name, passed to HealingLocator.resolve() for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,17 +30,13 @@ export interface LeadDetailPageContext {
  * Page Object for the MiniCRM lead detail screen.
  */
 export class LeadDetailPage {
-  private readonly page: SafePage;
-  private readonly healPage: HealPage;
-  private readonly testName: string;
+  private readonly page: PageFacade;
 
   /**
-   * @param context - Playwright fixture context containing page, healPage, and testName.
+   * @param context - Playwright fixture context containing page.
    */
   constructor(context: LeadDetailPageContext) {
     this.page = context.page;
-    this.healPage = context.healPage;
-    this.testName = context.testName;
   }
 
   // ---------------------------------------------------------------------------
@@ -68,7 +60,7 @@ export class LeadDetailPage {
    * Clicks the "Convert Lead" button to open the conversion modal.
    */
   async clickConvert(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'convert-lead-button' },
       { type: 'role', value: 'button', options: { name: t('leads.convert'), exact: false } },
     ]);
@@ -78,12 +70,12 @@ export class LeadDetailPage {
    * Returns the value of the contact first name field in the conversion modal.
    */
   async conversionContactFirstName(): Promise<string> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: 'convert-contact-first-name' },
         { type: 'label', value: 'First name', options: { exact: false } },
       ])
-      .resolve(this.testName);
+      .resolve();
     return (await resolved.inputValue()) ?? '';
   }
 
@@ -91,12 +83,12 @@ export class LeadDetailPage {
    * Returns the value of the contact email field in the conversion modal.
    */
   async conversionContactEmail(): Promise<string> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: 'convert-contact-email' },
         { type: 'label', value: 'Email', options: { exact: false } },
       ])
-      .resolve(this.testName);
+      .resolve();
     return (await resolved.inputValue()) ?? '';
   }
 
@@ -104,12 +96,12 @@ export class LeadDetailPage {
    * Returns the value of the account name field in the conversion modal.
    */
   async conversionAccountName(): Promise<string> {
-    const resolved = await this.healPage
+    const resolved = await this.page
       .locate([
         { type: 'testId', value: 'convert-account-name' },
         { type: 'label', value: 'Account name', options: { exact: false } },
       ])
-      .resolve(this.testName);
+      .resolve();
     return (await resolved.inputValue()) ?? '';
   }
 
@@ -117,7 +109,7 @@ export class LeadDetailPage {
    * Clicks the "Confirm" button to complete the lead conversion.
    */
   async confirmConvert(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'convert-confirm' },
       { type: 'role', value: 'button', options: { name: t('leads.confirmConvert'), exact: false } },
     ]);
@@ -131,7 +123,7 @@ export class LeadDetailPage {
    * Clicks the "Delete" button on the lead detail page to open the confirmation modal.
    */
   async clickDelete(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'delete-lead-button' },
       { type: 'role', value: 'button', options: { name: t('leads.delete'), exact: false } },
     ]);
@@ -142,7 +134,7 @@ export class LeadDetailPage {
    * Falls back to a role-based "last Delete button" strategy for the confirm modal.
    */
   async confirmDelete(): Promise<void> {
-    await this.healPage.click([
+    await this.page.click([
       { type: 'testId', value: 'confirm-delete-confirm' },
       { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
     ]);

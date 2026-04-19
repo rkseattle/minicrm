@@ -54,18 +54,15 @@ interface DealSingleResponse {
 test(
   'F8-MC1: deal created with explicit EUR currency stores EUR via API',
   { tag: ['@functional', '@smoke'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC1-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC1-Acct ${test.info().title}`,
+    });
 
     const deal = await createTestDeal(testData, restClient, {
-      name: `MC1-Deal ${testName}`,
+      name: `MC1-Deal ${test.info().title}`,
       stage: 'Prospecting',
       value: '10000',
       currency: 'EUR',
@@ -85,18 +82,15 @@ test(
 test(
   'F8-MC2: deal created without currency defaults to USD',
   { tag: ['@functional', '@smoke'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC2-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC2-Acct ${test.info().title}`,
+    });
 
     const deal = await createTestDeal(testData, restClient, {
-      name: `MC2-Deal ${testName}`,
+      name: `MC2-Deal ${test.info().title}`,
       stage: 'Qualification',
       value: '5000',
       account_id: account.id,
@@ -114,18 +108,15 @@ test(
 test(
   'F8-MC3: currency is preserved after a PATCH update that does not touch currency',
   { tag: ['@functional'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC3-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC3-Acct ${test.info().title}`,
+    });
 
     const deal = await createTestDeal(testData, restClient, {
-      name: `MC3-Deal ${testName}`,
+      name: `MC3-Deal ${test.info().title}`,
       stage: 'Prospecting',
       value: '20000',
       currency: 'GBP',
@@ -133,7 +124,9 @@ test(
     });
 
     // PATCH only the name — currency should remain GBP
-    await restClient.patch(`/api/deals/${deal.id}`, { name: `MC3-Deal Updated ${testName}` });
+    await restClient.patch(`/api/deals/${deal.id}`, {
+      name: `MC3-Deal Updated ${test.info().title}`,
+    });
 
     const fetched = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('GBP');
@@ -147,18 +140,15 @@ test(
 test(
   'F8-MC4: currency can be changed via PATCH',
   { tag: ['@functional'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC4-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC4-Acct ${test.info().title}`,
+    });
 
     const deal = await createTestDeal(testData, restClient, {
-      name: `MC4-Deal ${testName}`,
+      name: `MC4-Deal ${test.info().title}`,
       stage: 'Proposal',
       value: '30000',
       currency: 'USD',
@@ -179,18 +169,15 @@ test(
 test(
   'F8-MC5: PATCH with unsupported currency returns 400',
   { tag: ['@functional'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC5-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC5-Acct ${test.info().title}`,
+    });
 
     const deal = await createTestDeal(testData, restClient, {
-      name: `MC5-Deal ${testName}`,
+      name: `MC5-Deal ${test.info().title}`,
       stage: 'Prospecting',
       value: '1000',
       account_id: account.id,
@@ -216,18 +203,15 @@ test(
 test(
   'F8-MC6: deal CSV export includes a Currency column',
   { tag: ['@functional'] },
-  async ({ page, healPage, testData, restClient }) => {
-    void page;
-    void healPage;
-
-    const testName = test.info().title;
-
+  async ({ testData, restClient }) => {
     await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-    const account = await createTestAccount(testData, restClient, { name: `MC6-Acct ${testName}` });
+    const account = await createTestAccount(testData, restClient, {
+      name: `MC6-Acct ${test.info().title}`,
+    });
 
     await createTestDeal(testData, restClient, {
-      name: `MC6-Deal ${testName}`,
+      name: `MC6-Deal ${test.info().title}`,
       stage: 'Prospecting',
       value: '9999',
       currency: 'JPY',

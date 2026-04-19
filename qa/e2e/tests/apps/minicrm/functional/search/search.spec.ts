@@ -78,18 +78,12 @@ test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
-let testName: string;
-test.beforeEach(({}, testInfo) => {
-  testName = testInfo.title;
-});
-
 // ---------------------------------------------------------------------------
 // Result Coverage tests
 // ---------------------------------------------------------------------------
 
 test('@functional @search F9-RC1: search by contact name returns matching contact result', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -102,11 +96,7 @@ test('@functional @search F9-RC1: search by contact name returns matching contac
 
   await navigateToDashboard(page);
 
-  const result = await getSearchResult(`ContactSearch-${suffix}`, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchResult(`ContactSearch-${suffix}`, 'contact', contact.id, { page });
   expect(result.visible, 'contact result should appear in search dropdown').toBe(true);
 
   // AC2: verify API returns the same record.
@@ -121,7 +111,6 @@ test('@functional @search F9-RC1: search by contact name returns matching contac
 
 test('@functional @search F9-RC2: search by account name returns matching account result', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -133,11 +122,7 @@ test('@functional @search F9-RC2: search by account name returns matching accoun
 
   await navigateToDashboard(page);
 
-  const result = await getSearchResult(`AccountSearch-${suffix}`, 'account', account.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchResult(`AccountSearch-${suffix}`, 'account', account.id, { page });
   expect(result.visible, 'account result should appear in search dropdown').toBe(true);
 
   // AC2: API cross-check.
@@ -152,7 +137,6 @@ test('@functional @search F9-RC2: search by account name returns matching accoun
 
 test('@functional @search F9-RC3: search by deal name returns matching deal result', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -168,11 +152,7 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
 
   await navigateToDashboard(page);
 
-  const result = await getSearchResult(`DealSearch-${suffix}`, 'deal', deal.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchResult(`DealSearch-${suffix}`, 'deal', deal.id, { page });
   expect(result.visible, 'deal result should appear in search dropdown').toBe(true);
 
   // AC2: API cross-check.
@@ -187,7 +167,6 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
 
 test('@functional @search F9-RC4: query matching across entity types shows results from all matching types', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -209,23 +188,15 @@ test('@functional @search F9-RC4: query matching across entity types shows resul
   await navigateToDashboard(page);
 
   // Type the query once then check all three result links.
-  await typeSearchQuery(prefix, { page, healPage, testName });
+  await typeSearchQuery(prefix, { page });
 
-  const contactResult = await getSearchResult(prefix, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const contactResult = await getSearchResult(prefix, 'contact', contact.id, { page });
   expect(contactResult.visible, 'cross-type search should include contact result').toBe(true);
 
-  const accountResult = await getSearchResult(prefix, 'account', account.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const accountResult = await getSearchResult(prefix, 'account', account.id, { page });
   expect(accountResult.visible, 'cross-type search should include account result').toBe(true);
 
-  const dealResult = await getSearchResult(prefix, 'deal', deal.id, { page, healPage, testName });
+  const dealResult = await getSearchResult(prefix, 'deal', deal.id, { page });
   expect(dealResult.visible, 'cross-type search should include deal result').toBe(true);
 });
 
@@ -235,7 +206,6 @@ test('@functional @search F9-RC4: query matching across entity types shows resul
 
 test('@functional @search F9-RA1: unrelated records are not returned in results', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -252,8 +222,6 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
   // Search for a term that should only match a different set of records.
   const result = await checkNoResultsForQuery(`F9RA1-no-match-${suffix}`, 'contact', unrelated.id, {
     page,
-    healPage,
-    testName,
   });
   expect(
     result.entityNotVisible,
@@ -272,7 +240,6 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
 
 test('@functional @search F9-RA2: search is case-insensitive', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -288,11 +255,7 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
 
   // Search using UPPERCASE variant.
   const uppercaseQuery = `CASESENSITIVE-${suffix}`.toUpperCase();
-  const result = await getSearchResult(uppercaseQuery, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchResult(uppercaseQuery, 'contact', contact.id, { page });
   expect(result.visible, 'uppercase query should still return the contact').toBe(true);
 
   // API cross-check with uppercase term.
@@ -307,7 +270,6 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
 
 test('@functional @search F9-RA3: partial-word match returns relevant results', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -322,7 +284,7 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
   await navigateToDashboard(page);
 
   // Search for the unique suffix only (not the full name) to exercise partial matching.
-  const result = await getSearchResult(suffix, 'account', account.id, { page, healPage, testName });
+  const result = await getSearchResult(suffix, 'account', account.id, { page });
   expect(result.visible, 'partial suffix search should return the matching account').toBe(true);
 
   // AC2: API also returns the record.
@@ -337,7 +299,6 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
 
 test('@functional @search F9-RA4: exact-match search returns the correct record prominently', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -351,11 +312,7 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
   await navigateToDashboard(page);
 
   // Use the full last name as the exact search term.
-  const result = await getSearchResult(`ExactMatch-${suffix}`, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchResult(`ExactMatch-${suffix}`, 'contact', contact.id, { page });
   expect(result.visible, 'exact-match contact should appear in results').toBe(true);
 
   // AC2: API returns at least 1 contact match and the seeded contact is included.
@@ -378,17 +335,12 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
 
 test('@functional @search F9-ES1: query with no matching records shows explicit empty state message', async ({
   page,
-  healPage,
   testData,
 }) => {
   await navigateToDashboard(page);
 
   // A term that extremely unlikely matches any real record.
-  const result = await getSearchEmptyState('zzzF9ES1NoMatchXyzzy99999', {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchEmptyState('zzzF9ES1NoMatchXyzzy99999', { page });
 
   expect(result.panelVisible, 'results panel must be visible').toBe(true);
   expect(result.emptyStateVisible, 'empty state message must be visible for no results').toBe(true);
@@ -399,16 +351,11 @@ test('@functional @search F9-ES1: query with no matching records shows explicit 
 
 test('@functional @search F9-ES2: empty state is not a blank area — it contains text', async ({
   page,
-  healPage,
   testData,
 }) => {
   await navigateToDashboard(page);
 
-  const result = await getSearchEmptyState('zzzF9ES2NothingHereAtAll', {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await getSearchEmptyState('zzzF9ES2NothingHereAtAll', { page });
 
   expect(result.emptyStateVisible, 'empty state element must be visible').toBe(true);
   expect(
@@ -425,7 +372,6 @@ test('@functional @search F9-ES2: empty state is not a blank area — it contain
 
 test('@functional @search F9-RN1: clicking a contact result navigates to the correct contact detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -438,11 +384,7 @@ test('@functional @search F9-RN1: clicking a contact result navigates to the cor
 
   await navigateToDashboard(page);
 
-  const result = await clickSearchResult(`NavContact-${suffix}`, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await clickSearchResult(`NavContact-${suffix}`, 'contact', contact.id, { page });
   const finalPath = new URL(result.finalUrl).pathname;
   expect(finalPath, 'clicking contact result should navigate to /contacts/:id').toBe(
     `/contacts/${contact.id}`,
@@ -451,7 +393,6 @@ test('@functional @search F9-RN1: clicking a contact result navigates to the cor
 
 test('@functional @search F9-RN2: clicking an account result navigates to the correct account detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -463,11 +404,7 @@ test('@functional @search F9-RN2: clicking an account result navigates to the co
 
   await navigateToDashboard(page);
 
-  const result = await clickSearchResult(`NavAccount-${suffix}`, 'account', account.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await clickSearchResult(`NavAccount-${suffix}`, 'account', account.id, { page });
   const finalPath = new URL(result.finalUrl).pathname;
   expect(finalPath, 'clicking account result should navigate to /accounts/:id').toBe(
     `/accounts/${account.id}`,
@@ -476,7 +413,6 @@ test('@functional @search F9-RN2: clicking an account result navigates to the co
 
 test('@functional @search F9-RN3: clicking a deal result navigates to the correct deal detail view', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -492,18 +428,13 @@ test('@functional @search F9-RN3: clicking a deal result navigates to the correc
 
   await navigateToDashboard(page);
 
-  const result = await clickSearchResult(`NavDeal-${suffix}`, 'deal', deal.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const result = await clickSearchResult(`NavDeal-${suffix}`, 'deal', deal.id, { page });
   const finalPath = new URL(result.finalUrl).pathname;
   expect(finalPath, 'clicking deal result should navigate to /deals/:id').toBe(`/deals/${deal.id}`);
 });
 
 test('@functional @search F9-RN4: browser back after clicking a result returns to the previous page', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -519,11 +450,7 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
   const priorPath = new URL(page.url()).pathname;
 
   // Search and click a result.
-  const navResult = await clickSearchResult(`BackNav-${suffix}`, 'contact', contact.id, {
-    page,
-    healPage,
-    testName,
-  });
+  const navResult = await clickSearchResult(`BackNav-${suffix}`, 'contact', contact.id, { page });
   expect(new URL(navResult.finalUrl).pathname, 'should have navigated to contact detail').toBe(
     `/contacts/${contact.id}`,
   );
@@ -540,13 +467,12 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
 
 test('@functional @search F9-EC1: single-character query shows minimum-length hint, no error', async ({
   page,
-  healPage,
   testData,
 }) => {
   await navigateToDashboard(page);
 
   // Type a single character — below the 2-char minimum.
-  const result = await getMinLengthHint('a', { page, healPage, testName });
+  const result = await getMinLengthHint('a', { page });
 
   expect(result.panelVisible, 'results panel should appear for any non-empty query').toBe(true);
   expect(result.hintVisible, 'minimum-length hint should appear for 1-char query').toBe(true);
@@ -557,13 +483,12 @@ test('@functional @search F9-EC1: single-character query shows minimum-length hi
 
 test('@functional @search F9-EC2: two-character query is accepted — results or empty state shown, no error', async ({
   page,
-  healPage,
   testData,
 }) => {
   await navigateToDashboard(page);
 
   // Two characters is at the minimum threshold — should be accepted and trigger a search.
-  const result = await typeSearchQueryAndCheckPanel('zq', { page, healPage, testName });
+  const result = await typeSearchQueryAndCheckPanel('zq', { page });
 
   expect(result.panelVisible, 'results panel should be visible for 2-char query').toBe(true);
   expect(result.noMinLengthHint, 'min-length hint must not appear for 2-char query').toBe(true);
@@ -574,7 +499,6 @@ test('@functional @search F9-EC2: two-character query is accepted — results or
 
 test('@functional @search F9-EC3: query with special characters is handled gracefully', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -587,10 +511,10 @@ test('@functional @search F9-EC3: query with special characters is handled grace
 
   for (let i = 0; i < specialQueries.length; i++) {
     if (i > 0) {
-      await clearSearchQuery({ page, healPage, testName });
+      await clearSearchQuery({ page });
     }
     const query = specialQueries[i] as string;
-    const panelResult = await typeSearchQueryAndCheckPanel(query, { page, healPage, testName });
+    const panelResult = await typeSearchQueryAndCheckPanel(query, { page });
     expect(
       panelResult.noErrorAlert,
       `no error alert should appear for special-char query "${query}"`,
@@ -618,7 +542,6 @@ test('@functional @search F9-EC3: query with special characters is handled grace
 
 test('@functional @search F9-EC4: very long query string is handled gracefully', async ({
   page,
-  healPage,
   restClient,
   testData,
 }) => {
@@ -626,7 +549,7 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
 
   // 500-character query — well beyond any realistic search term.
   const longQuery = 'a'.repeat(500);
-  const result = await typeSearchQueryAndCheckPanel(longQuery, { page, healPage, testName });
+  const result = await typeSearchQueryAndCheckPanel(longQuery, { page });
   expect(result.noErrorAlert, 'no error alert for very long query').toBe(true);
 
   // API must also handle gracefully (4xx is fine — 500 is not).

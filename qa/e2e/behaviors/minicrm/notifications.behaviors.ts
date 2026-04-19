@@ -11,8 +11,7 @@
  * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { NotificationPreferenceKey } from '@pages/minicrm/ProfilePage.js';
@@ -23,10 +22,7 @@ import type { NotificationPreferenceKey } from '@pages/minicrm/ProfilePage.js';
 
 /** Fixtures required by notifications behaviors. */
 export interface NotificationsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // Re-export for convenience.
@@ -146,12 +142,12 @@ export async function uncheckAndSavePreference(
   await profilePage.savePreferences();
 
   // Wait for success message to appear.
-  await context.healPage
+  await context.page
     .locate([
       { type: 'testId', value: 'profile-prefs-success' },
       { type: 'css', value: '[data-testid="profile-prefs-success"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 
@@ -195,12 +191,12 @@ export async function uncheckAllAndSave(
 
   await profilePage.savePreferences();
 
-  await context.healPage
+  await context.page
     .locate([
       { type: 'testId', value: 'profile-prefs-success' },
       { type: 'css', value: '[data-testid="profile-prefs-success"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 
@@ -307,12 +303,12 @@ export async function toggleAdminEmailNotifications(
 
   await adminSettings.toggleEmailNotifications();
 
-  await context.healPage
+  await context.page
     .locate([
       { type: 'testId', value: 'email-notif-success' },
       { type: 'css', value: '[data-testid="email-notif-success"]' },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
     .catch(() => null);
 

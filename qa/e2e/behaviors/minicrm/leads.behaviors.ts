@@ -11,8 +11,7 @@
  * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { LeadsPage } from '@pages/minicrm/LeadsPage.js';
 import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
 
@@ -22,10 +21,7 @@ import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
 
 /** Fixtures required by leads behaviors. */
 export interface LeadsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------

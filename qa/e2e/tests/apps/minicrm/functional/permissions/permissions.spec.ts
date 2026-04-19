@@ -60,9 +60,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F7] E2E_ADMIN_PASSWORD is not set');
 // Shared setup
 // ---------------------------------------------------------------------------
 
-let testName: string;
-test.beforeEach(async ({ restClient }, testInfo) => {
-  testName = testInfo.title;
+test.beforeEach(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
@@ -314,14 +312,13 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
 
 test('@functional F7-FU1: rep navigating directly to /users is redirected to dashboard', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const { user: rep } = await createActivatedUser(restClient);
 
   try {
     // Log in as rep via UI.
-    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page, healPage, testName });
+    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     // Attempt direct navigation to the admin-only users route.
     await page.goto('/users', { waitUntil: 'networkidle' });
@@ -343,13 +340,12 @@ test('@functional F7-FU1: rep navigating directly to /users is redirected to das
 
 test('@functional F7-FU2: rep navigating directly to /admin/settings is redirected to dashboard', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const { user: rep } = await createActivatedUser(restClient);
 
   try {
-    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page, healPage, testName });
+    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     await page.goto('/admin/settings', { waitUntil: 'networkidle' });
 
@@ -369,13 +365,12 @@ test('@functional F7-FU2: rep navigating directly to /admin/settings is redirect
 
 test('@functional F7-FU3: rep navigating directly to /admin/automation is redirected to dashboard', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const { user: rep } = await createActivatedUser(restClient);
 
   try {
-    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page, healPage, testName });
+    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     await page.goto('/admin/automation', { waitUntil: 'networkidle' });
 
@@ -395,13 +390,12 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
 
 test('@functional F7-FU4: rep navigating directly to /reports/win-loss is redirected to dashboard', async ({
   page,
-  healPage,
   restClient,
 }) => {
   const { user: rep } = await createActivatedUser(restClient);
 
   try {
-    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page, healPage, testName });
+    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
 
@@ -419,15 +413,11 @@ test('@functional F7-FU4: rep navigating directly to /reports/win-loss is redire
   }
 });
 
-test('@functional F7-FU5: rep does not see admin-only nav links', async ({
-  page,
-  healPage,
-  restClient,
-}) => {
+test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page, restClient }) => {
   const { user: rep } = await createActivatedUser(restClient);
 
   try {
-    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page, healPage, testName });
+    await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     // Admin-only destinations should not appear in any nav layout.
     // The three nav layouts use different testId prefixes:
@@ -440,7 +430,7 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({
 
     for (const dest of adminDestinations) {
       for (const prefix of navPrefixes) {
-        const notVisible = await healPage.isNotVisible(
+        const notVisible = await page.isNotVisible(
           [{ type: 'testId', value: `${prefix}-${dest}` }],
           300,
         );

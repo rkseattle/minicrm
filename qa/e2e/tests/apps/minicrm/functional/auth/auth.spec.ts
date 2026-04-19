@@ -113,14 +113,8 @@ async function createUserWithForcedPasswordChange(
 
 test('@smoke @functional F1-L1: valid credentials → authenticated, dashboard visible', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
-  const result = await login(
-    { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    { page, healPage, testName },
-  );
+  const result = await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
 
   expect(result.success, 'valid login should succeed').toBe(true);
   expect(result.errorMessage, 'no error message on successful login').toBeNull();
@@ -129,13 +123,10 @@ test('@smoke @functional F1-L1: valid credentials → authenticated, dashboard v
 
 test('@smoke @functional F1-L2: invalid password → error shown, stays on login page', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   const result = await login(
     { email: ADMIN_EMAIL, password: 'definitley-wrong-password' },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(result.success, 'invalid login should fail').toBe(false);
@@ -145,20 +136,17 @@ test('@smoke @functional F1-L2: invalid password → error shown, stays on login
 
 test('@functional F1-L3: non-existent user → same error as wrong password (AC1 — no user enumeration)', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   // Wrong password for a known account
   const wrongPasswordResult = await login(
     { email: ADMIN_EMAIL, password: 'wrong-password' },
-    { page, healPage, testName },
+    { page },
   );
 
   // Unknown user entirely
   const unknownUserResult = await login(
     { email: 'no-such-user@example.com', password: 'anything' },
-    { page, healPage, testName },
+    { page },
   );
 
   expect(wrongPasswordResult.success, 'wrong-password login should fail').toBe(false);
@@ -174,11 +162,8 @@ test('@functional F1-L3: non-existent user → same error as wrong password (AC1
 
 test('@functional F1-L4: empty email and password → validation error, stays on login page', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
-  const result = await login({ email: '', password: '' }, { page, healPage, testName });
+  const result = await login({ email: '', password: '' }, { page });
 
   expect(result.success, 'empty-fields login should fail').toBe(false);
   expect(result.errorMessage, 'error message should be present for empty fields').not.toBeNull();
@@ -191,18 +176,15 @@ test('@functional F1-L4: empty email and password → validation error, stays on
 
 test('@functional F1-S1: cleared session cookie → browser redirected to /login', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   // Establish an authenticated browser session.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
 
   // Simulate session expiry by clearing all cookies for the browser context.
   await page.context().clearCookies();
 
   // Attempt to navigate to a protected page — should redirect to /login.
-  const result = await navigateToProtectedPage(PROTECTED_PATH, { page, healPage, testName });
+  const result = await navigateToProtectedPage(PROTECTED_PATH, { page });
 
   expect(result.redirectedToLogin, 'cleared session should redirect to /login').toBe(true);
 });
@@ -243,15 +225,10 @@ test('@functional F1-S2: cleared session → API returns 401 (AC3)', async ({ re
  */
 test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   // Navigate to a protected page while not logged in — should redirect to /login.
   const redirectResult = await navigateToProtectedPage(PROTECTED_PATH, {
     page,
-    healPage,
-    testName,
   });
   expect(redirectResult.redirectedToLogin, 'unauthenticated visit should redirect to /login').toBe(
     true,
@@ -259,10 +236,7 @@ test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', 
 
   // Log in from the /login page (the browser is already there after the redirect).
   // After successful login the app should return the user to PROTECTED_PATH.
-  const loginResult = await login(
-    { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    { page, healPage, testName },
-  );
+  const loginResult = await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
 
   expect(loginResult.success, 'login should succeed').toBe(true);
   expect(
@@ -277,17 +251,14 @@ test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', 
 
 test('@smoke @functional F1-O1: logout clears session cookie → subsequent API requests return 401 (AC3)', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
-
   // Authenticate both the browser page and the restClient independently.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Perform logout via the UI — clears the browser session cookie.
-  const logoutResult = await logout({ page, healPage, testName });
+  const logoutResult = await logout({ page });
   expect(logoutResult.success, 'logout should return to /login').toBe(true);
 
   // Also logout the restClient session so the same APIRequestContext loses its cookie.
@@ -310,21 +281,18 @@ test('@smoke @functional F1-O1: logout clears session cookie → subsequent API 
 
 test('@functional F1-O2: navigating to protected route after logout → redirected to /login', async ({
   page,
-  healPage,
 }) => {
-  const testName = test.info().title;
-
   // Establish an authenticated session.
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page, healPage, testName });
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
   expect(new URL(page.url()).pathname, 'should be authenticated before logout').not.toBe('/login');
 
   // Log out — browser should return to /login and the session cookie is cleared.
-  const logoutResult = await logout({ page, healPage, testName });
+  const logoutResult = await logout({ page });
   expect(logoutResult.success, 'logout should succeed').toBe(true);
 
   // Attempt to navigate directly to a protected URL. The session cookie is gone,
   // so ProtectedRoute must redirect back to /login.
-  const result = await navigateToProtectedPage(PROTECTED_PATH, { page, healPage, testName });
+  const result = await navigateToProtectedPage(PROTECTED_PATH, { page });
 
   expect(
     result.redirectedToLogin,
@@ -338,10 +306,8 @@ test('@functional F1-O2: navigating to protected route after logout → redirect
 
 test('@functional F1-P1: invited user forced to change password → old temp password rejected after change', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const TEMP_PASSWORD = 'TempPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
@@ -354,10 +320,7 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
     userId = created.userId;
 
     // ── 1. Login as the forced-change user — should land on /change-password ──
-    const loginResult = await login(
-      { email: created.email, password: TEMP_PASSWORD },
-      { page, healPage, testName },
-    );
+    const loginResult = await login({ email: created.email, password: TEMP_PASSWORD }, { page });
 
     expect(loginResult.success, 'forced-change user login should succeed').toBe(true);
     expect(
@@ -372,7 +335,7 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
         newPassword: NEW_PASSWORD,
         confirmPassword: NEW_PASSWORD,
       },
-      { page, healPage, testName },
+      { page },
     );
 
     expect(changeResult.success, 'password change should succeed').toBe(true);
@@ -380,12 +343,12 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
 
     // ── 3. Log out so we can test the old password ────────────────────────────
     // After change the user is navigated to / — log them out via UI.
-    await logout({ page, healPage, testName });
+    await logout({ page });
 
     // ── 4. Old temp password must now be rejected ─────────────────────────────
     const reloginWithOldPassword = await login(
       { email: created.email, password: TEMP_PASSWORD },
-      { page, healPage, testName },
+      { page },
     );
 
     expect(
@@ -411,10 +374,8 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
 
 test('@functional F1-P2: password change with mismatched confirmation → inline validation error, no change submitted', async ({
   page,
-  healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const TEMP_PASSWORD = 'TempPass1!';
 
   // Authenticate restClient as admin to create the test user.
@@ -426,7 +387,7 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
     userId = created.userId;
 
     // Login — should land on /change-password.
-    await login({ email: created.email, password: TEMP_PASSWORD }, { page, healPage, testName });
+    await login({ email: created.email, password: TEMP_PASSWORD }, { page });
 
     // Submit change-password form with mismatched confirmation.
     const result = await changePassword(
@@ -435,7 +396,7 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
         newPassword: 'NewPass2@',
         confirmPassword: 'DifferentPass3@', // deliberate mismatch
       },
-      { page, healPage, testName },
+      { page },
     );
 
     // Form must not navigate away — the mismatch is caught client-side before submission.

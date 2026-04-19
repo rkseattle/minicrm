@@ -11,8 +11,7 @@
  * MINCRM-186
  */
 
-import type { SafePage } from '@framework/fixtures/index.js';
-import type { HealPage } from '@framework/fixtures/heal-page.fixture.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 import { TagInputWidget } from '@pages/minicrm/TagInputWidget.js';
 
@@ -22,10 +21,7 @@ import { TagInputWidget } from '@pages/minicrm/TagInputWidget.js';
 
 /** Fixtures required by tags behaviors. */
 export interface TagsBehaviorContext {
-  page: SafePage;
-  healPage: HealPage;
-  /** Current test name forwarded to Page Object constructors for heal audit records. */
-  testName: string;
+  page: PageFacade;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,12 +94,12 @@ export async function renameTagViaUI(
   await context.page.waitForLoadState('networkidle');
 
   // The rename form's save button disappears on success.
-  const renameFormGone = !(await context.healPage
+  const renameFormGone = !(await context.page
     .locate([
       { type: 'testId', value: `rename-save-${tagId}` },
       { type: 'css', value: `[data-testid="rename-save-${tagId}"]` },
     ])
-    .resolve(context.testName)
+    .resolve()
     .then((el) => el.isVisible().catch(() => false))
     .catch(() => false));
 
