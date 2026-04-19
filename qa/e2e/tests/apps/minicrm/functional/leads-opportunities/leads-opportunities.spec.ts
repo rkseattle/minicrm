@@ -484,12 +484,10 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
     close_date: new Date().toISOString().slice(0, 10),
   });
 
-  // Fetch deals by prefix, then filter client-side to open stages only (the
-  // API does not expose a ?stage=open filter).
+  // Fetch deals scoped to the test account, then filter client-side to open
+  // stages only (?search is not supported; ?account= is the reliable scoping filter).
   const OPEN_STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation'];
-  const listResult = await restClient.get<DealListResponse>(
-    `/api/deals?search=${encodeURIComponent(uniquePrefix)}`,
-  );
+  const listResult = await restClient.get<DealListResponse>(`/api/deals?account=${account.id}`);
   expect(listResult.status, 'list endpoint should return 200').toBe(200);
 
   const openDeals = listResult.body.data.filter((d) => OPEN_STAGES.includes(d.stage));
@@ -527,11 +525,10 @@ test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list v
     close_date: new Date().toISOString().slice(0, 10),
   });
 
-  // Filter client-side to open stages (the API has no ?stage=open filter).
+  // Fetch deals scoped to the test account, then filter client-side to open
+  // stages only (?search is not supported; ?account= is the reliable scoping filter).
   const OPEN_STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation'];
-  const listResult = await restClient.get<DealListResponse>(
-    `/api/deals?search=${encodeURIComponent(uniquePrefix)}`,
-  );
+  const listResult = await restClient.get<DealListResponse>(`/api/deals?account=${account.id}`);
   expect(listResult.status).toBe(200);
 
   const openDeals = listResult.body.data.filter((d) => OPEN_STAGES.includes(d.stage));
