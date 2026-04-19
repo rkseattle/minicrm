@@ -67,8 +67,13 @@ test.describe('BoundHealingLocator', () => {
     expect(HealingRegistry.instance.count).toBe(0);
   });
 
-  test('resolve() passes testName to inner.resolve — heal event uses the captured name', async () => {
-    // primary fails, fallback resolves — heal event should be recorded with correct testName
+  test('resolve() uses captured testName — heal event testName matches construction arg', async () => {
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs');
+
+    process.env['PW_WORKER_INDEX'] = '55';
+
     const page = mockPage([false, true]);
     const inner = new HealingLocator(
       page,
@@ -84,6 +89,25 @@ test.describe('BoundHealingLocator', () => {
     await bound.resolve();
 
     expect(HealingRegistry.instance.count).toBe(1);
+
+    // Verify the event carries the captured testName, not some other value.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bound-hl-test-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const contents = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, 'test-results', 'healing-55.json'), 'utf-8'),
+    ) as { events: Array<{ testName: string }> };
+
+    expect(contents.events[0]?.testName).toBe(capturedTestName);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
   });
 
   test('testName is captured at construction — resolve() takes no parameters', async () => {

@@ -24,10 +24,10 @@ import { HealingRegistry } from '../healing/index.js';
 import type { PageFacade } from '../types/page-facade.js';
 import { createPageFacade } from '../types/page-facade.js';
 import { buildHealPage } from './heal-methods.js';
+import type { HealMethods } from './heal-methods.js';
 
 export type { LocateOptions, HealMethods, HealPage } from './heal-methods.js';
 export { buildHealPage } from './heal-methods.js';
-import type { HealMethods } from './heal-methods.js';
 
 // ---------------------------------------------------------------------------
 // Fixture types
