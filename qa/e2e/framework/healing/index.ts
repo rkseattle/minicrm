@@ -11,6 +11,8 @@ export {
   STRATEGY_ORDER,
   buildLocator,
 } from './healing-locator.js';
+
+export { BoundHealingLocator } from './bound-healing-locator.js';
 export type { LocatorStrategy, StrategyType, HealingLocatorOptions } from './healing-locator.js';
 
 export { HealingRegistry } from './healing-registry.js';

@@ -6,7 +6,7 @@
  * restClient, and grpcClient fixtures are always available and that imports
  * don't bypass the fixture layer.
  *
- * MINCRM-126, MINCRM-127, MINCRM-128
+ * MINCRM-126, MINCRM-127, MINCRM-128, MINCRM-209
  */
 
 import { mergeTests } from '@playwright/test';
@@ -17,6 +17,7 @@ import { test as grpcClientTest } from './grpc-client.fixture.js';
 /**
  * Merged test object that includes all framework fixtures:
  * - `healPage` (MINCRM-126)
+ * - `pageFacade` (MINCRM-209)
  * - `restClient` (MINCRM-127)
  * - `grpcClient` (MINCRM-128)
  */
@@ -24,7 +25,9 @@ export const test = mergeTests(healPageTest, restClientTest, grpcClientTest);
 
 export { expect } from '@playwright/test';
 
-export type { HealPage, LocateOptions } from './heal-page.fixture.js';
+export type { HealPage, HealMethods, LocateOptions } from './heal-methods.js';
 export type { RestClientFixtures } from './rest-client.fixture.js';
 export type { GrpcClientFixtures } from './grpc-client.fixture.js';
 export type { SafePage } from '../types/safe-page.js';
+export type { PageFacade } from '../types/page-facade.js';
+export { createPageFacade } from '../types/page-facade.js';
