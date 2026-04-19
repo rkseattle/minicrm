@@ -32,7 +32,7 @@ export interface ContactsPageContext {
  *
  * Usage:
  * ```ts
- * const contactsPage = new ContactsPage({ page, healPage });
+ * const contactsPage = new ContactsPage({ page });
  * await contactsPage.navigate();
  * const count = await contactsPage.rowCount();
  * ```

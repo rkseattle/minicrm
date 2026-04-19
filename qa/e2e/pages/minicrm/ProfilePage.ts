@@ -42,7 +42,7 @@ export type NotificationPreferenceKey =
  *
  * Usage:
  * ```ts
- * const profilePage = new ProfilePage({ page, healPage, testName });
+ * const profilePage = new ProfilePage({ page });
  * await profilePage.navigate();
  * await profilePage.uncheckPreference('notify_overdue_tasks');
  * await profilePage.savePreferences();

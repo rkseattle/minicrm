@@ -32,7 +32,7 @@ export interface LeadsPageContext {
  *
  * Usage:
  * ```ts
- * const leadsPage = new LeadsPage({ page, healPage, testName });
+ * const leadsPage = new LeadsPage({ page });
  * await leadsPage.navigate();
  * await leadsPage.clickNew();
  * ```

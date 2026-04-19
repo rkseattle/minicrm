@@ -14,13 +14,8 @@ export class BoundHealingLocator {
     private readonly testName: string,
   ) {}
 
-  /**
-   * Resolves the locator — testName is captured at construction, not passed here.
-   * The optional _testName parameter is accepted but ignored to allow existing
-   * callers of locate().resolve(testName) to compile without modification.
-   * TODO(MINCRM-210): remove _testName once all callers are migrated to PageFacade.
-   */
-  async resolve(_testName?: string): Promise<Locator> {
+  /** Resolves the locator — testName is captured at construction, not passed here. */
+  async resolve(): Promise<Locator> {
     return this.inner.resolve(this.testName);
   }
 

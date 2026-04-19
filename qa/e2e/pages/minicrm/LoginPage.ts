@@ -32,7 +32,7 @@ export interface LoginPageContext {
  *
  * Usage:
  * ```ts
- * const loginPage = new LoginPage({ page, healPage });
+ * const loginPage = new LoginPage({ page });
  * await loginPage.navigate();
  * await loginPage.fillEmail('admin@example.com');
  * await loginPage.fillPassword('secret');

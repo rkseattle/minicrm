@@ -32,7 +32,7 @@ export interface AccountsPageContext {
  *
  * Usage:
  * ```ts
- * const accountsPage = new AccountsPage({ page, healPage, testName });
+ * const accountsPage = new AccountsPage({ page });
  * await accountsPage.navigate();
  * const count = await accountsPage.rowCount();
  * ```

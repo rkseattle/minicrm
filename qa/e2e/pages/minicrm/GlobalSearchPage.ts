@@ -35,7 +35,7 @@ export interface GlobalSearchPageContext {
  *
  * Usage:
  * ```ts
- * const searchPage = new GlobalSearchPage({ page, healPage, testName });
+ * const searchPage = new GlobalSearchPage({ page });
  * await searchPage.typeQuery('Alice');
  * const visible = await searchPage.resultIsVisible('contact', contactId);
  * ```

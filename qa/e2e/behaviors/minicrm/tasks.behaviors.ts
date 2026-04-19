@@ -71,7 +71,7 @@ export interface TaskIsVisibleResult {
  *
  * @example
  * ```ts
- * const result = await taskIsVisible(activity.id, { page, healPage, testName });
+ * const result = await taskIsVisible(activity.id, { page });
  * expect(result.visible).toBe(true);
  * ```
  */
@@ -113,7 +113,7 @@ export interface CompleteTaskResult {
  *
  * @example
  * ```ts
- * const result = await completeTask(activity.id, { page, healPage, testName });
+ * const result = await completeTask(activity.id, { page });
  * expect(result.rowHidden).toBe(true);
  * ```
  */

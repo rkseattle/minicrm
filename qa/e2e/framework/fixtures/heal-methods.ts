@@ -59,6 +59,7 @@ export interface HealMethods {
     strategies: LocatorStrategy[],
     state: 'visible' | 'hidden' | 'attached' | 'detached',
     options?: LocateOptions,
+    timeout?: number,
   ): Promise<void>;
 
   /** Resolves the locator and returns the element's text content. */
@@ -161,13 +162,14 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       strategies: LocatorStrategy[],
       state: 'visible' | 'hidden' | 'attached' | 'detached',
       options: LocateOptions = {},
+      timeout?: number,
     ): Promise<void> {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
       });
       const resolved = await locator.resolve(testName);
-      await resolved.waitFor({ state });
+      await resolved.waitFor({ state, timeout });
     },
 
     async textContent(
