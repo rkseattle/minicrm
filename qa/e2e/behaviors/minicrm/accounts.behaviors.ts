@@ -49,7 +49,7 @@ export interface NavigateToAccountsResult {
  *
  * @example
  * ```ts
- * const result = await navigateToAccounts({ page, healPage, testName: 'my test' });
+ * const result = await navigateToAccounts({ page });
  * expect(result.loaded).toBe(true);
  * ```
  */
@@ -101,7 +101,7 @@ export interface EditAccountResult {
  *
  * @example
  * ```ts
- * const result = await editAccount(account.id, { name: 'Updated Corp' }, { page, healPage, testName });
+ * const result = await editAccount(account.id, { name: 'Updated Corp' }, { page });
  * expect(result.saved).toBe(true);
  * ```
  */

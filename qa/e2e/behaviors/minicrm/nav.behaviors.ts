@@ -83,7 +83,7 @@ export interface SetNavLayoutViaUIResult {
  * ensuring the PATCH has round-tripped before the caller proceeds.
  *
  * @param layout - The target layout to activate.
- * @param context - Behavior context with page and healPage.
+ * @param context - Behavior context with page.
  * @returns Result describing whether the click and aria-checked confirmation were observed.
  */
 export async function setNavLayoutViaUI(
@@ -361,7 +361,7 @@ export interface OpenMobileNavResult {
  * Opens the mobile nav drawer by clicking the toggle button and waits for
  * the drawer to become visible.
  *
- * @param context - Behavior context with page and healPage.
+ * @param context - Behavior context with page.
  * @returns Result indicating whether the drawer appeared.
  */
 export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMobileNavResult> {
@@ -403,7 +403,7 @@ export interface CloseMobileNavViaToggleResult {
  * Closes the mobile nav drawer by clicking the toggle button (which shows an X
  * when open). Assumes the drawer is already open.
  *
- * @param context - Behavior context with page and healPage.
+ * @param context - Behavior context with page.
  * @returns Result indicating whether the drawer closed.
  */
 export async function closeMobileNavViaToggle(
@@ -447,7 +447,7 @@ export interface NavigateViaMobileNavLinkResult {
  * identified by its mobile data-testid (`nav-top-{destination}-mobile`).
  *
  * @param destination - The destination slug (e.g. 'contacts', 'deals').
- * @param context - Behavior context with page and healPage.
+ * @param context - Behavior context with page.
  * @returns Result with link-clicked flag and final URL.
  */
 export async function navigateViaMobileNavLink(

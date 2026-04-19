@@ -71,7 +71,7 @@ export interface LoginResult {
  *
  * @example
  * ```ts
- * const result = await login({ email: 'admin@example.com', password: 'secret' }, { page, healPage, testName: 'my test' });
+ * const result = await login({ email: 'admin@example.com', password: 'secret' }, { page });
  * expect(result.success).toBe(true);
  * ```
  */
@@ -146,7 +146,7 @@ export interface LogoutResult {
  *
  * @example
  * ```ts
- * const result = await logout({ page, healPage, testName: 'my test' });
+ * const result = await logout({ page });
  * expect(result.success).toBe(true);
  * ```
  */
@@ -250,7 +250,7 @@ export interface ChangePasswordResult {
  * ```ts
  * const result = await changePassword(
  *   { currentPassword: 'OldPass1!', newPassword: 'NewPass2!', confirmPassword: 'NewPass2!' },
- *   { page, healPage, testName },
+ *   { page },
  * );
  * expect(result.success).toBe(true);
  * ```
@@ -326,7 +326,7 @@ export interface NavigateToProtectedPageResult {
  * @example
  * ```ts
  * await page.context().clearCookies();
- * const result = await navigateToProtectedPage('/contacts', { page, healPage, testName });
+ * const result = await navigateToProtectedPage('/contacts', { page });
  * expect(result.redirectedToLogin).toBe(true);
  * ```
  */

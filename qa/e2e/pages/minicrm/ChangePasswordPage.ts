@@ -32,7 +32,7 @@ export interface ChangePasswordPageContext {
  *
  * Usage:
  * ```ts
- * const changePasswordPage = new ChangePasswordPage({ page, healPage, testName });
+ * const changePasswordPage = new ChangePasswordPage({ page });
  * await changePasswordPage.navigate();
  * await changePasswordPage.fillCurrentPassword('OldPass1!');
  * await changePasswordPage.fillNewPassword('NewPass2!');

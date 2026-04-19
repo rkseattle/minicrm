@@ -77,7 +77,7 @@ export interface InviteUserViaUIResult {
  *
  * @example
  * ```ts
- * const result = await inviteUserViaUI('Jane', 'jane@example.com', 'rep', { page, healPage, testName });
+ * const result = await inviteUserViaUI('Jane', 'jane@example.com', 'rep', { page });
  * expect(result.submitted).toBe(true);
  * ```
  */
@@ -122,7 +122,7 @@ export interface UserIsVisibleInListResult {
  *
  * @example
  * ```ts
- * const result = await userIsVisibleInList(user.id, { page, healPage, testName });
+ * const result = await userIsVisibleInList(user.id, { page });
  * expect(result.visible).toBe(true);
  * ```
  */

@@ -49,7 +49,7 @@ export interface OpenDealResult {
  *
  * @example
  * ```ts
- * const result = await openDeal(deal.id, { page, healPage, testName });
+ * const result = await openDeal(deal.id, { page });
  * expect(result.loaded).toBe(true);
  * expect(result.columnSlug).toBe('prospecting');
  * ```
@@ -92,7 +92,7 @@ export interface AdvanceDealStageResult {
  *
  * @example
  * ```ts
- * const result = await advanceDealStage(deal.id, 'Qualification', { page, healPage, testName });
+ * const result = await advanceDealStage(deal.id, 'Qualification', { page });
  * expect(result.columnSlug).toBe('qualification');
  * ```
  */
@@ -138,7 +138,7 @@ export interface CloseDealAsWonResult {
  *
  * @example
  * ```ts
- * const result = await closeDealAsWon(deal.id, { page, healPage, testName });
+ * const result = await closeDealAsWon(deal.id, { page });
  * expect(result.columnSlug).toBe('closed-won');
  * ```
  */

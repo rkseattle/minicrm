@@ -32,7 +32,7 @@ export interface AdminSettingsPageContext {
  *
  * Usage:
  * ```ts
- * const adminSettings = new AdminSettingsPage({ page, healPage, testName });
+ * const adminSettings = new AdminSettingsPage({ page });
  * await adminSettings.navigate();
  * await adminSettings.toggleEmailNotifications();
  * const enabled = await adminSettings.emailNotificationsIsEnabled();

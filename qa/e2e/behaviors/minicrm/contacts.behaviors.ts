@@ -52,7 +52,7 @@ export interface NavigateToContactsResult {
  *
  * @example
  * ```ts
- * const result = await navigateToContacts({ page, healPage, testName: 'my test' });
+ * const result = await navigateToContacts({ page });
  * expect(result.loaded).toBe(true);
  * expect(result.finalUrl).toContain('/contacts');
  * ```
@@ -85,9 +85,9 @@ export async function navigateToContacts(
  *
  * @example
  * ```ts
- * await navigateToContacts({ page, healPage, testName });
- * await waitForContactInList(c1.id, { page, healPage, testName });
- * await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+ * await navigateToContacts({ page });
+ * await waitForContactInList(c1.id, { page });
+ * await page.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
  * ```
  */
 export async function waitForContactInList(
@@ -113,8 +113,8 @@ export async function waitForContactInList(
  *
  * @example
  * ```ts
- * await waitForBulkCheckbox(c1.id, { page, healPage, testName });
- * await healPage.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
+ * await waitForBulkCheckbox(c1.id, { page });
+ * await page.click([{ type: 'testId', value: `bulk-select-${c1.id}` }]);
  * ```
  */
 export async function waitForBulkCheckbox(
@@ -160,8 +160,8 @@ export async function clickBulkCheckbox(
  *
  * @example
  * ```ts
- * await filterContactsByTerm(uniqueSuffix, { page, healPage, testName });
- * await waitForContactInList(c1.id, { page, healPage, testName });
+ * await filterContactsByTerm(uniqueSuffix, { page });
+ * await waitForContactInList(c1.id, { page });
  * ```
  */
 export async function filterContactsByTerm(
@@ -211,7 +211,7 @@ export interface EditContactResult {
  *
  * @example
  * ```ts
- * const result = await editContact(contact.id, { first_name: 'Updated' }, { page, healPage, testName });
+ * const result = await editContact(contact.id, { first_name: 'Updated' }, { page });
  * expect(result.saved).toBe(true);
  * ```
  */
