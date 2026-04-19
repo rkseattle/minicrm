@@ -594,7 +594,8 @@ function DetailRow({ label, value, testId }: { label: string; value: string; tes
       <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
         {label}
       </span>
-      <span className="text-sm text-gray-900" data-testid={testId}>
+      {/* break-words: long currency strings (e.g. ¥1,234,567,890) have no natural break point */}
+      <span className="text-sm text-gray-900 break-words" data-testid={testId}>
         {value}
       </span>
     </div>

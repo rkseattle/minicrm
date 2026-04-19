@@ -55,8 +55,13 @@ interface StatCardProps {
  * @param props - StatCardProps
  */
 function StatCard({ label, value, linkTo, testId, variant = 'default' }: StatCardProps) {
+  // clamp(): fluid font between 1rem (mobile) and 1.875rem (desktop) so currency
+  // strings like "$1,234,567.89" never overflow card borders at intermediate widths.
+  // break-words ensures no unbreakable string (e.g. ¥1234567890) escapes the card.
   const valueClass =
-    variant === 'warning' ? 'text-3xl font-bold text-red-600' : 'text-3xl font-bold text-gray-900';
+    variant === 'warning'
+      ? 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-red-600 break-words'
+      : 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-gray-900 break-words';
 
   return (
     <div
@@ -173,7 +178,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
 
                 {/* Subject */}
                 <span
-                  className="text-sm text-gray-900 truncate flex-1"
+                  className="text-sm text-gray-900 line-clamp-2 flex-1 min-w-0"
                   data-testid={`recent-activity-subject-${entry.id}`}
                 >
                   {entry.subject}
@@ -365,7 +370,7 @@ export default function DashboardPage() {
                             {row.count}
                           </td>
                           <td
-                            className="px-6 py-4 text-sm text-gray-600 text-end"
+                            className="px-6 py-4 text-sm text-gray-600 text-end break-words"
                             data-testid={`stage-value-${row.stage}`}
                           >
                             {row.mixedCurrencies
@@ -373,7 +378,7 @@ export default function DashboardPage() {
                               : formatCurrency(row.value, i18n.language, row.currency ?? 'USD')}
                           </td>
                           <td
-                            className="px-6 py-4 text-sm text-gray-600 text-end"
+                            className="px-6 py-4 text-sm text-gray-600 text-end break-words"
                             data-testid={`stage-weighted-value-${row.stage}`}
                           >
                             {row.mixedCurrencies

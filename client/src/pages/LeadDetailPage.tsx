@@ -385,7 +385,8 @@ export default function LeadDetailPage() {
                   >
                     {t(`leads.status${entry.to_status}`)}
                   </span>
-                  <span className="text-gray-600">
+                  {/* min-w-0: prevents flex child overflow for long names/status strings */}
+                  <span className="text-gray-600 min-w-0 break-words">
                     {entry.from_status
                       ? t('leads.statusChangedFrom', {
                           actor: entry.changed_by_name ?? t('leads.unknownActor'),

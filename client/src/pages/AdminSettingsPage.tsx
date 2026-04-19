@@ -1225,7 +1225,7 @@ export default function AdminSettingsPage() {
 
           {/* Tabs */}
           <div
-            className="flex border-b border-gray-200 mb-6"
+            className="flex overflow-x-auto border-b border-gray-200 mb-6"
             role="tablist"
             aria-label={t('settings.import.sectionTitle')}
           >

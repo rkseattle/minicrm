@@ -182,7 +182,7 @@ export default function AuditLogPage() {
 
         {/* Filter bar */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {/* Date from */}
             <div>
               <label htmlFor="filter-from" className="block text-xs font-medium text-gray-500 mb-1">
