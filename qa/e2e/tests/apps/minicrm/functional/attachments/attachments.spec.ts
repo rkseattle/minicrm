@@ -31,6 +31,9 @@ import {
   createTestAccount,
   createTestDeal,
   createTestUser,
+  navigateToContact,
+  navigateToAccount,
+  navigateToDeal,
 } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -81,6 +84,20 @@ async function skipIfStorageNotConfigured(restClient: {
 }
 
 // ---------------------------------------------------------------------------
+// Shared setup
+// ---------------------------------------------------------------------------
+
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await skipIfStorageNotConfigured(restClient);
+});
+
+let testName: string;
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
+// ---------------------------------------------------------------------------
 // Upload — F10-U
 // ---------------------------------------------------------------------------
 
@@ -90,13 +107,9 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
+  await navigateToContact(page, contact.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -134,13 +147,9 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const account = await createTestAccount(testData, restClient);
 
-  await page.goto(`/accounts/${account.id}`);
+  await navigateToAccount(page, account.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -171,14 +180,10 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
 
-  await page.goto(`/deals/${deal.id}`);
+  await navigateToDeal(page, deal.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -209,13 +214,9 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
+  await navigateToContact(page, contact.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -250,13 +251,9 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
+  await navigateToContact(page, contact.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -291,13 +288,9 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
+  await navigateToContact(page, contact.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -343,13 +336,9 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
-
   const contact = await createTestContact(testData, restClient);
 
-  await page.goto(`/contacts/${contact.id}`);
+  await navigateToContact(page, contact.id);
   await (
     await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
   ).waitFor({ state: 'visible' });
@@ -413,17 +402,15 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   // Admin uploads the attachment
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
 
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
   const contact = await createTestContact(testData, restClient);
 
   try {
-    await page.goto(`/contacts/${contact.id}`);
+    await navigateToContact(page, contact.id);
     await (
       await healPage.locate([{ type: 'testId', value: 'attachments-section' }]).resolve(testName)
     ).waitFor({ state: 'visible' });

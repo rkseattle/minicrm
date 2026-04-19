@@ -47,6 +47,16 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F6] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
+// Shared setup — admin auth + test name capture
+// ---------------------------------------------------------------------------
+
+let testName: string;
+test.beforeEach(async ({ restClient }, testInfo) => {
+  testName = testInfo.title;
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -165,8 +175,6 @@ async function findUserById(restClient: RestClient, userId: string): Promise<Use
 test('@smoke @functional F6-IN1: admin invites user with valid email and role → user appears in list with invited status', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const email = `f6-in1-${uniqueSuffix}@example.com`;
 
@@ -200,8 +208,6 @@ test('@smoke @functional F6-IN1: admin invites user with valid email and role �
 test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no duplicate created', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user } = await createActivatedUser(restClient);
 
   try {
@@ -241,8 +247,6 @@ test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no dup
 test('@functional F6-IN3: admin invites with invalid email format → 400 validation error', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   let errorStatus: number | null = null;
   try {
     await restClient.post('/api/users/invite', {
@@ -264,8 +268,6 @@ test('@functional F6-IN3: admin invites with invalid email format → 400 valida
 test('@functional F6-IN4: invited user is visible in list before they log in', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   let userId: string | null = null;
 
@@ -298,8 +300,6 @@ test('@functional F6-IN4: invited user is visible in list before they log in', a
 test('@functional F6-RA1: role assigned at invite time is reflected on the user record', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user } = await createActivatedUser(restClient, 'admin');
 
   try {
@@ -316,8 +316,6 @@ test('@functional F6-RA1: role assigned at invite time is reflected on the user 
 test('@functional F6-RA2: admin changes role post-invite → change persisted, no re-login required (AC2)', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Invite as rep.
   const { user } = await createActivatedUser(restClient, 'rep');
 
@@ -359,10 +357,7 @@ test.describe('First login tests', () => {
     healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     const TEMP_PASSWORD = 'F6TempPass1!';
-
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     let userId: string | null = null;
     try {
@@ -396,11 +391,8 @@ test.describe('First login tests', () => {
     healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     const TEMP_PASSWORD = 'F6TempPass1!';
     const NEW_PASSWORD = 'F6NewPass2@';
-
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     let userId: string | null = null;
     try {
@@ -448,10 +440,7 @@ test.describe('First login tests', () => {
     healPage,
     restClient,
   }) => {
-    const testName = test.info().title;
     const TEMP_PASSWORD = 'F6TempPass1!';
-
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     let userId: string | null = null;
     try {
@@ -496,8 +485,6 @@ test.describe('First login tests', () => {
 test('@functional F6-DX1: deactivated user cannot log in — blocked at API layer (AC1)', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user, password } = await createActivatedUser(restClient);
 
   try {
@@ -541,8 +528,6 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user, password } = await createActivatedUser(restClient);
 
   // Second APIRequestContext authenticated as the test user, so the contact
@@ -583,8 +568,6 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
 test('@functional F6-DX3: deactivated user appears in list with inactive status', async ({
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user } = await createActivatedUser(restClient);
 
   try {
@@ -604,8 +587,6 @@ test('@functional F6-DX3: deactivated user appears in list with inactive status'
 // ---------------------------------------------------------------------------
 
 test('@functional F6-RX1: reactivated user can log in again', async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const { user, password } = await createActivatedUser(restClient);
 
   try {
@@ -641,8 +622,6 @@ test('@functional F6-RX2: reactivated user role and records are unchanged', asyn
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   // Create an admin-role user.
   const { user } = await createActivatedUser(restClient, 'admin');
 

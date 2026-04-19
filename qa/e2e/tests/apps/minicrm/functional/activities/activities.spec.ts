@@ -104,6 +104,19 @@ interface MyTasksResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Shared setup
+// ---------------------------------------------------------------------------
+
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+let testName: string;
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -123,7 +136,6 @@ test('@smoke @functional F5-C1: create Task → appears in my-tasks with type Ta
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5C1',
@@ -153,7 +165,6 @@ test('@functional F5-C2: create Call Log → saved with correct type', async ({
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5C2',
@@ -179,7 +190,6 @@ test('@functional F5-C3: create Meeting Note → saved with correct type and ass
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5C3',
@@ -204,7 +214,6 @@ test('@functional F5-C4: missing required field (subject) → 400 validation err
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5C4',
@@ -232,8 +241,6 @@ test('@functional F5-C5: missing linked record → 400 validation error', async 
   restClient,
   testData: _testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   let caughtStatus: number | null = null;
   try {
     await restClient.post('/api/activities', {
@@ -256,7 +263,6 @@ test('@functional F5-C6: activity visible on associated contact via GET /api/act
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5C6',
@@ -283,7 +289,6 @@ test('@functional F5-MY1: task created by self → appears in my-tasks for that 
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5MY1',
@@ -307,9 +312,6 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
   playwright,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-  // Admin authenticates the primary restClient.
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create a rep user (admin session).
   const repPassword = 'RepPassword1!';
@@ -373,8 +375,6 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   // remains with its original owner. If reassignment is implemented in a future
   // ticket, this test should be updated to cover the new behaviour.
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const repPassword = 'RepPassword1!';
   const rep = await createTestUser(restClient, {
@@ -453,9 +453,7 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5DS1',
@@ -492,9 +490,7 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5DS2',
@@ -532,9 +528,7 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5DS3',
@@ -567,9 +561,7 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5DS4',
@@ -614,7 +606,6 @@ test("@functional F5-FL1: filter by contact → only that contact's activities r
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const [contactA, contactB] = await Promise.all([
     createTestContact(testData, restClient, {
@@ -655,7 +646,6 @@ test('@functional F5-FL2: filter by type → only matching activity types return
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5FL2 Corp ${uniqueSuffix}`,
@@ -690,7 +680,6 @@ test('@functional F5-FL3: combined filter (contact + account) → only activitie
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const [contactA, contactB] = await Promise.all([
     createTestContact(testData, restClient, {
@@ -741,9 +730,7 @@ test('@smoke @functional F5-CP1: mark task complete via UI → removed from open
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5CP1',
@@ -777,7 +764,6 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5CP2',
@@ -813,7 +799,6 @@ test('@functional F5-CP3: completed task with past due date → not overdue (AC1
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5CP3',
@@ -853,7 +838,6 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
   //
   // If AC2 is enforced in a future ticket, update this test to assert 400.
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F5IM1',

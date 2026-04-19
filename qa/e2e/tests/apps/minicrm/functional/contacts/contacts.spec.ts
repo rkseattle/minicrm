@@ -41,7 +41,12 @@ import {
   cancelContactEdit,
   searchContacts,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { createTestContact, createTestAccount } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  navigateToContact,
+  navigateToContacts as navigateToContactsPage,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -74,6 +79,19 @@ interface ContactSingleResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Shared setup
+// ---------------------------------------------------------------------------
+
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+
+let testName: string;
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
+// ---------------------------------------------------------------------------
 // Create tests
 // ---------------------------------------------------------------------------
 
@@ -83,9 +101,7 @@ test('@smoke @functional F2-C1: all required fields submitted → contact create
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const firstName = `F2C1`;
   const lastName = `Create-${uniqueSuffix}`;
@@ -116,9 +132,7 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const lastName = `OptFields-${uniqueSuffix}`;
   const result = await createContactViaUI(
@@ -160,17 +174,14 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Use a unique email so we can precisely verify whether this contact was created.
   const uniqueEmail = `f2c3-missing-${uniqueSuffix}@example.com`;
 
   // Submit with empty last_name by typing a space then clearing — browser HTML5
   // validation catches the empty required field client-side.
-  await page.goto('/contacts');
-  await page.waitForLoadState('networkidle');
+  await navigateToContactsPage(page);
   await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
   await healPage.fill('F2C3Only', [{ type: 'testId', value: 'contact-first-name' }]);
   await healPage.fill(uniqueEmail, [{ type: 'testId', value: 'contact-email' }]);
@@ -198,17 +209,14 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Use a unique last name to precisely identify whether this contact was created.
   const uniqueLastName = `InvalidEmailTest-${uniqueSuffix}`;
 
   // Use healPage interactions since createContactViaUI waits for networkidle which
   // may never settle on a validation error (no network request is made).
-  await page.goto('/contacts');
-  await page.waitForLoadState('networkidle');
+  await navigateToContactsPage(page);
   await healPage.click([{ type: 'testId', value: 'new-contact-button' }]);
   await healPage.fill('F2C4', [{ type: 'testId', value: 'contact-first-name' }]);
   await healPage.fill(uniqueLastName, [{ type: 'testId', value: 'contact-last-name' }]);
@@ -236,9 +244,7 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create a contact via API with a known email.
   const sharedEmail = `f2c5-${uniqueSuffix}@example.com`;
@@ -275,9 +281,7 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Seed two contacts.
   await createTestContact(testData, restClient, {
@@ -313,9 +317,7 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create contacts with first names that sort differently — Zebra before Apple.
   await createTestContact(testData, restClient, {
@@ -370,7 +372,6 @@ test('@functional F2-R3: sort by email ascending returns correct order', async (
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   await createTestContact(testData, restClient, {
     first_name: 'EmailSortZ',
@@ -405,9 +406,7 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'Casesearch',
@@ -439,9 +438,6 @@ test('@functional F2-R5: search non-matching term returns empty state', async ({
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-
   const result = await searchContacts('zzz-no-such-contact-xyzzy-99999', {
     page,
     healPage,
@@ -450,6 +446,7 @@ test('@functional F2-R5: search non-matching term returns empty state', async ({
   expect(result.rowCount, 'no rows should match non-existent term').toBe(0);
   expect(result.emptyStateVisible, 'empty state should be visible for no results').toBe(true);
 
+  void restClient;
   void testData;
 });
 
@@ -463,9 +460,7 @@ test('@smoke @functional F2-U1: edit first name → change reflected in detail v
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'OrigFirst',
@@ -492,9 +487,7 @@ test('@functional F2-U2: edit last name → change reflected in detail view and 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'OrigLastTest',
@@ -520,9 +513,7 @@ test('@functional F2-U3: cancel edit → no changes persisted', async ({
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'CancelEditOrig',
@@ -557,9 +548,7 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'ToDelete',
@@ -593,9 +582,7 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const contact = await createTestContact(testData, restClient, {
     first_name: 'CancelDelete',
@@ -621,9 +608,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F2A1 Corp ${uniqueSuffix}`,
@@ -637,8 +622,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await restClient.patch(`/api/contacts/${contact.id}`, { account_id: account.id });
 
   // Navigate to the contact detail page and confirm the account is shown.
-  await page.goto(`/contacts/${contact.id}`);
-  await page.waitForLoadState('networkidle');
+  await navigateToContact(page, contact.id);
 
   // The detail-account element should show the account name.
   const accountLocator = await healPage
@@ -660,7 +644,6 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F2A2 Corp ${uniqueSuffix}`,
@@ -689,9 +672,7 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
     name: `F2A3 Corp ${uniqueSuffix}`,
@@ -702,8 +683,7 @@ test('@functional F2-A3: contact detail view shows associated account name with 
     account_id: account.id,
   });
 
-  await page.goto(`/contacts/${contact.id}`);
-  await page.waitForLoadState('networkidle');
+  await navigateToContact(page, contact.id);
 
   // Confirm account name is a link pointing to the account's detail page.
   const accountLink = await healPage
@@ -729,9 +709,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // To test pagination we need enough records to fill at least 2 pages.
   // PAGINATION_DEFAULT_LIMIT is 50 — create 3 contacts and use a limit=2

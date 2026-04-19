@@ -44,6 +44,18 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F9-leads] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
+// Shared setup — admin auth + test name capture
+// ---------------------------------------------------------------------------
+
+let testName: string;
+test.beforeAll(async ({ restClient }) => {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+});
+test.beforeEach(({}, testInfo) => {
+  testName = testInfo.title;
+});
+
+// ---------------------------------------------------------------------------
 // Shared types
 // ---------------------------------------------------------------------------
 
@@ -92,9 +104,7 @@ test('@functional F9-C1: required fields submitted → lead created and visible 
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9c1-${uniqueSuffix}@example.com`;
   const result = await createLeadViaUI({ first_name: 'F9C1', email }, { page, healPage, testName });
@@ -116,9 +126,7 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9c2-${uniqueSuffix}@example.com`;
   const result = await createLeadViaUI(
@@ -152,9 +160,7 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9c3-${uniqueSuffix}@example.com`;
   // Pre-create a lead via API
@@ -198,9 +204,7 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9s1-${uniqueSuffix}@example.com`;
   const created = await restClient.post<LeadSingleResponse>('/api/leads', {
@@ -225,9 +229,7 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9s2-${uniqueSuffix}@example.com`;
   const created = await restClient.post<LeadSingleResponse>('/api/leads', {
@@ -262,9 +264,7 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9v1-${uniqueSuffix}@example.com`;
   const company = `F9V1 Corp ${uniqueSuffix}`;
@@ -312,9 +312,7 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
   restClient,
   testData,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9v2-${uniqueSuffix}@example.com`;
   const created = await restClient.post<LeadSingleResponse>('/api/leads', {
@@ -367,9 +365,7 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   healPage,
   restClient,
 }) => {
-  const testName = test.info().title;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const email = `f9d1-${uniqueSuffix}@example.com`;
   const created = await restClient.post<LeadSingleResponse>('/api/leads', {
