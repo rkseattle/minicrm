@@ -42,7 +42,9 @@ describe('GlobalSearch', () => {
 
   it('shows the empty state when query returns no results', async () => {
     server.use(
-      http.get('/api/search', () => HttpResponse.json({ contacts: [], accounts: [], deals: [] })),
+      http.get('/api/search', () =>
+        HttpResponse.json({ contacts: [], accounts: [], deals: [], leads: [] }),
+      ),
     );
     const user = userEvent.setup();
     renderWithProviders(<GlobalSearch />);
@@ -113,6 +115,63 @@ describe('GlobalSearch', () => {
     await waitFor(() => {
       const link = screen.getByTestId('search-result-deal-00000000-0000-0000-0000-000000000301');
       expect(link).toHaveAttribute('href', '/deals/00000000-0000-0000-0000-000000000301');
+    });
+  });
+
+  it('shows lead results when query matches leads', async () => {
+    server.use(
+      http.get('/api/search', () =>
+        HttpResponse.json({
+          contacts: [],
+          accounts: [],
+          deals: [],
+          leads: [
+            {
+              id: '00000000-0000-0000-0000-000000000401',
+              first_name: 'Lead',
+              last_name: 'Person',
+              email: 'lead@example.com',
+              company_name: 'Lead Co',
+            },
+          ],
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<GlobalSearch />);
+    await user.type(screen.getByTestId('global-search-input'), 'lead');
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('search-result-lead-00000000-0000-0000-0000-000000000401'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('lead result links to the correct lead detail URL', async () => {
+    server.use(
+      http.get('/api/search', () =>
+        HttpResponse.json({
+          contacts: [],
+          accounts: [],
+          deals: [],
+          leads: [
+            {
+              id: '00000000-0000-0000-0000-000000000401',
+              first_name: 'Lead',
+              last_name: 'Person',
+              email: 'lead@example.com',
+              company_name: null,
+            },
+          ],
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<GlobalSearch />);
+    await user.type(screen.getByTestId('global-search-input'), 'lead');
+    await waitFor(() => {
+      const link = screen.getByTestId('search-result-lead-00000000-0000-0000-0000-000000000401');
+      expect(link).toHaveAttribute('href', '/leads/00000000-0000-0000-0000-000000000401');
     });
   });
 

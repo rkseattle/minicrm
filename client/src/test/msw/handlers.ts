@@ -1079,6 +1079,7 @@ export const handlers = [
       deals: query.toLowerCase().includes('acme')
         ? [{ id: DEAL_1.id, name: 'Acme Enterprise Deal', stage: 'Prospecting' }]
         : [],
+      leads: [],
     };
     return HttpResponse.json(searchResponse);
   }),

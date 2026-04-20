@@ -68,6 +68,13 @@ interface SearchApiResponse {
   contacts: Array<{ id: string; first_name: string; last_name: string; email: string }>;
   accounts: Array<{ id: string; name: string }>;
   deals: Array<{ id: string; name: string; stage: string }>;
+  leads: Array<{
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    email: string;
+    company_name: string | null;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +370,7 @@ test('@functional @search F9-ES2: empty state is not a blank area — it contain
     'empty state element must contain text',
   ).toBeGreaterThan(0);
 
-  void testData;
+  void testData; // suppress unused warning
 });
 
 // ---------------------------------------------------------------------------
@@ -567,4 +574,66 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
   }
 
   void testData;
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-207 — expanded field coverage E2E tests
+// ---------------------------------------------------------------------------
+
+test('@functional @search F9-EX1: searching a contact phone number returns that contact (MINCRM-207)', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const phone = `555-${suffix.slice(0, 3)}-${suffix.slice(3, 7)}`;
+
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'F9EX1',
+    last_name: `PhoneSearch-${suffix}`,
+    phone,
+  });
+
+  await navigateToDashboard(page);
+
+  const result = await getSearchResult(phone, 'contact', contact.id, { page });
+  expect(result.visible, 'contact should appear in search results for phone query').toBe(true);
+
+  const apiResult = await restClient.get<SearchApiResponse>(
+    `/api/search?q=${encodeURIComponent(phone)}`,
+  );
+  expect(
+    apiResult.body.contacts.some((c) => c.id === contact.id),
+    'API should return the contact when searching by phone',
+  ).toBe(true);
+});
+
+test('@functional @search F9-EX2: searching a deal value returns that deal (MINCRM-207)', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const account = await createTestAccount(testData, restClient, {
+    name: `F9EX2 Account ${suffix}`,
+  });
+  const deal = await createTestDeal(testData, restClient, {
+    name: `F9EX2 ValueDeal-${suffix}`,
+    account_id: account.id,
+    value: '777777',
+  });
+
+  await navigateToDashboard(page);
+
+  const result = await getSearchResult('777777', 'deal', deal.id, { page });
+  expect(result.visible, 'deal should appear when searching by its numeric value').toBe(true);
+
+  const apiResult = await restClient.get<SearchApiResponse>(
+    `/api/search?q=${encodeURIComponent('$777,777')}`,
+  );
+  expect(
+    apiResult.body.deals.some((d) => d.id === deal.id),
+    'API should return the deal when searching with dollar-formatted value',
+  ).toBe(true);
 });

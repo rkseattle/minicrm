@@ -12,6 +12,9 @@ import { globalSearch, SEARCH_MIN_LENGTH } from '../services/searchService.js';
 import { createContact } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
+import { createLead } from '../services/leadsService.js';
+import { createActivity } from '../services/activityService.js';
+import { attachTag } from '../services/tagService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -37,9 +40,15 @@ let repId: string;
 let accountId: string;
 
 beforeAll(async () => {
+  await pool.query('DELETE FROM deal_tags');
+  await pool.query('DELETE FROM account_tags');
+  await pool.query('DELETE FROM contact_tags');
+  await pool.query('DELETE FROM tags');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM leads');
   await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contact_addresses');
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts');
   await pool.query("DELETE FROM users WHERE email LIKE 'search-%'");
@@ -54,15 +63,31 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await pool.query('DELETE FROM deal_tags');
+  await pool.query('DELETE FROM account_tags');
+  await pool.query('DELETE FROM contact_tags');
+  await pool.query('DELETE FROM tags');
+  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM leads');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contact_addresses');
   await pool.query('DELETE FROM contacts');
   await pool.query("DELETE FROM accounts WHERE name <> 'Search Test Account'");
 });
 
 afterAll(async () => {
+  await pool.query('DELETE FROM deal_tags');
+  await pool.query('DELETE FROM account_tags');
+  await pool.query('DELETE FROM contact_tags');
+  await pool.query('DELETE FROM tags');
+  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM activities');
+  await pool.query('DELETE FROM leads');
   await pool.query('DELETE FROM deal_contacts');
   await pool.query('DELETE FROM deals');
+  await pool.query('DELETE FROM contact_addresses');
   await pool.query('DELETE FROM contacts');
   await pool.query('DELETE FROM accounts');
   await pool.query("DELETE FROM users WHERE email LIKE 'search-%'");
@@ -318,5 +343,438 @@ describe('globalSearch — special characters', () => {
     // Searching '_B' should not match 'AB' (single-char wildcard) when properly escaped
     const results = await globalSearch('_B', { userId: adminId, role: 'admin' });
     expect(results.contacts.some((c) => c.first_name === 'AB')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-207 — expanded field coverage
+// ---------------------------------------------------------------------------
+
+describe('globalSearch — contacts expanded fields (MINCRM-207)', () => {
+  it('returns a contact matching by phone number', async () => {
+    await createContact({
+      first_name: 'Phone',
+      last_name: 'Matcher',
+      email: 'phonematcher@example.com',
+      phone: '555-867-5309',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('867-5309', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.email === 'phonematcher@example.com')).toBe(true);
+  });
+
+  it('returns a contact matching by title', async () => {
+    await createContact({
+      first_name: 'Title',
+      last_name: 'Matcher',
+      email: 'titlematcher@example.com',
+      title: 'VP of Engineering',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('VP of Engineering', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.email === 'titlematcher@example.com')).toBe(true);
+  });
+
+  it('returns a contact matching by department', async () => {
+    await createContact({
+      first_name: 'Dept',
+      last_name: 'Matcher',
+      email: 'deptmatcher@example.com',
+      department: 'UniqueSearchDepartment',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueSearchDepartment', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.contacts.some((c) => c.email === 'deptmatcher@example.com')).toBe(true);
+  });
+
+  it('returns a contact matching by inline city field', async () => {
+    await createContact({
+      first_name: 'City',
+      last_name: 'InlineMatcher',
+      email: 'cityinlinematcher@example.com',
+      city: 'UniqueInlineCity',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueInlineCity', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.email === 'cityinlinematcher@example.com')).toBe(true);
+  });
+
+  it('returns a contact matching by city in contact_addresses and deduplicates', async () => {
+    const contact = await createContact({
+      first_name: 'City',
+      last_name: 'AddrMatcher',
+      email: 'cityaddrm@example.com',
+      owner_id: adminId,
+    });
+
+    await pool.query(
+      `INSERT INTO contact_addresses (contact_id, label, city, is_default)
+       VALUES ($1, 'Work', 'UniqueAddrCityXYZ', true)`,
+      [contact.id],
+    );
+
+    const results = await globalSearch('UniqueAddrCityXYZ', { userId: adminId, role: 'admin' });
+    const matches = results.contacts.filter((c) => c.id === contact.id);
+    expect(matches).toHaveLength(1);
+  });
+
+  it('returns a contact matching by postal_code in contact_addresses', async () => {
+    const contact = await createContact({
+      first_name: 'Zip',
+      last_name: 'AddrMatcher',
+      email: 'zipaddrm@example.com',
+      owner_id: adminId,
+    });
+
+    await pool.query(
+      `INSERT INTO contact_addresses (contact_id, label, postal_code, city, is_default)
+       VALUES ($1, 'Home', '99887', 'SomeCity', true)`,
+      [contact.id],
+    );
+
+    const results = await globalSearch('99887', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('does not duplicate a contact that matches in both inline city and contact_addresses city', async () => {
+    const contact = await createContact({
+      first_name: 'NoDup',
+      last_name: 'CityTest',
+      email: 'nodupCity@example.com',
+      city: 'SharedCityValue',
+      owner_id: adminId,
+    });
+
+    await pool.query(
+      `INSERT INTO contact_addresses (contact_id, label, city, is_default)
+       VALUES ($1, 'Work', 'SharedCityValue', true)`,
+      [contact.id],
+    );
+
+    const results = await globalSearch('SharedCityValue', { userId: adminId, role: 'admin' });
+    const matches = results.contacts.filter((c) => c.id === contact.id);
+    expect(matches).toHaveLength(1);
+  });
+});
+
+describe('globalSearch — accounts expanded fields (MINCRM-207)', () => {
+  it('returns an account matching by industry', async () => {
+    await createAccount({
+      name: 'IndustrySearchCo',
+      industry: 'UniqueIndustrySector',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueIndustrySector', { userId: adminId, role: 'admin' });
+    expect(results.accounts.some((a) => a.name === 'IndustrySearchCo')).toBe(true);
+  });
+
+  it('returns an account matching by website', async () => {
+    await createAccount({
+      name: 'WebsiteSearchCo',
+      website: 'uniquedomain-xyz.com',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('uniquedomain-xyz', { userId: adminId, role: 'admin' });
+    expect(results.accounts.some((a) => a.name === 'WebsiteSearchCo')).toBe(true);
+  });
+});
+
+describe('globalSearch — deals expanded fields (MINCRM-207)', () => {
+  it('returns a deal matching by loss_reason', async () => {
+    const deal = await createDeal({
+      name: 'LostToCompetitorDeal',
+      stage: 'Closed Lost',
+      account_id: accountId,
+      owner_id: adminId,
+    });
+    await pool.query(`UPDATE deals SET loss_reason = 'lost to a direct competitor' WHERE id = $1`, [
+      deal.id,
+    ]);
+
+    const results = await globalSearch('direct competitor', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.name === 'LostToCompetitorDeal')).toBe(true);
+  });
+
+  it('returns a deal matching by currency code', async () => {
+    await createDeal({
+      name: 'GBPDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+      currency: 'GBP',
+    });
+
+    const results = await globalSearch('GBP', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.name === 'GBPDeal')).toBe(true);
+  });
+
+  it('returns a deal matching by raw numeric value', async () => {
+    await createDeal({
+      name: 'ValueRawDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+      value: 120000,
+    });
+
+    const results = await globalSearch('120000', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.name === 'ValueRawDeal')).toBe(true);
+  });
+
+  it('returns a deal matching by comma-formatted value', async () => {
+    await createDeal({
+      name: 'ValueCommaDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+      value: 120000,
+    });
+
+    const results = await globalSearch('120,000', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.name === 'ValueCommaDeal')).toBe(true);
+  });
+
+  it('returns a deal matching by dollar-prefixed comma-formatted value', async () => {
+    await createDeal({
+      name: 'ValueDollarDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+      value: 120000,
+    });
+
+    const results = await globalSearch('$120,000', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.name === 'ValueDollarDeal')).toBe(true);
+  });
+});
+
+describe('globalSearch — leads (MINCRM-207)', () => {
+  it('returns a lead matching by notes', async () => {
+    await createLead({
+      first_name: 'Notes',
+      last_name: 'LeadPerson',
+      email: 'noteslead@example.com',
+      notes: 'uniqueLeadNoteContent',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('uniqueLeadNoteContent', { userId: adminId, role: 'admin' });
+    expect(results.leads.some((l) => l.email === 'noteslead@example.com')).toBe(true);
+  });
+
+  it('returns a lead matching by disqualification_reason', async () => {
+    await createLead({
+      first_name: 'DisqLead',
+      last_name: 'Person',
+      email: 'disqlead@example.com',
+      owner_id: adminId,
+    });
+    await pool.query(
+      `UPDATE leads SET status = 'Disqualified', disqualification_reason = 'tooSmallBudgetXYZ' WHERE email = 'disqlead@example.com'`,
+    );
+
+    const results = await globalSearch('tooSmallBudgetXYZ', { userId: adminId, role: 'admin' });
+    expect(results.leads.some((l) => l.email === 'disqlead@example.com')).toBe(true);
+  });
+
+  it('returns a lead matching by phone', async () => {
+    await createLead({
+      first_name: 'PhoneLead',
+      last_name: 'Person',
+      email: 'phonelead@example.com',
+      phone: '555-111-2222',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('111-2222', { userId: adminId, role: 'admin' });
+    expect(results.leads.some((l) => l.email === 'phonelead@example.com')).toBe(true);
+  });
+
+  it('returns a lead matching by company_name', async () => {
+    await createLead({
+      first_name: 'CompanyLead',
+      last_name: 'Person',
+      email: 'companylead@example.com',
+      company_name: 'UniqueLeadCorp',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueLeadCorp', { userId: adminId, role: 'admin' });
+    expect(results.leads.some((l) => l.email === 'companylead@example.com')).toBe(true);
+  });
+
+  it('does not return leads owned by others when role is rep', async () => {
+    await createLead({
+      first_name: 'OtherOwnerLead',
+      last_name: 'Person',
+      email: 'otherlead@example.com',
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('OtherOwnerLead', { userId: repId, role: 'rep' });
+    expect(results.leads).toHaveLength(0);
+  });
+});
+
+describe('globalSearch — activities (MINCRM-207)', () => {
+  it('searching an activity subject returns the linked contact', async () => {
+    const contact = await createContact({
+      first_name: 'ActivityContact',
+      last_name: 'SubjectTest',
+      email: 'activitycontact@example.com',
+      owner_id: adminId,
+    });
+
+    await createActivity({
+      type: 'Call',
+      subject: 'UniqueActivitySubjectZZZ',
+      contact_id: contact.id,
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueActivitySubjectZZZ', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('searching activity notes returns the linked contact', async () => {
+    const contact = await createContact({
+      first_name: 'ActivityNotesContact',
+      last_name: 'Test',
+      email: 'activitynotes@example.com',
+      owner_id: adminId,
+    });
+
+    await createActivity({
+      type: 'Note',
+      subject: 'Follow up',
+      notes: 'UniqueActivityNotesContent',
+      contact_id: contact.id,
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueActivityNotesContent', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('searching activity outcome returns the linked account', async () => {
+    const acct = await createAccount({ name: 'ActivityOutcomeAccount', owner_id: adminId });
+
+    await createActivity({
+      type: 'Meeting',
+      subject: 'Quarterly review',
+      outcome: 'UniqueOutcomeValueXYZ',
+      account_id: acct.id,
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueOutcomeValueXYZ', { userId: adminId, role: 'admin' });
+    expect(results.accounts.some((a) => a.id === acct.id)).toBe(true);
+  });
+
+  it('searching activity subject returns the linked deal', async () => {
+    const deal = await createDeal({
+      name: 'ActivityDealLink',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+    });
+
+    await createActivity({
+      type: 'Task',
+      subject: 'UniqueDealActivitySubjectABC',
+      deal_id: deal.id,
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('UniqueDealActivitySubjectABC', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.deals.some((d) => d.id === deal.id)).toBe(true);
+  });
+
+  it('a contact matching by name AND activity appears only once in contacts', async () => {
+    const contact = await createContact({
+      first_name: 'NoDupActivityContact',
+      last_name: 'Test',
+      email: 'nodupactivity@example.com',
+      owner_id: adminId,
+    });
+
+    await createActivity({
+      type: 'Call',
+      subject: 'NoDupActivityContact call',
+      contact_id: contact.id,
+      owner_id: adminId,
+    });
+
+    const results = await globalSearch('NoDupActivityContact', { userId: adminId, role: 'admin' });
+    const matches = results.contacts.filter((c) => c.id === contact.id);
+    expect(matches).toHaveLength(1);
+  });
+});
+
+describe('globalSearch — tags (MINCRM-207)', () => {
+  it('searching a tag name returns contacts carrying that tag', async () => {
+    const contact = await createContact({
+      first_name: 'TagContact',
+      last_name: 'Person',
+      email: 'tagcontact@example.com',
+      owner_id: adminId,
+    });
+    await attachTag('contact', contact.id, { name: 'vip-search-tag' });
+
+    const results = await globalSearch('vip-search-tag', { userId: adminId, role: 'admin' });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('searching a tag name returns accounts carrying that tag', async () => {
+    const acct = await createAccount({ name: 'TagAccount', owner_id: adminId });
+    await attachTag('account', acct.id, { name: 'key-acct-search-tag' });
+
+    const results = await globalSearch('key-acct-search-tag', { userId: adminId, role: 'admin' });
+    expect(results.accounts.some((a) => a.id === acct.id)).toBe(true);
+  });
+
+  it('searching a tag name returns deals carrying that tag', async () => {
+    const deal = await createDeal({
+      name: 'TagDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+    });
+    await attachTag('deal', deal.id, { name: 'enterprise-search-tag' });
+
+    const results = await globalSearch('enterprise-search-tag', { userId: adminId, role: 'admin' });
+    expect(results.deals.some((d) => d.id === deal.id)).toBe(true);
+  });
+
+  it('a contact matching by name AND tag appears only once', async () => {
+    const contact = await createContact({
+      first_name: 'NoDupTagContact',
+      last_name: 'Person',
+      email: 'noduptagcontact@example.com',
+      owner_id: adminId,
+    });
+    await attachTag('contact', contact.id, { name: 'NoDupTagContact' });
+
+    const results = await globalSearch('NoDupTagContact', { userId: adminId, role: 'admin' });
+    const matches = results.contacts.filter((c) => c.id === contact.id);
+    expect(matches).toHaveLength(1);
   });
 });

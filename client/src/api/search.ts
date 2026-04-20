@@ -26,11 +26,21 @@ export interface DealSearchResult {
   stage: string;
 }
 
+/** A lead result returned by the search endpoint */
+export interface LeadSearchResult {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  company_name: string | null;
+}
+
 /** Full response from GET /api/search */
 export interface SearchResponse {
   contacts: ContactSearchResult[];
   accounts: AccountSearchResult[];
   deals: DealSearchResult[];
+  leads: LeadSearchResult[];
 }
 
 /**
