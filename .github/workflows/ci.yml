@@ -430,7 +430,6 @@ jobs:
         run: >
           npx playwright merge-reports
           --reporter html
-          --output-folder ./playwright-report-merged
           ./shard-artifacts
 
       - name: Merge JUnit XML results
@@ -468,7 +467,7 @@ jobs:
       - name: Merge healing artifacts
         if: always()
         run: >
-          tsx qa/scripts/merge-healing-artifacts.ts
+          npx tsx qa/scripts/merge-healing-artifacts.ts
           --input ./shard-artifacts
           --output ./healing-report-${{ matrix.project }}.json
 
@@ -498,7 +497,7 @@ jobs:
           name: e2e-merged-${{ matrix.project }}
           path: |
             merged-results.xml
-            playwright-report-merged/
+            playwright-report/
             healing-report-${{ matrix.project }}.json
           retention-days: 30
           if-no-files-found: warn
