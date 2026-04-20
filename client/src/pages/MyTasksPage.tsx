@@ -149,8 +149,10 @@ export default function MyTasksPage() {
               </p>
             ) : visibleTasks.length > 0 ? (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {/* Mobile card view — visible below md. No data-testid on card elements
-                    to avoid duplicate-testid collisions with the desktop table in JSDOM. */}
+                {/* Mobile card view — visible below md.
+                    Shares data-testid values with the desktop table rows so E2E
+                    locators work at both viewports. Page objects must use
+                    .filter({ visible: true }) to pick the visible copy. */}
                 <ul
                   className="md:hidden divide-y divide-gray-100"
                   aria-label={t('myTasks.pageTitle')}
@@ -163,43 +165,64 @@ export default function MyTasksPage() {
                       <li
                         key={task.id}
                         className={`px-4 py-3${task.status === 'complete' ? ' opacity-60' : ''}`}
+                        data-testid={`task-row-${task.id}`}
                       >
                         {/* min-w-0: prevents flex child overflow for long subject strings */}
                         <div className="min-w-0 flex-1">
                           <p
                             className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-400' : ' text-gray-900'}`}
+                            data-testid={`task-subject-${task.id}`}
                           >
                             {task.subject}
                           </p>
                           <div className="flex items-center gap-2 flex-wrap mt-1">
-                            <Badge variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}>
+                            <Badge
+                              variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
+                              data-testid={`task-type-${task.id}`}
+                            >
                               {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
                             </Badge>
                             {task.due_date ? (
                               <span
+                                data-testid={`task-due-date-${task.id}`}
                                 className={`text-xs${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
                               >
                                 {formatLocalDate(task.due_date, i18n.language)}
                                 {overdue && (
-                                  <span className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                                  <span
+                                    className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+                                    data-testid={`task-overdue-badge-${task.id}`}
+                                  >
                                     {t('myTasks.overdue')}
                                   </span>
                                 )}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400">
+                              <span
+                                className="text-xs text-gray-400"
+                                data-testid={`task-due-date-${task.id}`}
+                              >
                                 {t('myTasks.noDueDate')}
                               </span>
                             )}
                           </div>
                           {recordPath && task.linked_record_name ? (
                             <p className="text-xs text-gray-500 mt-1">
-                              <Link to={recordPath} className="text-indigo-600 hover:underline">
+                              <Link
+                                to={recordPath}
+                                className="text-indigo-600 hover:underline"
+                                data-testid={`task-record-link-${task.id}`}
+                              >
                                 {task.linked_record_name}
                               </Link>
                             </p>
                           ) : (
-                            <p className="text-xs text-gray-400 mt-1">{t('myTasks.noRecord')}</p>
+                            <p
+                              className="text-xs text-gray-400 mt-1"
+                              data-testid={`task-record-link-${task.id}`}
+                            >
+                              {t('myTasks.noRecord')}
+                            </p>
                           )}
                           {task.status === 'open' && (
                             <div className="mt-2">
@@ -207,6 +230,7 @@ export default function MyTasksPage() {
                                 type="button"
                                 variant="secondary"
                                 size="sm"
+                                data-testid={`mark-complete-${task.id}`}
                                 onClick={() => completeMutation.mutate(task.id)}
                                 disabled={
                                   completeMutation.isPending &&

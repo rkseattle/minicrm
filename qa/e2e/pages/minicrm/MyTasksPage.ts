@@ -56,18 +56,24 @@ export class MyTasksPage {
   /**
    * Returns whether a task row is currently visible (i.e. shown as open).
    *
+   * Both the mobile card (<li>) and desktop table (<tr>) carry the same
+   * data-testid. We filter to the visible copy so this works at any viewport.
+   *
    * @param taskId - Activity UUID.
    */
   async taskRowIsVisible(taskId: string): Promise<boolean> {
-    await this.page.waitForLoadState('networkidle');
     try {
       const row = await this.page
         .locate([
           { type: 'testId', value: `task-row-${taskId}` },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
+        // Use a longer fallback so React Query has time to fetch after navigation.
         .resolve();
-      return row.isVisible().catch(() => false);
+      // Both mobile card and desktop table carry this testid — filter to the
+      // visible copy so this works at any viewport width.
+      await row.filter({ visible: true }).waitFor({ state: 'visible', timeout: 10_000 });
+      return true;
     } catch {
       return false;
     }
@@ -81,14 +87,21 @@ export class MyTasksPage {
    * We wait for the row to become hidden rather than relying on networkidle, which
    * can fire before the query refetch updates the DOM.
    *
+   * Both the mobile card and desktop table carry the same data-testids, so all
+   * locators filter to the visible copy to work at any viewport width.
+   *
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `mark-complete-${taskId}` },
-      { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
-    ]);
-    // Wait for the row to disappear (query refetch removes it from open-tasks view).
+    // Click the visible "Mark complete" button (mobile card or desktop table).
+    const btn = await this.page
+      .locate([
+        { type: 'testId', value: `mark-complete-${taskId}` },
+        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
+      ])
+      .resolve();
+    await btn.filter({ visible: true }).click();
+    // Wait for the visible row to disappear (query refetch removes it from open-tasks view).
     try {
       const row = await this.page
         .locate([
@@ -96,7 +109,10 @@ export class MyTasksPage {
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
-      await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
+      await row
+        .filter({ visible: true })
+        .waitFor({ state: 'hidden', timeout: 10_000 })
+        .catch(() => null);
     } catch {
       // Row already gone — nothing to wait for.
     }
