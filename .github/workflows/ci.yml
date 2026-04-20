@@ -424,13 +424,18 @@ jobs:
         with:
           pattern: e2e-shard-${{ matrix.project }}-*
           path: ./shard-artifacts
-          merge-multiple: true
+
+      - name: Collect blob reports into flat directory
+        run: |
+          mkdir -p ./blob-report
+          find ./shard-artifacts -name "*.zip" -path "*/blob-report/*" -exec cp {} ./blob-report/ \;
+          echo "Blob zips collected: $(ls ./blob-report | wc -l)"
 
       - name: Merge Playwright reports
         run: >
           npx playwright merge-reports
           --reporter html
-          ./shard-artifacts/blob-report
+          ./blob-report
 
       - name: Merge JUnit XML results
         run: |
@@ -468,7 +473,7 @@ jobs:
         if: always()
         run: >
           npx tsx qa/scripts/merge-healing-artifacts.ts
-          --input ./shard-artifacts/test-results
+          --input ./shard-artifacts
           --output ./healing-report-${{ matrix.project }}.json
 
       - name: Check for shard failures
