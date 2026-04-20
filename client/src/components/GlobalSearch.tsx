@@ -82,7 +82,7 @@ export default function GlobalSearch() {
       {showDropdown && (
         <div
           data-testid="search-results-panel"
-          className="absolute start-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute start-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-x-hidden overflow-y-auto max-h-[min(32rem,calc(100dvh-6rem))]"
         >
           {/* Minimum-length hint */}
           {!isQueryLong && (
@@ -111,12 +111,12 @@ export default function GlobalSearch() {
                       to={`/contacts/${contact.id}`}
                       data-testid={`search-result-contact-${contact.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors"
+                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
                     >
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 truncate">
                         {contact.first_name} {contact.last_name}
                       </span>
-                      <span className="text-xs text-gray-500">{contact.email}</span>
+                      <span className="text-xs text-gray-500 truncate">{contact.email}</span>
                     </Link>
                   </li>
                 ))}
@@ -137,7 +137,7 @@ export default function GlobalSearch() {
                       to={`/accounts/${account.id}`}
                       data-testid={`search-result-account-${account.id}`}
                       onClick={closeDropdown}
-                      className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-indigo-50 transition-colors"
+                      className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-indigo-50 transition-colors truncate"
                     >
                       {account.name}
                     </Link>
@@ -160,10 +160,12 @@ export default function GlobalSearch() {
                       to={`/deals/${deal.id}`}
                       data-testid={`search-result-deal-${deal.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors"
+                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
                     >
-                      <span className="text-sm font-medium text-gray-900">{deal.name}</span>
-                      <span className="text-xs text-gray-500">{deal.stage}</span>
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {deal.name}
+                      </span>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{deal.stage}</span>
                     </Link>
                   </li>
                 ))}
@@ -184,12 +186,12 @@ export default function GlobalSearch() {
                       to={`/leads/${lead.id}`}
                       data-testid={`search-result-lead-${lead.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors"
+                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
                     >
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 truncate">
                         {lead.first_name} {lead.last_name}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 truncate">
                         {lead.company_name ?? lead.email}
                       </span>
                     </Link>
