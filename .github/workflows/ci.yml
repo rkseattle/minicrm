@@ -383,7 +383,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts-functional-${{ matrix.project }}-${{ github.run_id }}
           path: |
@@ -392,24 +392,137 @@ jobs:
             test-results/
           retention-days: 14
 
+  # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
+  # Job dependency chain:
+  #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
+  e2e-aggregate:
+    name: Aggregate E2E Results (${{ matrix.project }})
+    needs: e2e-functional
+    if: always()
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile-web]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Download shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-shard-${{ matrix.project }}-*
+          path: ./shard-artifacts
+          merge-multiple: true
+
+      - name: Merge Playwright reports
+        run: >
+          npx playwright merge-reports
+          --reporter html
+          --output-folder ./playwright-report-merged
+          ./shard-artifacts
+
+      - name: Merge JUnit XML results
+        run: |
+          node --input-type=module << 'EOF'
+          import { readFileSync, writeFileSync } from 'fs';
+          import { execSync } from 'child_process';
+
+          const files = execSync(
+            'find ./shard-artifacts -name "results.xml"'
+          ).toString().trim().split('\n').filter(Boolean);
+
+          if (files.length === 0) {
+            console.error('No results.xml files found');
+            process.exit(1);
+          }
+
+          const testcases = files.flatMap(f => {
+            const xml = readFileSync(f, 'utf8');
+            const matches = xml.match(/<testsuite[\s\S]*?<\/testsuite>/g) ?? [];
+            return matches;
+          });
+
+          const merged = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<testsuites>',
+            ...testcases,
+            '</testsuites>',
+          ].join('\n');
+
+          writeFileSync('merged-results.xml', merged);
+          console.log(`Merged ${files.length} JUnit XML files, ${testcases.length} testsuites`);
+          EOF
+
+      - name: Merge healing artifacts
+        if: always()
+        run: >
+          tsx qa/scripts/merge-healing-artifacts.ts
+          --input ./shard-artifacts
+          --output ./healing-report-${{ matrix.project }}.json
+
+      - name: Check for shard failures
+        if: always()
+        run: |
+          # Exit non-zero if any shard of this project failed, so this job
+          # blocks PR merge correctly even though it runs with if: always()
+          if [[ "${{ needs.e2e-functional.result }}" == "failure" ]]; then
+            echo "One or more shards failed."
+            exit 1
+          fi
+
+      - name: Publish merged results to GitHub Checks
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Playwright – ${{ matrix.project }} (all shards)
+          path: merged-results.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload merged artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-merged-${{ matrix.project }}
+          path: |
+            merged-results.xml
+            playwright-report-merged/
+            healing-report-${{ matrix.project }}.json
+          retention-days: 30
+          if-no-files-found: warn
+
   e2e-functional-report:
     name: Phase 3 - E2E Functional — Report
-    # MINCRM-217: GitHub Actions interprets `needs: e2e-functional` as "wait for ALL
-    # matrix permutations" — all 8 jobs (2 projects × 4 shards) must complete first.
-    needs: e2e-functional
+    # MINCRM-218: Depends on e2e-aggregate (not e2e-functional directly) so that
+    # the PR comment is built from merged outputs covering all shards.
+    # Job dependency chain:
+    #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
+    needs: e2e-aggregate
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
     steps:
-      - name: Download desktop artifacts
-        uses: actions/download-artifact@v8
+      - name: Download desktop merged artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: playwright-artifacts-functional-desktop-${{ github.run_id }}
+          name: e2e-merged-desktop
           path: artifacts/desktop
 
-      - name: Download mobile-web artifacts
-        uses: actions/download-artifact@v8
+      - name: Download mobile-web merged artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: playwright-artifacts-functional-mobile-web-${{ github.run_id }}
+          name: e2e-merged-mobile-web
           path: artifacts/mobile-web
 
       - name: Build combined PR comment (MINCRM-135)
@@ -436,8 +549,8 @@ jobs:
           PYEOF
           }
 
-          DESKTOP=$(parse_xml artifacts/desktop/qa/e2e/test-results/results.xml)
-          MOBILE=$(parse_xml artifacts/mobile-web/qa/e2e/test-results/results.xml)
+          DESKTOP=$(parse_xml artifacts/desktop/merged-results.xml)
+          MOBILE=$(parse_xml artifacts/mobile-web/merged-results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
@@ -447,7 +560,7 @@ jobs:
           HEAL_LINK=""
           for project in desktop mobile-web; do
             dir="artifacts/$project"
-            REPORT="$dir/test-results/healing-report.json"
+            REPORT="$dir/healing-report-$project.json"
             if [ -f "$REPORT" ]; then
               TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
               if [ "$TOTAL" -gt 0 ]; then
