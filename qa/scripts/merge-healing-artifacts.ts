@@ -7,7 +7,7 @@
  *     --input ./all-healing-artifacts \
  *     --output ./healing-report.json
  *
- * Exits with code 1 if no matching healing-*.json files are found.
+ * Writes a zero-heal report and exits 0 if no matching healing-*.json files are found.
  * Deduplicates events where testName + originalStrategy.type + originalStrategy.value
  * are identical.
  *
@@ -101,8 +101,9 @@ export function run(argv: string[]): void {
 
   const inputFiles = findFiles(input, HEALING_FILE_PATTERN);
   if (inputFiles.length === 0) {
-    console.error(`[merge-healing-artifacts] No healing-*.json files found in: ${input}`);
-    process.exit(1);
+    console.log(
+      `[merge-healing-artifacts] No healing-*.json files found in: ${input} — writing zero-heal report`,
+    );
   }
 
   const allEvents: HealEvent[] = [];
