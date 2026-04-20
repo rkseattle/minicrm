@@ -155,6 +155,11 @@ interface AccountListResponse {
   total: number;
 }
 
+interface DealListResponse {
+  data: Array<{ id: string; name: string }>;
+  total: number;
+}
+
 // ---------------------------------------------------------------------------
 // Import — Contacts (F11-IC)
 // ---------------------------------------------------------------------------
@@ -303,6 +308,17 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
   const ran = await importRun(request, 'deals', csvBuffer, mapping);
   expect(ran.status).toBe(200);
   expect(ran.body.created, 'deal should be created').toBeGreaterThanOrEqual(1);
+
+  // Look up the imported deal by account so we can register it for teardown
+  const dealList = await restClient.get<DealListResponse>(
+    `/api/deals?account=${account.id}&limit=10`,
+  );
+  for (const deal of dealList.body.data) {
+    if (deal.name === dealName) {
+      testData.register('deal', deal.id, `/api/deals/${deal.id}`);
+      break;
+    }
+  }
 });
 
 test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and skip flag — deal skipped', async ({
