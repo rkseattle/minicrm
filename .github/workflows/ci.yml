@@ -430,7 +430,7 @@ jobs:
         run: >
           npx playwright merge-reports
           --reporter html
-          ./shard-artifacts
+          ./shard-artifacts/qa/e2e/blob-report
 
       - name: Merge JUnit XML results
         run: |
@@ -468,7 +468,7 @@ jobs:
         if: always()
         run: >
           npx tsx qa/scripts/merge-healing-artifacts.ts
-          --input ./shard-artifacts
+          --input ./shard-artifacts/qa/e2e/test-results
           --output ./healing-report-${{ matrix.project }}.json
 
       - name: Check for shard failures
