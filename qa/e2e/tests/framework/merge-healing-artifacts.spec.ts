@@ -171,7 +171,7 @@ test.describe('merge-healing-artifacts — merge output', () => {
     expect(deduplicated[1]!.testName).toBe('unique test');
   });
 
-  test('findFiles returns empty array when input dir has no healing files (simulates exit-1 path)', () => {
+  test('findFiles returns empty array when input dir has no healing files (zero-heal run)', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-empty-'));
     const result = findFiles(tmpDir, HEALING_FILE_PATTERN);
     expect(result).toHaveLength(0);
