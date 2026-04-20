@@ -8,7 +8,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { globalSearch } from '@/api/search.js';
+import { globalSearch, type LeadSearchResult } from '@/api/search.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
 
@@ -54,7 +54,11 @@ export default function GlobalSearch() {
   }
 
   const hasResults =
-    data && (data.contacts.length > 0 || data.accounts.length > 0 || data.deals.length > 0);
+    data &&
+    (data.contacts.length > 0 ||
+      data.accounts.length > 0 ||
+      data.deals.length > 0 ||
+      data.leads.length > 0);
 
   const showDropdown = open && query.trim().length > 0;
 
@@ -160,6 +164,34 @@ export default function GlobalSearch() {
                     >
                       <span className="text-sm font-medium text-gray-900">{deal.name}</span>
                       <span className="text-xs text-gray-500">{deal.stage}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Leads group */}
+          {data && data.leads.length > 0 && (
+            <section aria-label={t('nav.leads')}>
+              <header className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+                {t('nav.leads')}
+              </header>
+              <ul>
+                {data.leads.map((lead: LeadSearchResult) => (
+                  <li key={lead.id}>
+                    <Link
+                      to={`/leads/${lead.id}`}
+                      data-testid={`search-result-lead-${lead.id}`}
+                      onClick={closeDropdown}
+                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-900">
+                        {lead.first_name} {lead.last_name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {lead.company_name ?? lead.email}
+                      </span>
                     </Link>
                   </li>
                 ))}
