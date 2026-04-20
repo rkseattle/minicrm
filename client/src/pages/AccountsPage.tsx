@@ -563,7 +563,7 @@ export default function AccountsPage() {
                         />
                       </th>
                       <th
-                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                         aria-sort={sortDir}
                       >
                         <button
@@ -587,25 +587,25 @@ export default function AccountsPage() {
                           </svg>
                         </button>
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnType')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnIndustry')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnWebsite')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnEmployeeRange')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnRevenueRange')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('accounts.columnOwner')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('tags.sectionTitle')}
                       </th>
                     </tr>

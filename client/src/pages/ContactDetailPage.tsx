@@ -1191,7 +1191,7 @@ export default function ContactDetailPage() {
                       {/* Probability badge — consistent with DealCard display (MINCRM-179) */}
                       <span
                         data-testid={`linked-deal-probability-${deal.id}`}
-                        className={`text-xs px-1.5 py-0.5 rounded ${
+                        className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
                           deal.probability_is_overridden
                             ? 'bg-indigo-100 text-indigo-700 font-medium'
                             : 'bg-gray-100 text-gray-500 italic'

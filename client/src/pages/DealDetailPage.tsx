@@ -380,6 +380,7 @@ export default function DealDetailPage() {
                     : `${deal.effective_probability}%`
                 }
                 testId="detail-probability"
+                nowrap
               />
               {deal.loss_reason && (
                 <DetailRow
@@ -588,14 +589,27 @@ export default function DealDetailPage() {
 }
 
 /** Renders a labelled read-only row in the detail card, stacked on mobile. */
-function DetailRow({ label, value, testId }: { label: string; value: string; testId: string }) {
+function DetailRow({
+  label,
+  value,
+  testId,
+  nowrap = false,
+}: {
+  label: string;
+  value: string;
+  testId: string;
+  nowrap?: boolean;
+}) {
   return (
     <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
       <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
         {label}
       </span>
       {/* break-words: long currency strings (e.g. ¥1,234,567,890) have no natural break point */}
-      <span className="text-sm text-gray-900 break-words" data-testid={testId}>
+      <span
+        className={`text-sm text-gray-900 break-words${nowrap ? ' whitespace-nowrap' : ''}`}
+        data-testid={testId}
+      >
         {value}
       </span>
     </div>
