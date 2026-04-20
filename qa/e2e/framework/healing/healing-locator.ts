@@ -153,10 +153,16 @@ export function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
 /**
  * Probes a locator by waiting for it to be attached to the DOM within the
  * given timeout. Returns `true` if it resolves, `false` if it times out.
+ *
+ * Uses `.first()` to avoid Playwright strict-mode violations when the locator
+ * matches multiple elements (e.g. a shared data-testid across a dual-render
+ * layout with mobile and desktop copies). The probe only checks presence;
+ * callers that need a specific copy (e.g. the visible one) use `.filter()`
+ * on the returned locator. (MINCRM-212)
  */
 async function probeLocator(locator: Locator, timeoutMs: number): Promise<boolean> {
   try {
-    await locator.waitFor({ state: 'attached', timeout: timeoutMs });
+    await locator.first().waitFor({ state: 'attached', timeout: timeoutMs });
     return true;
   } catch {
     return false;
