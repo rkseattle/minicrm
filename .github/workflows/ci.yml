@@ -179,13 +179,17 @@ jobs:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
     # suites; they run alongside all functional tests in the same phase.
-    name: Phase 3 - E2E Functional (${{ matrix.project }})
+    # MINCRM-217: 4 shards × 4 workers = 16 parallel test slots per project;
+    # target per-project runtime from ~8–10 minutes down to ~2–3 minutes.
+    # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
+    name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
     needs: [server-tests, client-tests]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         project: [desktop, mobile-web]
+        shard: [1, 2, 3, 4]
 
     services:
       postgres:
@@ -286,20 +290,38 @@ jobs:
             sleep 2
           done
 
-      - name: Run functional test suite (MINCRM-137, MINCRM-193)
-        # --workers=4: functional tests are data-isolated and safe to parallelise.
-        # E2E=true: bypasses the login rate limiter for multi-login test runs.
-        # Smoke tests (@smoke @functional) are individual tests in domain suites —
-        # use --grep @smoke to run them in isolation locally.
-        # New @functional spec files under qa/e2e/tests/apps/minicrm/functional/
-        # are picked up automatically — no CI changes required per new spec.
-        run: npx playwright test --config=qa/e2e/playwright.config.ts --project=${{ matrix.project }} --workers=4 --grep @functional qa/e2e/tests/apps/minicrm/functional/
+      # globalSetup runs once per shard — each shard generates its own .auth/admin.json
+      # independently via an API login. N concurrent globalSetup calls against the same
+      # server are safe (no shared filesystem state between shard runners). MINCRM-217
+      # Shard total is hardcoded as 4 in --shard=K/4; update matrix.shard list if changing total.
+      - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217)
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=${{ matrix.project }}
+          --shard=${{ matrix.shard }}/4
+          --workers=4
+          --grep @functional
+          qa/e2e/tests/apps/minicrm/functional/
         env:
+          SHARD_INDEX: ${{ matrix.shard }}
           E2E_BASE_URL: http://localhost:5173
           E2E_API_URL: http://localhost:3001
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
+
+      - name: Upload shard artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shard-${{ matrix.project }}-${{ matrix.shard }}
+          path: |
+            qa/e2e/test-results/results.xml
+            qa/e2e/test-results/healing-shard*.json
+            qa/e2e/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Publish results to GitHub Checks (MINCRM-135)
         uses: dorny/test-reporter@v1
@@ -372,6 +394,8 @@ jobs:
 
   e2e-functional-report:
     name: Phase 3 - E2E Functional — Report
+    # MINCRM-217: GitHub Actions interprets `needs: e2e-functional` as "wait for ALL
+    # matrix permutations" — all 8 jobs (2 projects × 4 shards) must complete first.
     needs: e2e-functional
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
