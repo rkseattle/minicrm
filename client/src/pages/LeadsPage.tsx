@@ -358,25 +358,25 @@ export default function LeadsPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnName')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnCompany')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnSource')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnStatus')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnOwner')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnCreated')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                         {t('leads.columnActions')}
                       </th>
                     </tr>

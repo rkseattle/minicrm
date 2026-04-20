@@ -2,8 +2,7 @@
  * Pill badge for status and categorical labels.
  */
 
-import React from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, HTMLAttributes } from 'react';
 
 /** Visual variant controlling the color scheme */
 type BadgeVariant = 'success' | 'warning' | 'error' | 'neutral';
@@ -30,7 +29,7 @@ export function Badge({
   variant = 'neutral',
   children,
   ...rest
-}: BadgeProps & React.HTMLAttributes<HTMLSpanElement>) {
+}: BadgeProps & HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
       className={[

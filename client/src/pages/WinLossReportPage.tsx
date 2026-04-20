@@ -336,7 +336,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.winRateLabel')}
                 </p>
                 <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 whitespace-nowrap"
                   data-testid="stat-win-rate-value"
                 >
                   {formatWinRate(report.winRate)}

@@ -638,7 +638,7 @@ export default function ContactsPage() {
                         />
                       </th>
                       <th
-                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                         aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
                       >
                         <button
@@ -669,7 +669,7 @@ export default function ContactsPage() {
                         </button>
                       </th>
                       <th
-                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                         aria-sort={sortCol === 'email' ? sortDir : 'none'}
                       >
                         <button
@@ -699,19 +699,19 @@ export default function ContactsPage() {
                           )}
                         </button>
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('contacts.columnPhone')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('contacts.columnTitle')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('contacts.columnDepartment')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('contacts.columnOwner')}
                       </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                         {t('tags.sectionTitle')}
                       </th>
                     </tr>
@@ -742,11 +742,10 @@ export default function ContactsPage() {
                             {contact.first_name} {contact.last_name}
                           </Link>
                         </td>
-                        <td
-                          className="px-4 py-3 text-gray-500 max-w-[200px] truncate"
-                          title={contact.email}
-                        >
-                          {contact.email}
+                        <td className="px-4 py-3 text-gray-500">
+                          <span className="block truncate max-w-[200px]" title={contact.email}>
+                            {contact.email}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                           {contact.phone ?? '—'}
