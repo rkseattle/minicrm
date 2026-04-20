@@ -2,6 +2,7 @@
  * Pill badge for status and categorical labels.
  */
 
+import React from 'react';
 import type { ReactNode } from 'react';
 
 /** Visual variant controlling the color scheme */
@@ -25,13 +26,18 @@ const VARIANT_CLASSES: Record<BadgeVariant, string> = {
  *
  * @param variant - Color scheme (default: neutral)
  */
-export function Badge({ variant = 'neutral', children }: BadgeProps) {
+export function Badge({
+  variant = 'neutral',
+  children,
+  ...rest
+}: BadgeProps & React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
       className={[
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap shrink-0',
         VARIANT_CLASSES[variant],
       ].join(' ')}
+      {...rest}
     >
       {children}
     </span>

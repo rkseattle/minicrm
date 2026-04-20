@@ -112,7 +112,7 @@ export default function MyTasksPage() {
               this mode and would confuse users navigating from the dashboard. */}
           {overdueFilter ? (
             <span
-              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700"
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
               data-testid="filter-chip-overdue"
             >
               {t('myTasks.filterChipOverdue')}
@@ -185,12 +185,12 @@ export default function MyTasksPage() {
                             {task.due_date ? (
                               <span
                                 data-testid={`task-due-date-${task.id}`}
-                                className={`text-xs${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
+                                className={`text-xs whitespace-nowrap${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
                               >
                                 {formatLocalDate(task.due_date, i18n.language)}
                                 {overdue && (
                                   <span
-                                    className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+                                    className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
                                     data-testid={`task-overdue-badge-${task.id}`}
                                   >
                                     {t('myTasks.overdue')}
@@ -328,12 +328,12 @@ export default function MyTasksPage() {
                               {task.due_date ? (
                                 <span
                                   data-testid={`task-due-date-${task.id}`}
-                                  className={overdue ? 'text-red-600 font-medium' : 'text-gray-600'}
+                                  className={`whitespace-nowrap ${overdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}
                                 >
                                   {formatLocalDate(task.due_date, i18n.language)}
                                   {overdue && (
                                     <span
-                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700"
+                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
                                       data-testid={`task-overdue-badge-${task.id}`}
                                     >
                                       {t('myTasks.overdue')}

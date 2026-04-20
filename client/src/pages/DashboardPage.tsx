@@ -170,7 +170,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
               >
                 {/* Type badge */}
                 <span
-                  className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium shrink-0 ${badge.className}`}
+                  className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium shrink-0 whitespace-nowrap ${badge.className}`}
                   data-testid={`recent-activity-type-${entry.id}`}
                 >
                   {badge.label}

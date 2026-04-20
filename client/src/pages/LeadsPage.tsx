@@ -407,7 +407,7 @@ export default function LeadsPage() {
                           <td className="px-4 py-3 text-sm">
                             {isConverted ? (
                               <span
-                                className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800"
+                                className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
                                 data-testid={`badge-converted-${lead.id}`}
                               >
                                 {t('leads.statusConverted')}
@@ -438,7 +438,7 @@ export default function LeadsPage() {
                               <button
                                 type="button"
                                 onClick={() => setEditingStatusId(lead.id)}
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
                                 data-testid={`status-badge-${lead.id}`}
                                 title={t('leads.clickToUpdateStatus')}
                               >

@@ -638,7 +638,7 @@ export default function AccountsPage() {
                         </td>
                         <td className="px-4 py-3" data-testid={`account-type-${account.id}`}>
                           {account.account_type ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap shrink-0">
                               {t(`accounts.accountType.${account.account_type}`)}
                             </span>
                           ) : (

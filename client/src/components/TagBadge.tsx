@@ -36,7 +36,7 @@ export default function TagBadge({ tag, onRemove, removing = false }: TagBadgePr
 
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10"
+      className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 whitespace-nowrap shrink-0"
       data-testid={`tag-badge-${tag.id}`}
     >
       {tag.name}
