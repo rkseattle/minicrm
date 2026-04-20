@@ -213,7 +213,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Address fields: `address_line1`, `address_line2`, `city`, `state_region`, `postal_code`, `country` — collapsible section in the form, displayed on detail page when populated (MINCRM-182)
 - Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated (MINCRM-190)
 - Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written (MINCRM-187)
-- Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:winnerId/merge`
+- Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:id/merge`
 
 ### Accounts (MINCRM-9, MINCRM-10, MINCRM-11, MINCRM-14, MINCRM-183, MINCRM-184)
 
@@ -410,6 +410,24 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Loss reason breakdown table shows top loss reasons by count when loss reasons were captured
 - Report data is filtered by `close_date` (not `created_at`)
 - API endpoint: `GET /api/reports/win-loss?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns `{ wonCount, wonValue, lostCount, lostValue, winRate, lossReasonBreakdown }` (auth required)
+
+### Activity Volume Report (MINCRM-181)
+
+- Admin-only report page at `/reports/activity-volume`, accessible from the navigation bar
+- Displays activity counts broken down by type (Note, Call, Email, Meeting, Task) and by rep for a selected date range
+- Date range defaults to the current month; presets for "this week", "this quarter", and a custom date range are also available
+- Admins can filter by owner (rep); reps always see only their own activity
+- CSV export available for the full report dataset
+- API endpoint: `GET /api/reports/activity-volume?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns activity counts grouped by type and owner (auth required)
+
+### Global Search (MINCRM-207)
+
+- Unified search bar available in the nav bar searches across contacts, accounts, deals, and leads simultaneously
+- Case-insensitive partial-word matching; returns up to 10 results per entity type
+- Ownership-aware: admins see results from all records; reps see only records they own
+- Results panel shows entity type label and key fields (e.g. name, email, stage); clicking a result navigates to the detail page
+- Results panel is capped in height with long text truncated to keep the UI compact
+- API endpoint: `GET /api/search?q=<term>` — returns `{ contacts, accounts, deals, leads }` arrays (auth required)
 
 ### Ownership (MINCRM-14)
 

@@ -39,7 +39,7 @@ shared/schemas/  → Zod schemas imported by BOTH client and server
   paginationSchema.ts  (paginationParamsSchema, PaginatedResponse<T>)
   pipelineStageSchema.ts  (PipelineStageResponse, etc.)
 
-db/migrations/   → sequential node-pg-migrate files (001–031; next = 032)
+db/migrations/   → sequential node-pg-migrate files (001–033; next = 034)
 
 qa/e2e/
   framework/     → HealingLocator, fixtures, REST/gRPC clients (ZERO app domain refs)
@@ -51,7 +51,7 @@ qa/e2e/
 
 ---
 
-## Database Schema (current — migrations 001–031)
+## Database Schema (current — migrations 001–033)
 
 ```
 users
