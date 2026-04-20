@@ -449,7 +449,7 @@ jobs:
 
           const testcases = files.flatMap(f => {
             const xml = readFileSync(f, 'utf8');
-            const matches = xml.match(/<testsuite[\s\S]*?<\/testsuite>/g) ?? [];
+            const matches = xml.match(/<testsuite(?!s)[\s\S]*?<\/testsuite>/g) ?? [];
             return matches;
           });
 
