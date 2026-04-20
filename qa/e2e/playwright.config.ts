@@ -35,8 +35,10 @@ export default defineConfig({
   // Retry failed tests once in CI to reduce flakiness noise
   retries: IS_CI ? 1 : 0,
 
-  // Limit parallel workers in CI to avoid resource contention
-  workers: IS_CI ? 2 : undefined,
+  // In CI, default to 4 workers; override via PW_WORKERS env var for future tuning.
+  // MINCRM-217: sharded runs pass --workers=4 on the CLI which takes precedence,
+  // but this value drives non-sharded local CI invocations via the config.
+  workers: IS_CI ? parseInt(process.env['PW_WORKERS'] ?? '4', 10) : undefined,
 
   reporter: [
     ['html', { open: 'never', outputFolder: path.join(E2E_DIR, 'playwright-report') }],
@@ -46,6 +48,11 @@ export default defineConfig({
     // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
     ...(IS_CI
       ? [['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }] as const]
+      : []),
+    // MINCRM-217: blob reporter for sharded CI runs only; MINCRM-218 aggregation job
+    // uses `playwright merge-reports` to combine blob outputs across all shards.
+    ...(process.env['SHARD_INDEX']
+      ? [['blob', { outputDir: path.join(E2E_DIR, 'blob-report') }] as const]
       : []),
   ],
 
