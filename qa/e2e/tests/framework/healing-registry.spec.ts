@@ -178,4 +178,64 @@ test.describe('HealingRegistry', () => {
     HealingRegistry.instance._reset();
     expect(HealingRegistry.instance.count).toBe(0);
   });
+
+  // MINCRM-216: shard-aware file naming
+  test('flush() uses shard-aware filename when SHARD_INDEX is set', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-shard-test-'));
+    process.env['PW_WORKER_INDEX'] = '3';
+    process.env['SHARD_INDEX'] = '2';
+
+    HealingRegistry.instance.record(
+      'shard test',
+      { type: 'testId', value: 'y' },
+      { type: 'css', value: '.y' },
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const shardPath = path.join(tmpDir, 'test-results', 'healing-shard2-worker3.json');
+    expect(fs.existsSync(shardPath)).toBe(true);
+
+    const legacyPath = path.join(tmpDir, 'test-results', 'healing-3.json');
+    expect(fs.existsSync(legacyPath)).toBe(false);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
+    delete process.env['SHARD_INDEX'];
+  });
+
+  test('flush() uses legacy filename when SHARD_INDEX is absent', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-noshard-test-'));
+    process.env['PW_WORKER_INDEX'] = '4';
+    delete process.env['SHARD_INDEX'];
+
+    HealingRegistry.instance.record(
+      'no shard test',
+      { type: 'testId', value: 'z' },
+      { type: 'css', value: '.z' },
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const legacyPath = path.join(tmpDir, 'test-results', 'healing-4.json');
+    expect(fs.existsSync(legacyPath)).toBe(true);
+
+    const files = fs.readdirSync(path.join(tmpDir, 'test-results'));
+    expect(files.every((f) => !f.startsWith('healing-shard'))).toBe(true);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
+  });
 });

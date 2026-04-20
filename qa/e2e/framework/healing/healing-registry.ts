@@ -34,9 +34,24 @@ const OUTPUT_DIR = 'test-results';
 /**
  * Returns the worker-safe output file path for this process.
  * Playwright sets PW_WORKER_INDEX on each worker process.
+ *
+ * When SHARD_INDEX is set (sharded CI runs), the filename includes the shard
+ * index so artifacts from different shards can coexist in a shared directory
+ * without overwriting each other:
+ *   test-results/healing-shard${SHARD_INDEX}-worker${workerId}.json
+ *
+ * When SHARD_INDEX is absent (local runs or non-sharded CI), the original
+ * naming is used:
+ *   test-results/healing-${workerId}.json
+ *
+ * MINCRM-216
  */
 function workerFilePath(): string {
   const workerId = process.env['PW_WORKER_INDEX'] ?? '0';
+  const shardIndex = process.env['SHARD_INDEX'];
+  if (shardIndex !== undefined) {
+    return path.join(OUTPUT_DIR, `healing-shard${shardIndex}-worker${workerId}.json`);
+  }
   return path.join(OUTPUT_DIR, `healing-${workerId}.json`);
 }
 
