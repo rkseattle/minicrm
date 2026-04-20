@@ -108,7 +108,7 @@ jobs:
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
 
       - name: Publish server test results to GitHub Checks
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Vitest – server
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload server coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: server-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -148,7 +148,7 @@ jobs:
         run: npm run test:coverage --workspace=minicrm-client
 
       - name: Publish client test results to GitHub Checks
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Vitest – client
@@ -158,7 +158,7 @@ jobs:
 
       - name: Upload client coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -313,7 +313,7 @@ jobs:
 
       - name: Upload shard artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-shard-${{ matrix.project }}-${{ matrix.shard }}
           path: |
@@ -324,7 +324,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Publish results to GitHub Checks (MINCRM-135)
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Playwright – ${{ matrix.project }} (functional)
@@ -365,7 +365,7 @@ jobs:
 
       - name: Upload healing report artifact (MINCRM-149)
         if: always() && steps.healing-check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: healing-report-functional-${{ matrix.project }}-${{ github.run_id }}
           path: test-results/healing-report.json
@@ -383,7 +383,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-functional-${{ matrix.project }}-${{ github.run_id }}
           path: |
@@ -420,7 +420,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Download shard artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: e2e-shard-${{ matrix.project }}-*
           path: ./shard-artifacts
@@ -482,7 +482,7 @@ jobs:
           fi
 
       - name: Publish merged results to GitHub Checks
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Playwright – ${{ matrix.project }} (all shards)
@@ -492,7 +492,7 @@ jobs:
 
       - name: Upload merged artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-merged-${{ matrix.project }}
           path: |
@@ -513,13 +513,13 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Download desktop merged artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: e2e-merged-desktop
           path: artifacts/desktop
 
       - name: Download mobile-web merged artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: e2e-merged-mobile-web
           path: artifacts/mobile-web
@@ -603,13 +603,13 @@ jobs:
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Download server coverage artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: server-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/server-coverage
 
       - name: Download client coverage artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-coverage
