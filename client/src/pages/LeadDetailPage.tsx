@@ -167,14 +167,14 @@ export default function LeadDetailPage() {
             <div className="mt-1 flex items-center gap-2">
               {isConverted ? (
                 <span
-                  className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800"
+                  className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
                   data-testid="lead-converted-badge"
                 >
                   {t('leads.statusConverted')}
                 </span>
               ) : (
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
                   data-testid="lead-status-badge"
                 >
                   {t(`leads.status${lead.status}`)}
@@ -263,7 +263,10 @@ export default function LeadDetailPage() {
                 <dt className="text-xs font-medium uppercase text-gray-500">
                   {t('leads.emailLabel')}
                 </dt>
-                <dd className="mt-1 text-sm text-gray-900" data-testid="lead-email">
+                <dd
+                  className="mt-1 text-sm text-gray-900 whitespace-nowrap"
+                  data-testid="lead-email"
+                >
                   {lead.email}
                 </dd>
               </div>
@@ -272,7 +275,7 @@ export default function LeadDetailPage() {
                   <dt className="text-xs font-medium uppercase text-gray-500">
                     {t('leads.phoneLabel')}
                   </dt>
-                  <dd className="mt-1 text-sm text-gray-900">{lead.phone}</dd>
+                  <dd className="mt-1 text-sm text-gray-900 whitespace-nowrap">{lead.phone}</dd>
                 </div>
               )}
               {lead.company_name && (
@@ -321,7 +324,7 @@ export default function LeadDetailPage() {
                 <dt className="text-xs font-medium uppercase text-gray-500">
                   {t('leads.createdLabel')}
                 </dt>
-                <dd className="mt-1 text-sm text-gray-900">
+                <dd className="mt-1 text-sm text-gray-900 whitespace-nowrap">
                   {new Date(lead.created_at).toLocaleDateString()}
                 </dd>
               </div>

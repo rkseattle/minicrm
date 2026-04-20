@@ -364,7 +364,7 @@ export default function AuditLogPage() {
                         <div className="md:grid md:grid-cols-[160px_140px_120px_120px_1fr] md:gap-3 flex flex-col gap-1">
                           <time
                             dateTime={entry.created_at}
-                            className="text-xs text-gray-500"
+                            className="text-xs text-gray-500 whitespace-nowrap"
                             data-testid={`audit-log-time-${entry.id}`}
                           >
                             {formatTimestamp(entry.created_at, i18n.language)}

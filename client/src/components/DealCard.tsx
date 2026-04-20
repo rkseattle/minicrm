@@ -93,10 +93,17 @@ export default function DealCard({
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-        <span data-testid={`${testIdPrefix}deal-card-value-${deal.id}`}>
+        {/* min-w-0 + break-words: prevents long currency values from overflowing the flex row */}
+        <span
+          className="min-w-0 break-words"
+          data-testid={`${testIdPrefix}deal-card-value-${deal.id}`}
+        >
           {formatValue(deal.value, deal.currency, i18n.language)}
         </span>
-        <span data-testid={`${testIdPrefix}deal-card-close-date-${deal.id}`}>
+        <span
+          className="shrink-0 ms-2"
+          data-testid={`${testIdPrefix}deal-card-close-date-${deal.id}`}
+        >
           {deal.close_date ?? '—'}
         </span>
       </div>
@@ -105,7 +112,7 @@ export default function DealCard({
       <div className="flex items-center gap-1 mb-2">
         <span
           data-testid={`${testIdPrefix}deal-card-probability-${deal.id}`}
-          className={`text-xs px-1.5 py-0.5 rounded ${
+          className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
             deal.probability_is_overridden
               ? 'bg-indigo-100 text-indigo-700 font-medium'
               : 'bg-gray-100 text-gray-500 italic'

@@ -291,7 +291,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         )}
                         {activity.due_date && (
                           <p
-                            className="mt-1 text-xs text-gray-400"
+                            className="mt-1 text-xs text-gray-400 whitespace-nowrap"
                             data-testid={`activity-due-date-${activity.id}`}
                           >
                             {t('activities.dueDateLabel')}: {activity.due_date}

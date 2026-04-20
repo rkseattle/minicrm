@@ -267,7 +267,10 @@ export default function WinLossReportPage() {
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {t('reports.winLoss.wonCountLabel')}
                 </p>
-                <p className="text-3xl font-bold text-green-600" data-testid="stat-won-count-value">
+                <p
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600"
+                  data-testid="stat-won-count-value"
+                >
                   {report.wonCount}
                 </p>
               </div>
@@ -281,7 +284,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.wonValueLabel')}
                 </p>
                 <p
-                  className="text-2xl font-bold text-green-600 break-words"
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
                   data-testid="stat-won-value-value"
                 >
                   {report.mixedCurrencies
@@ -298,7 +301,10 @@ export default function WinLossReportPage() {
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {t('reports.winLoss.lostCountLabel')}
                 </p>
-                <p className="text-3xl font-bold text-red-600" data-testid="stat-lost-count-value">
+                <p
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600"
+                  data-testid="stat-lost-count-value"
+                >
                   {report.lostCount}
                 </p>
               </div>
@@ -312,7 +318,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.lostValueLabel')}
                 </p>
                 <p
-                  className="text-2xl font-bold text-red-600 break-words"
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
                   data-testid="stat-lost-value-value"
                 >
                   {report.mixedCurrencies
@@ -330,7 +336,7 @@ export default function WinLossReportPage() {
                   {t('reports.winLoss.winRateLabel')}
                 </p>
                 <p
-                  className="text-2xl font-bold text-gray-900 break-words"
+                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
                   data-testid="stat-win-rate-value"
                 >
                   {formatWinRate(report.winRate)}

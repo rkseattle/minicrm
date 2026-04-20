@@ -742,8 +742,15 @@ export default function ContactsPage() {
                             {contact.first_name} {contact.last_name}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-gray-500">{contact.email}</td>
-                        <td className="px-4 py-3 text-gray-500">{contact.phone ?? '—'}</td>
+                        <td
+                          className="px-4 py-3 text-gray-500 max-w-[200px] truncate"
+                          title={contact.email}
+                        >
+                          {contact.email}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {contact.phone ?? '—'}
+                        </td>
                         <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
                         <td

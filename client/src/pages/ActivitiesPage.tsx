@@ -197,7 +197,7 @@ export default function ActivitiesPage() {
                           {/* Type badge */}
                           <td className="px-6 py-4">
                             <span
-                              className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                              className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${badge.className}`}
                               data-testid={`activity-type-${activity.id}`}
                             >
                               {activity.type}

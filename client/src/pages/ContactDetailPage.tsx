@@ -658,11 +658,13 @@ export default function ContactDetailPage() {
               label={t('contacts.emailLabel')}
               value={contact.email}
               testId="detail-email"
+              nowrap
             />
             <DetailRow
               label={t('contacts.phoneLabel')}
               value={contact.phone ?? '—'}
               testId="detail-phone"
+              nowrap
             />
             <DetailRow
               label={t('contacts.titleLabel')}
@@ -759,6 +761,7 @@ export default function ContactDetailPage() {
                   label={t('contacts.postalCodeLabel')}
                   value={contact.postal_code}
                   testId="detail-postal-code"
+                  nowrap
                 />
               )}
               {contact.country && (
@@ -1226,13 +1229,26 @@ export default function ContactDetailPage() {
 }
 
 /** Renders a labelled read-only row in the detail card, stacked on mobile. */
-function DetailRow({ label, value, testId }: { label: string; value: string; testId: string }) {
+function DetailRow({
+  label,
+  value,
+  testId,
+  nowrap = false,
+}: {
+  label: string;
+  value: string;
+  testId: string;
+  nowrap?: boolean;
+}) {
   return (
     <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
       <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
         {label}
       </span>
-      <span className="text-sm text-gray-900" data-testid={testId}>
+      <span
+        className={`text-sm text-gray-900${nowrap ? ' whitespace-nowrap' : ''}`}
+        data-testid={testId}
+      >
         {value}
       </span>
     </div>
