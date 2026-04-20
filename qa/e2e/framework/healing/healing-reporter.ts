@@ -8,10 +8,17 @@
  * AI heals (wasAiHeal=true) are flagged separately in the summary — none are
  * expected until S3 is implemented.
  *
+ * Sharded runs: in a sharded CI setup, each shard runner executes its own
+ * Playwright process and its own HealingReporter.onEnd(). The per-shard
+ * reporter produces a partial healing-report.json containing only that shard's
+ * events. The complete merged report across all shards is produced by the
+ * standalone merge script (qa/scripts/merge-healing-artifacts.ts), which runs
+ * in a post-shard CI step after artifacts from all shards are downloaded.
+ *
  * Register in playwright.config.ts:
  *   reporters: [['./framework/healing/healing-reporter.ts']]
  *
- * MINCRM-124
+ * MINCRM-124, MINCRM-216
  */
 
 import type { Reporter, TestResult, TestCase, FullResult } from '@playwright/test/reporter';
@@ -21,7 +28,9 @@ import { HealingRegistry } from './healing-registry.js';
 import type { HealEvent } from './healing-registry.js';
 
 const OUTPUT_DIR = 'test-results';
-const WORKER_FILE_PATTERN = /^healing-\d+\.json$/;
+// Matches both the original format (healing-0.json) and the shard-aware format
+// (healing-shard1-worker0.json) produced when SHARD_INDEX is set. MINCRM-216
+const WORKER_FILE_PATTERN = /^healing-(shard\d+-worker\d+|\d+)\.json$/;
 const REPORT_FILE = path.join(OUTPUT_DIR, 'healing-report.json');
 
 /** Schema of the merged healing report file. */
