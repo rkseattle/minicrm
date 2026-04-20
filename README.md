@@ -45,6 +45,24 @@ The application will be available at:
 - Client: http://localhost:5173
 - Server API: http://localhost:3001
 
+## Screenshots
+
+### Dashboard
+
+![MiniCRM dashboard showing pipeline value, deal counts, and recent activity](docs/screenshots/01-dashboard.png)
+
+### Pipeline Board
+
+![Deals pipeline board with Kanban columns for each stage](docs/screenshots/05-deals-board.png)
+
+### Contacts
+
+![Contacts list with search and filter controls](docs/screenshots/02-contacts.png)
+
+### Leads
+
+![Leads list with status badges and conversion workflow](docs/screenshots/07-leads.png)
+
 ## Local Development (without Docker)
 
 ```bash

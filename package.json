@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "remove:demo": "tsx scripts/remove-demo.ts",
-    "seed:e2e-admin": "npm run seed:e2e-admin --workspace=minicrm-server"
+    "seed:e2e-admin": "npm run seed:e2e-admin --workspace=minicrm-server",
+    "screenshot": "tsx scripts/screenshot.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
