@@ -84,6 +84,86 @@ npm test --workspace=minicrm-client
 npm run test:coverage --workspace=minicrm-client
 ```
 
+**E2E tests** (requires the app running and a `minicrm_e2e` database):
+
+```bash
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
+# Smoke tests only:
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @smoke
+```
+
+Copy `qa/e2e/.env.example` to `qa/e2e/.env` and fill in `E2E_BASE_URL`, `E2E_ADMIN_EMAIL`, and `E2E_ADMIN_PASSWORD` before running.
+
+## E2E Test Framework (`qa/e2e/`)
+
+The E2E suite is built on Playwright with a custom framework layer designed for long-term resilience and maintainability. All specs are tagged `@functional`; a subset is additionally tagged `@smoke`.
+
+### Architecture
+
+Tests are organized in four layers:
+
+```
+Tests (qa/e2e/tests/apps/minicrm/functional/<domain>/)
+    ↓  import behaviors, never raw locators
+Behaviors (qa/e2e/behaviors/minicrm/)
+    ↓  named async fns; compose Page Objects; return typed results; no assertions
+Page Objects (qa/e2e/pages/minicrm/)
+    ↓  encapsulate all UI interactions; use HealingLocators
+HealingLocators (qa/e2e/framework/healing/)
+    ↓  multi-strategy resilient element finders
+```
+
+Tests import from `@apps/minicrm/fixtures.js` rather than `@playwright/test` directly, which provides the custom fixtures alongside the standard ones.
+
+### Self-Healing Locators
+
+`HealingLocator` resolves elements using a priority-ordered list of strategies. When the primary strategy fails, it automatically falls back through the list and records the event. This keeps tests green through routine UI refactors without requiring immediate selector updates.
+
+Strategy priority order (highest to lowest):
+
+1. `testId` — `data-testid` attribute (most resilient)
+2. `role` — ARIA role + name
+3. `label` — form label text
+4. `text` — visible text
+5. `css` — CSS selector
+6. `xpath` — XPath expression (least resilient)
+
+When all static strategies are exhausted and an `intent` string is provided, the locator optionally falls back to an AI-powered recovery step that generates a candidate selector from a scoped DOM snapshot (requires `ANTHROPIC_API_KEY`; disabled if not set).
+
+### Healing Reports
+
+Every heal event (primary strategy failed; fallback used) is recorded in memory per worker and flushed to per-shard JSON files at the end of a run. A post-CI merge step produces a single `healing-report.json` summarizing total heals, AI vs. static heals, and per-event detail. In CI this report is posted as a sticky PR comment so teams can spot selectors that are consistently brittle.
+
+### Test Data Management
+
+The `TestDataManager` fixture tracks every entity created during a test and deletes them in reverse order during teardown. Tests create entities via the REST API using helpers from `qa/e2e/apps/minicrm/helpers.ts` (e.g. `createTestContact`, `createTestDeal`) which automatically register the entity for cleanup. Pre-existing data is never touched.
+
+### REST and gRPC Clients
+
+Both are available as Playwright fixtures:
+
+- `restClient` — typed HTTP client wrapping Playwright's `APIRequestContext`; throws `RestClientError` on 4xx/5xx; supports Bearer, API Key, and Basic Auth strategies.
+- `grpcClient` — wraps `@grpc/grpc-js` with JSON serialization; supports unary calls and async-iterable server-streaming calls.
+
+### Global Auth Setup
+
+`globalSetup.ts` runs once before all workers. It logs in via the REST API and writes session state (cookies) to `.auth/admin.json`. All tests reuse this cached state, eliminating per-test browser login overhead. Tests that intentionally exercise unauthenticated flows opt out with `test.use({ storageState: undefined })`.
+
+### Framework Purity
+
+The `qa/e2e/framework/` directory must contain zero application-domain references (no MiniCRM-specific strings, route paths, or domain terms). A CI step (`check-framework-purity.sh`) enforces this — the framework is designed to be dropped into any project unchanged.
+
+### CI Integration
+
+E2E tests run in Phase 3 of the CI pipeline (after server and client unit tests pass). Each push triggers two parallel matrix dimensions:
+
+| Dimension | Values                  |
+| --------- | ----------------------- |
+| Project   | `desktop`, `mobile-web` |
+| Shard     | `1`, `2`, `3`, `4`      |
+
+That produces 8 concurrent runners, each with 4 Playwright workers — 32 parallel test slots per push. Per-shard artifacts (JUnit XML, blob reports, healing files) are collected and merged by an aggregation job. The merged JUnit results are posted to the GitHub Checks tab via `dorny/test-reporter`; the test summary and healing report are posted as sticky PR comments.
+
 ## Automated PR Code Review (MINCRM-178)
 
 All pull requests are automatically reviewed by Claude Code via `.github/workflows/claude-review.yml`. The review runs on `pull_request` events (opened, synchronize, reopened) and posts inline comments and a summary review.
