@@ -78,6 +78,7 @@ interface LeadSingleResponse {
     status: string;
     converted_at: string | null;
     converted_contact_id: string | null;
+    converted_account_id: string | null;
     converted_deal_id: string | null;
   };
 }
@@ -291,6 +292,13 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   if (conv.converted_deal_id) {
     testData.register('deal', conv.converted_deal_id, `/api/deals/${conv.converted_deal_id}`);
   }
+  if (conv.converted_account_id) {
+    testData.register(
+      'account',
+      conv.converted_account_id,
+      `/api/accounts/${conv.converted_account_id}`,
+    );
+  }
 });
 
 test('@functional F9-V2: Converted lead shows badge in list view', async ({
@@ -327,6 +335,13 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
       'deal',
       conversion.body.conversion.deal_id,
       `/api/deals/${conversion.body.conversion.deal_id}`,
+    );
+  }
+  if (conversion.body.conversion.account_id) {
+    testData.register(
+      'account',
+      conversion.body.conversion.account_id,
+      `/api/accounts/${conversion.body.conversion.account_id}`,
     );
   }
 
