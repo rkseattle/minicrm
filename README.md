@@ -2,6 +2,8 @@
 
 A minimal viable CRM (alpha / proof of concept) built to validate the core sales workflow loop: create a contact → attach them to a deal → log activity → move the deal through a pipeline.
 
+[![Build Status](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml/badge.svg)](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+
 ## Tech Stack
 
 - **Frontend:** React (Vite), TanStack Query, React Router, Tailwind CSS
@@ -12,38 +14,23 @@ A minimal viable CRM (alpha / proof of concept) built to validate the core sales
 - **Infrastructure:** Docker + Docker Compose
 - **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`)
 
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Node.js 20+ (for local development outside Docker)
-
-### 1. Configure environment variables
+## Quick Start
 
 ```bash
+git clone https://github.com/rkseattle/minicrm.git
+cd minicrm
 cp .env.example .env
-# Edit .env and fill in real values
+# Edit .env: set ADMIN_PASSWORD and generate JWT_SECRET (see .env.example for instructions)
+docker compose up -d
 ```
 
-### 2. Run with Docker
+Open http://localhost:5173 — the admin account is created automatically on first boot.
 
-**Development** (source mounts + hot-reload):
+To populate realistic demo data:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+npm run seed:demo
 ```
-
-**Production-like** (built images, no source mounts):
-
-```bash
-docker compose up
-```
-
-The application will be available at:
-
-- Client: http://localhost:5173
-- Server API: http://localhost:3001
 
 ## Screenshots
 
@@ -63,7 +50,20 @@ The application will be available at:
 
 ![Leads list with status badges and conversion workflow](docs/screenshots/07-leads.png)
 
-## Local Development (without Docker)
+## Local Development
+
+To run with source mounts and hot-reload instead of built images:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+The application will be available at:
+
+- Client: http://localhost:5173
+- Server API: http://localhost:3001
+
+To develop without Docker:
 
 ```bash
 npm install
@@ -182,7 +182,7 @@ E2E tests run in Phase 3 of the CI pipeline (after server and client unit tests 
 
 That produces 8 concurrent runners, each with 4 Playwright workers — 32 parallel test slots per push. Per-shard artifacts (JUnit XML, blob reports, healing files) are collected and merged by an aggregation job. The merged JUnit results are posted to the GitHub Checks tab via `dorny/test-reporter`; the test summary and healing report are posted as sticky PR comments.
 
-## Automated PR Code Review (MINCRM-178)
+## Automated PR Code Review
 
 All pull requests are automatically reviewed by Claude Code via `.github/workflows/claude-review.yml`. The review runs on `pull_request` events (opened, synchronize, reopened) and posts inline comments and a summary review.
 
@@ -193,7 +193,7 @@ All pull requests are automatically reviewed by Claude Code via `.github/workflo
 - **Frontend** — missing `data-testid` attributes on interactable elements; hardcoded user-facing strings not wrapped in `t('key')`; physical Tailwind directional classes instead of logical property utilities (RTL safety)
 - **Security** — missing `authenticate` middleware; missing `requireRole('admin')` on admin routes; PATCH/DELETE ownership not enforced; `owner_id` from request body instead of `req.user.id`
 - **Documentation** — new service functions missing JSDoc; async handlers not wrapped in `try/catch` or `asyncHandler`; non-standard error response shape
-- **Scope** — any implementation touching out-of-scope MINCRM-5, 6, or 7 features
+- **Scope** — any implementation touching out-of-scope features
 - **PR title** — conventional commit prefix (`feat:`, `fix:`, `chore:`, `test:`, `docs:`)
 
 ### What it does NOT flag
@@ -246,7 +246,7 @@ Migrations run automatically on server startup. To run manually:
 npm run migrate --workspace=minicrm-server
 ```
 
-## Demo Data (MINCRM-102)
+## Demo Data
 
 Seed realistic demo data into any MiniCRM environment for local development or live demos:
 
@@ -274,7 +274,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 
 ## Implemented Features
 
-### Auth (MINCRM-21–23, MINCRM-29)
+### Auth
 
 - Email/password login and logout
 - Admin can invite users (generates a set-password link)
@@ -285,20 +285,20 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Password requirements: at least 8 characters, at least one letter, and at least one number (validated on both client and server via shared Zod schema)
 - Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
-### Leads (MINCRM-173, MINCRM-174, MINCRM-175)
+### Leads
 
 - Full CRUD for lead records with required fields (`first_name`, `email`) and optional fields (`last_name`, `phone`, `company_name`, `lead_source`, `notes`)
 - Lead status lifecycle: `New → Contacted → Qualified → Disqualified`; inline status update from list view with color-coded badges
 - Optional disqualification reason stored when status is set to `Disqualified`; disqualified leads hidden by default with a "Show disqualified" toggle
 - Status change history recorded in `lead_status_history` and displayed on the lead detail page
-- Atomic lead conversion (MINCRM-175): "Convert Lead" button creates a contact, account, and deal in a single transaction; converted leads hidden by default with a "Show converted" toggle
+- Atomic lead conversion: "Convert Lead" button creates a contact, account, and deal in a single transaction; converted leads hidden by default with a "Show converted" toggle
 - Conversion modal prefills contact and deal fields from the lead; supports creating a new account or linking an existing one via typeahead search
 - "Converted from lead" back-reference banner shown on the created contact and deal detail pages
 - Duplicate email warning on create (matching contact behavior); rep can dismiss or create anyway
 - Full CRUD REST API at `/api/leads`; conversion endpoint at `POST /api/leads/:id/convert`; status history at `GET /api/leads/:id/status-history`
 - Database migrations: `020_create_leads.js` adds `leads` and `lead_status_history` tables; adds `source_lead_id` FK column to `contacts` and `deals`
 
-### Contacts (MINCRM-8, MINCRM-11, MINCRM-14, MINCRM-182, MINCRM-187, MINCRM-190)
+### Contacts
 
 - List all contacts in a sortable table with owner column
 - Create, edit, and delete contacts via inline forms
@@ -307,29 +307,29 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Search contacts by linked account name via the account search input (`?accountSearch=<text>`)
 - Filter contacts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
-- Duplicate email detection on create: returns a persistent inline warning banner with a link to the existing contact; rep can still proceed by clicking "Create anyway" (MINCRM-13)
-- Address fields: `address_line1`, `address_line2`, `city`, `state_region`, `postal_code`, `country` — collapsible section in the form, displayed on detail page when populated (MINCRM-182)
-- Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated (MINCRM-190)
-- Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written (MINCRM-187)
+- Duplicate email detection on create: returns a persistent inline warning banner with a link to the existing contact; rep can still proceed by clicking "Create anyway"
+- Address fields: `address_line1`, `address_line2`, `city`, `state_region`, `postal_code`, `country` — collapsible section in the form, displayed on detail page when populated
+- Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated
+- Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written
 - Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:id/merge`
 
-### Accounts (MINCRM-9, MINCRM-10, MINCRM-11, MINCRM-14, MINCRM-183, MINCRM-184)
+### Accounts
 
 - List all accounts in a sortable table with owner column
 - Create, edit, and delete accounts via inline forms
 - Account detail page with full field display including resolved owner name
 - Search accounts by company name via the search input (passes `?search=<text>` to the API; case-insensitive substring match on `name`)
 - Filter accounts by industry via `?industry=<text>`
-- Filter accounts by account type via `?accountType=<type>` (MINCRM-183)
+- Filter accounts by account type via `?accountType=<type>`
 - Filter accounts by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
-- Account type field: `Prospect`, `Customer`, `Partner`, `Vendor`, `Competitor`, `Other` — displayed as badge on list and detail pages (MINCRM-183)
-- Parent account relationship: accounts may have a parent account; circular chain detection prevents invalid hierarchies; subsidiary accounts listed on parent detail page (MINCRM-184)
-- Type-ahead parent account search in the edit form (MINCRM-184)
+- Account type field: `Prospect`, `Customer`, `Partner`, `Vendor`, `Competitor`, `Other` — displayed as badge on list and detail pages
+- Parent account relationship: accounts may have a parent account; circular chain detection prevents invalid hierarchies; subsidiary accounts listed on parent detail page
+- Type-ahead parent account search in the edit form
 - Linked contacts listed on the account detail page
 - Full CRUD REST API at `/api/accounts`; additional endpoints: `GET /api/accounts/search`, `GET /api/accounts/:id/children`
 
-### Deals (MINCRM-15)
+### Deals
 
 - List all deals in a table with stage, value, close date, linked account, and owner columns
 - Create, edit, and delete deals via inline forms
@@ -341,7 +341,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Full CRUD REST API at `/api/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
 
-### Activities & Tasks (MINCRM-19, MINCRM-20)
+### Activities & Tasks
 
 - Unified activity model with types: Note, Call, Email, Meeting, Task
 - Activities can be attached to a contact, account, or deal (at least one required)
@@ -352,14 +352,14 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Full CRUD REST API at `/api/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
 - Database migration: `006_create_activities.js`
 
-#### Structured communication logging (MINCRM-24)
+#### Structured communication logging
 
 - Call and Email activities support two additional fields: **direction** (Inbound / Outbound, required) and **outcome** (free text, optional)
 - The `ActivityForm` conditionally shows direction and outcome fields when the selected type is Call or Email; direction is required before the form can be submitted
 - The `ActivityTimeline` displays the direction label below the type badge and the outcome text in the card body
 - Database migration: `010_add_communication_fields_to_activities.js` (adds `direction activity_direction` and `outcome text` columns, both nullable)
 
-#### My Tasks view (MINCRM-20)
+#### My Tasks view
 
 - Dedicated `/tasks` page (linked in the nav bar as **My Tasks**) listing all Task-type activities owned by the current user
 - Tasks sorted by due date ascending (no due date appears last)
@@ -369,7 +369,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Completed tasks are hidden by default; a **Show completed** toggle reveals them
 - API endpoint: `GET /api/activities/my-tasks` — returns Task-type activities for the authenticated user, with `linked_record_name` and `linked_record_type` fields joined from the parent record
 
-### Admin Settings (MINCRM-30)
+### Admin Settings
 
 - New `/admin/settings` route and **Admin Settings** nav link (visible to admins only)
 - Admin can set a system-wide default language from a dropdown populated with all supported locales
@@ -380,7 +380,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
 
-### Navigation Layout (MINCRM-133)
+### Navigation Layout
 
 - Admin can choose between three navigation layouts from the **Admin Settings** page: **Top Nav** (tab bar, default), **Left Nav** (collapsible sidebar), and **Hamburger Menu** (icon-triggered overlay)
 - The selected layout is stored in the `system_settings` table (`nav_layout` key) and applies immediately to all users without a page reload
@@ -391,11 +391,11 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Each layout is a self-contained React component (`NavTop`, `NavLeft`, `NavHamburger`) with `data-testid` attributes following the `nav-{layout}-{destination}` convention (e.g. `nav-top-contacts`, `nav-left-deals`, `nav-hamburger-tasks`)
 - Database migration: `014_add_nav_layout_setting.js` seeds the `nav_layout = 'top'` default row
 
-### Email Notifications (MINCRM-161, MINCRM-162, MINCRM-163)
+### Email Notifications
 
-- **Overdue task digest** (MINCRM-161): A daily cron job runs at 08:00 server time. For each active user who has opted in to overdue task notifications, it sends one HTML email listing all open Tasks past their due date that have not previously been notified. Deduplication is tracked in the `overdue_task_notifications` table — each task is notified at most once.
-- **Assignment notifications** (MINCRM-162): When a contact, account, or deal is reassigned, the new owner receives an email if they have assignments notifications enabled. Multiple assignment events within a 2-minute window are batched into a single email per recipient.
-- **User notification preferences** (MINCRM-163): Every authenticated user can configure three per-category toggles on the `/profile` page: overdue task digests, assignment notifications, and deal stage change notifications. Admins additionally have a global kill switch on the **Admin Settings** page that suppresses all notification emails regardless of individual preferences.
+- **Overdue task digest**: A daily cron job runs at 08:00 server time. For each active user who has opted in to overdue task notifications, it sends one HTML email listing all open Tasks past their due date that have not previously been notified. Deduplication is tracked in the `overdue_task_notifications` table — each task is notified at most once.
+- **Assignment notifications**: When a contact, account, or deal is reassigned, the new owner receives an email if they have assignments notifications enabled. Multiple assignment events within a 2-minute window are batched into a single email per recipient.
+- **User notification preferences**: Every authenticated user can configure three per-category toggles on the `/profile` page: overdue task digests, assignment notifications, and deal stage change notifications. Admins additionally have a global kill switch on the **Admin Settings** page that suppresses all notification emails regardless of individual preferences.
 - API endpoints:
   - `GET /api/users/me/notification-preferences` — auth required, returns `{ preferences: { notify_overdue_tasks, notify_assignments, notify_deal_stage_changes } }`
   - `PATCH /api/users/me/notification-preferences` — auth required, body with any subset of the three boolean fields
@@ -405,7 +405,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Database migrations: `016_add_notification_prefs_to_users.js` adds three boolean columns to `users`; `017_create_overdue_task_notifications.js` creates the dedup table and seeds the `email_notifications_enabled` system setting
 - Email transport uses nodemailer with SMTP env vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`); in development and test environments emails are stubbed (logged to console rather than sent)
 
-### Custom Pipeline Stages (MINCRM-180)
+### Custom Pipeline Stages
 
 - Admin Settings includes a **Pipeline Stages** section where admins can add, rename, reorder (up/down buttons), and delete custom pipeline stages with per-stage default probability percentages
 - **Closed Won** and **Closed Lost** are always present, always last, and cannot be renamed or deleted (marked `is_fixed = true` in the DB)
@@ -423,7 +423,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `DELETE /api/settings/pipeline-stages/:id` — admin only, returns `{ id }` on success; 409 if open deals exist
 - Database migration: `021_create_pipeline_stages.js` creates the `pipeline_stages` table, seeds the six default stages, and drops the hardcoded `deals_stage_check` constraint
 
-### Multi-Currency Deal Values (MINCRM-189)
+### Multi-Currency Deal Values
 
 - Each deal now stores an ISO 4217 currency code (`USD`, `EUR`, `GBP`, `CAD`, `AUD`, `JPY`, `CHF`) alongside its value
 - The **Deal Form** includes a currency selector; new deals default to the system-wide default currency (see below)
@@ -437,7 +437,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `PATCH /api/settings/default-currency` — admin only, body `{ currency }`, returns `{ currency }`
 - Database migration: `031_add_currency_to_deals.js` adds `currency VARCHAR(3) NOT NULL DEFAULT 'USD'` to the `deals` table
 
-### Tags / Labels (MINCRM-186)
+### Tags / Labels
 
 - **Tags** are freeform labels that can be attached to any contact, account, or deal
 - **Tag input** on detail pages (`ContactDetailPage`, `AccountDetailPage`, `DealDetailPage`): type to create or search existing tags, press Enter or comma to confirm, × to remove; matching existing tags appear as a suggestion dropdown (combobox pattern, keyboard-accessible)
@@ -459,7 +459,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `DELETE /api/contacts/:id/tags/:tagId` — detach a tag from a contact
   - Same pattern applies to `/api/accounts/:id/tags` and `/api/deals/:id/tags`
 
-### User Language Preference (MINCRM-31)
+### User Language Preference
 
 - Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar
 - Personal preference overrides the system-wide default at all times; setting it to "Use system default" clears the preference and falls back to the admin-configured default
@@ -470,7 +470,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `PATCH /api/users/me/language` — auth required, body `{ language: SupportedLocale | null }`, returns `{ language }`
 - Database migration: `009_add_user_preferred_language.js` adds the nullable `preferred_language` column to the `users` table
 
-### Home Dashboard (MINCRM-25)
+### Home Dashboard
 
 - Stat cards on the dashboard home page: overdue tasks, tasks due today, open deal count, and total open pipeline value
 - Overdue task count is clickable and navigates to **My Tasks** pre-filtered to show only overdue tasks (`/my-tasks?filter=overdue`)
@@ -479,12 +479,12 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Data is always fresh on page load (React Query `staleTime: 0`)
 - API endpoint: `GET /api/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
 
-### Automation Rules (MINCRM-27)
+### Automation Rules
 
 - Admin-only page at `/admin/automation`, accessible from the **Automation** nav link (visible to admins only)
 - Admins can create automation rules that pair a **trigger** with an **action**
 - **Triggers:** Deal stage changes to a specific stage, Deal is created, Contact is created
-- **Actions:** Create task (with configurable subject, type, assignee, and due date offset in days), Send notification (logs message to the server; full delivery via MINCRM-5)
+- **Actions:** Create task (with configurable subject, type, assignee, and due date offset in days), Send notification (logs message to the server)
 - Rules have a name and an enable/disable toggle; disabled rules do not fire
 - Rule execution is synchronous — fires inline after the triggering database operation
 - For `create_task` actions, the assignee can be the record owner or a specific user
@@ -499,7 +499,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Database migrations: `011_create_automation_rules.js`, `012_create_automation_rule_logs.js`
 - Shared Zod schemas in `shared/schemas/automationSchema.ts`
 
-### Win/Loss Report (MINCRM-26)
+### Win/Loss Report
 
 - Admin-only report page at `/reports/win-loss`, accessible from the navigation bar
 - Displays Closed Won count and total value, Closed Lost count and total value, and win rate (Won / Total Closed) for a selected date range
@@ -509,7 +509,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Report data is filtered by `close_date` (not `created_at`)
 - API endpoint: `GET /api/reports/win-loss?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns `{ wonCount, wonValue, lostCount, lostValue, winRate, lossReasonBreakdown }` (auth required)
 
-### Activity Volume Report (MINCRM-181)
+### Activity Volume Report
 
 - Admin-only report page at `/reports/activity-volume`, accessible from the navigation bar
 - Displays activity counts broken down by type (Note, Call, Email, Meeting, Task) and by rep for a selected date range
@@ -518,7 +518,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - CSV export available for the full report dataset
 - API endpoint: `GET /api/reports/activity-volume?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns activity counts grouped by type and owner (auth required)
 
-### Global Search (MINCRM-207)
+### Global Search
 
 - Unified search bar available in the nav bar searches across contacts, accounts, deals, and leads simultaneously
 - Case-insensitive partial-word matching; returns up to 10 results per entity type
@@ -527,14 +527,14 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Results panel is capped in height with long text truncated to keep the UI compact
 - API endpoint: `GET /api/search?q=<term>` — returns `{ contacts, accounts, deals, leads }` arrays (auth required)
 
-### Ownership (MINCRM-14)
+### Ownership
 
 - Every contact and account has a single `owner_id` that defaults to the creating user
 - Owner is displayed as a resolved name (not UUID) in list and detail views
 - Active users are fetched from `GET /api/users/active` (auth required, no admin role needed)
 - Owner can be changed from the record's edit form; change is reflected immediately without page reload
 
-## API Documentation (MINCRM-33)
+## API Documentation
 
 The REST API is documented using [OpenAPI 3.0](https://swagger.io/specification/) annotations in the Express route files, generated by [swagger-jsdoc](https://github.com/Surnet/swagger-jsdoc), and served via [Swagger UI](https://swagger.io/tools/swagger-ui/).
 
@@ -598,6 +598,21 @@ The active language is resolved in this order (highest precedence first):
 2. System-wide default set by an admin via Admin Settings
 3. English (hard-coded fallback)
 
-The document `dir` attribute is updated automatically when the language changes. All layout classes in the client use Tailwind logical property utilities (`ps-`/`pe-`, `ms-`/`me-`, `text-start`/`text-end`, `rounded-s-`/`rounded-e-`, etc.) so layout mirrors correctly under `dir="rtl"`. To add an RTL locale (e.g. `ar`), add the locale to `SUPPORTED_LOCALES` in `shared/schemas/settingsSchema.ts` and to the `RTL_LOCALES` set in `client/src/i18n.ts`. Any new UI work must use logical property utilities — physical directional classes (`pl-`, `pr-`, `ml-`, `mr-`, `text-left`, `text-right`, etc.) are not permitted (see MINCRM-69).
+The document `dir` attribute is updated automatically when the language changes. All layout classes in the client use Tailwind logical property utilities (`ps-`/`pe-`, `ms-`/`me-`, `text-start`/`text-end`, `rounded-s-`/`rounded-e-`, etc.) so layout mirrors correctly under `dir="rtl"`. To add an RTL locale (e.g. `ar`), add the locale to `SUPPORTED_LOCALES` in `shared/schemas/settingsSchema.ts` and to the `RTL_LOCALES` set in `client/src/i18n.ts`. Any new UI work must use logical property utilities — physical directional classes (`pl-`, `pr-`, `ml-`, `mr-`, `text-left`, `text-right`, etc.) are not permitted.
 
 Pipeline stage names and currency values are formatted using the active locale (`Intl.NumberFormat` with `style: 'currency'`). i18n keys for pipeline stages use camelCase (e.g. `pipeline.stages.closedWon`) to remain compatible with TMS static-extraction tooling.
+
+## Contributing
+
+Contributions are welcome. For small fixes, open a pull request directly. For larger
+changes — new features, architectural changes, or anything that touches the E2E
+framework — please open a discussion first so the approach can be agreed on before
+work begins.
+
+All commits must follow [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat:`, `fix:`, `chore:`, `docs:`, `test:`). Pull requests are automatically reviewed
+by Claude Code and must pass CI before merging.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
