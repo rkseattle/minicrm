@@ -4,16 +4,6 @@ A minimal viable CRM (alpha / proof of concept) built to validate the core sales
 
 [![Build Status](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml/badge.svg)](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
 
-## Tech Stack
-
-- **Frontend:** React (Vite), TanStack Query, React Router, Tailwind CSS
-- **Backend:** Node.js + Express, REST API, TypeScript
-- **Database:** PostgreSQL 16
-- **Validation:** Zod (shared schemas used on both client and server)
-- **Auth:** JWT stored in httpOnly cookies
-- **Infrastructure:** Docker + Docker Compose
-- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`)
-
 ## Quick Start
 
 ```bash
@@ -49,6 +39,16 @@ npm run seed:demo
 ### Leads
 
 ![Leads list with status badges and conversion workflow](docs/screenshots/07-leads.png)
+
+## Tech Stack
+
+- **Frontend:** React (Vite), TanStack Query, React Router, Tailwind CSS
+- **Backend:** Node.js + Express, REST API, TypeScript
+- **Database:** PostgreSQL 16
+- **Validation:** Zod (shared schemas used on both client and server)
+- **Auth:** JWT stored in httpOnly cookies
+- **Infrastructure:** Docker + Docker Compose
+- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`)
 
 ## Local Development
 
