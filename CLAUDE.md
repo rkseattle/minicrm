@@ -1,7 +1,6 @@
 # MiniCRM — Claude Code Context
 
 Minimal CRM validating the core sales loop: contact → deal → activity → pipeline.
-Jira: MINCRM · edwardaspendesigns.atlassian.net · Cloud ID: b292d89b-f5d6-45b9-b1c1-bb44dd14b067
 
 ---
 
