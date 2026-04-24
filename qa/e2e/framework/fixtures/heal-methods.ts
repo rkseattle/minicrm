@@ -253,13 +253,11 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
         (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
       );
       const locator = buildLocator(page, sorted[0]!);
-      let strategy0Absent: boolean;
       try {
         // Poll until detached rather than snapshotting current DOM presence.
         // waitFor({state:'attached'}) resolves immediately if the element is already
         // in the DOM, so it cannot detect future removal. (MINCRM-211)
         await locator.waitFor({ state: 'detached', timeout: timeoutMs });
-        strategy0Absent = true;
       } catch {
         return false;
       }
@@ -267,7 +265,7 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       // Strategy 0 says absent — probe strategy 1 to guard against a stale
       // primary locator (e.g. data-testid renamed). If strategy 1 finds the
       // element present, it is not absent. No heal event is recorded.
-      if (strategy0Absent && sorted.length > 1) {
+      if (sorted.length > 1) {
         const locator1 = buildLocator(page, sorted[1]!);
         try {
           await locator1.waitFor({ state: 'attached', timeout: timeoutMs });
@@ -309,13 +307,11 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
         (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
       );
       const locator = buildLocator(page, sorted[0]!);
-      let strategy0Hidden: boolean;
       try {
         // Poll until hidden/absent rather than snapshotting current visibility.
         // waitFor({state:'visible'}) resolves immediately if the element is already
         // visible, so it cannot detect future disappearance. (MINCRM-211)
         await locator.waitFor({ state: 'hidden', timeout: timeoutMs });
-        strategy0Hidden = true;
       } catch {
         return false;
       }
@@ -323,7 +319,7 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       // Strategy 0 says hidden/absent — probe strategy 1 to guard against a
       // stale primary locator (e.g. data-testid renamed). If strategy 1 finds
       // the element visible, it is not hidden. No heal event is recorded.
-      if (strategy0Hidden && sorted.length > 1) {
+      if (sorted.length > 1) {
         const locator1 = buildLocator(page, sorted[1]!);
         try {
           await locator1.waitFor({ state: 'visible', timeout: timeoutMs });

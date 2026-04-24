@@ -82,8 +82,9 @@ export async function login(credentials: LoginCredentials, context: AuthBehavior
   // ...
 }
 
-// WRONG — raw locator interaction inside a behavior
-await context.page.locate([{ type: 'testId', value: 'login-email' }]).resolve();
+// WRONG — element interaction called directly from a behavior instead of via a Page Object
+await context.page.click([{ type: 'testId', value: 'login-email' }]);
+await context.page.fill(credentials.email, [{ type: 'testId', value: 'login-password' }]);
 ```
 
 ### 4. No assertions
