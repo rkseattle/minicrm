@@ -45,6 +45,7 @@ pids/
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 coverage/
+coverage-raw/
 .nyc_output/
 test-results/
 playwright-report/
