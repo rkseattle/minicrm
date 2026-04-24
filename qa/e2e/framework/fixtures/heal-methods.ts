@@ -137,26 +137,29 @@ export type HealPage = HealMethods;
  * @returns A HealMethods instance.
  */
 export function buildHealPage(page: Page, testName: string): HealMethods {
+  function makeHealingLocator(
+    strategies: LocatorStrategy[],
+    options: LocateOptions,
+  ): HealingLocator {
+    return new HealingLocator(page, strategies, {
+      intent: options.intent,
+      fallbackTimeout: options.fallbackTimeout,
+      pageObject: options.pageObject,
+      method: options.method,
+    });
+  }
+
+  async function resolveLocator(strategies: LocatorStrategy[], options: LocateOptions) {
+    return makeHealingLocator(strategies, options).resolve(testName);
+  }
+
   return {
     locate(strategies: LocatorStrategy[], options: LocateOptions = {}): BoundHealingLocator {
-      const inner = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      return new BoundHealingLocator(inner, testName);
+      return new BoundHealingLocator(makeHealingLocator(strategies, options), testName);
     },
 
     async click(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.click();
+      await (await resolveLocator(strategies, options)).click();
     },
 
     async fill(
@@ -164,14 +167,7 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
     ): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.fill(value);
+      await (await resolveLocator(strategies, options)).fill(value);
     },
 
     async waitFor(
@@ -180,28 +176,14 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       options: LocateOptions = {},
       timeout?: number,
     ): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.waitFor({ state, timeout });
+      await (await resolveLocator(strategies, options)).waitFor({ state, timeout });
     },
 
     async textContent(
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
     ): Promise<string | null> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      return resolved.textContent();
+      return (await resolveLocator(strategies, options)).textContent();
     },
 
     async getAttribute(
@@ -209,25 +191,11 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
     ): Promise<string | null> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      return resolved.getAttribute(name);
+      return (await resolveLocator(strategies, options)).getAttribute(name);
     },
 
     async count(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<number> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      return resolved.count();
+      return (await resolveLocator(strategies, options)).count();
     },
 
     async selectOption(
@@ -235,47 +203,19 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
     ): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.selectOption(value);
+      await (await resolveLocator(strategies, options)).selectOption(value);
     },
 
     async check(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.check();
+      await (await resolveLocator(strategies, options)).check();
     },
 
     async uncheck(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.uncheck();
+      await (await resolveLocator(strategies, options)).uncheck();
     },
 
     async hover(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<void> {
-      const locator = new HealingLocator(page, strategies, {
-        intent: options.intent,
-        fallbackTimeout: options.fallbackTimeout,
-        pageObject: options.pageObject,
-        method: options.method,
-      });
-      const resolved = await locator.resolve(testName);
-      await resolved.hover();
+      await (await resolveLocator(strategies, options)).hover();
     },
 
     async doesNotExist(strategies: LocatorStrategy[], timeoutMs = 10_000): Promise<boolean> {
