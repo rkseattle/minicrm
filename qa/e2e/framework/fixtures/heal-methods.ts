@@ -32,6 +32,16 @@ export interface LocateOptions {
    * Defaults to HealingLocator's internal default (2000 ms).
    */
   fallbackTimeout?: number;
+  /**
+   * Page Object class name that owns this locator. Recorded in heal events
+   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   */
+  pageObject?: string;
+  /**
+   * Page Object method name that owns this locator. Recorded in heal events
+   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   */
+  method?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,6 +142,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const inner = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       return new BoundHealingLocator(inner, testName);
     },
@@ -140,6 +152,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.click();
@@ -153,6 +167,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.fill(value);
@@ -167,6 +183,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.waitFor({ state, timeout });
@@ -179,6 +197,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       return resolved.textContent();
@@ -192,6 +212,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       return resolved.getAttribute(name);
@@ -201,6 +223,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       return resolved.count();
@@ -214,6 +238,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.selectOption(value);
@@ -223,6 +249,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.check();
@@ -232,6 +260,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.uncheck();
@@ -241,6 +271,8 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       const locator = new HealingLocator(page, strategies, {
         intent: options.intent,
         fallbackTimeout: options.fallbackTimeout,
+        pageObject: options.pageObject,
+        method: options.method,
       });
       const resolved = await locator.resolve(testName);
       await resolved.hover();

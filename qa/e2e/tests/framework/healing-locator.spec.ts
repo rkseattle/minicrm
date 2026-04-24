@@ -26,14 +26,17 @@ import { HealingRegistry } from '../../framework/healing/healing-registry.js';
 
 /**
  * Creates a mock Locator whose waitFor resolves (attached) or rejects (timeout)
- * depending on the `resolves` flag.
+ * depending on the `resolves` flag. Includes `.first()` returning itself so
+ * probeLocator (which calls `locator.first().waitFor(...)`) works correctly.
  */
 function mockLocator(resolves: boolean): Locator {
-  return {
+  const locator: Locator = {
     waitFor: resolves
       ? () => Promise.resolve()
       : () => Promise.reject(new Error('Timeout waiting for locator')),
+    first: () => locator,
   } as unknown as Locator;
+  return locator;
 }
 
 /**
@@ -290,6 +293,80 @@ test.describe('HealingLocator', () => {
       intent: 'The submit button for the login form',
     });
     expect(hl.intent).toBe('The submit button for the login form');
+  });
+
+  test('pageObject and method are recorded in heal event when provided (MINCRM-225)', async () => {
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs');
+
+    process.env['PW_WORKER_INDEX'] = '66';
+    const page = mockPageWithTestId([false, true]); // primary fails, fallback resolves
+    await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'save-btn' },
+        { type: 'css', value: '.save-btn' },
+      ],
+      { fallbackTimeout: 100, pageObject: 'ContactsPage', method: 'saveButton' },
+    ).resolve('pageObject method test');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-test-po-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const writtenPath = path.join(tmpDir, 'test-results', 'healing-66.json');
+    const contents = JSON.parse(fs.readFileSync(writtenPath, 'utf-8')) as {
+      events: Array<{ pageObject?: string; method?: string }>;
+    };
+
+    expect(contents.events[0]?.pageObject).toBe('ContactsPage');
+    expect(contents.events[0]?.method).toBe('saveButton');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
+  });
+
+  test('pageObject and method are absent from heal event when not provided (MINCRM-225)', async () => {
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs');
+
+    process.env['PW_WORKER_INDEX'] = '65';
+    const page = mockPageWithTestId([false, true]);
+    await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'btn' },
+        { type: 'css', value: '.btn' },
+      ],
+      { fallbackTimeout: 100 },
+    ).resolve('no pageObject test');
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-test-nopo-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const writtenPath = path.join(tmpDir, 'test-results', 'healing-65.json');
+    const contents = JSON.parse(fs.readFileSync(writtenPath, 'utf-8')) as {
+      events: Array<Record<string, unknown>>;
+    };
+
+    expect(contents.events[0]).not.toHaveProperty('pageObject');
+    expect(contents.events[0]).not.toHaveProperty('method');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
   });
 
   test('wasAiHeal is false for static fallbacks', async () => {
