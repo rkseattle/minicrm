@@ -35,7 +35,7 @@ Add a new file per domain area. If a file exceeds ~150 lines, split it.
 | ----------------------------- | ------------------- |
 | `expect()` assertions         | Test spec           |
 | Raw `page.locator()` calls    | Page Object         |
-| Direct `healPage.click()`     | Page Object         |
+| Direct element interactions   | Page Object         |
 | Business logic / calculations | Service layer       |
 
 ---
@@ -49,7 +49,7 @@ Every behavior accepts exactly **two arguments**:
 ```ts
 async function myBehavior(
   params: MyBehaviorParams, // typed — no `any`
-  context: MyBehaviorContext, // fixture context: { page, healPage, restClient, ... }
+  context: MyBehaviorContext, // fixture context: { page: PageFacade, restClient?, ... }
 ): Promise<MyBehaviorResult>;
 ```
 
@@ -82,15 +82,15 @@ export async function login(credentials: LoginCredentials, context: AuthBehavior
   // ...
 }
 
-// WRONG — raw locator inside a behavior
-await context.page.getByTestId('login-email').fill(credentials.email);
+// WRONG — raw locator interaction inside a behavior
+await context.page.locate([{ type: 'testId', value: 'login-email' }]).resolve();
 ```
 
 ### 4. No assertions
 
 ```ts
 // CORRECT — behavior returns result, spec asserts
-const result = await login(credentials, { page, healPage });
+const result = await login(credentials, { page });
 expect(result.success).toBe(true); // in the spec
 
 // WRONG — assertion inside behavior
@@ -111,25 +111,23 @@ await context.page.waitForLoadState('networkidle');
 ## Fixture context
 
 Each behavior file defines its own `*Context` interface that lists only the
-fixtures it actually needs. This keeps behaviors composable and avoids pulling
-in fixtures that aren't used.
+fixtures it actually needs. Use `PageFacade` as the `page` type — it combines
+safe navigation methods with all healing element interactions in one object.
 
 ```ts
+import type { PageFacade } from '@framework/fixtures/index.js';
+
 export interface AuthBehaviorContext {
-  page: Page;
-  healPage: HealPage;
-  testName: string; // testInfo.title — forwarded to Page Objects for heal audit records
+  page: PageFacade;
 }
 ```
 
-Pass the full fixture object from the test:
+Pass the `page` fixture directly from the test (no `testName` or `healPage`
+needed — they are baked into `PageFacade`):
 
 ```ts
-test('logs in as admin', async ({ page, healPage }, testInfo) => {
-  const result = await login(
-    { email: '...', password: '...' },
-    { page, healPage, testName: testInfo.title },
-  );
+test('logs in as admin', async ({ page }) => {
+  const result = await login({ email: '...', password: '...' }, { page });
   expect(result.success).toBe(true);
 });
 ```
@@ -177,6 +175,6 @@ import { login, navigateToContacts } from '@behaviors/minicrm/index.js';
 - [ ] Parameter object is a named typed interface (no loose `any`)
 - [ ] Result object is a named typed interface (no `void` unless truly nothing to report)
 - [ ] No `expect()` calls anywhere in the file
-- [ ] No raw `page.locator()` / `healPage.click()` calls — all via Page Objects
+- [ ] No raw `page.locate()` calls outside of Page Objects — all via Page Objects
 - [ ] Behavior waits for stable page state before returning
 - [ ] New behavior is exported from `index.ts`
