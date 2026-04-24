@@ -116,16 +116,19 @@ export class HealingReporter implements Reporter {
       allEvents.push(...readWorkerFile(filePath));
     }
 
-    const aiHeals = allEvents.filter((e) => e.wasAiHeal).length;
+    const aiHealEvents = allEvents.filter((e) => e.wasAiHeal);
+    const aiHeals = aiHealEvents.length;
     const staticHeals = allEvents.length - aiHeals;
+    const aiHealCount = aiHeals;
+    const estimatedTokenCost = aiHealEvents.reduce((sum, e) => sum + (e.tokenCost ?? 0), 0);
 
     const report: HealingReport = {
       generatedAt: new Date().toISOString(),
       totalHeals: allEvents.length,
       aiHeals,
       staticHeals,
-      aiHealCount: aiHeals,
-      estimatedTokenCost: 0,
+      aiHealCount,
+      estimatedTokenCost,
       events: allEvents,
     };
 
@@ -139,6 +142,9 @@ export class HealingReporter implements Reporter {
 
     // Write patch suggestions alongside the report. MINCRM-225
     this._writeSuggestions(report);
+
+    // Emit a warning when AI heal count exceeds the configured threshold. MINCRM-227
+    this._checkThreshold(report);
 
     // Log summary to CI output.
     this._logSummary(report);
@@ -158,6 +164,20 @@ export class HealingReporter implements Reporter {
     }
     if (report.totalHeals === 0) {
       console.log('[HealingReporter] No heals recorded. All primary locators resolved.');
+    }
+  }
+
+  /**
+   * Emits a stdout warning when aiHealCount exceeds AI_HEAL_COST_WARNING_THRESHOLD.
+   * Threshold defaults to 50. Warning fires only when count is strictly greater than
+   * the threshold. MINCRM-227
+   */
+  _checkThreshold(report: HealingReport): void {
+    const threshold = parseInt(process.env['AI_HEAL_COST_WARNING_THRESHOLD'] ?? '50', 10);
+    if (report.aiHealCount > threshold) {
+      console.log(
+        `⚠ AI healing threshold exceeded: ${report.aiHealCount} AI heals this run (threshold: ${threshold}). Review healing-suggestions.md for locators to repair.`,
+      );
     }
   }
 
