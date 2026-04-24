@@ -175,6 +175,48 @@ jobs:
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
 
+  e2e-framework-specs:
+    name: Phase 2 - E2E Framework Unit Tests
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run framework unit tests
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=desktop
+          qa/e2e/tests/framework/
+
+      - name: Publish framework test results to GitHub Checks
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Playwright – framework
+          path: qa/e2e/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
   e2e-functional:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
@@ -183,7 +225,7 @@ jobs:
     # target per-project runtime from ~8–10 minutes down to ~2–3 minutes.
     # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
-    needs: [server-tests, client-tests]
+    needs: [server-tests, client-tests, e2e-framework-specs]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
