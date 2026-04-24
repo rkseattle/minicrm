@@ -591,6 +591,7 @@ jobs:
 
           HEAL_NOTE=""
           HEAL_LINK=""
+          AI_HEAL_LINE=""
           SUGGESTIONS_BODY=""
           for project in desktop mobile-web; do
             dir="artifacts/$project"
@@ -600,6 +601,11 @@ jobs:
               if [ "$TOTAL" -gt 0 ]; then
                 HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
                 HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
+              fi
+              AI_COUNT=$(node -e "const r=require('./$REPORT'); console.log(r.aiHealCount ?? 0)")
+              if [ "$AI_COUNT" -gt 0 ]; then
+                TOKEN_COST=$(node -e "const r=require('./$REPORT'); console.log(r.estimatedTokenCost ?? 0)")
+                AI_HEAL_LINE="AI heals: $AI_COUNT (~$TOKEN_COST tokens)"
               fi
             fi
             SUGGESTIONS="$dir/healing-suggestions-$project.md"
@@ -623,6 +629,9 @@ jobs:
             if [ -n "$HEAL_NOTE" ]; then
               echo ""
               echo "$HEAL_NOTE"
+              if [ -n "$AI_HEAL_LINE" ]; then
+                echo "$AI_HEAL_LINE"
+              fi
             fi
             echo ""
             echo "[Download trace artifacts]($ARTIFACTS_URL)"
