@@ -115,11 +115,18 @@ export function run(argv: string[]): void {
   const aiHeals = deduplicated.filter((e) => e.wasAiHeal).length;
   const staticHeals = deduplicated.length - aiHeals;
 
+  const aiHealCount = aiHeals;
+  const estimatedTokenCost = deduplicated
+    .filter((e) => e.wasAiHeal)
+    .reduce((sum, e) => sum + (e.tokenCost ?? 0), 0);
+
   const report: HealingReport = {
     generatedAt: new Date().toISOString(),
     totalHeals: deduplicated.length,
     aiHeals,
     staticHeals,
+    aiHealCount,
+    estimatedTokenCost,
     events: deduplicated,
   };
 

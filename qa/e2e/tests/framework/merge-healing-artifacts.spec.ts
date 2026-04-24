@@ -142,6 +142,8 @@ test.describe('merge-healing-artifacts — merge output', () => {
       totalHeals: allEvents.length,
       aiHeals,
       staticHeals: allEvents.length - aiHeals,
+      aiHealCount: aiHeals,
+      estimatedTokenCost: 0,
       events: allEvents,
     };
 
