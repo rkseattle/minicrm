@@ -606,11 +606,8 @@ jobs:
             if [ -f "$SUGGESTIONS" ]; then
               CONTENT=$(cat "$SUGGESTIONS")
               if [ "$CONTENT" != "No heal events this run." ]; then
-                SUGGESTIONS_BODY="$SUGGESTIONS_BODY
-
-### Patch Suggestions ($project)
-
-$CONTENT"
+                SECTION=$(printf '\n### Patch Suggestions (%s)\n\n%s' "$project" "$CONTENT")
+                SUGGESTIONS_BODY="${SUGGESTIONS_BODY}${SECTION}"
               fi
             fi
           done
