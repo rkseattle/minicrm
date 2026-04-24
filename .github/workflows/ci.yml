@@ -116,6 +116,14 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
+      - name: Upload server test results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: server/test-results/junit.xml
+          retention-days: 14
+
       - name: Upload server coverage artifact
         if: always()
         uses: actions/upload-artifact@v7
@@ -155,6 +163,14 @@ jobs:
           path: client/test-results/junit.xml
           reporter: java-junit
           fail-on-error: false
+
+      - name: Upload client test results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: client/test-results/junit.xml
+          retention-days: 14
 
       - name: Upload client coverage artifact
         if: always()
@@ -723,6 +739,18 @@ jobs:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-coverage
 
+      - name: Download server test results artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: server-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/server-test-results
+
+      - name: Download client test results artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: client-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/client-test-results
+
       - name: Download framework test results artifact
         uses: actions/download-artifact@v8
         with:
@@ -772,31 +800,39 @@ jobs:
           PYEOF
           }
 
-          SERVER=$(parse_summary artifacts/server-coverage/coverage-summary.json)
-          CLIENT=$(parse_summary artifacts/client-coverage/coverage-summary.json)
-          FRAMEWORK=$(parse_xml artifacts/framework-test-results/results.xml)
+          SERVER_COV=$(parse_summary artifacts/server-coverage/coverage-summary.json)
+          CLIENT_COV=$(parse_summary artifacts/client-coverage/coverage-summary.json)
+          SERVER_TESTS=$(parse_xml artifacts/server-test-results/junit.xml)
+          CLIENT_TESTS=$(parse_xml artifacts/client-test-results/junit.xml)
+          FRAMEWORK_TESTS=$(parse_xml artifacts/framework-test-results/results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          IFS='|' read -r s_lines s_funcs s_branch s_stmts <<< "$SERVER"
-          IFS='|' read -r c_lines c_funcs c_branch c_stmts <<< "$CLIENT"
-          IFS='|' read -r f_status f_tests f_passed f_failed f_skipped <<< "$FRAMEWORK"
+          IFS='|' read -r s_lines s_funcs s_branch s_stmts <<< "$SERVER_COV"
+          IFS='|' read -r c_lines c_funcs c_branch c_stmts <<< "$CLIENT_COV"
+          IFS='|' read -r s_status s_tests s_passed s_failed s_skipped <<< "$SERVER_TESTS"
+          IFS='|' read -r c_status c_tests c_passed c_failed c_skipped <<< "$CLIENT_TESTS"
+          IFS='|' read -r f_status f_tests f_passed f_failed f_skipped <<< "$FRAMEWORK_TESTS"
 
           {
             echo 'body<<COMMENT_EOF'
+            echo "## Phase 2 — Unit & Framework Tests"
+            echo ""
+            echo "| Suite | Status | Tests | Passed | Failed | Skipped |"
+            echo "|-------|--------|-------|--------|--------|---------|"
+            echo "| server | $s_status | $s_tests | $s_passed | $s_failed | $s_skipped |"
+            echo "| client | $c_status | $c_tests | $c_passed | $c_failed | $c_skipped |"
+            echo "| e2e framework | $f_status | $f_tests | $f_passed | $f_failed | $f_skipped |"
+            echo ""
             echo "## Unit Test Coverage"
             echo ""
             echo "| Package | Lines | Functions | Branches | Statements |"
             echo "|---------|-------|-----------|----------|------------|"
             echo "| server  | ${s_lines}% | ${s_funcs}% | ${s_branch}% | ${s_stmts}% |"
             echo "| client  | ${c_lines}% | ${c_funcs}% | ${c_branch}% | ${c_stmts}% |"
+            echo "| e2e framework | N/A | N/A | N/A | N/A |"
             echo ""
             echo "> Thresholds: server services ≥ 80% · client components/pages ≥ 70%"
-            echo ""
-            echo "## E2E Framework Tests"
-            echo ""
-            echo "| Suite | Status | Tests | Passed | Failed | Skipped |"
-            echo "|-------|--------|-------|--------|--------|---------|"
-            echo "| framework | $f_status | $f_tests | $f_passed | $f_failed | $f_skipped |"
+            echo "> e2e framework tests run under Playwright without coverage instrumentation"
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
             echo 'COMMENT_EOF'
