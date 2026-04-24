@@ -22,6 +22,8 @@ export interface HealEvent {
   pageObject?: string;
   /** Page Object method name where the heal occurred, if known. MINCRM-225 */
   method?: string;
+  /** Total tokens consumed by the AI API call (input + output). MINCRM-227 */
+  tokenCost?: number;
 }
 
 /** Serializable summary of a strategy (no runtime objects). */

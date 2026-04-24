@@ -42,6 +42,10 @@ export interface HealingReport {
   totalHeals: number;
   aiHeals: number;
   staticHeals: number;
+  /** Count of AI heal events this run. Computed from events at report-generation time. MINCRM-227 */
+  aiHealCount: number;
+  /** Sum of tokenCost across all AI heal events. Computed at report-generation time. MINCRM-227 */
+  estimatedTokenCost: number;
   events: HealEvent[];
 }
 
@@ -120,6 +124,8 @@ export class HealingReporter implements Reporter {
       totalHeals: allEvents.length,
       aiHeals,
       staticHeals,
+      aiHealCount: aiHeals,
+      estimatedTokenCost: 0,
       events: allEvents,
     };
 

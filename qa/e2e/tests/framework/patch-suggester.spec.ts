@@ -22,6 +22,8 @@ function makeReport(overrides: Partial<HealingReport> = {}): HealingReport {
     totalHeals: 0,
     aiHeals: 0,
     staticHeals: 0,
+    aiHealCount: 0,
+    estimatedTokenCost: 0,
     events: [],
     ...overrides,
   };
