@@ -17,13 +17,13 @@ strings and fails the build if any are found.
 
 ## PageFacade (unified fixture)
 
-Since MINCRM-210, all spec files and Page Objects use a single `page: PageFacade` fixture instead of the old three-fixture pattern (`page: SafePage`, `healPage: HealPage`, `testName: string`).
+Since MINCRM-210, all spec files and Page Objects use a single `page: PageFacade` fixture.
 
 `PageFacade = SafePage & HealMethods` — a Proxy that:
 
-- Routes `HealMethods` calls (`.locate()`, `.click()`, `.fill()`, etc.) to an internal `HealPage` instance
+- Routes `HealMethods` calls (`.locate()`, `.click()`, `.fill()`, etc.) to the internal heal layer
 - Routes all other calls to the raw Playwright `Page`
-- Captures `testName` at fixture creation time (no need to pass it to `.resolve()`)
+- Captures the test name at fixture creation time (no need to pass it to `.resolve()`)
 
 ### Usage in spec files
 
@@ -73,16 +73,21 @@ export class MyPage {
 }
 ```
 
-### Old three-fixture pattern (removed in MINCRM-210)
+### Migration from pre-MINCRM-210 code
+
+If you encounter old code that passes `testName` to `.resolve()` or uses a
+separate `healPage` fixture, update it to the pattern above. The `testName`
+argument to `.resolve()` is no longer accepted — `PageFacade` captures the
+test name at fixture creation time.
 
 ```ts
-// BEFORE (do not use):
-test('example', async ({ page, healPage, testName }) => {
-  await healPage.click([{ type: 'testId', value: 'submit-btn' }]);
-  const el = await healPage.locate([...]).resolve(testName);
-});
+// BEFORE (do not use — removed in MINCRM-210):
+// test('example', async ({ page, healPage, testName }) => {
+//   await healPage.click([...]);
+//   const el = await healPage.locate([...]).resolve(testName);
+// });
 
-// AFTER:
+// AFTER (current pattern):
 test('example', async ({ page }) => {
   await page.click([{ type: 'testId', value: 'submit-btn' }]);
   const el = await page.locate([...]).resolve();
