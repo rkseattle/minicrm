@@ -53,6 +53,115 @@ export interface AiHealerOptions {
 }
 
 /**
+ * Maximum characters allowed in the DOM snapshot sent to the model.
+ * ~2000 tokens — well within context limits while accommodating realistic page structures. (MINCRM-223)
+ */
+export const MAX_DOM_CHARS = 8_000;
+
+/**
+ * Trims a DOM snapshot to at most MAX_DOM_CHARS characters.
+ *
+ * Strategy:
+ * 1. Find top-level child boundaries inside the container by tracking tag depth.
+ * 2. Remove children from the end one by one until the snapshot fits.
+ * 3. If the container itself (with no children) still exceeds the limit,
+ *    fall back to a plain substring with a truncation comment appended.
+ *
+ * Exported for unit testing (MINCRM-223).
+ */
+export function truncateDomSnapshot(snapshot: string, selector: string): string {
+  if (snapshot.length <= MAX_DOM_CHARS) return snapshot;
+
+  const originalLength = snapshot.length;
+
+  // Find the end of the opening tag (handles attributes with > inside quoted values).
+  const openTagEnd = snapshot.indexOf('>');
+  if (openTagEnd === -1) {
+    // Not recognisable HTML — fall back to substring.
+    const truncated = snapshot.substring(0, MAX_DOM_CHARS) + '<!-- truncated -->';
+    console.warn(
+      `AiHealer: DOM snapshot truncated for selector "${selector}": ${originalLength} → ${truncated.length} chars (substring fallback)`,
+    );
+    return truncated;
+  }
+
+  const openTag = snapshot.substring(0, openTagEnd + 1);
+  // Find the matching closing tag by scanning from the end.
+  const lastCloseTagStart = snapshot.lastIndexOf('</');
+  const closeTag = lastCloseTagStart !== -1 ? snapshot.substring(lastCloseTagStart) : '';
+  const innerHtml = snapshot.substring(
+    openTagEnd + 1,
+    lastCloseTagStart !== -1 ? lastCloseTagStart : snapshot.length,
+  );
+
+  // Build a list of top-level child boundaries by tracking tag depth in innerHtml.
+  // Each entry is the end index (exclusive) of a top-level child node.
+  const childEnds: number[] = [];
+  let depth = 0;
+  let i = 0;
+  while (i < innerHtml.length) {
+    if (innerHtml[i] === '<') {
+      if (innerHtml[i + 1] === '/') {
+        // Closing tag.
+        depth--;
+        const end = innerHtml.indexOf('>', i);
+        if (end === -1) break;
+        i = end + 1;
+        if (depth === 0) childEnds.push(i);
+      } else if (innerHtml[i + 1] === '!' || innerHtml[i + 1] === '?') {
+        // Comment or processing instruction — treat as zero-depth leaf.
+        const end = innerHtml.indexOf('>', i);
+        if (end === -1) break;
+        i = end + 1;
+        if (depth === 0) childEnds.push(i);
+      } else {
+        // Opening tag — check for self-closing.
+        const end = innerHtml.indexOf('>', i);
+        if (end === -1) break;
+        const tagContent = innerHtml.substring(i, end + 1);
+        i = end + 1;
+        if (tagContent.endsWith('/>')) {
+          // Self-closing — no depth change.
+          if (depth === 0) childEnds.push(i);
+        } else {
+          depth++;
+        }
+      }
+    } else {
+      // Text node — advance to next tag.
+      const next = innerHtml.indexOf('<', i);
+      if (next === -1) {
+        i = innerHtml.length;
+      } else {
+        i = next;
+      }
+    }
+  }
+
+  // Try dropping children from the end until we fit.
+  for (let dropCount = 1; dropCount <= childEnds.length; dropCount++) {
+    const keepUntil =
+      dropCount < childEnds.length ? childEnds[childEnds.length - 1 - dropCount] : 0;
+    const trimmedInner =
+      keepUntil !== undefined && keepUntil > 0 ? innerHtml.substring(0, keepUntil) : '';
+    const candidate = openTag + trimmedInner + closeTag;
+    if (candidate.length <= MAX_DOM_CHARS) {
+      console.warn(
+        `AiHealer: DOM snapshot truncated for selector "${selector}": ${originalLength} → ${candidate.length} chars (child-trim)`,
+      );
+      return candidate;
+    }
+  }
+
+  // Container alone exceeds the limit — fall back to substring.
+  const fallback = snapshot.substring(0, MAX_DOM_CHARS) + '<!-- truncated -->';
+  console.warn(
+    `AiHealer: DOM snapshot truncated for selector "${selector}": ${originalLength} → ${fallback.length} chars (substring fallback)`,
+  );
+  return fallback;
+}
+
+/**
  * JS snippet injected into the page to extract a scoped DOM snapshot.
  *
  * Strategy (in order):
@@ -258,7 +367,9 @@ export class AiHealer {
       return null;
     }
 
-    const prompt = buildPrompt(intent, domSnapshot, attempted);
+    // Cap snapshot size before embedding in prompt to avoid context window overflow. (MINCRM-223)
+    const cappedSnapshot = truncateDomSnapshot(domSnapshot, intent);
+    const prompt = buildPrompt(intent, cappedSnapshot, attempted);
 
     let rawText: string;
     try {
