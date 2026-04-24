@@ -94,6 +94,7 @@ export class HealingRegistry {
    * @param wasAiHeal - Whether this heal was performed by the AI tier (S3).
    * @param pageObject - Page Object class name where the heal occurred (MINCRM-225).
    * @param method - Page Object method name where the heal occurred (MINCRM-225).
+   * @param tokenCost - Total tokens consumed by the AI API call (MINCRM-227).
    */
   record(
     testName: string,
@@ -102,6 +103,7 @@ export class HealingRegistry {
     wasAiHeal = false,
     pageObject?: string,
     method?: string,
+    tokenCost?: number,
   ): void {
     this.events.push({
       timestamp: new Date().toISOString(),
@@ -111,6 +113,7 @@ export class HealingRegistry {
       wasAiHeal,
       ...(pageObject !== undefined ? { pageObject } : {}),
       ...(method !== undefined ? { method } : {}),
+      ...(tokenCost !== undefined ? { tokenCost } : {}),
     });
   }
 

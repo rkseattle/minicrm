@@ -40,6 +40,8 @@ export interface AiHealResult {
   value: string;
   /** Confidence score from 0.0 to 1.0. */
   confidence: number;
+  /** Total tokens consumed by the API call (input + output). MINCRM-227 */
+  tokenCost?: number;
 }
 
 /** Options accepted by AiHealer constructor. */
@@ -382,6 +384,7 @@ export class AiHealer {
     const prompt = buildPrompt(intent, cappedSnapshot, attempted);
 
     let rawText: string;
+    let tokenCost: number | undefined;
     try {
       const response = await withTimeout(
         withRetry(
@@ -397,6 +400,8 @@ export class AiHealer {
         this.timeoutMs,
       );
 
+      tokenCost = response.usage.input_tokens + response.usage.output_tokens;
+
       const firstBlock = response.content[0];
       if (!firstBlock || firstBlock.type !== 'text') {
         return null;
@@ -406,6 +411,8 @@ export class AiHealer {
       return null;
     }
 
-    return parseResponse(rawText);
+    const parsed = parseResponse(rawText);
+    if (parsed === null) return null;
+    return { ...parsed, tokenCost };
   }
 }

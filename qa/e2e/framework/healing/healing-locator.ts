@@ -302,6 +302,7 @@ export class HealingLocator {
             true, // wasAiHeal
             this.pageObject,
             this.method,
+            aiResult.tokenCost,
           );
           return aiLocator;
         }
