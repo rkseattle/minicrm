@@ -10,9 +10,14 @@
  * AC5 — Workers receive independent instances (structural / fixture-scope).
  * AC6 — All unit tests pass in CI.
  *
+ * MINCRM-229 Acceptance Criteria:
+ * AC-229-1 — Successful schema validation passes the parsed body through.
+ * AC-229-2 — Shape mismatch throws RestClientError with endpoint in the message.
+ * AC-229-3 — Callers without a schema continue to use the bare cast.
+ *
  * All tests mock the Playwright APIRequestContext so no server is required.
  *
- * MINCRM-127
+ * MINCRM-127, MINCRM-229
  */
 
 import { test, expect } from '@framework/fixtures';
@@ -24,6 +29,7 @@ import {
   BasicAuthStrategy,
 } from '@framework/clients';
 import type { APIRequestContext, APIResponse } from '@playwright/test';
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -293,7 +299,7 @@ test.describe('Auth strategies', () => {
       authStrategy: new BearerAuthStrategy('default-token'),
     });
 
-    await client.get('/resource', { Authorization: 'Bearer one-off-token' });
+    await client.get('/resource', { headers: { Authorization: 'Bearer one-off-token' } });
 
     expect(headers['Authorization']).toBe('Bearer one-off-token');
   });
@@ -375,5 +381,120 @@ test.describe('restClient fixture availability', () => {
     expect(typeof restClient.put).toBe('function');
     expect(typeof restClient.patch).toBe('function');
     expect(typeof restClient.delete).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-229 — Optional Zod schema validation
+// ---------------------------------------------------------------------------
+
+test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
+  // AC-229-1: Successful schema validation passes the parsed body through.
+  test('get() with matching schema returns validated body', async () => {
+    const schema = z.object({ id: z.number(), name: z.string() });
+    const responseBody = { id: 1, name: 'Alice' };
+    const ctx = mockContext(() => mockApiResponse(200, responseBody));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    const result = await client.get<z.infer<typeof schema>>('/users/1', { schema });
+
+    expect(result.status).toBe(200);
+    expect(result.body.id).toBe(1);
+    expect(result.body.name).toBe('Alice');
+  });
+
+  test('post() with matching schema returns validated body', async () => {
+    const schema = z.object({ id: z.string().uuid(), email: z.string().email() });
+    const responseBody = { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', email: 'x@example.com' };
+    const ctx = mockContext(() => mockApiResponse(201, responseBody));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    const result = await client.post<z.infer<typeof schema>>('/resource', {}, { schema });
+
+    expect(result.body.email).toBe('x@example.com');
+  });
+
+  // AC-229-2: Shape mismatch throws RestClientError with endpoint in the message.
+  test('get() with mismatched schema throws RestClientError containing method and path', async () => {
+    const schema = z.object({ id: z.number(), name: z.string() });
+    // Server returns a body where `id` is a string, not a number — contract violation.
+    const badBody = { id: 'not-a-number', name: 'Alice' };
+    const ctx = mockContext(() => mockApiResponse(200, badBody));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    let caught: unknown;
+    try {
+      await client.get('/api/resource/42', { schema });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(RestClientError);
+    const restErr = caught as RestClientError;
+    // Error message must identify the method and endpoint.
+    expect(restErr.message).toContain('GET');
+    expect(restErr.message).toContain('/api/resource/42');
+    // validationError field should be populated with the ZodError.
+    expect(restErr.validationError).toBeDefined();
+    expect(restErr.validationError?.issues.length).toBeGreaterThan(0);
+  });
+
+  test('patch() with mismatched schema throws RestClientError containing method and path', async () => {
+    const schema = z.object({ updated: z.boolean() });
+    const badBody = { updated: 'yes' }; // string instead of boolean
+    const ctx = mockContext(() => mockApiResponse(200, badBody));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    let caught: unknown;
+    try {
+      await client.patch('/api/items/7', { value: 1 }, { schema });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(RestClientError);
+    const restErr = caught as RestClientError;
+    expect(restErr.message).toContain('PATCH');
+    expect(restErr.message).toContain('/api/items/7');
+    expect(restErr.validationError).toBeDefined();
+  });
+
+  // AC-229-3: Callers without a schema continue to use the bare cast — no behaviour change.
+  test('get() without schema uses bare cast — no validation, no error on shape mismatch', async () => {
+    // The response body is structurally wrong for the inferred type, but without
+    // a schema the bare cast succeeds silently (pre-MINCRM-229 behaviour preserved).
+    const badBody = { wrong: 'shape' };
+    const ctx = mockContext(() => mockApiResponse(200, badBody));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    // No schema — should resolve without throwing even though the shape is wrong.
+    const result = await client.get<{ id: number; name: string }>('/api/resource/1');
+    expect(result.status).toBe(200);
+    // The body is the raw cast object.
+    expect((result.body as unknown as { wrong: string }).wrong).toBe('shape');
+  });
+
+  test('delete() without schema continues to work unchanged', async () => {
+    const ctx = mockContext(() => mockApiResponse(204, {}));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    const result = await client.delete<Record<string, never>>('/api/resource/1');
+    expect(result.status).toBe(204);
+  });
+
+  // validationError field is undefined on normal HTTP errors.
+  test('RestClientError from HTTP 4xx has no validationError', async () => {
+    const ctx = mockContext(() => mockApiResponse(404, { error: 'not found' }));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    let caught: unknown;
+    try {
+      await client.get('/missing');
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(RestClientError);
+    expect((caught as RestClientError).validationError).toBeUndefined();
   });
 });

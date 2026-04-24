@@ -218,7 +218,9 @@ test(
       account_id: account.id,
     });
 
-    const response = await restClient.get<string>('/api/deals/export', { Accept: 'text/csv' });
+    const response = await restClient.get<string>('/api/deals/export', {
+      headers: { Accept: 'text/csv' },
+    });
 
     const csv = response.body as unknown as string;
     // Header row must contain a Currency column
