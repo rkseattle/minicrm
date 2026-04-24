@@ -377,23 +377,24 @@ test.describe('healPage.hover()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// doesNotExist — must NOT trigger healing when primary fails
+// doesNotExist — two-strategy probe (MINCRM-230)
 // ---------------------------------------------------------------------------
 
-test.describe('doesNotExist does not heal', () => {
+test.describe('doesNotExist two-strategy probe', () => {
   test.beforeEach(() => {
     HealingRegistry.instance._reset();
   });
 
-  test('when primary strategy fails, returns false and records NO heal event', async () => {
+  test('primary present → returns false immediately, no heal event', async () => {
     // waitFor({state:'detached'}) times out → element is present → false
+    // Strategy 1 is never reached because we return early.
     const page = mockPage([false]);
-    const hp = buildHealPage(page, 'doesNotExist no heal');
+    const hp = buildHealPage(page, 'doesNotExist primary present');
 
     const result = await hp.doesNotExist(
       [
         { type: 'testId', value: 'el' },
-        { type: 'css', value: '.el' }, // second strategy must NOT be tried
+        { type: 'role', value: 'button' },
       ],
       100,
     );
@@ -401,30 +402,127 @@ test.describe('doesNotExist does not heal', () => {
     expect(result).toBe(false);
     expect(HealingRegistry.instance.count).toBe(0);
   });
-});
 
-// ---------------------------------------------------------------------------
-// isNotVisible — must NOT trigger healing when primary fails
-// ---------------------------------------------------------------------------
+  test('both strategies absent → returns true, no heal event', async () => {
+    // Strategy 0: waitFor(detached) resolves → strategy0Absent = true
+    // Strategy 1: waitFor(attached) rejects → element genuinely absent → true
+    const page = mockPage([true, false]);
+    const hp = buildHealPage(page, 'doesNotExist both absent');
 
-test.describe('isNotVisible does not heal', () => {
-  test.beforeEach(() => {
-    HealingRegistry.instance._reset();
-  });
-
-  test('when primary strategy fails, returns false and records NO heal event', async () => {
-    const page = mockPage([false]);
-    const hp = buildHealPage(page, 'isNotVisible no heal');
-
-    const result = await hp.isNotVisible(
+    const result = await hp.doesNotExist(
       [
         { type: 'testId', value: 'el' },
-        { type: 'css', value: '.el' }, // second strategy must NOT be tried
+        { type: 'role', value: 'button' },
+      ],
+      100,
+    );
+
+    expect(result).toBe(true);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('strategy 0 absent but strategy 1 present → returns false, no heal event (MINCRM-230)', async () => {
+    // Primary testId is stale → waitFor(detached) resolves immediately (0 matches).
+    // Strategy 1 (role) still finds the element → waitFor(attached) resolves.
+    // Must return false (element is actually present). No heal event recorded.
+    const page = mockPage([true, true]);
+    const hp = buildHealPage(page, 'doesNotExist stale primary');
+
+    const result = await hp.doesNotExist(
+      [
+        { type: 'testId', value: 'old-testid' },
+        { type: 'role', value: 'button' },
       ],
       100,
     );
 
     expect(result).toBe(false);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('single strategy absent → returns true, no heal event', async () => {
+    // Only one strategy provided — no second probe attempted.
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'doesNotExist single strategy');
+
+    const result = await hp.doesNotExist([{ type: 'testId', value: 'el' }], 100);
+
+    expect(result).toBe(true);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isNotVisible — two-strategy probe (MINCRM-230)
+// ---------------------------------------------------------------------------
+
+test.describe('isNotVisible two-strategy probe', () => {
+  test.beforeEach(() => {
+    HealingRegistry.instance._reset();
+  });
+
+  test('primary visible → returns false immediately, no heal event', async () => {
+    // waitFor({state:'hidden'}) times out → element is visible → false
+    const page = mockPage([false]);
+    const hp = buildHealPage(page, 'isNotVisible primary visible');
+
+    const result = await hp.isNotVisible(
+      [
+        { type: 'testId', value: 'el' },
+        { type: 'role', value: 'dialog' },
+      ],
+      100,
+    );
+
+    expect(result).toBe(false);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('both strategies hidden/absent → returns true, no heal event', async () => {
+    // Strategy 0: waitFor(hidden) resolves → strategy0Hidden = true
+    // Strategy 1: waitFor(visible) rejects → element genuinely hidden → true
+    const page = mockPage([true, false]);
+    const hp = buildHealPage(page, 'isNotVisible both hidden');
+
+    const result = await hp.isNotVisible(
+      [
+        { type: 'testId', value: 'el' },
+        { type: 'role', value: 'dialog' },
+      ],
+      100,
+    );
+
+    expect(result).toBe(true);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('strategy 0 hidden but strategy 1 visible → returns false, no heal event (MINCRM-230)', async () => {
+    // Primary testId is stale → waitFor(hidden) resolves immediately (0 matches).
+    // Strategy 1 (role) still finds the element visible → waitFor(visible) resolves.
+    // Must return false (element is actually visible). No heal event recorded.
+    const page = mockPage([true, true]);
+    const hp = buildHealPage(page, 'isNotVisible stale primary');
+
+    const result = await hp.isNotVisible(
+      [
+        { type: 'testId', value: 'old-testid' },
+        { type: 'role', value: 'dialog' },
+      ],
+      100,
+    );
+
+    expect(result).toBe(false);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('single strategy hidden → returns true, no heal event', async () => {
+    // Only one strategy provided — no second probe attempted.
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'isNotVisible single strategy');
+
+    const result = await hp.isNotVisible([{ type: 'testId', value: 'el' }], 100);
+
+    expect(result).toBe(true);
     expect(HealingRegistry.instance.count).toBe(0);
   });
 });
