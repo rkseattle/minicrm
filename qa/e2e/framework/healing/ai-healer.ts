@@ -39,8 +39,6 @@ export interface AiHealResult {
   value: string;
   /** Confidence score from 0.0 to 1.0. */
   confidence: number;
-  /** Model's explanation of its reasoning. */
-  reasoning: string;
 }
 
 /** Options accepted by AiHealer constructor. */
@@ -50,6 +48,8 @@ export interface AiHealerOptions {
    * Defaults to DEFAULT_AI_TIMEOUT_MS.
    */
   timeoutMs?: number;
+  /** Inject a mock Anthropic client for unit tests. */
+  _client?: Anthropic;
 }
 
 /**
@@ -126,8 +126,7 @@ Respond with ONLY valid JSON matching this schema — no markdown, no explanatio
 {
   "type": "testId" | "role" | "label" | "text" | "css" | "xpath",
   "value": "<selector string>",
-  "confidence": <number between 0.0 and 1.0>,
-  "reasoning": "<one sentence explaining why this locator targets the right element>"
+  "confidence": <number between 0.0 and 1.0>
 }
 
 Use the highest-confidence strategy you can find. If you are not confident the element is present in this DOM, set confidence below 0.75.`;
@@ -137,8 +136,17 @@ Use the highest-confidence strategy you can find. If you are not confident the e
  * Parses the raw text response from the model into an AiHealResult.
  * Returns null if the response is malformed or the confidence is below
  * CONFIDENCE_THRESHOLD.
+ *
+ * Exported for unit testing (MINCRM-222).
  */
-function parseResponse(raw: string): AiHealResult | null {
+export function parseResponse(raw: string): AiHealResult | null {
+  // Detect truncated JSON — if the response doesn't end with } the model ran out
+  // of token budget. Log a warning so CI output shows the true cause (MINCRM-222).
+  if (!raw.trimEnd().endsWith('}')) {
+    console.warn(`AiHealer: response appears truncated (does not end with '}'); raw: ${raw}`);
+    return null;
+  }
+
   let parsed: unknown;
   try {
     // Strip any accidental markdown fences that a model may include despite instructions.
@@ -156,8 +164,7 @@ function parseResponse(raw: string): AiHealResult | null {
     parsed === null ||
     typeof (parsed as Record<string, unknown>)['type'] !== 'string' ||
     typeof (parsed as Record<string, unknown>)['value'] !== 'string' ||
-    typeof (parsed as Record<string, unknown>)['confidence'] !== 'number' ||
-    typeof (parsed as Record<string, unknown>)['reasoning'] !== 'string'
+    typeof (parsed as Record<string, unknown>)['confidence'] !== 'number'
   ) {
     return null;
   }
@@ -203,7 +210,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
  * const healer = new AiHealer();
  * const result = await healer.heal(page, 'Submit form button', attempted);
  * if (result) {
- *   // result.type, result.value, result.confidence, result.reasoning
+ *   // result.type, result.value, result.confidence
  * }
  * ```
  */
@@ -216,7 +223,7 @@ export class AiHealer {
    */
   constructor(options: AiHealerOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
-    this.client = new Anthropic();
+    this.client = options._client ?? new Anthropic();
   }
 
   /**
@@ -258,7 +265,8 @@ export class AiHealer {
       const response = await withTimeout(
         this.client.messages.create({
           model: HEALING_MODEL,
-          max_tokens: 256,
+          // Three short fields should never exceed ~100 tokens; 512 is a 5x safety margin. (MINCRM-222)
+          max_tokens: 512,
           messages: [{ role: 'user', content: prompt }],
         }),
         this.timeoutMs,

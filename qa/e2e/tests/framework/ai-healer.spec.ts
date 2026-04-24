@@ -22,6 +22,7 @@ import {
   CONFIDENCE_THRESHOLD,
 } from '../../framework/healing/index.js';
 import { HealingRegistry } from '../../framework/healing/healing-registry.js';
+import { parseResponse } from '../../framework/healing/ai-healer.js';
 import type { AiHealResult } from '../../framework/healing/ai-healer.js';
 import type { LocatorStrategyRecord } from '../../framework/healing/healing-registry.js';
 
@@ -98,7 +99,6 @@ test.describe('AiHealer integration into HealingLocator', () => {
       type: 'css',
       value: '.never-used',
       confidence: 0.9,
-      reasoning: 'Should not be called',
     });
 
     await new HealingLocator(
@@ -130,7 +130,6 @@ test.describe('AiHealer integration into HealingLocator', () => {
       type: 'css',
       value: '.submit-btn-ai',
       confidence: 0.9,
-      reasoning: 'Found by class name in the DOM',
     });
 
     const locator = await new HealingLocator(
@@ -165,7 +164,6 @@ test.describe('AiHealer integration into HealingLocator', () => {
       type: 'css',
       value: '.ai-found',
       confidence: 0.85,
-      reasoning: 'Located via DOM analysis',
     });
 
     await new HealingLocator(
@@ -283,7 +281,6 @@ test.describe('AiHealer integration into HealingLocator', () => {
       type: 'css',
       value: '.should-not-be-called',
       confidence: 0.99,
-      reasoning: 'Should not be called',
     });
 
     await expect(
@@ -302,5 +299,44 @@ test.describe('AiHealer integration into HealingLocator', () => {
     ).rejects.toThrow(StrategyExhaustedError);
 
     expect(aiHealer.callCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-222: parseResponse unit tests
+// ---------------------------------------------------------------------------
+
+test.describe('parseResponse', () => {
+  test('returns null and logs a warning when response is truncated (no closing brace)', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      const truncated = '{"type": "css", "value": ".btn", "confidence": 0.9';
+      const result = parseResponse(truncated);
+      expect(result).toBeNull();
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('truncated');
+      expect(warnings[0]).toContain(truncated);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('returns a valid AiHealResult for a well-formed response', () => {
+    const raw = '{"type": "css", "value": ".submit-btn", "confidence": 0.9}';
+    const result = parseResponse(raw);
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('css');
+    expect(result?.value).toBe('.submit-btn');
+    expect(result?.confidence).toBe(0.9);
+  });
+
+  test('returns null for a response below confidence threshold', () => {
+    const raw = '{"type": "css", "value": ".btn", "confidence": 0.5}';
+    const result = parseResponse(raw);
+    expect(result).toBeNull();
   });
 });
