@@ -27,6 +27,7 @@ import {
   truncateDomSnapshot,
   MAX_DOM_CHARS,
 } from '../../framework/healing/ai-healer.js';
+import { withRetry } from '../../framework/healing/retry-utils.js';
 import type { AiHealResult } from '../../framework/healing/ai-healer.js';
 import type { LocatorStrategyRecord } from '../../framework/healing/healing-registry.js';
 
@@ -396,5 +397,87 @@ test.describe('truncateDomSnapshot', () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-224: withRetry unit tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a minimal APIError-shaped object with the given status code.
+ * The Anthropic SDK's APIError is a class we can construct directly.
+ */
+async function makeApiError(status: number): Promise<Error> {
+  const { APIError } = await import('@anthropic-ai/sdk/error.js');
+  return new APIError(status, undefined, `HTTP ${status}`, undefined);
+}
+
+test.describe('withRetry', () => {
+  test('succeeds on the second attempt after a 429 and logs a warning', async () => {
+    const err429 = await makeApiError(429);
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      let callCount = 0;
+      const result = await withRetry(async () => {
+        callCount++;
+        if (callCount === 1) throw err429;
+        return 'ok';
+      }, [0, 0]);
+      expect(result).toBe('ok');
+      expect(callCount).toBe(2);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('429');
+      expect(warnings[0]).toContain('attempt 1');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('exhausts retries after three 503s and logs an error', async () => {
+    const err503 = await makeApiError(503);
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    console.error = (...args: unknown[]) => {
+      errors.push(args.map(String).join(' '));
+    };
+    try {
+      let callCount = 0;
+      await expect(
+        withRetry(async () => {
+          callCount++;
+          throw err503;
+        }, [0, 0]),
+      ).rejects.toThrow();
+      expect(callCount).toBe(3); // initial + 2 retries
+      expect(warnings).toHaveLength(2); // one per retry attempt
+      expect(errors).toHaveLength(1); // final exhaustion log
+      expect(errors[0]).toContain('503');
+      expect(errors[0]).toContain('exhausted');
+    } finally {
+      console.warn = originalWarn;
+      console.error = originalError;
+    }
+  });
+
+  test('does not retry on a 400 and propagates the error immediately', async () => {
+    const err400 = await makeApiError(400);
+    let callCount = 0;
+    await expect(
+      withRetry(async () => {
+        callCount++;
+        throw err400;
+      }, [0, 0]),
+    ).rejects.toThrow();
+    expect(callCount).toBe(1); // no retries
   });
 });
