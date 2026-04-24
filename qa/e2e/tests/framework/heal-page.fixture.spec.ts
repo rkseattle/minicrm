@@ -27,11 +27,14 @@ import { buildHealPage } from '@framework/fixtures/heal-page.fixture.js';
 // ---------------------------------------------------------------------------
 
 function mockLocator(resolves: boolean): Locator {
-  return {
+  const loc = {
     waitFor: resolves ? () => Promise.resolve() : () => Promise.reject(new Error('Timeout')),
     click: () => Promise.resolve(),
     fill: (_value: string) => Promise.resolve(),
   } as unknown as Locator;
+  // probeLocator calls locator.first() before waitFor — return self.
+  (loc as unknown as Record<string, unknown>)['first'] = () => loc;
+  return loc;
 }
 
 function mockPage(resolveMap: boolean[]): Page {

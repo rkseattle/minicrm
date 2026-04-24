@@ -34,7 +34,7 @@ type MockLocator = Locator & {
 };
 
 function mockLocator(resolves: boolean): MockLocator {
-  return {
+  const loc = {
     _resolves: resolves,
     waitFor: (_opts?: { state?: string; timeout?: number }) =>
       resolves ? Promise.resolve() : Promise.reject(new Error('Timeout')),
@@ -48,6 +48,9 @@ function mockLocator(resolves: boolean): MockLocator {
     click: () => Promise.resolve(),
     fill: (_value: string) => Promise.resolve(),
   } as unknown as MockLocator;
+  // probeLocator calls locator.first() before waitFor — return self.
+  (loc as unknown as Record<string, unknown>)['first'] = () => loc;
+  return loc;
 }
 
 function mockPage(resolveMap: boolean[]): Page {
