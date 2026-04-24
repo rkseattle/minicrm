@@ -147,6 +147,41 @@ test.describe('generatePatchSuggestions', () => {
     expect(suggestions[0]!.winningStrategyValue).toBe('button');
   });
 
+  test('dedup key distinguishes same strategy type with different original values on the same method', () => {
+    // Two locators on the same method both use testId but with different values.
+    // Before the fix (key was type-only) these would collapse to one suggestion.
+    const report = makeReport({
+      totalHeals: 2,
+      staticHeals: 2,
+      events: [
+        {
+          timestamp: '2026-01-01T00:00:01.000Z',
+          testName: 'test A',
+          originalStrategy: { type: 'testId', value: 'save-btn' },
+          healedStrategy: { type: 'role', value: 'button' },
+          wasAiHeal: false,
+          pageObject: 'ContactsPage',
+          method: 'saveButton',
+        },
+        {
+          timestamp: '2026-01-01T00:00:02.000Z',
+          testName: 'test B',
+          originalStrategy: { type: 'testId', value: 'confirm-btn' },
+          healedStrategy: { type: 'css', value: '.confirm' },
+          wasAiHeal: false,
+          pageObject: 'ContactsPage',
+          method: 'saveButton',
+        },
+      ],
+    });
+
+    const suggestions = generatePatchSuggestions(report);
+    // Different original values → two distinct locators → two suggestions.
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]!.winningStrategyType).toBe('role');
+    expect(suggestions[1]!.winningStrategyType).toBe('css');
+  });
+
   test('dedup key distinguishes different methods with the same original strategy type', () => {
     const report = makeReport({
       totalHeals: 2,

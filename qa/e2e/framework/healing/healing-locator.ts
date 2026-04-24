@@ -77,6 +77,16 @@ export interface HealingLocatorOptions {
    */
   intent?: string;
   /**
+   * Page Object class name that owns this locator. Recorded in heal events
+   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   */
+  pageObject?: string;
+  /**
+   * Page Object method name that owns this locator. Recorded in heal events
+   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   */
+  method?: string;
+  /**
    * Override the AiHealer instance. Used in tests to inject a mock healer
    * without touching the AI_HEALING env var or making real API calls.
    * @internal
@@ -196,6 +206,8 @@ export class HealingLocator {
   private readonly strategies: LocatorStrategy[];
   private readonly fallbackTimeout: number;
   private readonly aiHealer: AiHealer;
+  private readonly pageObject: string | undefined;
+  private readonly method: string | undefined;
 
   /** Natural-language description for the AI tier (S3). */
   readonly intent: string;
@@ -220,6 +232,8 @@ export class HealingLocator {
     );
     this.fallbackTimeout = options.fallbackTimeout ?? DEFAULT_FALLBACK_TIMEOUT_MS;
     this.intent = options.intent ?? '';
+    this.pageObject = options.pageObject;
+    this.method = options.method;
     this.aiHealer = options._aiHealer ?? new AiHealer();
   }
 
@@ -261,6 +275,8 @@ export class HealingLocator {
           toRecord(primary),
           toRecord(fallback),
           false, // wasAiHeal — AI tier is S3
+          this.pageObject,
+          this.method,
         );
         return fallbackLocator;
       }
@@ -284,6 +300,8 @@ export class HealingLocator {
             toRecord(primary),
             toRecord(aiStrategy),
             true, // wasAiHeal
+            this.pageObject,
+            this.method,
           );
           return aiLocator;
         }

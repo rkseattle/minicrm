@@ -30,9 +30,11 @@ function formatStrategy(strategy: LocatorStrategyRecord): string {
 /**
  * Derives patch suggestions from a merged HealingReport.
  *
- * Deduplication key: pageObject + method + originalStrategy.type.
- * When multiple heals for the same locator occur in one run, only the first
- * winning strategy is surfaced (earliest timestamp wins after sort).
+ * Deduplication key: pageObject + method + originalStrategy.type + originalStrategy.value.
+ * Including the value ensures two different locators on the same method that share a
+ * strategy type (e.g. two testId strategies with different values) each get a suggestion.
+ * When multiple heals for the same locator occur in one run, only the first winning
+ * strategy is surfaced (earliest timestamp wins after sort).
  */
 export function generatePatchSuggestions(report: HealingReport): PatchSuggestion[] {
   const seen = new Set<string>();
@@ -44,7 +46,7 @@ export function generatePatchSuggestions(report: HealingReport): PatchSuggestion
   for (const event of sorted) {
     const pageObject = event.pageObject ?? 'Unknown';
     const method = event.method ?? 'unknown';
-    const dedupKey = `${pageObject}::${method}::${event.originalStrategy.type}`;
+    const dedupKey = `${pageObject}::${method}::${event.originalStrategy.type}::${event.originalStrategy.value}`;
 
     if (seen.has(dedupKey)) continue;
     seen.add(dedupKey);
