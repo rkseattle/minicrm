@@ -119,7 +119,6 @@ export class HealingReporter implements Reporter {
     const aiHealEvents = allEvents.filter((e) => e.wasAiHeal);
     const aiHeals = aiHealEvents.length;
     const staticHeals = allEvents.length - aiHeals;
-    const aiHealCount = aiHeals;
     const estimatedTokenCost = aiHealEvents.reduce((sum, e) => sum + (e.tokenCost ?? 0), 0);
 
     const report: HealingReport = {
@@ -127,7 +126,7 @@ export class HealingReporter implements Reporter {
       totalHeals: allEvents.length,
       aiHeals,
       staticHeals,
-      aiHealCount,
+      aiHealCount: aiHeals,
       estimatedTokenCost,
       events: allEvents,
     };
