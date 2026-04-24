@@ -217,12 +217,9 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Run framework unit tests
-        run: >
-          npx playwright test
-          --config=qa/e2e/playwright.config.ts
-          --project=desktop
-          qa/e2e/tests/framework/
+      - name: Run framework unit tests with coverage
+        working-directory: qa
+        run: npm run test:framework:coverage
 
       - name: Publish framework test results to GitHub Checks
         uses: dorny/test-reporter@v3
@@ -239,6 +236,16 @@ jobs:
         with:
           name: framework-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: qa/e2e/test-results/results.xml
+          retention-days: 14
+
+      - name: Upload framework coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: framework-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            qa/coverage/lcov.info
+            qa/coverage/coverage-summary.json
           retention-days: 14
 
   e2e-functional:
@@ -757,6 +764,12 @@ jobs:
           name: framework-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/framework-test-results
 
+      - name: Download framework coverage artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: framework-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/framework-coverage
+
       - name: Build coverage comment
         id: comment
         run: |
@@ -802,6 +815,7 @@ jobs:
 
           SERVER_COV=$(parse_summary artifacts/server-coverage/coverage-summary.json)
           CLIENT_COV=$(parse_summary artifacts/client-coverage/coverage-summary.json)
+          FRAMEWORK_COV=$(parse_summary artifacts/framework-coverage/coverage-summary.json)
           SERVER_TESTS=$(parse_xml artifacts/server-test-results/junit.xml)
           CLIENT_TESTS=$(parse_xml artifacts/client-test-results/junit.xml)
           FRAMEWORK_TESTS=$(parse_xml artifacts/framework-test-results/results.xml)
@@ -809,9 +823,10 @@ jobs:
 
           IFS='|' read -r s_lines s_funcs s_branch s_stmts <<< "$SERVER_COV"
           IFS='|' read -r c_lines c_funcs c_branch c_stmts <<< "$CLIENT_COV"
+          IFS='|' read -r f_lines f_funcs f_branch f_stmts <<< "$FRAMEWORK_COV"
           IFS='|' read -r s_status s_tests s_passed s_failed s_skipped <<< "$SERVER_TESTS"
           IFS='|' read -r c_status c_tests c_passed c_failed c_skipped <<< "$CLIENT_TESTS"
-          IFS='|' read -r f_status f_tests f_passed f_failed f_skipped <<< "$FRAMEWORK_TESTS"
+          IFS='|' read -r fw_status fw_tests fw_passed fw_failed fw_skipped <<< "$FRAMEWORK_TESTS"
 
           {
             echo 'body<<COMMENT_EOF'
@@ -821,7 +836,7 @@ jobs:
             echo "|-------|--------|-------|--------|--------|---------|"
             echo "| server | $s_status | $s_tests | $s_passed | $s_failed | $s_skipped |"
             echo "| client | $c_status | $c_tests | $c_passed | $c_failed | $c_skipped |"
-            echo "| e2e framework | $f_status | $f_tests | $f_passed | $f_failed | $f_skipped |"
+            echo "| e2e framework | $fw_status | $fw_tests | $fw_passed | $fw_failed | $fw_skipped |"
             echo ""
             echo "## Unit Test Coverage"
             echo ""
@@ -829,10 +844,9 @@ jobs:
             echo "|---------|-------|-----------|----------|------------|"
             echo "| server  | ${s_lines}% | ${s_funcs}% | ${s_branch}% | ${s_stmts}% |"
             echo "| client  | ${c_lines}% | ${c_funcs}% | ${c_branch}% | ${c_stmts}% |"
-            echo "| e2e framework | N/A | N/A | N/A | N/A |"
+            echo "| e2e framework | ${f_lines}% | ${f_funcs}% | ${f_branch}% | ${f_stmts}% |"
             echo ""
             echo "> Thresholds: server services ≥ 80% · client components/pages ≥ 70%"
-            echo "> e2e framework tests run under Playwright without coverage instrumentation"
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
             echo 'COMMENT_EOF'
