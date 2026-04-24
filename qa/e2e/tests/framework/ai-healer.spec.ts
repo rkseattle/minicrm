@@ -39,11 +39,14 @@ import type { LocatorStrategyRecord } from '../../framework/healing/healing-regi
  * Creates a mock Locator whose waitFor resolves or rejects based on `resolves`.
  */
 function mockLocator(resolves: boolean): Locator {
-  return {
+  const loc = {
     waitFor: resolves
       ? () => Promise.resolve()
       : () => Promise.reject(new Error('Timeout waiting for locator')),
   } as unknown as Locator;
+  // probeLocator calls locator.first() before waitFor — return self.
+  (loc as unknown as Record<string, unknown>)['first'] = () => loc;
+  return loc;
 }
 
 /**

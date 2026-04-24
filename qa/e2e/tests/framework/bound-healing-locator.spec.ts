@@ -19,13 +19,16 @@ import { HealingRegistry } from '../../framework/healing/healing-registry.js';
 
 function mockLocator(resolves: boolean): Locator & { waitForCalls: Array<{ state: string }> } {
   const calls: Array<{ state: string }> = [];
-  return {
+  const loc = {
     waitFor: (opts?: { state?: string; timeout?: number }) => {
       calls.push({ state: opts?.state ?? '' });
       return resolves ? Promise.resolve() : Promise.reject(new Error('Timeout'));
     },
     waitForCalls: calls,
   } as unknown as Locator & { waitForCalls: Array<{ state: string }> };
+  // probeLocator calls locator.first() before waitFor — return self.
+  (loc as unknown as Record<string, unknown>)['first'] = () => loc;
+  return loc;
 }
 
 function mockPage(resolveMap: boolean[]): Page {
@@ -148,15 +151,15 @@ test.describe('BoundHealingLocator', () => {
     // waitFor call on the resolved locator should fail. We need two mock locators:
     // the first resolves the probe but the second waitFor call on it rejects.
     let callIndex = 0;
-    const locators = [
-      // probe call: resolves so HealingLocator returns this locator
-      {
-        waitFor: (opts?: { state?: string }) => {
-          if (opts?.state === 'attached') return Promise.resolve();
-          return Promise.reject(new Error('Timeout waiting for visible'));
-        },
-      } as unknown as Locator,
-    ];
+    const probeLocator = {
+      waitFor: (opts?: { state?: string }) => {
+        if (opts?.state === 'attached') return Promise.resolve();
+        return Promise.reject(new Error('Timeout waiting for visible'));
+      },
+    } as unknown as Locator;
+    // probeLocator calls locator.first() before waitFor — return self.
+    (probeLocator as unknown as Record<string, unknown>)['first'] = () => probeLocator;
+    const locators = [probeLocator];
     const fakePage = {
       getByTestId: () => {
         const l = locators[callIndex] ?? locators[0]!;
