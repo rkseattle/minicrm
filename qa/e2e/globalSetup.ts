@@ -1,8 +1,8 @@
 /**
  * Playwright globalSetup — pre-authenticated admin session for storageState.
  *
- * Performs one API-based login as the E2E admin user and saves the resulting
- * browser storageState (cookies) to `.auth/admin.json`. All non-auth test
+ * POSTs credentials directly to the auth API, parses the Set-Cookie header,
+ * and writes a storageState JSON file to `.auth/admin.json`. All non-auth test
  * workers load this file instead of navigating through the login UI, eliminating
  * per-test browser login overhead.
  *
@@ -11,10 +11,10 @@
  *
  * The `.auth/` directory is gitignored and claudeignored — never committed.
  *
- * MINCRM-192
+ * MINCRM-192, MINCRM-221
  */
 
-import { chromium, type FullConfig } from '@playwright/test';
+import type { FullConfig } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -24,11 +24,11 @@ export const ADMIN_STORAGE_STATE = path.join(__dirname, '.auth', 'admin.json');
 /**
  * globalSetup entry point called once before all workers start.
  *
- * @param config - The resolved Playwright configuration.
+ * @param _config - The resolved Playwright configuration (unused; env vars drive auth).
  */
-export default async function globalSetup(config: FullConfig): Promise<void> {
-  const baseURL =
-    process.env['E2E_BASE_URL'] ?? config.projects[0]?.use?.baseURL ?? 'http://localhost:5173';
+export default async function globalSetup(_config: FullConfig): Promise<void> {
+  const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
+  const loginUrl = `${apiUrl}/api/auth/login`;
 
   const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const adminPassword = process.env['E2E_ADMIN_PASSWORD'];
@@ -36,35 +36,52 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
     throw new Error('[globalSetup] E2E_ADMIN_PASSWORD is not set');
   }
 
+  const response = await fetch(loginUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `[globalSetup] Login request to ${loginUrl} failed with status ${response.status}`,
+    );
+  }
+
+  // Extract the minicrm_token value from the Set-Cookie header.
+  const setCookieHeader = response.headers.get('set-cookie') ?? '';
+  const tokenMatch = setCookieHeader.match(/minicrm_token=([^;]+)/);
+  if (!tokenMatch) {
+    throw new Error(`[globalSetup] minicrm_token not found in Set-Cookie header from ${loginUrl}`);
+  }
+  const cookieValue = tokenMatch[1];
+
+  // Derive the domain from the API URL so the cookie is scoped correctly.
+  const apiDomain = new URL(apiUrl).hostname;
+
+  const storageState = {
+    cookies: [
+      {
+        name: 'minicrm_token',
+        value: cookieValue,
+        domain: apiDomain,
+        path: '/',
+        expires: -1,
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Lax' as const,
+      },
+    ],
+    origins: [],
+  };
+
   // Ensure the .auth/ output directory exists.
   const authDir = path.dirname(ADMIN_STORAGE_STATE);
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true });
   }
 
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
+  fs.writeFileSync(ADMIN_STORAGE_STATE, JSON.stringify(storageState, null, 2));
 
-  try {
-    const page = await context.newPage();
-
-    // Navigate to the login page and submit credentials.
-    await page.goto(`${baseURL}/login`);
-
-    // Fill email field — locate by label text for robustness.
-    await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByLabel(/password/i).fill(adminPassword);
-    await page.getByRole('button', { name: /sign in|log in|login/i }).click();
-
-    // Wait for the SPA to navigate away from /login, confirming authentication.
-    await page.waitForURL((url) => new URL(url).pathname !== '/login', { timeout: 15_000 });
-
-    // Persist cookies + localStorage to disk.
-    await context.storageState({ path: ADMIN_STORAGE_STATE });
-
-    console.log('[globalSetup] Admin storageState saved to', ADMIN_STORAGE_STATE);
-  } finally {
-    await context.close();
-    await browser.close();
-  }
+  console.log('[globalSetup] Admin storageState saved to', ADMIN_STORAGE_STATE);
 }
