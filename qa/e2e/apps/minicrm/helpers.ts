@@ -21,6 +21,10 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
+import { z } from 'zod';
+import { contactResponseSchema } from '@minicrm/shared/schemas/contactSchema.js';
+import { accountResponseSchema } from '@minicrm/shared/schemas/accountSchema.js';
+import { dealResponseSchema } from '@minicrm/shared/schemas/dealSchema.js';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -121,9 +125,11 @@ export async function createTestContact(
   if (overrides.title !== undefined) payload['title'] = overrides.title;
   if (overrides.department !== undefined) payload['department'] = overrides.department;
 
-  // Step 1: create via REST.
-  // Server returns { contact: ContactRow } — unwrap the nested object.
-  const response = await restClient.post<{ contact: TestContact }>('/api/contacts', payload);
+  // Step 1: create via REST with response schema validation (MINCRM-229).
+  // Server returns { contact: ContactRow } — validate the envelope + inner object.
+  const response = await restClient.post<{ contact: TestContact }>('/api/contacts', payload, {
+    schema: z.object({ contact: contactResponseSchema }),
+  });
   const contact = response.body.contact;
 
   // Step 2: register for teardown immediately so cleanup runs even if the
@@ -158,9 +164,11 @@ export async function createTestAccount(
   if (overrides.employee_range !== undefined) payload['employee_range'] = overrides.employee_range;
   if (overrides.revenue_range !== undefined) payload['revenue_range'] = overrides.revenue_range;
 
-  // Step 1: create via REST.
-  // Server returns { account: AccountRow } — unwrap the nested object.
-  const response = await restClient.post<{ account: TestAccount }>('/api/accounts', payload);
+  // Step 1: create via REST with response schema validation (MINCRM-229).
+  // Server returns { account: AccountRow } — validate the envelope + inner object.
+  const response = await restClient.post<{ account: TestAccount }>('/api/accounts', payload, {
+    schema: z.object({ account: accountResponseSchema }),
+  });
   const account = response.body.account;
 
   // Step 2: register for teardown.
@@ -238,8 +246,10 @@ export async function createTestDeal(
   if (overrides.currency !== undefined) payload['currency'] = overrides.currency;
   if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
-  // Server returns { deal: DealRow } — unwrap.
-  const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload);
+  // Server returns { deal: DealRow } — validate the envelope + inner object (MINCRM-229).
+  const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload, {
+    schema: z.object({ deal: dealResponseSchema }),
+  });
   const deal = response.body.deal;
 
   testData.register('deal', deal.id, `/api/deals/${deal.id}`);

@@ -5,10 +5,11 @@
  * a pluggable auth strategy system. Tests and TestDataManager should use this
  * rather than calling APIRequestContext directly.
  *
- * MINCRM-127
+ * MINCRM-127, MINCRM-229
  */
 
 import type { APIRequestContext } from '@playwright/test';
+import type { ZodTypeAny, ZodError } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Auth strategy
@@ -95,18 +96,50 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Thrown by RestClient on any HTTP 4xx or 5xx response.
+ * Thrown by RestClient on any HTTP 4xx or 5xx response, or on Zod schema
+ * validation failure when a schema is provided to the request method.
  */
 export class RestClientError extends Error {
-  /** @param status - The HTTP status code. */
-  /** @param body - The raw parsed response body. */
+  /**
+   * @param status - The HTTP status code.
+   * @param body - The raw parsed response body.
+   * @param validationError - Populated when the error is a Zod parse failure
+   *   rather than an HTTP error status. Callers can inspect this to get
+   *   structured field-level validation details.
+   * @param message - Override message; defaults to generic HTTP status message.
+   */
   constructor(
     public readonly status: number,
     public readonly body: unknown,
+    public readonly validationError?: ZodError,
+    message?: string,
   ) {
-    super(`REST request failed with status ${status}`);
+    super(message ?? `REST request failed with status ${status}`);
     this.name = 'RestClientError';
   }
+}
+
+// ---------------------------------------------------------------------------
+// Per-request options (MINCRM-229)
+// ---------------------------------------------------------------------------
+
+/**
+ * Optional per-request options for RestClient methods.
+ *
+ * @template T - The expected response body type (inferred from the method call).
+ */
+export interface RequestOptions {
+  /**
+   * Zod schema to validate the parsed response body against at runtime.
+   *
+   * When provided, `parseResponse` calls `schema.parse(body)` instead of the
+   * bare `body as T` cast. A parse failure throws a `RestClientError` with a
+   * message that includes the HTTP method, endpoint path, and Zod error detail
+   * so that API contract violations are immediately diagnosable.
+   *
+   * When omitted, behaviour is identical to the pre-MINCRM-229 bare cast.
+   */
+  schema?: ZodTypeAny;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,14 +220,20 @@ export class RestClient {
 
   /**
    * Parses a Playwright APIResponse into an ApiResponse<T>, throwing
-   * RestClientError on 4xx/5xx.
+   * RestClientError on 4xx/5xx or on Zod validation failure (MINCRM-229).
    *
    * @template T - Expected body type.
    * @param response - Raw Playwright APIResponse.
+   * @param method - HTTP method string (e.g., `GET`) — included in error messages.
+   * @param path - Relative URL path — included in error messages.
+   * @param options - Optional request options (schema for runtime validation).
    * @returns Typed ApiResponse<T>.
    */
   private async parseResponse<T>(
     response: Awaited<ReturnType<APIRequestContext['get']>>,
+    method: string,
+    path: string,
+    options?: RequestOptions,
   ): Promise<ApiResponse<T>> {
     const status = response.status();
     // Parse body as JSON; fall back to text if not JSON.
@@ -216,6 +255,23 @@ export class RestClient {
       headers[key] = value;
     }
 
+    // When a Zod schema is provided, validate the body at runtime (MINCRM-229).
+    // A parse failure throws RestClientError with method, path, and Zod details
+    // so the contract violation is immediately diagnosable at the call site.
+    if (options?.schema !== undefined) {
+      const result = options.schema.safeParse(body);
+      if (!result.success) {
+        const zodErr = result.error;
+        throw new RestClientError(
+          status,
+          body,
+          zodErr,
+          `${method} ${path} response failed schema validation: ${zodErr.message}`,
+        );
+      }
+      return { status, body: result.data as T, headers };
+    }
+
     return { status, body: body as T, headers };
   }
 
@@ -228,14 +284,17 @@ export class RestClient {
    *
    * @template T - Expected response body type.
    * @param path - Relative URL path.
-   * @param headers - Optional additional headers.
+   * @param options - Optional headers and/or Zod schema for response validation.
    * @returns Typed ApiResponse<T>.
    */
-  async get<T>(path: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async get<T>(
+    path: string,
+    options?: RequestOptions & { headers?: Record<string, string> },
+  ): Promise<ApiResponse<T>> {
     const response = await this.request.get(this.url(path), {
-      headers: this.buildHeaders(headers),
+      headers: this.buildHeaders(options?.headers),
     });
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, 'GET', path, options);
   }
 
   /**
@@ -244,19 +303,19 @@ export class RestClient {
    * @template T - Expected response body type.
    * @param path - Relative URL path.
    * @param body - Request payload (will be JSON-serialized).
-   * @param headers - Optional additional headers.
+   * @param options - Optional headers and/or Zod schema for response validation.
    * @returns Typed ApiResponse<T>.
    */
   async post<T>(
     path: string,
     body?: unknown,
-    headers?: Record<string, string>,
+    options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
     const response = await this.request.post(this.url(path), {
       data: body,
-      headers: this.buildHeaders(headers),
+      headers: this.buildHeaders(options?.headers),
     });
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, 'POST', path, options);
   }
 
   /**
@@ -265,19 +324,19 @@ export class RestClient {
    * @template T - Expected response body type.
    * @param path - Relative URL path.
    * @param body - Request payload (will be JSON-serialized).
-   * @param headers - Optional additional headers.
+   * @param options - Optional headers and/or Zod schema for response validation.
    * @returns Typed ApiResponse<T>.
    */
   async put<T>(
     path: string,
     body?: unknown,
-    headers?: Record<string, string>,
+    options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
     const response = await this.request.put(this.url(path), {
       data: body,
-      headers: this.buildHeaders(headers),
+      headers: this.buildHeaders(options?.headers),
     });
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, 'PUT', path, options);
   }
 
   /**
@@ -286,19 +345,19 @@ export class RestClient {
    * @template T - Expected response body type.
    * @param path - Relative URL path.
    * @param body - Request payload (will be JSON-serialized).
-   * @param headers - Optional additional headers.
+   * @param options - Optional headers and/or Zod schema for response validation.
    * @returns Typed ApiResponse<T>.
    */
   async patch<T>(
     path: string,
     body?: unknown,
-    headers?: Record<string, string>,
+    options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
     const response = await this.request.patch(this.url(path), {
       data: body,
-      headers: this.buildHeaders(headers),
+      headers: this.buildHeaders(options?.headers),
     });
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, 'PATCH', path, options);
   }
 
   /**
@@ -306,13 +365,16 @@ export class RestClient {
    *
    * @template T - Expected response body type.
    * @param path - Relative URL path.
-   * @param headers - Optional additional headers.
+   * @param options - Optional headers and/or Zod schema for response validation.
    * @returns Typed ApiResponse<T>.
    */
-  async delete<T>(path: string, headers?: Record<string, string>): Promise<ApiResponse<T>> {
+  async delete<T>(
+    path: string,
+    options?: RequestOptions & { headers?: Record<string, string> },
+  ): Promise<ApiResponse<T>> {
     const response = await this.request.delete(this.url(path), {
-      headers: this.buildHeaders(headers),
+      headers: this.buildHeaders(options?.headers),
     });
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, 'DELETE', path, options);
   }
 }
