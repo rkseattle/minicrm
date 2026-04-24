@@ -26,12 +26,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HealingRegistry } from './healing-registry.js';
 import type { HealEvent } from './healing-registry.js';
+import { generatePatchSuggestions } from './patch-suggester.js';
+import type { PatchSuggestion } from './patch-suggester.js';
 
 const OUTPUT_DIR = 'test-results';
 // Matches both the original format (healing-0.json) and the shard-aware format
 // (healing-shard1-worker0.json) produced when SHARD_INDEX is set. MINCRM-216
 const WORKER_FILE_PATTERN = /^healing-(shard\d+-worker\d+|\d+)\.json$/;
 const REPORT_FILE = path.join(OUTPUT_DIR, 'healing-report.json');
+const SUGGESTIONS_FILE = path.join(OUTPUT_DIR, 'healing-suggestions.md');
 
 /** Schema of the merged healing report file. */
 export interface HealingReport {
@@ -40,6 +43,24 @@ export interface HealingReport {
   aiHeals: number;
   staticHeals: number;
   events: HealEvent[];
+}
+
+/**
+ * Builds the markdown content for healing-suggestions.md from a list of
+ * PatchSuggestion objects. Exported for unit testing. MINCRM-225
+ */
+export function buildSuggestionsMarkdown(suggestions: PatchSuggestion[]): string {
+  if (suggestions.length === 0) {
+    return 'No heal events this run.\n';
+  }
+  const lines: string[] = ['# Healing Patch Suggestions', ''];
+  for (const s of suggestions) {
+    lines.push(`## ${s.pageObject}.${s.method}`);
+    lines.push('');
+    lines.push(s.instruction);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -110,6 +131,9 @@ export class HealingReporter implements Reporter {
       console.error(`[HealingReporter] Failed to write report: ${String(err)}`);
     }
 
+    // Write patch suggestions alongside the report. MINCRM-225
+    this._writeSuggestions(report);
+
     // Log summary to CI output.
     this._logSummary(report);
   }
@@ -128,6 +152,22 @@ export class HealingReporter implements Reporter {
     }
     if (report.totalHeals === 0) {
       console.log('[HealingReporter] No heals recorded. All primary locators resolved.');
+    }
+  }
+
+  /**
+   * Generates patch suggestions from the report and writes healing-suggestions.md.
+   * Always writes the file — an absent file is harder to distinguish from a CI
+   * artifact upload failure than an empty one. MINCRM-225
+   */
+  _writeSuggestions(report: HealingReport): void {
+    const suggestions = generatePatchSuggestions(report);
+    const markdown = buildSuggestionsMarkdown(suggestions);
+    try {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+      fs.writeFileSync(SUGGESTIONS_FILE, markdown, 'utf-8');
+    } catch (err) {
+      console.error(`[HealingReporter] Failed to write suggestions: ${String(err)}`);
     }
   }
 

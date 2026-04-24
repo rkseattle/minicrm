@@ -23,3 +23,6 @@ export type { HealingReport } from './healing-reporter.js';
 
 export { AiHealer, CONFIDENCE_THRESHOLD, DEFAULT_AI_TIMEOUT_MS } from './ai-healer.js';
 export type { AiHealResult, AiHealerOptions } from './ai-healer.js';
+
+export { generatePatchSuggestions } from './patch-suggester.js';
+export type { PatchSuggestion } from './patch-suggester.js';

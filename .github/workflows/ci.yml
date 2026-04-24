@@ -319,6 +319,7 @@ jobs:
           path: |
             qa/e2e/test-results/results.xml
             qa/e2e/test-results/healing-shard*.json
+            qa/e2e/test-results/healing-suggestions.md
             qa/e2e/blob-report/
           retention-days: 7
           if-no-files-found: warn
@@ -476,6 +477,33 @@ jobs:
           --input ./shard-artifacts
           --output ./healing-report-${{ matrix.project }}.json
 
+      - name: Collect patch suggestions from shards
+        if: always()
+        run: |
+          # Concatenate healing-suggestions.md files from all shards.
+          # If every shard reported "No heal events this run.", collapse to one line.
+          # MINCRM-225
+          SUGGESTIONS_OUT="healing-suggestions-${{ matrix.project }}.md"
+          SUGGESTION_FILES=$(find ./shard-artifacts -name "healing-suggestions.md" 2>/dev/null | sort)
+          if [ -z "$SUGGESTION_FILES" ]; then
+            echo "No heal events this run." > "$SUGGESTIONS_OUT"
+          else
+            # Strip "No heal events" placeholder lines; keep real content.
+            REAL_CONTENT=$(cat $SUGGESTION_FILES | grep -v "^No heal events this run\.$" | grep -v "^$" || true)
+            if [ -z "$REAL_CONTENT" ]; then
+              echo "No heal events this run." > "$SUGGESTIONS_OUT"
+            else
+              {
+                echo "# Healing Patch Suggestions"
+                echo ""
+                # Extract suggestion bodies (lines after the # headings).
+                cat $SUGGESTION_FILES | grep -v "^No heal events this run\.$" | grep -v "^# Healing Patch Suggestions$"
+              } > "$SUGGESTIONS_OUT"
+            fi
+          fi
+          echo "Suggestions written to $SUGGESTIONS_OUT"
+          cat "$SUGGESTIONS_OUT"
+
       - name: Check for shard failures
         if: always()
         run: |
@@ -504,6 +532,7 @@ jobs:
             merged-results.xml
             playwright-report/
             healing-report-${{ matrix.project }}.json
+            healing-suggestions-${{ matrix.project }}.md
           retention-days: 30
           if-no-files-found: warn
 
@@ -562,6 +591,7 @@ jobs:
 
           HEAL_NOTE=""
           HEAL_LINK=""
+          SUGGESTIONS_BODY=""
           for project in desktop mobile-web; do
             dir="artifacts/$project"
             REPORT="$dir/healing-report-$project.json"
@@ -570,7 +600,17 @@ jobs:
               if [ "$TOTAL" -gt 0 ]; then
                 HEAL_NOTE="> ⚕️ $TOTAL selector(s) self-healed this run — review \`healing-report.json\` in artifacts"
                 HEAL_LINK="[📋 Download healing report]($ARTIFACTS_URL#artifacts)"
-                break
+              fi
+            fi
+            SUGGESTIONS="$dir/healing-suggestions-$project.md"
+            if [ -f "$SUGGESTIONS" ]; then
+              CONTENT=$(cat "$SUGGESTIONS")
+              if [ "$CONTENT" != "No heal events this run." ]; then
+                SUGGESTIONS_BODY="$SUGGESTIONS_BODY
+
+### Patch Suggestions ($project)
+
+$CONTENT"
               fi
             fi
           done
@@ -591,6 +631,14 @@ jobs:
             echo "[Download trace artifacts]($ARTIFACTS_URL)"
             if [ -n "$HEAL_LINK" ]; then
               echo "$HEAL_LINK"
+            fi
+            if [ -n "$SUGGESTIONS_BODY" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "## Self-Healing Patch Suggestions"
+              echo ""
+              echo "$SUGGESTIONS_BODY"
             fi
             echo 'COMMENT_EOF'
           } >> $GITHUB_OUTPUT
