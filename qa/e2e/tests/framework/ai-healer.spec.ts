@@ -339,6 +339,26 @@ test.describe('parseResponse', () => {
     expect(result?.confidence).toBe(0.9);
   });
 
+  test('parses a markdown-fenced response without triggering the truncation warning', () => {
+    // Models sometimes wrap their JSON in fences despite instructions. The truncation
+    // check must run after fence-stripping so a fenced-but-complete response is not
+    // incorrectly rejected with a "truncated" warning. (MINCRM-222 review fix)
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      const fenced = '```json\n{"type": "css", "value": ".btn", "confidence": 0.9}\n```';
+      const result = parseResponse(fenced);
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe('css');
+      expect(warnings).toHaveLength(0);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
   test('returns null for a response below confidence threshold', () => {
     const raw = '{"type": "css", "value": ".btn", "confidence": 0.5}';
     const result = parseResponse(raw);

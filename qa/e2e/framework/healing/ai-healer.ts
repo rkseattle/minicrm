@@ -159,7 +159,7 @@ export function truncateDomSnapshot(snapshot: string, selector: string): string 
     }
   }
 
-  // Container alone exceeds the limit — fall back to substring.
+  // No parseable child boundaries found (e.g. large text node) — fall back to substring.
   const fallback = snapshot.substring(0, MAX_DOM_CHARS) + '<!-- truncated -->';
   console.warn(
     `AiHealer: DOM snapshot truncated for selector "${selector}": ${originalLength} → ${fallback.length} chars (substring fallback)`,
@@ -255,20 +255,22 @@ Use the highest-confidence strategy you can find. If you are not confident the e
  * Exported for unit testing (MINCRM-222).
  */
 export function parseResponse(raw: string): AiHealResult | null {
-  // Detect truncated JSON — if the response doesn't end with } the model ran out
-  // of token budget. Log a warning so CI output shows the true cause (MINCRM-222).
-  if (!raw.trimEnd().endsWith('}')) {
+  // Strip any accidental markdown fences that a model may include despite instructions.
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+
+  // Detect truncated JSON — check after fence-stripping so a fenced-but-complete response
+  // is not incorrectly flagged. If cleaned doesn't end with } the model ran out of token
+  // budget. Log a warning so CI output shows the true cause (MINCRM-222).
+  if (!cleaned.endsWith('}')) {
     console.warn(`AiHealer: response appears truncated (does not end with '}'); raw: ${raw}`);
     return null;
   }
 
   let parsed: unknown;
   try {
-    // Strip any accidental markdown fences that a model may include despite instructions.
-    const cleaned = raw
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/, '')
-      .trim();
     parsed = JSON.parse(cleaned);
   } catch {
     return null;
