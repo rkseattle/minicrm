@@ -32,8 +32,20 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const adminPassword = process.env['E2E_ADMIN_PASSWORD'];
+
+  // When E2E_ADMIN_PASSWORD is absent (e.g. the framework-specs CI job, which
+  // runs unit tests with no app server), skip the login and write an empty
+  // storageState. Framework specs never use storageState so this is safe.
   if (!adminPassword) {
-    throw new Error('[globalSetup] E2E_ADMIN_PASSWORD is not set');
+    const authDir = path.dirname(ADMIN_STORAGE_STATE);
+    if (!fs.existsSync(authDir)) {
+      fs.mkdirSync(authDir, { recursive: true });
+    }
+    fs.writeFileSync(ADMIN_STORAGE_STATE, JSON.stringify({ cookies: [], origins: [] }, null, 2));
+    console.log(
+      '[globalSetup] E2E_ADMIN_PASSWORD not set — skipping login, wrote empty storageState',
+    );
+    return;
   }
 
   const response = await fetch(loginUrl, {
