@@ -521,6 +521,7 @@ Real patterns from past findings on this repo:
 - [ ] **RTL-safe classes** — logical properties used, not physical directional classes.
 - [ ] **E2E spec present** — story AC covered by at least one `@functional` test.
 - [ ] **OpenAPI spec** — `npm run lint:api` passes after any endpoint change.
+- [ ] **Framework coverage** — if `qa/e2e/framework/` was touched, run `npm run test:framework:coverage --workspace=minicrm-qa` and confirm it exits 0 (80% threshold enforced).
 
 ---
 
