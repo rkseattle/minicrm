@@ -18,7 +18,7 @@ import type { PageFacade } from '../../framework/types/page-facade.js';
 // ---------------------------------------------------------------------------
 
 function mockLocator(resolves: boolean) {
-  return {
+  const loc = {
     waitFor: () => (resolves ? Promise.resolve() : Promise.reject(new Error('Timeout'))),
     click: () => Promise.resolve(),
     fill: (_v: string) => Promise.resolve(),
@@ -30,6 +30,9 @@ function mockLocator(resolves: boolean) {
     uncheck: () => Promise.resolve(),
     hover: () => Promise.resolve(),
   };
+  // probeLocator calls locator.first() before waitFor — return self.
+  (loc as Record<string, unknown>)['first'] = () => loc;
+  return loc;
 }
 
 function mockPage(resolveMap: boolean[]): Page & { navigated: string[] } {
