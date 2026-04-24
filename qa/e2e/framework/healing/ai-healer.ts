@@ -21,6 +21,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Page } from '@playwright/test';
 import type { LocatorStrategyRecord } from './healing-registry.js';
 import type { StrategyType } from './healing-locator.js';
+import { withRetry, DEFAULT_RETRY_DELAYS_MS } from './retry-utils.js';
 
 /** Minimum confidence required to use an AI-generated locator. */
 export const CONFIDENCE_THRESHOLD = 0.75;
@@ -50,6 +51,11 @@ export interface AiHealerOptions {
   timeoutMs?: number;
   /** Inject a mock Anthropic client for unit tests. */
   _client?: Anthropic;
+  /**
+   * Per-attempt retry delays in ms. Defaults to DEFAULT_RETRY_DELAYS_MS.
+   * Pass [0, 0] in unit tests to avoid slow runs. (MINCRM-224)
+   */
+  _retryDelays?: readonly number[];
 }
 
 /**
@@ -326,6 +332,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 export class AiHealer {
   private readonly timeoutMs: number;
   private readonly client: Anthropic;
+  private readonly retryDelays: readonly number[];
 
   /**
    * @param options - Configuration options.
@@ -333,6 +340,7 @@ export class AiHealer {
   constructor(options: AiHealerOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
     this.client = options._client ?? new Anthropic();
+    this.retryDelays = options._retryDelays ?? DEFAULT_RETRY_DELAYS_MS;
   }
 
   /**
@@ -374,12 +382,16 @@ export class AiHealer {
     let rawText: string;
     try {
       const response = await withTimeout(
-        this.client.messages.create({
-          model: HEALING_MODEL,
-          // Three short fields should never exceed ~100 tokens; 512 is a 5x safety margin. (MINCRM-222)
-          max_tokens: 512,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+        withRetry(
+          () =>
+            this.client.messages.create({
+              model: HEALING_MODEL,
+              // Three short fields should never exceed ~100 tokens; 512 is a 5x safety margin. (MINCRM-222)
+              max_tokens: 512,
+              messages: [{ role: 'user', content: prompt }],
+            }),
+          this.retryDelays,
+        ),
         this.timeoutMs,
       );
 
