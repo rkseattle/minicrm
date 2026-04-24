@@ -46,9 +46,7 @@ export default defineConfig({
     ['./framework/healing/healing-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
     // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
-    ...(IS_CI
-      ? [['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }] as const]
-      : []),
+    ['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }],
     // MINCRM-217: blob reporter for sharded CI runs only; MINCRM-218 aggregation job
     // uses `playwright merge-reports` to combine blob outputs across all shards.
     ...(process.env['SHARD_INDEX']
