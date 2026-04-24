@@ -22,7 +22,11 @@ import {
   CONFIDENCE_THRESHOLD,
 } from '../../framework/healing/index.js';
 import { HealingRegistry } from '../../framework/healing/healing-registry.js';
-import { parseResponse } from '../../framework/healing/ai-healer.js';
+import {
+  parseResponse,
+  truncateDomSnapshot,
+  MAX_DOM_CHARS,
+} from '../../framework/healing/ai-healer.js';
 import type { AiHealResult } from '../../framework/healing/ai-healer.js';
 import type { LocatorStrategyRecord } from '../../framework/healing/healing-registry.js';
 
@@ -338,5 +342,59 @@ test.describe('parseResponse', () => {
     const raw = '{"type": "css", "value": ".btn", "confidence": 0.5}';
     const result = parseResponse(raw);
     expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-223: truncateDomSnapshot unit tests
+// ---------------------------------------------------------------------------
+
+test.describe('truncateDomSnapshot', () => {
+  test('returns snapshot unchanged when it is within MAX_DOM_CHARS', () => {
+    const small = '<main><button>OK</button></main>';
+    expect(truncateDomSnapshot(small, '[data-testid="ok"]')).toBe(small);
+  });
+
+  test('truncates an oversized snapshot and logs a warning', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      // Build a snapshot that exceeds MAX_DOM_CHARS by repeating child nodes.
+      const child = '<div>' + 'x'.repeat(500) + '</div>';
+      const children = child.repeat(Math.ceil((MAX_DOM_CHARS + 1000) / child.length));
+      const snapshot = `<main>${children}</main>`;
+      expect(snapshot.length).toBeGreaterThan(MAX_DOM_CHARS);
+
+      const result = truncateDomSnapshot(snapshot, '[data-testid="big-table"]');
+
+      expect(result.length).toBeLessThanOrEqual(MAX_DOM_CHARS + '<!-- truncated -->'.length);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('[data-testid="big-table"]');
+      expect(warnings[0]).toContain(String(snapshot.length));
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('falls back to substring when the container itself exceeds MAX_DOM_CHARS', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      // A single text node larger than MAX_DOM_CHARS — no children to trim.
+      const snapshot = '<main>' + 'x'.repeat(MAX_DOM_CHARS + 1000) + '</main>';
+      const result = truncateDomSnapshot(snapshot, '[data-testid="huge"]');
+      expect(result.endsWith('<!-- truncated -->')).toBe(true);
+      expect(result.length).toBeLessThanOrEqual(MAX_DOM_CHARS + '<!-- truncated -->'.length);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('substring fallback');
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });
