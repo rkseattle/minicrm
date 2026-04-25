@@ -509,8 +509,13 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
+  // Scope to my-tasks-table to avoid strict mode violations: mobile and desktop
+  // both render the badge with the same testid. MINCRM-234
   const overdueBadge = await page
-    .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
+    .locate([
+      { type: 'testId', value: `task-overdue-badge-${activity.id}`, within: 'my-tasks-table' },
+      { type: 'css', value: `[data-testid="task-overdue-badge-${activity.id}"]` },
+    ])
     .resolve();
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
@@ -576,9 +581,13 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
 
   // Toggle is required — completed tasks are hidden by default.
   await page.click([{ type: 'testId', value: 'toggle-completed-button' }]);
-  // Wait for the completed row to appear before asserting the badge is absent.
+  // Wait for the completed row to appear, scoped to desktop table to avoid
+  // strict mode violations from the mobile card duplicate. MINCRM-234
   const taskRow = await page
-    .locate([{ type: 'testId', value: `task-row-${activity.id}` }])
+    .locate([
+      { type: 'testId', value: `task-row-${activity.id}`, within: 'my-tasks-table' },
+      { type: 'css', value: `[data-testid="task-row-${activity.id}"]` },
+    ])
     .resolve();
   await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
 
