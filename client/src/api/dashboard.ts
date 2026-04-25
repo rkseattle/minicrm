@@ -51,6 +51,22 @@ export interface DashboardSummaryResponse {
   stageBreakdown: StageBreakdown[];
   /** The 10 most recently updated activities visible to this user (MINCRM-185) */
   recentActivities: RecentActivityEntry[];
+  /** Converted pipeline value in home currency; null when hasRates is false (MINCRM-253) */
+  convertedPipelineValue: string | null;
+  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  convertedWeightedPipelineValue: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  homeCurrency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  homeSymbol: string | null;
+  /** Number of deal currencies that have no rate configured (MINCRM-253) */
+  unratedCount: number;
+  /** Comma-separated codes of unrated currencies (MINCRM-253) */
+  unratedCurrencies: string | null;
+  /** ISO timestamp of the most recently updated rate (MINCRM-253) */
+  ratesLastUpdated: string | null;
+  /** True when at least one non-home rate exists in the currencies table (MINCRM-253) */
+  hasRates: boolean;
 }
 
 /**

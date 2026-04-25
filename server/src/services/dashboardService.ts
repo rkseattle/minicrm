@@ -64,6 +64,22 @@ interface DealTotalsRow {
   currency_count: string;
   /** Single currency code when all open deals share the same currency (MINCRM-189) */
   single_currency: string | null;
+  /** Converted total pipeline value in home currency, null when any deal currency lacks a rate (MINCRM-253) */
+  converted_pipeline_value: string | null;
+  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  converted_weighted_value: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  home_currency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  home_symbol: string | null;
+  /** Number of deals with a value whose currency has no configured rate (MINCRM-253) */
+  unrated_count: string;
+  /** Comma-separated list of unrated currency codes (MINCRM-253) */
+  unrated_currencies: string | null;
+  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  rates_last_updated: string | null;
+  /** Number of non-home currency rows in the currencies table (MINCRM-253) */
+  has_rates_count: string;
 }
 
 /** PostgreSQL row shape for the per-stage breakdown query */
@@ -124,6 +140,22 @@ export interface DashboardSummary {
    * Scoped same as other dashboard metrics: rep sees own, admin sees all. (MINCRM-185)
    */
   recentActivities: RecentActivityEntry[];
+  /** Converted total pipeline value in home currency, null when no non-home rates exist (MINCRM-253) */
+  convertedPipelineValue: string | null;
+  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  convertedWeightedPipelineValue: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  homeCurrency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  homeSymbol: string | null;
+  /** Number of deals whose currency has no configured rate (MINCRM-253) */
+  unratedCount: number;
+  /** Comma-separated codes of currencies missing a rate (MINCRM-253) */
+  unratedCurrencies: string | null;
+  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  ratesLastUpdated: string | null;
+  /** True when at least one non-home currency rate exists in the currencies table (MINCRM-253) */
+  hasRates: boolean;
 }
 
 /**
@@ -170,24 +202,51 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   // weighted_pipeline_value = SUM(value × COALESCE(d.probability, ps.probability, 0) / 100)
   // The three-argument COALESCE guards against deals whose stage has been deleted (ps absent).
   // effective_probability comes from a LEFT JOIN to pipeline_stages. (MINCRM-179)
+  // Converted totals LEFT JOIN currencies for exchange rates. (MINCRM-253)
+  // Scalar subqueries for home currency code and symbol are used instead of a JOIN so that
+  // home_currency and home_symbol are always populated even when the deals table is empty
+  // (an aggregate over zero rows returns null for every MIN/MAX — scalar subqueries are
+  // independent of the FROM clause and always return the current home currency).
+  // The home code subquery is inlined in the CASE WHEN and FILTER predicates for the same reason.
+  const dealTotalsBaseSelect = `
+       COUNT(*) AS open_deal_count,
+       COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
+       COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value,
+       COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
+       MIN(d.currency) AS single_currency,
+       SUM(
+         CASE WHEN d.value IS NOT NULL
+                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                        OR c.code IS NOT NULL)
+              THEN d.value::numeric * COALESCE(c.rate_to_home, 1.0)
+              ELSE NULL END
+       )::text AS converted_pipeline_value,
+       SUM(
+         CASE WHEN d.value IS NOT NULL
+                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                        OR c.code IS NOT NULL)
+              THEN (d.value * COALESCE(d.probability, ps.probability, 0) / 100.0) * COALESCE(c.rate_to_home, 1.0)
+              ELSE NULL END
+       )::text AS converted_weighted_value,
+       (SELECT code   FROM currencies WHERE is_home = true LIMIT 1) AS home_currency,
+       (SELECT symbol FROM currencies WHERE is_home = true LIMIT 1) AS home_symbol,
+       COUNT(*) FILTER (WHERE c.code IS NULL AND d.value IS NOT NULL
+                          AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_count,
+       STRING_AGG(DISTINCT d.currency, ', ')
+         FILTER (WHERE c.code IS NULL AND d.value IS NOT NULL
+                   AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_currencies,
+       MAX(c.updated_at)::text AS rates_last_updated,
+       (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
+
+  const dealTotalsFrom = `
+       FROM deals d
+       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+       LEFT JOIN currencies c ON c.code = d.currency AND c.is_home = false`;
+
   const dealTotalsQuery = ownerFilter
-    ? `SELECT
-         COUNT(*) AS open_deal_count,
-         COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value,
-         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
-         MIN(d.currency) AS single_currency
-       FROM deals d
-       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+    ? `SELECT ${dealTotalsBaseSelect} ${dealTotalsFrom}
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost') AND d.owner_id = $1`
-    : `SELECT
-         COUNT(*) AS open_deal_count,
-         COALESCE(SUM(d.value), 0)::text AS open_pipeline_value,
-         COALESCE(SUM(d.value * COALESCE(d.probability, ps.probability, 0) / 100.0), 0)::text AS weighted_pipeline_value,
-         COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text AS currency_count,
-         MIN(d.currency) AS single_currency
-       FROM deals d
-       LEFT JOIN pipeline_stages ps ON ps.name = d.stage
+    : `SELECT ${dealTotalsBaseSelect} ${dealTotalsFrom}
        WHERE d.stage NOT IN ('Closed Won', 'Closed Lost')`;
 
   const dealParams = ownerFilter ? [ownerId] : [];
@@ -315,6 +374,11 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   const mixedCurrencies = parseInt(dealTotalsRow.currency_count, 10) > 1;
   const currency = mixedCurrencies ? null : (dealTotalsRow.single_currency ?? null);
 
+  // Currency conversion fields (MINCRM-253)
+  const hasRatesCount = parseInt(dealTotalsRow.has_rates_count ?? '0', 10);
+  const hasRates = hasRatesCount > 0;
+  const unratedCount = parseInt(String(dealTotalsRow.unrated_count ?? '0'), 10);
+
   return {
     overdueTasks,
     tasksDueToday,
@@ -325,5 +389,15 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     currency,
     stageBreakdown,
     recentActivities,
+    convertedPipelineValue: hasRates ? (dealTotalsRow.converted_pipeline_value ?? null) : null,
+    convertedWeightedPipelineValue: hasRates
+      ? (dealTotalsRow.converted_weighted_value ?? null)
+      : null,
+    homeCurrency: dealTotalsRow.home_currency ?? null,
+    homeSymbol: dealTotalsRow.home_symbol ?? null,
+    unratedCount,
+    unratedCurrencies: dealTotalsRow.unrated_currencies ?? null,
+    ratesLastUpdated: dealTotalsRow.rates_last_updated ?? null,
+    hasRates,
   };
 }
