@@ -471,6 +471,12 @@ export async function convertLead(
     return { contact_id: contactId, account_id: accountId, deal_id: dealId };
   } catch (error) {
     await client.query('ROLLBACK');
+    // PostgreSQL error code 23505 = unique_violation on contacts.email. (MINCRM-247)
+    if ((error as { code?: string }).code === '23505') {
+      throw Object.assign(new Error('A contact with this email address already exists'), {
+        code: 'DUPLICATE_EMAIL',
+      });
+    }
     throw error;
   } finally {
     client.release();

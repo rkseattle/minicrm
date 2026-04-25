@@ -194,6 +194,57 @@ describe('DB constraints — contacts', () => {
       }),
     ).rejects.toThrow();
   });
+
+  // MINCRM-247: DB-level UNIQUE constraint test — bypasses the service-layer
+  // SELECT duplicate check by inserting directly into contacts, then calling
+  // createContact. This exercises the 23505 catch added for TOCTOU safety.
+  it('throws DUPLICATE_EMAIL when the DB unique constraint fires on concurrent inserts', async () => {
+    // Insert directly to simulate a row already committed by a concurrent request,
+    // bypassing the service-layer duplicate check.
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Existing', 'User', 'dup@example.com', $1)`,
+      [ownerId],
+    );
+
+    // Now createContact will pass the SELECT check (it won't find a duplicate if we
+    // cleared and re-inserted above) — actually the SELECT *will* find it, so to
+    // truly bypass the SELECT check and hit the constraint, we call the raw INSERT
+    // via a direct concurrent simulation: try to insert the same email again directly.
+    const error = await pool
+      .query(
+        `INSERT INTO contacts (first_name, last_name, email, owner_id)
+         VALUES ('Duplicate', 'User', 'dup@example.com', $1)`,
+        [ownerId],
+      )
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as { code?: string }).code).toBe('23505');
+
+    // Also verify the service-layer wrapper converts 23505 to DUPLICATE_EMAIL.
+    // We need to insert a fresh email not yet in DB; the service SELECT check
+    // would normally catch it, but we simulate the race by inserting the row
+    // between the SELECT and INSERT. The simplest way: call createContact twice
+    // with the same email concurrently (no await on first, then await both).
+    await pool.query('DELETE FROM contacts');
+
+    const email = 'race@example.com';
+    const [result1, result2] = await Promise.allSettled([
+      createContact({ first_name: 'A', last_name: 'B', email, owner_id: ownerId }),
+      createContact({ first_name: 'C', last_name: 'D', email, owner_id: ownerId }),
+    ]);
+
+    const statuses = [result1.status, result2.status];
+    expect(statuses).toContain('fulfilled');
+    expect(statuses).toContain('rejected');
+
+    const rejected = [result1, result2].find(
+      (r) => r.status === 'rejected',
+    ) as PromiseRejectedResult;
+    const rejErr = rejected.reason as { code?: string; message?: string };
+    expect(rejErr.code).toBe('DUPLICATE_EMAIL');
+  });
 });
 
 // ── findContactByEmail ───────────────────────────────────────────────────────────

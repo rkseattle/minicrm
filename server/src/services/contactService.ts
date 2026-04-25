@@ -201,6 +201,13 @@ export async function createContact(
     return contact;
   } catch (error) {
     await client.query('ROLLBACK');
+    // PostgreSQL error code 23505 = unique_violation — catches concurrent inserts
+    // that both bypass the service-layer duplicate check (TOCTOU race). (MINCRM-247)
+    if ((error as { code?: string }).code === '23505') {
+      throw Object.assign(new Error('A contact with this email address already exists'), {
+        code: 'DUPLICATE_EMAIL',
+      });
+    }
     throw error;
   } finally {
     client.release();

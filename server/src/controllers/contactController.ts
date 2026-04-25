@@ -70,14 +70,26 @@ export async function createContactHandler(req: Request, res: Response): Promise
     }
   }
 
-  const contact = await createContact(
-    {
-      ...parsed.data,
-      account_id: parsed.data.account_id ?? null,
-      owner_id: req.user!.id,
-    },
-    { id: req.user!.id, name: req.user!.name },
-  );
+  let contact;
+  try {
+    contact = await createContact(
+      {
+        ...parsed.data,
+        account_id: parsed.data.account_id ?? null,
+        owner_id: req.user!.id,
+      },
+      { id: req.user!.id, name: req.user!.name },
+    );
+  } catch (err) {
+    // DB unique constraint fired (TOCTOU race or force=true on an existing email). (MINCRM-247)
+    if ((err as { code?: string }).code === 'DUPLICATE_EMAIL') {
+      res.status(409).json({
+        error: { code: 'DUPLICATE_EMAIL', message: 'A contact with this email already exists' },
+      });
+      return;
+    }
+    throw err;
+  }
   res.status(201).json({ contact });
 }
 
