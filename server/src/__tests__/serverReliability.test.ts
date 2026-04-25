@@ -1,5 +1,5 @@
 /**
- * Tests for server reliability changes (MINCRM-108, MINCRM-122).
+ * Tests for server reliability changes (MINCRM-108, MINCRM-122, MINCRM-248).
  *
  * MINCRM-122: Verifies that automation trigger execution is fire-and-forget —
  *   a trigger failure must not propagate to the calling service function, and
@@ -10,10 +10,16 @@
  *   The unhandledRejection handler wired in server.ts surfaces any trigger failures
  *   that escape fireAutomationTrigger's internal catch — confirmed by code review.
  *
+ * MINCRM-248: Pool exhaustion → 503. The global error handler returns 503 when
+ *   pool.connect() throws the pg timeout error string.
+ *
  * Runs against a real PostgreSQL test database.
  */
 
 import 'dotenv/config';
+import { vi } from 'vitest';
+import request from 'supertest';
+import app from '../app.js';
 import { createContact } from '../services/contactService.js';
 import { createDeal, updateDeal } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
@@ -156,4 +162,58 @@ describe('MINCRM-122: fire-and-forget automation triggers', () => {
   // covered by automationService.test.ts using awaited calls. Testing it here with
   // fire-and-forget would require synchronising with background work that races the
   // beforeEach cleanup of automation_rule_logs/automation_rules tables.
+});
+
+// ── MINCRM-248: pool exhaustion → 503 ─────────────────────────────────────────
+
+describe('MINCRM-248: pool exhaustion returns 503', () => {
+  it('returns 503 SERVICE_UNAVAILABLE when pool.connect times out', async () => {
+    const { makeAuthCookie } = await import('./testUtils.js');
+    const cookie = makeAuthCookie({
+      id: ownerId,
+      email: 'pool-test@example.com',
+      role: 'rep',
+      name: 'Test',
+    });
+
+    // findUserById (inside authenticate) uses pool.query which uses pool.connect.
+    // Mock pool.query to succeed for the auth lookup but throw for subsequent calls.
+    let queryCallCount = 0;
+    const querySpy = vi.spyOn(pool, 'query').mockImplementation((..._args: unknown[]) => {
+      queryCallCount++;
+      if (queryCallCount === 1) {
+        // First call is findUserById in authenticate — return a valid active user
+        return Promise.resolve({
+          rows: [
+            {
+              id: ownerId,
+              email: 'pool-test@example.com',
+              name: 'Test',
+              role: 'rep',
+              status: 'active',
+              must_change_password: false,
+              password_changed_at: null,
+            },
+          ],
+          rowCount: 1,
+        }) as unknown as ReturnType<typeof pool.query>;
+      }
+      // Subsequent calls simulate pool exhaustion
+      return Promise.reject(
+        new Error('timeout exceeded when trying to connect'),
+      ) as unknown as ReturnType<typeof pool.query>;
+    });
+
+    try {
+      const res = await request(app)
+        .post('/api/contacts')
+        .set('Cookie', cookie)
+        .send({ first_name: 'A', last_name: 'B', email: 'pool-timeout@example.com' });
+
+      expect(res.status).toBe(503);
+      expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+    } finally {
+      querySpy.mockRestore();
+    }
+  });
 });
