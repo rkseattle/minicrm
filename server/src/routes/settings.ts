@@ -17,6 +17,8 @@ import {
   setEmailNotificationsEnabledHandler,
   getDefaultCurrencyHandler,
   setDefaultCurrencyHandler,
+  getCurrenciesHandler,
+  updateCurrenciesHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -598,6 +600,95 @@ router.delete(
   authenticate,
   requireRole('admin'),
   asyncHandler(deletePipelineStageHandler),
+);
+
+// ── Exchange rates (MINCRM-251) ───────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/currencies:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getCurrencies
+ *     summary: Get all exchange rate configuration (MINCRM-251)
+ *     description: >
+ *       Returns the home currency and all configured exchange rates.
+ *       Requires authentication.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Currency configuration with home currency and rates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 home_currency: { type: string, example: USD }
+ *                 currencies:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       code: { type: string }
+ *                       name: { type: string }
+ *                       symbol: { type: string }
+ *                       rate_to_home: { type: number }
+ *                       is_home: { type: boolean }
+ *                       updated_at: { type: string, format: date-time }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/currencies', authenticate, asyncHandler(getCurrenciesHandler));
+
+/**
+ * @openapi
+ * /api/settings/currencies:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: updateCurrencies
+ *     summary: Replace exchange rate configuration (admin only, MINCRM-251)
+ *     description: >
+ *       Atomically replaces the non-home currency set and sets the home currency.
+ *       The home currency row is always stored with rate_to_home = 1.000000.
+ *       Requires admin role.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [home_currency, currencies]
+ *             properties:
+ *               home_currency: { type: string, example: USD }
+ *               currencies:
+ *                 type: array
+ *                 maxItems: 20
+ *                 items:
+ *                   type: object
+ *                   required: [code, name, symbol, rate_to_home]
+ *                   properties:
+ *                     code: { type: string }
+ *                     name: { type: string }
+ *                     symbol: { type: string }
+ *                     rate_to_home: { type: number, minimum: 0 }
+ *     responses:
+ *       200:
+ *         description: Updated currency configuration
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put(
+  '/currencies',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(updateCurrenciesHandler),
 );
 
 export default router;
