@@ -111,6 +111,8 @@ const EN: LocaleMap = {
   'common.cancel': 'Cancel',
   'common.delete': 'Delete',
   'common.edit': 'Edit',
+  'common.add': 'Add',
+  'common.search': 'Search',
 };
 
 /**
@@ -195,6 +197,8 @@ const ES: LocaleMap = {
   'common.cancel': 'Cancelar',
   'common.delete': 'Eliminar',
   'common.edit': 'Editar',
+  'common.add': 'Agregar',
+  'common.search': 'Buscar',
 };
 
 /**
@@ -279,6 +283,8 @@ const FR: LocaleMap = {
   'common.cancel': 'Annuler',
   'common.delete': 'Supprimer',
   'common.edit': 'Modifier',
+  'common.add': 'Ajouter',
+  'common.search': 'Rechercher',
 };
 
 /**
@@ -363,6 +369,8 @@ const DE: LocaleMap = {
   'common.cancel': 'Abbrechen',
   'common.delete': 'Löschen',
   'common.edit': 'Bearbeiten',
+  'common.add': 'Hinzufügen',
+  'common.search': 'Suche',
 };
 
 /**
@@ -447,6 +455,8 @@ const ZH_HANS: LocaleMap = {
   'common.cancel': '取消',
   'common.delete': '删除',
   'common.edit': '编辑',
+  'common.add': '添加',
+  'common.search': '搜索',
 };
 
 /** All registered locale maps indexed by locale code. */
