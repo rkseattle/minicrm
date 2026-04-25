@@ -264,7 +264,10 @@ describe('POST /api/contacts — duplicate detection', () => {
     expect(res.body.duplicate.id).toBeDefined();
   });
 
-  it('creates the contact when ?force=true bypasses the duplicate check', async () => {
+  // MINCRM-247: the DB unique constraint on contacts.email means ?force=true can no
+  // longer bypass the duplicate check — the constraint fires at the DB level and the
+  // controller returns 409 with DUPLICATE_EMAIL instead of creating a duplicate.
+  it('returns 409 DUPLICATE_EMAIL when ?force=true but the DB unique constraint fires', async () => {
     await createContact({ ...BASE_CONTACT, owner_id: repId });
 
     const res = await request(app)
@@ -272,8 +275,8 @@ describe('POST /api/contacts — duplicate detection', () => {
       .set('Cookie', repCookie)
       .send({ first_name: 'Other', last_name: 'Person', email: BASE_CONTACT.email });
 
-    expect(res.status).toBe(201);
-    expect(res.body.contact.first_name).toBe('Other');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
   });
 
   it('creates a contact without a warning when no duplicate email exists', async () => {
