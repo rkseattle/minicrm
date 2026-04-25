@@ -667,11 +667,15 @@ export async function mergeContacts(
   try {
     await client.query('BEGIN');
 
-    // Fetch both contacts inside the transaction for a consistent snapshot
-    const [winnerResult, loserResult] = await Promise.all([
-      client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 FOR UPDATE', [winnerId]),
-      client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 FOR UPDATE', [loserId]),
-    ]);
+    // Fetch both contacts sequentially — a single pg client cannot run concurrent queries
+    const winnerResult = await client.query<ContactRow>(
+      'SELECT * FROM contacts WHERE id = $1 FOR UPDATE',
+      [winnerId],
+    );
+    const loserResult = await client.query<ContactRow>(
+      'SELECT * FROM contacts WHERE id = $1 FOR UPDATE',
+      [loserId],
+    );
 
     const winner = winnerResult.rows[0];
     const loser = loserResult.rows[0];
