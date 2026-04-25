@@ -141,6 +141,29 @@ test.describe('createPageFacade', () => {
     // @ts-expect-error — getByTestId is a ForbiddenPageMethod and must not be accessible
     void facade.getByTestId('something');
   });
+
+  // MINCRM-236: SafePage uses a Pick allowlist. A Playwright method not in
+  // AllowedPageMethods is automatically blocked — verified here by asserting
+  // that locator(), addScriptTag(), and getByLabel() (valid Page methods but
+  // not in the allowlist) are compile errors on SafePage / PageFacade.
+  test('SafePage positive-Pick blocks unlisted Playwright methods (MINCRM-236 regression guard)', () => {
+    const page = mockPage([]);
+    const facade: PageFacade = createPageFacade(page, 'pick allowlist test');
+
+    // Never-executed block — type-checked but not called at runtime. MINCRM-236
+    if (false as boolean) {
+      // @ts-expect-error — locator() is not in AllowedPageMethods (MINCRM-236)
+      void facade.locator('.foo');
+
+      // @ts-expect-error — addScriptTag() is not in AllowedPageMethods (MINCRM-236)
+      void facade.addScriptTag({ content: '' });
+
+      // @ts-expect-error — getByLabel() is not in AllowedPageMethods (MINCRM-236)
+      void facade.getByLabel('Email');
+    }
+
+    expect(facade).toBeDefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
