@@ -125,6 +125,17 @@ app.use((_req: Request, res: Response) => {
 // ── Global error handler ───────────────────────────────────────────────────────
 // Must have four parameters so Express recognizes it as an error handler.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  // Pool exhaustion: all connections were held for > connectionTimeoutMillis. (MINCRM-248)
+  if (err.message?.includes('timeout exceeded when trying to connect')) {
+    res.status(503).json({
+      error: {
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'The server is temporarily unable to handle the request. Please try again.',
+      },
+    });
+    return;
+  }
+
   logger.error({ err }, 'Unhandled error');
   res.status(500).json({
     error: {
