@@ -466,6 +466,24 @@ jobs:
             test-results/
           retention-days: 14
 
+  # MINCRM-237: Sentinel job — single named status check for branch protection.
+  # GitHub aggregates needs.e2e-functional.result across all 8 matrix permutations:
+  # if any shard fails or is cancelled, the result is not "success" and this job
+  # exits 1. Branch protection requires "E2E all shards passed" by name rather than
+  # enumerating all 8 individual shard check names.
+  e2e-all-shards-passed:
+    name: E2E all shards passed
+    needs: e2e-functional
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check shard results
+        run: |
+          if [[ "${{ needs.e2e-functional.result }}" != "success" ]]; then
+            echo "One or more E2E shards failed or were cancelled."
+            exit 1
+          fi
+
   # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
   # Job dependency chain:
   #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
