@@ -66,7 +66,7 @@ export type PageFacadeShape = SafePage & HealMethods;
 export type TabFactory = (rawPage: Page, testName: string) => PageFacadeShape;
 
 // ---------------------------------------------------------------------------
-// HealMethods interface
+// HealMethods
 // ---------------------------------------------------------------------------
 
 /**
