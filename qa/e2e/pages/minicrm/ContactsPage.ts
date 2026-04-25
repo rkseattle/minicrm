@@ -128,22 +128,23 @@ export class ContactsPage {
   /**
    * Waits until a specific contact row is visible in the list. Succeeds on
    * either the desktop table link (contact-link-{id}) or the mobile card link
-   * (contact-card-link-{id}). Both testId strategies run at the same priority
-   * so whichever variant is in the DOM resolves immediately without burning the
-   * full fallbackTimeout on a viewport-absent element.
+   * (contact-card-link-{id}).
+   *
+   * fallbackTimeout is intentionally kept short (default 2 s) so the strategy
+   * for the absent viewport variant fails quickly and the correct one resolves
+   * without burning the full probe window. Both strategies are at testId
+   * priority so the first in insertion order is tried first — on desktop that
+   * is contact-link-{id} (instant), on mobile it falls through to
+   * contact-card-link-{id} after 2 s.
    *
    * @param id - The contact UUID to wait for.
-   * @param timeout - Maximum wait per strategy attempt in ms (default 15 000).
    */
-  async waitForContact(id: string, timeout = 15_000): Promise<void> {
+  async waitForContact(id: string): Promise<void> {
     await this.page
-      .locate(
-        [
-          { type: 'testId', value: `contact-link-${id}` },
-          { type: 'testId', value: `contact-card-link-${id}` },
-        ],
-        { fallbackTimeout: timeout },
-      )
+      .locate([
+        { type: 'testId', value: `contact-link-${id}` },
+        { type: 'testId', value: `contact-card-link-${id}` },
+      ])
       .resolve();
   }
 
