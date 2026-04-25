@@ -149,10 +149,9 @@ export default function MyTasksPage() {
               </p>
             ) : visibleTasks.length > 0 ? (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {/* Mobile card view — visible below md.
-                    Shares data-testid values with the desktop table rows so E2E
-                    locators work at both viewports. Page objects must use
-                    .filter({ visible: true }) to pick the visible copy. */}
+                {/* Mobile card view — visible below md. Uses -mobile testid suffix
+                    to avoid strict mode violations: both card and table row are
+                    in the DOM simultaneously (CSS hides one). MINCRM-234 */}
                 <ul
                   className="md:hidden divide-y divide-gray-100"
                   aria-label={t('myTasks.pageTitle')}
@@ -165,33 +164,33 @@ export default function MyTasksPage() {
                       <li
                         key={task.id}
                         className={`px-4 py-3${task.status === 'complete' ? ' opacity-60' : ''}`}
-                        data-testid={`task-row-${task.id}`}
+                        data-testid={`task-row-mobile-${task.id}`}
                       >
                         {/* min-w-0: prevents flex child overflow for long subject strings */}
                         <div className="min-w-0 flex-1">
                           <p
                             className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-400' : ' text-gray-900'}`}
-                            data-testid={`task-subject-${task.id}`}
+                            data-testid={`task-subject-mobile-${task.id}`}
                           >
                             {task.subject}
                           </p>
                           <div className="flex items-center gap-2 flex-wrap mt-1">
                             <Badge
                               variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
-                              data-testid={`task-type-${task.id}`}
+                              data-testid={`task-type-mobile-${task.id}`}
                             >
                               {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
                             </Badge>
                             {task.due_date ? (
                               <span
-                                data-testid={`task-due-date-${task.id}`}
+                                data-testid={`task-due-date-mobile-${task.id}`}
                                 className={`text-xs whitespace-nowrap${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
                               >
                                 {formatLocalDate(task.due_date, i18n.language)}
                                 {overdue && (
                                   <span
                                     className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
-                                    data-testid={`task-overdue-badge-${task.id}`}
+                                    data-testid={`task-overdue-badge-mobile-${task.id}`}
                                   >
                                     {t('myTasks.overdue')}
                                   </span>
@@ -200,7 +199,7 @@ export default function MyTasksPage() {
                             ) : (
                               <span
                                 className="text-xs text-gray-400"
-                                data-testid={`task-due-date-${task.id}`}
+                                data-testid={`task-due-date-mobile-${task.id}`}
                               >
                                 {t('myTasks.noDueDate')}
                               </span>
@@ -211,7 +210,7 @@ export default function MyTasksPage() {
                               <Link
                                 to={recordPath}
                                 className="text-indigo-600 hover:underline"
-                                data-testid={`task-record-link-${task.id}`}
+                                data-testid={`task-record-link-mobile-${task.id}`}
                               >
                                 {task.linked_record_name}
                               </Link>
@@ -219,7 +218,7 @@ export default function MyTasksPage() {
                           ) : (
                             <p
                               className="text-xs text-gray-400 mt-1"
-                              data-testid={`task-record-link-${task.id}`}
+                              data-testid={`task-record-link-mobile-${task.id}`}
                             >
                               {t('myTasks.noRecord')}
                             </p>
@@ -230,7 +229,7 @@ export default function MyTasksPage() {
                                 type="button"
                                 variant="secondary"
                                 size="sm"
-                                data-testid={`mark-complete-${task.id}`}
+                                data-testid={`mark-complete-mobile-${task.id}`}
                                 onClick={() => completeMutation.mutate(task.id)}
                                 disabled={
                                   completeMutation.isPending &&
@@ -298,13 +297,13 @@ export default function MyTasksPage() {
                         return (
                           <tr
                             key={task.id}
-                            data-testid={`task-row-${task.id}`}
+                            data-testid={`task-row-desktop-${task.id}`}
                             className={task.status === 'complete' ? 'opacity-60' : ''}
                           >
                             {/* Subject */}
                             <td className="px-6 py-4 text-sm text-gray-900">
                               <span
-                                data-testid={`task-subject-${task.id}`}
+                                data-testid={`task-subject-desktop-${task.id}`}
                                 className={
                                   task.status === 'complete' ? 'line-through text-gray-400' : ''
                                 }
@@ -317,7 +316,7 @@ export default function MyTasksPage() {
                             <td className="px-6 py-4">
                               <Badge
                                 variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
-                                data-testid={`task-type-${task.id}`}
+                                data-testid={`task-type-desktop-${task.id}`}
                               >
                                 {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
                               </Badge>
@@ -327,14 +326,14 @@ export default function MyTasksPage() {
                             <td className="px-6 py-4 text-sm">
                               {task.due_date ? (
                                 <span
-                                  data-testid={`task-due-date-${task.id}`}
+                                  data-testid={`task-due-date-desktop-${task.id}`}
                                   className={`whitespace-nowrap ${overdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}
                                 >
                                   {formatLocalDate(task.due_date, i18n.language)}
                                   {overdue && (
                                     <span
                                       className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
-                                      data-testid={`task-overdue-badge-${task.id}`}
+                                      data-testid={`task-overdue-badge-desktop-${task.id}`}
                                     >
                                       {t('myTasks.overdue')}
                                     </span>
@@ -343,7 +342,7 @@ export default function MyTasksPage() {
                               ) : (
                                 <span
                                   className="text-gray-400"
-                                  data-testid={`task-due-date-${task.id}`}
+                                  data-testid={`task-due-date-desktop-${task.id}`}
                                 >
                                   {t('myTasks.noDueDate')}
                                 </span>
@@ -356,14 +355,14 @@ export default function MyTasksPage() {
                                 <Link
                                   to={recordPath}
                                   className="text-indigo-600 hover:text-indigo-800 hover:underline"
-                                  data-testid={`task-record-link-${task.id}`}
+                                  data-testid={`task-record-link-desktop-${task.id}`}
                                 >
                                   {task.linked_record_name}
                                 </Link>
                               ) : (
                                 <span
                                   className="text-gray-400"
-                                  data-testid={`task-record-link-${task.id}`}
+                                  data-testid={`task-record-link-desktop-${task.id}`}
                                 >
                                   {t('myTasks.noRecord')}
                                 </span>
@@ -377,7 +376,7 @@ export default function MyTasksPage() {
                                   type="button"
                                   variant="secondary"
                                   size="sm"
-                                  data-testid={`mark-complete-${task.id}`}
+                                  data-testid={`mark-complete-desktop-${task.id}`}
                                   onClick={() => completeMutation.mutate(task.id)}
                                   disabled={
                                     completeMutation.isPending &&

@@ -56,8 +56,8 @@ export class MyTasksPage {
   /**
    * Returns whether a task row is currently visible (i.e. shown as open).
    *
-   * Both the mobile card (<li>) and desktop table (<tr>) carry the same
-   * data-testid. We filter to the visible copy so this works at any viewport.
+   * Desktop and mobile each have a unique testid suffix (-desktop / -mobile)
+   * so each strategy matches exactly one element regardless of viewport. MINCRM-234
    *
    * @param taskId - Activity UUID.
    */
@@ -65,11 +65,13 @@ export class MyTasksPage {
     try {
       const row = await this.page
         .locate([
-          // :visible narrows to the one copy shown at the current viewport —
-          // mobile card (<li>) or desktop table row (<tr>). Both carry the same
-          // data-testid; :visible avoids strict mode without .filter(). MINCRM-234
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]:visible` },
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+          // CSS selector list matches whichever viewport copy is visible.
+          // Each testid is unique per viewport (MINCRM-234) so this resolves
+          // to exactly one element without strict mode violations.
+          {
+            type: 'css',
+            value: `[data-testid="task-row-desktop-${taskId}"]:visible, [data-testid="task-row-mobile-${taskId}"]:visible`,
+          },
         ])
         .resolve();
       await row.waitFor({ state: 'visible', timeout: 10_000 });
@@ -93,20 +95,22 @@ export class MyTasksPage {
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
-    // :visible narrows to the one copy shown at the current viewport. MINCRM-234
     const btn = await this.page
       .locate([
-        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]:visible` },
-        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
+        {
+          type: 'css',
+          value: `[data-testid="mark-complete-desktop-${taskId}"]:visible, [data-testid="mark-complete-mobile-${taskId}"]:visible`,
+        },
       ])
       .resolve();
     await btn.click();
-    // Wait for the visible row to disappear after the PATCH + refetch. MINCRM-234
     try {
       const row = await this.page
         .locate([
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]:visible` },
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+          {
+            type: 'css',
+            value: `[data-testid="task-row-desktop-${taskId}"]:visible, [data-testid="task-row-mobile-${taskId}"]:visible`,
+          },
         ])
         .resolve();
       await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);

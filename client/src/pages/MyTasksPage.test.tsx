@@ -1,10 +1,10 @@
 /**
  * Tests for MyTasksPage component.
  *
- * The mobile card view (<ul class="md:hidden">) and desktop table (<table class="hidden md:block">)
- * share data-testid values so E2E tests work at any viewport. In JSDOM both are in the DOM
- * simultaneously (no CSS applied), so we use getAllByTestId()[0] instead of getByTestId()
- * for row-scoped ids, and queryAllByTestId() for "not present" assertions.
+ * Mobile cards use -mobile-{id} testid suffixes; desktop table rows use
+ * -desktop-{id} suffixes. Each is unique in the DOM so getByTestId() works
+ * without getAllByTestId()[0] workarounds. Tests use the desktop variants
+ * since they cover the same logic and are present in jsdom. MINCRM-234
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -42,13 +42,13 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
 
-    expect(screen.getAllByTestId(`task-subject-${MY_TASK_1.id}`)[0]).toHaveTextContent(
+    expect(screen.getByTestId(`task-subject-desktop-${MY_TASK_1.id}`)).toHaveTextContent(
       MY_TASK_1.subject,
     );
-    expect(screen.getAllByTestId(`task-due-date-${MY_TASK_1.id}`)[0]).toHaveTextContent(
+    expect(screen.getByTestId(`task-due-date-desktop-${MY_TASK_1.id}`)).toHaveTextContent(
       'Jun 15, 2026',
     );
   });
@@ -57,10 +57,10 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-record-link-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-record-link-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
 
-    const link = screen.getAllByTestId(`task-record-link-${MY_TASK_1.id}`)[0];
+    const link = screen.getByTestId(`task-record-link-desktop-${MY_TASK_1.id}`);
     expect(link).toHaveTextContent('Acme Enterprise Deal');
     expect(link).toHaveAttribute('href', `/deals/${MY_TASK_1.deal_id}`);
   });
@@ -69,13 +69,13 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_OVERDUE.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
     });
 
-    const dueDateCell = screen.getAllByTestId(`task-due-date-${MY_TASK_OVERDUE.id}`)[0];
+    const dueDateCell = screen.getByTestId(`task-due-date-desktop-${MY_TASK_OVERDUE.id}`);
     expect(dueDateCell.className).toContain('text-red-600');
     expect(
-      screen.getAllByTestId(`task-overdue-badge-${MY_TASK_OVERDUE.id}`)[0],
+      screen.getByTestId(`task-overdue-badge-desktop-${MY_TASK_OVERDUE.id}`),
     ).toBeInTheDocument();
   });
 
@@ -83,19 +83,21 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
 
-    const dueDateCell = screen.getAllByTestId(`task-due-date-${MY_TASK_1.id}`)[0];
+    const dueDateCell = screen.getByTestId(`task-due-date-desktop-${MY_TASK_1.id}`);
     expect(dueDateCell.className).not.toContain('text-red-600');
-    expect(screen.queryAllByTestId(`task-overdue-badge-${MY_TASK_1.id}`)).toHaveLength(0);
+    expect(
+      screen.queryByTestId(`task-overdue-badge-desktop-${MY_TASK_1.id}`),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a "Mark complete" button for open tasks', async () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`mark-complete-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`mark-complete-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
   });
 
@@ -109,10 +111,10 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
 
-    expect(screen.queryAllByTestId(`task-row-${MY_TASK_COMPLETE.id}`)).toHaveLength(0);
+    expect(screen.queryByTestId(`task-row-desktop-${MY_TASK_COMPLETE.id}`)).not.toBeInTheDocument();
   });
 
   it('shows completed tasks when the "Show completed" toggle is clicked', async () => {
@@ -131,7 +133,7 @@ describe('MyTasksPage', () => {
     fireEvent.click(screen.getByTestId('toggle-completed-button'));
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_COMPLETE.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_COMPLETE.id}`)).toBeInTheDocument();
     });
   });
 
@@ -149,7 +151,7 @@ describe('MyTasksPage', () => {
     fireEvent.click(screen.getByTestId('toggle-completed-button'));
 
     await waitFor(() => {
-      const subject = screen.getAllByTestId(`task-subject-${MY_TASK_COMPLETE.id}`)[0];
+      const subject = screen.getByTestId(`task-subject-desktop-${MY_TASK_COMPLETE.id}`);
       expect(subject.className).toContain('line-through');
     });
   });
@@ -167,10 +169,12 @@ describe('MyTasksPage', () => {
     fireEvent.click(screen.getByTestId('toggle-completed-button'));
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`task-row-${MY_TASK_COMPLETE.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`task-row-desktop-${MY_TASK_COMPLETE.id}`)).toBeInTheDocument();
     });
 
-    expect(screen.queryAllByTestId(`mark-complete-${MY_TASK_COMPLETE.id}`)).toHaveLength(0);
+    expect(
+      screen.queryByTestId(`mark-complete-desktop-${MY_TASK_COMPLETE.id}`),
+    ).not.toBeInTheDocument();
   });
 
   it('calls the PATCH endpoint and invalidates query when marking a task complete', async () => {
@@ -185,10 +189,10 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId(`mark-complete-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
+      expect(screen.getByTestId(`mark-complete-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByTestId(`mark-complete-${MY_TASK_1.id}`)[0]);
+    fireEvent.click(screen.getByTestId(`mark-complete-desktop-${MY_TASK_1.id}`));
 
     await waitFor(() => {
       expect(patchCalled).toBe(true);
@@ -213,10 +217,10 @@ describe('MyTasksPage', () => {
       renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
 
       await waitFor(() => {
-        expect(screen.getAllByTestId(`task-row-${MY_TASK_OVERDUE.id}`)[0]).toBeInTheDocument();
+        expect(screen.getByTestId(`task-row-desktop-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
       });
 
-      expect(screen.queryAllByTestId(`task-row-${MY_TASK_1.id}`)).toHaveLength(0);
+      expect(screen.queryByTestId(`task-row-desktop-${MY_TASK_1.id}`)).not.toBeInTheDocument();
     });
 
     it('shows the empty state when filter=overdue but no tasks are overdue', async () => {
@@ -230,7 +234,7 @@ describe('MyTasksPage', () => {
         expect(screen.getByTestId('my-tasks-empty')).toBeInTheDocument();
       });
 
-      expect(screen.queryAllByTestId(`task-row-${MY_TASK_1.id}`)).toHaveLength(0);
+      expect(screen.queryByTestId(`task-row-desktop-${MY_TASK_1.id}`)).not.toBeInTheDocument();
       // Chip must still be visible so the user knows why the list is empty
       expect(screen.getByTestId('filter-chip-overdue')).toBeInTheDocument();
     });
@@ -239,8 +243,8 @@ describe('MyTasksPage', () => {
       renderWithProviders(<MyTasksPage />);
 
       await waitFor(() => {
-        expect(screen.getAllByTestId(`task-row-${MY_TASK_1.id}`)[0]).toBeInTheDocument();
-        expect(screen.getAllByTestId(`task-row-${MY_TASK_OVERDUE.id}`)[0]).toBeInTheDocument();
+        expect(screen.getByTestId(`task-row-desktop-${MY_TASK_1.id}`)).toBeInTheDocument();
+        expect(screen.getByTestId(`task-row-desktop-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
       });
     });
 
@@ -248,7 +252,7 @@ describe('MyTasksPage', () => {
       renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
 
       await waitFor(() => {
-        expect(screen.getAllByTestId(`task-row-${MY_TASK_OVERDUE.id}`)[0]).toBeInTheDocument();
+        expect(screen.getByTestId(`task-row-desktop-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('toggle-completed-button')).not.toBeInTheDocument();

@@ -509,12 +509,12 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  // :visible narrows to the one badge copy shown at the current viewport —
-  // mobile card or desktop table row both carry the same testid. MINCRM-234
   const overdueBadge = await page
     .locate([
-      { type: 'css', value: `[data-testid="task-overdue-badge-${activity.id}"]:visible` },
-      { type: 'css', value: `[data-testid="task-overdue-badge-${activity.id}"]` },
+      {
+        type: 'css',
+        value: `[data-testid="task-overdue-badge-desktop-${activity.id}"]:visible, [data-testid="task-overdue-badge-mobile-${activity.id}"]:visible`,
+      },
     ])
     .resolve();
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
@@ -581,11 +581,12 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
 
   // Toggle is required — completed tasks are hidden by default.
   await page.click([{ type: 'testId', value: 'toggle-completed-button' }]);
-  // :visible resolves to the one copy shown at the current viewport. MINCRM-234
   const taskRow = await page
     .locate([
-      { type: 'css', value: `[data-testid="task-row-${activity.id}"]:visible` },
-      { type: 'css', value: `[data-testid="task-row-${activity.id}"]` },
+      {
+        type: 'css',
+        value: `[data-testid="task-row-desktop-${activity.id}"]:visible, [data-testid="task-row-mobile-${activity.id}"]:visible`,
+      },
     ])
     .resolve();
   await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
