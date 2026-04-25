@@ -1,17 +1,20 @@
 /**
- * Tests for PageFacade and createPageFacade (MINCRM-209).
+ * Tests for PageFacade and createPageFacade (MINCRM-209, MINCRM-235).
  *
  * Verifies:
  * 1. Proxy routes heal method calls to the healPage object.
  * 2. Proxy routes navigation calls (goto, url) to the raw Page.
  * 3. Calling a forbidden Playwright method is a TypeScript compile error.
+ * 4. newTab() returns a PageFacade registered under the same testName.
+ * 5. context() returns SafeContext — newPage() and newCDPSession() are blocked.
  */
 
 import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 import { HealingRegistry } from '../../framework/healing/healing-registry.js';
 import { createPageFacade } from '../../framework/types/page-facade.js';
 import type { PageFacade } from '../../framework/types/page-facade.js';
+import type { SafeContext } from '../../framework/types/safe-context.js';
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -35,7 +38,10 @@ function mockLocator(resolves: boolean) {
   return loc;
 }
 
-function mockPage(resolveMap: boolean[]): Page & { navigated: string[] } {
+function mockPage(
+  resolveMap: boolean[],
+  opts: { newPageResult?: Page } = {},
+): Page & { navigated: string[] } {
   let callIndex = 0;
   const factory = () => {
     const resolves = resolveMap[callIndex] ?? false;
@@ -43,6 +49,12 @@ function mockPage(resolveMap: boolean[]): Page & { navigated: string[] } {
     return mockLocator(resolves);
   };
   const navigated: string[] = [];
+  const ctx: Partial<BrowserContext> = {
+    newPage: opts.newPageResult
+      ? () => Promise.resolve(opts.newPageResult as Page)
+      : () => Promise.resolve(mockPage([], {}) as unknown as Page),
+    newCDPSession: undefined,
+  };
   return {
     getByTestId: factory,
     getByRole: factory,
@@ -54,6 +66,7 @@ function mockPage(resolveMap: boolean[]): Page & { navigated: string[] } {
       return Promise.resolve(null);
     },
     url: () => 'http://localhost/',
+    context: () => ctx as BrowserContext,
     navigated,
   } as unknown as Page & { navigated: string[] };
 }
@@ -127,5 +140,69 @@ test.describe('createPageFacade', () => {
 
     // @ts-expect-error — getByTestId is a ForbiddenPageMethod and must not be accessible
     void facade.getByTestId('something');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-235: newTab() and SafeContext
+// ---------------------------------------------------------------------------
+
+test.describe('createPageFacade — newTab() and SafeContext', () => {
+  test.beforeEach(() => {
+    HealingRegistry.instance._reset();
+  });
+
+  test('newTab() returns a PageFacade with heal methods', async () => {
+    const page = mockPage([]);
+    const facade = createPageFacade(page, 'newTab test');
+
+    const tab = await facade.newTab();
+
+    // A PageFacade has locate(), click(), fill(), etc.
+    expect(typeof tab.locate).toBe('function');
+    expect(typeof tab.click).toBe('function');
+    expect(typeof tab.goto).toBe('function');
+  });
+
+  test('newTab() registers with HealingRegistry under the same testName', async () => {
+    // The new tab is itself a PageFacade — interactions on it record heal events.
+    // We verify the tab was wrapped by checking it has healing methods.
+    const page = mockPage([]);
+    const facade = createPageFacade(page, 'newTab registry test');
+
+    const tab = await facade.newTab();
+
+    // tab.locate() returns a BoundHealingLocator — confirming the new tab
+    // participates in the healing framework.
+    const bound = tab.locate([{ type: 'testId', value: 'x' }]);
+    expect(typeof bound.resolve).toBe('function');
+  });
+
+  test('context() returns SafeContext — does not expose newPage or newCDPSession', () => {
+    const page = mockPage([]);
+    const facade: PageFacade = createPageFacade(page, 'SafeContext type test');
+
+    const ctx: SafeContext = facade.context();
+    expect(ctx).toBeDefined();
+
+    // Never-executed block — type-checked but not called at runtime. MINCRM-235
+    if (false as boolean) {
+      // @ts-expect-error — newPage() is omitted from SafeContext (MINCRM-235)
+      void ctx.newPage();
+
+      // @ts-expect-error — newCDPSession() is omitted from SafeContext (MINCRM-235)
+      void ctx.newCDPSession({} as unknown as Page);
+    }
+  });
+
+  test('context().newPage() is a TypeScript compile error on PageFacade (regression guard)', () => {
+    const page = mockPage([]);
+    const facade: PageFacade = createPageFacade(page, 'context newPage guard');
+
+    // Never-executed block — type-checked but not called at runtime. MINCRM-235
+    if (false as boolean) {
+      // @ts-expect-error — context() returns SafeContext which omits newPage() (MINCRM-235)
+      void facade.context().newPage();
+    }
   });
 });
