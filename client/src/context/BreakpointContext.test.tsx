@@ -114,8 +114,8 @@ describe('useBreakpoint', () => {
   });
 
   it('defaults to isDesktop: false before the useEffect fires (mobile-first SSR safety)', () => {
-    // No matchMedia mock — jsdom default returns null/undefined or throws.
-    // The default context value must be false / true for mobile-first.
+    // matchMedia unavailable — the effect guard exits early and state stays at
+    // the useState(false) initial value, which is the correct mobile-first default.
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: undefined,
@@ -127,9 +127,6 @@ describe('useBreakpoint', () => {
       </BreakpointProvider>,
     );
 
-    // Before the effect fires (synchronous render), initial state is false.
-    // After the effect guard (`typeof window.matchMedia !== 'function'`) exits
-    // early, the state stays false.
     expect(screen.getByTestId('is-desktop').textContent).toBe('false');
     expect(screen.getByTestId('is-mobile').textContent).toBe('true');
   });

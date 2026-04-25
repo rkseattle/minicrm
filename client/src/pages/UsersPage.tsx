@@ -435,7 +435,10 @@ export default function UsersPage() {
                     <tbody className="divide-y divide-gray-100">
                       {users.map((user) => (
                         <Fragment key={user.id}>
-                          <tr className="hover:bg-gray-50 transition-colors">
+                          <tr
+                            className="hover:bg-gray-50 transition-colors"
+                            data-testid={`user-card-${user.id}`}
+                          >
                             <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
                             <td className="px-4 py-3 text-gray-500">{user.email}</td>
                             <td className="px-4 py-3 text-gray-700">
