@@ -240,6 +240,10 @@
     "mergeBack": "Volver",
     "first_nameLabel": "Nombre",
     "last_nameLabel": "Apellido",
+    "emailLabel2": "Correo electrónico",
+    "phoneLabel2": "Teléfono",
+    "titleLabel2": "Cargo",
+    "departmentLabel2": "Departamento",
     "account_idLabel": "Cuenta"
   },
   "accounts": {
@@ -353,6 +357,7 @@
     "exportCsv": "Exportar CSV",
     "exportAll": "Exportar todo",
     "exporting": "Exportando…",
+    "convertedFromLead": "Convertido desde prospecto — haz clic para ver el prospecto original",
     "probabilityLabel": "Probabilidad (%)",
     "probabilityDefault": "Probabilidad predeterminada de la etapa",
     "probabilityOverridden": "Probabilidad sobrescrita manualmente",

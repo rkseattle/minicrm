@@ -732,6 +732,7 @@
   },
   "bulk": {
     "selectedCount": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
     "selectAll": "Select all",
     "clearSelection": "Clear selection",
     "reassignButton": "Reassign owner",

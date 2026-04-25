@@ -240,6 +240,10 @@
     "mergeBack": "返回",
     "first_nameLabel": "名",
     "last_nameLabel": "姓",
+    "emailLabel2": "电子邮件",
+    "phoneLabel2": "电话",
+    "titleLabel2": "职位",
+    "departmentLabel2": "部门",
     "account_idLabel": "客户"
   },
   "accounts": {
@@ -353,6 +357,7 @@
     "exportCsv": "导出 CSV",
     "exportAll": "导出全部",
     "exporting": "导出中…",
+    "convertedFromLead": "从线索转化 — 点击查看原始商机",
     "probabilityLabel": "概率 (%)",
     "probabilityDefault": "阶段默认概率",
     "probabilityOverridden": "手动覆盖的概率",
@@ -755,6 +760,7 @@
   },
   "bulk": {
     "selectedCount": "已选择 {{count}} 条",
+    "selectedCount_other": "已选择 {{count}} 条",
     "selectAll": "全选",
     "clearSelection": "清除选择",
     "reassignButton": "重新分配负责人",
