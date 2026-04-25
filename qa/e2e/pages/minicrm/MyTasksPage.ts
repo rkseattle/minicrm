@@ -56,22 +56,14 @@ export class MyTasksPage {
   /**
    * Returns whether a task row is currently visible (i.e. shown as open).
    *
-   * Desktop and mobile each have a unique testid suffix (-desktop / -mobile)
-   * so each strategy matches exactly one element regardless of viewport. MINCRM-234
-   *
    * @param taskId - Activity UUID.
    */
   async taskRowIsVisible(taskId: string): Promise<boolean> {
     try {
       const row = await this.page
         .locate([
-          // CSS selector list matches whichever viewport copy is visible.
-          // Each testid is unique per viewport (MINCRM-234) so this resolves
-          // to exactly one element without strict mode violations.
-          {
-            type: 'css',
-            value: `[data-testid="task-row-desktop-${taskId}"]:visible, [data-testid="task-row-mobile-${taskId}"]:visible`,
-          },
+          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
       await row.waitFor({ state: 'visible', timeout: 10_000 });
@@ -89,28 +81,21 @@ export class MyTasksPage {
    * We wait for the row to become hidden rather than relying on networkidle, which
    * can fire before the query refetch updates the DOM.
    *
-   * Both the mobile card and desktop table carry the same data-testids, so all
-   * locators filter to the visible copy to work at any viewport width.
-   *
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
     const btn = await this.page
       .locate([
-        {
-          type: 'css',
-          value: `[data-testid="mark-complete-desktop-${taskId}"]:visible, [data-testid="mark-complete-mobile-${taskId}"]:visible`,
-        },
+        { type: 'testId', value: `mark-complete-${taskId}` },
+        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
       ])
       .resolve();
     await btn.click();
     try {
       const row = await this.page
         .locate([
-          {
-            type: 'css',
-            value: `[data-testid="task-row-desktop-${taskId}"]:visible, [data-testid="task-row-mobile-${taskId}"]:visible`,
-          },
+          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
       await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);

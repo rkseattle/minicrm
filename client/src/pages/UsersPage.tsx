@@ -5,6 +5,7 @@
  */
 
 import { useState, Fragment, useCallback } from 'react';
+import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
@@ -320,6 +321,7 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
  */
 export default function UsersPage() {
   const { t } = useTranslation();
+  const { isDesktop } = useBreakpoint();
   const queryClient = useQueryClient();
 
   const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
@@ -408,21 +410,38 @@ export default function UsersPage() {
               </div>
             ) : (
               <>
-                {/* Mobile card view — visible below md */}
-                <ul className="md:hidden divide-y divide-gray-100">
-                  {users.map((user) => (
-                    <Fragment key={user.id}>
-                      <li className="px-4 py-3" data-testid={`user-card-${user.id}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {user.name}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-600">
-                                {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                              </span>
+                {isDesktop ? (
+                  /* Desktop table */
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
+                          {t('users.columnName')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('users.columnEmail')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('users.columnRole')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          {t('users.columnStatus')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
+                          {t('users.columnActions')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {users.map((user) => (
+                        <Fragment key={user.id}>
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
+                            <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                            </td>
+                            <td className="px-4 py-3">
                               <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
                                 {user.status === 'active'
                                   ? t('users.statusActive')
@@ -430,113 +449,100 @@ export default function UsersPage() {
                                     ? t('users.statusInvited')
                                     : t('users.statusInactive')}
                               </Badge>
-                            </div>
-                          </div>
-                          <div className="shrink-0">
-                            <UserActionsMenu
-                              user={user}
-                              isPending={
-                                roleMutation.isPending ||
-                                deactivateMutation.isPending ||
-                                reactivateMutation.isPending
-                              }
-                              isOpen={openMobileMenuUserId === user.id}
-                              onToggle={handleMobileMenuToggle}
-                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
-                              onSetPassword={(id) =>
-                                setSetMobilePasswordUserId(
-                                  setMobilePasswordUserId === id ? null : id,
-                                )
-                              }
-                              onDeactivate={(id) => deactivateMutation.mutate(id)}
-                              onReactivate={(id) => reactivateMutation.mutate(id)}
-                              testIdPrefix="mobile-"
-                            />
-                          </div>
-                        </div>
-                        {setMobilePasswordUserId === user.id && (
-                          <SetPasswordForm
-                            userId={user.id}
-                            onClose={() => setSetMobilePasswordUserId(null)}
-                          />
-                        )}
-                      </li>
-                    </Fragment>
-                  ))}
-                </ul>
-
-                {/* Desktop table — hidden below md */}
-                <table className="hidden md:table w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
-                        {t('users.columnName')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {t('users.columnEmail')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {t('users.columnRole')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {t('users.columnStatus')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
-                        {t('users.columnActions')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {users.map((user) => (
-                      <Fragment key={user.id}>
-                        <tr className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                          <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                          <td className="px-4 py-3 text-gray-700">
-                            {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                              {user.status === 'active'
-                                ? t('users.statusActive')
-                                : user.status === 'invited'
-                                  ? t('users.statusInvited')
-                                  : t('users.statusInactive')}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <UserActionsMenu
-                              user={user}
-                              isPending={
-                                roleMutation.isPending ||
-                                deactivateMutation.isPending ||
-                                reactivateMutation.isPending
-                              }
-                              isOpen={openMenuUserId === user.id}
-                              onToggle={handleMenuToggle}
-                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
-                              onSetPassword={(id) =>
-                                setSetPasswordUserId(setPasswordUserId === id ? null : id)
-                              }
-                              onDeactivate={(id) => deactivateMutation.mutate(id)}
-                              onReactivate={(id) => reactivateMutation.mutate(id)}
-                            />
-                          </td>
-                        </tr>
-                        {setPasswordUserId === user.id && (
-                          <tr>
-                            <td colSpan={5} className="px-4 pb-4">
-                              <SetPasswordForm
-                                userId={user.id}
-                                onClose={() => setSetPasswordUserId(null)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <UserActionsMenu
+                                user={user}
+                                isPending={
+                                  roleMutation.isPending ||
+                                  deactivateMutation.isPending ||
+                                  reactivateMutation.isPending
+                                }
+                                isOpen={openMenuUserId === user.id}
+                                onToggle={handleMenuToggle}
+                                onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                                onSetPassword={(id) =>
+                                  setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                                }
+                                onDeactivate={(id) => deactivateMutation.mutate(id)}
+                                onReactivate={(id) => reactivateMutation.mutate(id)}
                               />
                             </td>
                           </tr>
-                        )}
+                          {setPasswordUserId === user.id && (
+                            <tr>
+                              <td colSpan={5} className="px-4 pb-4">
+                                <SetPasswordForm
+                                  userId={user.id}
+                                  onClose={() => setSetPasswordUserId(null)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  /* Mobile card view */
+                  <ul className="divide-y divide-gray-100">
+                    {users.map((user) => (
+                      <Fragment key={user.id}>
+                        <li className="px-4 py-3" data-testid={`user-card-${user.id}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-600">
+                                  {user.role === 'admin'
+                                    ? t('users.roleAdmin')
+                                    : t('users.roleRep')}
+                                </span>
+                                <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                                  {user.status === 'active'
+                                    ? t('users.statusActive')
+                                    : user.status === 'invited'
+                                      ? t('users.statusInvited')
+                                      : t('users.statusInactive')}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <UserActionsMenu
+                                user={user}
+                                isPending={
+                                  roleMutation.isPending ||
+                                  deactivateMutation.isPending ||
+                                  reactivateMutation.isPending
+                                }
+                                isOpen={openMobileMenuUserId === user.id}
+                                onToggle={handleMobileMenuToggle}
+                                onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                                onSetPassword={(id) =>
+                                  setSetMobilePasswordUserId(
+                                    setMobilePasswordUserId === id ? null : id,
+                                  )
+                                }
+                                onDeactivate={(id) => deactivateMutation.mutate(id)}
+                                onReactivate={(id) => reactivateMutation.mutate(id)}
+                                testIdPrefix="mobile-"
+                              />
+                            </div>
+                          </div>
+                          {setMobilePasswordUserId === user.id && (
+                            <SetPasswordForm
+                              userId={user.id}
+                              onClose={() => setSetMobilePasswordUserId(null)}
+                            />
+                          )}
+                        </li>
                       </Fragment>
                     ))}
-                  </tbody>
-                </table>
+                  </ul>
+                )}
               </>
             )}
             {data && data.total > data.limit && (

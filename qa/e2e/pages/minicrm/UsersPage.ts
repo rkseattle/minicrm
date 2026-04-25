@@ -91,16 +91,12 @@ export class UsersPage {
   }
 
   /**
-   * Returns whether a user card is visible in the list (mobile or desktop).
-   *
-   * Checks both the mobile card testid and a text-based fallback so this works
-   * across desktop and mobile-web Playwright projects.
+   * Returns whether a user card is visible in the list.
    *
    * @param userId - User UUID.
    */
   async userCardIsVisible(userId: string): Promise<boolean> {
     await this.page.waitForLoadState('networkidle');
-    // Try the mobile card testid first via HealingLocator.
     try {
       const card = await this.page
         .locate([
@@ -108,19 +104,7 @@ export class UsersPage {
           { type: 'css', value: `[data-testid="user-card-${userId}"]` },
         ])
         .resolve();
-      if ((await card.count()) > 0) return true;
-    } catch {
-      // No mobile card — try the desktop row action button fallback.
-    }
-    // Desktop renders rows without user-card-* testids — fall back to action button.
-    try {
-      const action = await this.page
-        .locate([
-          { type: 'testId', value: `user-actions-${userId}` },
-          { type: 'css', value: `[data-testid="user-actions-${userId}"]` },
-        ])
-        .resolve();
-      return (await action.count()) > 0;
+      return (await card.count()) > 0;
     } catch {
       return false;
     }
