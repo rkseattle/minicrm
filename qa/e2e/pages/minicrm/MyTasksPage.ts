@@ -65,13 +65,13 @@ export class MyTasksPage {
     try {
       const row = await this.page
         .locate([
-          { type: 'testId', value: `task-row-${taskId}` },
+          // Scope to my-tasks-table (desktop) to avoid strict mode violations:
+          // the page renders both a mobile <li> and desktop <tr> with the same
+          // testid simultaneously. MINCRM-234
+          { type: 'testId', value: `task-row-${taskId}`, within: 'my-tasks-table' },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
-        // Use a longer fallback so React Query has time to fetch after navigation.
         .resolve();
-      // Both mobile card and desktop table carry this testid — waitFor visible
-      // works on multi-match locators without strict mode issues. MINCRM-234
       await row.waitFor({ state: 'visible', timeout: 10_000 });
       return true;
     } catch {
@@ -93,21 +93,20 @@ export class MyTasksPage {
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
-    // Click the visible "Mark complete" button (mobile card or desktop table).
+    // Click the "Mark complete" button scoped to the desktop table to avoid strict
+    // mode violations from the mobile card duplicate. MINCRM-234
     const btn = await this.page
       .locate([
-        { type: 'testId', value: `mark-complete-${taskId}` },
+        { type: 'testId', value: `mark-complete-${taskId}`, within: 'my-tasks-table' },
         { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
       ])
       .resolve();
-    // btn may match mobile and desktop copies — click() on a multi-match locator
-    // works when exactly one is visible. MINCRM-234
     await btn.click();
-    // Wait for the visible row to disappear (query refetch removes it from open-tasks view).
+    // Wait for the row to disappear, scoped to the desktop table. MINCRM-234
     try {
       const row = await this.page
         .locate([
-          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'testId', value: `task-row-${taskId}`, within: 'my-tasks-table' },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
