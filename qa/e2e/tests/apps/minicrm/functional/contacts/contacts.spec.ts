@@ -342,11 +342,20 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   // Also confirm the sort button is clickable via UI (desktop table only).
   const navResult = await navigateToContacts({ page });
   expect(navResult.loaded).toBe(true);
-  // The sort button is only visible on desktop — the mobile card view has no sort headers.
-  const sortButton = await page.locate([{ type: 'testId', value: 'contacts-sort-name' }]).resolve();
-  const isSortVisible = await sortButton.isVisible();
+  // The sort button only exists on desktop — the mobile card view has no sort headers.
+  // resolve() throws StrategyExhaustedError when the element is absent (mobile), so
+  // catch and treat as not visible.
+  let isSortVisible = false;
+  try {
+    const sortButton = await page
+      .locate([{ type: 'testId', value: 'contacts-sort-name' }])
+      .resolve();
+    isSortVisible = await sortButton.isVisible();
+  } catch {
+    // Element absent at this viewport — mobile layout has no sort headers.
+  }
   if (isSortVisible) {
-    await sortButton.click();
+    await page.click([{ type: 'testId', value: 'contacts-sort-name' }]);
     await page.waitForLoadState('networkidle');
   }
 

@@ -126,9 +126,11 @@ export class ContactsPage {
   }
 
   /**
-   * Waits until a specific contact row is visible in the list, identified by
-   * its contact-link-{id} testId. Use this after navigating to the contacts
-   * list when you need to interact with a row that was just created via API.
+   * Waits until a specific contact row is visible in the list. Succeeds on
+   * either the desktop table link (contact-link-{id}) or the mobile card link
+   * (contact-card-link-{id}). Both testId strategies run at the same priority
+   * so whichever variant is in the DOM resolves immediately without burning the
+   * full fallbackTimeout on a viewport-absent element.
    *
    * @param id - The contact UUID to wait for.
    * @param timeout - Maximum wait per strategy attempt in ms (default 15 000).
@@ -138,8 +140,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: `contact-link-${id}` },
-          { type: 'css', value: `[data-testid="contact-link-${id}"]` },
-          { type: 'css', value: `[data-testid="contact-card-link-${id}"]` },
+          { type: 'testId', value: `contact-card-link-${id}` },
         ],
         { fallbackTimeout: timeout },
       )
