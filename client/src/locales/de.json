@@ -142,7 +142,10 @@
     "recentActivityViewAll": "Alle anzeigen",
     "recentActivityEmpty": "Keine aktuellen Aktivitäten — starten Sie mit einem Anruf oder einer Notiz.",
     "recentActivityLoading": "Aktivitäten werden geladen…",
-    "recentActivityUnlinked": "Nicht verknüpfter Datensatz"
+    "recentActivityUnlinked": "Nicht verknüpfter Datensatz",
+    "currencyConvertedFootnote": "Umgerechnet in {{currency}} · Kurse vom {{date}}",
+    "unratedDealsNote": "{{count}} Deal-Währung hat keinen konfigurierten Kurs.",
+    "unratedDealsNote_other": "{{count}} Deal-Währungen haben keine konfigurierten Kurse."
   },
   "contacts": {
     "pageTitle": "Kontakte",
@@ -560,6 +563,26 @@
       "deleteError": "Löschen fehlgeschlagen. Bitte erneut versuchen.",
       "reorderError": "Neue Reihenfolge konnte nicht gespeichert werden. Bitte erneut versuchen."
     },
+    "exchangeRates": {
+      "sectionTitle": "Wechselkurse",
+      "sectionHint": "Konfigurieren Sie Wechselkurse für Währungen in Ihrer Pipeline. Diese Kurse werden verwendet, um Deal-Werte in Ihre Heimwährung für Berichte umzurechnen.",
+      "homeCurrencyLabel": "Heimwährung",
+      "rateColumnHeader": "Kurs (zu {{currency}})",
+      "symbolColumnHeader": "Symbol",
+      "lastUpdatedColumnHeader": "Zuletzt aktualisiert",
+      "removeButton": "Entfernen",
+      "addButton": "Währung hinzufügen",
+      "saveButton": "Kurse speichern",
+      "recalculatedBanner": "Die Kurse wurden für die neue Heimwährung neu berechnet. Bitte vor dem Speichern überprüfen.",
+      "saveSuccess": "Wechselkurse gespeichert.",
+      "saveError": "Fehler beim Speichern der Wechselkurse.",
+      "homeRowLabel": "Heimwährung",
+      "currencyPickerLabel": "Währung",
+      "rateInputLabel": "Kurs",
+      "addConfirm": "Hinzufügen",
+      "addCancel": "Abbrechen",
+      "loading": "Wechselkurse werden geladen…"
+    },
     "import": {
       "sectionTitle": "Daten importieren",
       "sectionHint": "Importieren Sie Kontakte, Konten und Deals aus CSV-Dateien. Importieren Sie zuerst Konten für beste Ergebnisse.",
@@ -677,7 +700,10 @@
       "lossReasonHeading": "Aufschlüsselung der Verlustgründe",
       "lossReasonEmpty": "Keine Verlustgründe für diesen Zeitraum erfasst.",
       "columnReason": "Grund",
-      "columnCount": "Anzahl"
+      "columnCount": "Anzahl",
+      "convertedFootnote": "Werte umgerechnet in {{currency}} · Kurse vom {{date}}",
+      "unratedNote": "{{count}} Deal-Währung hat keinen konfigurierten Kurs.",
+      "unratedNote_other": "{{count}} Deal-Währungen haben keine konfigurierten Kurse."
     }
   },
   "automation": {

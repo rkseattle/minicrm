@@ -884,6 +884,49 @@ export const handlers = [
     return HttpResponse.json({ currency: body.currency });
   }),
 
+  /** Settings: GET /api/settings/currencies (MINCRM-251) */
+  http.get('/api/settings/currencies', () => {
+    return HttpResponse.json({
+      home_currency: 'USD',
+      currencies: [
+        {
+          code: 'USD',
+          name: 'US Dollar',
+          symbol: '$',
+          rate_to_home: 1,
+          is_home: true,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+    });
+  }),
+
+  /** Settings: PUT /api/settings/currencies (MINCRM-251) */
+  http.put('/api/settings/currencies', async ({ request }) => {
+    const body = (await request.json()) as {
+      home_currency: string;
+      currencies: Array<{ code: string; name: string; symbol: string; rate_to_home: number }>;
+    };
+    return HttpResponse.json({
+      home_currency: body.home_currency,
+      currencies: [
+        {
+          code: body.home_currency,
+          name: body.home_currency,
+          symbol: body.home_currency,
+          rate_to_home: 1,
+          is_home: true,
+          updated_at: new Date().toISOString(),
+        },
+        ...body.currencies.map((c) => ({
+          ...c,
+          is_home: false,
+          updated_at: new Date().toISOString(),
+        })),
+      ],
+    });
+  }),
+
   /** Users: GET /api/users/notification-recipient-count (MINCRM-163) */
   http.get('/api/users/notification-recipient-count', () => {
     return HttpResponse.json({ count: 2 });

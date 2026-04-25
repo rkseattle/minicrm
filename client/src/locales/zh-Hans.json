@@ -142,7 +142,10 @@
     "recentActivityViewAll": "查看全部",
     "recentActivityEmpty": "暂无最近活动 — 请从记录通话或备注开始。",
     "recentActivityLoading": "加载活动中…",
-    "recentActivityUnlinked": "未关联记录"
+    "recentActivityUnlinked": "未关联记录",
+    "currencyConvertedFootnote": "已换算为 {{currency}} · 汇率截至 {{date}}",
+    "unratedDealsNote": "{{count}} 种交易货币未配置汇率。",
+    "unratedDealsNote_other": "{{count}} 种交易货币未配置汇率。"
   },
   "contacts": {
     "pageTitle": "联系人",
@@ -560,6 +563,26 @@
       "deleteError": "删除失败，请重试。",
       "reorderError": "保存新顺序失败，请重试。"
     },
+    "exchangeRates": {
+      "sectionTitle": "汇率",
+      "sectionHint": "为管道中使用的货币配置汇率。这些汇率用于将交易金额转换为本位货币以供报告使用。",
+      "homeCurrencyLabel": "本位货币",
+      "rateColumnHeader": "汇率（兑 {{currency}}）",
+      "symbolColumnHeader": "符号",
+      "lastUpdatedColumnHeader": "最后更新",
+      "removeButton": "删除",
+      "addButton": "添加货币",
+      "saveButton": "保存汇率",
+      "recalculatedBanner": "已为新本位货币重新计算汇率，请在保存前仔细检查。",
+      "saveSuccess": "汇率已保存。",
+      "saveError": "保存汇率失败。",
+      "homeRowLabel": "本位货币",
+      "currencyPickerLabel": "货币",
+      "rateInputLabel": "汇率",
+      "addConfirm": "添加",
+      "addCancel": "取消",
+      "loading": "正在加载汇率…"
+    },
     "import": {
       "sectionTitle": "导入数据",
       "sectionHint": "从 CSV 文件导入联系人、客户和商机。建议先导入客户，再导入联系人。",
@@ -677,7 +700,10 @@
       "lossReasonHeading": "失单原因分析",
       "lossReasonEmpty": "本时段没有记录失单原因。",
       "columnReason": "原因",
-      "columnCount": "数量"
+      "columnCount": "数量",
+      "convertedFootnote": "已换算为 {{currency}} · 汇率截至 {{date}}",
+      "unratedNote": "{{count}} 种交易货币未配置汇率。",
+      "unratedNote_other": "{{count}} 种交易货币未配置汇率。"
     }
   },
   "automation": {

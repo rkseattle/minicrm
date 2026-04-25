@@ -142,7 +142,10 @@
     "recentActivityViewAll": "Ver todo",
     "recentActivityEmpty": "Sin actividad reciente — comienza registrando una llamada o nota.",
     "recentActivityLoading": "Cargando actividad…",
-    "recentActivityUnlinked": "Registro sin vincular"
+    "recentActivityUnlinked": "Registro sin vincular",
+    "currencyConvertedFootnote": "Convertido a {{currency}} · tasas al {{date}}",
+    "unratedDealsNote": "{{count}} moneda de negocio no tiene tasa configurada.",
+    "unratedDealsNote_other": "{{count}} monedas de negocios no tienen tasa configurada."
   },
   "contacts": {
     "pageTitle": "Contactos",
@@ -560,6 +563,26 @@
       "deleteError": "Error al eliminar. Inténtelo de nuevo.",
       "reorderError": "Error al guardar el nuevo orden. Inténtelo de nuevo."
     },
+    "exchangeRates": {
+      "sectionTitle": "Tipos de cambio",
+      "sectionHint": "Configure los tipos de cambio para las monedas utilizadas en su pipeline. Estas tasas se usan para convertir los valores de los negocios a su moneda base para los informes.",
+      "homeCurrencyLabel": "Moneda base",
+      "rateColumnHeader": "Tasa (a {{currency}})",
+      "symbolColumnHeader": "Símbolo",
+      "lastUpdatedColumnHeader": "Última actualización",
+      "removeButton": "Eliminar",
+      "addButton": "Agregar moneda",
+      "saveButton": "Guardar tasas",
+      "recalculatedBanner": "Las tasas se han recalculado para la nueva moneda base. Por favor revise antes de guardar.",
+      "saveSuccess": "Tipos de cambio guardados.",
+      "saveError": "Error al guardar los tipos de cambio.",
+      "homeRowLabel": "Moneda base",
+      "currencyPickerLabel": "Moneda",
+      "rateInputLabel": "Tasa",
+      "addConfirm": "Agregar",
+      "addCancel": "Cancelar",
+      "loading": "Cargando tipos de cambio…"
+    },
     "import": {
       "sectionTitle": "Importar datos",
       "sectionHint": "Importa contactos, cuentas y negocios desde archivos CSV. Importa las cuentas antes que los contactos para obtener mejores resultados.",
@@ -677,7 +700,10 @@
       "lossReasonHeading": "Desglose de razones de pérdida",
       "lossReasonEmpty": "No hay razones de pérdida registradas para este período.",
       "columnReason": "Razón",
-      "columnCount": "Cantidad"
+      "columnCount": "Cantidad",
+      "convertedFootnote": "Valores convertidos a {{currency}} · tasas al {{date}}",
+      "unratedNote": "{{count}} moneda de negocio no tiene tasa configurada.",
+      "unratedNote_other": "{{count}} monedas de negocios no tienen tasa configurada."
     }
   },
   "automation": {
