@@ -23,13 +23,18 @@ const isE2E =
   process.env.NODE_ENV !== 'production' &&
   (process.env.NODE_ENV === 'test' || process.env.E2E === 'true');
 
+// TEST_RATE_LIMIT=true overrides the E2E bypass so rate-limiter unit tests can
+// verify the limiters actually fire. Never set in production (the isE2E check
+// above already makes this unreachable when NODE_ENV === 'production').
+const shouldSkip = (): boolean => isE2E && process.env.TEST_RATE_LIMIT !== 'true';
+
 /** 10 login attempts per IP per 15-minute window (skipped in test/e2e) */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   // express-rate-limit v7: max:0 blocks all requests, not unlimited.
   // Use skip() to bypass the limiter entirely in E2E/test environments.
-  skip: () => isE2E,
+  skip: shouldSkip,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -44,7 +49,7 @@ const loginLimiter = rateLimit({
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  skip: () => isE2E,
+  skip: shouldSkip,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -59,7 +64,7 @@ const forgotPasswordLimiter = rateLimit({
 const resetPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  skip: () => isE2E,
+  skip: shouldSkip,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
