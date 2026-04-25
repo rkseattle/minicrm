@@ -187,18 +187,51 @@ test.describe('createPageFacade — newTab() and SafeContext', () => {
     expect(typeof tab.goto).toBe('function');
   });
 
-  test('newTab() registers with HealingRegistry under the same testName', async () => {
-    // The new tab is itself a PageFacade — interactions on it record heal events.
-    // We verify the tab was wrapped by checking it has healing methods.
-    const page = mockPage([]);
-    const facade = createPageFacade(page, 'newTab registry test');
+  test('newTab() registers heal events under the same testName as the parent', async () => {
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs');
+
+    process.env['PW_WORKER_INDEX'] = '77';
+
+    // The new tab page mock: primary fails, fallback resolves — this triggers a heal event.
+    const newTabPage = mockPage([false, true]);
+    const page = mockPage([], { newPageResult: newTabPage as unknown as Page });
+
+    const capturedTestName = 'newTab-testname-capture';
+    const facade = createPageFacade(page, capturedTestName);
 
     const tab = await facade.newTab();
 
-    // tab.locate() returns a BoundHealingLocator — confirming the new tab
-    // participates in the healing framework.
-    const bound = tab.locate([{ type: 'testId', value: 'x' }]);
-    expect(typeof bound.resolve).toBe('function');
+    // Trigger a heal event on the new tab (primary fails → fallback → heal recorded).
+    await tab.click(
+      [
+        { type: 'testId', value: 'btn' },
+        { type: 'css', value: '.btn' },
+      ],
+      { fallbackTimeout: 100 },
+    );
+
+    expect(HealingRegistry.instance.count).toBe(1);
+
+    // Flush and verify the event carries the parent testName.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'newtab-hl-test-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      HealingRegistry.instance.flush();
+    } finally {
+      process.chdir(originalCwd);
+    }
+
+    const contents = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, 'test-results', 'healing-77.json'), 'utf-8'),
+    ) as { events: Array<{ testName: string }> };
+
+    expect(contents.events[0]?.testName).toBe(capturedTestName);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env['PW_WORKER_INDEX'];
   });
 
   test('context() returns SafeContext — does not expose newPage or newCDPSession', () => {
