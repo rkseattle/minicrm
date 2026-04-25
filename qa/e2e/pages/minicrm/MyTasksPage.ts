@@ -70,9 +70,9 @@ export class MyTasksPage {
         ])
         // Use a longer fallback so React Query has time to fetch after navigation.
         .resolve();
-      // Both mobile card and desktop table carry this testid — filter to the
-      // visible copy so this works at any viewport width.
-      await row.filter({ visible: true }).waitFor({ state: 'visible', timeout: 10_000 });
+      // Both mobile card and desktop table carry this testid — waitFor visible
+      // works on multi-match locators without strict mode issues. MINCRM-234
+      await row.waitFor({ state: 'visible', timeout: 10_000 });
       return true;
     } catch {
       return false;
@@ -100,7 +100,9 @@ export class MyTasksPage {
         { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
       ])
       .resolve();
-    await btn.filter({ visible: true }).click();
+    // btn may match mobile and desktop copies — click() on a multi-match locator
+    // works when exactly one is visible. MINCRM-234
+    await btn.click();
     // Wait for the visible row to disappear (query refetch removes it from open-tasks view).
     try {
       const row = await this.page
@@ -109,10 +111,7 @@ export class MyTasksPage {
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
-      await row
-        .filter({ visible: true })
-        .waitFor({ state: 'hidden', timeout: 10_000 })
-        .catch(() => null);
+      await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
     } catch {
       // Row already gone — nothing to wait for.
     }

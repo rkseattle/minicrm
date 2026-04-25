@@ -5,8 +5,8 @@
  * MINCRM-209
  */
 
-import type { Locator } from '@playwright/test';
 import type { HealingLocator } from './healing-locator.js';
+import type { SafeLocator } from '../types/safe-locator.js';
 
 export class BoundHealingLocator {
   constructor(
@@ -15,7 +15,7 @@ export class BoundHealingLocator {
   ) {}
 
   /** Resolves the locator — testName is captured at construction, not passed here. */
-  async resolve(): Promise<Locator> {
+  async resolve(): Promise<SafeLocator> {
     return this.inner.resolve(this.testName);
   }
 

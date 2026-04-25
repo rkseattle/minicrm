@@ -29,4 +29,5 @@ export type { HealPage, HealMethods, LocateOptions } from './heal-methods.js';
 export type { RestClientFixtures } from './rest-client.fixture.js';
 export type { GrpcClientFixtures } from './grpc-client.fixture.js';
 export type { SafePage } from '../types/safe-page.js';
+export type { SafeLocator } from '../types/safe-locator.js';
 export type { PageFacade } from '../types/page-facade.js';

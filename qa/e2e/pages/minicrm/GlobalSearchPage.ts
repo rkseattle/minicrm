@@ -14,8 +14,7 @@
  * MINCRM-192
  */
 
-import type { Locator } from '@playwright/test';
-import type { PageFacade } from '@framework/fixtures/index.js';
+import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -66,11 +65,13 @@ export class GlobalSearchPage {
    * drawer input is resolved using a scoped CSS primary strategy that only
    * matches within #mobile-nav-drawer (which is now mounted and visible).
    */
-  private async openInput(): Promise<Locator> {
+  private async openInput(): Promise<SafeLocator> {
     // Try to resolve the first visible global-search-input. On NavLeft /
     // NavHamburger / NavTop desktop this will succeed immediately.
     // The testId strategy matches all instances (including the hidden header
     // input on NavTop mobile), so we check isVisible() on the result.
+    // isVisible() does not throw on multi-match — it returns true if any match
+    // is visible, which is the behaviour we need here.
     const anyInput = await this.page
       .locate([
         { type: 'testId', value: 'global-search-input' },
@@ -78,13 +79,10 @@ export class GlobalSearchPage {
       ])
       .resolve();
 
-    const isVisible = await anyInput
-      .first()
-      .isVisible()
-      .catch(() => false);
+    const isVisible = await anyInput.isVisible().catch(() => false);
 
     if (isVisible) {
-      return anyInput.first();
+      return anyInput;
     }
 
     // NavTop mobile: the header input is hidden behind `hidden lg:block`.
@@ -359,16 +357,21 @@ export class GlobalSearchPage {
    */
   async noSpinnerInPanel(): Promise<boolean> {
     try {
-      const panel = await this.page
+      // Use `within` to scope the spinner CSS strategy to the panel container
+      // rather than calling .locator() on a resolved SafeLocator (forbidden —
+      // child locator factories escape the healing framework). MINCRM-234
+      const spinner = await this.page
         .locate([
-          { type: 'testId', value: 'search-results-panel' },
-          { type: 'css', value: '[data-testid="search-results-panel"]' },
+          {
+            type: 'css',
+            value: '[role="progressbar"], [aria-busy="true"]',
+            within: 'search-results-panel',
+          },
         ])
         .resolve();
-      const spinner = panel.locator('[role="progressbar"], [aria-busy="true"]');
       return !(await spinner.isVisible().catch(() => false));
     } catch {
-      // Panel not found — no spinner possible.
+      // Panel not found or spinner not present — no spinner possible.
       return true;
     }
   }
