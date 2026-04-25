@@ -12,6 +12,7 @@ import './index.css';
 import i18n from './i18n.js';
 import App from './App.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
+import { BreakpointProvider } from './context/BreakpointContext.js';
 
 /** Shared React Query client instance */
 const queryClient = new QueryClient({
@@ -33,9 +34,11 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <I18nextProvider i18n={i18n}>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
+          <BreakpointProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </BreakpointProvider>
         </I18nextProvider>
       </BrowserRouter>
     </QueryClientProvider>
