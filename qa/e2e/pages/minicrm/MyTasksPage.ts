@@ -65,10 +65,10 @@ export class MyTasksPage {
     try {
       const row = await this.page
         .locate([
-          // Scope to my-tasks-table (desktop) to avoid strict mode violations:
-          // the page renders both a mobile <li> and desktop <tr> with the same
-          // testid simultaneously. MINCRM-234
-          { type: 'testId', value: `task-row-${taskId}`, within: 'my-tasks-table' },
+          // :visible narrows to the one copy shown at the current viewport —
+          // mobile card (<li>) or desktop table row (<tr>). Both carry the same
+          // data-testid; :visible avoids strict mode without .filter(). MINCRM-234
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]:visible` },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
@@ -93,20 +93,19 @@ export class MyTasksPage {
    * @param taskId - Activity UUID.
    */
   async markComplete(taskId: string): Promise<void> {
-    // Click the "Mark complete" button scoped to the desktop table to avoid strict
-    // mode violations from the mobile card duplicate. MINCRM-234
+    // :visible narrows to the one copy shown at the current viewport. MINCRM-234
     const btn = await this.page
       .locate([
-        { type: 'testId', value: `mark-complete-${taskId}`, within: 'my-tasks-table' },
+        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]:visible` },
         { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
       ])
       .resolve();
     await btn.click();
-    // Wait for the row to disappear, scoped to the desktop table. MINCRM-234
+    // Wait for the visible row to disappear after the PATCH + refetch. MINCRM-234
     try {
       const row = await this.page
         .locate([
-          { type: 'testId', value: `task-row-${taskId}`, within: 'my-tasks-table' },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]:visible` },
           { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
         ])
         .resolve();
