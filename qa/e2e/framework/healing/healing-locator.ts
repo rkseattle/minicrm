@@ -21,6 +21,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { HealingRegistry } from './healing-registry.js';
+import type { SafeLocator } from '../types/safe-locator.js';
 import type { LocatorStrategyRecord } from './healing-registry.js';
 import { AiHealer } from './ai-healer.js';
 
@@ -247,9 +248,9 @@ export class HealingLocator {
    * - If all strategies are exhausted, throws StrategyExhaustedError.
    *
    * @param testName - Name of the currently running test (used in heal records).
-   * @returns A resolved Playwright Locator.
+   * @returns A resolved SafeLocator (child-locator factories omitted to prevent healing escapes).
    */
-  async resolve(testName: string): Promise<Locator> {
+  async resolve(testName: string): Promise<SafeLocator> {
     const attempted: LocatorStrategyRecord[] = [];
     const [primary, ...fallbacks] = this.strategies;
 
@@ -258,7 +259,10 @@ export class HealingLocator {
     const primaryResolved = await probeLocator(primaryLocator, this.fallbackTimeout);
 
     if (primaryResolved) {
-      return primaryLocator;
+      // Cast: buildLocator returns a raw Locator (framework-internal). The real
+      // Playwright Locator satisfies SafeLocator at runtime; we narrow the type
+      // here so callers cannot call forbidden child-locator factory methods.
+      return primaryLocator as SafeLocator;
     }
 
     attempted.push(toRecord(primary));
@@ -278,7 +282,7 @@ export class HealingLocator {
           this.pageObject,
           this.method,
         );
-        return fallbackLocator;
+        return fallbackLocator as SafeLocator;
       }
 
       attempted.push(toRecord(fallback));
@@ -304,7 +308,7 @@ export class HealingLocator {
             this.method,
             aiResult.tokenCost,
           );
-          return aiLocator;
+          return aiLocator as SafeLocator;
         }
 
         // AI strategy was tried but its probe failed — include it in the

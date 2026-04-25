@@ -117,7 +117,7 @@ export class LoginPage {
       const resolved = await locator.resolve();
       const count = await resolved.count();
       if (count === 0) return null;
-      return resolved.first().textContent();
+      return resolved.textContent();
     } catch {
       // StrategyExhaustedError means no alert is present — login succeeded.
       return null;

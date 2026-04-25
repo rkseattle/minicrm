@@ -512,11 +512,7 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const overdueBadge = await page
     .locate([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }])
     .resolve();
-  // Both mobile card and desktop table render this testid — filter to the visible copy.
-  await expect(
-    overdueBadge.filter({ visible: true }),
-    'past-due task should show overdue badge',
-  ).toBeVisible();
+  await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
 
 test('@functional F5-DS3: task with no due date → no overdue state in UI or API', async ({
@@ -584,8 +580,7 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   const taskRow = await page
     .locate([{ type: 'testId', value: `task-row-${activity.id}` }])
     .resolve();
-  // Both mobile card and desktop table render this testid — filter to the visible copy.
-  await taskRow.filter({ visible: true }).waitFor({ state: 'visible', timeout: 10_000 });
+  await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
 
   expect(
     await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),

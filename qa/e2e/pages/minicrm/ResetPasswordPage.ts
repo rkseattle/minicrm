@@ -87,7 +87,7 @@ export class ResetPasswordPage {
       const resolved = await locator.resolve();
       const count = await resolved.count();
       if (count === 0) return null;
-      return resolved.first().textContent();
+      return resolved.textContent();
     } catch {
       return null;
     }

@@ -14,6 +14,7 @@ export {
 
 export { BoundHealingLocator } from './bound-healing-locator.js';
 export type { LocatorStrategy, StrategyType, HealingLocatorOptions } from './healing-locator.js';
+export type { SafeLocator } from '../types/safe-locator.js';
 
 export { HealingRegistry } from './healing-registry.js';
 export type { HealEvent, LocatorStrategyRecord } from './healing-registry.js';

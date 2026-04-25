@@ -292,7 +292,7 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   const downloadLink = await page
     .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
     .resolve();
-  await expect(downloadLink.first()).toBeVisible({ timeout: 10_000 });
+  await expect(downloadLink).toBeVisible({ timeout: 10_000 });
 
   // Register for teardown
   const listResponse = await restClient.get<AttachmentListResponse>(

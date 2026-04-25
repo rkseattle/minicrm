@@ -125,6 +125,26 @@ test.describe('BoundHealingLocator', () => {
     expect(locator).toBeDefined();
   });
 
+  // TypeScript compile-error test: calling a forbidden child-locator factory on a
+  // SafeLocator must be a compile error (MINCRM-234). @ts-expect-error below asserts
+  // the error exists — TypeScript will fail the build if the error stops occurring.
+  test('resolve() returns SafeLocator — forbidden child-locator factories are compile errors', async () => {
+    const page = mockPage([true]);
+    const inner = new HealingLocator(page, [{ type: 'testId', value: 'btn' }], {
+      fallbackTimeout: 100,
+    });
+    const bound = new BoundHealingLocator(inner, 'safe-locator type test');
+    const locator = await bound.resolve();
+
+    // @ts-expect-error — getByTestId is forbidden on SafeLocator (MINCRM-234)
+    void locator.getByTestId('child');
+
+    // @ts-expect-error — locator() child factory is forbidden on SafeLocator (MINCRM-234)
+    void locator.locator('.child');
+
+    expect(locator).toBeDefined();
+  });
+
   test('waitFor() resolves the locator then calls locator.waitFor with the given state', async () => {
     const page = mockPage([true]);
     const inner = new HealingLocator(page, [{ type: 'testId', value: 'btn' }], {
