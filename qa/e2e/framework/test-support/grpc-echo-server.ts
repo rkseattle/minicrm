@@ -1,21 +1,28 @@
 /**
  * Minimal in-process gRPC echo server for framework-level CI tests.
  *
- * Exposes two methods on the `EchoService`:
- *   - `Ping` (unary)  — echoes the request message back as the response.
- *   - `Stream` (server-streaming) — streams the request message `count` times.
+ * Exposes four methods on the `EchoService` covering all four gRPC call patterns:
+ *   - `Ping`    (unary)              — echoes the request message back.
+ *   - `Stream`  (server-streaming)   — streams the request message `count` times.
+ *   - `Collect` (client-streaming)   — collects all client messages and returns
+ *                                      a count + the last received message.
+ *   - `Echo`    (bidi-streaming)     — echoes each client message back immediately.
  *
  * The server is started and stopped within a Playwright fixture so it is
  * never a long-running process. It binds to an OS-assigned port so parallel
  * workers do not conflict.
  *
  * Protocol (JSON over raw gRPC):
- *   PingRequest  { message: string }
- *   PingResponse { message: string }
+ *   PingRequest    { message: string }
+ *   PingResponse   { message: string }
  *   StreamRequest  { message: string; count: number }
  *   StreamResponse { message: string; index: number }
+ *   CollectRequest  { message: string }
+ *   CollectResponse { count: number; last: string }
+ *   EchoRequest    { message: string }
+ *   EchoResponse   { message: string }
  *
- * MINCRM-128
+ * MINCRM-128, MINCRM-233
  */
 
 import * as grpc from '@grpc/grpc-js';
@@ -46,6 +53,29 @@ export interface StreamResponse {
   message: string;
   /** Zero-based index of this message in the stream. */
   index: number;
+}
+
+/** One request message in the Collect client-streaming method (MINCRM-233). */
+export interface CollectRequest {
+  message: string;
+}
+
+/** Response from the Collect client-streaming method (MINCRM-233). */
+export interface CollectResponse {
+  /** Total number of request messages received from the client. */
+  count: number;
+  /** The last message received, or empty string if no messages were sent. */
+  last: string;
+}
+
+/** One request message in the Echo bidirectional-streaming method (MINCRM-233). */
+export interface EchoRequest {
+  message: string;
+}
+
+/** One response message from the Echo bidirectional-streaming method (MINCRM-233). */
+export interface EchoResponse {
+  message: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,10 +134,34 @@ const streamMethod: grpc.MethodDefinition<StreamRequest, StreamResponse> = {
   responseDeserialize: decode<StreamResponse>,
 };
 
+/** gRPC method descriptor for Collect (client-streaming). */
+const collectMethod: grpc.MethodDefinition<CollectRequest, CollectResponse> = {
+  path: '/echo.EchoService/Collect',
+  requestStream: true,
+  responseStream: false,
+  requestSerialize: encode,
+  requestDeserialize: decode<CollectRequest>,
+  responseSerialize: encode,
+  responseDeserialize: decode<CollectResponse>,
+};
+
+/** gRPC method descriptor for Echo (bidirectional-streaming). */
+const echoMethod: grpc.MethodDefinition<EchoRequest, EchoResponse> = {
+  path: '/echo.EchoService/Echo',
+  requestStream: true,
+  responseStream: true,
+  requestSerialize: encode,
+  requestDeserialize: decode<EchoRequest>,
+  responseSerialize: encode,
+  responseDeserialize: decode<EchoResponse>,
+};
+
 /** Service definition for EchoService. */
 const echoServiceDefinition: grpc.ServiceDefinition = {
   Ping: pingMethod,
   Stream: streamMethod,
+  Collect: collectMethod,
+  Echo: echoMethod,
 };
 
 // ---------------------------------------------------------------------------
@@ -140,6 +194,54 @@ function handleStream(call: grpc.ServerWritableStream<StreamRequest, StreamRespo
   call.end();
 }
 
+/**
+ * Handles the Collect client-streaming call — reads all client messages and
+ * responds with the count and the last received message (MINCRM-233).
+ *
+ * @param call - gRPC server readable stream.
+ * @param callback - Completion callback with the single response.
+ */
+function handleCollect(
+  call: grpc.ServerReadableStream<CollectRequest, CollectResponse>,
+  callback: grpc.sendUnaryData<CollectResponse>,
+): void {
+  let count = 0;
+  let last = '';
+
+  call.on('data', (req: CollectRequest) => {
+    count++;
+    last = req.message;
+  });
+
+  call.on('end', () => {
+    callback(null, { count, last });
+  });
+
+  call.on('error', (err: Error) => {
+    callback(err, null);
+  });
+}
+
+/**
+ * Handles the Echo bidirectional-streaming call — echoes each client message
+ * back immediately as it arrives (MINCRM-233).
+ *
+ * @param call - gRPC server duplex stream.
+ */
+function handleEcho(call: grpc.ServerDuplexStream<EchoRequest, EchoResponse>): void {
+  call.on('data', (req: EchoRequest) => {
+    call.write({ message: req.message });
+  });
+
+  call.on('end', () => {
+    call.end();
+  });
+
+  call.on('error', () => {
+    call.end();
+  });
+}
+
 // ---------------------------------------------------------------------------
 // GrpcEchoServer
 // ---------------------------------------------------------------------------
@@ -159,6 +261,8 @@ export class GrpcEchoServer {
     this.server.addService(echoServiceDefinition, {
       Ping: handlePing,
       Stream: handleStream,
+      Collect: handleCollect,
+      Echo: handleEcho,
     });
   }
 

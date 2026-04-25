@@ -9,11 +9,75 @@ Product-agnostic framework code. **Must contain zero application-domain referenc
 - `PageFacade` — unified fixture that combines SafePage + HealMethods via a Proxy
 - Playwright fixtures — base fixture wiring
 - REST API client
-- gRPC client
+- gRPC client (unary, server-streaming, client-streaming, bidirectional-streaming)
 - `HealingReporter` — custom Playwright reporter that emits `healing-report.json`
 
 A CI lint step (`check-framework-purity.sh`) greps this directory for application-domain
 strings and fails the build if any are found.
+
+## gRPC client
+
+`GrpcClient` supports all four gRPC call patterns via a typed async-iterable interface.
+The fixture wires up the client from `E2E_GRPC_HOST` and `E2E_GRPC_TLS` env vars.
+
+### Unary call
+
+```ts
+const response = await grpcClient.call<MyRequest, MyResponse>('/my.Service/Method', {
+  field: 'value',
+});
+console.log(response.field);
+```
+
+### Server-streaming call
+
+```ts
+for await (const msg of grpcClient.serverStream<StreamRequest, StreamResponse>(
+  '/my.Service/Stream',
+  { message: 'hello', count: 3 },
+)) {
+  console.log(msg.index, msg.message);
+}
+```
+
+### Client-streaming call (MINCRM-233)
+
+The caller supplies an async iterable of request messages; the server accumulates
+the full stream and responds with a single message.
+
+```ts
+async function* myRequests() {
+  yield { message: 'first' };
+  yield { message: 'second' };
+  yield { message: 'third' };
+}
+
+const response = await grpcClient.clientStream<MyRequest, MySummaryResponse>(
+  '/my.Service/Collect',
+  myRequests(),
+);
+console.log(response.count); // 3
+```
+
+### Bidirectional-streaming call (MINCRM-233)
+
+Both client and server stream messages simultaneously. The caller supplies an
+async iterable of request messages and iterates over the async iterable of
+responses.
+
+```ts
+async function* requests() {
+  yield { message: 'ping' };
+  yield { message: 'pong' };
+}
+
+for await (const resp of grpcClient.bidiStream<MyRequest, MyResponse>(
+  '/my.Service/Echo',
+  requests(),
+)) {
+  console.log(resp.message); // echoed back: "ping", then "pong"
+}
+```
 
 ## PageFacade (unified fixture)
 
