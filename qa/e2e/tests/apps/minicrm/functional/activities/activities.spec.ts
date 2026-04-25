@@ -511,10 +511,8 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
 
   const overdueBadge = await page
     .locate([
-      {
-        type: 'css',
-        value: `[data-testid="task-overdue-badge-desktop-${activity.id}"]:visible, [data-testid="task-overdue-badge-mobile-${activity.id}"]:visible`,
-      },
+      { type: 'testId', value: `task-overdue-badge-${activity.id}` },
+      { type: 'css', value: `[data-testid="task-overdue-badge-${activity.id}"]` },
     ])
     .resolve();
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
@@ -583,10 +581,8 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   await page.click([{ type: 'testId', value: 'toggle-completed-button' }]);
   const taskRow = await page
     .locate([
-      {
-        type: 'css',
-        value: `[data-testid="task-row-desktop-${activity.id}"]:visible, [data-testid="task-row-mobile-${activity.id}"]:visible`,
-      },
+      { type: 'testId', value: `task-row-${activity.id}` },
+      { type: 'css', value: `[data-testid="task-row-${activity.id}"]` },
     ])
     .resolve();
   await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
