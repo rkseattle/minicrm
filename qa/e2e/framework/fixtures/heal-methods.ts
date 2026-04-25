@@ -4,7 +4,7 @@
  * Extracted into its own module so both heal-page.fixture.ts and
  * page-facade.ts can import from here without creating a circular dependency.
  *
- * MINCRM-209
+ * MINCRM-209, MINCRM-235
  */
 
 import type { Page } from '@playwright/test';
@@ -15,6 +15,7 @@ import {
   BoundHealingLocator,
 } from '../healing/index.js';
 import type { LocatorStrategy } from '../healing/index.js';
+import type { SafePage } from '../types/safe-page.js';
 
 // ---------------------------------------------------------------------------
 // LocateOptions
@@ -43,6 +44,26 @@ export interface LocateOptions {
    */
   method?: string;
 }
+
+// ---------------------------------------------------------------------------
+// HealMethods interface
+// ---------------------------------------------------------------------------
+
+/**
+ * Structural intersection of SafePage + HealMethods — used as the return type
+ * of newTab() to avoid a circular import between heal-methods.ts and
+ * page-facade.ts. (page-facade.ts defines PageFacade = SafePage & HealMethods,
+ * which is structurally identical.) MINCRM-235
+ */
+export type PageFacadeShape = SafePage & HealMethods;
+
+/**
+ * Factory function injected into buildHealPage to create a wrapped PageFacade
+ * for a newly opened browser tab. Defined this way to avoid a circular
+ * dependency: heal-methods.ts ← page-facade.ts imports heal-methods.ts, so
+ * heal-methods.ts cannot import from page-facade.ts. MINCRM-235
+ */
+export type TabFactory = (rawPage: Page, testName: string) => PageFacadeShape;
 
 // ---------------------------------------------------------------------------
 // HealMethods interface
@@ -127,6 +148,18 @@ export interface HealMethods {
    * @param timeoutMs  - How long to wait for the element to disappear (default 10 000 ms).
    */
   isNotVisible(strategies: LocatorStrategy[], timeoutMs?: number): Promise<boolean>;
+
+  /**
+   * Opens a new browser tab and returns it as a fully wrapped PageFacade.
+   *
+   * This is the safe alternative to page.context().newPage(). Calling
+   * context().newPage() directly returns a raw Playwright Page — bypassing
+   * HealingLocator, HealingRegistry, and SafePage enforcement entirely for
+   * the new tab. newTab() wraps the result in createPageFacade() so the new
+   * tab participates in the same healing and audit guarantees as the primary
+   * tab, registered under the same testName. (MINCRM-235)
+   */
+  newTab(): Promise<PageFacadeShape>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -142,9 +175,13 @@ export type HealPage = HealMethods;
  *
  * @param page - The Playwright Page object for the current test.
  * @param testName - The name of the currently running test.
+ * @param tabFactory - Optional factory for wrapping new tabs in PageFacade.
+ *   When provided, newTab() calls page.context().newPage() internally and
+ *   passes the raw page to this factory. Injected from page-facade.ts to
+ *   avoid a circular import dependency. (MINCRM-235)
  * @returns A HealMethods instance.
  */
-export function buildHealPage(page: Page, testName: string): HealMethods {
+export function buildHealPage(page: Page, testName: string, tabFactory?: TabFactory): HealMethods {
   function makeHealingLocator(
     strategies: LocatorStrategy[],
     options: LocateOptions,
@@ -331,6 +368,18 @@ export function buildHealPage(page: Page, testName: string): HealMethods {
       }
 
       return true;
+    },
+
+    async newTab(): Promise<PageFacadeShape> {
+      if (!tabFactory) {
+        throw new Error(
+          'newTab() requires a tabFactory — pass createPageFacade when calling buildHealPage',
+        );
+      }
+      // Opens a new tab via the raw underlying Page's context (no HealingLocator
+      // involvement — this is a browser-level operation, not an element lookup).
+      const newRawPage = await page.context().newPage();
+      return tabFactory(newRawPage, testName);
     },
   };
 }

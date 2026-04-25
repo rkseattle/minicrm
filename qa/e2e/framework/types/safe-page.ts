@@ -21,10 +21,17 @@
  * The real Playwright `Page` is structurally compatible with `SafePage`, so
  * the fixture layer can pass the real page through without any casting.
  *
- * MINCRM-204, MINCRM-228
+ * context() is excluded from the Pick and re-declared as a method returning
+ * SafeContext (not BrowserContext). SafeContext omits newPage() and
+ * newCDPSession() to prevent unhealed Page creation and raw CDP access.
+ * The actual return-type narrowing is enforced at the PageFacade proxy layer.
+ * (MINCRM-235)
+ *
+ * MINCRM-204, MINCRM-228, MINCRM-235
  */
 
 import type { Page } from '@playwright/test';
+import type { SafeContext } from './safe-context.js';
 
 /**
  * A structurally-restricted Playwright Page that exposes only navigation and
@@ -47,8 +54,15 @@ export type SafePage = Pick<
   | 'reload'
   | 'goBack'
   | 'goForward'
-  | 'context'
   | 'keyboard'
   | 'mouse'
   | 'clock'
->;
+> & {
+  /**
+   * Returns the browser context for this page, restricted to SafeContext.
+   * SafeContext omits newPage() and newCDPSession() to prevent unhealed Page
+   * creation and raw CDP access. Use PageFacade.newTab() to open a healed
+   * second tab. (MINCRM-235)
+   */
+  context(): SafeContext;
+};
