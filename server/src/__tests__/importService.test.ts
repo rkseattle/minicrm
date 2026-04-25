@@ -409,3 +409,43 @@ describe('importDeals', () => {
     expect(result.failed).toHaveLength(1);
   });
 });
+
+// ── Partial-commit design documentation (MINCRM-249) ──────────────────────────
+//
+// Import is intentionally per-row — successful rows commit immediately and are
+// not rolled back when subsequent rows fail. This is by design: the import
+// service favors maximum data ingestion over all-or-nothing atomicity, so
+// operators can fix and re-import only the failed rows rather than the whole file.
+
+describe('importContacts — partial-commit is intentional design (MINCRM-249)', () => {
+  it('commits 3 valid rows even when the 4th row fails validation', async () => {
+    // Import is intentionally per-row — successful rows commit immediately and are
+    // not rolled back when subsequent rows fail. This is by design.
+    const mapping: ContactMapping = {
+      first_name: 'First',
+      last_name: 'Last',
+      email: 'Email',
+    };
+
+    const rows = [
+      { First: 'Alice', Last: 'A', Email: 'partial-alice@example.com' },
+      { First: 'Bob', Last: 'B', Email: 'partial-bob@example.com' },
+      { First: 'Carol', Last: 'C', Email: 'partial-carol@example.com' },
+      // 4th row is intentionally invalid — missing required first_name
+      { First: '', Last: 'D', Email: 'partial-dave@example.com' },
+    ];
+
+    const result = await importContacts(rows, mapping, adminId);
+
+    expect(result.created).toBe(3);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].row).toBe(4);
+
+    // The 3 valid rows must be committed to the DB even though the 4th failed
+    const { rows: dbRows } = await pool.query(
+      `SELECT email FROM contacts WHERE email = ANY($1) ORDER BY email`,
+      [['partial-alice@example.com', 'partial-bob@example.com', 'partial-carol@example.com']],
+    );
+    expect(dbRows).toHaveLength(3);
+  });
+});
