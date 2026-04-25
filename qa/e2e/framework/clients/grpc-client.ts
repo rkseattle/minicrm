@@ -2,11 +2,11 @@
  * gRPC client for the E2E framework.
  *
  * Wraps @grpc/grpc-js to provide a framework-managed channel lifecycle with
- * typed unary and server-streaming call interfaces. Channel creation and
- * teardown are handled by the fixture — tests never manage channel lifecycle
- * directly.
+ * typed unary, server-streaming, client-streaming, and bidirectional-streaming
+ * call interfaces. Channel creation and teardown are handled by the fixture —
+ * tests never manage channel lifecycle directly.
  *
- * MINCRM-128
+ * MINCRM-128, MINCRM-233
  */
 
 import * as grpc from '@grpc/grpc-js';
@@ -227,6 +227,180 @@ export class GrpcClient {
         rej(terminalError);
       }
     });
+
+    const iterator: AsyncIterableIterator<TResponse> = {
+      next(): Promise<IteratorResult<TResponse>> {
+        if (queue.length > 0) {
+          return Promise.resolve({ value: queue.shift()!, done: false });
+        }
+        if (done) {
+          if (terminalError !== null) {
+            return Promise.reject(terminalError);
+          }
+          return Promise.resolve({ value: undefined as unknown as TResponse, done: true });
+        }
+        if (resolveNext !== null) {
+          return Promise.reject(new Error('Concurrent calls to next() are not supported'));
+        }
+        return new Promise<IteratorResult<TResponse>>((resolve, reject) => {
+          resolveNext = resolve;
+          rejectNext = reject;
+        });
+      },
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+      return(): Promise<IteratorResult<TResponse>> {
+        stream.cancel();
+        return Promise.resolve({ value: undefined as unknown as TResponse, done: true });
+      },
+    };
+
+    return iterator;
+  }
+
+  /**
+   * Makes a client-streaming gRPC call.
+   *
+   * The caller supplies an async iterable of request messages; the server reads
+   * the full stream and responds with a single message once the client is done.
+   * This follows the same async-iterable pattern as `serverStream` (MINCRM-233).
+   *
+   * @template TRequest - Request message type.
+   * @template TResponse - Response message type.
+   * @param method - Fully qualified method path (e.g., `/echo.EchoService/Collect`).
+   * @param requests - Async iterable of request messages to stream to the server.
+   * @param metadata - Optional gRPC metadata.
+   * @returns Promise resolving with the single typed response.
+   * @throws GrpcClientError on non-OK status.
+   */
+  clientStream<TRequest extends object, TResponse>(
+    method: string,
+    requests: AsyncIterable<TRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<TResponse> {
+    const meta = metadata ?? new grpc.Metadata();
+
+    return new Promise<TResponse>((resolve, reject) => {
+      const stream = this.stub.makeClientStreamRequest<TRequest, TResponse>(
+        method,
+        jsonSerialize,
+        (buf) => jsonDeserialize<TResponse>(buf),
+        meta,
+        (err, response) => {
+          if (err !== null && err !== undefined) {
+            reject(
+              new GrpcClientError(err.code ?? grpc.status.UNKNOWN, err.message, err.details ?? ''),
+            );
+            return;
+          }
+          if (response === undefined || response === null) {
+            reject(new GrpcClientError(grpc.status.UNKNOWN, 'Empty response', ''));
+            return;
+          }
+          resolve(response);
+        },
+      );
+
+      // Pipe the async iterable into the writable stream.
+      (async () => {
+        try {
+          for await (const req of requests) {
+            stream.write(req);
+          }
+          stream.end();
+        } catch (err) {
+          stream.destroy(err instanceof Error ? err : new Error(String(err)));
+        }
+      })();
+    });
+  }
+
+  /**
+   * Makes a bidirectional-streaming gRPC call, returning an async iterator.
+   *
+   * Both client and server stream messages simultaneously. The caller supplies
+   * an async iterable of request messages; responses are yielded as they arrive
+   * from the server. This follows the same queue + promise async-iterator
+   * pattern as `serverStream` (MINCRM-233).
+   *
+   * @template TRequest - Request message type.
+   * @template TResponse - Response message type.
+   * @param method - Fully qualified method path (e.g., `/echo.EchoService/Echo`).
+   * @param requests - Async iterable of request messages to stream to the server.
+   * @param metadata - Optional gRPC metadata.
+   * @returns Async iterator yielding each streamed response message.
+   * @throws GrpcClientError on non-OK terminal status.
+   */
+  bidiStream<TRequest extends object, TResponse>(
+    method: string,
+    requests: AsyncIterable<TRequest>,
+    metadata?: grpc.Metadata,
+  ): AsyncIterableIterator<TResponse> {
+    const meta = metadata ?? new grpc.Metadata();
+
+    const stream = this.stub.makeBidiStreamRequest<TRequest, TResponse>(
+      method,
+      jsonSerialize,
+      (buf) => jsonDeserialize<TResponse>(buf),
+      meta,
+    );
+
+    // Bridge the duplex stream to an async iterator using the same
+    // queue + promise pattern as serverStream.
+    const queue: TResponse[] = [];
+    let resolveNext: ((result: IteratorResult<TResponse>) => void) | null = null;
+    let rejectNext: ((err: unknown) => void) | null = null;
+    let done = false;
+    let terminalError: GrpcClientError | null = null;
+
+    stream.on('data', (message: TResponse) => {
+      if (resolveNext !== null) {
+        const res = resolveNext;
+        resolveNext = null;
+        rejectNext = null;
+        res({ value: message, done: false });
+      } else {
+        queue.push(message);
+      }
+    });
+
+    stream.on('end', () => {
+      done = true;
+      if (resolveNext !== null) {
+        const res = resolveNext;
+        resolveNext = null;
+        rejectNext = null;
+        res({ value: undefined as unknown as TResponse, done: true });
+      }
+    });
+
+    stream.on('error', (err: Error & { code?: grpc.status; details?: string }) => {
+      done = true;
+      terminalError = new GrpcClientError(
+        err.code ?? grpc.status.UNKNOWN,
+        err.message,
+        err.details ?? '',
+      );
+      if (rejectNext !== null) {
+        const rej = rejectNext;
+        resolveNext = null;
+        rejectNext = null;
+        rej(terminalError);
+      }
+    });
+
+    // Pipe the request async iterable into the writable side of the duplex.
+    (async () => {
+      try {
+        for await (const req of requests) {
+          stream.write(req);
+        }
+        stream.end();
+      } catch (err) {
+        stream.destroy(err instanceof Error ? err : new Error(String(err)));
+      }
+    })();
 
     const iterator: AsyncIterableIterator<TResponse> = {
       next(): Promise<IteratorResult<TResponse>> {

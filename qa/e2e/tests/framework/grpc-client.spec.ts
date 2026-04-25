@@ -12,9 +12,13 @@
  * AC6 — TLS and insecure modes are configurable via env var.
  * AC7 — All CI tests against the echo stub pass.
  *
+ * MINCRM-233 Acceptance Criteria:
+ * AC-233-1 — clientStream() sends a stream of requests and receives a single response.
+ * AC-233-2 — bidiStream() sends a stream of requests and yields each echoed response.
+ *
  * The echo stub is spun up/torn down per test group — no live service required.
  *
- * MINCRM-128
+ * MINCRM-128, MINCRM-233
  */
 
 import { test, expect } from '@framework/fixtures';
@@ -25,6 +29,10 @@ import type {
   PingResponse,
   StreamRequest,
   StreamResponse,
+  CollectRequest,
+  CollectResponse,
+  EchoRequest,
+  EchoResponse,
 } from '@framework/test-support/grpc-echo-server.js';
 import * as grpc from '@grpc/grpc-js';
 
@@ -338,5 +346,167 @@ test.describe('GrpcEchoServer — full fixture lifecycle', () => {
     const server = new GrpcEchoServer();
     await server.start();
     await expect(server.stop()).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-233-1 — clientStream() sends a stream of requests, receives one response
+// ---------------------------------------------------------------------------
+
+test.describe('GrpcClient — Collect client-streaming (MINCRM-233)', () => {
+  let server: GrpcEchoServer;
+  let makeClient: (options?: { tls?: boolean }) => GrpcClient;
+
+  test.beforeAll(async () => {
+    ({ server, makeClient } = await withEchoServer());
+  });
+
+  test.afterAll(async () => {
+    await server.stop();
+  });
+
+  test('clientStream() collects all messages and returns count + last message', async () => {
+    const client = makeClient();
+    try {
+      async function* messages(): AsyncIterable<CollectRequest> {
+        yield { message: 'alpha' };
+        yield { message: 'beta' };
+        yield { message: 'gamma' };
+      }
+
+      const response = await client.clientStream<CollectRequest, CollectResponse>(
+        '/echo.EchoService/Collect',
+        messages(),
+      );
+
+      expect(response.count).toBe(3);
+      expect(response.last).toBe('gamma');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('clientStream() with a single message returns count=1 and the message', async () => {
+    const client = makeClient();
+    try {
+      async function* singleMessage(): AsyncIterable<CollectRequest> {
+        yield { message: 'only' };
+      }
+
+      const response = await client.clientStream<CollectRequest, CollectResponse>(
+        '/echo.EchoService/Collect',
+        singleMessage(),
+      );
+
+      expect(response.count).toBe(1);
+      expect(response.last).toBe('only');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('clientStream() with empty stream returns count=0 and empty last', async () => {
+    const client = makeClient();
+    try {
+      async function* emptyStream(): AsyncIterable<CollectRequest> {
+        // No messages.
+      }
+
+      const response = await client.clientStream<CollectRequest, CollectResponse>(
+        '/echo.EchoService/Collect',
+        emptyStream(),
+      );
+
+      expect(response.count).toBe(0);
+      expect(response.last).toBe('');
+    } finally {
+      client.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-233-2 — bidiStream() sends a stream of requests, yields each response
+// ---------------------------------------------------------------------------
+
+test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => {
+  let server: GrpcEchoServer;
+  let makeClient: (options?: { tls?: boolean }) => GrpcClient;
+
+  test.beforeAll(async () => {
+    ({ server, makeClient } = await withEchoServer());
+  });
+
+  test.afterAll(async () => {
+    await server.stop();
+  });
+
+  test('bidiStream() echoes all sent messages back in order', async () => {
+    const client = makeClient();
+    try {
+      async function* requests(): AsyncIterable<EchoRequest> {
+        yield { message: 'one' };
+        yield { message: 'two' };
+        yield { message: 'three' };
+      }
+
+      const responses: EchoResponse[] = [];
+      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+        '/echo.EchoService/Echo',
+        requests(),
+      )) {
+        responses.push(resp);
+      }
+
+      expect(responses).toHaveLength(3);
+      expect(responses[0]?.message).toBe('one');
+      expect(responses[1]?.message).toBe('two');
+      expect(responses[2]?.message).toBe('three');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('bidiStream() with a single message yields one response', async () => {
+    const client = makeClient();
+    try {
+      async function* singleRequest(): AsyncIterable<EchoRequest> {
+        yield { message: 'hello' };
+      }
+
+      const responses: EchoResponse[] = [];
+      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+        '/echo.EchoService/Echo',
+        singleRequest(),
+      )) {
+        responses.push(resp);
+      }
+
+      expect(responses).toHaveLength(1);
+      expect(responses[0]?.message).toBe('hello');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('bidiStream() with empty stream yields no responses', async () => {
+    const client = makeClient();
+    try {
+      async function* emptyRequests(): AsyncIterable<EchoRequest> {
+        // No messages.
+      }
+
+      const responses: EchoResponse[] = [];
+      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+        '/echo.EchoService/Echo',
+        emptyRequests(),
+      )) {
+        responses.push(resp);
+      }
+
+      expect(responses).toHaveLength(0);
+    } finally {
+      client.close();
+    }
   });
 });
