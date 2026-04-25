@@ -240,6 +240,10 @@
     "mergeBack": "Zurück",
     "first_nameLabel": "Vorname",
     "last_nameLabel": "Nachname",
+    "emailLabel2": "E-Mail",
+    "phoneLabel2": "Telefon",
+    "titleLabel2": "Berufsbezeichnung",
+    "departmentLabel2": "Abteilung",
     "account_idLabel": "Konto"
   },
   "accounts": {
@@ -353,6 +357,7 @@
     "exportCsv": "CSV exportieren",
     "exportAll": "Alle exportieren",
     "exporting": "Exportiere…",
+    "convertedFromLead": "Aus Lead konvertiert — klicken, um Original-Lead anzuzeigen",
     "probabilityLabel": "Wahrscheinlichkeit (%)",
     "probabilityDefault": "Standard-Wahrscheinlichkeit der Phase",
     "probabilityOverridden": "Manuell überschriebene Wahrscheinlichkeit",
@@ -755,6 +760,7 @@
   },
   "bulk": {
     "selectedCount": "{{count}} ausgewählt",
+    "selectedCount_other": "{{count}} ausgewählt",
     "selectAll": "Alle auswählen",
     "clearSelection": "Auswahl aufheben",
     "reassignButton": "Inhaber zuweisen",
