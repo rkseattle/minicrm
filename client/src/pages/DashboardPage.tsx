@@ -87,23 +87,27 @@ function StatCard({ label, value, linkTo, testId, variant = 'default' }: StatCar
 }
 
 /**
- * Maps an activity type string to a short badge label and color class.
+ * Maps an activity type string to a translated badge label and color class.
  * Uses plain text badges rather than icons to avoid requiring an icon library.
  *
  * @param type - Activity type (Note, Call, Email, Meeting, Task)
+ * @param t - i18next translate function from useTranslation()
  */
-function activityTypeBadge(type: string): { label: string; className: string } {
+function activityTypeBadge(
+  type: string,
+  t: (key: string) => string,
+): { label: string; className: string } {
   switch (type) {
     case 'Call':
-      return { label: 'Call', className: 'bg-blue-100 text-blue-700' };
+      return { label: t('activities.typeCall'), className: 'bg-blue-100 text-blue-700' };
     case 'Email':
-      return { label: 'Email', className: 'bg-purple-100 text-purple-700' };
+      return { label: t('activities.typeEmail'), className: 'bg-purple-100 text-purple-700' };
     case 'Meeting':
-      return { label: 'Meeting', className: 'bg-green-100 text-green-700' };
+      return { label: t('activities.typeMeeting'), className: 'bg-green-100 text-green-700' };
     case 'Task':
-      return { label: 'Task', className: 'bg-yellow-100 text-yellow-700' };
+      return { label: t('activities.typeTask'), className: 'bg-yellow-100 text-yellow-700' };
     default:
-      return { label: 'Note', className: 'bg-gray-100 text-gray-600' };
+      return { label: t('activities.typeNote'), className: 'bg-gray-100 text-gray-600' };
   }
 }
 
@@ -161,7 +165,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
       ) : (
         <ul className="divide-y divide-gray-100" data-testid="recent-activity-list">
           {activities.map((entry) => {
-            const badge = activityTypeBadge(entry.type);
+            const badge = activityTypeBadge(entry.type, t);
             return (
               <li
                 key={entry.id}
