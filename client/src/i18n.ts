@@ -24,6 +24,10 @@ import zhHans from './locales/zh-Hans.json';
 import es from './locales/es.json';
 import fr from './locales/fr.json';
 import de from './locales/de.json';
+// pseudo is not in SUPPORTED_LOCALES (so it stays off the server-validated language
+// selector), but is registered here so E2E tests can call i18n.changeLanguage('pseudo')
+// client-side without any API call. MINCRM-241
+import pseudo from './locales/pseudo.json';
 
 /** Translation resource map keyed by language code */
 const resources = {
@@ -32,6 +36,7 @@ const resources = {
   es: { translation: es },
   fr: { translation: fr },
   de: { translation: de },
+  pseudo: { translation: pseudo },
 };
 
 i18n.use(initReactI18next).init({
