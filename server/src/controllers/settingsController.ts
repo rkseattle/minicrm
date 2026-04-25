@@ -14,10 +14,13 @@ import {
   getDefaultCurrency,
   setDefaultCurrency,
 } from '../services/settingsService.js';
+import { getCurrencies, updateCurrencies } from '../services/currencyService.js';
 import {
   setDefaultLanguageSchema,
   setNavLayoutSchema,
   setDefaultCurrencySchema,
+  updateCurrenciesSchema,
+  SUPPORTED_CURRENCY_LIST,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
@@ -222,4 +225,49 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Exchange rates (MINCRM-251) ───────────────────────────────────────────────
+
+/**
+ * GET /api/settings/currencies
+ * Returns the full currency configuration including home currency and all rates.
+ * Requires authentication.
+ *
+ * @param _req - Express request (unused).
+ * @param res  - Express response.
+ */
+export async function getCurrenciesHandler(_req: Request, res: Response): Promise<void> {
+  const config = await getCurrencies();
+  res.status(200).json(config);
+}
+
+/**
+ * PUT /api/settings/currencies
+ * Atomically replaces the non-home currency set and sets the home currency.
+ * Admin only. (MINCRM-251)
+ *
+ * @param req - Express request with body `{ home_currency, currencies }`.
+ * @param res - Express response.
+ */
+export async function updateCurrenciesHandler(req: Request, res: Response): Promise<void> {
+  const parsed = updateCurrenciesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
+    });
+    return;
+  }
+
+  // Resolve display name and symbol for the home currency from the known list
+  const homeInfo = SUPPORTED_CURRENCY_LIST.find((c) => c.code === parsed.data.home_currency);
+  const homeName = homeInfo?.name ?? parsed.data.home_currency;
+  const homeSymbol = homeInfo?.symbol ?? parsed.data.home_currency;
+
+  await updateCurrencies(parsed.data, homeName, homeSymbol);
+  const config = await getCurrencies();
+  res.status(200).json(config);
 }
