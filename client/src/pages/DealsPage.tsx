@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -86,6 +87,7 @@ function todayIso(): string {
  */
 export default function DealsPage() {
   const { t, i18n } = useTranslation();
+  const { isDesktop } = useBreakpoint();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -622,95 +624,98 @@ export default function DealsPage() {
 
             {!isLoading && !isError && (
               <div data-testid="pipeline-board">
-                {/* Mobile single-stage view — visible below md */}
-                <div className="md:hidden">
-                  <div className="flex items-center justify-between mb-3 gap-2">
-                    <button
-                      type="button"
-                      aria-label={t('pipeline.prevStage')}
-                      data-testid="pipeline-mobile-prev"
-                      onClick={() => setMobileStageIndex((i) => Math.max(0, i - 1))}
-                      disabled={mobileStageIndex === 0}
-                      className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    <div className="flex-1 text-center">
-                      <p
-                        className="text-sm font-semibold text-gray-700"
-                        data-testid="pipeline-mobile-stage-name"
-                      >
-                        {getStageDisplayName(stageNames[mobileStageIndex] ?? '', t)}{' '}
-                        <span className="font-normal text-gray-500">
-                          {`(${(dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []).length})`}
-                        </span>
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {t('pipeline.stageOf', {
-                          current: mobileStageIndex + 1,
-                          total: stageNames.length,
-                        })}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label={t('pipeline.nextStage')}
-                      data-testid="pipeline-mobile-next"
-                      onClick={() =>
-                        setMobileStageIndex((i) => Math.min(stageNames.length - 1, i + 1))
-                      }
-                      disabled={mobileStageIndex === stageNames.length - 1}
-                      className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
+                {isDesktop ? (
+                  /* Desktop multi-column Kanban */
+                  <div className="flex gap-4 overflow-x-auto pb-4">
+                    {stageNames.map((stage) => (
+                      <StageColumn
+                        key={stage}
+                        stage={stage}
+                        deals={dealsByStage.get(stage) ?? []}
+                        accountNames={accountNames}
+                        onStageChange={handleStageChange}
+                        onCloseRequested={handleCloseRequested}
+                        updatingDealIds={updatingDealIds}
+                      />
+                    ))}
                   </div>
-                  <StageColumn
-                    key={stageNames[mobileStageIndex]}
-                    stage={stageNames[mobileStageIndex] ?? ''}
-                    deals={dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []}
-                    accountNames={accountNames}
-                    onStageChange={handleStageChange}
-                    onCloseRequested={handleCloseRequested}
-                    updatingDealIds={updatingDealIds}
-                    fullWidth
-                    testIdPrefix="mobile-"
-                  />
-                </div>
-                {/* Desktop multi-column Kanban — hidden below md */}
-                <div className="hidden md:flex gap-4 overflow-x-auto pb-4">
-                  {stageNames.map((stage) => (
+                ) : (
+                  /* Mobile single-stage view */
+                  <div>
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <button
+                        type="button"
+                        aria-label={t('pipeline.prevStage')}
+                        data-testid="pipeline-mobile-prev"
+                        onClick={() => setMobileStageIndex((i) => Math.max(0, i - 1))}
+                        disabled={mobileStageIndex === 0}
+                        className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <div className="flex-1 text-center">
+                        <p
+                          className="text-sm font-semibold text-gray-700"
+                          data-testid="pipeline-mobile-stage-name"
+                        >
+                          {getStageDisplayName(stageNames[mobileStageIndex] ?? '', t)}{' '}
+                          <span className="font-normal text-gray-500">
+                            {`(${(dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []).length})`}
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {t('pipeline.stageOf', {
+                            current: mobileStageIndex + 1,
+                            total: stageNames.length,
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t('pipeline.nextStage')}
+                        data-testid="pipeline-mobile-next"
+                        onClick={() =>
+                          setMobileStageIndex((i) => Math.min(stageNames.length - 1, i + 1))
+                        }
+                        disabled={mobileStageIndex === stageNames.length - 1}
+                        className="flex items-center justify-center w-11 h-11 rounded-md border border-gray-200 bg-white text-gray-600 disabled:opacity-40 hover:bg-gray-50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
                     <StageColumn
-                      key={stage}
-                      stage={stage}
-                      deals={dealsByStage.get(stage) ?? []}
+                      key={stageNames[mobileStageIndex]}
+                      stage={stageNames[mobileStageIndex] ?? ''}
+                      deals={dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []}
                       accountNames={accountNames}
                       onStageChange={handleStageChange}
                       onCloseRequested={handleCloseRequested}
                       updatingDealIds={updatingDealIds}
+                      fullWidth
+                      testIdPrefix="mobile-"
                     />
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -928,236 +933,238 @@ export default function DealsPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Mobile card view — visible below md */}
-                    {/* Mobile select-all (MINCRM-188) */}
-                    <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
-                      <input
-                        type="checkbox"
-                        data-testid="bulk-select-all"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={t('bulk.selectAll')}
-                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="text-xs text-gray-500">
-                        {t('bulk.selectedCount', { count: selectedIds.size })}
-                      </span>
-                    </div>
-                    <ul className="md:hidden divide-y divide-gray-100">
-                      {sortedDeals.map((deal) => (
-                        <li
-                          key={deal.id}
-                          className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
-                          data-testid={`deal-list-card-${deal.id}`}
-                        >
-                          {/* Mobile row checkbox (MINCRM-188) */}
+                    {isDesktop ? (
+                      /* Desktop table */
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            {/* Bulk select-all checkbox (MINCRM-188) */}
+                            <th className="w-10 ps-4 py-3">
+                              <input
+                                type="checkbox"
+                                data-testid="bulk-select-all"
+                                checked={allVisibleSelected}
+                                onChange={toggleSelectAll}
+                                aria-label={t('bulk.selectedCount', {
+                                  count: allVisibleDealIds.length,
+                                })}
+                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                            </th>
+                            <th
+                              className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                              aria-sort={sortCol === 'name' ? sortDir : 'none'}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSort('name')}
+                                className="inline-flex items-center gap-1 hover:text-gray-700"
+                                data-testid="deals-sort-name"
+                              >
+                                {t('deals.columnName')}
+                                {sortCol === 'name' && (
+                                  <svg
+                                    aria-label={
+                                      sortDir === 'ascending'
+                                        ? t('common.sortAsc')
+                                        : t('common.sortDesc')
+                                    }
+                                    className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            </th>
+                            <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {t('deals.columnStage')}
+                            </th>
+                            <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {t('deals.columnValue')}
+                            </th>
+                            <th
+                              className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                              aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSort('close_date')}
+                                className="inline-flex items-center gap-1 hover:text-gray-700"
+                                data-testid="deals-sort-close-date"
+                              >
+                                {t('deals.columnCloseDate')}
+                                {sortCol === 'close_date' && (
+                                  <svg
+                                    aria-label={
+                                      sortDir === 'ascending'
+                                        ? t('common.sortAsc')
+                                        : t('common.sortDesc')
+                                    }
+                                    className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            </th>
+                            <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {t('deals.columnAccount')}
+                            </th>
+                            <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {t('deals.columnOwner')}
+                            </th>
+                            <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {t('tags.sectionTitle')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {sortedDeals.map((deal) => (
+                            <tr
+                              key={deal.id}
+                              className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
+                            >
+                              {/* Row checkbox (MINCRM-188) */}
+                              <td className="w-10 ps-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  data-testid={`bulk-select-${deal.id}`}
+                                  checked={selectedIds.has(deal.id)}
+                                  onChange={() => toggleRow(deal.id)}
+                                  aria-label={deal.name}
+                                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                              </td>
+                              <td className="px-4 py-3 font-medium text-indigo-600">
+                                <Link
+                                  to={`/deals/${deal.id}`}
+                                  data-testid={`deal-link-${deal.id}`}
+                                  className="hover:underline"
+                                >
+                                  {deal.name}
+                                </Link>
+                              </td>
+                              <td className="px-4 py-3 text-gray-700">
+                                {getStageDisplayName(deal.stage, t)}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500">
+                                {formatDealValue(deal.value, deal.currency, i18n.language)}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500">
+                                {formatLocalDate(deal.close_date, i18n.language)}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500">
+                                {resolveAccountName(deal.account_id)}
+                              </td>
+                              <td
+                                className="px-4 py-3 text-gray-500"
+                                data-testid={`deal-owner-${deal.id}`}
+                              >
+                                {resolveOwnerName(
+                                  deal.owner_id,
+                                  activeUsers,
+                                  t('deals.ownerUnknown'),
+                                )}
+                              </td>
+                              <td className="px-4 py-3" data-testid={`deal-tags-${deal.id}`}>
+                                <div className="flex flex-wrap gap-1">
+                                  {deal.tags?.map((tag) => (
+                                    <TagBadge key={tag.id} tag={tag} />
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      /* Mobile card view */
+                      <>
+                        <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
                           <input
                             type="checkbox"
-                            data-testid={`bulk-select-${deal.id}`}
-                            checked={selectedIds.has(deal.id)}
-                            onChange={() => toggleRow(deal.id)}
-                            aria-label={deal.name}
-                            className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            data-testid="bulk-select-all"
+                            checked={allVisibleSelected}
+                            onChange={toggleSelectAll}
+                            aria-label={t('bulk.selectAll')}
+                            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <div className="min-w-0 flex-1">
-                            <Link
-                              to={`/deals/${deal.id}`}
-                              data-testid={`deal-list-card-link-${deal.id}`}
-                              className="block font-medium text-indigo-600 hover:underline mb-1"
+                          <span className="text-xs text-gray-500">
+                            {t('bulk.selectedCount', { count: selectedIds.size })}
+                          </span>
+                        </div>
+                        <ul className="divide-y divide-gray-100">
+                          {sortedDeals.map((deal) => (
+                            <li
+                              key={deal.id}
+                              className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
+                              data-testid={`deal-list-card-${deal.id}`}
                             >
-                              {deal.name}
-                            </Link>
-                            <p className="text-sm text-gray-700">
-                              {getStageDisplayName(deal.stage, t)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {formatDealValue(deal.value, deal.currency, i18n.language)}
-                            </p>
-                            <p
-                              className="text-xs text-gray-400 mt-1"
-                              data-testid={`deal-list-card-owner-${deal.id}`}
-                            >
-                              {t('deals.columnOwner')}:{' '}
-                              {resolveOwnerName(
-                                deal.owner_id,
-                                activeUsers,
-                                t('deals.ownerUnknown'),
-                              )}
-                            </p>
-                            {deal.tags && deal.tags.length > 0 && (
-                              <div
-                                className="flex flex-wrap gap-1 mt-1"
-                                data-testid={`deal-list-card-tags-${deal.id}`}
-                              >
-                                {deal.tags.map((tag) => (
-                                  <TagBadge key={tag.id} tag={tag} />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Desktop table — hidden below md */}
-                    <table className="hidden md:table w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50">
-                          {/* Bulk select-all checkbox (MINCRM-188) */}
-                          <th className="w-10 ps-4 py-3">
-                            <input
-                              type="checkbox"
-                              data-testid="bulk-select-all"
-                              checked={allVisibleSelected}
-                              onChange={toggleSelectAll}
-                              aria-label={t('bulk.selectedCount', {
-                                count: allVisibleDealIds.length,
-                              })}
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                          </th>
-                          <th
-                            className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                            aria-sort={sortCol === 'name' ? sortDir : 'none'}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleSort('name')}
-                              className="inline-flex items-center gap-1 hover:text-gray-700"
-                              data-testid="deals-sort-name"
-                            >
-                              {t('deals.columnName')}
-                              {sortCol === 'name' && (
-                                <svg
-                                  aria-label={
-                                    sortDir === 'ascending'
-                                      ? t('common.sortAsc')
-                                      : t('common.sortDesc')
-                                  }
-                                  className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 9l-7 7-7-7"
-                                  />
-                                </svg>
-                              )}
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {t('deals.columnStage')}
-                          </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {t('deals.columnValue')}
-                          </th>
-                          <th
-                            className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                            aria-sort={sortCol === 'close_date' ? sortDir : 'none'}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleSort('close_date')}
-                              className="inline-flex items-center gap-1 hover:text-gray-700"
-                              data-testid="deals-sort-close-date"
-                            >
-                              {t('deals.columnCloseDate')}
-                              {sortCol === 'close_date' && (
-                                <svg
-                                  aria-label={
-                                    sortDir === 'ascending'
-                                      ? t('common.sortAsc')
-                                      : t('common.sortDesc')
-                                  }
-                                  className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 9l-7 7-7-7"
-                                  />
-                                </svg>
-                              )}
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {t('deals.columnAccount')}
-                          </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {t('deals.columnOwner')}
-                          </th>
-                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {t('tags.sectionTitle')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {sortedDeals.map((deal) => (
-                          <tr
-                            key={deal.id}
-                            className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
-                          >
-                            {/* Row checkbox (MINCRM-188) */}
-                            <td className="w-10 ps-4 py-3">
                               <input
                                 type="checkbox"
                                 data-testid={`bulk-select-${deal.id}`}
                                 checked={selectedIds.has(deal.id)}
                                 onChange={() => toggleRow(deal.id)}
                                 aria-label={deal.name}
-                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                               />
-                            </td>
-                            <td className="px-4 py-3 font-medium text-indigo-600">
-                              <Link
-                                to={`/deals/${deal.id}`}
-                                data-testid={`deal-link-${deal.id}`}
-                                className="hover:underline"
-                              >
-                                {deal.name}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-gray-700">
-                              {getStageDisplayName(deal.stage, t)}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500">
-                              {formatDealValue(deal.value, deal.currency, i18n.language)}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500">
-                              {formatLocalDate(deal.close_date, i18n.language)}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500">
-                              {resolveAccountName(deal.account_id)}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-gray-500"
-                              data-testid={`deal-owner-${deal.id}`}
-                            >
-                              {resolveOwnerName(
-                                deal.owner_id,
-                                activeUsers,
-                                t('deals.ownerUnknown'),
-                              )}
-                            </td>
-                            <td className="px-4 py-3" data-testid={`deal-tags-${deal.id}`}>
-                              <div className="flex flex-wrap gap-1">
-                                {deal.tags?.map((tag) => (
-                                  <TagBadge key={tag.id} tag={tag} />
-                                ))}
+                              <div className="min-w-0 flex-1">
+                                <Link
+                                  to={`/deals/${deal.id}`}
+                                  data-testid={`deal-list-card-link-${deal.id}`}
+                                  className="block font-medium text-indigo-600 hover:underline mb-1"
+                                >
+                                  {deal.name}
+                                </Link>
+                                <p className="text-sm text-gray-700">
+                                  {getStageDisplayName(deal.stage, t)}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  {formatDealValue(deal.value, deal.currency, i18n.language)}
+                                </p>
+                                <p
+                                  className="text-xs text-gray-400 mt-1"
+                                  data-testid={`deal-list-card-owner-${deal.id}`}
+                                >
+                                  {t('deals.columnOwner')}:{' '}
+                                  {resolveOwnerName(
+                                    deal.owner_id,
+                                    activeUsers,
+                                    t('deals.ownerUnknown'),
+                                  )}
+                                </p>
+                                {deal.tags && deal.tags.length > 0 && (
+                                  <div
+                                    className="flex flex-wrap gap-1 mt-1"
+                                    data-testid={`deal-list-card-tags-${deal.id}`}
+                                  >
+                                    {deal.tags.map((tag) => (
+                                      <TagBadge key={tag.id} tag={tag} />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </>
                 )}
                 {listData && listData.total > listData.limit && (

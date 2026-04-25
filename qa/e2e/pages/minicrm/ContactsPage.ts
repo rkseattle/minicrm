@@ -149,13 +149,14 @@ export class ContactsPage {
    * @param timeout - Maximum wait in ms (default 15 000).
    */
   async waitForBulkCheckbox(id: string, timeout = 15_000): Promise<void> {
-    // Both mobile-card and desktop-table views render this checkbox, so the
-    // bare testId selector matches two elements and triggers Playwright's strict
-    // mode error. Scope to the visible one only.
     const locator = await this.page
-      .locate([{ type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` }], {
-        fallbackTimeout: timeout,
-      })
+      .locate(
+        [
+          { type: 'testId', value: `bulk-select-${id}` },
+          { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+        ],
+        { fallbackTimeout: timeout },
+      )
       .resolve();
     await locator.waitFor({ state: 'visible', timeout });
   }
@@ -166,13 +167,13 @@ export class ContactsPage {
    * not yet be in the DOM when the caller's next assertion runs, causing
    * intermittent StrategyExhaustedError on testId("bulk-action-bar"). (MINCRM-211)
    *
-   * Scopes to the visible instance only — both mobile-card and desktop-table
-   * views render the checkbox, so the bare testId matches two elements.
-   *
    * @param id - The contact UUID whose checkbox to click.
    */
   async clickBulkCheckbox(id: string): Promise<void> {
-    await this.page.click([{ type: 'css', value: `[data-testid="bulk-select-${id}"]:visible` }]);
+    await this.page.click([
+      { type: 'testId', value: `bulk-select-${id}` },
+      { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+    ]);
     // Wait for React to flush the selection state update. The bulk-action-bar
     // appearing in the DOM is the authoritative signal that toggleRow has run.
     const bar = await this.page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve();

@@ -131,9 +131,6 @@ export async function waitForBulkCheckbox(
 
 /**
  * Clicks the bulk-select checkbox for a specific contact row.
- * Scopes to the visible checkbox only — both the mobile-card and desktop-table
- * views render the same checkbox, which would cause a strict-mode error if
- * selected by testId alone.
  *
  * @param id - The contact UUID whose checkbox to click.
  * @param context - Playwright fixture context.
