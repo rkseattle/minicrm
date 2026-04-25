@@ -76,20 +76,25 @@ export class ContactsPage {
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns the number of contact rows visible in the table (desktop layout).
+   * Returns the number of contact rows visible in the list.
+   * Matches both desktop table links (contact-link-{id}) and mobile card
+   * links (contact-card-link-{id}) so the count is correct at any viewport.
    * Returns 0 when no contacts are listed or during a loading state.
-   *
-   * Uses HealingLocator so any locator healing is captured in the audit log.
    */
   async rowCount(): Promise<number> {
     await this.page.waitForLoadState('networkidle');
-    // contact-link-{id} rows are dynamic; css prefix-match is the primary
-    // strategy. xpath is the fallback with equivalent semantics.
     try {
       const resolved = await this.page
         .locate([
-          { type: 'css', value: '[data-testid^="contact-link-"]' },
-          { type: 'xpath', value: '//*[starts-with(@data-testid,"contact-link-")]' },
+          {
+            type: 'css',
+            value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+          },
+          {
+            type: 'xpath',
+            value:
+              '//*[starts-with(@data-testid,"contact-link-") or starts-with(@data-testid,"contact-card-link-")]',
+          },
         ])
         .resolve();
       return resolved.count();
@@ -134,6 +139,7 @@ export class ContactsPage {
         [
           { type: 'testId', value: `contact-link-${id}` },
           { type: 'css', value: `[data-testid="contact-link-${id}"]` },
+          { type: 'css', value: `[data-testid="contact-card-link-${id}"]` },
         ],
         { fallbackTimeout: timeout },
       )
