@@ -34,6 +34,20 @@ interface WinLossAggRow {
   currency_count: string;
   /** Single currency code when all closed deals share the same currency (MINCRM-189) */
   single_currency: string | null;
+  /** Converted total of Closed Won deals in home currency (MINCRM-253) */
+  converted_won_value: string | null;
+  /** Converted total of Closed Lost deals in home currency (MINCRM-253) */
+  converted_lost_value: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  home_currency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  home_symbol: string | null;
+  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  unrated_count: string;
+  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  rates_last_updated: string | null;
+  /** Number of non-home currency rows in the currencies table (MINCRM-253) */
+  has_rates_count: string;
 }
 
 /** A single entry in the loss reason breakdown */
@@ -66,6 +80,20 @@ export interface WinLossReport {
    * Pair with mixedCurrencies to format monetary totals correctly. (MINCRM-189)
    */
   currency: string | null;
+  /** Converted Closed Won total in home currency (MINCRM-253) */
+  convertedWonValue: string | null;
+  /** Converted Closed Lost total in home currency (MINCRM-253) */
+  convertedLostValue: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  homeCurrency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  homeSymbol: string | null;
+  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  unratedCount: number;
+  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  ratesLastUpdated: string | null;
+  /** True when at least one non-home currency rate exists (MINCRM-253) */
+  hasRates: boolean;
 }
 
 /**
@@ -81,30 +109,52 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   // ── Win/loss aggregates ────────────────────────────────────────────────────
   // Single query using conditional aggregation to count + sum Won and Lost separately.
   // Filters by close_date (not created_at) per acceptance criteria.
+  // LEFT JOIN currencies for exchange rate conversion. (MINCRM-253)
+  // Scalar subqueries for home currency code/symbol are used instead of a LATERAL
+  // join so that home_currency and home_symbol are always populated even when the deals
+  // table is empty (aggregate over zero rows would otherwise make LATERAL join columns null).
+  const aggBaseSelect = `
+       COUNT(*) FILTER (WHERE d.stage = 'Closed Won')                                   AS won_count,
+       COALESCE(SUM(d.value) FILTER (WHERE d.stage = 'Closed Won'), 0)::text            AS won_value,
+       COUNT(*) FILTER (WHERE d.stage = 'Closed Lost')                                  AS lost_count,
+       COALESCE(SUM(d.value) FILTER (WHERE d.stage = 'Closed Lost'), 0)::text           AS lost_value,
+       COUNT(DISTINCT CASE WHEN d.value IS NOT NULL THEN d.currency END)::text          AS currency_count,
+       MIN(d.currency)                                                                    AS single_currency,
+       SUM(
+         CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Won'
+                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                        OR c.code IS NOT NULL)
+              THEN d.value::numeric * COALESCE(c.rate_to_home, 1.0)
+              ELSE NULL END
+       )::text AS converted_won_value,
+       SUM(
+         CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Lost'
+                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                        OR c.code IS NOT NULL)
+              THEN d.value::numeric * COALESCE(c.rate_to_home, 1.0)
+              ELSE NULL END
+       )::text AS converted_lost_value,
+       (SELECT code   FROM currencies WHERE is_home = true LIMIT 1) AS home_currency,
+       (SELECT symbol FROM currencies WHERE is_home = true LIMIT 1) AS home_symbol,
+       COUNT(*) FILTER (WHERE c.code IS NULL AND d.value IS NOT NULL
+                          AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_count,
+       MAX(c.updated_at)::text AS rates_last_updated,
+       (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
+
+  const aggFrom = `
+       FROM deals d
+       LEFT JOIN currencies c ON c.code = d.currency AND c.is_home = false`;
+
   const aggQuery = ownerFilter
-    ? `SELECT
-         COUNT(*) FILTER (WHERE stage = 'Closed Won')                       AS won_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Won'), 0)::text  AS won_value,
-         COUNT(*) FILTER (WHERE stage = 'Closed Lost')                      AS lost_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value,
-         COUNT(DISTINCT CASE WHEN value IS NOT NULL THEN currency END)::text AS currency_count,
-         MIN(currency) AS single_currency
-       FROM deals
-       WHERE stage IN ('Closed Won', 'Closed Lost')
-         AND close_date >= $1
-         AND close_date <= $2
-         AND owner_id = $3`
-    : `SELECT
-         COUNT(*) FILTER (WHERE stage = 'Closed Won')                       AS won_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Won'), 0)::text  AS won_value,
-         COUNT(*) FILTER (WHERE stage = 'Closed Lost')                      AS lost_count,
-         COALESCE(SUM(value) FILTER (WHERE stage = 'Closed Lost'), 0)::text AS lost_value,
-         COUNT(DISTINCT CASE WHEN value IS NOT NULL THEN currency END)::text AS currency_count,
-         MIN(currency) AS single_currency
-       FROM deals
-       WHERE stage IN ('Closed Won', 'Closed Lost')
-         AND close_date >= $1
-         AND close_date <= $2`;
+    ? `SELECT ${aggBaseSelect} ${aggFrom}
+       WHERE d.stage IN ('Closed Won', 'Closed Lost')
+         AND d.close_date >= $1
+         AND d.close_date <= $2
+         AND d.owner_id = $3`
+    : `SELECT ${aggBaseSelect} ${aggFrom}
+       WHERE d.stage IN ('Closed Won', 'Closed Lost')
+         AND d.close_date >= $1
+         AND d.close_date <= $2`;
 
   const aggParams = ownerFilter ? [startDate, endDate, ownerId] : [startDate, endDate];
   const aggResult = await pool.query<WinLossAggRow>(aggQuery, aggParams);
@@ -155,6 +205,11 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     count: parseInt(row.count, 10),
   }));
 
+  // Currency conversion fields (MINCRM-253)
+  const hasRatesCount = parseInt(aggRow.has_rates_count ?? '0', 10);
+  const hasRates = hasRatesCount > 0;
+  const unratedCount = parseInt(String(aggRow.unrated_count ?? '0'), 10);
+
   return {
     wonCount,
     wonValue,
@@ -164,6 +219,13 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     lossReasonBreakdown,
     mixedCurrencies,
     currency,
+    convertedWonValue: hasRates ? (aggRow.converted_won_value ?? null) : null,
+    convertedLostValue: hasRates ? (aggRow.converted_lost_value ?? null) : null,
+    homeCurrency: aggRow.home_currency ?? null,
+    homeSymbol: aggRow.home_symbol ?? null,
+    unratedCount,
+    ratesLastUpdated: aggRow.rates_last_updated ?? null,
+    hasRates,
   };
 }
 

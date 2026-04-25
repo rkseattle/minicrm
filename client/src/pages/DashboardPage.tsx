@@ -309,6 +309,75 @@ export default function DashboardPage() {
               />
             </div>
 
+            {/* Currency conversion summary (MINCRM-253) — only shown when rates exist */}
+            {data.hasRates && (
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-4 mb-8 flex flex-col gap-2"
+                data-testid="converted-pipeline-summary"
+              >
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      {t('dashboard.pipelineValue')}
+                      {' ('}
+                      {data.homeCurrency}
+                      {')'}
+                    </p>
+                    <p
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
+                      data-testid="stat-converted-pipeline-value"
+                    >
+                      {data.convertedPipelineValue !== null
+                        ? formatCurrency(
+                            data.convertedPipelineValue,
+                            i18n.language,
+                            data.homeCurrency ?? 'USD',
+                          )
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      {t('dashboard.weightedPipelineValue')}
+                      {' ('}
+                      {data.homeCurrency}
+                      {')'}
+                    </p>
+                    <p
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
+                      data-testid="stat-converted-weighted-pipeline-value"
+                    >
+                      {data.convertedWeightedPipelineValue !== null
+                        ? formatCurrency(
+                            data.convertedWeightedPipelineValue,
+                            i18n.language,
+                            data.homeCurrency ?? 'USD',
+                          )
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+                {/* Rates footnote */}
+                <p className="text-xs text-gray-400" data-testid="converted-pipeline-footnote">
+                  {t('dashboard.currencyConvertedFootnote', {
+                    currency: data.homeCurrency ?? '',
+                    date: data.ratesLastUpdated
+                      ? new Date(data.ratesLastUpdated).toLocaleDateString(i18n.language)
+                      : '—',
+                  })}
+                </p>
+                {/* Unrated currencies note */}
+                {data.unratedCount > 0 && (
+                  <p
+                    className="text-xs text-yellow-600"
+                    data-testid="converted-pipeline-unrated-note"
+                  >
+                    {t('dashboard.unratedDealsNote', { count: data.unratedCount })}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Stage breakdown */}
             <div
               className="bg-white rounded-lg border border-gray-200"

@@ -344,6 +344,75 @@ export default function WinLossReportPage() {
               </div>
             </div>
 
+            {/* Converted totals in home currency (MINCRM-253) — only shown when rates exist */}
+            {report.hasRates && (
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-col gap-2"
+                data-testid="converted-totals-summary"
+              >
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      {t('reports.winLoss.wonValueLabel')}
+                      {' ('}
+                      {report.homeCurrency}
+                      {')'}
+                    </p>
+                    <p
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
+                      data-testid="stat-converted-won-value"
+                    >
+                      {report.convertedWonValue !== null
+                        ? formatCurrency(
+                            report.convertedWonValue,
+                            i18n.language,
+                            report.homeCurrency ?? 'USD',
+                          )
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                      {t('reports.winLoss.lostValueLabel')}
+                      {' ('}
+                      {report.homeCurrency}
+                      {')'}
+                    </p>
+                    <p
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
+                      data-testid="stat-converted-lost-value"
+                    >
+                      {report.convertedLostValue !== null
+                        ? formatCurrency(
+                            report.convertedLostValue,
+                            i18n.language,
+                            report.homeCurrency ?? 'USD',
+                          )
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+                {/* Rates footnote */}
+                <p className="text-xs text-gray-400" data-testid="converted-totals-footnote">
+                  {t('reports.winLoss.convertedFootnote', {
+                    currency: report.homeCurrency ?? '',
+                    date: report.ratesLastUpdated
+                      ? new Date(report.ratesLastUpdated).toLocaleDateString(i18n.language)
+                      : '—',
+                  })}
+                </p>
+                {/* Unrated currencies note */}
+                {report.unratedCount > 0 && (
+                  <p
+                    className="text-xs text-yellow-600"
+                    data-testid="converted-totals-unrated-note"
+                  >
+                    {t('reports.winLoss.unratedNote', { count: report.unratedCount })}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Loss reason breakdown */}
             <div
               className="bg-white rounded-lg border border-gray-200"

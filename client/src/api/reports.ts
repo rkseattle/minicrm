@@ -38,6 +38,20 @@ export interface WinLossReportResponse {
   mixedCurrencies: boolean;
   /** Currency code when all closed deals share one currency; null when mixed or no deals (MINCRM-189) */
   currency: string | null;
+  /** Converted Closed Won total in home currency; null when hasRates is false (MINCRM-253) */
+  convertedWonValue: string | null;
+  /** Converted Closed Lost total in home currency (MINCRM-253) */
+  convertedLostValue: string | null;
+  /** Code of the home currency (MINCRM-253) */
+  homeCurrency: string | null;
+  /** Symbol of the home currency (MINCRM-253) */
+  homeSymbol: string | null;
+  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  unratedCount: number;
+  /** ISO timestamp of the most recently updated rate (MINCRM-253) */
+  ratesLastUpdated: string | null;
+  /** True when at least one non-home currency rate exists (MINCRM-253) */
+  hasRates: boolean;
 }
 
 /**

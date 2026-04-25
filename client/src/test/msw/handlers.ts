@@ -118,6 +118,14 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
   ],
   mixedCurrencies: false,
   currency: 'USD',
+  // MINCRM-253 — no rates configured in test fixture
+  convertedWonValue: null,
+  convertedLostValue: null,
+  homeCurrency: 'USD',
+  homeSymbol: '$',
+  unratedCount: 0,
+  ratesLastUpdated: null,
+  hasRates: false,
 };
 
 /** Reusable fixture: a recent activity entry on the dashboard */
@@ -158,6 +166,15 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
     },
   ],
   recentActivities: [RECENT_ACTIVITY_1],
+  // MINCRM-253 — no rates configured in test fixture
+  convertedPipelineValue: null,
+  convertedWeightedPipelineValue: null,
+  homeCurrency: 'USD',
+  homeSymbol: '$',
+  unratedCount: 0,
+  unratedCurrencies: null,
+  ratesLastUpdated: null,
+  hasRates: false,
 };
 
 /** Reusable fixture: activity volume report response */
