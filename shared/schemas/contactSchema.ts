@@ -109,6 +109,10 @@ export const contactResponseSchema = z.object({
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+export const contactResponseEnvelopeSchema = z.object({ contact: contactResponseSchema });
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type CreateContactInput = z.infer<typeof createContactSchema>;

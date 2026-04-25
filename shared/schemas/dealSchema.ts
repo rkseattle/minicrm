@@ -148,6 +148,10 @@ export const dealResponseSchema = z.object({
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+export const dealResponseEnvelopeSchema = z.object({ deal: dealResponseSchema });
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type CreateDealInput = z.infer<typeof createDealSchema>;

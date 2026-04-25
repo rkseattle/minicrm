@@ -14,6 +14,7 @@
  * AC-229-1 — Successful schema validation passes the parsed body through.
  * AC-229-2 — Shape mismatch throws RestClientError with endpoint in the message.
  * AC-229-3 — Callers without a schema continue to use the bare cast.
+ * AC-229-4 — HTTP 4xx/5xx errors do not set validationError even when schema is provided.
  *
  * All tests mock the Playwright APIRequestContext so no server is required.
  *
@@ -496,5 +497,23 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
 
     expect(caught).toBeInstanceOf(RestClientError);
     expect((caught as RestClientError).validationError).toBeUndefined();
+  });
+
+  test('RestClientError from HTTP 5xx has no validationError even when schema is provided', async () => {
+    const schema = z.object({ value: z.number() });
+    const ctx = mockContext(() => mockApiResponse(500, { error: 'Internal Server Error' }));
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    let caught: unknown;
+    try {
+      await client.get('/broken', { schema });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(RestClientError);
+    const restErr = caught as RestClientError;
+    expect(restErr.status).toBe(500);
+    expect(restErr.validationError).toBeUndefined();
   });
 });
