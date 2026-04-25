@@ -24,6 +24,10 @@ const queryClient = new QueryClient({
   },
 });
 
+// Expose i18n on window so E2E tests can call window.i18n.changeLanguage('pseudo')
+// via page.evaluate(). MINCRM-241
+(window as Window & { i18n?: typeof i18n }).i18n = i18n;
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('Root element not found — check index.html for <div id="root">');
