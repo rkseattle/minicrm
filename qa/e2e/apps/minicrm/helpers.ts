@@ -21,10 +21,9 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
-import { z } from 'zod';
-import { contactResponseSchema } from '@minicrm/shared/schemas/contactSchema.js';
-import { accountResponseSchema } from '@minicrm/shared/schemas/accountSchema.js';
-import { dealResponseSchema } from '@minicrm/shared/schemas/dealSchema.js';
+import { contactResponseEnvelopeSchema } from '@minicrm/shared/schemas/contactSchema.js';
+import { accountResponseEnvelopeSchema } from '@minicrm/shared/schemas/accountSchema.js';
+import { dealResponseEnvelopeSchema } from '@minicrm/shared/schemas/dealSchema.js';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -128,7 +127,7 @@ export async function createTestContact(
   // Step 1: create via REST with response schema validation (MINCRM-229).
   // Server returns { contact: ContactRow } — validate the envelope + inner object.
   const response = await restClient.post<{ contact: TestContact }>('/api/contacts', payload, {
-    schema: z.object({ contact: contactResponseSchema }),
+    schema: contactResponseEnvelopeSchema,
   });
   const contact = response.body.contact;
 
@@ -167,7 +166,7 @@ export async function createTestAccount(
   // Step 1: create via REST with response schema validation (MINCRM-229).
   // Server returns { account: AccountRow } — validate the envelope + inner object.
   const response = await restClient.post<{ account: TestAccount }>('/api/accounts', payload, {
-    schema: z.object({ account: accountResponseSchema }),
+    schema: accountResponseEnvelopeSchema,
   });
   const account = response.body.account;
 
@@ -248,7 +247,7 @@ export async function createTestDeal(
 
   // Server returns { deal: DealRow } — validate the envelope + inner object (MINCRM-229).
   const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload, {
-    schema: z.object({ deal: dealResponseSchema }),
+    schema: dealResponseEnvelopeSchema,
   });
   const deal = response.body.deal;
 

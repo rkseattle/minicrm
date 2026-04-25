@@ -9,7 +9,28 @@
  */
 
 import type { APIRequestContext } from '@playwright/test';
-import type { ZodTypeAny, ZodError } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Schema duck types — compatible with both Zod v3 and v4 (MINCRM-229)
+// ---------------------------------------------------------------------------
+
+/** Structural issue type present in both Zod v3 and v4 ZodError. */
+export interface ZodIssue {
+  message: string;
+  path: PropertyKey[];
+}
+
+/** Structural error type that both Zod v3 and v4 ZodError satisfy. */
+export interface SchemaError extends Error {
+  issues: ZodIssue[];
+}
+
+/** Structural schema type that both Zod v3 and v4 schemas satisfy. */
+export interface Schema {
+  safeParse(
+    data: unknown,
+  ): { success: true; data: unknown } | { success: false; error: SchemaError };
+}
 
 // ---------------------------------------------------------------------------
 // Auth strategy
@@ -103,7 +124,7 @@ export class RestClientError extends Error {
   /**
    * @param status - The HTTP status code.
    * @param body - The raw parsed response body.
-   * @param validationError - Populated when the error is a Zod parse failure
+   * @param validationError - Populated when the error is a schema parse failure
    *   rather than an HTTP error status. Callers can inspect this to get
    *   structured field-level validation details.
    * @param message - Override message; defaults to generic HTTP status message.
@@ -111,7 +132,7 @@ export class RestClientError extends Error {
   constructor(
     public readonly status: number,
     public readonly body: unknown,
-    public readonly validationError?: ZodError,
+    public readonly validationError?: SchemaError,
     message?: string,
   ) {
     super(message ?? `REST request failed with status ${status}`);
@@ -132,14 +153,14 @@ export interface RequestOptions {
   /**
    * Zod schema to validate the parsed response body against at runtime.
    *
-   * When provided, `parseResponse` calls `schema.parse(body)` instead of the
+   * When provided, `parseResponse` calls `schema.safeParse(body)` instead of the
    * bare `body as T` cast. A parse failure throws a `RestClientError` with a
    * message that includes the HTTP method, endpoint path, and Zod error detail
    * so that API contract violations are immediately diagnosable.
    *
    * When omitted, behaviour is identical to the pre-MINCRM-229 bare cast.
    */
-  schema?: ZodTypeAny;
+  schema?: Schema;
 }
 
 // ---------------------------------------------------------------------------

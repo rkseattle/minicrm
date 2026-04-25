@@ -72,6 +72,10 @@ export const accountResponseSchema = z.object({
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+export const accountResponseEnvelopeSchema = z.object({ account: accountResponseSchema });
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
