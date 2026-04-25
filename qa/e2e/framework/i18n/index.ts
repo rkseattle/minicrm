@@ -3,5 +3,5 @@
  * MINCRM-126
  */
 
-export { t, activeLocale } from './locale.js';
+export { t, activeLocale, setLocale } from './locale.js';
 export type { LocaleCode, LocaleMap } from './locale.js';
