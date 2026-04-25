@@ -142,7 +142,10 @@
     "recentActivityViewAll": "View all",
     "recentActivityEmpty": "No recent activity — start by logging a call or note.",
     "recentActivityLoading": "Loading activity…",
-    "recentActivityUnlinked": "Unlinked record"
+    "recentActivityUnlinked": "Unlinked record",
+    "currencyConvertedFootnote": "Converted to {{currency}} · rates as of {{date}}",
+    "unratedDealsNote": "{{count}} deal currency has no rate configured.",
+    "unratedDealsNote_other": "{{count}} deal currencies have no rate configured."
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -560,6 +563,26 @@
       "deleteError": "Failed to delete. Please try again.",
       "reorderError": "Failed to save new order. Please try again."
     },
+    "exchangeRates": {
+      "sectionTitle": "Exchange Rates",
+      "sectionHint": "Configure exchange rates for currencies used in your pipeline. These rates are used to convert deal values to your home currency for reporting.",
+      "homeCurrencyLabel": "Home currency",
+      "rateColumnHeader": "Rate (to {{currency}})",
+      "symbolColumnHeader": "Symbol",
+      "lastUpdatedColumnHeader": "Last updated",
+      "removeButton": "Remove",
+      "addButton": "Add currency",
+      "saveButton": "Save rates",
+      "recalculatedBanner": "Rates have been recalculated for the new home currency. Please review before saving.",
+      "saveSuccess": "Exchange rates saved.",
+      "saveError": "Failed to save exchange rates.",
+      "homeRowLabel": "Home currency",
+      "currencyPickerLabel": "Currency",
+      "rateInputLabel": "Rate",
+      "addConfirm": "Add",
+      "addCancel": "Cancel",
+      "loading": "Loading exchange rates…"
+    },
     "import": {
       "sectionTitle": "Import Data",
       "sectionHint": "Import contacts, accounts, and deals from CSV files. Import accounts before contacts for best results.",
@@ -649,7 +672,10 @@
       "lossReasonHeading": "Loss reason breakdown",
       "lossReasonEmpty": "No loss reasons recorded for this period.",
       "columnReason": "Reason",
-      "columnCount": "Count"
+      "columnCount": "Count",
+      "convertedFootnote": "Values converted to {{currency}} · rates as of {{date}}",
+      "unratedNote": "{{count}} deal currency has no rate configured.",
+      "unratedNote_other": "{{count}} deal currencies have no rate configured."
     }
   },
   "automation": {

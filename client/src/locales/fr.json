@@ -142,7 +142,10 @@
     "recentActivityViewAll": "Tout voir",
     "recentActivityEmpty": "Aucune activité récente — commencez par enregistrer un appel ou une note.",
     "recentActivityLoading": "Chargement des activités…",
-    "recentActivityUnlinked": "Enregistrement non lié"
+    "recentActivityUnlinked": "Enregistrement non lié",
+    "currencyConvertedFootnote": "Converti en {{currency}} · taux au {{date}}",
+    "unratedDealsNote": "{{count}} devise d'affaire n'a pas de taux configuré.",
+    "unratedDealsNote_other": "{{count}} devises d'affaires n'ont pas de taux configuré."
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -560,6 +563,26 @@
       "deleteError": "Échec de la suppression. Veuillez réessayer.",
       "reorderError": "Échec de l'enregistrement du nouvel ordre. Veuillez réessayer."
     },
+    "exchangeRates": {
+      "sectionTitle": "Taux de change",
+      "sectionHint": "Configurez les taux de change pour les devises utilisées dans votre pipeline. Ces taux servent à convertir les valeurs des affaires dans votre devise de référence pour les rapports.",
+      "homeCurrencyLabel": "Devise de référence",
+      "rateColumnHeader": "Taux (vers {{currency}})",
+      "symbolColumnHeader": "Symbole",
+      "lastUpdatedColumnHeader": "Dernière mise à jour",
+      "removeButton": "Supprimer",
+      "addButton": "Ajouter une devise",
+      "saveButton": "Enregistrer les taux",
+      "recalculatedBanner": "Les taux ont été recalculés pour la nouvelle devise de référence. Veuillez vérifier avant d'enregistrer.",
+      "saveSuccess": "Taux de change enregistrés.",
+      "saveError": "Échec de l'enregistrement des taux de change.",
+      "homeRowLabel": "Devise de référence",
+      "currencyPickerLabel": "Devise",
+      "rateInputLabel": "Taux",
+      "addConfirm": "Ajouter",
+      "addCancel": "Annuler",
+      "loading": "Chargement des taux de change…"
+    },
     "import": {
       "sectionTitle": "Importer des données",
       "sectionHint": "Importez des contacts, des comptes et des affaires depuis des fichiers CSV. Importez d'abord les comptes pour de meilleurs résultats.",
@@ -677,7 +700,10 @@
       "lossReasonHeading": "Répartition des raisons de perte",
       "lossReasonEmpty": "Aucune raison de perte enregistrée pour cette période.",
       "columnReason": "Raison",
-      "columnCount": "Nombre"
+      "columnCount": "Nombre",
+      "convertedFootnote": "Valeurs converties en {{currency}} · taux au {{date}}",
+      "unratedNote": "{{count}} devise d'affaire n'a pas de taux configuré.",
+      "unratedNote_other": "{{count}} devises d'affaires n'ont pas de taux configuré."
     }
   },
   "automation": {

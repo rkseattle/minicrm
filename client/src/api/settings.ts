@@ -123,3 +123,45 @@ export async function setDefaultCurrency(
   });
   return response.data;
 }
+
+// ── Exchange rate configuration (MINCRM-251) ──────────────────────────────────
+
+/** React Query cache key for the currencies configuration */
+export const CURRENCIES_CONFIG_QUERY_KEY = ['settings', 'currenciesConfig'] as const;
+
+/** Shape of a single currency row returned from the currencies API */
+export interface CurrencyConfigRow {
+  code: string;
+  name: string;
+  symbol: string;
+  rate_to_home: number;
+  is_home: boolean;
+  updated_at: string;
+}
+
+/** Shape of the full currencies configuration response */
+export interface CurrenciesConfigResponse {
+  home_currency: string;
+  currencies: CurrencyConfigRow[];
+}
+
+/**
+ * Returns the full exchange rate configuration from the server.
+ */
+export async function getCurrenciesConfig(): Promise<CurrenciesConfigResponse> {
+  const response = await apiClient.get<CurrenciesConfigResponse>('/settings/currencies');
+  return response.data;
+}
+
+/**
+ * Replaces the full exchange rate configuration. Admin only.
+ *
+ * @param payload - Home currency code and array of non-home currencies with rates.
+ */
+export async function updateCurrenciesConfig(payload: {
+  home_currency: string;
+  currencies: Array<{ code: string; name: string; symbol: string; rate_to_home: number }>;
+}): Promise<CurrenciesConfigResponse> {
+  const response = await apiClient.put<CurrenciesConfigResponse>('/settings/currencies', payload);
+  return response.data;
+}
