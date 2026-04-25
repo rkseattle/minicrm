@@ -572,6 +572,206 @@ describe('AdminSettingsPage', () => {
     });
   });
 
+  // ── Exchange Rates section (MINCRM-251) ───────────────────────────────────
+
+  describe('exchange rates section', () => {
+    it('renders the exchange rates section for admin users', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rates-section')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the home currency select with USD pre-selected', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        const select = screen.getByTestId('home-currency-select') as HTMLSelectElement;
+        expect(select).toBeInTheDocument();
+        expect(select.value).toBe('USD');
+      });
+    });
+
+    it('renders the exchange rate table', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-table')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the home currency row as read-only with rate 1.000000', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-row-USD')).toBeInTheDocument();
+      });
+      const homeRow = screen.getByTestId('exchange-rate-row-USD');
+      expect(homeRow).toHaveTextContent('1.000000');
+      expect(screen.queryByTestId('exchange-rate-input-USD')).not.toBeInTheDocument();
+    });
+
+    it('shows the Add Currency button when no form is open', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
+      });
+    });
+
+    it('clicking Add Currency button shows the add currency form', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-add-button'));
+      expect(screen.getByTestId('add-currency-form')).toBeInTheDocument();
+      expect(screen.getByTestId('add-currency-code-select')).toBeInTheDocument();
+      expect(screen.getByTestId('add-currency-rate-input')).toBeInTheDocument();
+    });
+
+    it('clicking Add in the add form appends a new row to the table', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-add-button'));
+      await user.selectOptions(screen.getByTestId('add-currency-code-select'), 'EUR');
+      await user.type(screen.getByTestId('add-currency-rate-input'), '1.1');
+      await user.click(screen.getByTestId('add-currency-confirm'));
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-row-EUR')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('add-currency-form')).not.toBeInTheDocument();
+    });
+
+    it('clicking Cancel in the add form hides it without adding a row', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-add-button'));
+      expect(screen.getByTestId('add-currency-form')).toBeInTheDocument();
+      await user.click(screen.getByTestId('add-currency-cancel'));
+      expect(screen.queryByTestId('add-currency-form')).not.toBeInTheDocument();
+    });
+
+    it('clicking Remove removes the row from the table', async () => {
+      server.use(
+        http.get('/api/settings/currencies', () =>
+          HttpResponse.json({
+            home_currency: 'USD',
+            currencies: [
+              {
+                code: 'USD',
+                name: 'US Dollar',
+                symbol: '$',
+                rate_to_home: 1,
+                is_home: true,
+                updated_at: new Date().toISOString(),
+              },
+              {
+                code: 'EUR',
+                name: 'Euro',
+                symbol: '€',
+                rate_to_home: 1.1,
+                is_home: false,
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-row-EUR')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-remove-EUR'));
+      expect(screen.queryByTestId('exchange-rate-row-EUR')).not.toBeInTheDocument();
+    });
+
+    it('changing home currency shows the recalculated banner', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('home-currency-select')).toBeInTheDocument();
+      });
+      await user.selectOptions(screen.getByTestId('home-currency-select'), 'EUR');
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-recalculated-banner')).toBeInTheDocument();
+      });
+    });
+
+    it('changing home currency removes the editable rate input for the new home', async () => {
+      server.use(
+        http.get('/api/settings/currencies', () =>
+          HttpResponse.json({
+            home_currency: 'USD',
+            currencies: [
+              {
+                code: 'USD',
+                name: 'US Dollar',
+                symbol: '$',
+                rate_to_home: 1,
+                is_home: true,
+                updated_at: new Date().toISOString(),
+              },
+              {
+                code: 'EUR',
+                name: 'Euro',
+                symbol: '€',
+                rate_to_home: 1.1,
+                is_home: false,
+                updated_at: new Date().toISOString(),
+              },
+            ],
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        // EUR starts as a non-home row with an editable input
+        expect(screen.getByTestId('exchange-rate-input-EUR')).toBeInTheDocument();
+      });
+      // Switch home currency to EUR — EUR editable input should disappear
+      await user.selectOptions(screen.getByTestId('home-currency-select'), 'EUR');
+      await waitFor(() => {
+        expect(screen.queryByTestId('exchange-rate-input-EUR')).not.toBeInTheDocument();
+      });
+    });
+
+    it('clicking Save calls PUT /api/settings/currencies and shows success', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-save-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-save-success')).toBeInTheDocument();
+      });
+    });
+
+    it('shows error banner when the save request fails', async () => {
+      server.use(
+        http.put('/api/settings/currencies', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-save-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('exchange-rate-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('exchange-rate-save-error')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('exchange-rate-save-success')).not.toBeInTheDocument();
+    });
+  });
+
   describe('demo data section — remove failure', () => {
     it('shows error feedback when remove fails', async () => {
       server.use(
