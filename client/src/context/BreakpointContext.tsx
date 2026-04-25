@@ -21,10 +21,7 @@ interface BreakpointContextValue {
   isDesktop: boolean;
 }
 
-export const BreakpointContext = createContext<BreakpointContextValue>({
-  isMobile: true,
-  isDesktop: false,
-});
+export const BreakpointContext = createContext<BreakpointContextValue | null>(null);
 
 /**
  * Mounts once at the app root. Subscribes to the md breakpoint and propagates
@@ -65,5 +62,9 @@ export function BreakpointProvider({ children }: { children: React.ReactNode }) 
  * Returns the current breakpoint state. Must be called inside BreakpointProvider.
  */
 export function useBreakpoint(): BreakpointContextValue {
-  return useContext(BreakpointContext);
+  const context = useContext(BreakpointContext);
+  if (!context) {
+    throw new Error('useBreakpoint must be used within a BreakpointProvider');
+  }
+  return context;
 }
