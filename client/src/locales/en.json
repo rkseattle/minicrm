@@ -456,6 +456,14 @@
   },
   "settings": {
     "pageTitle": "Admin Settings",
+    "tabs": {
+      "general": "General",
+      "notifications": "Notifications",
+      "currency": "Currency",
+      "customisation": "Customisation",
+      "data": "Data",
+      "integrations": "Integrations"
+    },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
     "saveButton": "Save",
