@@ -122,7 +122,7 @@ export default function DataSettings() {
         <p className="text-xs text-gray-500 mb-4">{t('settings.import.sectionHint')}</p>
 
         <div
-          className="flex overflow-x-auto border-b border-gray-200 mb-6"
+          className="flex overflow-x-auto overflow-y-hidden border-b border-gray-200 mb-6"
           role="tablist"
           aria-label={t('settings.import.sectionTitle')}
         >
