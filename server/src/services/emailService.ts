@@ -1,16 +1,21 @@
 /**
  * Email service — sends transactional emails.
  *
- * In development / test mode this is a stub that logs the email details to the
- * console instead of delivering them. Configure a real transport by setting the
- * SMTP_* environment variables.
+ * Transport configuration priority (MINCRM-254):
+ *   1. Database-stored SMTP settings (via smtpSettingsService) when smtp_enabled = true
+ *   2. SMTP_* environment variables when SMTP_HOST is set
+ *   3. Console/log fallback — no email is delivered
  *
- * MINCRM-156, MINCRM-161, MINCRM-162
+ * This means a UI-configured deployment overrides env vars, and a containerised
+ * deployment using env vars continues to work without a DB-stored config.
+ *
+ * MINCRM-156, MINCRM-161, MINCRM-162, MINCRM-254
  */
 
 import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import logger from '../logger.js';
+import { getSmtpConfigInternal } from './smtpSettingsService.js';
 
 /** HTML-escape map for the five characters that can break HTML contexts */
 const HTML_ESCAPE_MAP: Record<string, string> = {
@@ -32,23 +37,46 @@ function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch);
 }
 
-/** Lazily-created transport instance — null until first use */
-let _transport: Transporter | null = null;
+/** The From address used in all outbound emails */
+function getFromAddress(): string {
+  return process.env.SMTP_FROM ?? 'MiniCRM <noreply@minicrm.local>';
+}
 
 /**
- * Returns the configured nodemailer transport, creating it on first call.
- * In dev/test, returns null to trigger the stub path.
+ * Resolves the nodemailer transport for the current request.
+ *
+ * Priority order (MINCRM-254):
+ *   1. Database SMTP config (smtp_enabled = true and smtp_host set)
+ *   2. SMTP_HOST environment variable
+ *   3. null → console fallback
+ *
+ * A fresh transport is created each call so DB changes take effect without a restart.
+ *
+ * @returns A ready-to-use Transporter, or null when no SMTP source is configured.
  */
-function getTransport(): Transporter | null {
-  if (process.env.NODE_ENV !== 'production') return null;
-
-  if (!_transport) {
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-    if (!SMTP_HOST) {
-      logger.warn('emailService: SMTP_HOST not set — emails will not be delivered');
-      return null;
+async function resolveTransport(): Promise<Transporter | null> {
+  // 1. Database-stored config takes precedence
+  try {
+    const dbConfig = await getSmtpConfigInternal();
+    if (dbConfig.smtp_enabled && dbConfig.smtp_host) {
+      return nodemailer.createTransport({
+        host: dbConfig.smtp_host,
+        port: dbConfig.smtp_port,
+        secure: dbConfig.smtp_port === 465,
+        auth:
+          dbConfig.smtp_user && dbConfig.smtp_pass
+            ? { user: dbConfig.smtp_user, pass: dbConfig.smtp_pass }
+            : undefined,
+      });
     }
-    _transport = nodemailer.createTransport({
+  } catch (err) {
+    logger.warn({ err }, 'emailService: failed to read DB SMTP config — falling back to env vars');
+  }
+
+  // 2. Environment variable fallback
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  if (SMTP_HOST) {
+    return nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT ? Number(SMTP_PORT) : 587,
       secure: SMTP_PORT === '465',
@@ -56,29 +84,25 @@ function getTransport(): Transporter | null {
     });
   }
 
-  return _transport;
-}
-
-/** The From address used in all outbound emails */
-function getFromAddress(): string {
-  return process.env.SMTP_FROM ?? 'MiniCRM <noreply@minicrm.local>';
+  // 3. No SMTP configured → caller uses console fallback
+  return null;
 }
 
 /**
- * Sends an email using the configured transport.
- * In dev/test, logs the message instead of delivering it.
+ * Sends an email using the resolved transport.
+ * Falls back to logging when no SMTP source is configured.
  *
  * @param to - Recipient email address.
  * @param subject - Email subject line.
  * @param html - HTML body content.
  */
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const transport = getTransport();
+  const transport = await resolveTransport();
 
   if (!transport) {
-    // Dev/test stub — print to stdout so it surfaces in logs.
-    logger.info({ to, subject }, '[DEV] Email (not delivered):');
-    console.log(`\n[DEV] Email to ${to}:\n  Subject: ${subject}\n  Body (HTML):\n${html}\n`);
+    // No SMTP configured — log to console so the notification is not silently lost.
+    logger.info({ to, subject }, '[NO-SMTP] Email (not delivered):');
+    console.log(`\n[NO-SMTP] Email to ${to}:\n  Subject: ${subject}\n  Body (HTML):\n${html}\n`);
     return;
   }
 
