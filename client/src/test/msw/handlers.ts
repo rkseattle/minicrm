@@ -1217,6 +1217,40 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
+  /** Settings: GET /api/settings/smtp — no password set by default (MINCRM-254) */
+  http.get('/api/settings/smtp', () => {
+    return HttpResponse.json({
+      smtp_host: '',
+      smtp_port: 587,
+      smtp_user: '',
+      smtp_pass_set: false,
+      smtp_enabled: false,
+    });
+  }),
+
+  /** Settings: PUT /api/settings/smtp (MINCRM-254) */
+  http.put('/api/settings/smtp', async ({ request }) => {
+    const body = (await request.json()) as {
+      smtp_host: string;
+      smtp_port: number;
+      smtp_user: string;
+      smtp_pass?: string;
+      smtp_enabled: boolean;
+    };
+    return HttpResponse.json({
+      smtp_host: body.smtp_host,
+      smtp_port: body.smtp_port,
+      smtp_user: body.smtp_user,
+      smtp_pass_set: Boolean(body.smtp_pass),
+      smtp_enabled: body.smtp_enabled,
+    });
+  }),
+
+  /** Settings: POST /api/settings/smtp/test (MINCRM-254) */
+  http.post('/api/settings/smtp/test', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
   /** Leads: GET /api/leads — returns LEAD_1 by default (MINCRM-173) */
   http.get('/api/leads', () => {
     return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
