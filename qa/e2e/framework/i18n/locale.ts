@@ -65,6 +65,11 @@ const EN: LocaleMap = {
   'resetPassword.confirmPasswordLabel': 'Confirm password',
   'resetPassword.submitButton': 'Set new password',
 
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Password',
+  'setPassword.confirmPasswordLabel': 'Confirm password',
+  'setPassword.submitButton': 'Set password',
+
   // Contacts
   'contacts.saveChanges': 'Save changes',
   'contacts.save': 'Save',
@@ -150,6 +155,11 @@ const ES: LocaleMap = {
   'resetPassword.newPasswordLabel': 'Nueva contraseña',
   'resetPassword.confirmPasswordLabel': 'Confirmar contraseña',
   'resetPassword.submitButton': 'Establecer nueva contraseña',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Contraseña',
+  'setPassword.confirmPasswordLabel': 'Confirmar contraseña',
+  'setPassword.submitButton': 'Establecer contraseña',
 
   // Contacts
   'contacts.saveChanges': 'Guardar cambios',
@@ -237,6 +247,11 @@ const FR: LocaleMap = {
   'resetPassword.confirmPasswordLabel': 'Confirmer le mot de passe',
   'resetPassword.submitButton': 'Définir le nouveau mot de passe',
 
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Mot de passe',
+  'setPassword.confirmPasswordLabel': 'Confirmer le mot de passe',
+  'setPassword.submitButton': 'Définir le mot de passe',
+
   // Contacts
   'contacts.saveChanges': 'Enregistrer les modifications',
   'contacts.save': 'Enregistrer',
@@ -323,6 +338,11 @@ const DE: LocaleMap = {
   'resetPassword.confirmPasswordLabel': 'Passwort bestätigen',
   'resetPassword.submitButton': 'Neues Passwort festlegen',
 
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Passwort',
+  'setPassword.confirmPasswordLabel': 'Passwort bestätigen',
+  'setPassword.submitButton': 'Passwort festlegen',
+
   // Contacts
   'contacts.saveChanges': 'Änderungen speichern',
   'contacts.save': 'Speichern',
@@ -408,6 +428,11 @@ const ZH_HANS: LocaleMap = {
   'resetPassword.newPasswordLabel': '新密码',
   'resetPassword.confirmPasswordLabel': '确认密码',
   'resetPassword.submitButton': '设置新密码',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': '密码',
+  'setPassword.confirmPasswordLabel': '确认密码',
+  'setPassword.submitButton': '设置密码',
 
   // Contacts
   'contacts.saveChanges': '保存更改',
