@@ -1,7 +1,9 @@
 /**
  * Import controller — request/response shaping for CSV import endpoints.
  * All business logic lives in importService.
- * MINCRM-158, MINCRM-159, MINCRM-160
+ * Run endpoints now return immediately with a job_id (202) and process rows
+ * in the background via setImmediate. Progress is written to import_jobs.
+ * MINCRM-158, MINCRM-159, MINCRM-160, MINCRM-255
  */
 
 import type { Request, Response } from 'express';
@@ -18,7 +20,19 @@ import {
   type AccountMapping,
   type ContactMapping,
   type DealMapping,
+  type CsvRow,
+  type ParsedCsv,
+  type ImportResult,
 } from '../services/importService.js';
+import {
+  createJob,
+  updateJobProgress,
+  completeJob,
+  failJob,
+  getJob,
+  pruneOldJobs,
+  type ImportJobType,
+} from '../services/importJobService.js';
 import { z } from 'zod';
 
 // ── Parse handlers (Step 1: upload → headers + preview) ───────────────────────
@@ -26,9 +40,6 @@ import { z } from 'zod';
 /**
  * POST /api/admin/import/accounts/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
- *
- * @param req - Express request with file attached by multer.
- * @param res - Express response.
  */
 export async function parseAccountsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
@@ -55,9 +66,6 @@ export async function parseAccountsCsv(req: Request, res: Response): Promise<voi
 /**
  * POST /api/admin/import/contacts/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
- *
- * @param req - Express request with file attached by multer.
- * @param res - Express response.
  */
 export async function parseContactsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
@@ -84,9 +92,6 @@ export async function parseContactsCsv(req: Request, res: Response): Promise<voi
 /**
  * POST /api/admin/import/deals/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
- *
- * @param req - Express request with file attached by multer.
- * @param res - Express response.
  */
 export async function parseDealsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
@@ -110,7 +115,7 @@ export async function parseDealsCsv(req: Request, res: Response): Promise<void> 
   }
 }
 
-// ── Run handlers (Step 2: mapping + CSV → import) ─────────────────────────────
+// ── Run handlers (Step 2: mapping + CSV → background job) ─────────────────────
 
 const accountMappingSchema = z.object({
   name: z.string().min(1),
@@ -142,13 +147,28 @@ const dealMappingSchema = z.object({
 });
 
 /**
- * POST /api/admin/import/accounts/run
- * Runs the account import using the uploaded CSV and provided column mapping.
+ * Validates file and CSV, creates the job row, responds 202, then kicks off the
+ * background runner via setImmediate.
  *
- * @param req - Express request with file + JSON mapping field.
- * @param res - Express response with import summary and optional error CSV.
+ * @param jobType - The entity type ('accounts' | 'contacts' | 'deals').
+ * @param req - Express request (file already attached by multer).
+ * @param res - Express response.
+ * @param runFn - Calls the correct importXxx service function with an onProgress callback.
  */
-export async function runAccountsImport(req: Request, res: Response): Promise<void> {
+async function startImportJob(
+  jobType: ImportJobType,
+  req: Request,
+  res: Response,
+  runFn: (
+    rows: CsvRow[],
+    onProgress: (
+      processedRows: number,
+      created: number,
+      skipped: number,
+      failed: number,
+    ) => Promise<void>,
+  ) => Promise<ImportResult>,
+): Promise<void> {
   const file = req.file;
   if (!file) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
@@ -161,6 +181,63 @@ export async function runAccountsImport(req: Request, res: Response): Promise<vo
     return;
   }
 
+  let csvData: ParsedCsv;
+  try {
+    csvData = parseCsvBuffer(file.buffer);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to parse CSV';
+    res.status(400).json({ error: { code: 'CSV_PARSE_ERROR', message } });
+    return;
+  }
+
+  // Prune stale jobs before creating a new one — fire and forget
+  void pruneOldJobs().catch((pruneErr: unknown) => {
+    console.error('Failed to prune old import jobs:', pruneErr);
+  });
+
+  const job = await createJob(jobType, csvData.rows.length, req.user!.id);
+
+  // Respond immediately — the client polls GET /api/admin/import/jobs/:job_id for progress
+  res.status(202).json({ job_id: job.id, status: 'pending' });
+
+  const { rows } = csvData;
+
+  // Background runner — not awaited; runs after the response is flushed
+  setImmediate(() => {
+    void (async () => {
+      try {
+        const onProgress = async (
+          processedRows: number,
+          created: number,
+          skipped: number,
+          failed: number,
+        ): Promise<void> => {
+          await updateJobProgress(job.id, processedRows, created, skipped, failed);
+        };
+
+        const importResult = await runFn(rows, onProgress);
+        const errorCsv = buildErrorCsv(importResult.failed);
+        await completeJob(
+          job.id,
+          importResult.created,
+          importResult.skipped,
+          importResult.failed.length,
+          errorCsv,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error during import';
+        await failJob(job.id, message);
+      }
+    })();
+  });
+}
+
+/**
+ * POST /api/admin/import/accounts/run
+ * Validates the CSV + mapping synchronously, creates the job, returns 202,
+ * then runs the account import in the background.
+ */
+export async function runAccountsImport(req: Request, res: Response): Promise<void> {
   let rawMapping: unknown;
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
@@ -185,15 +262,6 @@ export async function runAccountsImport(req: Request, res: Response): Promise<vo
   const mapping = parsed.data;
   const skipDuplicates = mapping.skip_duplicates !== false;
 
-  let csvData;
-  try {
-    csvData = parseCsvBuffer(file.buffer);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to parse CSV';
-    res.status(400).json({ error: { code: 'CSV_PARSE_ERROR', message } });
-    return;
-  }
-
   const accountMapping: AccountMapping = {
     name: mapping.name,
     industry: mapping.industry,
@@ -202,42 +270,19 @@ export async function runAccountsImport(req: Request, res: Response): Promise<vo
     revenue_range: mapping.revenue_range,
   };
 
-  const importResult = await importAccounts(
-    csvData.rows,
-    accountMapping,
-    req.user!.id,
-    skipDuplicates,
-  );
+  const adminId = req.user!.id;
 
-  res.json({
-    created: importResult.created,
-    skipped: importResult.skipped,
-    failedCount: importResult.failed.length,
-    failed: importResult.failed,
-    errorCsv: buildErrorCsv(importResult.failed),
-  });
+  await startImportJob('accounts', req, res, (rows, onProgress) =>
+    importAccounts(rows, accountMapping, adminId, skipDuplicates, onProgress),
+  );
 }
 
 /**
  * POST /api/admin/import/contacts/run
- * Runs the contact import using the uploaded CSV and provided column mapping.
- *
- * @param req - Express request with file + JSON mapping field.
- * @param res - Express response with import summary and optional error CSV.
+ * Validates the CSV + mapping synchronously, creates the job, returns 202,
+ * then runs the contact import in the background.
  */
 export async function runContactsImport(req: Request, res: Response): Promise<void> {
-  const file = req.file;
-  if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
-    return;
-  }
-  if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
-    return;
-  }
-
   let rawMapping: unknown;
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
@@ -261,15 +306,6 @@ export async function runContactsImport(req: Request, res: Response): Promise<vo
 
   const mapping = parsed.data;
 
-  let csvData;
-  try {
-    csvData = parseCsvBuffer(file.buffer);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to parse CSV';
-    res.status(400).json({ error: { code: 'CSV_PARSE_ERROR', message } });
-    return;
-  }
-
   const contactMapping: ContactMapping = {
     first_name: mapping.first_name,
     last_name: mapping.last_name,
@@ -280,37 +316,19 @@ export async function runContactsImport(req: Request, res: Response): Promise<vo
     account_name: mapping.account_name,
   };
 
-  const importResult = await importContacts(csvData.rows, contactMapping, req.user!.id);
+  const adminId = req.user!.id;
 
-  res.json({
-    created: importResult.created,
-    skipped: importResult.skipped,
-    failedCount: importResult.failed.length,
-    failed: importResult.failed,
-    errorCsv: buildErrorCsv(importResult.failed),
-  });
+  await startImportJob('contacts', req, res, (rows, onProgress) =>
+    importContacts(rows, contactMapping, adminId, onProgress),
+  );
 }
 
 /**
  * POST /api/admin/import/deals/run
- * Runs the deal import using the uploaded CSV and provided column mapping.
- *
- * @param req - Express request with file + JSON mapping field.
- * @param res - Express response with import summary and optional error CSV.
+ * Validates the CSV + mapping synchronously, creates the job, returns 202,
+ * then runs the deal import in the background.
  */
 export async function runDealsImport(req: Request, res: Response): Promise<void> {
-  const file = req.file;
-  if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
-    return;
-  }
-  if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
-    return;
-  }
-
   let rawMapping: unknown;
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
@@ -334,15 +352,6 @@ export async function runDealsImport(req: Request, res: Response): Promise<void>
 
   const mapping = parsed.data;
 
-  let csvData;
-  try {
-    csvData = parseCsvBuffer(file.buffer);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to parse CSV';
-    res.status(400).json({ error: { code: 'CSV_PARSE_ERROR', message } });
-    return;
-  }
-
   const dealMapping: DealMapping = {
     name: mapping.name,
     stage: mapping.stage,
@@ -353,13 +362,38 @@ export async function runDealsImport(req: Request, res: Response): Promise<void>
     skip_unresolvable_accounts: mapping.skip_unresolvable_accounts,
   };
 
-  const importResult = await importDeals(csvData.rows, dealMapping, req.user!.id);
+  const adminId = req.user!.id;
 
+  await startImportJob('deals', req, res, (rows, onProgress) =>
+    importDeals(rows, dealMapping, adminId, onProgress),
+  );
+}
+
+// ── Job status endpoint ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/admin/import/jobs/:job_id
+ * Returns the current state of an import job (admin only).
+ */
+export async function getImportJob(req: Request, res: Response): Promise<void> {
+  const job_id = req.params['job_id'] as string;
+  const job = await getJob(job_id);
+  if (!job) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Import job not found' } });
+    return;
+  }
   res.json({
-    created: importResult.created,
-    skipped: importResult.skipped,
-    failedCount: importResult.failed.length,
-    failed: importResult.failed,
-    errorCsv: buildErrorCsv(importResult.failed),
+    job_id: job.id,
+    type: job.type,
+    status: job.status,
+    total_rows: job.total_rows,
+    processed_rows: job.processed_rows,
+    created: job.created_count,
+    skipped: job.skipped_count,
+    failed: job.failed_count,
+    error_csv: job.error_csv ?? null,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+    created_at: job.created_at,
   });
 }

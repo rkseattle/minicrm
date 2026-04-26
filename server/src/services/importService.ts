@@ -14,6 +14,9 @@ export const MAX_CSV_BYTES = 10 * 1024 * 1024;
 /** Number of preview rows to return after parsing */
 const PREVIEW_ROW_COUNT = 5;
 
+/** How often (in rows) the onProgress callback is fired during a background import */
+export const PROGRESS_UPDATE_INTERVAL = 100;
+
 /** Raw parsed CSV row — all values are strings */
 export type CsvRow = Record<string, string>;
 
@@ -33,6 +36,17 @@ export interface ImportResult {
   skipped: number;
   failed: ImportFailure[];
 }
+
+/**
+ * Called every PROGRESS_UPDATE_INTERVAL rows during a background import.
+ * Receives the current running totals so the caller can write to import_jobs.
+ */
+export type ProgressCallback = (
+  processedRows: number,
+  created: number,
+  skipped: number,
+  failed: number,
+) => Promise<void>;
 
 /** A parsed CSV payload ready for import processing */
 export interface ParsedCsv {
@@ -170,6 +184,7 @@ export async function importAccounts(
   mapping: AccountMapping,
   adminId: string,
   skipDuplicates: boolean = true,
+  onProgress?: ProgressCallback,
 ): Promise<ImportResult> {
   const result: ImportResult = { created: 0, skipped: 0, failed: [] };
 
@@ -216,6 +231,10 @@ export async function importAccounts(
         reason: `Database error: ${(err as Error).message}`,
       });
     }
+
+    if (onProgress && rowNum % PROGRESS_UPDATE_INTERVAL === 0) {
+      await onProgress(rowNum, result.created, result.skipped, result.failed.length);
+    }
   }
 
   return result;
@@ -250,6 +269,7 @@ export async function importContacts(
   rows: CsvRow[],
   mapping: ContactMapping,
   adminId: string,
+  onProgress?: ProgressCallback,
 ): Promise<ImportResult> {
   const result: ImportResult = { created: 0, skipped: 0, failed: [] };
 
@@ -320,6 +340,10 @@ export async function importContacts(
         reason: `Database error: ${(err as Error).message}`,
       });
     }
+
+    if (onProgress && rowNum % PROGRESS_UPDATE_INTERVAL === 0) {
+      await onProgress(rowNum, result.created, result.skipped, result.failed.length);
+    }
   }
 
   return result;
@@ -354,6 +378,7 @@ export async function importDeals(
   rows: CsvRow[],
   mapping: DealMapping,
   adminId: string,
+  onProgress?: ProgressCallback,
 ): Promise<ImportResult> {
   const result: ImportResult = { created: 0, skipped: 0, failed: [] };
 
@@ -448,6 +473,10 @@ export async function importDeals(
         data: csvRow,
         reason: `Database error: ${(err as Error).message}`,
       });
+    }
+
+    if (onProgress && rowNum % PROGRESS_UPDATE_INTERVAL === 0) {
+      await onProgress(rowNum, result.created, result.skipped, result.failed.length);
     }
   }
 

@@ -2,8 +2,10 @@
  * CSV import routes — admin only.
  * Two-step flow per entity:
  *   POST /parse — upload CSV, receive headers + preview
- *   POST /run   — upload CSV + mapping JSON, receive import summary
- * MINCRM-158 (contacts), MINCRM-159 (accounts), MINCRM-160 (deals)
+ *   POST /run   — upload CSV + mapping JSON, create job and return 202
+ * Job polling:
+ *   GET /jobs/:job_id — poll for background import progress
+ * MINCRM-158 (contacts), MINCRM-159 (accounts), MINCRM-160 (deals), MINCRM-255
  */
 
 import { Router } from 'express';
@@ -19,6 +21,7 @@ import {
   runAccountsImport,
   runContactsImport,
   runDealsImport,
+  getImportJob,
 } from '../controllers/importController.js';
 
 const router = Router();
@@ -98,8 +101,8 @@ router.post('/accounts/parse', upload.single('file'), asyncHandler(parseAccounts
  *                 type: string
  *                 description: JSON string mapping CRM field keys to CSV column headers
  *     responses:
- *       200:
- *         description: Import summary with created/skipped/failed counts and error CSV
+ *       202:
+ *         description: Import job created — poll GET /jobs/{job_id} for progress
  *       400:
  *         description: Validation error
  *       401:
@@ -163,8 +166,8 @@ router.post('/contacts/parse', upload.single('file'), asyncHandler(parseContacts
  *                 type: string
  *                 description: JSON string mapping CRM field keys to CSV column headers
  *     responses:
- *       200:
- *         description: Import summary with created/skipped/failed counts and error CSV
+ *       202:
+ *         description: Import job created — poll GET /jobs/{job_id} for progress
  *       400:
  *         description: Validation error
  *       401:
@@ -228,8 +231,8 @@ router.post('/deals/parse', upload.single('file'), asyncHandler(parseDealsCsv));
  *                 type: string
  *                 description: JSON string mapping CRM field keys to CSV column headers
  *     responses:
- *       200:
- *         description: Import summary with created/skipped/failed counts and error CSV
+ *       202:
+ *         description: Import job created — poll GET /jobs/{job_id} for progress
  *       400:
  *         description: Validation error
  *       401:
@@ -238,6 +241,34 @@ router.post('/deals/parse', upload.single('file'), asyncHandler(parseDealsCsv));
  *         $ref: '#/components/responses/Forbidden'
  */
 router.post('/deals/run', upload.single('file'), asyncHandler(runDealsImport));
+
+/**
+ * @openapi
+ * /api/admin/import/jobs/{job_id}:
+ *   get:
+ *     tags: [Import]
+ *     operationId: getImportJob
+ *     summary: Get the current status of a background import job (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: job_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Import job status and progress counters
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.get('/jobs/:job_id', asyncHandler(getImportJob));
 
 /**
  * Multer error handler — converts fileFilter rejections (non-CSV uploads) from the
