@@ -125,16 +125,29 @@ export default function NavHamburger() {
           {/* Nav links */}
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
             {visibleLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={overlayLinkClass}
-                data-testid={`nav-hamburger-${DESTINATION_NAME[link.to]}`}
-                onClick={closeMenu}
-              >
-                {t(link.labelKey)}
-              </NavLink>
+              <div key={link.to}>
+                {link.sectionLabelKey && (
+                  <div
+                    className="px-1 pt-3 pb-1"
+                    data-testid="nav-hamburger-admin-section-divider"
+                    aria-hidden="true"
+                  >
+                    <hr className="border-gray-200 mb-2" />
+                    <span className="px-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      {t(link.sectionLabelKey)}
+                    </span>
+                  </div>
+                )}
+                <NavLink
+                  to={link.to}
+                  end={link.end}
+                  className={overlayLinkClass}
+                  data-testid={`nav-hamburger-${DESTINATION_NAME[link.to]}`}
+                  onClick={closeMenu}
+                >
+                  {t(link.labelKey)}
+                </NavLink>
+              </div>
             ))}
           </nav>
         </div>

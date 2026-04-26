@@ -27,6 +27,11 @@ export interface NavLinkDef {
   adminOnly: boolean;
   /** Whether NavLink should use exact matching (`end` prop) */
   end?: boolean;
+  /**
+   * i18n key for a section group label rendered immediately before this item.
+   * The divider + label are only shown when the item is visible (admin check already applied).
+   */
+  sectionLabelKey?: string;
 }
 
 /** Ordered list of navigation destinations for all layout components. */
@@ -37,9 +42,14 @@ export const NAV_LINKS: NavLinkDef[] = [
   { to: '/accounts', labelKey: 'nav.accounts', adminOnly: false },
   { to: '/deals', labelKey: 'nav.deals', adminOnly: false },
   { to: '/tasks', labelKey: 'nav.myTasks', adminOnly: false },
-  { to: '/users', labelKey: 'nav.users', adminOnly: true },
-  { to: '/reports/win-loss', labelKey: 'nav.winLossReport', adminOnly: true },
+  { to: '/reports/win-loss', labelKey: 'nav.winLossReport', adminOnly: false },
   { to: '/reports/activity-volume', labelKey: 'nav.activityVolumeReport', adminOnly: false },
+  {
+    to: '/users',
+    labelKey: 'nav.users',
+    adminOnly: true,
+    sectionLabelKey: 'nav.administrationSection',
+  },
   { to: '/admin/automation', labelKey: 'nav.automation', adminOnly: true },
   { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true },
   { to: '/admin/settings', labelKey: 'nav.adminSettings', adminOnly: true },

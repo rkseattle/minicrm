@@ -94,22 +94,37 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
           {/* Nav links */}
           <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
             {visibleLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={sidebarLinkClass}
-                data-testid={`nav-left-${DESTINATION_NAME[link.to]}`}
-                title={collapsed ? t(link.labelKey) : undefined}
-              >
-                {!collapsed && t(link.labelKey)}
-                {collapsed && (
-                  // Show first letter as icon placeholder when collapsed
-                  <span className="font-semibold text-xs uppercase" aria-hidden="true">
-                    {t(link.labelKey).charAt(0)}
-                  </span>
+              <div key={link.to}>
+                {link.sectionLabelKey && (
+                  <div
+                    className="px-1 pt-3 pb-1"
+                    data-testid="nav-left-admin-section-divider"
+                    aria-hidden="true"
+                  >
+                    <hr className="border-gray-200 mb-2" />
+                    {!collapsed && (
+                      <span className="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        {t(link.sectionLabelKey)}
+                      </span>
+                    )}
+                  </div>
                 )}
-              </NavLink>
+                <NavLink
+                  to={link.to}
+                  end={link.end}
+                  className={sidebarLinkClass}
+                  data-testid={`nav-left-${DESTINATION_NAME[link.to]}`}
+                  title={collapsed ? t(link.labelKey) : undefined}
+                >
+                  {!collapsed && t(link.labelKey)}
+                  {collapsed && (
+                    // Show first letter as icon placeholder when collapsed
+                    <span className="font-semibold text-xs uppercase" aria-hidden="true">
+                      {t(link.labelKey).charAt(0)}
+                    </span>
+                  )}
+                </NavLink>
+              </div>
             ))}
           </nav>
         </aside>

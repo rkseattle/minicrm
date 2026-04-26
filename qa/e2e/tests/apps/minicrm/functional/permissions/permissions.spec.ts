@@ -388,7 +388,7 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
   }
 });
 
-test('@functional F7-FU4: rep navigating directly to /reports/win-loss is redirected to dashboard', async ({
+test('@functional F7-FU4: rep navigating directly to /reports/win-loss can access the page', async ({
   page,
   restClient,
 }) => {
@@ -399,12 +399,11 @@ test('@functional F7-FU4: rep navigating directly to /reports/win-loss is redire
 
     await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
 
-    await page
-      .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-      .catch(() => null);
-
+    // Win/Loss Report is now accessible to all authenticated users — reps should land on the page.
     const finalPath = new URL(page.url()).pathname;
-    expect(finalPath, 'rep navigating to /reports/win-loss should be redirected to /').toBe('/');
+    expect(finalPath, 'rep navigating to /reports/win-loss should stay on the page').toBe(
+      '/reports/win-loss',
+    );
   } finally {
     await restClient
       .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
@@ -425,7 +424,7 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page,
     //   NavTop:       nav-top-{dest}
     //   NavHamburger: nav-hamburger-{dest}
     // DESTINATION_NAME maps route paths to dest slugs (e.g. '/users' → 'users').
-    const adminDestinations = ['users', 'win-loss', 'automation', 'settings'];
+    const adminDestinations = ['users', 'automation', 'settings'];
     const navPrefixes = ['nav-left', 'nav-top', 'nav-hamburger'];
 
     for (const dest of adminDestinations) {

@@ -135,15 +135,28 @@ export default function NavTop() {
       <nav className="hidden lg:block border-t border-gray-100">
         <div className="px-6 flex items-center gap-1 py-1.5">
           {visibleLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={navLinkClass}
-              data-testid={`nav-top-${DESTINATION_NAME[link.to]}`}
-            >
-              {t(link.labelKey)}
-            </NavLink>
+            <div key={link.to} className="flex items-center gap-1">
+              {link.sectionLabelKey && (
+                <div
+                  className="flex items-center gap-2 ps-1"
+                  data-testid="nav-top-admin-section-divider"
+                  aria-hidden="true"
+                >
+                  <div className="h-4 w-px bg-gray-300" />
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider pe-1">
+                    {t(link.sectionLabelKey)}
+                  </span>
+                </div>
+              )}
+              <NavLink
+                to={link.to}
+                end={link.end}
+                className={navLinkClass}
+                data-testid={`nav-top-${DESTINATION_NAME[link.to]}`}
+              >
+                {t(link.labelKey)}
+              </NavLink>
+            </div>
           ))}
         </div>
       </nav>
@@ -159,16 +172,29 @@ export default function NavTop() {
           className="lg:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-1"
         >
           {visibleLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={mobileNavLinkClass}
-              data-testid={`nav-top-${DESTINATION_NAME[link.to]}-mobile`}
-              onClick={closeMobileMenu}
-            >
-              {t(link.labelKey)}
-            </NavLink>
+            <div key={link.to}>
+              {link.sectionLabelKey && (
+                <div
+                  className="px-1 pt-2 pb-1"
+                  data-testid="nav-top-admin-section-divider-mobile"
+                  aria-hidden="true"
+                >
+                  <hr className="border-gray-200 mb-2" />
+                  <span className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {t(link.sectionLabelKey)}
+                  </span>
+                </div>
+              )}
+              <NavLink
+                to={link.to}
+                end={link.end}
+                className={mobileNavLinkClass}
+                data-testid={`nav-top-${DESTINATION_NAME[link.to]}-mobile`}
+                onClick={closeMobileMenu}
+              >
+                {t(link.labelKey)}
+              </NavLink>
+            </div>
           ))}
           <div className="pt-2 border-t border-gray-100 space-y-1">
             <select

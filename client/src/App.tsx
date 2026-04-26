@@ -80,6 +80,7 @@ function AppRoutes() {
           <Route path="/tasks" element={<MyTasksPage />} />
           <Route path="/activities" element={<ActivitiesPage />} />
           <Route path="/reports/activity-volume" element={<ActivityVolumeReportPage />} />
+          <Route path="/reports/win-loss" element={<WinLossReportPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Route>
@@ -92,7 +93,6 @@ function AppRoutes() {
           <Route path="/admin/tags" element={<AdminTagsPage />} />
           <Route path="/admin/audit-log" element={<AuditLogPage />} />
           <Route path="/admin/automation" element={<AutomationRulesPage />} />
-          <Route path="/reports/win-loss" element={<WinLossReportPage />} />
         </Route>
       </Route>
 
