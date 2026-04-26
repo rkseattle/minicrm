@@ -1,8 +1,8 @@
 /**
- * NavHamburger — icon-triggered overlay navigation layout.
+ * NavHamburger — icon-triggered popover navigation layout. (MINCRM-133, MINCRM-265)
  * A persistent top bar shows only the brand + hamburger icon.
- * Clicking the icon opens a full-height overlay drawer with all nav links.
- * Functional at all viewport widths. (MINCRM-133)
+ * Clicking the icon opens a fixed-position popover anchored below the hamburger
+ * button in the top-right corner — not a left-edge drawer.
  */
 
 import { NavLink } from 'react-router-dom';
@@ -13,11 +13,11 @@ import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
 import NavHeader from './NavHeader.js';
 
 /**
- * Returns Tailwind classes for an overlay nav link based on its active state.
+ * Returns Tailwind classes for a popover nav link based on its active state.
  *
  * @param isActive - Whether the link matches the current route.
  */
-function overlayLinkClass({ isActive }: { isActive: boolean }): string {
+function popoverLinkClass({ isActive }: { isActive: boolean }): string {
   return [
     'flex items-center w-full px-4 py-3 text-base font-medium rounded-md transition-colors min-h-[44px]',
     isActive
@@ -26,28 +26,31 @@ function overlayLinkClass({ isActive }: { isActive: boolean }): string {
   ].join(' ');
 }
 
+/** Pixel gap between the bottom of the toggle button and the top of the popover. */
+const POPOVER_GAP = 4;
+
 /**
- * Hamburger overlay navigation layout component. (MINCRM-133)
+ * Hamburger popover navigation layout component. (MINCRM-133)
  */
 export default function NavHamburger() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const drawerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
-  /** Close the overlay. */
+  /** Close the popover. */
   const closeMenu = useCallback((): void => {
     setMenuOpen(false);
   }, []);
 
-  // Close on outside tap/click, excluding the toggle button
+  // Close on outside pointer-down, excluding the toggle button itself
   useEffect(() => {
     if (!menuOpen) return;
     function handlePointerDown(e: PointerEvent): void {
       if (
-        drawerRef.current &&
-        !drawerRef.current.contains(e.target as Node) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
         !hamburgerRef.current?.contains(e.target as Node)
       ) {
         closeMenu();
@@ -57,13 +60,41 @@ export default function NavHamburger() {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [menuOpen, closeMenu]);
 
-  // Move focus into drawer when it opens
+  // Close on Escape key
   useEffect(() => {
-    if (menuOpen && drawerRef.current) {
-      const firstLink = drawerRef.current.querySelector<HTMLElement>('a, button');
-      firstLink?.focus();
+    if (!menuOpen) return;
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') {
+        closeMenu();
+        hamburgerRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen, closeMenu]);
+
+  // Move focus into popover when it opens
+  useEffect(() => {
+    if (menuOpen && popoverRef.current) {
+      const firstFocusable = popoverRef.current.querySelector<HTMLElement>('a, button');
+      firstFocusable?.focus();
     }
   }, [menuOpen]);
+
+  // Popover position captured from the button rect at the moment of the click —
+  // reading ref.current in an event handler is safe; it is not read during render.
+  const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
+
+  const handleToggle = useCallback((): void => {
+    const rect = hamburgerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPopoverPos({
+        top: rect.bottom + POPOVER_GAP,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setMenuOpen((open) => !open);
+  }, []);
 
   const isAdmin = user?.role === 'admin';
   const visibleLinks = NAV_LINKS.filter((link) => !link.adminOnly || isAdmin);
@@ -75,32 +106,26 @@ export default function NavHamburger() {
         <NavHeader
           hamburger={{
             isOpen: menuOpen,
-            onToggle: () => setMenuOpen((open) => !open),
+            onToggle: handleToggle,
             controls: 'hamburger-nav-drawer',
             toggleEl: hamburgerRef,
           }}
         />
       </nav>
 
-      {/* Overlay drawer */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/30"
-          aria-hidden="true"
-          data-testid="nav-hamburger-backdrop"
-        />
-      )}
+      {/* Popover anchored to the hamburger button — MINCRM-265 */}
       {menuOpen && (
         <div
           id="hamburger-nav-drawer"
-          ref={drawerRef}
+          ref={popoverRef}
           role="dialog"
           aria-label={t('nav.menu')}
-          className="fixed inset-y-0 start-0 z-30 w-72 max-w-full bg-white shadow-xl flex flex-col"
+          style={{ top: popoverPos.top, right: popoverPos.right }}
+          className="fixed z-30 w-72 max-w-[calc(100vw-1rem)] bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col"
           data-testid="nav-hamburger-drawer"
         >
-          {/* Drawer header — close button only */}
-          <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100 min-h-12">
+          {/* Popover header — close button */}
+          <div className="flex items-center justify-end px-4 py-2 border-b border-gray-100 min-h-10">
             <button
               type="button"
               aria-label={t('nav.close')}
@@ -123,7 +148,7 @@ export default function NavHamburger() {
           </div>
 
           {/* Nav links */}
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+          <nav className="overflow-y-auto max-h-[calc(100vh-8rem)] px-3 py-3 space-y-0.5">
             {visibleLinks.map((link) => (
               <div key={link.to}>
                 {link.sectionLabelKey && (
@@ -141,7 +166,7 @@ export default function NavHamburger() {
                 <NavLink
                   to={link.to}
                   end={link.end}
-                  className={overlayLinkClass}
+                  className={popoverLinkClass}
                   data-testid={`nav-hamburger-${DESTINATION_NAME[link.to]}`}
                   onClick={closeMenu}
                 >

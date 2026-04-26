@@ -1,5 +1,5 @@
 /**
- * Tests for the NavHamburger component. (MINCRM-133)
+ * Tests for the NavHamburger component. (MINCRM-133, MINCRM-265)
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -47,7 +47,7 @@ describe('NavHamburger', () => {
     });
   });
 
-  it('drawer is closed by default', async () => {
+  it('popover is closed by default', async () => {
     renderNavHamburger();
     await waitFor(() => {
       expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
 
-  it('clicking the toggle opens the overlay drawer', async () => {
+  it('clicking the toggle opens the popover', async () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
@@ -102,7 +102,7 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-settings')).not.toBeInTheDocument();
   });
 
-  it('clicking the close button closes the drawer', async () => {
+  it('clicking the close button closes the popover', async () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
@@ -114,7 +114,7 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
 
-  it('clicking a nav link closes the drawer', async () => {
+  it('clicking a nav link closes the popover', async () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
@@ -123,6 +123,18 @@ describe('NavHamburger', () => {
     await user.click(screen.getByTestId('nav-menu-toggle'));
     expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
     await user.click(screen.getByTestId('nav-hamburger-contacts'));
+    expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
+  });
+
+  it('pressing Escape closes the popover', async () => {
+    const user = userEvent.setup();
+    renderNavHamburger();
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('nav-menu-toggle'));
+    expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
 
