@@ -280,7 +280,7 @@ export default function CurrencySettings() {
             </Select>
           </div>
 
-          <div className="overflow-x-auto mb-4">
+          <div className="overflow-x-auto mb-4 w-full">
             <table
               className="min-w-full divide-y divide-gray-100 border border-gray-200 rounded"
               data-testid="exchange-rate-table"
