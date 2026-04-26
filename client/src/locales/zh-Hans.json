@@ -19,7 +19,8 @@
     "close": "关闭",
     "collapseSidebar": "收起侧栏",
     "expandSidebar": "展开侧栏",
-    "tags": "标签"
+    "tags": "标签",
+    "administrationSection": "管理"
   },
   "login": {
     "title": "登录您的账户",

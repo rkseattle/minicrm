@@ -90,6 +90,8 @@ const REP_DESTINATIONS: Record<string, string> = {
   accounts: '/accounts',
   deals: '/deals',
   tasks: '/tasks',
+  'win-loss': '/reports/win-loss',
+  'activity-volume': '/reports/activity-volume',
 };
 
 /**
@@ -97,7 +99,6 @@ const REP_DESTINATIONS: Record<string, string> = {
  */
 const ADMIN_ONLY_DESTINATIONS: Record<string, string> = {
   users: '/users',
-  'win-loss': '/reports/win-loss',
   automation: '/admin/automation',
   settings: '/admin/settings',
 };
@@ -378,6 +379,102 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
   }); // end Hamburger Nav layout
+
+  // ── Admin section divider (MINCRM-261) ─────────────────────────────────────
+
+  test.describe('Admin section divider', () => {
+    test('@functional F8-AD1: left nav — admin sees Administration divider before Users link', async ({
+      page,
+      restClient,
+    }) => {
+      await setNavLayoutViaAPI('left', restClient);
+      await navigateToDashboard(page);
+
+      try {
+        const divider = await page
+          .locate([{ type: 'testId', value: 'nav-left-admin-section-divider' }])
+          .resolve();
+        await expect(
+          divider,
+          'Administration divider should be visible in left nav for admin',
+        ).toBeVisible();
+      } finally {
+        await resetNavLayout(restClient, 'F8-AD1');
+      }
+    });
+
+    test('@functional F8-AD2: top nav (desktop) — admin sees Administration divider before Users link', async ({
+      page,
+      restClient,
+    }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-AD2: desktop top nav divider is not visible on mobile-web viewport');
+
+      await setNavLayoutViaAPI('top', restClient);
+      await navigateToDashboard(page);
+
+      try {
+        const divider = await page
+          .locate([{ type: 'testId', value: 'nav-top-admin-section-divider' }])
+          .resolve();
+        await expect(
+          divider,
+          'Administration divider should be visible in top nav for admin',
+        ).toBeVisible();
+      } finally {
+        await resetNavLayout(restClient, 'F8-AD2');
+      }
+    });
+
+    test('@functional F8-AD3: hamburger nav — admin sees Administration divider in open drawer', async ({
+      page,
+      restClient,
+    }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-AD3: NavHamburger is desktop-only; mobile always renders NavTop');
+
+      await setNavLayoutViaAPI('hamburger', restClient);
+      await navigateToDashboard(page);
+
+      try {
+        await openHamburgerMenu({ page });
+
+        const divider = await page
+          .locate([{ type: 'testId', value: 'nav-hamburger-admin-section-divider' }])
+          .resolve();
+        await expect(
+          divider,
+          'Administration divider should be visible in hamburger drawer for admin',
+        ).toBeVisible();
+
+        await closeHamburgerMenuViaCloseButton({ page });
+      } finally {
+        await resetNavLayout(restClient, 'F8-AD3');
+      }
+    });
+
+    test('@functional F8-AD4: mobile drawer — admin sees Administration divider', async ({
+      page,
+    }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(!isMobile, 'F8-AD4 only runs under the mobile-web Playwright project');
+
+      await navigateToDashboard(page);
+
+      const result = await openMobileNav({ page });
+      expect(result.drawerVisible, 'mobile nav drawer should open').toBe(true);
+
+      const divider = await page
+        .locate([{ type: 'testId', value: 'nav-top-admin-section-divider-mobile' }])
+        .resolve();
+      await expect(
+        divider,
+        'Administration divider should be visible in mobile drawer for admin',
+      ).toBeVisible();
+
+      await closeMobileNavViaToggle({ page });
+    });
+  }); // end Admin section divider
 
   // ── Layout switching ────────────────────────────────────────────────────────
 

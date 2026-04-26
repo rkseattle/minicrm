@@ -19,7 +19,8 @@
     "close": "Schließen",
     "collapseSidebar": "Seitenleiste zuklappen",
     "expandSidebar": "Seitenleiste aufklappen",
-    "tags": "Tags"
+    "tags": "Tags",
+    "administrationSection": "Verwaltung"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",

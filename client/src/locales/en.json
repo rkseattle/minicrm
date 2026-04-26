@@ -19,7 +19,8 @@
     "close": "Close",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
-    "tags": "Tags"
+    "tags": "Tags",
+    "administrationSection": "Administration"
   },
   "login": {
     "title": "Sign in to your account",

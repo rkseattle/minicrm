@@ -19,7 +19,8 @@
     "close": "Fermer",
     "collapseSidebar": "Réduire la barre latérale",
     "expandSidebar": "Développer la barre latérale",
-    "tags": "Étiquettes"
+    "tags": "Étiquettes",
+    "administrationSection": "Administration"
   },
   "login": {
     "title": "Connectez-vous à votre compte",
