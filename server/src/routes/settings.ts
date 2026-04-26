@@ -33,6 +33,11 @@ import {
   updatePipelineStageHandler,
   deletePipelineStageHandler,
 } from '../controllers/pipelineStageController.js';
+import {
+  getSmtpConfigHandler,
+  putSmtpConfigHandler,
+  testSmtpHandler,
+} from '../controllers/smtpController.js';
 
 const router = Router();
 
@@ -690,5 +695,115 @@ router.put(
   requireRole('admin'),
   asyncHandler(updateCurrenciesHandler),
 );
+
+// ── SMTP configuration (MINCRM-254) ──────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/smtp:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getSmtpConfig
+ *     summary: Get SMTP configuration (MINCRM-254)
+ *     description: >
+ *       Returns current SMTP configuration. smtp_pass is never returned;
+ *       smtp_pass_set indicates whether a password is stored. Requires authentication.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current SMTP configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 smtp_host: { type: string }
+ *                 smtp_port: { type: integer }
+ *                 smtp_user: { type: string }
+ *                 smtp_pass_set: { type: boolean }
+ *                 smtp_enabled: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/smtp', authenticate, asyncHandler(getSmtpConfigHandler));
+
+/**
+ * @openapi
+ * /api/settings/smtp:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: putSmtpConfig
+ *     summary: Save SMTP configuration (admin only, MINCRM-254)
+ *     description: >
+ *       Updates SMTP configuration. Omitting smtp_pass preserves the stored password.
+ *       Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [smtp_host, smtp_port, smtp_user, smtp_enabled]
+ *             properties:
+ *               smtp_host: { type: string }
+ *               smtp_port: { type: integer, minimum: 1, maximum: 65535 }
+ *               smtp_user: { type: string }
+ *               smtp_pass: { type: string }
+ *               smtp_enabled: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Updated SMTP configuration
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put('/smtp', authenticate, requireRole('admin'), asyncHandler(putSmtpConfigHandler));
+
+/**
+ * @openapi
+ * /api/settings/smtp/test:
+ *   post:
+ *     tags: [Settings]
+ *     operationId: testSmtp
+ *     summary: Send a test email using the current SMTP configuration (admin only, MINCRM-254)
+ *     description: >
+ *       Sends a test email to the specified address. Returns { success: true } or
+ *       { success: false, error: string } with the SMTP error message.
+ *       HTTP status is always 200 — the outcome is in the payload. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [to]
+ *             properties:
+ *               to: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: Test result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 error: { type: string }
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testSmtpHandler));
 
 export default router;
