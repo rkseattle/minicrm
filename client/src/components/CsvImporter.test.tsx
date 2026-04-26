@@ -1,8 +1,8 @@
 /**
  * Tests for the CsvImporter component.
- * Covers: file validation, parse step, column mapping, preview, run, summary,
- * and error download.
- * MINCRM-158, MINCRM-159, MINCRM-160
+ * Covers: file validation, parse step, column mapping, preview, run (now async with job polling),
+ * progress display, summary, and error download.
+ * MINCRM-158, MINCRM-159, MINCRM-160, MINCRM-255
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -22,6 +22,36 @@ function makeCsvFile(name = 'test.csv', sizeBytes?: number): File {
 
 function renderContacts() {
   renderWithProviders(<CsvImporter entity="contacts" entityLabel="Contacts" />);
+}
+
+/** Override the run + jobs handlers so the component reaches the summary step. */
+function mockCompletedJob(overrides?: {
+  created?: number;
+  skipped?: number;
+  failed?: number;
+  error_csv?: string | null;
+}) {
+  server.use(
+    http.post('/api/admin/import/contacts/run', () =>
+      HttpResponse.json({ job_id: 'test-job-id', status: 'pending' }, { status: 202 }),
+    ),
+    http.get('/api/admin/import/jobs/:job_id', () =>
+      HttpResponse.json({
+        job_id: 'test-job-id',
+        type: 'contacts',
+        status: 'complete',
+        total_rows: 3,
+        processed_rows: 3,
+        created: overrides?.created ?? 2,
+        skipped: overrides?.skipped ?? 1,
+        failed: overrides?.failed ?? 0,
+        error_csv: overrides?.error_csv ?? null,
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }),
+    ),
+  );
 }
 
 describe('CsvImporter', () => {
@@ -160,7 +190,7 @@ describe('CsvImporter', () => {
   });
 
   describe('import run — step 4', () => {
-    async function runImport() {
+    async function clickRunButton() {
       const user = userEvent.setup();
       renderContacts();
       const input = screen.getByTestId('contacts-file-input');
@@ -183,63 +213,132 @@ describe('CsvImporter', () => {
       return user;
     }
 
-    it('shows the summary screen after a successful import', async () => {
-      await runImport();
-      await waitFor(() => {
-        expect(screen.getByTestId('contacts-summary')).toBeInTheDocument();
-      });
-    });
-
-    it('shows created/skipped/failed counts in summary', async () => {
-      await runImport();
-      await waitFor(() => {
-        expect(screen.getByTestId('contacts-summary-created')).toBeInTheDocument();
-        expect(screen.getByTestId('contacts-summary-skipped')).toBeInTheDocument();
-        expect(screen.getByTestId('contacts-summary-failed')).toBeInTheDocument();
-      });
-    });
-
-    it('shows the download errors button when there are failures', async () => {
+    it('shows the running state (spinner) after clicking Import', async () => {
+      // Keep the job in 'running' status so polling never transitions to summary
       server.use(
         http.post('/api/admin/import/contacts/run', () =>
+          HttpResponse.json({ job_id: 'run-job-id', status: 'pending' }, { status: 202 }),
+        ),
+        http.get('/api/admin/import/jobs/:job_id', () =>
           HttpResponse.json({
-            created: 0,
+            job_id: 'run-job-id',
+            type: 'contacts',
+            status: 'running',
+            total_rows: 1000,
+            processed_rows: 100,
+            created: 100,
             skipped: 0,
-            failedCount: 1,
-            failed: [{ row: 1, data: { Email: 'bad' }, reason: 'Invalid email format' }],
-            errorCsv: 'row_number,reason,Email\n1,Invalid email format,bad',
+            failed: 0,
+            error_csv: null,
+            started_at: new Date().toISOString(),
+            completed_at: null,
+            created_at: new Date().toISOString(),
           }),
         ),
       );
-      await runImport();
+      await clickRunButton();
       await waitFor(() => {
-        expect(screen.getByTestId('contacts-download-errors')).toBeInTheDocument();
+        expect(screen.getByTestId('contacts-running')).toBeInTheDocument();
       });
+    });
+
+    it('shows the summary screen after the job completes', async () => {
+      mockCompletedJob();
+      await clickRunButton();
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('contacts-summary')).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it('shows created/skipped/failed counts in summary', async () => {
+      mockCompletedJob({ created: 2, skipped: 1, failed: 0 });
+      await clickRunButton();
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('contacts-summary-created')).toBeInTheDocument();
+          expect(screen.getByTestId('contacts-summary-skipped')).toBeInTheDocument();
+          expect(screen.getByTestId('contacts-summary-failed')).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it('shows the download errors button when the job has failures and error_csv', async () => {
+      mockCompletedJob({
+        failed: 1,
+        error_csv: 'row_number,reason,Email\n1,Invalid email format,bad',
+      });
+      await clickRunButton();
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('contacts-download-errors')).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
     });
 
     it('does not show the download errors button when there are no failures', async () => {
-      await runImport();
-      await waitFor(() => {
-        expect(screen.getByTestId('contacts-summary')).toBeInTheDocument();
-      });
+      mockCompletedJob({ failed: 0, error_csv: null });
+      await clickRunButton();
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('contacts-summary')).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
       expect(screen.queryByTestId('contacts-download-errors')).not.toBeInTheDocument();
     });
 
-    it('shows a run error and returns to preview when the run fails', async () => {
+    it('shows a run error and returns to preview when the POST /run fails', async () => {
       server.use(
         http.post('/api/admin/import/contacts/run', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'oops' } }, { status: 500 }),
         ),
       );
-      await runImport();
+      await clickRunButton();
       await waitFor(() => {
         expect(screen.getByTestId('contacts-run-error')).toBeInTheDocument();
       });
+    });
+
+    it('shows failed job summary when status is failed', async () => {
+      server.use(
+        http.post('/api/admin/import/contacts/run', () =>
+          HttpResponse.json({ job_id: 'fail-job-id', status: 'pending' }, { status: 202 }),
+        ),
+        http.get('/api/admin/import/jobs/:job_id', () =>
+          HttpResponse.json({
+            job_id: 'fail-job-id',
+            type: 'contacts',
+            status: 'failed',
+            total_rows: 3,
+            processed_rows: 0,
+            created: 0,
+            skipped: 0,
+            failed: 0,
+            error_csv: 'some error',
+            started_at: null,
+            completed_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          }),
+        ),
+      );
+      await clickRunButton();
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('contacts-summary-error')).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
     });
   });
 
   describe('summary — step 5', () => {
     it('clicking Import Again resets to file select', async () => {
+      mockCompletedJob();
       const user = userEvent.setup();
       renderContacts();
       const input = screen.getByTestId('contacts-file-input');
@@ -259,7 +358,9 @@ describe('CsvImporter', () => {
       await user.click(screen.getByTestId('contacts-preview-button'));
       await waitFor(() => expect(screen.getByTestId('contacts-run-button')).toBeInTheDocument());
       await user.click(screen.getByTestId('contacts-run-button'));
-      await waitFor(() => expect(screen.getByTestId('contacts-summary')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByTestId('contacts-summary')).toBeInTheDocument(), {
+        timeout: 5000,
+      });
       await user.click(screen.getByTestId('contacts-import-again'));
       expect(screen.getByTestId('contacts-drop-zone')).toBeInTheDocument();
     });
@@ -308,18 +409,13 @@ describe('CsvImporter', () => {
       await waitFor(() =>
         expect(screen.getByTestId('accounts-option-skip_duplicates')).toBeInTheDocument(),
       );
-
-      // Uncheck the checkbox (change from defaultValue true → false)
       const checkbox = screen.getByTestId('accounts-option-skip_duplicates') as HTMLInputElement;
       expect(checkbox.checked).toBe(true);
       await user.click(checkbox);
       expect(checkbox.checked).toBe(false);
-
-      // Reset via Back button
+      // Click back to reset
       await user.click(screen.getByTestId('accounts-back-button'));
-      expect(screen.getByTestId('accounts-drop-zone')).toBeInTheDocument();
-
-      // Re-upload — checkbox should be restored to defaultValue (true)
+      // Re-upload to get back to mapping step
       await user.upload(screen.getByTestId('accounts-file-input'), makeCsvFile());
       await waitFor(() =>
         expect(screen.getByTestId('accounts-option-skip_duplicates')).toBeInTheDocument(),

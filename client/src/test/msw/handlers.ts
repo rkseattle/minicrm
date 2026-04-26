@@ -1096,14 +1096,26 @@ export const handlers = [
     return HttpResponse.json({ headers, fields, preview });
   }),
 
-  /** Import: POST /api/admin/import/:entity/run — returns import summary */
+  /** Import: POST /api/admin/import/:entity/run — returns job_id immediately (202) */
   http.post('/api/admin/import/:entity/run', () => {
+    return HttpResponse.json({ job_id: 'test-job-id', status: 'pending' }, { status: 202 });
+  }),
+
+  /** Import: GET /api/admin/import/jobs/:job_id — returns completed job status */
+  http.get('/api/admin/import/jobs/:job_id', () => {
     return HttpResponse.json({
+      job_id: 'test-job-id',
+      type: 'contacts',
+      status: 'complete',
+      total_rows: 3,
+      processed_rows: 3,
       created: 2,
       skipped: 1,
-      failedCount: 0,
-      failed: [],
-      errorCsv: '',
+      failed: 0,
+      error_csv: null,
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     });
   }),
 

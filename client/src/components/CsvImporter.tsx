@@ -1,18 +1,21 @@
 /**
  * CsvImporter — shared wizard component for importing CRM data from CSV files.
- * Steps: 1) file select → 2) column mapping → 3) preview → 4) confirm + run → 5) summary.
+ * Steps: 1) file select → 2) column mapping → 3) preview → 4) confirm + run → 5) progress → 6) summary.
  * Used by AdminSettingsPage for accounts, contacts, and deals.
- * MINCRM-158, MINCRM-159, MINCRM-160
+ * MINCRM-158, MINCRM-159, MINCRM-160, MINCRM-255
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
-import { parseCsv, runImport } from '@/api/import.js';
-import type { CrmField, ImportEntity, ParseResponse, ImportRunResponse } from '@/api/import.js';
+import { parseCsv, startImport, getImportJob } from '@/api/import.js';
+import type { CrmField, ImportEntity, ParseResponse, ImportJobResponse } from '@/api/import.js';
 
 /** Max file size in bytes exposed to the UI (10 MB) */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+/** How often to poll the job status endpoint while the import is running */
+const POLL_INTERVAL_MS = 2000;
 
 type WizardStep = 'select' | 'mapping' | 'preview' | 'running' | 'summary';
 
@@ -33,11 +36,7 @@ export interface CsvImporterOption {
 }
 
 /**
- * Multi-step CSV import wizard.
- *
- * @param entity - The CRM entity type.
- * @param entityLabel - Human-readable entity name for headings.
- * @param options - Optional boolean flags for entity-specific behavior.
+ * Multi-step CSV import wizard with background job polling.
  */
 export default function CsvImporter({ entity, entityLabel, options = [] }: CsvImporterProps) {
   const { t } = useTranslation();
@@ -57,16 +56,56 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     Object.fromEntries(options.map((o) => [o.key, o.defaultValue])),
   );
 
-  const [summary, setSummary] = useState<ImportRunResponse | null>(null);
+  // Background job tracking (MINCRM-255)
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobData, setJobData] = useState<ImportJobResponse | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // ── Progress polling ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!jobId || step !== 'running') return;
+
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let elapsedTimer: ReturnType<typeof setInterval> | null = null;
+
+    setElapsedSeconds(0);
+    elapsedTimer = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    async function poll(): Promise<void> {
+      if (cancelled) return;
+      try {
+        const job = await getImportJob(jobId!);
+        if (cancelled) return;
+        setJobData(job);
+        if (job.status === 'complete' || job.status === 'failed') {
+          if (elapsedTimer) clearInterval(elapsedTimer);
+          setStep('summary');
+        } else {
+          timerId = setTimeout(() => void poll(), POLL_INTERVAL_MS);
+        }
+      } catch {
+        if (!cancelled) {
+          timerId = setTimeout(() => void poll(), POLL_INTERVAL_MS);
+        }
+      }
+    }
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+      if (elapsedTimer) clearInterval(elapsedTimer);
+    };
+  }, [jobId, step]);
 
   // ── Step 1: File selection ─────────────────────────────────────────────────
 
-  /**
-   * Validates and stores the selected file, then triggers CSV parsing.
-   *
-   * @param selectedFile - The File chosen by the user.
-   */
   async function handleFileSelect(selectedFile: File): Promise<void> {
     setFileError(null);
     setParseError(null);
@@ -87,7 +126,6 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     try {
       const parsed = await parseCsv(entity, selectedFile);
       setParseData(parsed);
-      // Auto-map CSV headers to CRM fields when the names match exactly (case-insensitive)
       const autoMapping: Record<string, string> = {};
       for (const field of parsed.fields) {
         const match = parsed.headers.find(
@@ -106,21 +144,11 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     }
   }
 
-  /**
-   * Handles a file input change event.
-   *
-   * @param e - The change event from the file input.
-   */
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const selected = e.target.files?.[0];
     if (selected) void handleFileSelect(selected);
   }
 
-  /**
-   * Handles drag-and-drop file drops.
-   *
-   * @param e - The DragEvent.
-   */
   function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
     e.preventDefault();
     const dropped = e.dataTransfer.files[0];
@@ -129,19 +157,10 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
 
   // ── Step 2: Column mapping ─────────────────────────────────────────────────
 
-  /**
-   * Updates the column mapping for a single CRM field.
-   *
-   * @param fieldKey - The CRM field key being mapped.
-   * @param csvHeader - The CSV column header to map it to, or '' to unmap.
-   */
   function handleMappingChange(fieldKey: string, csvHeader: string): void {
     setMapping((prev) => ({ ...prev, [fieldKey]: csvHeader }));
   }
 
-  /**
-   * Returns true when all required CRM fields have a non-empty mapping.
-   */
   function isMappingComplete(): boolean {
     if (!parseData) return false;
     return parseData.fields
@@ -151,12 +170,6 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
 
   // ── Step 3: Preview ────────────────────────────────────────────────────────
 
-  /**
-   * Gets the display value for a preview cell given the current mapping.
-   *
-   * @param row - The preview row object.
-   * @param fieldKey - The CRM field key.
-   */
   function getMappedValue(row: Record<string, string>, fieldKey: string): string {
     const header = mapping[fieldKey];
     if (!header) return '';
@@ -165,21 +178,17 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
 
   // ── Step 4: Run import ─────────────────────────────────────────────────────
 
-  /**
-   * Runs the import against the server.
-   */
   async function handleRunImport(): Promise<void> {
     if (!file) return;
     setStep('running');
     setRunError(null);
+    setJobData(null);
     try {
-      // Strip empty mappings before sending
       const cleanMapping: Record<string, string> = Object.fromEntries(
         Object.entries(mapping).filter(([, v]) => v.length > 0),
       );
-      const result = await runImport(entity, file, cleanMapping, optionValues);
-      setSummary(result);
-      setStep('summary');
+      const result = await startImport(entity, file, cleanMapping, optionValues);
+      setJobId(result.job_id);
     } catch (err) {
       const message = err instanceof Error ? err.message : t('import.error.runFailed');
       setRunError(message);
@@ -189,12 +198,9 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
 
   // ── Step 5: Download error report ─────────────────────────────────────────
 
-  /**
-   * Triggers a browser download of the error report CSV.
-   */
   function handleDownloadErrors(): void {
-    if (!summary?.errorCsv) return;
-    const blob = new Blob([summary.errorCsv], { type: 'text/csv' });
+    if (!jobData?.error_csv) return;
+    const blob = new Blob([jobData.error_csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -205,9 +211,6 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
 
   // ── Reset ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Resets the wizard back to the file selection step.
-   */
   function handleReset(): void {
     setStep('select');
     setFile(null);
@@ -216,9 +219,18 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     setParseError(null);
     setMapping({});
     setOptionValues(Object.fromEntries(options.map((o) => [o.key, o.defaultValue])));
-    setSummary(null);
+    setJobId(null);
+    setJobData(null);
     setRunError(null);
+    setElapsedSeconds(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  // ── Progress bar helpers ───────────────────────────────────────────────────
+
+  function progressPercent(): number {
+    if (!jobData?.total_rows || jobData.total_rows === 0) return 0;
+    return Math.min(100, Math.round((jobData.processed_rows / jobData.total_rows) * 100));
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -443,38 +455,134 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
         </div>
       )}
 
-      {/* Step 4: Running */}
+      {/* Step 4: Running — progress bar */}
       {step === 'running' && (
-        <p className="text-sm text-gray-500" data-testid={`${entity}-running`}>
-          {t('import.running', { entity: entityLabel })}
-        </p>
+        <div data-testid={`${entity}-running`} className="space-y-4">
+          <div className="flex items-center gap-2">
+            <svg
+              className="animate-spin h-4 w-4 text-indigo-600 shrink-0"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            <p className="text-sm text-gray-600">{t('import.running', { entity: entityLabel })}</p>
+          </div>
+
+          {/* Progress bar */}
+          {jobData && jobData.total_rows !== null && (
+            <>
+              <div
+                role="progressbar"
+                aria-valuenow={progressPercent()}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={t('import.progressLabel')}
+                data-testid={`${entity}-progress-bar`}
+                className="w-full bg-gray-200 rounded-full h-2"
+              >
+                <div
+                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercent()}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500" data-testid={`${entity}-progress-text`}>
+                {t('import.progressText', {
+                  processed: jobData.processed_rows,
+                  total: jobData.total_rows,
+                  percent: progressPercent(),
+                })}
+              </p>
+            </>
+          )}
+
+          {/* Live counters */}
+          {jobData && (
+            <ul className="text-xs text-gray-600 space-y-0.5">
+              <li data-testid={`${entity}-progress-created`}>
+                {t('import.progressCreated', { count: jobData.created })}
+              </li>
+              <li data-testid={`${entity}-progress-skipped`}>
+                {t('import.progressSkipped', { count: jobData.skipped })}
+              </li>
+              <li data-testid={`${entity}-progress-failed`}>
+                {t('import.progressFailed', { count: jobData.failed })}
+              </li>
+            </ul>
+          )}
+
+          {/* Elapsed time */}
+          <p className="text-xs text-gray-400" data-testid={`${entity}-elapsed`}>
+            {t('import.elapsed', { seconds: elapsedSeconds })}
+          </p>
+        </div>
       )}
 
       {/* Step 5: Summary */}
-      {step === 'summary' && summary && (
+      {step === 'summary' && jobData && (
         <div data-testid={`${entity}-summary`}>
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">{t('import.summaryHeading')}</h3>
-          <ul className="space-y-1 text-sm text-gray-700 mb-4">
-            <li data-testid={`${entity}-summary-created`}>
-              {t('import.summaryCreated', { count: summary.created })}
-            </li>
-            <li data-testid={`${entity}-summary-skipped`}>
-              {t('import.summarySkipped', { count: summary.skipped })}
-            </li>
-            <li data-testid={`${entity}-summary-failed`}>
-              {t('import.summaryFailed', { count: summary.failedCount })}
-            </li>
-          </ul>
+          {jobData.status === 'failed' ? (
+            <>
+              <p
+                role="alert"
+                className="text-sm text-red-600 mb-3"
+                data-testid={`${entity}-summary-error`}
+              >
+                {t('import.summaryFailedJob')}
+              </p>
+              {jobData.error_csv && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  data-testid={`${entity}-download-errors`}
+                  onClick={handleDownloadErrors}
+                >
+                  {t('import.downloadErrors')}
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                {t('import.summaryHeading')}
+              </h3>
+              <ul className="space-y-1 text-sm text-gray-700 mb-4">
+                <li data-testid={`${entity}-summary-created`}>
+                  {t('import.summaryCreated', { count: jobData.created })}
+                </li>
+                <li data-testid={`${entity}-summary-skipped`}>
+                  {t('import.summarySkipped', { count: jobData.skipped })}
+                </li>
+                <li data-testid={`${entity}-summary-failed`}>
+                  {t('import.summaryFailed', { count: jobData.failed })}
+                </li>
+              </ul>
 
-          {summary.failedCount > 0 && summary.errorCsv && (
-            <Button
-              variant="secondary"
-              size="md"
-              data-testid={`${entity}-download-errors`}
-              onClick={handleDownloadErrors}
-            >
-              {t('import.downloadErrors')}
-            </Button>
+              {jobData.failed > 0 && jobData.error_csv && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  data-testid={`${entity}-download-errors`}
+                  onClick={handleDownloadErrors}
+                >
+                  {t('import.downloadErrors')}
+                </Button>
+              )}
+            </>
           )}
 
           <div className="mt-4">
