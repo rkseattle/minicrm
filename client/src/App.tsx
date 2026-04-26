@@ -14,6 +14,7 @@ import LoginPage from '@/pages/LoginPage.js';
 import ChangePasswordPage from '@/pages/ChangePasswordPage.js';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage.js';
 import ResetPasswordPage from '@/pages/ResetPasswordPage.js';
+import SetPasswordPage from '@/pages/SetPasswordPage.js';
 import DashboardPage from '@/pages/DashboardPage.js';
 import ContactsPage from '@/pages/ContactsPage.js';
 import ContactDetailPage from '@/pages/ContactDetailPage.js';
@@ -62,6 +63,7 @@ function AppRoutes() {
       <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/set-password" element={<SetPasswordPage />} />
 
       {/* Authenticated routes */}
       <Route element={<ProtectedRoute />}>

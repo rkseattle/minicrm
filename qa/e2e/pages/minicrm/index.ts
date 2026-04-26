@@ -34,6 +34,9 @@ export type { ForgotPasswordPageContext } from './ForgotPasswordPage.js';
 export { ResetPasswordPage } from './ResetPasswordPage.js';
 export type { ResetPasswordPageContext } from './ResetPasswordPage.js';
 
+export { SetPasswordPage } from './SetPasswordPage.js';
+export type { SetPasswordPageContext } from './SetPasswordPage.js';
+
 export { LeadsPage } from './LeadsPage.js';
 export type { LeadsPageContext } from './LeadsPage.js';
 

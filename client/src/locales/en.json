@@ -58,6 +58,23 @@
     "tokenMissing": "This reset link is invalid or has expired.",
     "requestNewLink": "Request a new reset link"
   },
+  "setPassword": {
+    "title": "Set your password",
+    "newPasswordLabel": "Password",
+    "newPasswordPlaceholder": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "submitButton": "Set password",
+    "submitting": "Saving…",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "Password must be at least {{min}} characters.",
+    "passwordComplexity": "Password must contain at least one letter and one number.",
+    "tokenMissing": "This invite link is invalid or has expired.",
+    "tokenAlreadyUsed": "This account has already been activated.",
+    "successRedirect": "Password set. You can now log in.",
+    "loginLink": "Go to login"
+  },
   "users": {
     "pageTitle": "User Management",
     "inviteButton": "Invite user",

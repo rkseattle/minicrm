@@ -58,6 +58,23 @@
     "tokenMissing": "Este enlace de restablecimiento es inválido o ha expirado.",
     "requestNewLink": "Solicitar un nuevo enlace de restablecimiento"
   },
+  "setPassword": {
+    "title": "Establezca su contraseña",
+    "newPasswordLabel": "Contraseña",
+    "newPasswordPlaceholder": "Contraseña",
+    "confirmPasswordLabel": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Confirmar contraseña",
+    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "submitButton": "Establecer contraseña",
+    "submitting": "Guardando…",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
+    "passwordComplexity": "La contraseña debe contener al menos una letra y un número.",
+    "tokenMissing": "Este enlace de invitación es inválido o ha expirado.",
+    "tokenAlreadyUsed": "Esta cuenta ya ha sido activada.",
+    "successRedirect": "Contraseña establecida. Ya puede iniciar sesión.",
+    "loginLink": "Ir al inicio de sesión"
+  },
   "users": {
     "pageTitle": "Gestión de usuarios",
     "inviteButton": "Invitar usuario",

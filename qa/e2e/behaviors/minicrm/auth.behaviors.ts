@@ -16,6 +16,7 @@ import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
 import { ResetPasswordPage } from '@pages/minicrm/ResetPasswordPage.js';
+import { SetPasswordPage } from '@pages/minicrm/SetPasswordPage.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -463,5 +464,67 @@ export async function resetPassword(
   const finalUrl = context.page.url();
   const errorMessage = await resetPage.errorMessage();
   const success = new URL(finalUrl).pathname !== '/reset-password';
+  return { success, finalUrl, errorMessage };
+}
+
+// ---------------------------------------------------------------------------
+// setPassword()
+// ---------------------------------------------------------------------------
+
+/** Result returned by the setPassword behavior. */
+export interface SetPasswordResult {
+  /** True when the set-password succeeded (the page navigated away from /set-password). */
+  success: boolean;
+  /** The URL the browser settled on after the attempt. */
+  finalUrl: string;
+  /** The error message text shown by the form, or null when succeeded. */
+  errorMessage: string | null;
+}
+
+/**
+ * Navigates to /set-password with the given invite token, fills the password
+ * and confirm fields, submits, and waits for the page to settle.
+ *
+ * Returns a result object — the caller is responsible for assertions.
+ *
+ * @param token - The plaintext invite token from the email link.
+ * @param newPassword - The desired password.
+ * @param confirmPassword - Must match newPassword.
+ * @param context - Playwright fixture context.
+ * @returns SetPasswordResult.
+ */
+export async function setPassword(
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+  context: AuthBehaviorContext,
+): Promise<SetPasswordResult> {
+  const setPasswordPage = new SetPasswordPage(context);
+
+  await setPasswordPage.navigate(token);
+  await setPasswordPage.fillNewPassword(newPassword);
+  await setPasswordPage.fillConfirmPassword(confirmPassword);
+  await setPasswordPage.submit();
+
+  const TIMEOUT_MS = 10_000;
+  const setPasswordError = await context.page
+    .locate([
+      { type: 'testId', value: 'set-password-error' },
+      { type: 'css', value: '[data-testid="set-password-error"]' },
+    ])
+    .resolve()
+    .catch(() => null);
+  await Promise.race([
+    context.page
+      .waitForURL((url) => new URL(url).pathname !== '/set-password', { timeout: TIMEOUT_MS })
+      .catch(() => null),
+    setPasswordError
+      ? setPasswordError.waitFor({ state: 'visible', timeout: TIMEOUT_MS }).catch(() => null)
+      : Promise.resolve(),
+  ]);
+
+  const finalUrl = context.page.url();
+  const errorMessage = await setPasswordPage.errorMessage();
+  const success = new URL(finalUrl).pathname !== '/set-password';
   return { success, finalUrl, errorMessage };
 }
