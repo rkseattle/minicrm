@@ -58,6 +58,23 @@
     "tokenMissing": "Ce lien de réinitialisation est invalide ou a expiré.",
     "requestNewLink": "Demander un nouveau lien de réinitialisation"
   },
+  "setPassword": {
+    "title": "Définissez votre mot de passe",
+    "newPasswordLabel": "Mot de passe",
+    "newPasswordPlaceholder": "Mot de passe",
+    "confirmPasswordLabel": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Confirmer le mot de passe",
+    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "submitButton": "Définir le mot de passe",
+    "submitting": "Enregistrement…",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "passwordTooShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
+    "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "tokenMissing": "Ce lien d'invitation est invalide ou a expiré.",
+    "tokenAlreadyUsed": "Ce compte a déjà été activé.",
+    "successRedirect": "Mot de passe défini. Vous pouvez maintenant vous connecter.",
+    "loginLink": "Aller à la connexion"
+  },
   "users": {
     "pageTitle": "Gestion des utilisateurs",
     "inviteButton": "Inviter un utilisateur",

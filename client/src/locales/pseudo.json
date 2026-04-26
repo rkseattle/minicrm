@@ -58,6 +58,23 @@
     "tokenMissing": "[Thïŝ rëŝët lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~]",
     "requestNewLink": "[Rëqüëŝt ä ñëw rëŝët lïñk~~~~~~~~]"
   },
+  "setPassword": {
+    "title": "[Ŝët yöür päŝŝwörd~~~~~]",
+    "newPasswordLabel": "[Päŝŝwörd~~~~]",
+    "newPasswordPlaceholder": "[Päŝŝwörd~~~~]",
+    "confirmPasswordLabel": "[Ĉöñfïrm päŝŝwörd~~~~~]",
+    "confirmPasswordPlaceholder": "[Ĉöñfïrm päŝŝwörd~~~~~]",
+    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, äñd öñë ñümbër.~~~~~~~~~~~~~~~~~]",
+    "submitButton": "[Ŝët päŝŝwörd~~~~]",
+    "submitting": "[Ŝävïñg…~~~]",
+    "passwordMismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
+    "passwordTooShort": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ.~~~~~~~~~~~~~~]",
+    "passwordComplexity": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~]",
+    "tokenMissing": "[Thïŝ ïñvïtë lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~~]",
+    "tokenAlreadyUsed": "[Thïŝ äĉĉöüñt häŝ älrëädy bëëñ äĉtïvätëd.~~~~~~~~~~~~~~~]",
+    "successRedirect": "[Päŝŝwörd ŝët. Yöü ĉäñ ñöw lög ïñ.~~~~~~~~~~~]",
+    "loginLink": "[Gö tö lögïñ~~~~]"
+  },
   "users": {
     "pageTitle": "[Üŝër Mäñägëmëñt~~~~~]",
     "inviteButton": "[Ïñvïtë üŝër~~~~]",

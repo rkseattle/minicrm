@@ -58,6 +58,23 @@
     "tokenMissing": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "requestNewLink": "Neuen Zurücksetzungslink anfordern"
   },
+  "setPassword": {
+    "title": "Legen Sie Ihr Passwort fest",
+    "newPasswordLabel": "Passwort",
+    "newPasswordPlaceholder": "Passwort",
+    "confirmPasswordLabel": "Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Passwort bestätigen",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "submitButton": "Passwort festlegen",
+    "submitting": "Wird gespeichert…",
+    "passwordMismatch": "Passwörter stimmen nicht überein.",
+    "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen lang sein.",
+    "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten.",
+    "tokenMissing": "Dieser Einladungslink ist ungültig oder abgelaufen.",
+    "tokenAlreadyUsed": "Dieses Konto wurde bereits aktiviert.",
+    "successRedirect": "Passwort festgelegt. Sie können sich jetzt anmelden.",
+    "loginLink": "Zur Anmeldung"
+  },
   "users": {
     "pageTitle": "Benutzerverwaltung",
     "inviteButton": "Benutzer einladen",

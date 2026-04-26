@@ -58,6 +58,23 @@
     "tokenMissing": "此重置链接无效或已过期。",
     "requestNewLink": "请求新的重置链接"
   },
+  "setPassword": {
+    "title": "设置您的密码",
+    "newPasswordLabel": "密码",
+    "newPasswordPlaceholder": "密码",
+    "confirmPasswordLabel": "确认密码",
+    "confirmPasswordPlaceholder": "确认密码",
+    "passwordHint": "至少 {{min}} 个字符，包含至少一个字母和一个数字。",
+    "submitButton": "设置密码",
+    "submitting": "保存中…",
+    "passwordMismatch": "密码不匹配。",
+    "passwordTooShort": "密码至少需要 {{min}} 个字符。",
+    "passwordComplexity": "密码必须包含至少一个字母和一个数字。",
+    "tokenMissing": "此邀请链接无效或已过期。",
+    "tokenAlreadyUsed": "此账户已被激活。",
+    "successRedirect": "密码已设置。您现在可以登录。",
+    "loginLink": "前往登录"
+  },
   "users": {
     "pageTitle": "用户管理",
     "inviteButton": "邀请用户",
