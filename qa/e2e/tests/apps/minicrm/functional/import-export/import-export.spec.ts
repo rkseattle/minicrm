@@ -63,14 +63,32 @@ async function importRun(
   csvBuffer: Buffer,
   mapping: Record<string, string | boolean>,
 ): Promise<{ status: number; body: ImportSummaryResponse }> {
-  const response = await request.post(`${BASE_URL}/api/admin/import/${entity}/run`, {
+  const runResponse = await request.post(`${BASE_URL}/api/admin/import/${entity}/run`, {
     multipart: {
       file: { name: `${entity}.csv`, mimeType: 'text/csv', buffer: csvBuffer },
       mapping: JSON.stringify(mapping),
     },
   });
-  const body = (await response.json()) as ImportSummaryResponse;
-  return { status: response.status(), body };
+
+  const runStatus = runResponse.status();
+  if (runStatus !== 202) {
+    const body = (await runResponse.json()) as ImportSummaryResponse;
+    return { status: runStatus, body };
+  }
+
+  const { job_id } = (await runResponse.json()) as { job_id: string; status: string };
+
+  // Poll until the job reaches a terminal state (complete | failed)
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 500));
+    const jobResponse = await request.get(`${BASE_URL}/api/admin/import/jobs/${job_id}`);
+    const job = (await jobResponse.json()) as ImportSummaryResponse & { status: string };
+    if (job.status === 'complete' || job.status === 'failed') {
+      return { status: 200, body: job };
+    }
+  }
+  throw new Error(`importRun: job ${job_id} did not complete within 60 s`);
 }
 
 /**
@@ -131,18 +149,13 @@ function dealsCsv(rows: Array<{ name: string; stage: string; account_name: strin
 // Shared types
 // ---------------------------------------------------------------------------
 
-interface ImportFailure {
-  row: number;
-  data: Record<string, string>;
-  reason: string;
-}
-
 interface ImportSummaryResponse {
+  job_id?: string;
+  status?: string;
   created: number;
   skipped: number;
-  failedCount: number;
-  failed: ImportFailure[];
-  errorCsv: string | null;
+  failed: number;
+  error_csv?: string | null;
 }
 
 interface ContactListResponse {
@@ -185,7 +198,7 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
   const ran = await importRun(request, 'contacts', csvBuffer, mapping);
   expect(ran.status, 'run should succeed').toBe(200);
   expect(ran.body.created, 'two contacts should be created').toBe(2);
-  expect(ran.body.failedCount, 'no failures expected').toBe(0);
+  expect(ran.body.failed, 'no failures expected').toBe(0);
 
   // Verify contacts are queryable via API
   const listResponse = await restClient.get<ContactListResponse>(
@@ -224,7 +237,7 @@ test('@functional F11-IC2: Upload a contacts CSV with a missing required field (
   if (ran.status === 200) {
     expect(ran.body.created, 'no contacts should be created without email').toBe(0);
     expect(
-      ran.body.failedCount + ran.body.skipped,
+      ran.body.failed + ran.body.skipped,
       'row should be counted as failed or skipped',
     ).toBeGreaterThan(0);
   }
