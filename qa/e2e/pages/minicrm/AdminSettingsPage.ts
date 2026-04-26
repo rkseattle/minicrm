@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-163, MINCRM-192
+ * MINCRM-163, MINCRM-192, MINCRM-259
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -23,6 +23,15 @@ export interface AdminSettingsPageContext {
   page: PageFacade;
 }
 
+/** Valid tab keys for the Admin Settings page (MINCRM-259). */
+export type AdminSettingsTab =
+  | 'general'
+  | 'notifications'
+  | 'currency'
+  | 'customisation'
+  | 'data'
+  | 'integrations';
+
 // ---------------------------------------------------------------------------
 // AdminSettingsPage
 // ---------------------------------------------------------------------------
@@ -33,7 +42,7 @@ export interface AdminSettingsPageContext {
  * Usage:
  * ```ts
  * const adminSettings = new AdminSettingsPage({ page });
- * await adminSettings.navigate();
+ * await adminSettings.navigate('notifications');
  * await adminSettings.toggleEmailNotifications();
  * const enabled = await adminSettings.emailNotificationsIsEnabled();
  * ```
@@ -56,10 +65,15 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /**
-   * Navigates directly to the admin settings page URL.
+   * Navigates directly to the admin settings page, optionally deep-linking to
+   * a specific tab via the ?tab= URL param. This avoids viewport-dependent tab
+   * interaction (desktop buttons vs mobile <select>) and works in all layouts.
+   *
+   * @param tab - Optional tab to land on. Defaults to 'general'.
    */
-  async navigate(): Promise<void> {
-    await this.page.goto(AdminSettingsPage.PATH);
+  async navigate(tab?: AdminSettingsTab): Promise<void> {
+    const path = tab ? `${AdminSettingsPage.PATH}?tab=${tab}` : AdminSettingsPage.PATH;
+    await this.page.goto(path);
   }
 
   // ---------------------------------------------------------------------------

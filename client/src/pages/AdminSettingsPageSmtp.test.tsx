@@ -13,11 +13,17 @@ import AdminSettingsPage from './AdminSettingsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 
+function renderOnNotificationsTab() {
+  return renderWithProviders(<AdminSettingsPage />, {
+    initialEntries: ['/?tab=notifications'],
+  });
+}
+
 describe('AdminSettingsPage — SMTP section', () => {
   describe('loading state', () => {
     it('shows loading text while fetching SMTP config', async () => {
       server.use(http.get('/api/settings/smtp', () => new Promise(() => {})));
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-loading')).toBeInTheDocument();
       });
@@ -31,7 +37,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-load-error')).toBeInTheDocument();
       });
@@ -40,7 +46,7 @@ describe('AdminSettingsPage — SMTP section', () => {
 
   describe('form rendering', () => {
     it('renders the SMTP section with all form fields', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-section')).toBeInTheDocument();
       });
@@ -52,7 +58,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     });
 
     it('shows the password input directly when no password is set', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-pass-input')).toBeInTheDocument();
       });
@@ -71,7 +77,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-pass-masked')).toBeInTheDocument();
       });
@@ -92,7 +98,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-change-password-button')).toBeInTheDocument();
       });
@@ -114,7 +120,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-change-password-button')).toBeInTheDocument();
       });
@@ -129,7 +135,7 @@ describe('AdminSettingsPage — SMTP section', () => {
   describe('save action', () => {
     it('shows success message after save', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-save-button')).toBeInTheDocument();
       });
@@ -146,7 +152,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-save-button')).toBeInTheDocument();
       });
@@ -159,7 +165,7 @@ describe('AdminSettingsPage — SMTP section', () => {
 
   describe('test email', () => {
     it('renders the test email section', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-test-address-input')).toBeInTheDocument();
         expect(screen.getByTestId('smtp-test-button')).toBeInTheDocument();
@@ -168,7 +174,7 @@ describe('AdminSettingsPage — SMTP section', () => {
 
     it('shows success result after a successful test send', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-test-address-input')).toBeInTheDocument();
       });
@@ -186,7 +192,7 @@ describe('AdminSettingsPage — SMTP section', () => {
           HttpResponse.json({ success: false, error: 'Connection refused' }),
         ),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-test-address-input')).toBeInTheDocument();
       });
@@ -198,7 +204,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     });
 
     it('disables test button when no address is entered', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-test-button')).toBeDisabled();
       });
@@ -208,7 +214,7 @@ describe('AdminSettingsPage — SMTP section', () => {
   describe('enabled toggle', () => {
     it('toggles smtp_enabled state when clicked', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-enabled-toggle')).toBeInTheDocument();
       });

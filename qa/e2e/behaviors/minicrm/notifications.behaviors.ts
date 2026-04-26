@@ -265,7 +265,7 @@ export async function navigateToAdminSettings(
   context: NotificationsBehaviorContext,
 ): Promise<NavigateToAdminSettingsResult> {
   const adminSettings = new AdminSettingsPage(context);
-  await adminSettings.navigate();
+  await adminSettings.navigate('notifications');
 
   const sectionVisible = await adminSettings.emailNotificationsSectionIsVisible();
   const toggleVisible = await adminSettings.emailNotificationsToggleIsVisible();
@@ -299,7 +299,7 @@ export async function toggleAdminEmailNotifications(
   context: NotificationsBehaviorContext,
 ): Promise<ToggleAdminEmailNotificationsResult> {
   const adminSettings = new AdminSettingsPage(context);
-  await adminSettings.navigate();
+  await adminSettings.navigate('notifications');
 
   await adminSettings.toggleEmailNotifications();
 

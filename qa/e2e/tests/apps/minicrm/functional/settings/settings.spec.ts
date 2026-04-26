@@ -46,8 +46,8 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   // Log in via the UI
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  // Navigate to Admin Settings
-  await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+  // Navigate to Admin Settings — currency tab required for exchange-rates-section
+  await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
   // Wait for the exchange rates section to be visible
   const section = await page
@@ -100,8 +100,8 @@ test('admin can configure exchange rates and reload to confirm persistence @func
     .resolve();
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
-  // Reload and verify persistence
-  await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+  // Reload and verify persistence — deep-link back to currency tab
+  await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
   const sectionAfterReload = await page
     .locate([{ type: 'testId', value: 'exchange-rates-section' }])
     .resolve();
