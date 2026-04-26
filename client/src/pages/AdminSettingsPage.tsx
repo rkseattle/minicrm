@@ -21,6 +21,10 @@ import {
   getCurrenciesConfig,
   updateCurrenciesConfig,
   CURRENCIES_CONFIG_QUERY_KEY,
+  getSmtpConfig,
+  setSmtpConfig,
+  testSmtpConfig,
+  SMTP_CONFIG_QUERY_KEY,
 } from '@/api/settings.js';
 import {
   getDemoStatus,
@@ -763,6 +767,103 @@ export default function AdminSettingsPage() {
   // Currency codes already in use (home or non-home) — excluded from the add picker
   const usedCurrencyCodes = new Set([homeCurrency, ...rateRows.map((r) => r.code)]);
 
+  // ── SMTP configuration (MINCRM-254) ─────────────────────────────────────────
+
+  const {
+    data: smtpData,
+    isLoading: smtpLoading,
+    isError: smtpLoadError,
+  } = useQuery({
+    queryKey: SMTP_CONFIG_QUERY_KEY,
+    queryFn: getSmtpConfig,
+  });
+
+  const [smtpForm, setSmtpForm] = useState({
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_enabled: false,
+  });
+  // Whether the admin has clicked "Change password" to reveal the password input
+  const [smtpChangePassword, setSmtpChangePassword] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpSaveSuccess, setSmtpSaveSuccess] = useState(false);
+  const [smtpSaveError, setSmtpSaveError] = useState(false);
+  const [smtpTestAddress, setSmtpTestAddress] = useState('');
+  const [smtpTestStatus, setSmtpTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>(
+    'idle',
+  );
+  const [smtpTestErrorMessage, setSmtpTestErrorMessage] = useState('');
+
+  // Populate form from server data once loaded
+  useEffect(() => {
+    if (smtpData) {
+      setSmtpForm((prev) => ({
+        smtp_host: smtpData.smtp_host,
+        smtp_port: smtpData.smtp_port,
+        smtp_user: smtpData.smtp_user,
+        // Keep local password field empty — we only send it if the admin typed a new value
+        smtp_pass: prev.smtp_pass,
+        smtp_enabled: smtpData.smtp_enabled,
+      }));
+      // Reset change-password mode if server already has a password set
+      if (smtpData.smtp_pass_set) {
+        setSmtpChangePassword(false);
+      }
+    }
+  }, [smtpData]);
+
+  /**
+   * Saves the SMTP form. Omits smtp_pass from the payload when the admin has not
+   * entered a new password (masked placeholder is shown).
+   *
+   * @param e - Form submit event.
+   */
+  async function handleSmtpSave(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault();
+    setSmtpSaving(true);
+    setSmtpSaveSuccess(false);
+    setSmtpSaveError(false);
+    const passwordIsChanging = smtpChangePassword || !smtpData?.smtp_pass_set;
+    try {
+      await setSmtpConfig({
+        smtp_host: smtpForm.smtp_host,
+        smtp_port: smtpForm.smtp_port,
+        smtp_user: smtpForm.smtp_user,
+        ...(passwordIsChanging && smtpForm.smtp_pass ? { smtp_pass: smtpForm.smtp_pass } : {}),
+        smtp_enabled: smtpForm.smtp_enabled,
+      });
+      await queryClient.invalidateQueries({ queryKey: SMTP_CONFIG_QUERY_KEY });
+      setSmtpSaveSuccess(true);
+      setSmtpChangePassword(false);
+      setSmtpForm((prev) => ({ ...prev, smtp_pass: '' }));
+    } catch {
+      setSmtpSaveError(true);
+    } finally {
+      setSmtpSaving(false);
+    }
+  }
+
+  /** Sends a test email and shows the inline result. */
+  async function handleSmtpTest(): Promise<void> {
+    if (!smtpTestAddress) return;
+    setSmtpTestStatus('sending');
+    setSmtpTestErrorMessage('');
+    try {
+      const result = await testSmtpConfig(smtpTestAddress);
+      if (result.success) {
+        setSmtpTestStatus('success');
+      } else {
+        setSmtpTestStatus('error');
+        setSmtpTestErrorMessage(result.error ?? t('settings.smtp.testError', { message: '' }));
+      }
+    } catch {
+      setSmtpTestStatus('error');
+      setSmtpTestErrorMessage(t('settings.smtp.testError', { message: t('errors.generic') }));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -1323,6 +1424,274 @@ export default function AdminSettingsPage() {
                 {t('settings.exchangeRates.saveButton')}
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* ── SMTP Configuration section (MINCRM-254) ──────────────────────── */}
+        {user?.role === 'admin' && (
+          <div
+            className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+            data-testid="smtp-section"
+          >
+            <h2
+              className="text-lg font-semibold text-gray-900 mb-1"
+              data-testid="smtp-section-title"
+            >
+              {t('settings.smtp.sectionTitle')}
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">{t('settings.smtp.sectionHint')}</p>
+
+            {smtpLoading && (
+              <p className="text-sm text-gray-500" data-testid="smtp-loading">
+                {t('settings.smtp.loading')}
+              </p>
+            )}
+            {smtpLoadError && (
+              <p role="alert" className="text-sm text-red-600" data-testid="smtp-load-error">
+                {t('settings.smtp.loadError')}
+              </p>
+            )}
+
+            {!smtpLoading && !smtpLoadError && (
+              <form onSubmit={(e) => void handleSmtpSave(e)} className="space-y-4">
+                {/* Host */}
+                <div>
+                  <label
+                    htmlFor="smtp-host"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    {t('settings.smtp.hostLabel')}
+                  </label>
+                  <input
+                    id="smtp-host"
+                    type="text"
+                    data-testid="smtp-host-input"
+                    value={smtpForm.smtp_host}
+                    onChange={(e) =>
+                      setSmtpForm((prev) => ({ ...prev, smtp_host: e.target.value }))
+                    }
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="smtp.example.com"
+                  />
+                </div>
+
+                {/* Port */}
+                <div>
+                  <label
+                    htmlFor="smtp-port"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    {t('settings.smtp.portLabel')}
+                  </label>
+                  <input
+                    id="smtp-port"
+                    type="number"
+                    data-testid="smtp-port-input"
+                    value={smtpForm.smtp_port}
+                    min={1}
+                    max={65535}
+                    onChange={(e) =>
+                      setSmtpForm((prev) => ({
+                        ...prev,
+                        smtp_port: parseInt(e.target.value, 10) || 587,
+                      }))
+                    }
+                    className="block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Username */}
+                <div>
+                  <label
+                    htmlFor="smtp-user"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    {t('settings.smtp.usernameLabel')}
+                  </label>
+                  <input
+                    id="smtp-user"
+                    type="text"
+                    data-testid="smtp-user-input"
+                    value={smtpForm.smtp_user}
+                    onChange={(e) =>
+                      setSmtpForm((prev) => ({ ...prev, smtp_user: e.target.value }))
+                    }
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Password — change-password toggle pattern */}
+                <div>
+                  <label
+                    htmlFor="smtp-pass"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    {t('settings.smtp.passwordLabel')}
+                  </label>
+                  {smtpData?.smtp_pass_set && !smtpChangePassword ? (
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-gray-400" data-testid="smtp-pass-masked">
+                        {t('settings.smtp.passwordSet')}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        data-testid="smtp-change-password-button"
+                        onClick={() => setSmtpChangePassword(true)}
+                      >
+                        {t('settings.smtp.changePasswordButton')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="smtp-pass"
+                        type="password"
+                        data-testid="smtp-pass-input"
+                        value={smtpForm.smtp_pass}
+                        onChange={(e) =>
+                          setSmtpForm((prev) => ({ ...prev, smtp_pass: e.target.value }))
+                        }
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        autoComplete="new-password"
+                      />
+                      {smtpData?.smtp_pass_set && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          data-testid="smtp-cancel-password-button"
+                          onClick={() => {
+                            setSmtpChangePassword(false);
+                            setSmtpForm((prev) => ({ ...prev, smtp_pass: '' }));
+                          }}
+                        >
+                          {t('settings.smtp.cancelPasswordButton')}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Enable/disable toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={smtpForm.smtp_enabled}
+                    data-testid="smtp-enabled-toggle"
+                    onClick={() =>
+                      setSmtpForm((prev) => ({ ...prev, smtp_enabled: !prev.smtp_enabled }))
+                    }
+                    className={[
+                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+                      smtpForm.smtp_enabled ? 'bg-indigo-600' : 'bg-gray-200',
+                    ].join(' ')}
+                  >
+                    <span
+                      className={[
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                        smtpForm.smtp_enabled ? 'translate-x-5' : 'translate-x-0',
+                      ].join(' ')}
+                    />
+                  </button>
+                  <span className="text-sm font-medium text-gray-700">
+                    {smtpForm.smtp_enabled
+                      ? t('settings.smtp.enabledOn')
+                      : t('settings.smtp.enabledOff')}
+                  </span>
+                </div>
+
+                {/* Save feedback */}
+                {smtpSaveSuccess && (
+                  <p
+                    role="status"
+                    className="text-sm text-green-700"
+                    data-testid="smtp-save-success"
+                  >
+                    {t('settings.smtp.saveSuccess')}
+                  </p>
+                )}
+                {smtpSaveError && (
+                  <p role="alert" className="text-sm text-red-600" data-testid="smtp-save-error">
+                    {t('settings.smtp.saveError')}
+                  </p>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    data-testid="smtp-save-button"
+                    disabled={smtpSaving}
+                  >
+                    {smtpSaving ? t('settings.saving') : t('settings.smtp.saveButton')}
+                  </Button>
+                </div>
+
+                {/* ── Test email row ── */}
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">
+                    {t('settings.smtp.testSectionTitle')}
+                  </p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex-1 min-w-0">
+                      <label
+                        htmlFor="smtp-test-address"
+                        className="block text-xs font-medium text-gray-700 mb-1"
+                      >
+                        {t('settings.smtp.testEmailLabel')}
+                      </label>
+                      <input
+                        id="smtp-test-address"
+                        type="email"
+                        data-testid="smtp-test-address-input"
+                        value={smtpTestAddress}
+                        onChange={(e) => {
+                          setSmtpTestAddress(e.target.value);
+                          setSmtpTestStatus('idle');
+                        }}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        placeholder="you@example.com"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="md"
+                      data-testid="smtp-test-button"
+                      disabled={smtpTestStatus === 'sending' || !smtpTestAddress}
+                      onClick={() => void handleSmtpTest()}
+                    >
+                      {smtpTestStatus === 'sending'
+                        ? t('settings.smtp.testSending')
+                        : t('settings.smtp.testButton')}
+                    </Button>
+                  </div>
+
+                  {smtpTestStatus === 'success' && (
+                    <p
+                      role="status"
+                      className="mt-2 text-sm text-green-700"
+                      data-testid="smtp-test-success"
+                    >
+                      {t('settings.smtp.testSuccess', { address: smtpTestAddress })}
+                    </p>
+                  )}
+                  {smtpTestStatus === 'error' && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-sm text-red-600 break-words"
+                      data-testid="smtp-test-error"
+                    >
+                      {t('settings.smtp.testError', { message: smtpTestErrorMessage })}
+                    </p>
+                  )}
+                </div>
+              </form>
+            )}
           </div>
         )}
 

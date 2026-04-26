@@ -165,3 +165,59 @@ export async function updateCurrenciesConfig(payload: {
   const response = await apiClient.put<CurrenciesConfigResponse>('/settings/currencies', payload);
   return response.data;
 }
+
+// ── SMTP configuration (MINCRM-254) ───────────────────────────────────────────
+
+/** Shape returned by GET /api/settings/smtp */
+export interface SmtpConfigResponse {
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_pass_set: boolean;
+  smtp_enabled: boolean;
+}
+
+/** React Query cache key for the SMTP configuration */
+export const SMTP_CONFIG_QUERY_KEY = ['settings', 'smtp'] as const;
+
+/**
+ * Returns the current SMTP configuration.
+ * smtp_pass is never included; smtp_pass_set indicates whether one is stored.
+ */
+export async function getSmtpConfig(): Promise<SmtpConfigResponse> {
+  const response = await apiClient.get<SmtpConfigResponse>('/settings/smtp');
+  return response.data;
+}
+
+/**
+ * Updates the SMTP configuration. Admin only.
+ * Omit smtp_pass to preserve the stored password.
+ *
+ * @param payload - SMTP settings to save.
+ */
+export async function setSmtpConfig(payload: {
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_pass?: string;
+  smtp_enabled: boolean;
+}): Promise<SmtpConfigResponse> {
+  const response = await apiClient.put<SmtpConfigResponse>('/settings/smtp', payload);
+  return response.data;
+}
+
+/** Shape returned by POST /api/settings/smtp/test */
+export interface SmtpTestResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Sends a test email using the current saved SMTP configuration. Admin only.
+ *
+ * @param to - Recipient email address.
+ */
+export async function testSmtpConfig(to: string): Promise<SmtpTestResult> {
+  const response = await apiClient.post<SmtpTestResult>('/settings/smtp/test', { to });
+  return response.data;
+}
