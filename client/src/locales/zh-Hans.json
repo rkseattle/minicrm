@@ -456,6 +456,14 @@
   },
   "settings": {
     "pageTitle": "管理设置",
+    "tabs": {
+      "general": "常规",
+      "notifications": "通知",
+      "currency": "货币",
+      "customisation": "自定义",
+      "data": "数据",
+      "integrations": "集成"
+    },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
     "saveButton": "保存",

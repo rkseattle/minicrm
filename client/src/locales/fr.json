@@ -456,6 +456,14 @@
   },
   "settings": {
     "pageTitle": "Paramètres administrateur",
+    "tabs": {
+      "general": "Général",
+      "notifications": "Notifications",
+      "currency": "Devise",
+      "customisation": "Personnalisation",
+      "data": "Données",
+      "integrations": "Intégrations"
+    },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
     "saveButton": "Enregistrer",
