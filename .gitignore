@@ -80,6 +80,12 @@ Thumbs.db
 *.BASE.*
 *.LOCAL.*
 *.REMOTE.*
-# CI artifact downloads (coverage reports, healing reports)
+# CI artifact downloads (coverage reports, healing reports, test results, E2E shards)
 client-coverage-*/
 healing-report-*/
+client-test-results-*/
+server-coverage-*/
+framework-test-results-*/
+framework-coverage-*/
+e2e-shard-*/
+e2e-merged-*/
