@@ -973,9 +973,12 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
  * @param client - Active DB client (must already be inside a transaction).
  * @param adminId - UUID to use as owner_id for all inserted records.
  */
-async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<void> {
+async function insertDemoData(
+  client: pg.PoolClient,
+  adminId: string,
+  repPasswordHash: string,
+): Promise<void> {
   // 0. Create demo rep user — ON CONFLICT preserves idempotency if partially seeded
-  const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
   await client.query(
     `INSERT INTO users (email, name, role, password_hash, status)
      VALUES ($1, $2, $3, $4, 'active')
@@ -1312,6 +1315,9 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
  * Returns { seeded: true } on success or { seeded: false, reason: 'already_exists' } when demo data is already present.
  */
 export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> {
+  // Hash before acquiring a DB connection — bcrypt is CPU-bound and would block
+  // the event loop while holding a pool client, risking connection timeout under load.
+  const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1324,7 +1330,7 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
     }
 
     const adminId = await getAdminUserId(client);
-    await insertDemoData(client, adminId);
+    await insertDemoData(client, adminId, repPasswordHash);
     await client.query('COMMIT');
     console.log(`[seed-demo] Demo rep user: ${DEMO_REP.email} / ${DEMO_REP.password}`);
     return { seeded: true };
@@ -1366,13 +1372,15 @@ export async function removeDemo(): Promise<{ removed: boolean; reason?: string 
  * Removes existing demo data and re-seeds in a single transaction.
  */
 export async function resetDemo(): Promise<{ reset: boolean }> {
+  // Hash before acquiring a DB connection — same reason as seedDemo.
+  const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     // getAdminUserId runs inside the transaction so any error triggers a clean ROLLBACK.
     const adminId = await getAdminUserId(client);
     await removeDemoData(client);
-    await insertDemoData(client, adminId);
+    await insertDemoData(client, adminId, repPasswordHash);
     await client.query('COMMIT');
     return { reset: true };
   } catch (err) {
