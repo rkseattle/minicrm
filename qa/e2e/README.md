@@ -73,12 +73,14 @@ When at least one selector heal occurred, a dedicated `healing-report-<project>-
 
 **What `healing-report.json` contains:**
 
-| Field         | Description                                                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `totalHeals`  | Number of selector heals across all tests in the run                                                                                             |
-| `aiHeals`     | Subset of heals resolved by the AI tier (requires `AI_HEALING=true`)                                                                             |
-| `staticHeals` | Subset resolved by static strategy fallback (testId → role → label → text → css → xpath)                                                         |
-| `events`      | Array of individual heal events — each records the test name, original strategy, healed-to strategy, timestamp, and whether the AI tier was used |
+| Field                | Description                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `totalHeals`         | Number of selector heals across all tests in the run                                                                                             |
+| `aiHeals`            | Subset of heals resolved by the AI tier (requires `AI_HEALING=true`)                                                                             |
+| `staticHeals`        | Subset resolved by static strategy fallback (testId → role → label → text → css → xpath)                                                         |
+| `aiHealCount`        | Count of AI heal events this run (alias of `aiHeals`; used for threshold checks)                                                                 |
+| `estimatedTokenCost` | Sum of token costs across all AI heal events in this run (0 when no AI heals occurred)                                                           |
+| `events`             | Array of individual heal events — each records the test name, original strategy, healed-to strategy, timestamp, and whether the AI tier was used |
 
 **When it appears:** Only when `totalHeals > 0`. On a clean run with zero heals the file is empty (or absent) and no dedicated artifact is uploaded. The PR comment will contain no healing report link.
 
