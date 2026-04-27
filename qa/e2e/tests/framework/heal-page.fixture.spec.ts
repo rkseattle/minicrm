@@ -326,13 +326,13 @@ test.describe('t() multi-locale text strategies', () => {
     try {
       // Under en
       process.env['E2E_LOCALE'] = 'en';
-      const enValue = t('nav.contacts');
-      expect(enValue).toBe('Contacts');
+      const enValue = t('nav.dashboard');
+      expect(enValue).toBe('Dashboard');
 
       // Under es
       process.env['E2E_LOCALE'] = 'es';
-      const esValue = t('nav.contacts');
-      expect(esValue).toBe('Contactos');
+      const esValue = t('nav.dashboard');
+      expect(esValue).toBe('Panel');
 
       // Both resolve to non-empty strings — confirming the key exists in both maps
       expect(enValue.length).toBeGreaterThan(0);
@@ -378,10 +378,10 @@ test.describe('t() multi-locale text strategies', () => {
 
     try {
       // Simulate a text-based strategy built using t()
-      const textValue = t('nav.contacts');
+      const textValue = t('nav.dashboard');
       const strategy = { type: 'text' as const, value: textValue };
 
-      expect(strategy.value).toBe('Contacts');
+      expect(strategy.value).toBe('Dashboard');
 
       // Verify the strategy resolves against a mock page
       HealingRegistry.instance._reset();
@@ -405,10 +405,10 @@ test.describe('t() multi-locale text strategies', () => {
     process.env['E2E_LOCALE'] = 'es';
 
     try {
-      const textValue = t('nav.contacts');
+      const textValue = t('nav.dashboard');
       const strategy = { type: 'text' as const, value: textValue };
 
-      expect(strategy.value).toBe('Contactos');
+      expect(strategy.value).toBe('Panel');
 
       HealingRegistry.instance._reset();
       const page = mockPage([true]);
