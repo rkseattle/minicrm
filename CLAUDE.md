@@ -38,7 +38,7 @@ shared/schemas/  → Zod schemas imported by BOTH client and server
   paginationSchema.ts  (paginationParamsSchema, PaginatedResponse<T>)
   pipelineStageSchema.ts  (PipelineStageResponse, etc.)
 
-db/migrations/   → sequential node-pg-migrate files (001–033; next = 034)
+db/migrations/   → sequential node-pg-migrate files (001–039; next = 040)
 
 qa/e2e/
   framework/     → HealingLocator, fixtures, REST/gRPC clients (ZERO app domain refs)
@@ -50,7 +50,7 @@ qa/e2e/
 
 ---
 
-## Database Schema (current — migrations 001–033)
+## Database Schema (current — migrations 001–039)
 
 ```
 users
@@ -138,7 +138,7 @@ system_settings  key (PK), value text, updated_at
 overdue_task_notifications  activity_id, notified_date  ← dedup for email digests
 ```
 
-**Migration rule:** Every schema change requires a migration file. Next number: **034**.
+**Migration rule:** Every schema change requires a migration file. Next number: **040**.
 Every migration needs both `up` and `down`. Integrity rules go in DB CHECK constraints
 in addition to Zod.
 
@@ -437,7 +437,35 @@ Use these constants everywhere — never inline strings in `queryKey`.
 - Dashboard summary → `staleTime: 0` (intentional — always fresh)
 - No global `staleTime` on the QueryClient
 
-### E2E (`qa/e2e/`)
+### ⛔ E2E Functional Test Suite — ONE RUN PER SESSION, NO EXCEPTIONS
+
+> **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED.** Read it in full before
+> touching the E2E suite. Violating it wastes significant time and can pollute the
+> `minicrm_e2e` database.
+
+**RULE 1 — Run the functional suite at most once per Claude Code session.**
+Never invoke `npx playwright test`, `npm run test`, `cd qa && ... npm run test`,
+or any other form of the E2E test runner more than one time per session. If the
+first run fails or you later make a fix, do **not** re-run to verify. Move on.
+
+**RULE 2 — Read report files, not console output, for results.**
+After a run completes, determine pass/fail counts by reading the generated report
+files — never from scrolling back through terminal output:
+
+- `qa/e2e/test-results/results.xml` — JUnit XML; `tests`, `failures`, `errors` attributes
+- `qa/e2e/test-results/healing-report.json` — heal event counts and detail
+
+**RULE 3 — Re-running to "verify a fix" is prohibited.**
+If you make a code change after the first run, you cannot confirm it with a second
+run in the same session. Make the fix, then note in your response that CI will
+confirm correctness. The fix either holds up in CI or it doesn't — a second local
+run does not add safety and costs time.
+
+**RULE 4 — Delete stale results before the one permitted run.**
+Per the general testing directive: delete `qa/e2e/test-results/` before starting
+the single permitted run so stale output cannot influence pass/fail determination.
+
+### E2E — Conventions
 
 - **Config:** `qa/e2e/playwright.config.ts`
 - **`data-testid` selectors only** — no CSS class or positional selectors
@@ -478,6 +506,11 @@ For any UI displaying variable-length or numeric content:
   `contact_addresses` table (migration 030) coexist. New address work uses `contact_addresses`.
 - **`seed-demo.ts` is a thin CLI wrapper only.** All demo fixture data lives in
   `server/src/services/demoService.ts`. The CLI script must not contain any fixture data or SQL.
+- **`BreakpointContext` is the single source of responsive state (MINCRM-238).** All
+  components read breakpoints via `useBreakpoint()` — never call `window.matchMedia` directly
+  in a component. `BreakpointContext` owns the one `matchMedia` subscription and distributes it
+  to the tree. Direct `matchMedia` calls create duplicate subscriptions and will not work in
+  tests (jsdom stubs matchMedia).
 
 ---
 
