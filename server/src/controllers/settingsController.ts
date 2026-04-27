@@ -15,6 +15,8 @@ import {
   setDefaultCurrency,
   getTagsRestrictCreation,
   setTagsRestrictCreation,
+  getOnboardingStatus,
+  setOnboardingCompleted,
 } from '../services/settingsService.js';
 import { getCurrencies, updateCurrencies } from '../services/currencyService.js';
 import {
@@ -319,4 +321,48 @@ export async function updateCurrenciesHandler(req: Request, res: Response): Prom
   await updateCurrencies(parsed.data, homeName, homeSymbol);
   const config = await getCurrencies();
   res.status(200).json(config);
+}
+
+// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+
+/**
+ * GET /api/settings/onboarding
+ * Returns first-run detection status and onboarding_completed flag. Admin only.
+ *
+ * @param _req - Express request (unused).
+ * @param res  - Express response.
+ */
+export async function getOnboardingStatusHandler(_req: Request, res: Response): Promise<void> {
+  const status = await getOnboardingStatus();
+  res.status(200).json(status);
+}
+
+/**
+ * PUT /api/settings/onboarding
+ * Updates the onboarding_completed flag. Admin only. (MINCRM-256)
+ *
+ * @param req - Express request with body `{ onboarding_completed: boolean }`.
+ * @param res - Express response.
+ */
+export async function setOnboardingCompletedHandler(req: Request, res: Response): Promise<void> {
+  if (typeof req.body.onboarding_completed !== 'boolean') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'onboarding_completed must be a boolean' },
+    });
+    return;
+  }
+
+  const completed = await setOnboardingCompleted(req.body.onboarding_completed as boolean);
+  res.status(200).json({ onboarding_completed: completed });
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Onboarding',
+    eventType: 'updated',
+    fieldName: 'onboarding_completed',
+    oldValue: String(!completed),
+    newValue: String(completed),
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write onboarding audit entry'));
 }

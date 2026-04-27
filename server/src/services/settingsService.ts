@@ -38,6 +38,9 @@ const DEFAULT_CURRENCY_KEY = 'default_currency';
 /** The key used to store the tag creation restriction setting (MINCRM-263) */
 const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
 
+/** The key used to store the onboarding completed flag (MINCRM-256) */
+const ONBOARDING_COMPLETED_KEY = 'onboarding_completed';
+
 /**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
@@ -227,4 +230,53 @@ export async function setTagsRestrictCreation(restricted: boolean): Promise<bool
     [TAGS_RESTRICT_CREATION_KEY, String(restricted)],
   );
   return restricted;
+}
+
+// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+
+/** Shape returned by the onboarding status query */
+export interface OnboardingStatus {
+  is_first_run: boolean;
+  onboarding_completed: boolean;
+}
+
+/**
+ * Returns onboarding status.
+ * `is_first_run` is true when contacts table is empty, users table has exactly
+ * one user, and `onboarding_completed` is false. Admin only.
+ *
+ * @returns The current onboarding status.
+ */
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const [settingResult, contactCountResult, userCountResult] = await Promise.all([
+    pool.query<SystemSettingRow>('SELECT value FROM system_settings WHERE key = $1 LIMIT 1', [
+      ONBOARDING_COMPLETED_KEY,
+    ]),
+    pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM contacts'),
+    pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM users'),
+  ]);
+
+  const onboarding_completed = settingResult.rows[0]?.value === 'true';
+  const contactCount = parseInt(contactCountResult.rows[0]?.count ?? '0', 10);
+  const userCount = parseInt(userCountResult.rows[0]?.count ?? '0', 10);
+
+  const is_first_run = !onboarding_completed && contactCount === 0 && userCount <= 1;
+
+  return { is_first_run, onboarding_completed };
+}
+
+/**
+ * Sets the onboarding_completed flag. Admin only. (MINCRM-256)
+ *
+ * @param completed - Whether onboarding has been completed.
+ * @returns The persisted value.
+ */
+export async function setOnboardingCompleted(completed: boolean): Promise<boolean> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [ONBOARDING_COMPLETED_KEY, String(completed)],
+  );
+  return completed;
 }
