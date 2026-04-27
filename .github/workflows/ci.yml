@@ -520,10 +520,12 @@ jobs:
     steps:
       - name: Check shard results
         run: |
-          if [[ "${{ needs.e2e-functional.result }}" != "success" ]]; then
+          result="${{ needs.e2e-functional.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
             echo "One or more E2E shards failed or were cancelled."
             exit 1
           fi
+          echo "E2E shards passed or were skipped (result: $result)."
 
   # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
   # Job dependency chain:
@@ -531,7 +533,7 @@ jobs:
   e2e-aggregate:
     name: Aggregate E2E Results (${{ matrix.project }})
     needs: e2e-functional
-    if: always()
+    if: needs.e2e-functional.result == 'success' || needs.e2e-functional.result == 'failure'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -676,7 +678,7 @@ jobs:
     #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
     needs: e2e-aggregate
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
+    if: (needs.e2e-aggregate.result == 'success' || needs.e2e-aggregate.result == 'failure') && github.event_name == 'pull_request'
     steps:
       - name: Download desktop merged artifacts
         uses: actions/download-artifact@v8
