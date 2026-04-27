@@ -11,8 +11,42 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+      client: ${{ steps.filter.outputs.client }}
+      server: ${{ steps.filter.outputs.server }}
+      qa: ${{ steps.filter.outputs.qa }}
+      config: ${{ steps.filter.outputs.config }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590
+        id: filter
+        with:
+          filters: |
+            docs:
+              - '**.md'
+              - 'docs/**'
+            client:
+              - 'client/src/**'
+              - 'client/public/**'
+            server:
+              - 'server/src/**'
+            qa:
+              - 'qa/**'
+            config:
+              - '*.json'
+              - '*.yaml'
+              - '*.yml'
+              - 'Dockerfile*'
+              - '.github/**'
+
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
+    needs: changes
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +80,8 @@ jobs:
   # Phase 2 (server + client tests). Runs alongside Phase 1, non-blocking.
   security-audit:
     name: Phase 1 - Security Audit
+    needs: changes
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -65,7 +101,8 @@ jobs:
 
   server-tests:
     name: Phase 2 - Server Unit Tests
-    needs: lint-and-typecheck
+    needs: [lint-and-typecheck, changes]
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -136,7 +173,8 @@ jobs:
 
   client-tests:
     name: Phase 2 - Client Unit Tests
-    needs: lint-and-typecheck
+    needs: [lint-and-typecheck, changes]
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.config == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -184,6 +222,8 @@ jobs:
 
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
+    needs: changes
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -256,7 +296,8 @@ jobs:
     # target per-project runtime from ~8–10 minutes down to ~2–3 minutes.
     # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
-    needs: [server-tests, client-tests, e2e-framework-specs]
+    needs: [server-tests, client-tests, changes]
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -875,3 +916,52 @@ jobs:
         with:
           header: unit-test-coverage
           message: ${{ steps.comment.outputs.body }}
+
+  lint-docs:
+    name: Phase 1 - Lint Docs
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+      - name: Lint markdown files
+        run: markdownlint-cli2 "**/*.md" "#node_modules"
+
+  # MINCRM-269: Sentinel job — sole required status check for branch protection.
+  # Treats skipped jobs as passing so that path-scoped PRs are not blocked by
+  # jobs that legitimately did not run. security-audit is excluded because it
+  # has continue-on-error: true and is intentionally non-blocking.
+  ci-gate:
+    name: CI gate
+    needs:
+      - lint-and-typecheck
+      - server-tests
+      - client-tests
+      - e2e-framework-purity
+      - lint-docs
+      - e2e-aggregate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all required jobs
+        run: |
+          results=( \
+            "${{ needs.lint-and-typecheck.result }}" \
+            "${{ needs.server-tests.result }}" \
+            "${{ needs.client-tests.result }}" \
+            "${{ needs.e2e-framework-purity.result }}" \
+            "${{ needs.lint-docs.result }}" \
+            "${{ needs.e2e-aggregate.result }}" \
+          )
+          for result in "${results[@]}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "A required job failed or was cancelled: $result"
+              exit 1
+            fi
+          done
+          echo "All required jobs passed or were skipped."
