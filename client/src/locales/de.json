@@ -653,6 +653,13 @@
         "hint": "Deals importieren. Pflichtfelder: Dealname, Phase. Importieren Sie zuerst Konten, um sie per Name zu verknüpfen.",
         "skipUnresolvableAccounts": "Zeilen überspringen, deren Kontoname keinem vorhandenen Konto entspricht"
       }
+    },
+    "onboarding": {
+      "resetTitle": "Onboarding zurücksetzen",
+      "resetHint": "Zeigt das geführte Einrichtungs-Banner beim nächsten Seitenaufruf erneut an. Nützlich nach einer Neukonfiguration oder zu Demonstrationszwecken.",
+      "resetButton": "Onboarding zurücksetzen",
+      "resetSuccess": "Onboarding zurückgesetzt. Das Einrichtungs-Banner erscheint beim nächsten Seitenaufruf erneut.",
+      "resetError": "Onboarding konnte nicht zurückgesetzt werden. Bitte erneut versuchen."
     }
   },
   "import": {

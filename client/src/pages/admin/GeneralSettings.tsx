@@ -11,14 +11,17 @@ import {
   setDefaultLanguage,
   DEFAULT_LANGUAGE_QUERY_KEY,
 } from '@/api/settings.js';
+import { setOnboardingCompleted, ONBOARDING_STATUS_QUERY_KEY } from '@/api/onboarding.js';
 import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale, NavLayout } from '@shared/schemas/settingsSchema.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 
 export default function GeneralSettings() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -35,6 +38,22 @@ export default function GeneralSettings() {
   const [navLayoutSaving, setNavLayoutSaving] = useState(false);
   const [navLayoutSuccess, setNavLayoutSuccess] = useState(false);
   const [navLayoutError, setNavLayoutError] = useState(false);
+
+  const [resetOnboardingSuccess, setResetOnboardingSuccess] = useState(false);
+  const [resetOnboardingError, setResetOnboardingError] = useState(false);
+
+  const resetOnboardingMutation = useMutation({
+    mutationFn: () => setOnboardingCompleted(false),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ONBOARDING_STATUS_QUERY_KEY });
+      setResetOnboardingSuccess(true);
+      setResetOnboardingError(false);
+    },
+    onError: () => {
+      setResetOnboardingError(true);
+      setResetOnboardingSuccess(false);
+    },
+  });
 
   async function handleNavLayoutChange(newLayout: NavLayout): Promise<void> {
     if (newLayout === activeLayout) return;
@@ -196,6 +215,53 @@ export default function GeneralSettings() {
           </p>
         )}
       </div>
+
+      {/* Reset onboarding — admin only (MINCRM-256) */}
+      {user?.role === 'admin' && (
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="reset-onboarding-section"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">
+            {t('settings.onboarding.resetTitle')}
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">{t('settings.onboarding.resetHint')}</p>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            data-testid="reset-onboarding-button"
+            disabled={resetOnboardingMutation.isPending}
+            onClick={() => {
+              setResetOnboardingSuccess(false);
+              setResetOnboardingError(false);
+              resetOnboardingMutation.mutate();
+            }}
+          >
+            {t('settings.onboarding.resetButton')}
+          </Button>
+
+          {resetOnboardingSuccess && (
+            <p
+              role="status"
+              className="mt-3 text-sm text-green-700"
+              data-testid="reset-onboarding-success"
+            >
+              {t('settings.onboarding.resetSuccess')}
+            </p>
+          )}
+          {resetOnboardingError && (
+            <p
+              role="alert"
+              className="mt-3 text-sm text-red-600"
+              data-testid="reset-onboarding-error"
+            >
+              {t('settings.onboarding.resetError')}
+            </p>
+          )}
+        </div>
+      )}
     </>
   );
 }
