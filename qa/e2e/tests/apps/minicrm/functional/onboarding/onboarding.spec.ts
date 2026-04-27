@@ -69,8 +69,11 @@ test('@functional F-OB2: banner is NOT visible when is_first_run is false', asyn
   await setOnboardingCompleted(true, restClient);
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  // Wait for the nav to be present (queries have settled), then assert banner absent.
-  await page.waitFor([{ type: 'testId', value: 'nav-top-contacts' }], 'visible', {}, 10_000);
+  // Navigate explicitly to the dashboard and wait for its heading — this is
+  // layout- and viewport-agnostic, and guarantees all queries have settled
+  // before we assert the banner is absent.
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.waitFor([{ type: 'testId', value: 'dashboard-heading' }], 'visible', {}, 10_000);
   expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
 });
 
