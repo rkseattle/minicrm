@@ -552,13 +552,18 @@ jobs:
   #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
   e2e-aggregate:
     name: Aggregate E2E Results (${{ matrix.project }})
-    needs: e2e-functional
+    needs: [e2e-functional, changes]
     # always() is required because e2e-functional itself uses always() to run when its
     # upstream deps (server-tests, client-tests) were skipped. GitHub records e2e-functional's
     # combined matrix result as 'skipped' from the perspective of downstream jobs in that
-    # situation, so a plain result == 'success' check here would never match. The explicit
-    # cancelled guard preserves the failure gate: aggregate is skipped if E2E was cancelled.
-    if: always() && needs.e2e-functional.result != 'cancelled'
+    # situation, so a plain result == 'success' check here would never match.
+    # The path gate mirrors e2e-functional exactly: only run when there are code changes
+    # that actually triggered E2E. Without this, aggregate runs on docs-only PRs where
+    # e2e-functional was skipped (result == 'skipped'), producing spurious job runs.
+    if: |
+      always() &&
+      needs.e2e-functional.result != 'cancelled' &&
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -703,7 +708,7 @@ jobs:
     #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
     needs: e2e-aggregate
     runs-on: ubuntu-latest
-    if: always() && needs.e2e-aggregate.result != 'cancelled' && github.event_name == 'pull_request'
+    if: always() && (needs.e2e-aggregate.result == 'success' || needs.e2e-aggregate.result == 'failure') && github.event_name == 'pull_request'
     steps:
       - name: Download desktop merged artifacts
         uses: actions/download-artifact@v8
