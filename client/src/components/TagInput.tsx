@@ -2,6 +2,8 @@
  * TagInput — interactive tag editor for record detail pages (MINCRM-186).
  * Supports typing to create or search existing tags, Enter/comma to confirm,
  * and × to remove attached tags.
+ * Respects tags_restrict_creation setting: reps cannot create new tags inline
+ * when restriction is enabled (MINCRM-263).
  */
 
 import { useState, useRef, useEffect, useId } from 'react';
@@ -9,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import TagBadge from './TagBadge.js';
 import { TAGS_QUERY_KEY } from '@/api/tags.js';
+import { getTagsRestrictCreation, TAGS_RESTRICT_CREATION_QUERY_KEY } from '@/api/settings.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
 
 interface TagInputProps {
@@ -54,6 +58,17 @@ export default function TagInput({
   const [inputValue, setInputValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
+  const { user } = useAuth();
+
+  const { data: restrictData } = useQuery({
+    queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,
+    queryFn: getTagsRestrictCreation,
+    staleTime: 60_000,
+  });
+
+  // When restriction is enabled, rep-role users cannot create new tags inline.
+  const creationBlocked = (restrictData?.restricted ?? false) && user?.role === 'rep';
+
   const { data: allTagsData } = useQuery({
     queryKey: TAGS_QUERY_KEY,
     queryFn: async () => {
@@ -71,6 +86,9 @@ export default function TagInput({
     ? allTags.filter((t) => t.name.includes(trimmed) && !attachedIds.has(t.id))
     : [];
 
+  // True when the user has typed something that matches no existing unattached tag.
+  const noMatchFound = trimmed.length > 0 && suggestions.length === 0;
+
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -84,6 +102,9 @@ export default function TagInput({
   async function confirmInput(value: string) {
     const name = value.trim().toLowerCase();
     if (!name) return;
+    // When creation is blocked for reps and the typed value doesn't match an
+    // existing tag, silently no-op — the "tag not found" hint is shown in the UI.
+    if (creationBlocked && !allTags.some((tag) => tag.name === name)) return;
     setInputValue('');
     setIsOpen(false);
     await onAttach(name);
@@ -172,6 +193,16 @@ export default function TagInput({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* "Tag not found" hint shown to reps when creation is blocked and no match */}
+        {isOpen && creationBlocked && noMatchFound && (
+          <p
+            className="mt-1 text-sm text-gray-500"
+            data-testid={`tag-creation-blocked-${entityId}`}
+          >
+            {t('tags.tagNotFound')}
+          </p>
         )}
       </div>
     </div>
