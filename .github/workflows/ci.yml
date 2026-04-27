@@ -22,6 +22,8 @@ jobs:
       config: ${{ steps.filter.outputs.config }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required: dorny/paths-filter needs full history to diff
       - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590
         id: filter
         with:
