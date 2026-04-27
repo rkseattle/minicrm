@@ -2,8 +2,17 @@
  * Integration tests for reportService.
  *
  * Runs against a real PostgreSQL test database.
- * Two test users are created in beforeAll and reused across tests.
- * The deals table is truncated before each test.
+ * Three test users are created in beforeAll and reused across tests:
+ *   - repId      — the primary rep caller
+ *   - otherRepId — a second rep; used to verify ownership isolation
+ *   - adminId    — admin caller; used to verify My View scoping (MINCRM-264)
+ * The deals / activities tables are truncated before each test.
+ *
+ * Ownership-scoping audit (MINCRM-264): both report queries in reportService.ts
+ * already apply WHERE owner_id = $userId when ownerId is non-null, and omit the
+ * clause (returning team-wide data) when ownerId is null. The controller enforces
+ * that rep callers always receive ownerId = req.user.id, and admin callers receive
+ * ownerId = null unless they explicitly pass ?owner_id=. No scoping gaps were found.
  *
  * Run: npm test (from /server)
  */
@@ -31,8 +40,18 @@ const OTHER_REP_USER = {
   status: 'active' as const,
 };
 
+/** Admin user — used to verify My View scoping (MINCRM-264) */
+const ADMIN_USER = {
+  email: 'report-admin@example.com',
+  name: 'Report Admin',
+  role: 'admin' as const,
+  passwordHash: '$2b$12$placeholder_hash',
+  status: 'active' as const,
+};
+
 let repId: string;
 let otherRepId: string;
+let adminId: string;
 /** A shared contact used as the required parent record for activity test data */
 let contactId: string;
 
@@ -42,7 +61,7 @@ beforeAll(async () => {
   await pool.query('DELETE FROM deals');
   await pool.query('DELETE FROM contacts WHERE email = $1', ['report-contact@example.com']);
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_USER.email, OTHER_REP_USER.email],
+    [REP_USER.email, OTHER_REP_USER.email, ADMIN_USER.email],
   ]);
 
   const rep = await createUser(REP_USER);
@@ -50,6 +69,9 @@ beforeAll(async () => {
 
   const other = await createUser(OTHER_REP_USER);
   otherRepId = other.id;
+
+  const admin = await createUser(ADMIN_USER);
+  adminId = admin.id;
 
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
@@ -72,7 +94,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM deals');
   await pool.query('DELETE FROM contacts WHERE email = $1', ['report-contact@example.com']);
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_USER.email, OTHER_REP_USER.email],
+    [REP_USER.email, OTHER_REP_USER.email, ADMIN_USER.email],
   ]);
 });
 
@@ -221,9 +243,10 @@ describe('getWinLossReport — date range filtering', () => {
 });
 
 // ── Owner scoping ─────────────────────────────────────────────────────────────
+// MINCRM-264 audit: these cases confirm the three required scoping modes.
 
 describe('getWinLossReport — owner scoping', () => {
-  it('scopes results to the given owner when ownerId is provided', async () => {
+  it('rep caller: scopes results to only their own deals', async () => {
     await pool.query(
       `INSERT INTO deals (name, stage, value, close_date, owner_id)
        VALUES ('Rep Won',   'Closed Won',  10000, '2025-06-01', $1),
@@ -235,7 +258,7 @@ describe('getWinLossReport — owner scoping', () => {
     expect(parseFloat(report.wonValue)).toBe(10000);
   });
 
-  it('returns team-wide data when ownerId is null (admin)', async () => {
+  it('admin Team View (null): returns team-wide data across all owners', async () => {
     await pool.query(
       `INSERT INTO deals (name, stage, value, close_date, owner_id)
        VALUES ('Rep Won',   'Closed Won',  10000, '2025-06-01', $1),
@@ -245,6 +268,19 @@ describe('getWinLossReport — owner scoping', () => {
     const report = await getWinLossReport({ ...RANGE, ownerId: null });
     expect(report.wonCount).toBe(2);
     expect(parseFloat(report.wonValue)).toBe(30000);
+  });
+
+  it("admin My View: scopes results to only the admin's own deals", async () => {
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, close_date, owner_id)
+       VALUES ('Admin Won', 'Closed Won',  15000, '2025-06-01', $1),
+              ('Rep Won',   'Closed Won',  10000, '2025-06-01', $2),
+              ('Other Won', 'Closed Won',  20000, '2025-06-01', $3)`,
+      [adminId, repId, otherRepId],
+    );
+    const report = await getWinLossReport({ ...RANGE, ownerId: adminId });
+    expect(report.wonCount).toBe(1);
+    expect(parseFloat(report.wonValue)).toBe(15000);
   });
 });
 
@@ -391,8 +427,9 @@ describe('getActivityVolumeReport — date range filtering', () => {
   });
 });
 
+// MINCRM-264 audit: three required scoping modes for activity volume.
 describe('getActivityVolumeReport — owner scoping', () => {
-  it('scopes results to the given owner when ownerId is provided', async () => {
+  it('rep caller: scopes results to only their own activities', async () => {
     await pool.query(
       `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
        VALUES
@@ -406,7 +443,7 @@ describe('getActivityVolumeReport — owner scoping', () => {
     expect(report.rows[0].counts.Call).toBe(1);
   });
 
-  it('returns all reps when ownerId is null (admin)', async () => {
+  it("admin Team View (null): returns all reps' activities", async () => {
     await pool.query(
       `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
        VALUES
@@ -416,6 +453,21 @@ describe('getActivityVolumeReport — owner scoping', () => {
     );
     const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: null });
     expect(report.rows).toHaveLength(2);
+  });
+
+  it("admin My View: scopes results to only the admin's own activities", async () => {
+    await pool.query(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
+       VALUES
+         ('Meeting', 'admin meeting', $1, $2, '2025-05-01', '2025-05-01'),
+         ('Note',    'rep note',      $1, $3, '2025-05-01', '2025-05-01'),
+         ('Task',    'other task',    $1, $4, '2025-05-02', '2025-05-02')`,
+      [contactId, adminId, repId, otherRepId],
+    );
+    const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: adminId });
+    expect(report.rows).toHaveLength(1);
+    expect(report.rows[0].ownerId).toBe(adminId);
+    expect(report.rows[0].counts.Meeting).toBe(1);
   });
 });
 
