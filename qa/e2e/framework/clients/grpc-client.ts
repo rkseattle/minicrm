@@ -6,7 +6,6 @@
  * call interfaces. Channel creation and teardown are handled by the fixture —
  * tests never manage channel lifecycle directly.
  *
- * MINCRM-128, MINCRM-233
  */
 
 import * as grpc from '@grpc/grpc-js';
@@ -264,7 +263,7 @@ export class GrpcClient {
    *
    * The caller supplies an async iterable of request messages; the server reads
    * the full stream and responds with a single message once the client is done.
-   * This follows the same async-iterable pattern as `serverStream` (MINCRM-233).
+   * This follows the same async-iterable pattern as `serverStream`.
    *
    * @template TRequest - Request message type.
    * @template TResponse - Response message type.
@@ -322,7 +321,7 @@ export class GrpcClient {
    * Both client and server stream messages simultaneously. The caller supplies
    * an async iterable of request messages; responses are yielded as they arrive
    * from the server. This follows the same queue + promise async-iterator
-   * pattern as `serverStream` (MINCRM-233).
+   * pattern as `serverStream`.
    *
    * @template TRequest - Request message type.
    * @template TResponse - Response message type.

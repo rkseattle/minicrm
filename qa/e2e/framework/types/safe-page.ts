@@ -7,7 +7,7 @@
  * element-action methods are accessed through HealMethods (locate / click /
  * fill / etc.) on PageFacade instead.
  *
- * WHY Pick RATHER THAN Omit (MINCRM-228, MINCRM-236):
+ * WHY Pick RATHER THAN Omit:
  * A blocklist (Omit) is structurally unsound: Playwright introduces new methods
  * with every release and any new element-locating or element-action method
  * would be silently accessible on SafePage until someone remembered to add it
@@ -21,13 +21,11 @@
  * SafeContext (not BrowserContext). SafeContext omits newPage() and
  * newCDPSession() to prevent unhealed Page creation and raw CDP access.
  * Use PageFacade.newTab() to open a healed second tab. The actual return-type
- * narrowing is enforced at the PageFacade proxy layer. (MINCRM-235)
+ * narrowing is enforced at the PageFacade proxy layer.
  *
  * Because this is a pure type alias (no runtime code), it carries zero cost.
  * The real Playwright `Page` is structurally compatible with `SafePage`, so
  * the fixture layer can pass the real page through without any casting.
- *
- * MINCRM-204, MINCRM-228, MINCRM-235, MINCRM-236
  */
 
 import type { Page } from '@playwright/test';
@@ -42,7 +40,7 @@ import type { SafeContext } from './safe-context.js';
  * so typos and removals are caught at build time.
  *
  * `context` is intentionally absent — it is re-declared below as returning
- * SafeContext rather than the raw BrowserContext. (MINCRM-235)
+ * SafeContext rather than the raw BrowserContext.
  */
 type AllowedPageMethods =
   | 'goto'
@@ -69,14 +67,14 @@ type AllowedPageMethods =
  * PageFacade) so that bypassing the self-healing framework is a compile error.
  *
  * Uses a positive Pick (AllowedPageMethods) rather than a negative Omit so
- * that future Playwright methods are blocked by default. (MINCRM-236)
+ * that future Playwright methods are blocked by default.
  */
 export type SafePage = Pick<Page, AllowedPageMethods> & {
   /**
    * Returns the browser context for this page, restricted to SafeContext.
    * SafeContext omits newPage() and newCDPSession() to prevent unhealed Page
    * creation and raw CDP access. Use PageFacade.newTab() to open a healed
-   * second tab. (MINCRM-235)
+   * second tab.
    */
   context(): SafeContext;
 };

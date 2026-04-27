@@ -4,7 +4,6 @@
  * Import from this barrel rather than individual files:
  *   import { RestClient, GrpcClient } from '@framework/clients';
  *
- * MINCRM-127, MINCRM-128
  */
 
 export {

@@ -5,7 +5,6 @@
  * to avoid cross-worker file collisions. The HealingReporter merges these at the
  * end of the run.
  *
- * MINCRM-124
  */
 
 import fs from 'node:fs';
@@ -18,11 +17,11 @@ export interface HealEvent {
   originalStrategy: LocatorStrategyRecord;
   healedStrategy: LocatorStrategyRecord;
   wasAiHeal: boolean;
-  /** Page Object class name where the heal occurred, if known. MINCRM-225 */
+  /** Page Object class name where the heal occurred, if known. */
   pageObject?: string;
-  /** Page Object method name where the heal occurred, if known. MINCRM-225 */
+  /** Page Object method name where the heal occurred, if known. */
   method?: string;
-  /** Total tokens consumed by the AI API call (input + output). MINCRM-227 */
+  /** Total tokens consumed by the AI API call (input + output). */
   tokenCost?: number;
 }
 
@@ -50,7 +49,6 @@ const OUTPUT_DIR = 'test-results';
  * naming is used:
  *   test-results/healing-${workerId}.json
  *
- * MINCRM-216
  */
 function workerFilePath(): string {
   const workerId = process.env['PW_WORKER_INDEX'] ?? '0';
@@ -92,9 +90,9 @@ export class HealingRegistry {
    * @param originalStrategy - The primary strategy that failed.
    * @param healedStrategy - The fallback strategy that resolved.
    * @param wasAiHeal - Whether this heal was performed by the AI tier (S3).
-   * @param pageObject - Page Object class name where the heal occurred (MINCRM-225).
-   * @param method - Page Object method name where the heal occurred (MINCRM-225).
-   * @param tokenCost - Total tokens consumed by the AI API call (MINCRM-227).
+   * @param pageObject - Page Object class name where the heal occurred.
+   * @param method - Page Object method name where the heal occurred.
+   * @param tokenCost - Total tokens consumed by the AI API call.
    */
   record(
     testName: string,

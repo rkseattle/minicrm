@@ -18,7 +18,6 @@
  * });
  * ```
  *
- * MINCRM-128
  */
 
 import { test as base } from '@playwright/test';

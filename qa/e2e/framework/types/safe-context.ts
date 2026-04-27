@@ -16,7 +16,7 @@
  *   created via context().newPage() is completely unprotected.
  *   The safe alternative is PageFacade.newTab(), which calls newPage() internally
  *   and wraps the result in createPageFacade(), ensuring the new tab participates
- *   in the same healing, audit, and type-safety guarantees. (MINCRM-235)
+ *   in the same healing, audit, and type-safety guarantees.
  *
  * newCDPSession():
  *   Opens a raw Chrome DevTools Protocol channel on a page or worker. CDP
@@ -29,8 +29,6 @@
  * Because this is a pure type alias (no runtime code), it carries zero cost.
  * The real Playwright BrowserContext is structurally compatible with
  * SafeContext, so the proxy layer can pass it through without any casting.
- *
- * MINCRM-235
  */
 
 import type { BrowserContext } from '@playwright/test';

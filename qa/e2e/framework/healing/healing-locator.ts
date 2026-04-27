@@ -16,7 +16,6 @@
  * The `intent` field is reserved for the AI tier (S3) to describe what the
  * locator is trying to find in natural language.
  *
- * MINCRM-124, MINCRM-204
  */
 
 import type { Locator, Page } from '@playwright/test';
@@ -79,12 +78,12 @@ export interface HealingLocatorOptions {
   intent?: string;
   /**
    * Page Object class name that owns this locator. Recorded in heal events
-   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   * so patch-suggester can generate actionable suggestions.
    */
   pageObject?: string;
   /**
    * Page Object method name that owns this locator. Recorded in heal events
-   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   * so patch-suggester can generate actionable suggestions.
    */
   method?: string;
   /**
@@ -169,7 +168,7 @@ export function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
  * matches multiple elements (e.g. a shared data-testid across a dual-render
  * layout with mobile and desktop copies). The probe only checks presence;
  * callers that need a specific copy (e.g. the visible one) use `.filter()`
- * on the returned locator. (MINCRM-212)
+ * on the returned locator.
  */
 async function probeLocator(locator: Locator, timeoutMs: number): Promise<boolean> {
   try {

@@ -13,7 +13,6 @@
  * });
  * ```
  *
- * MINCRM-126, MINCRM-209, MINCRM-210
  */
 
 import { test as base } from '@playwright/test';
