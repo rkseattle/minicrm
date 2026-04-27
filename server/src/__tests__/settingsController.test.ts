@@ -233,3 +233,77 @@ describe('PATCH /api/settings/email-notifications', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ── GET /api/settings/onboarding (MINCRM-256) ─────────────────────────────────
+
+describe('GET /api/settings/onboarding', () => {
+  it('returns 200 with is_first_run and onboarding_completed for admin', async () => {
+    const res = await request(app).get('/api/settings/onboarding').set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.is_first_run).toBe('boolean');
+    expect(typeof res.body.onboarding_completed).toBe('boolean');
+  });
+
+  it('returns 403 when a rep attempts to access', async () => {
+    const res = await request(app).get('/api/settings/onboarding').set('Cookie', repCookie);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).get('/api/settings/onboarding');
+
+    expect(res.status).toBe(401);
+  });
+});
+
+// ── PUT /api/settings/onboarding (MINCRM-256) ─────────────────────────────────
+
+describe('PUT /api/settings/onboarding', () => {
+  afterEach(async () => {
+    // Reset flag after each test
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('onboarding_completed', 'false', now())
+       ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = now()`,
+    );
+  });
+
+  it('sets onboarding_completed to true and returns 200', async () => {
+    const res = await request(app)
+      .put('/api/settings/onboarding')
+      .set('Cookie', adminCookie)
+      .send({ onboarding_completed: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.onboarding_completed).toBe(true);
+  });
+
+  it('returns 400 when onboarding_completed is not a boolean', async () => {
+    const res = await request(app)
+      .put('/api/settings/onboarding')
+      .set('Cookie', adminCookie)
+      .send({ onboarding_completed: 'yes' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 403 when a rep attempts to update', async () => {
+    const res = await request(app)
+      .put('/api/settings/onboarding')
+      .set('Cookie', repCookie)
+      .send({ onboarding_completed: true });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app)
+      .put('/api/settings/onboarding')
+      .send({ onboarding_completed: true });
+
+    expect(res.status).toBe(401);
+  });
+});

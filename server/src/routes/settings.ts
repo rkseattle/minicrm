@@ -21,6 +21,8 @@ import {
   updateCurrenciesHandler,
   getTagsRestrictCreationHandler,
   setTagsRestrictCreationHandler,
+  getOnboardingStatusHandler,
+  setOnboardingCompletedHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -871,5 +873,85 @@ router.put('/smtp', authenticate, requireRole('admin'), asyncHandler(putSmtpConf
  *         $ref: '#/components/responses/Forbidden'
  */
 router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testSmtpHandler));
+
+// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/onboarding:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getOnboardingStatus
+ *     summary: Get first-run detection and onboarding status (admin only, MINCRM-256)
+ *     description: >
+ *       Returns is_first_run (computed from contacts, users, and onboarding_completed)
+ *       and the raw onboarding_completed flag. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Onboarding status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 is_first_run: { type: boolean }
+ *                 onboarding_completed: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/onboarding',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getOnboardingStatusHandler),
+);
+
+/**
+ * @openapi
+ * /api/settings/onboarding:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: setOnboardingCompleted
+ *     summary: Mark onboarding as completed (admin only, MINCRM-256)
+ *     description: >
+ *       Sets the onboarding_completed flag. Once set to true the onboarding banner
+ *       will not appear again. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [onboarding_completed]
+ *             properties:
+ *               onboarding_completed: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Flag updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 onboarding_completed: { type: boolean }
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put(
+  '/onboarding',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setOnboardingCompletedHandler),
+);
 
 export default router;
