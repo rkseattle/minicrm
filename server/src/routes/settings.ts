@@ -19,6 +19,8 @@ import {
   setDefaultCurrencyHandler,
   getCurrenciesHandler,
   updateCurrenciesHandler,
+  getTagsRestrictCreationHandler,
+  setTagsRestrictCreationHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -253,6 +255,70 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setEmailNotificationsEnabledHandler),
+);
+
+// ── Tag creation restriction (MINCRM-263) ────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/settings/tags-restrict-creation:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getTagsRestrictCreation
+ *     summary: Get whether tag creation is restricted to the Tag Management page (MINCRM-263)
+ *     description: >
+ *       Returns whether inline tag creation is restricted to admins only.
+ *       Requires authentication — rep callers need this to know whether to show
+ *       the "create new tag" option in tag inputs.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current restriction setting
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 restricted: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/tags-restrict-creation', authenticate, asyncHandler(getTagsRestrictCreationHandler));
+
+/**
+ * @openapi
+ * /api/settings/tags-restrict-creation:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setTagsRestrictCreation
+ *     summary: Set whether tag creation is restricted to the Tag Management page (admin only, MINCRM-263)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [restricted]
+ *             properties:
+ *               restricted: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Restriction setting updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/tags-restrict-creation',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setTagsRestrictCreationHandler),
 );
 
 // ── Storage configuration (MINCRM-169) ───────────────────────────────────────
