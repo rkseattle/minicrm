@@ -1,0 +1,116 @@
+/**
+ * F-OB — Onboarding banner (MINCRM-256)
+ *
+ * Verifies:
+ *   OB1 — Banner is visible for admin when is_first_run is true
+ *   OB2 — Banner is NOT visible when is_first_run is false
+ *   OB3 — Dismiss (X) hides the banner and persists onboarding_completed=true
+ *   OB4 — Step 1 → Step 2 progression via "Looks good" button
+ *
+ * Each test resets the onboarding flag via the API before running and restores
+ * it to true (first-run) for the next test. The globalSetup marks onboarding
+ * completed to suppress the banner for all other E2E tests; this spec overrides
+ * that per-test via the admin restClient.
+ *
+ * Framework conventions (MINCRM-42):
+ *   - All tests tagged @functional
+ *   - Import test/expect from @apps/minicrm/fixtures.js only
+ *   - No raw locators — all interaction via page.locate / page.click
+ *   - Tests start unauthenticated (storageState override) so login() controls session
+ *
+ * MINCRM-256
+ */
+
+import { test, expect } from '@apps/minicrm/fixtures.js';
+import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
+
+// Tests navigate to the UI login page, so they must not inherit the pre-auth
+// admin storageState from globalSetup.
+test.use({ storageState: { cookies: [], origins: [] } });
+
+// ---------------------------------------------------------------------------
+// Environment
+// ---------------------------------------------------------------------------
+
+const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
+const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
+if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Resets onboarding_completed to the given value via the admin API. */
+async function setOnboardingCompleted(completed: boolean, restClient: RestClient): Promise<void> {
+  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.put('/api/settings/onboarding', { onboarding_completed: completed });
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+test('@functional F-OB1: banner is visible for admin when is_first_run is true', async ({
+  page,
+  restClient,
+}) => {
+  await setOnboardingCompleted(false, restClient);
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+  const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+  await expect(banner).toBeVisible({ timeout: 10_000 });
+});
+
+test('@functional F-OB2: banner is NOT visible when is_first_run is false', async ({
+  page,
+  restClient,
+}) => {
+  await setOnboardingCompleted(true, restClient);
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+  // Wait for the nav to be present (queries have settled), then assert banner absent.
+  await page.waitFor([{ type: 'testId', value: 'nav-top-contacts' }], 'visible', {}, 10_000);
+  expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
+});
+
+test('@functional F-OB3: dismiss (X) hides the banner and persists onboarding_completed=true', async ({
+  page,
+  restClient,
+}) => {
+  await setOnboardingCompleted(false, restClient);
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+  const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+  await expect(banner).toBeVisible({ timeout: 10_000 });
+
+  await page.click([{ type: 'testId', value: 'onboarding-dismiss-button' }]);
+
+  // Banner should disappear after dismiss.
+  expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
+
+  // Verify persistence via API.
+  const res = await restClient.get<{ is_first_run: boolean; onboarding_completed: boolean }>(
+    '/api/settings/onboarding',
+  );
+  expect(res.body.onboarding_completed).toBe(true);
+  expect(res.body.is_first_run).toBe(false);
+});
+
+test('@functional F-OB4: step 1 advances to step 2 when "Looks good" is clicked', async ({
+  page,
+  restClient,
+}) => {
+  await setOnboardingCompleted(false, restClient);
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+  await expect(
+    await page.locate([{ type: 'testId', value: 'onboarding-step-1' }]).resolve(),
+  ).toBeVisible({ timeout: 10_000 });
+
+  await page.click([{ type: 'testId', value: 'onboarding-step1-looks-good' }]);
+
+  await expect(
+    await page.locate([{ type: 'testId', value: 'onboarding-step-2' }]).resolve(),
+  ).toBeVisible({ timeout: 5_000 });
+});
