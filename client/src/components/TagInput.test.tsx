@@ -1,15 +1,16 @@
 /**
- * Tests for the TagInput component (MINCRM-186).
+ * Tests for the TagInput component (MINCRM-186, MINCRM-263).
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import TagInput from './TagInput.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
+import { REP_USER } from '../test/msw/handlers.js';
 
 const TAG_1: TagResponse = {
   id: 'tag-uuid-1',
@@ -148,5 +149,82 @@ describe('TagInput', () => {
     });
     fireEvent.pointerDown(screen.getByTestId(`tag-suggestion-${TAG_1.id}`));
     expect(onAttach).toHaveBeenCalledWith(TAG_1.name);
+  });
+});
+
+// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+
+describe('TagInput — rep with restriction enabled', () => {
+  beforeEach(() => {
+    // Override auth to return a rep user and restriction to true
+    server.use(
+      http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: true }),
+      ),
+      http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+    );
+  });
+
+  it('does not call onAttach when Enter is pressed with a non-matching value', async () => {
+    const onAttach = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders(<TagInput {...makeProps({ onAttach })} />);
+    const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
+    await userEvent.type(input, 'brandnewtag');
+    await userEvent.keyboard('{Enter}');
+    expect(onAttach).not.toHaveBeenCalled();
+  });
+
+  it('shows tag-creation-blocked hint when typing a non-matching value', async () => {
+    renderWithProviders(<TagInput {...makeProps()} />);
+    const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
+    await userEvent.type(input, 'brandnewtag');
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-creation-blocked-${ENTITY_ID}`)).toBeInTheDocument();
+    });
+  });
+
+  it('still calls onAttach when selecting an existing tag suggestion', async () => {
+    const onAttach = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders(<TagInput {...makeProps({ onAttach })} />);
+    const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
+    await userEvent.type(input, 'ent');
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-suggestion-${TAG_1.id}`)).toBeInTheDocument();
+    });
+    fireEvent.pointerDown(screen.getByTestId(`tag-suggestion-${TAG_1.id}`));
+    expect(onAttach).toHaveBeenCalledWith(TAG_1.name);
+  });
+});
+
+describe('TagInput — admin with restriction enabled', () => {
+  beforeEach(() => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: true }),
+      ),
+      http.get('/api/tags', () => HttpResponse.json({ tags: [] })),
+    );
+    // Default /api/auth/me handler returns ADMIN_USER
+  });
+
+  it('calls onAttach when Enter is pressed (admin is never blocked)', async () => {
+    const onAttach = vi.fn().mockResolvedValue(undefined);
+    renderWithProviders(<TagInput {...makeProps({ onAttach })} />);
+    const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
+    await userEvent.type(input, 'newtag');
+    await userEvent.keyboard('{Enter}');
+    expect(onAttach).toHaveBeenCalledWith('newtag');
+  });
+
+  it('does not show tag-creation-blocked hint for admins', async () => {
+    renderWithProviders(<TagInput {...makeProps()} />);
+    const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
+    await userEvent.type(input, 'brandnewtag');
+    // Small wait to let the query settle
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-input-${ENTITY_ID}`)).toHaveValue('brandnewtag');
+    });
+    expect(screen.queryByTestId(`tag-creation-blocked-${ENTITY_ID}`)).not.toBeInTheDocument();
   });
 });
