@@ -248,19 +248,16 @@ export interface OnboardingStatus {
  * @returns The current onboarding status.
  */
 export async function getOnboardingStatus(): Promise<OnboardingStatus> {
-  const [settingResult, contactCountResult, userCountResult] = await Promise.all([
-    pool.query<SystemSettingRow>('SELECT value FROM system_settings WHERE key = $1 LIMIT 1', [
-      ONBOARDING_COMPLETED_KEY,
-    ]),
-    pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM contacts'),
-    pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM users'),
-  ]);
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [ONBOARDING_COMPLETED_KEY],
+  );
 
-  const onboarding_completed = settingResult.rows[0]?.value === 'true';
-  const contactCount = parseInt(contactCountResult.rows[0]?.count ?? '0', 10);
-  const userCount = parseInt(userCountResult.rows[0]?.count ?? '0', 10);
+  const onboarding_completed = result.rows[0]?.value === 'true';
 
-  const is_first_run = !onboarding_completed && contactCount === 0 && userCount <= 1;
+  // is_first_run mirrors the flag directly — the admin controls it explicitly
+  // via PUT /api/settings/onboarding or the Reset button in General Settings.
+  const is_first_run = !onboarding_completed;
 
   return { is_first_run, onboarding_completed };
 }
