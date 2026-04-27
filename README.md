@@ -16,6 +16,8 @@ docker compose up -d
 
 Open http://localhost:5173 — the admin account is created automatically on first boot.
 
+For upgrade procedures, backup, and restore instructions, see [docs/operations.md](docs/operations.md).
+
 To populate realistic demo data:
 
 ```bash
