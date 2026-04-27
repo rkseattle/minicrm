@@ -17,6 +17,7 @@ import { useNavLayout } from './NavLayoutContext.js';
 import { useIsMobile } from '@/hooks/useIsMobile.js';
 import NavTop from './NavTop.js';
 import NavHamburger from './NavHamburger.js';
+import OnboardingBanner from './OnboardingBanner.js';
 
 /**
  * Renders the active navigation component based on the system layout setting.
@@ -35,18 +36,33 @@ export default function NavBar() {
 
   // Mobile always uses NavTop — the desktop layout setting does not apply.
   if (isMobile) {
-    return <NavTop />;
+    return (
+      <>
+        <NavTop />
+        <OnboardingBanner />
+      </>
+    );
   }
 
   if (layout === 'left') {
-    // NavLeft renders its own full-width header (logo, search, user controls).
+    // NavLeft renders its own full-width header. OnboardingBanner is injected
+    // by LayoutShell above the outlet inside NavLeft's content area.
     return null;
   }
 
   if (layout === 'hamburger') {
-    // NavHamburger renders its own full-width header (logo, search, user controls).
-    return <NavHamburger />;
+    return (
+      <>
+        <NavHamburger />
+        <OnboardingBanner />
+      </>
+    );
   }
 
-  return <NavTop />;
+  return (
+    <>
+      <NavTop />
+      <OnboardingBanner />
+    </>
+  );
 }

@@ -1137,5 +1137,39 @@
     "restrictToggleSaveSuccess": "Einstellung gespeichert.",
     "restrictToggleSaveError": "Einstellung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "tagNotFound": "Tag nicht gefunden. Bitten Sie einen Administrator, es auf der Tag-Verwaltungsseite hinzuzufügen."
+  },
+  "onboarding": {
+    "title": "Willkommen bei MiniCRM",
+    "subtitle": "Lassen Sie uns die Einrichtung in wenigen Schritten abschließen.",
+    "stepOf": "Schritt {{current}} von {{total}}",
+    "dismiss": "Einrichtung schließen",
+    "step1": {
+      "heading": "Pipeline-Phasen überprüfen",
+      "description": "Dies sind die Phasen, die Ihre Deals durchlaufen werden. Sie können sie jederzeit anpassen.",
+      "looksGood": "Sieht gut aus",
+      "customiseStages": "Phasen anpassen"
+    },
+    "step2": {
+      "heading": "Ihr Team einladen",
+      "description": "Senden Sie eine Einladung an ein Teammitglied. Es erhält eine E-Mail zum Festlegen des Passworts.",
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "kollege@beispiel.de",
+      "roleLabel": "Rolle",
+      "roleAdmin": "Administrator",
+      "roleRep": "Vertriebsmitarbeiter",
+      "sendInvite": "Einladung senden",
+      "sending": "Wird gesendet…",
+      "inviteSent": "Einladung gesendet an {{email}}",
+      "skipForNow": "Vorerst überspringen",
+      "inviteError": "Einladung konnte nicht gesendet werden. Bitte erneut versuchen."
+    },
+    "step3": {
+      "heading": "Alles bereit!",
+      "description": "Wählen Sie, wie Sie loslegen möchten.",
+      "loadDemoData": "Demodaten laden",
+      "loadingDemo": "Demodaten werden geladen…",
+      "addFirstContact": "Ersten Kontakt hinzufügen",
+      "startExploring": "Erkunden"
+    }
   }
 }

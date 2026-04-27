@@ -1137,5 +1137,39 @@
     "restrictToggleSaveSuccess": "Paramètre enregistré.",
     "restrictToggleSaveError": "Échec de l'enregistrement du paramètre. Veuillez réessayer.",
     "tagNotFound": "Étiquette introuvable. Demandez à un administrateur de l'ajouter sur la page Gestion des étiquettes."
+  },
+  "onboarding": {
+    "title": "Bienvenue sur MiniCRM",
+    "subtitle": "Configurons tout en quelques étapes rapides.",
+    "stepOf": "Étape {{current}} sur {{total}}",
+    "dismiss": "Fermer la configuration",
+    "step1": {
+      "heading": "Vérifier vos étapes du pipeline",
+      "description": "Ce sont les étapes par lesquelles vos affaires vont passer. Vous pouvez les personnaliser à tout moment.",
+      "looksGood": "C'est parfait",
+      "customiseStages": "Personnaliser les étapes"
+    },
+    "step2": {
+      "heading": "Invitez votre équipe",
+      "description": "Envoyez une invitation à un membre de l'équipe. Il recevra un e-mail pour définir son mot de passe.",
+      "emailLabel": "Adresse e-mail",
+      "emailPlaceholder": "collegue@exemple.com",
+      "roleLabel": "Rôle",
+      "roleAdmin": "Administrateur",
+      "roleRep": "Représentant",
+      "sendInvite": "Envoyer l'invitation",
+      "sending": "Envoi en cours…",
+      "inviteSent": "Invitation envoyée à {{email}}",
+      "skipForNow": "Ignorer pour l'instant",
+      "inviteError": "Échec de l'envoi. Veuillez réessayer."
+    },
+    "step3": {
+      "heading": "Tout est prêt !",
+      "description": "Choisissez comment vous souhaitez commencer.",
+      "loadDemoData": "Charger les données de démonstration",
+      "loadingDemo": "Chargement des données de démonstration…",
+      "addFirstContact": "Ajouter votre premier contact",
+      "startExploring": "Commencer à explorer"
+    }
   }
 }

@@ -1533,4 +1533,14 @@ export const handlers = [
   http.delete('/api/deals/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  /** Onboarding: GET /api/settings/onboarding — not first run by default (MINCRM-256) */
+  http.get('/api/settings/onboarding', () => {
+    return HttpResponse.json({ is_first_run: false, onboarding_completed: false });
+  }),
+
+  /** Onboarding: PUT /api/settings/onboarding — mark completed (MINCRM-256) */
+  http.put('/api/settings/onboarding', () => {
+    return HttpResponse.json({ onboarding_completed: true });
+  }),
 ];
