@@ -50,7 +50,7 @@ npm run seed:demo
 - **Validation:** Zod (shared schemas used on both client and server)
 - **Auth:** JWT stored in httpOnly cookies
 - **Infrastructure:** Docker + Docker Compose
-- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`)
+- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`, `/qa`)
 
 ## Local Development
 
@@ -339,7 +339,7 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Filter deals by owner (all vs. mine) via `?owner=me` query parameter
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
 - Linked contacts listed on the deal detail page (populated via `deal_contacts` join table)
-- Pipeline stages (fixed): Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
+- Pipeline stages are admin-configurable (see [Custom Pipeline Stages](#custom-pipeline-stages)); default stages are Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
 - Full CRUD REST API at `/api/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
 
@@ -536,6 +536,52 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Active users are fetched from `GET /api/users/active` (auth required, no admin role needed)
 - Owner can be changed from the record's edit form; change is reflected immediately without page reload
 
+### CSV Import
+
+- Admin-only two-step CSV import for contacts, accounts, and deals
+- **Step 1 — Parse:** upload a CSV file; the server returns the detected column headers and a preview of the first few rows so the admin can map columns before committing
+- **Step 2 — Run:** upload the CSV again with the column mapping; the server creates a background import job and returns `202 Accepted` immediately
+- **Job polling:** the client polls `GET /api/import/jobs/:job_id` until `status` is `complete` or `error`; the final result includes `total_rows`, `imported`, `skipped`, and `errors`
+- Rows that fail validation are collected in the `errors` array and skipped — the rest are imported
+- API endpoints (admin only):
+  - `POST /api/import/contacts/parse` — parse CSV, returns headers + preview
+  - `POST /api/import/contacts/run` — start import job, returns `{ job_id }`
+  - Same pattern for `/api/import/accounts/...` and `/api/import/deals/...`
+  - `GET /api/import/jobs/:job_id` — poll job status and result
+- Database migration: `037_create_import_jobs.js` creates the `import_jobs` table
+
+### SMTP Configuration (Admin)
+
+- Admins can configure outgoing email (SMTP) directly from the **Admin Settings** page without editing environment variables
+- Settings stored in the `system_settings` table (keys: `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass` (encrypted), `smtp_enabled`)
+- A **Send Test Email** button on the settings page verifies the saved configuration by delivering a test email to the logged-in admin's address
+- SMTP password is encrypted at rest via AES-256-GCM; it is never returned in API responses (`smtp_pass_set: boolean` indicates whether a password is stored)
+- API endpoints (admin only unless noted):
+  - `GET /api/settings/smtp` — returns current config (auth required; no admin needed for read)
+  - `PATCH /api/settings/smtp` — save SMTP config (admin only)
+  - `POST /api/settings/smtp/test` — send a test email (admin only); always returns HTTP 200 with `{ success, error? }` in the body
+- Database migration: `036_add_smtp_settings.js` seeds the five SMTP rows in `system_settings`
+- Environment variable `SMTP_FROM` (optional) sets the sender address when no DB config is active; defaults to `MiniCRM <noreply@minicrm.local>`
+
+### Currency Exchange Rates
+
+- Admins can configure exchange rates relative to a home currency on the **Admin Settings** page
+- The home currency row has `is_home = true` and `rate_to_home = 1.000000`; at most one home row can exist (enforced by a partial unique index)
+- Exchange rates are used for cross-currency deal value aggregation on the pipeline board and dashboard when `SUPPORTED_CURRENCIES` deals are mixed
+- API endpoints:
+  - `GET /api/settings/currencies` — returns home currency and all exchange rates (auth required)
+  - `PUT /api/settings/currencies` — replace full exchange rate table (admin only); body `{ home_currency, currencies: [{ code, rate_to_home }] }`
+- Database migration: `035_create_currencies.js` creates the `currencies` table and seeds USD as the home currency
+
+### Onboarding
+
+- First-time installation shows an onboarding checklist to guide the admin through initial setup (invite users, create pipeline stages, configure SMTP, seed demo data)
+- The banner dismisses permanently when the admin clicks **Complete Setup** or when all steps are done; state persists in `system_settings` (`onboarding_completed` key)
+- Auth-specific specs and `globalSetup` mark onboarding completed via `PUT /api/settings/onboarding` so the banner does not appear during E2E test runs
+- API endpoint:
+  - `PUT /api/settings/onboarding` — body `{ onboarding_completed: true }`; marks setup complete (auth required)
+- Database migration: `039_add_onboarding_completed.js` seeds the `onboarding_completed = 'false'` default row
+
 ## API Documentation
 
 The REST API is documented using [OpenAPI 3.0](https://swagger.io/specification/) annotations in the Express route files, generated by [swagger-jsdoc](https://github.com/Surnet/swagger-jsdoc), and served via [Swagger UI](https://swagger.io/tools/swagger-ui/).
@@ -586,7 +632,12 @@ npm run generate-spec --workspace=minicrm-server
 
 ## Pipeline Stages
 
+Stages are admin-configurable via the **Admin Settings** page. Default stages are:
 Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
+
+**Closed Won** and **Closed Lost** are fixed — they cannot be renamed or deleted. All
+other stages can be added, renamed, reordered, and deleted (if no open deals are in them).
+See [Custom Pipeline Stages](#custom-pipeline-stages) in the Implemented Features section.
 
 ## Internationalization
 
