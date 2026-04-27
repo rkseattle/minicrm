@@ -8,8 +8,8 @@
  * ```ts
  * import { test, expect } from '@framework/fixtures';
  *
- * test('creates a resource', async ({ restClient }) => {
- *   const response = await restClient.post<Resource>('/api/resource', { name: 'Alice' });
+ * test('creates an item', async ({ restClient }) => {
+ *   const response = await restClient.post<Item>('/api/items', { name: 'Widget' });
  *   expect(response.status).toBe(201);
  * });
  * ```
