@@ -52,10 +52,13 @@ FRAMEWORK_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/framework"
 
 FORBIDDEN=(
   # -------------------------------------------------------------------------
-  # 1. MiniCRM brand names — these should never appear in product-agnostic code.
+  # 1. MiniCRM brand names and ticket references — these should never appear
+  #    in product-agnostic code. MINCRM- catches any Jira ticket reference
+  #    (e.g. MINCRM-126, MINCRM-213).
   # -------------------------------------------------------------------------
   "minicrm"
   "MiniCRM"
+  "MINCRM-"
 
   # -------------------------------------------------------------------------
   # 2. CRM pipeline stage names — hardcoded stage strings belong in app helpers
