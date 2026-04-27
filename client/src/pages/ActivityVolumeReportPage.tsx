@@ -421,6 +421,17 @@ export default function ActivityVolumeReportPage() {
             className="bg-white rounded-lg border border-gray-200"
             data-testid="activity-volume-table-container"
           >
+            {/* Per-rep breakdown heading — admin Team View only (MINCRM-264) */}
+            {isAdmin && viewMode === 'team' && report.rows.length > 0 && (
+              <div
+                className="px-6 py-4 border-b border-gray-200"
+                data-testid="rep-breakdown-heading"
+              >
+                <h2 className="text-base font-semibold text-gray-900">
+                  {t('reports.activityVolume.repBreakdownHeading')}
+                </h2>
+              </div>
+            )}
             {report.rows.length === 0 ? (
               <p
                 className="px-6 py-8 text-sm text-gray-400 text-center"
