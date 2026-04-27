@@ -47,6 +47,8 @@ jobs:
               - 'qa/package.json'
               - 'qa/package-lock.json'
               - 'qa/tsconfig*.json'
+              - '!qa/**/*.md'
+              - '!qa/**/*.example'
             config:
               - '*.json'
               - '*.yaml'
