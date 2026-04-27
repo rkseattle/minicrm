@@ -653,6 +653,13 @@
         "hint": "Import deals. Required fields: Deal Name, Stage. Import accounts first so deals can be linked by account name.",
         "skipUnresolvableAccounts": "Skip rows whose account name does not match any existing account"
       }
+    },
+    "onboarding": {
+      "resetTitle": "Reset onboarding",
+      "resetHint": "Show the guided setup banner again on the next page load. Useful after a reconfiguration or for demonstration purposes.",
+      "resetButton": "Reset onboarding",
+      "resetSuccess": "Onboarding reset. The setup banner will reappear on the next page load.",
+      "resetError": "Failed to reset onboarding. Please try again."
     }
   },
   "profileSettings": {

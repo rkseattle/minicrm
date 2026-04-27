@@ -653,6 +653,13 @@
         "hint": "导入商机。必填字段：名称、阶段。建议先导入客户以便通过名称关联。",
         "skipUnresolvableAccounts": "跳过客户名称无法匹配的行"
       }
+    },
+    "onboarding": {
+      "resetTitle": "重置引导",
+      "resetHint": "在下次页面加载时重新显示引导设置横幅。适用于重新配置或演示目的。",
+      "resetButton": "重置引导",
+      "resetSuccess": "引导已重置。设置横幅将在下次页面加载时重新出现。",
+      "resetError": "重置引导失败，请重试。"
     }
   },
   "import": {

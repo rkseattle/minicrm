@@ -653,6 +653,13 @@
         "hint": "Importa negocios. Campos obligatorios: Nombre del negocio, Etapa. Importa las cuentas primero para vincularlos por nombre.",
         "skipUnresolvableAccounts": "Omitir filas cuyo nombre de cuenta no coincida con ninguna cuenta existente"
       }
+    },
+    "onboarding": {
+      "resetTitle": "Restablecer incorporación",
+      "resetHint": "Muestra de nuevo el banner de configuración guiada en la próxima carga de página. Útil tras una reconfiguración o para demostraciones.",
+      "resetButton": "Restablecer incorporación",
+      "resetSuccess": "Incorporación restablecida. El banner de configuración reaparecerá en la próxima carga de página.",
+      "resetError": "Error al restablecer la incorporación. Intenta de nuevo."
     }
   },
   "import": {

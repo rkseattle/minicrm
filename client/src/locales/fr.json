@@ -653,6 +653,13 @@
         "hint": "Importez des affaires. Champs obligatoires : Nom de l'affaire, Étape. Importez d'abord les comptes pour les lier par nom.",
         "skipUnresolvableAccounts": "Ignorer les lignes dont le nom de compte ne correspond à aucun compte existant"
       }
+    },
+    "onboarding": {
+      "resetTitle": "Réinitialiser l'intégration",
+      "resetHint": "Affiche à nouveau la bannière de configuration guidée au prochain chargement de page. Utile après une reconfiguration ou à des fins de démonstration.",
+      "resetButton": "Réinitialiser l'intégration",
+      "resetSuccess": "Intégration réinitialisée. La bannière de configuration réapparaîtra au prochain chargement de page.",
+      "resetError": "Échec de la réinitialisation. Veuillez réessayer."
     }
   },
   "import": {
