@@ -300,7 +300,14 @@ jobs:
     # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
     needs: [server-tests, client-tests, changes]
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true'
+    # MINCRM-271: always() prevents GitHub from auto-skipping this job when server-tests
+    # or client-tests were legitimately skipped (qa-only change). The explicit result checks
+    # preserve the original Phase 2 gate: e2e still blocks on a unit test failure.
+    if: |
+      always() &&
+      (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
+      (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -536,7 +543,9 @@ jobs:
   e2e-aggregate:
     name: Aggregate E2E Results (${{ matrix.project }})
     needs: e2e-functional
-    if: needs.e2e-functional.result == 'success' || needs.e2e-functional.result == 'failure'
+    # MINCRM-271: include 'skipped' so aggregate runs (and produces the PR comment)
+    # even on qa-only changes where e2e-functional ran but some shards were skipped.
+    if: needs.e2e-functional.result == 'success' || needs.e2e-functional.result == 'failure' || needs.e2e-functional.result == 'skipped'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
