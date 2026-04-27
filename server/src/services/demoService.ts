@@ -5,8 +5,12 @@
  * thin wrappers that call these functions. (MINCRM-102, MINCRM-103, MINCRM-206)
  */
 
+import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import type pg from 'pg';
+
+/** Number of bcrypt salt rounds — matches userService.ts */
+const BCRYPT_SALT_ROUNDS = 12;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -617,6 +621,252 @@ const DEMO_AUTOMATION_RULES = [
   },
 ] as const;
 
+// ── Rep user fixtures (MINCRM-267) ────────────────────────────────────────────
+
+const DEMO_REP = {
+  name: 'Alex Rivera',
+  email: 'alex.rivera@demo.minicrm.app',
+  password: 'Demo1234!',
+  role: 'rep' as const,
+};
+
+const DEMO_REP_ACCOUNTS = [
+  {
+    name: 'Stellartech Corp',
+    industry: 'Technology',
+    website: 'https://www.stellartech-demo.example.com',
+    employee_range: '51-200',
+    revenue_range: '10M-50M',
+    account_type: 'Prospect',
+  },
+  {
+    name: 'Ironbridge Manufacturing',
+    industry: 'Manufacturing',
+    website: 'https://www.ironbridge-demo.example.com',
+    employee_range: '201-500',
+    revenue_range: '50M-100M',
+    account_type: 'Customer',
+  },
+  {
+    name: 'Clearwater Consulting',
+    industry: 'Professional Services',
+    website: 'https://www.clearwater-demo.example.com',
+    employee_range: '11-50',
+    revenue_range: '1M-10M',
+    account_type: 'Prospect',
+  },
+];
+
+const DEMO_REP_CONTACTS = [
+  {
+    first_name: 'Natalie',
+    last_name: 'Russo',
+    email: 'natalie.russo.demo@stellartech-demo.example.com',
+    phone: '+1-555-0301',
+    title: 'VP of Engineering',
+    department: 'Engineering',
+    linkedin_url: 'https://www.linkedin.com/in/natalie-russo-demo',
+  },
+  {
+    first_name: 'Omar',
+    last_name: 'Farouk',
+    email: 'omar.farouk.demo@stellartech-demo.example.com',
+    phone: '+1-555-0302',
+    title: 'CTO',
+    department: 'Technology',
+  },
+  {
+    first_name: 'Priscilla',
+    last_name: 'Vega',
+    email: 'priscilla.vega.demo@stellartech-demo.example.com',
+    phone: '+1-555-0303',
+    title: 'Head of Operations',
+    department: 'Operations',
+  },
+  {
+    first_name: 'Raymond',
+    last_name: 'Osei',
+    email: 'raymond.osei.demo@ironbridge-demo.example.com',
+    phone: '+1-555-0401',
+    title: 'CEO',
+    department: 'Executive',
+    linkedin_url: 'https://www.linkedin.com/in/raymond-osei-demo',
+  },
+  {
+    first_name: 'Sophia',
+    last_name: 'Laurent',
+    email: 'sophia.laurent.demo@ironbridge-demo.example.com',
+    phone: '+1-555-0402',
+    title: 'CFO',
+    department: 'Finance',
+  },
+  {
+    first_name: 'Thomas',
+    last_name: 'Ibe',
+    email: 'thomas.ibe.demo@ironbridge-demo.example.com',
+    phone: '+1-555-0403',
+    title: 'Procurement Director',
+    department: 'Operations',
+  },
+  {
+    first_name: 'Uma',
+    last_name: 'Krishnan',
+    email: 'uma.krishnan.demo@ironbridge-demo.example.com',
+    phone: '+1-555-0404',
+    title: 'IT Manager',
+    department: 'IT',
+  },
+  {
+    first_name: 'Victor',
+    last_name: 'Moreau',
+    email: 'victor.moreau.demo@clearwater-demo.example.com',
+    phone: '+1-555-0501',
+    title: 'Managing Partner',
+    department: 'Executive',
+    linkedin_url: 'https://www.linkedin.com/in/victor-moreau-demo',
+  },
+];
+
+const DEMO_REP_DEALS = [
+  {
+    name: 'Stellartech — Cloud Migration',
+    stage: 'Prospecting',
+    value: 75000,
+    close_date: futureMonths(5),
+  },
+  {
+    name: 'Stellartech — DevOps Platform',
+    stage: 'Proposal',
+    value: 52000,
+    close_date: futureMonths(2),
+    probability: 60,
+  },
+  {
+    name: 'Ironbridge — ERP Upgrade',
+    stage: 'Closed Won',
+    value: 110000,
+    close_date: relativeDate(-3),
+    loss_reason: null,
+  },
+  {
+    name: 'Ironbridge — Compliance Audit',
+    stage: 'Closed Lost',
+    value: 38000,
+    close_date: relativeDate(-7),
+    loss_reason: 'Budget cut — project deferred to next fiscal year',
+  },
+  {
+    name: 'Clearwater — CRM Integration',
+    stage: 'Qualification',
+    value: 24000,
+    close_date: futureMonths(3),
+  },
+];
+
+const DEMO_REP_ACTIVITIES: Array<{
+  type: string;
+  subject: string;
+  notes: string | null;
+  due_date: string;
+  status: string;
+  direction: string | null;
+  dealIndex: number;
+  contactIndex: number;
+}> = [
+  {
+    type: 'Call',
+    subject: 'Intro call — Stellartech Cloud Migration',
+    notes: 'Good initial conversation. Budget confirmed for H2.',
+    due_date: '2026-04-08',
+    status: 'complete',
+    direction: 'Outbound',
+    dealIndex: 0,
+    contactIndex: 0,
+  },
+  {
+    type: 'Email',
+    subject: 'DevOps platform proposal — Stellartech',
+    notes: null,
+    due_date: '2026-04-17',
+    status: 'complete',
+    direction: 'Outbound',
+    dealIndex: 1,
+    contactIndex: 1,
+  },
+  {
+    type: 'Meeting',
+    subject: 'ERP upgrade kickoff — Ironbridge',
+    notes: 'Contract signed. Implementation starts next month.',
+    due_date: '2026-04-14',
+    status: 'complete',
+    direction: null,
+    dealIndex: 2,
+    contactIndex: 3,
+  },
+  {
+    type: 'Call',
+    subject: 'Post-mortem — Ironbridge Compliance loss',
+    notes: 'Budget deferred. Revisit in Q1 next year.',
+    due_date: '2026-04-21',
+    status: 'complete',
+    direction: 'Inbound',
+    dealIndex: 3,
+    contactIndex: 4,
+  },
+  {
+    type: 'Task',
+    subject: 'Send Clearwater CRM integration overview deck',
+    notes: null,
+    // Overdue task — past due date
+    due_date: relativeDate(-4),
+    status: 'open',
+    direction: null,
+    dealIndex: 4,
+    contactIndex: 7,
+  },
+  {
+    type: 'Task',
+    subject: 'Schedule technical review — Stellartech DevOps',
+    notes: null,
+    // Overdue task — past due date
+    due_date: relativeDate(-2),
+    status: 'open',
+    direction: null,
+    dealIndex: 1,
+    contactIndex: 2,
+  },
+  {
+    type: 'Meeting',
+    subject: 'Quarterly business review — Ironbridge',
+    notes: null,
+    // Future task
+    due_date: futureMonths(1),
+    status: 'open',
+    direction: null,
+    dealIndex: 2,
+    contactIndex: 5,
+  },
+];
+
+const DEMO_REP_LEADS = [
+  {
+    first_name: 'Beatrice',
+    last_name: 'Nakamura',
+    email: 'beatrice.nakamura.demo@lumina-demo.example.com',
+    company_name: 'Lumina Digital',
+    lead_source: 'Web',
+    status: 'New',
+  },
+  {
+    first_name: 'Carlos',
+    last_name: 'Estrada',
+    email: 'carlos.estrada.demo@redrock-demo.example.com',
+    company_name: 'Red Rock Industries',
+    lead_source: 'Referral',
+    status: 'Contacted',
+  },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -711,6 +961,9 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
   await client.query(`DELETE FROM accounts WHERE is_demo = true`);
+
+  // Remove the demo rep user — all their owned records are already deleted above via is_demo
+  await client.query(`DELETE FROM users WHERE email = $1`, [DEMO_REP.email]);
 }
 
 /**
@@ -721,6 +974,19 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
  * @param adminId - UUID to use as owner_id for all inserted records.
  */
 async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<void> {
+  // 0. Create demo rep user — ON CONFLICT preserves idempotency if partially seeded
+  const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
+  await client.query(
+    `INSERT INTO users (email, name, role, password_hash, status)
+     VALUES ($1, $2, $3, $4, 'active')
+     ON CONFLICT (email) DO NOTHING`,
+    [DEMO_REP.email, DEMO_REP.name, DEMO_REP.role, repPasswordHash],
+  );
+  const repResult = await client.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
+    DEMO_REP.email,
+  ]);
+  const repId = repResult.rows[0].id;
+
   // 1. Accounts — Acme first so we have its ID for Globex's parent_account_id
   const accountIds: string[] = [];
   for (const account of DEMO_ACCOUNTS) {
@@ -915,6 +1181,130 @@ async function insertDemoData(client: pg.PoolClient, adminId: string): Promise<v
       );
     }
   }
+
+  // 10. Rep-owned accounts (MINCRM-267)
+  const repAccountIds: string[] = [];
+  for (const account of DEMO_REP_ACCOUNTS) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO accounts (name, industry, website, employee_range, revenue_range, account_type, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id`,
+      [
+        account.name,
+        account.industry,
+        account.website,
+        account.employee_range,
+        account.revenue_range,
+        account.account_type,
+        repId,
+      ],
+    );
+    repAccountIds.push(result.rows[0].id);
+  }
+
+  // 11. Rep-owned contacts — first 3 → Stellartech (index 0), next 4 → Ironbridge (index 1), last 1 → Clearwater (index 2)
+  const repContactIds: string[] = [];
+  const repContactAccountMap = [0, 0, 0, 1, 1, 1, 1, 2];
+  for (let i = 0; i < DEMO_REP_CONTACTS.length; i++) {
+    const contact = DEMO_REP_CONTACTS[i];
+    const accountId = repAccountIds[repContactAccountMap[i]];
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO contacts
+         (first_name, last_name, email, phone, title, department,
+          linkedin_url, twitter_x_url, account_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+       RETURNING id`,
+      [
+        contact.first_name,
+        contact.last_name,
+        contact.email,
+        contact.phone,
+        contact.title,
+        contact.department,
+        (contact as { linkedin_url?: string }).linkedin_url ?? null,
+        null,
+        accountId,
+        repId,
+      ],
+    );
+    repContactIds.push(result.rows[0].id);
+  }
+
+  // 12. Rep-owned deals — first 2 → Stellartech (index 0), next 2 → Ironbridge (index 1), last 1 → Clearwater (index 2)
+  const repDealIds: string[] = [];
+  const repDealAccountMap = [0, 0, 1, 1, 2];
+  for (let i = 0; i < DEMO_REP_DEALS.length; i++) {
+    const deal = DEMO_REP_DEALS[i];
+    const accountId = repAccountIds[repDealAccountMap[i]];
+    const lossReason = (deal as { loss_reason?: string | null }).loss_reason ?? null;
+    const probability = (deal as { probability?: number }).probability ?? null;
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO deals
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, 'USD', $5, $6, $7, $8, true)
+       RETURNING id`,
+      [
+        deal.name,
+        deal.stage,
+        deal.value,
+        probability,
+        deal.close_date,
+        lossReason,
+        accountId,
+        repId,
+      ],
+    );
+    repDealIds.push(result.rows[0].id);
+  }
+
+  // 13. Link primary contact to each rep deal
+  for (let i = 0; i < DEMO_REP_DEALS.length; i++) {
+    const primaryContactIndex =
+      repDealAccountMap[i] === 0 ? i % 3 : repDealAccountMap[i] === 1 ? 3 + (i - 2) : 7;
+    await client.query(
+      `INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [repDealIds[i], repContactIds[primaryContactIndex]],
+    );
+  }
+
+  // 14. Rep-owned activities
+  for (const activity of DEMO_REP_ACTIVITIES) {
+    const dealId = repDealIds[activity.dealIndex];
+    const contactId = repContactIds[activity.contactIndex];
+    await client.query(
+      `INSERT INTO activities (type, subject, notes, due_date, status, direction, deal_id, contact_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
+      [
+        activity.type,
+        activity.subject,
+        activity.notes ?? null,
+        activity.due_date,
+        activity.status,
+        activity.direction,
+        dealId,
+        contactId,
+        repId,
+      ],
+    );
+  }
+
+  // 15. Rep-owned leads
+  for (const lead of DEMO_REP_LEADS) {
+    await client.query(
+      `INSERT INTO leads
+         (first_name, last_name, email, company_name, lead_source, status, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)`,
+      [
+        lead.first_name,
+        lead.last_name,
+        lead.email,
+        lead.company_name,
+        lead.lead_source,
+        lead.status,
+        repId,
+      ],
+    );
+  }
 }
 
 /**
@@ -936,6 +1326,7 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
     const adminId = await getAdminUserId(client);
     await insertDemoData(client, adminId);
     await client.query('COMMIT');
+    console.log(`[seed-demo] Demo rep user: ${DEMO_REP.email} / ${DEMO_REP.password}`);
     return { seeded: true };
   } catch (err) {
     await client.query('ROLLBACK');

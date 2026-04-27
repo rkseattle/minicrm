@@ -52,6 +52,8 @@ async function cleanDemoData(): Promise<void> {
   await pool.query(`DELETE FROM deals WHERE is_demo = true`);
   await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
   await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
+  // Remove demo rep user — created by insertDemoData, not covered by is_demo flag (MINCRM-267)
+  await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
 }
 
 beforeAll(async () => {
@@ -113,6 +115,7 @@ afterAll(async () => {
     await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
   }
   await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
+  await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
 });
 
 // ── getDemoStatus ─────────────────────────────────────────────────────────────
@@ -170,16 +173,19 @@ describe('seedDemo', () => {
     expect(afterAccounts.rows[0].count).toBe(beforeAccounts.rows[0].count);
   });
 
-  it('inserts 5 demo leads with correct statuses', async () => {
+  it('inserts 7 demo leads with correct statuses', async () => {
     await seedDemo();
 
     const leads = await pool.query<{ first_name: string; status: string }>(
       `SELECT first_name, status FROM leads WHERE is_demo = true ORDER BY first_name`,
     );
-    expect(leads.rowCount).toBe(5);
+    // 5 admin-owned leads + 2 rep-owned leads (MINCRM-267)
+    expect(leads.rowCount).toBe(7);
 
     const statuses = leads.rows.map((r) => r.status).sort();
-    expect(statuses).toEqual(['Contacted', 'Disqualified', 'New', 'Qualified', 'Qualified'].sort());
+    expect(statuses).toEqual(
+      ['Contacted', 'Contacted', 'Disqualified', 'New', 'New', 'Qualified', 'Qualified'].sort(),
+    );
   });
 
   it('sets Priya Nair disqualification_reason', async () => {
