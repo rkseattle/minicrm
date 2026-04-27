@@ -233,7 +233,8 @@ jobs:
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests
-    needs: lint-and-typecheck
+    needs: [lint-and-typecheck, changes]
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -793,7 +794,7 @@ jobs:
     name: Phase 2 - Unit Tests — Coverage Report
     needs: [server-tests, client-tests, e2e-framework-specs]
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
+    if: (needs.server-tests.result == 'success' || needs.client-tests.result == 'success' || needs.e2e-framework-specs.result == 'success') && github.event_name == 'pull_request'
     steps:
       - name: Download server coverage artifact
         uses: actions/download-artifact@v8
