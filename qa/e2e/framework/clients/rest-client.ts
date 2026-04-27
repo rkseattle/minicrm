@@ -218,7 +218,7 @@ export class RestClient {
   /**
    * Builds the full URL from a path segment.
    *
-   * @param path - Relative path (e.g., `/contacts`).
+   * @param path - Relative path (e.g., `/api/items`).
    * @returns Absolute URL string.
    */
   private url(path: string): string {
