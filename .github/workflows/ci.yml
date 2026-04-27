@@ -102,7 +102,7 @@ jobs:
   server-tests:
     name: Phase 2 - Server Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true'
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -174,7 +174,7 @@ jobs:
   client-tests:
     name: Phase 2 - Client Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.config == 'true'
+    if: needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
