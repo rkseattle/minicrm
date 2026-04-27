@@ -1,5 +1,5 @@
 /**
- * Tests for the AdminTagsPage component (MINCRM-186).
+ * Tests for the AdminTagsPage component (MINCRM-186, MINCRM-263).
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -179,6 +179,105 @@ describe('AdminTagsPage', () => {
     await userEvent.click(screen.getByTestId(`delete-tag-${TAG_1.id}`));
     await waitFor(() => {
       expect(screen.getByTestId('admin-tags-delete-error')).toBeInTheDocument();
+    });
+  });
+});
+
+// ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
+
+describe('AdminTagsPage restrict-creation toggle', () => {
+  it('renders the toggle section', async () => {
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle-section')).toBeInTheDocument();
+    });
+  });
+
+  it('toggle is unchecked when restriction is disabled', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: false }),
+      ),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle')).not.toBeChecked();
+    });
+  });
+
+  it('toggle is checked when restriction is enabled', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: true }),
+      ),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle')).toBeChecked();
+    });
+  });
+
+  it('shows description when restriction is enabled', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: true }),
+      ),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-description')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show description when restriction is disabled', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: false }),
+      ),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('tags-restrict-description')).not.toBeInTheDocument();
+  });
+
+  it('calls the API on toggle change and shows success message', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: false }),
+      ),
+      http.patch('/api/settings/tags-restrict-creation', async ({ request }) => {
+        const body = (await request.json()) as { restricted: boolean };
+        return HttpResponse.json({ restricted: body.restricted });
+      }),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('tags-restrict-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-save-success')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message when API save fails', async () => {
+    server.use(
+      http.get('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ restricted: false }),
+      ),
+      http.patch('/api/settings/tags-restrict-creation', () =>
+        HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<AdminTagsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-toggle')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('tags-restrict-toggle'));
+    await waitFor(() => {
+      expect(screen.getByTestId('tags-restrict-save-error')).toBeInTheDocument();
     });
   });
 });

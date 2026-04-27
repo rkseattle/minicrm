@@ -1,6 +1,7 @@
 /**
  * Admin Tags page — manage all tags in the system (MINCRM-186).
  * Lists every tag, allows renaming and deleting. Admin only.
+ * Includes the restrict-tag-creation toggle (MINCRM-263).
  */
 
 import { useState, useRef } from 'react';
@@ -10,6 +11,11 @@ import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { listTags, updateTag, deleteTag, TAGS_QUERY_KEY } from '@/api/tags.js';
+import {
+  getTagsRestrictCreation,
+  setTagsRestrictCreation,
+  TAGS_RESTRICT_CREATION_QUERY_KEY,
+} from '@/api/settings.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
 
 /**
@@ -25,6 +31,32 @@ export default function AdminTagsPage() {
   });
 
   const tags = data?.tags ?? [];
+
+  // ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
+
+  const { data: restrictData } = useQuery({
+    queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,
+    queryFn: getTagsRestrictCreation,
+  });
+
+  const restricted = restrictData?.restricted ?? false;
+
+  const [restrictSaveSuccess, setRestrictSaveSuccess] = useState(false);
+  const [restrictSaveError, setRestrictSaveError] = useState(false);
+
+  const restrictMutation = useMutation({
+    mutationFn: (value: boolean) => setTagsRestrictCreation(value),
+    onSuccess: (data) => {
+      void queryClient.setQueryData(TAGS_RESTRICT_CREATION_QUERY_KEY, data);
+      setRestrictSaveSuccess(true);
+      setRestrictSaveError(false);
+      setTimeout(() => setRestrictSaveSuccess(false), 3000);
+    },
+    onError: () => {
+      setRestrictSaveError(true);
+      setRestrictSaveSuccess(false);
+    },
+  });
 
   // ── Rename state ──────────────────────────────────────────────────────────────
 
@@ -102,6 +134,56 @@ export default function AdminTagsPage() {
         <p className="text-sm text-gray-500 mb-6" data-testid="admin-tags-hint">
           {t('tags.pageHint')}
         </p>
+
+        {/* Restrict-creation toggle */}
+        <div
+          className="mb-6 rounded-lg border border-gray-200 bg-white p-4"
+          data-testid="tags-restrict-toggle-section"
+        >
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-checked={restricted}
+              checked={restricted}
+              disabled={restrictMutation.isPending}
+              onChange={(e) => restrictMutation.mutate(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-60"
+              data-testid="tags-restrict-toggle"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-gray-900">
+                {t('tags.restrictToggleLabel')}
+              </span>
+              {restricted && (
+                <span
+                  className="mt-0.5 block text-sm text-gray-500"
+                  data-testid="tags-restrict-description"
+                >
+                  {t('tags.restrictToggleDescription')}
+                </span>
+              )}
+            </span>
+          </label>
+          {restrictSaveSuccess && (
+            <p
+              role="status"
+              className="mt-2 text-sm text-green-700"
+              data-testid="tags-restrict-save-success"
+            >
+              {t('tags.restrictToggleSaveSuccess')}
+            </p>
+          )}
+          {restrictSaveError && (
+            <p
+              role="alert"
+              className="mt-2 text-sm text-red-600"
+              data-testid="tags-restrict-save-error"
+            >
+              {t('tags.restrictToggleSaveError')}
+            </p>
+          )}
+        </div>
 
         {isLoading && (
           <p className="text-sm text-gray-500" data-testid="admin-tags-loading">

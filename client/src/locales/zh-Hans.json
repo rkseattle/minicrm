@@ -1114,6 +1114,11 @@
     "inputPlaceholder": "输入标签后按 Enter 或逗号…",
     "suggestionsLabel": "现有标签",
     "removeTag": "移除标签 {{name}}",
-    "sectionTitle": "标签"
+    "sectionTitle": "标签",
+    "restrictToggleLabel": "将标签创建限制在此页面",
+    "restrictToggleDescription": "只有管理员可以创建新标签。用户仍然可以将现有标签应用到记录。",
+    "restrictToggleSaveSuccess": "设置已保存。",
+    "restrictToggleSaveError": "保存设置失败，请重试。",
+    "tagNotFound": "未找到标签。请联系管理员在标签管理页面添加。"
   }
 }

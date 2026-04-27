@@ -1114,6 +1114,11 @@
     "inputPlaceholder": "Tag eingeben und Enter oder Komma drücken…",
     "suggestionsLabel": "Vorhandene Tags",
     "removeTag": "Tag {{name}} entfernen",
-    "sectionTitle": "Tags"
+    "sectionTitle": "Tags",
+    "restrictToggleLabel": "Tag-Erstellung auf diese Seite beschränken",
+    "restrictToggleDescription": "Nur Administratoren können neue Tags erstellen. Benutzer können weiterhin vorhandene Tags auf Datensätze anwenden.",
+    "restrictToggleSaveSuccess": "Einstellung gespeichert.",
+    "restrictToggleSaveError": "Einstellung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "tagNotFound": "Tag nicht gefunden. Bitten Sie einen Administrator, es auf der Tag-Verwaltungsseite hinzuzufügen."
   }
 }
