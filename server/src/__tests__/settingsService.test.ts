@@ -236,22 +236,9 @@ describe('setDefaultCurrency', () => {
 describe('getOnboardingStatus', () => {
   beforeEach(async () => {
     await pool.query(`DELETE FROM system_settings WHERE key = 'onboarding_completed'`);
-    // Ensure clean state: truncate contacts, leave only one test user
-    await pool.query('TRUNCATE contacts CASCADE');
   });
 
-  it('returns is_first_run=true when contacts empty, one user, flag missing', async () => {
-    const userCount = await pool.query<{ count: string }>(
-      'SELECT COUNT(*)::text AS count FROM users',
-    );
-    const count = parseInt(userCount.rows[0].count, 10);
-    // Only meaningful if exactly one user exists; seed one if needed
-    if (count !== 1) {
-      // skip assertion about user count — just verify flag/contact logic
-      const status = await getOnboardingStatus();
-      expect(typeof status.is_first_run).toBe('boolean');
-      return;
-    }
+  it('returns is_first_run=true when flag is missing (defaults to false)', async () => {
     const status = await getOnboardingStatus();
     expect(status.is_first_run).toBe(true);
     expect(status.onboarding_completed).toBe(false);
@@ -267,18 +254,14 @@ describe('getOnboardingStatus', () => {
     expect(status.onboarding_completed).toBe(true);
   });
 
-  it('returns is_first_run=false when contacts exist', async () => {
-    // Insert a minimal contact row (owner_id must be a valid user — use any existing user)
-    const userRow = await pool.query<{ id: string }>('SELECT id FROM users LIMIT 1');
-    if (userRow.rows[0]) {
-      await pool.query(
-        `INSERT INTO contacts (id, first_name, last_name, email, owner_id)
-         VALUES (gen_random_uuid(), 'Test', 'Contact', 'onboardtest@example.com', $1)`,
-        [userRow.rows[0].id],
-      );
-    }
+  it('returns is_first_run=true when flag is reset to false — regardless of contacts or users', async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('onboarding_completed', 'false', now())`,
+    );
     const status = await getOnboardingStatus();
-    expect(status.is_first_run).toBe(false);
+    expect(status.is_first_run).toBe(true);
+    expect(status.onboarding_completed).toBe(false);
   });
 });
 
