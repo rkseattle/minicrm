@@ -13,6 +13,8 @@ import {
   setEmailNotificationsEnabled,
   getDefaultCurrency,
   setDefaultCurrency,
+  getTagsRestrictCreation,
+  setTagsRestrictCreation,
 } from '../services/settingsService.js';
 import { getCurrencies, updateCurrencies } from '../services/currencyService.js';
 import {
@@ -222,6 +224,53 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
     fieldName: 'Default Currency',
     oldValue: previousCurrency,
     newValue: currency,
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Tag creation restriction (MINCRM-263) ────────────────────────────────────
+
+/**
+ * GET /api/settings/tags-restrict-creation
+ * Returns whether tag creation is restricted to the Tag Management page.
+ * Requires authentication — rep callers need this to know whether to show
+ * the "create new tag" option in inline tag inputs.
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getTagsRestrictCreationHandler(_req: Request, res: Response): Promise<void> {
+  const restricted = await getTagsRestrictCreation();
+  res.status(200).json({ restricted });
+}
+
+/**
+ * PATCH /api/settings/tags-restrict-creation
+ * Sets whether tag creation is restricted. Admin only. (MINCRM-263)
+ *
+ * @param req - Express request with body `{ restricted: boolean }`.
+ * @param res - Express response.
+ */
+export async function setTagsRestrictCreationHandler(req: Request, res: Response): Promise<void> {
+  if (typeof req.body.restricted !== 'boolean') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'restricted must be a boolean' },
+    });
+    return;
+  }
+
+  const previousRestricted = await getTagsRestrictCreation();
+  const restricted = await setTagsRestrictCreation(req.body.restricted as boolean);
+  res.status(200).json({ restricted });
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Tag Creation Restriction',
+    eventType: 'updated',
+    fieldName: 'Tag Creation Restriction',
+    oldValue: String(previousRestricted),
+    newValue: String(restricted),
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));

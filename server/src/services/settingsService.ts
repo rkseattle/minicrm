@@ -35,6 +35,9 @@ const EMAIL_NOTIFICATIONS_ENABLED_KEY = 'email_notifications_enabled';
 /** The key used to store the default currency setting (MINCRM-189) */
 const DEFAULT_CURRENCY_KEY = 'default_currency';
 
+/** The key used to store the tag creation restriction setting (MINCRM-263) */
+const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
+
 /**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
@@ -189,4 +192,39 @@ export async function setDefaultCurrency(currency: SupportedCurrency): Promise<S
     [DEFAULT_CURRENCY_KEY, currency],
   );
   return currency;
+}
+
+// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+
+/**
+ * Returns whether tag creation is restricted to the Tag Management page.
+ * Defaults to false if the setting row is missing.
+ *
+ * @returns True when tag creation is restricted to admins only.
+ */
+export async function getTagsRestrictCreation(): Promise<boolean> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [TAGS_RESTRICT_CREATION_KEY],
+  );
+  if (!result.rows[0]) {
+    return false;
+  }
+  return result.rows[0].value === 'true';
+}
+
+/**
+ * Sets whether tag creation is restricted to admins on the Tag Management page. Admin only.
+ *
+ * @param restricted - Whether to restrict inline tag creation to admins only.
+ * @returns The persisted value.
+ */
+export async function setTagsRestrictCreation(restricted: boolean): Promise<boolean> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [TAGS_RESTRICT_CREATION_KEY, String(restricted)],
+  );
+  return restricted;
 }

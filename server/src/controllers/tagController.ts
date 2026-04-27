@@ -19,6 +19,7 @@ import {
   attachTag,
   detachTag,
 } from '../services/tagService.js';
+import { getTagsRestrictCreation } from '../services/settingsService.js';
 
 // ── Global tag CRUD ────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ export async function listTagsHandler(req: Request, res: Response): Promise<void
 /**
  * POST /api/tags
  * Creates a new tag. Returns the existing tag if name already exists (idempotent).
+ * When tags_restrict_creation is true, rep callers receive 403. (MINCRM-263)
  */
 export async function createTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = createTagSchema.safeParse(req.body);
@@ -43,6 +45,20 @@ export async function createTagHandler(req: Request, res: Response): Promise<voi
     });
     return;
   }
+
+  if (req.user!.role === 'rep') {
+    const restricted = await getTagsRestrictCreation();
+    if (restricted) {
+      res.status(403).json({
+        error: {
+          code: 'TAG_CREATION_RESTRICTED',
+          message: 'Tag creation is restricted to admins. Contact your admin to add new tags.',
+        },
+      });
+      return;
+    }
+  }
+
   const tag = await createTag(parsed.data);
   res.status(201).json({ tag });
 }
