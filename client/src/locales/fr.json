@@ -1114,6 +1114,11 @@
     "inputPlaceholder": "Saisissez une étiquette et appuyez sur Entrée ou virgule…",
     "suggestionsLabel": "Étiquettes existantes",
     "removeTag": "Supprimer l’étiquette {{name}}",
-    "sectionTitle": "Étiquettes"
+    "sectionTitle": "Étiquettes",
+    "restrictToggleLabel": "Restreindre la création d'étiquettes à cette page",
+    "restrictToggleDescription": "Seuls les administrateurs peuvent créer de nouvelles étiquettes. Les utilisateurs peuvent toujours appliquer des étiquettes existantes aux enregistrements.",
+    "restrictToggleSaveSuccess": "Paramètre enregistré.",
+    "restrictToggleSaveError": "Échec de l'enregistrement du paramètre. Veuillez réessayer.",
+    "tagNotFound": "Étiquette introuvable. Demandez à un administrateur de l'ajouter sur la page Gestion des étiquettes."
   }
 }

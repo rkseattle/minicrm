@@ -1114,6 +1114,11 @@
     "inputPlaceholder": "Escribe una etiqueta y pulsa Enter o coma…",
     "suggestionsLabel": "Etiquetas existentes",
     "removeTag": "Eliminar etiqueta {{name}}",
-    "sectionTitle": "Etiquetas"
+    "sectionTitle": "Etiquetas",
+    "restrictToggleLabel": "Restringir la creación de etiquetas a esta página",
+    "restrictToggleDescription": "Solo los administradores pueden crear nuevas etiquetas. Los usuarios aún pueden aplicar etiquetas existentes a los registros.",
+    "restrictToggleSaveSuccess": "Configuración guardada.",
+    "restrictToggleSaveError": "Error al guardar la configuración. Por favor, inténtalo de nuevo.",
+    "tagNotFound": "Etiqueta no encontrada. Pide a un administrador que la añada en la página de Gestión de Etiquetas."
   }
 }

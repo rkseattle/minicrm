@@ -1114,6 +1114,11 @@
     "inputPlaceholder": "Type a tag and press Enter or comma…",
     "suggestionsLabel": "Existing tags",
     "removeTag": "Remove tag {{name}}",
-    "sectionTitle": "Tags"
+    "sectionTitle": "Tags",
+    "restrictToggleLabel": "Restrict tag creation to this page",
+    "restrictToggleDescription": "Only admins can create new tags. Users can still apply existing tags to records.",
+    "restrictToggleSaveSuccess": "Setting saved.",
+    "restrictToggleSaveError": "Failed to save setting. Please try again.",
+    "tagNotFound": "Tag not found. Ask an admin to add it on the Tag Management page."
   }
 }

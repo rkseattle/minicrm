@@ -166,6 +166,42 @@ export async function updateCurrenciesConfig(payload: {
   return response.data;
 }
 
+// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+
+/** Shape returned by the tags-restrict-creation endpoints */
+export interface TagsRestrictCreationResponse {
+  restricted: boolean;
+}
+
+/** React Query cache key for the tags restrict creation setting */
+export const TAGS_RESTRICT_CREATION_QUERY_KEY = ['settings', 'tagsRestrictCreation'] as const;
+
+/**
+ * Returns whether tag creation is restricted to the Tag Management page.
+ * Requires authentication — reps need this to know whether to show the "create" option.
+ */
+export async function getTagsRestrictCreation(): Promise<TagsRestrictCreationResponse> {
+  const response = await apiClient.get<TagsRestrictCreationResponse>(
+    '/settings/tags-restrict-creation',
+  );
+  return response.data;
+}
+
+/**
+ * Sets whether tag creation is restricted. Admin only.
+ *
+ * @param restricted - Whether to restrict inline tag creation to admins only.
+ */
+export async function setTagsRestrictCreation(
+  restricted: boolean,
+): Promise<TagsRestrictCreationResponse> {
+  const response = await apiClient.patch<TagsRestrictCreationResponse>(
+    '/settings/tags-restrict-creation',
+    { restricted },
+  );
+  return response.data;
+}
+
 // ── SMTP configuration (MINCRM-254) ───────────────────────────────────────────
 
 /** Shape returned by GET /api/settings/smtp */

@@ -1229,6 +1229,17 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
+  /** Settings: GET /api/settings/tags-restrict-creation (MINCRM-263) */
+  http.get('/api/settings/tags-restrict-creation', () => {
+    return HttpResponse.json({ restricted: false });
+  }),
+
+  /** Settings: PATCH /api/settings/tags-restrict-creation (MINCRM-263) */
+  http.patch('/api/settings/tags-restrict-creation', async ({ request }) => {
+    const body = (await request.json()) as { restricted: boolean };
+    return HttpResponse.json({ restricted: body.restricted });
+  }),
+
   /** Settings: GET /api/settings/smtp — no password set by default (MINCRM-254) */
   http.get('/api/settings/smtp', () => {
     return HttpResponse.json({
