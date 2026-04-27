@@ -1027,8 +1027,9 @@ test('@functional F8-GU2: browser tab title is set on load', async ({ page }) =>
   await navigateToDashboard(page);
 
   // The app uses a static <title>MiniCRM</title> in index.html (no per-page title updates).
-  // Verify the title is present and non-empty on the dashboard.
+  // Verify the title is present, non-empty, and matches the expected brand name exactly.
   const title = await page.title();
   expect(title.length, 'page title should be non-empty').toBeGreaterThan(0);
   expect(title, 'page title should contain MiniCRM').toContain('MiniCRM');
+  expect(title.trim(), 'page title should not have leading or trailing whitespace').toBe(title);
 });
