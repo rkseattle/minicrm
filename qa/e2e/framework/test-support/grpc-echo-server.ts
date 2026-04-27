@@ -22,7 +22,6 @@
  *   EchoRequest    { message: string }
  *   EchoResponse   { message: string }
  *
- * MINCRM-128, MINCRM-233
  */
 
 import * as grpc from '@grpc/grpc-js';
@@ -55,12 +54,12 @@ export interface StreamResponse {
   index: number;
 }
 
-/** One request message in the Collect client-streaming method (MINCRM-233). */
+/** One request message in the Collect client-streaming method. */
 export interface CollectRequest {
   message: string;
 }
 
-/** Response from the Collect client-streaming method (MINCRM-233). */
+/** Response from the Collect client-streaming method. */
 export interface CollectResponse {
   /** Total number of request messages received from the client. */
   count: number;
@@ -68,12 +67,12 @@ export interface CollectResponse {
   last: string;
 }
 
-/** One request message in the Echo bidirectional-streaming method (MINCRM-233). */
+/** One request message in the Echo bidirectional-streaming method. */
 export interface EchoRequest {
   message: string;
 }
 
-/** One response message from the Echo bidirectional-streaming method (MINCRM-233). */
+/** One response message from the Echo bidirectional-streaming method. */
 export interface EchoResponse {
   message: string;
 }
@@ -196,7 +195,7 @@ function handleStream(call: grpc.ServerWritableStream<StreamRequest, StreamRespo
 
 /**
  * Handles the Collect client-streaming call — reads all client messages and
- * responds with the count and the last received message (MINCRM-233).
+ * responds with the count and the last received message.
  *
  * @param call - gRPC server readable stream.
  * @param callback - Completion callback with the single response.
@@ -224,7 +223,7 @@ function handleCollect(
 
 /**
  * Handles the Echo bidirectional-streaming call — echoes each client message
- * back immediately as it arrives (MINCRM-233).
+ * back immediately as it arrives.
  *
  * @param call - gRPC server duplex stream.
  */

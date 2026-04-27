@@ -5,13 +5,12 @@
  * a pluggable auth strategy system. Tests and TestDataManager should use this
  * rather than calling APIRequestContext directly.
  *
- * MINCRM-127, MINCRM-229
  */
 
 import type { APIRequestContext } from '@playwright/test';
 
 // ---------------------------------------------------------------------------
-// Schema duck types — compatible with both Zod v3 and v4 (MINCRM-229)
+// Schema duck types — compatible with both Zod v3 and v4
 // ---------------------------------------------------------------------------
 
 /** Structural issue type present in both Zod v3 and v4 ZodError. */
@@ -141,7 +140,7 @@ export class RestClientError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Per-request options (MINCRM-229)
+// Per-request options
 // ---------------------------------------------------------------------------
 
 /**
@@ -158,7 +157,7 @@ export interface RequestOptions {
    * message that includes the HTTP method, endpoint path, and Zod error detail
    * so that API contract violations are immediately diagnosable.
    *
-   * When omitted, behaviour is identical to the pre-MINCRM-229 bare cast.
+   * When omitted, behaviour is identical to a bare cast.
    */
   schema?: Schema;
 }
@@ -241,7 +240,7 @@ export class RestClient {
 
   /**
    * Parses a Playwright APIResponse into an ApiResponse<T>, throwing
-   * RestClientError on 4xx/5xx or on Zod validation failure (MINCRM-229).
+   * RestClientError on 4xx/5xx or on Zod validation failure.
    *
    * @template T - Expected body type.
    * @param response - Raw Playwright APIResponse.
@@ -276,7 +275,7 @@ export class RestClient {
       headers[key] = value;
     }
 
-    // When a Zod schema is provided, validate the body at runtime (MINCRM-229).
+    // When a Zod schema is provided, validate the body at runtime.
     // A parse failure throws RestClientError with method, path, and Zod details
     // so the contract violation is immediately diagnosable at the call site.
     if (options?.schema !== undefined) {

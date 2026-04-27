@@ -50,8 +50,6 @@
  * Because this is a pure type declaration (no runtime code), it carries zero
  * cost. The real Playwright Locator is structurally compatible with SafeLocator,
  * so the healing layer can return the real locator without any casting.
- *
- * MINCRM-234
  */
 
 import type { Locator } from '@playwright/test';

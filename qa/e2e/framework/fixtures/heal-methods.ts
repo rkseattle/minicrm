@@ -4,7 +4,6 @@
  * Extracted into its own module so both heal-page.fixture.ts and
  * page-facade.ts can import from here without creating a circular dependency.
  *
- * MINCRM-209, MINCRM-235
  */
 
 import type { Page } from '@playwright/test';
@@ -35,12 +34,12 @@ export interface LocateOptions {
   fallbackTimeout?: number;
   /**
    * Page Object class name that owns this locator. Recorded in heal events
-   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   * so patch-suggester can generate actionable suggestions.
    */
   pageObject?: string;
   /**
    * Page Object method name that owns this locator. Recorded in heal events
-   * so patch-suggester can generate actionable suggestions. MINCRM-225
+   * so patch-suggester can generate actionable suggestions.
    */
   method?: string;
 }
@@ -53,7 +52,7 @@ export interface LocateOptions {
  * Structural intersection of SafePage + HealMethods — used as the return type
  * of newTab() to avoid a circular import between heal-methods.ts and
  * page-facade.ts. (page-facade.ts defines PageFacade = SafePage & HealMethods,
- * which is structurally identical.) MINCRM-235
+ * which is structurally identical.)
  */
 export type PageFacadeShape = SafePage & HealMethods;
 
@@ -61,7 +60,7 @@ export type PageFacadeShape = SafePage & HealMethods;
  * Factory function injected into buildHealPage to create a wrapped PageFacade
  * for a newly opened browser tab. Defined this way to avoid a circular
  * dependency: heal-methods.ts ← page-facade.ts imports heal-methods.ts, so
- * heal-methods.ts cannot import from page-facade.ts. MINCRM-235
+ * heal-methods.ts cannot import from page-facade.ts.
  */
 export type TabFactory = (rawPage: Page, testName: string) => PageFacadeShape;
 
@@ -126,7 +125,7 @@ export interface HealMethods {
    * Returns true when the element identified by the given strategies is NOT
    * attached to the DOM. Never throws. Does not record a heal event.
    *
-   * Probes strategies 0 and 1 (MINCRM-230): if strategy 0 reports absence but
+   * Probes strategies 0 and 1: if strategy 0 reports absence but
    * strategy 1 finds the element present, returns false (element is present).
    * This guards against stale primary locators producing false-positive absence.
    *
@@ -140,7 +139,7 @@ export interface HealMethods {
    * absent from the DOM or present but not visible. Never throws.
    * Does not record a heal event.
    *
-   * Probes strategies 0 and 1 (MINCRM-230): if strategy 0 reports hidden/absent
+   * Probes strategies 0 and 1: if strategy 0 reports hidden/absent
    * but strategy 1 finds the element visible, returns false (element is visible).
    * This guards against stale primary locators producing false-positive not-visible.
    *
@@ -157,7 +156,7 @@ export interface HealMethods {
    * HealingLocator, HealingRegistry, and SafePage enforcement entirely for
    * the new tab. newTab() wraps the result in createPageFacade() so the new
    * tab participates in the same healing and audit guarantees as the primary
-   * tab, registered under the same testName. (MINCRM-235)
+   * tab, registered under the same testName.
    */
   newTab(): Promise<PageFacadeShape>;
 }
@@ -178,7 +177,7 @@ export type HealPage = HealMethods;
  * @param tabFactory - Optional factory for wrapping new tabs in PageFacade.
  *   When provided, newTab() calls page.context().newPage() internally and
  *   passes the raw page to this factory. Injected from page-facade.ts to
- *   avoid a circular import dependency. (MINCRM-235)
+ *   avoid a circular import dependency.
  * @returns A HealMethods instance.
  */
 export function buildHealPage(page: Page, testName: string, tabFactory?: TabFactory): HealMethods {
@@ -267,7 +266,7 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
      * Returns true when the element identified by the given strategies is NOT
      * attached to the DOM. Never throws. Does not record a heal event.
      *
-     * TWO-STRATEGY PROBE (MINCRM-230):
+     * TWO-STRATEGY PROBE:
      * - Full healing is NOT applied because healing "not found" would produce
      *   false negatives — if we healed to a fallback and it also wasn't found,
      *   we'd still conclude absent when the element may just be named differently.
@@ -293,7 +292,7 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       try {
         // Poll until detached rather than snapshotting current DOM presence.
         // waitFor({state:'attached'}) resolves immediately if the element is already
-        // in the DOM, so it cannot detect future removal. (MINCRM-211)
+        // in the DOM, so it cannot detect future removal.
         await locator.waitFor({ state: 'detached', timeout: timeoutMs });
       } catch {
         return false;
@@ -321,7 +320,7 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
      * absent from the DOM or present but not visible. Never throws.
      * Does not record a heal event.
      *
-     * TWO-STRATEGY PROBE (MINCRM-230):
+     * TWO-STRATEGY PROBE:
      * - Full healing is NOT applied because healing "not visible" would produce
      *   false negatives — a healed locator that also reports hidden would still
      *   conclude absent/hidden when the element may just be named differently.
@@ -347,7 +346,7 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       try {
         // Poll until hidden/absent rather than snapshotting current visibility.
         // waitFor({state:'visible'}) resolves immediately if the element is already
-        // visible, so it cannot detect future disappearance. (MINCRM-211)
+        // visible, so it cannot detect future disappearance.
         await locator.waitFor({ state: 'hidden', timeout: timeoutMs });
       } catch {
         return false;

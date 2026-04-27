@@ -14,7 +14,6 @@
  * - Finds the nearest semantic container (main, [role=dialog], form) so that
  *   full-page HTML is never sent to the model.
  *
- * MINCRM-125
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -40,7 +39,7 @@ export interface AiHealResult {
   value: string;
   /** Confidence score from 0.0 to 1.0. */
   confidence: number;
-  /** Total tokens consumed by the API call (input + output). MINCRM-227 */
+  /** Total tokens consumed by the API call (input + output). */
   tokenCost?: number;
 }
 
@@ -55,14 +54,14 @@ export interface AiHealerOptions {
   _client?: Anthropic;
   /**
    * Per-attempt retry delays in ms. Defaults to DEFAULT_RETRY_DELAYS_MS.
-   * Pass [0, 0] in unit tests to avoid slow runs. (MINCRM-224)
+   * Pass [0, 0] in unit tests to avoid slow runs.
    */
   _retryDelays?: readonly number[];
 }
 
 /**
  * Maximum characters allowed in the DOM snapshot sent to the model.
- * ~2000 tokens — well within context limits while accommodating realistic page structures. (MINCRM-223)
+ * ~2000 tokens — well within context limits while accommodating realistic page structures.
  */
 export const MAX_DOM_CHARS = 8_000;
 
@@ -75,7 +74,7 @@ export const MAX_DOM_CHARS = 8_000;
  * 3. If the container itself (with no children) still exceeds the limit,
  *    fall back to a plain substring with a truncation comment appended.
  *
- * Exported for unit testing (MINCRM-223).
+ * Exported for unit testing.
  */
 export function truncateDomSnapshot(snapshot: string, selector: string): string {
   if (snapshot.length <= MAX_DOM_CHARS) return snapshot;
@@ -254,7 +253,7 @@ Use the highest-confidence strategy you can find. If you are not confident the e
  * Returns null if the response is malformed or the confidence is below
  * CONFIDENCE_THRESHOLD.
  *
- * Exported for unit testing (MINCRM-222).
+ * Exported for unit testing.
  */
 export function parseResponse(raw: string): AiHealResult | null {
   // Strip any accidental markdown fences that a model may include despite instructions.
@@ -265,7 +264,7 @@ export function parseResponse(raw: string): AiHealResult | null {
 
   // Detect truncated JSON — check after fence-stripping so a fenced-but-complete response
   // is not incorrectly flagged. If cleaned doesn't end with } the model ran out of token
-  // budget. Log a warning so CI output shows the true cause (MINCRM-222).
+  // budget. Log a warning so CI output shows the true cause.
   if (!cleaned.endsWith('}')) {
     console.warn(`AiHealer: response appears truncated (does not end with '}'); raw: ${raw}`);
     return null;
@@ -379,7 +378,7 @@ export class AiHealer {
       return null;
     }
 
-    // Cap snapshot size before embedding in prompt to avoid context window overflow. (MINCRM-223)
+    // Cap snapshot size before embedding in prompt to avoid context window overflow.
     const cappedSnapshot = truncateDomSnapshot(domSnapshot, intent);
     const prompt = buildPrompt(intent, cappedSnapshot, attempted);
 
@@ -391,7 +390,7 @@ export class AiHealer {
           () =>
             this.client.messages.create({
               model: HEALING_MODEL,
-              // Three short fields should never exceed ~100 tokens; 512 is a 5x safety margin. (MINCRM-222)
+              // Three short fields should never exceed ~100 tokens; 512 is a 5x safety margin.
               max_tokens: 512,
               messages: [{ role: 'user', content: prompt }],
             }),

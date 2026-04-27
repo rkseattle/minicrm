@@ -18,7 +18,6 @@
  * Register in playwright.config.ts:
  *   reporters: [['./framework/healing/healing-reporter.ts']]
  *
- * MINCRM-124, MINCRM-216
  */
 
 import type { Reporter, TestResult, TestCase, FullResult } from '@playwright/test/reporter';
@@ -31,7 +30,7 @@ import type { PatchSuggestion } from './patch-suggester.js';
 
 const OUTPUT_DIR = 'test-results';
 // Matches both the original format (healing-0.json) and the shard-aware format
-// (healing-shard1-worker0.json) produced when SHARD_INDEX is set. MINCRM-216
+// (healing-shard1-worker0.json) produced when SHARD_INDEX is set.
 const WORKER_FILE_PATTERN = /^healing-(shard\d+-worker\d+|\d+)\.json$/;
 const REPORT_FILE = path.join(OUTPUT_DIR, 'healing-report.json');
 const SUGGESTIONS_FILE = path.join(OUTPUT_DIR, 'healing-suggestions.md');
@@ -42,16 +41,16 @@ export interface HealingReport {
   totalHeals: number;
   aiHeals: number;
   staticHeals: number;
-  /** Count of AI heal events this run. Computed from events at report-generation time. MINCRM-227 */
+  /** Count of AI heal events this run. Computed from events at report-generation time. */
   aiHealCount: number;
-  /** Sum of tokenCost across all AI heal events. Computed at report-generation time. MINCRM-227 */
+  /** Sum of tokenCost across all AI heal events. Computed at report-generation time. */
   estimatedTokenCost: number;
   events: HealEvent[];
 }
 
 /**
  * Builds the markdown content for healing-suggestions.md from a list of
- * PatchSuggestion objects. Exported for unit testing. MINCRM-225
+ * PatchSuggestion objects. Exported for unit testing.
  */
 export function buildSuggestionsMarkdown(suggestions: PatchSuggestion[]): string {
   if (suggestions.length === 0) {
@@ -139,10 +138,10 @@ export class HealingReporter implements Reporter {
       console.error(`[HealingReporter] Failed to write report: ${String(err)}`);
     }
 
-    // Write patch suggestions alongside the report. MINCRM-225
+    // Write patch suggestions alongside the report.
     this._writeSuggestions(report);
 
-    // Emit a warning when AI heal count exceeds the configured threshold. MINCRM-227
+    // Emit a warning when AI heal count exceeds the configured threshold.
     this._checkThreshold(report);
 
     // Log summary to CI output.
@@ -169,7 +168,7 @@ export class HealingReporter implements Reporter {
   /**
    * Emits a stdout warning when aiHealCount exceeds AI_HEAL_COST_WARNING_THRESHOLD.
    * Threshold defaults to 50. Warning fires only when count is strictly greater than
-   * the threshold. MINCRM-227
+   * the threshold.
    */
   _checkThreshold(report: HealingReport): void {
     const threshold = parseInt(process.env['AI_HEAL_COST_WARNING_THRESHOLD'] ?? '50', 10);
@@ -183,7 +182,7 @@ export class HealingReporter implements Reporter {
   /**
    * Generates patch suggestions from the report and writes healing-suggestions.md.
    * Always writes the file — an absent file is harder to distinguish from a CI
-   * artifact upload failure than an empty one. MINCRM-225
+   * artifact upload failure than an empty one.
    */
   _writeSuggestions(report: HealingReport): void {
     const suggestions = generatePatchSuggestions(report);

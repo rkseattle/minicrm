@@ -1,5 +1,5 @@
 /**
- * Public API for the self-healing locator framework (S2/S3, MINCRM-124, MINCRM-125).
+ * Public API for the self-healing locator framework.
  *
  * Import from this barrel rather than directly from individual files:
  *   import { HealingLocator, HealingRegistry, HealingReporter, AiHealer } from '@framework/healing';

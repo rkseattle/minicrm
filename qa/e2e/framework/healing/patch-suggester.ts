@@ -3,7 +3,6 @@
  * from a merged HealingReport, closing the self-healing loop by telling
  * developers exactly which Page Object strategy to promote.
  *
- * MINCRM-225
  */
 
 import type { HealingReport } from './healing-reporter.js';

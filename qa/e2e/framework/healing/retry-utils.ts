@@ -1,7 +1,6 @@
 /**
  * Retry helper for transient API failures in the AiHealer tier.
  *
- * MINCRM-224
  */
 
 import { APIError } from '@anthropic-ai/sdk/error.js';

@@ -2,7 +2,6 @@
  * BoundHealingLocator — a thin wrapper around HealingLocator that captures
  * testName at construction time so callers never pass it on each call.
  *
- * MINCRM-209
  */
 
 import type { HealingLocator } from './healing-locator.js';

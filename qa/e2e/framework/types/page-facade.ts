@@ -5,9 +5,7 @@
  *
  * The Proxy intercepts `context` to return a SafeContext rather than the raw
  * BrowserContext, blocking newPage() and newCDPSession() at runtime in addition
- * to the compile-time restriction in SafePage. (MINCRM-235)
- *
- * MINCRM-209, MINCRM-235
+ * to the compile-time restriction in SafePage.
  */
 
 import type { Page } from '@playwright/test';
@@ -34,7 +32,7 @@ export function createPageFacade(page: Page, testName: string): PageFacade {
         return typeof method === 'function' ? method.bind(healPage) : method;
       }
       // Intercept context() to return SafeContext instead of raw BrowserContext.
-      // This enforces the MINCRM-235 restriction at runtime as well as at the
+      // This enforces the SafeContext restriction at runtime as well as at the
       // type level — callers cannot reach newPage() or newCDPSession() even via
       // dynamic property access on the context object.
       if (prop === 'context') {
