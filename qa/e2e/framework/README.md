@@ -7,7 +7,10 @@ Product-agnostic framework code. **Must contain zero application-domain referenc
 - `HealingLocator` — self-healing UI locator with CSS/ARIA/AI fallback tiers
 - `HealingRegistry` — stores locator strategies per element
 - `PageFacade` — unified fixture that combines SafePage + HealMethods via a Proxy
-- Playwright fixtures — base fixture wiring
+- `SafePage` — structural type alias exposing only navigation/browser-state primitives; blocks raw locator access at compile time (Pick-based allowlist)
+- `SafeLocator` — structural interface extending Playwright `Locator`; shadows child-factory and index methods with `never` to prevent healing escapes
+- `SafeContext` — structural type alias that omits `newPage()` and `newCDPSession()` from `BrowserContext`; prevents unhealed tab creation
+- Playwright fixtures — base fixture wiring (exports `page: PageFacade`, `restClient`, `grpcClient`; `healPage` retained as a legacy fixture for framework-level tests only)
 - REST API client
 - gRPC client (unary, server-streaming, client-streaming, bidirectional-streaming)
 - `HealingReporter` — custom Playwright reporter that emits `healing-report.json`
@@ -157,3 +160,42 @@ test('example', async ({ page }) => {
   const el = await page.locate([...]).resolve();
 });
 ```
+
+## SafePage, SafeLocator, SafeContext
+
+These three types enforce the self-healing boundary at the TypeScript type level:
+
+### SafePage (`framework/types/safe-page.ts`)
+
+A `Pick<Page, AllowedPageMethods>` type alias that exposes only navigation and
+browser-state primitives (e.g. `goto`, `url`, `waitForLoadState`). All element-locating
+and element-action methods are intentionally absent — they are accessed via `HealMethods`
+on `PageFacade` instead.
+
+**Why `Pick` and not `Omit`:** An `Omit`-based blocklist silently allows new Playwright
+methods as Playwright releases them. A `Pick` allowlist blocks new methods by default;
+they must be consciously added to `AllowedPageMethods` before they are accessible.
+
+`SafePage` also re-declares `context()` to return `SafeContext` instead of the raw
+`BrowserContext`.
+
+### SafeLocator (`framework/types/safe-locator.ts`)
+
+An interface that `extends Locator` but shadows child-locator factories (`locator`,
+`getByTestId`, `getByRole`, etc.), `filter()`, and index methods (`first`, `last`, `nth`)
+with `never`. Calling any of these is a compile error.
+
+**Why extend rather than `Omit<Locator, ...>`:** Playwright's `expect()` overloads check
+`T extends Locator` to unlock locator-specific matchers like `toBeVisible()`. An `Omit`-based
+alias breaks that compatibility. By extending `Locator` and overriding with `never`, matchers
+still work and forbidden methods are still blocked.
+
+### SafeContext (`framework/types/safe-context.ts`)
+
+`Omit<BrowserContext, 'newPage' | 'newCDPSession'>`. Blocks:
+
+- `newPage()` — would create an unhealed raw `Page` outside `PageFacade`
+- `newCDPSession()` — grants unrestricted CDP access with no healing or audit trail
+
+To open additional tabs in multi-tab tests use `PageFacade.newTab()`, which wraps the new
+page in `createPageFacade()` so it participates in the same healing guarantees.
