@@ -17,7 +17,8 @@
     "remove:demo": "tsx scripts/remove-demo.ts",
     "seed:e2e-admin": "npm run seed:e2e-admin --workspace=minicrm-server",
     "screenshot": "tsx scripts/screenshot.ts",
-    "pseudoloc": "tsx scripts/generate-pseudoloc.ts"
+    "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
+    "audit:testids": "tsx qa/scripts/audit-testids.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
