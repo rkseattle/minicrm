@@ -68,6 +68,23 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   }
   const cookieValue = tokenMatch[1];
 
+  // Mark onboarding as completed so the banner does not appear during E2E runs.
+  // The banner is a first-run experience; its own spec manages the flag directly.
+  const onboardingUrl = `${apiUrl}/api/settings/onboarding`;
+  const onboardingRes = await fetch(onboardingUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: `minicrm_token=${cookieValue}`,
+    },
+    body: JSON.stringify({ onboarding_completed: true }),
+  });
+  if (!onboardingRes.ok) {
+    throw new Error(
+      `[globalSetup] PUT ${onboardingUrl} failed with status ${onboardingRes.status}`,
+    );
+  }
+
   // Derive the domain from the API URL so the cookie is scoped correctly.
   const apiDomain = new URL(apiUrl).hostname;
 
