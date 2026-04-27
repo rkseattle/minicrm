@@ -24,6 +24,7 @@ import {
 import { listPipelineStages, PIPELINE_STAGES_QUERY_KEY } from '@/api/pipelineStages.js';
 import { inviteUser } from '@/api/users.js';
 import { seedDemoData } from '@/api/demo.js';
+import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
 
 const TOTAL_STEPS = 3;
@@ -192,7 +193,7 @@ export default function OnboardingBanner() {
                     key={stage.id}
                     className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white border border-indigo-200 text-indigo-700"
                   >
-                    {stage.name}
+                    {getStageDisplayName(stage.name, t)}
                   </span>
                 ))}
               </div>
