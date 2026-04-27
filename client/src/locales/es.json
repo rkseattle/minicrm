@@ -1137,5 +1137,39 @@
     "restrictToggleSaveSuccess": "Configuración guardada.",
     "restrictToggleSaveError": "Error al guardar la configuración. Por favor, inténtalo de nuevo.",
     "tagNotFound": "Etiqueta no encontrada. Pide a un administrador que la añada en la página de Gestión de Etiquetas."
+  },
+  "onboarding": {
+    "title": "Bienvenido a MiniCRM",
+    "subtitle": "Configuremos todo en unos pocos pasos rápidos.",
+    "stepOf": "Paso {{current}} de {{total}}",
+    "dismiss": "Cerrar configuración",
+    "step1": {
+      "heading": "Revisar las etapas del pipeline",
+      "description": "Estas son las etapas por las que pasarán tus negocios. Puedes personalizarlas en cualquier momento.",
+      "looksGood": "Se ve bien",
+      "customiseStages": "Personalizar etapas"
+    },
+    "step2": {
+      "heading": "Invita a tu equipo",
+      "description": "Envía una invitación a un miembro del equipo. Recibirá un correo para establecer su contraseña.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "colega@ejemplo.com",
+      "roleLabel": "Rol",
+      "roleAdmin": "Administrador",
+      "roleRep": "Representante",
+      "sendInvite": "Enviar invitación",
+      "sending": "Enviando…",
+      "inviteSent": "Invitación enviada a {{email}}",
+      "skipForNow": "Omitir por ahora",
+      "inviteError": "Error al enviar la invitación. Intenta de nuevo."
+    },
+    "step3": {
+      "heading": "¡Todo listo!",
+      "description": "Elige cómo quieres empezar.",
+      "loadDemoData": "Cargar datos de demostración",
+      "loadingDemo": "Cargando datos de demostración…",
+      "addFirstContact": "Añadir tu primer contacto",
+      "startExploring": "Empezar a explorar"
+    }
   }
 }

@@ -1137,5 +1137,39 @@
     "restrictToggleSaveSuccess": "设置已保存。",
     "restrictToggleSaveError": "保存设置失败，请重试。",
     "tagNotFound": "未找到标签。请联系管理员在标签管理页面添加。"
+  },
+  "onboarding": {
+    "title": "欢迎使用 MiniCRM",
+    "subtitle": "让我们通过几个简单步骤完成设置。",
+    "stepOf": "第 {{current}} 步，共 {{total}} 步",
+    "dismiss": "关闭设置",
+    "step1": {
+      "heading": "检查您的销售阶段",
+      "description": "这些是您的交易将经历的阶段。您可以随时自定义它们。",
+      "looksGood": "看起来不错",
+      "customiseStages": "自定义阶段"
+    },
+    "step2": {
+      "heading": "邀请您的团队",
+      "description": "向团队成员发送邀请，他们将收到设置密码的电子邮件。",
+      "emailLabel": "电子邮件地址",
+      "emailPlaceholder": "colleague@example.com",
+      "roleLabel": "角色",
+      "roleAdmin": "管理员",
+      "roleRep": "销售代表",
+      "sendInvite": "发送邀请",
+      "sending": "发送中…",
+      "inviteSent": "邀请已发送至 {{email}}",
+      "skipForNow": "暂时跳过",
+      "inviteError": "发送邀请失败，请重试。"
+    },
+    "step3": {
+      "heading": "一切准备就绪！",
+      "description": "选择您希望如何开始。",
+      "loadDemoData": "加载演示数据",
+      "loadingDemo": "正在加载演示数据…",
+      "addFirstContact": "添加第一个联系人",
+      "startExploring": "开始探索"
+    }
   }
 }

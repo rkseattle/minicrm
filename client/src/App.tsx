@@ -10,6 +10,7 @@ import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
 import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.js';
 import NavLeft from '@/components/NavLeft.js';
+import OnboardingBanner from '@/components/OnboardingBanner.js';
 import LoginPage from '@/pages/LoginPage.js';
 import ChangePasswordPage from '@/pages/ChangePasswordPage.js';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage.js';
@@ -39,12 +40,14 @@ import AdminTagsPage from '@/pages/AdminTagsPage.js';
  * Wraps the outlet in NavLeft when the left layout is active.
  * For top and hamburger layouts, each page renders its own NavBar inline,
  * so no wrapper is needed here.
+ * For left layout, OnboardingBanner renders above page content inside NavLeft. (MINCRM-256)
  */
 function LayoutShell() {
   const { layout } = useNavLayout();
   if (layout === 'left') {
     return (
       <NavLeft>
+        <OnboardingBanner />
         <Outlet />
       </NavLeft>
     );

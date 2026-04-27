@@ -1137,5 +1137,39 @@
     "restrictToggleSaveSuccess": "Setting saved.",
     "restrictToggleSaveError": "Failed to save setting. Please try again.",
     "tagNotFound": "Tag not found. Ask an admin to add it on the Tag Management page."
+  },
+  "onboarding": {
+    "title": "Welcome to MiniCRM",
+    "subtitle": "Let’s get you set up in a few quick steps.",
+    "stepOf": "Step {{current}} of {{total}}",
+    "dismiss": "Dismiss setup",
+    "step1": {
+      "heading": "Review your pipeline stages",
+      "description": "These are the stages your deals will move through. You can customise them at any time.",
+      "looksGood": "Looks good",
+      "customiseStages": "Customise stages"
+    },
+    "step2": {
+      "heading": "Invite your team",
+      "description": "Send an invitation to a team member. They’ll receive an email to set their password.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "colleague@example.com",
+      "roleLabel": "Role",
+      "roleAdmin": "Admin",
+      "roleRep": "Rep",
+      "sendInvite": "Send invite",
+      "sending": "Sending…",
+      "inviteSent": "Invite sent to {{email}}",
+      "skipForNow": "Skip for now",
+      "inviteError": "Failed to send invite. Please try again."
+    },
+    "step3": {
+      "heading": "You’re all set!",
+      "description": "Choose how you’d like to get started.",
+      "loadDemoData": "Load demo data",
+      "loadingDemo": "Loading demo data…",
+      "addFirstContact": "Add your first contact",
+      "startExploring": "Start exploring"
+    }
   }
 }

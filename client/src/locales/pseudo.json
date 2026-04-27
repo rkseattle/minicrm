@@ -1066,5 +1066,39 @@
     "suggestionsLabel": "[Ëxïŝtïñg tägŝ~~~~]",
     "removeTag": "[Rëmövë täg {{name}}~~~~~~]",
     "sectionTitle": "[Tägŝ~~]"
+  },
+  "onboarding": {
+    "title": "[Ŵéļčöмé ţö МιɳιСЯМ]",
+    "subtitle": "[Ĺéţ'ş ĝéţ ÿöú şéţ úр ιɳ å ƒéŵ qúιčк şţéрş.]",
+    "stepOf": "[Şţéр {{current}} öƒ {{total}}]",
+    "dismiss": "[Ðιşмιşş şéţúр]",
+    "step1": {
+      "heading": "[Яéνιéŵ ÿöúř рιреļιɳé şţåĝéş]",
+      "description": "[Ţħéşé åřé ţħé şţåĝéş ÿöúř ðéåļş ŵιļļ мöνé ţħřöúĝħ.]",
+      "looksGood": "[Ĺööкş ĝööð]",
+      "customiseStages": "[Čúşţöмιşé şţåĝéş]"
+    },
+    "step2": {
+      "heading": "[Ιɳνιţé ÿöúř ţéåм]",
+      "description": "[Şéɳð åɳ ιɳνιţåţιöɳ ţö å ţéåм мéмβéř.]",
+      "emailLabel": "[Éмåιļ åððřéşş]",
+      "emailPlaceholder": "[čöļļéåĝúé@éхåмрļé.čöм]",
+      "roleLabel": "[Яöļé]",
+      "roleAdmin": "[Áðмιɳ]",
+      "roleRep": "[Яéр]",
+      "sendInvite": "[Şéɳð ιɳνιţé]",
+      "sending": "[Şéɳðιɳĝ…]",
+      "inviteSent": "[Ιɳνιţé şéɳţ ţö {{email}}]",
+      "skipForNow": "[Şкιр ƒöř ɳöŵ]",
+      "inviteError": "[Ƒåιļéð ţö şéɳð ιɳνιţé. Рļéåşé ţřÿ åĝåιɳ.]"
+    },
+    "step3": {
+      "heading": "[Ÿöú'řé åļļ şéţ!]",
+      "description": "[Čħööşé ħöŵ ÿöú'ð ļιкé ţö ĝéţ şţåřţéð.]",
+      "loadDemoData": "[Ĺöåð ðéмö ðåţå]",
+      "loadingDemo": "[Ĺöåðιɳĝ ðéмö ðåţå…]",
+      "addFirstContact": "[Áðð ÿöúř ƒιřşţ čöɳţåčţ]",
+      "startExploring": "[Şţåřţ éхрļöřιɳĝ]"
+    }
   }
 }
