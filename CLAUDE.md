@@ -38,7 +38,7 @@ shared/schemas/  → Zod schemas imported by BOTH client and server
   paginationSchema.ts  (paginationParamsSchema, PaginatedResponse<T>)
   pipelineStageSchema.ts  (PipelineStageResponse, etc.)
 
-db/migrations/   → sequential node-pg-migrate files (001–039; next = 040)
+db/migrations/   → sequential node-pg-migrate files; run `ls db/migrations/ | tail -1` to find the last migration and increment by one for the next file number
 
 qa/e2e/
   framework/     → HealingLocator, fixtures, REST/gRPC clients (ZERO app domain refs)
@@ -50,7 +50,7 @@ qa/e2e/
 
 ---
 
-## Database Schema (current — migrations 001–039)
+## Database Schema
 
 ```
 users
@@ -138,7 +138,8 @@ system_settings  key (PK), value text, updated_at
 overdue_task_notifications  activity_id, notified_date  ← dedup for email digests
 ```
 
-**Migration rule:** Every schema change requires a migration file. Next number: **040**.
+**Migration rule:** Every schema change requires a migration file. Derive the next number
+by running `ls db/migrations/ | tail -1` and incrementing — never hardcode a number here.
 Every migration needs both `up` and `down`. Integrity rules go in DB CHECK constraints
 in addition to Zod.
 
