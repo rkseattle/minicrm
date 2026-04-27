@@ -5,11 +5,12 @@
  * - Closed Lost count and total value
  * - Win rate (Won / Total Closed)
  * - Loss reason breakdown (when loss reasons were captured)
+ * - Per-rep breakdown table (admin Team View only) (MINCRM-264)
  *
  * Date range defaults to the current month; presets for "this quarter" and
  * a custom range are also available.
- * Admins can filter by owner (rep); reps always see their own data.
- * Implements MINCRM-26.
+ * Admins see a My View / Team View toggle; reps always see only their own data.
+ * Implements MINCRM-26, MINCRM-264.
  */
 
 import { useState, useMemo } from 'react';
@@ -23,6 +24,9 @@ import {
   WIN_LOSS_REPORT_QUERY_KEY,
   type WinLossReportParams,
 } from '@/api/reports.js';
+
+/** View mode for the admin toggle (MINCRM-264) */
+type ViewMode = 'team' | 'my';
 
 /** Returns the first day of the current month as YYYY-MM-DD */
 function startOfCurrentMonth(): string {
@@ -80,6 +84,7 @@ type DatePreset = 'currentMonth' | 'currentQuarter' | 'custom';
 
 /**
  * Win/loss report page.
+ * Implements MINCRM-26, MINCRM-264.
  */
 export default function WinLossReportPage() {
   const { t, i18n } = useTranslation();
@@ -101,6 +106,9 @@ export default function WinLossReportPage() {
     return { start: customStart, end: customEnd };
   }, [preset, customStart, customEnd]);
 
+  // ── View mode toggle (admin only) — defaults to Team View, resets on mount ─
+  const [viewMode, setViewMode] = useState<ViewMode>('team');
+
   // ── Owner filter state (admin only) ────────────────────────────────────────
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
@@ -111,10 +119,20 @@ export default function WinLossReportPage() {
   });
 
   // ── Report query ───────────────────────────────────────────────────────────
+  // For reps: no ownerId in params (server always scopes to req.user.id).
+  // For admin My View: pass the admin's own userId.
+  // For admin Team View: no ownerId; server returns team-wide data.
+  // The legacy per-rep owner dropdown is kept as-is; viewMode overrides it when My View.
+  const adminOwnerId = isAdmin
+    ? viewMode === 'my'
+      ? (user?.id ?? undefined)
+      : selectedOwnerId || undefined
+    : undefined;
+
   const reportParams: WinLossReportParams = {
     start,
     end,
-    ownerId: isAdmin && selectedOwnerId ? selectedOwnerId : undefined,
+    ownerId: adminOwnerId,
   };
 
   const {
@@ -127,6 +145,10 @@ export default function WinLossReportPage() {
     enabled: start <= end,
   });
 
+  // ── Dynamic heading key ────────────────────────────────────────────────────
+  const headingKey =
+    !isAdmin || viewMode === 'my' ? 'reports.winLoss.pageTitleMy' : 'reports.winLoss.pageTitleTeam';
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -134,10 +156,43 @@ export default function WinLossReportPage() {
         {/* Page header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900" data-testid="win-loss-report-heading">
-            {t('reports.winLoss.pageTitle')}
+            {t(headingKey)}
           </h1>
           <p className="text-sm text-gray-500 mt-1">{t('reports.winLoss.subtitle')}</p>
         </div>
+
+        {/* My View / Team View toggle — admin only (MINCRM-264) */}
+        {isAdmin && (
+          <div
+            className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"
+            data-testid="view-mode-toggle"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('team')}
+              className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+                viewMode === 'team'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="view-mode-team"
+            >
+              {t('reports.winLoss.viewToggleTeamView')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('my')}
+              className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+                viewMode === 'my'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="view-mode-my"
+            >
+              {t('reports.winLoss.viewToggleMyView')}
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div
@@ -470,6 +525,123 @@ export default function WinLossReportPage() {
                 </table>
               )}
             </div>
+
+            {/* Per-rep breakdown — admin Team View only (MINCRM-264) */}
+            {isAdmin && viewMode === 'team' && (
+              <div
+                className="bg-white rounded-lg border border-gray-200 mt-6"
+                data-testid="rep-breakdown-table-container"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-base font-semibold text-gray-900">
+                    {t('reports.winLoss.repBreakdownHeading')}
+                  </h2>
+                </div>
+                {report.repRows.length === 0 ? (
+                  <p
+                    className="px-6 py-8 text-sm text-gray-400 text-center"
+                    data-testid="rep-breakdown-empty"
+                  >
+                    {t('reports.winLoss.repBreakdownEmpty')}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table
+                      className="min-w-full divide-y divide-gray-100"
+                      data-testid="rep-breakdown-table"
+                    >
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnRep')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnWon')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnWonValue')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnLost')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnLostValue')}
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {t('reports.winLoss.columnWinRate')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {report.repRows.map((row) => (
+                          <tr key={row.ownerId} data-testid={`rep-breakdown-row-${row.ownerId}`}>
+                            <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                              {row.ownerName}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-sm text-end text-gray-900"
+                              data-testid={`rep-breakdown-won-count-${row.ownerId}`}
+                            >
+                              {row.wonCount}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                              data-testid={`rep-breakdown-won-value-${row.ownerId}`}
+                            >
+                              {formatCurrency(
+                                row.wonValue,
+                                i18n.language,
+                                report.currency ?? 'USD',
+                              )}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-sm text-end text-gray-900"
+                              data-testid={`rep-breakdown-lost-count-${row.ownerId}`}
+                            >
+                              {row.lostCount}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                              data-testid={`rep-breakdown-lost-value-${row.ownerId}`}
+                            >
+                              {formatCurrency(
+                                row.lostValue,
+                                i18n.language,
+                                report.currency ?? 'USD',
+                              )}
+                            </td>
+                            <td
+                              className="px-4 py-3 text-sm text-end text-gray-900"
+                              data-testid={`rep-breakdown-win-rate-${row.ownerId}`}
+                            >
+                              {formatWinRate(row.winRate)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </main>

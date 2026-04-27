@@ -1,10 +1,12 @@
 /**
  * Tests for the ActivityVolumeReportPage component.
  * Covers heading, filters, table rendering, totals row, empty state, CSV export,
- * and admin vs rep scoping. Implements MINCRM-181.
+ * admin vs rep scoping, and My View / Team View toggle (MINCRM-264).
+ * Implements MINCRM-181, MINCRM-264.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ActivityVolumeReportPage from './ActivityVolumeReportPage.js';
@@ -14,10 +16,12 @@ import { server } from '../test/setup.js';
 
 describe('ActivityVolumeReportPage', () => {
   describe('header', () => {
-    it('renders the page heading', async () => {
+    it('admin sees Team Activity Report heading by default', async () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /Activity Report/i })).toBeInTheDocument();
+        expect(screen.getByTestId('activity-volume-report-heading')).toHaveTextContent(
+          'Team Activity Report',
+        );
       });
     });
 
@@ -26,6 +30,39 @@ describe('ActivityVolumeReportPage', () => {
       await waitFor(() => {
         expect(screen.getByText('MiniCRM')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('view mode toggle (MINCRM-264)', () => {
+    it('admin sees toggle buttons', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('view-mode-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('view-mode-team')).toBeInTheDocument();
+        expect(screen.getByTestId('view-mode-my')).toBeInTheDocument();
+      });
+    });
+
+    it('heading changes to My Activity Report when admin switches to My View', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('view-mode-my')).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByTestId('view-mode-my'));
+      expect(screen.getByTestId('activity-volume-report-heading')).toHaveTextContent(
+        'My Activity Report',
+      );
+    });
+
+    it('rep sees My Activity Report heading — no toggle', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-volume-report-heading')).toHaveTextContent(
+          'My Activity Report',
+        );
+      });
+      expect(screen.queryByTestId('view-mode-toggle')).not.toBeInTheDocument();
     });
   });
 

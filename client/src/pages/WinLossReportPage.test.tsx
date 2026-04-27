@@ -29,6 +29,100 @@ describe('WinLossReportPage', () => {
     });
   });
 
+  describe('view mode toggle (MINCRM-264)', () => {
+    it('admin sees Team View heading by default', async () => {
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('win-loss-report-heading')).toHaveTextContent(
+          'Team Win/Loss Report',
+        );
+      });
+    });
+
+    it('admin sees toggle buttons', async () => {
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('view-mode-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('view-mode-team')).toBeInTheDocument();
+        expect(screen.getByTestId('view-mode-my')).toBeInTheDocument();
+      });
+    });
+
+    it('heading changes to My Win/Loss Report when admin switches to My View', async () => {
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('view-mode-my')).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByTestId('view-mode-my'));
+      expect(screen.getByTestId('win-loss-report-heading')).toHaveTextContent('My Win/Loss Report');
+    });
+
+    it('rep sees My Win/Loss Report heading — no toggle', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('win-loss-report-heading')).toHaveTextContent(
+          'My Win/Loss Report',
+        );
+      });
+      expect(screen.queryByTestId('view-mode-toggle')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('per-rep breakdown table (MINCRM-264)', () => {
+    const repRowsFixture = [
+      {
+        ownerId: 'uuid-rep-1',
+        ownerName: 'Alice',
+        wonCount: 3,
+        wonValue: '30000.00',
+        lostCount: 1,
+        lostValue: '5000.00',
+        winRate: 0.75,
+      },
+    ];
+
+    it('renders the per-rep breakdown table in Team View for admins', async () => {
+      server.use(
+        http.get('/api/reports/win-loss', () =>
+          HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('rep-breakdown-table')).toBeInTheDocument();
+      });
+    });
+
+    it('does not render the per-rep breakdown when admin switches to My View', async () => {
+      server.use(
+        http.get('/api/reports/win-loss', () =>
+          HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('view-mode-my')).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByTestId('view-mode-my'));
+      expect(screen.queryByTestId('rep-breakdown-table-container')).not.toBeInTheDocument();
+    });
+
+    it('does not render the per-rep breakdown table for reps', async () => {
+      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(
+        http.get('/api/reports/win-loss', () =>
+          HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('win-loss-report-heading')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('rep-breakdown-table-container')).not.toBeInTheDocument();
+    });
+  });
+
   describe('loading state', () => {
     it('shows a loading message while fetching', () => {
       server.use(http.get('/api/reports/win-loss', () => new Promise(() => {})));

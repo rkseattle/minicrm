@@ -25,6 +25,17 @@ export interface LossReasonBreakdown {
   count: number;
 }
 
+/** A single rep row in the win/loss per-rep breakdown (MINCRM-264) */
+export interface WinLossRepRow {
+  ownerId: string;
+  ownerName: string;
+  wonCount: number;
+  wonValue: string;
+  lostCount: number;
+  lostValue: string;
+  winRate: number | null;
+}
+
 /** Shape of the win/loss report response from the API */
 export interface WinLossReportResponse {
   wonCount: number;
@@ -52,6 +63,8 @@ export interface WinLossReportResponse {
   ratesLastUpdated: string | null;
   /** True when at least one non-home currency rate exists (MINCRM-253) */
   hasRates: boolean;
+  /** Per-rep breakdown rows; populated only when no owner filter is applied (MINCRM-264) */
+  repRows: WinLossRepRow[];
 }
 
 /**

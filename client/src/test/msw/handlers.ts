@@ -126,6 +126,7 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
   unratedCount: 0,
   ratesLastUpdated: null,
   hasRates: false,
+  repRows: [],
 };
 
 /** Reusable fixture: a recent activity entry on the dashboard */
