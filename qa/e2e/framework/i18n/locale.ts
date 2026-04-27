@@ -9,7 +9,9 @@
  * Unknown keys throw at test time so typos surface immediately rather than
  * silently producing empty selectors.
  *
- * MINCRM-126
+ * App-domain keys (CRM entities, navigation specific to a product) must NOT
+ * be added here. Use registerLocaleExtension() from the app fixture layer
+ * to merge app-domain keys at startup.
  */
 
 /**
@@ -21,7 +23,7 @@ export type LocaleCode = 'en' | 'es' | 'fr' | 'de' | 'zh-Hans';
 /**
  * A flat map from dotted key to translated string.
  * Keys mirror the nested path in the application's locale JSON files
- * (e.g. "nav.contacts" → "Contacts").
+ * (e.g. "nav.dashboard" → "Dashboard").
  */
 export type LocaleMap = Record<string, string>;
 
@@ -34,12 +36,8 @@ export type LocaleMap = Record<string, string>;
  * Add keys here as new text selectors are written.
  */
 const EN: LocaleMap = {
-  // Navigation
+  // Navigation (infrastructure — app-specific nav entries belong in app locale extensions)
   'nav.dashboard': 'Dashboard',
-  'nav.contacts': 'Contacts',
-  'nav.accounts': 'Accounts',
-  'nav.deals': 'Deals',
-  'nav.pipeline': 'Pipeline',
   'nav.myTasks': 'My Tasks',
   'nav.users': 'Users',
   'nav.logout': 'Log out',
@@ -70,47 +68,6 @@ const EN: LocaleMap = {
   'setPassword.confirmPasswordLabel': 'Confirm password',
   'setPassword.submitButton': 'Set password',
 
-  // Contacts
-  'contacts.saveChanges': 'Save changes',
-  'contacts.save': 'Save',
-  'contacts.cancel': 'Cancel',
-  'contacts.delete': 'Delete',
-  'contacts.empty': 'No contacts yet. Add one to get started.',
-
-  // Accounts
-  'accounts.save': 'Save',
-  'accounts.saveChanges': 'Save changes',
-  'accounts.cancel': 'Cancel',
-  'accounts.delete': 'Delete',
-  'accounts.edit': 'Edit',
-  'accounts.newAccount': 'New Account',
-  'accounts.empty': 'No accounts yet. Add one to get started.',
-  'accounts.linkedContactsEmpty': 'No contacts linked to this account.',
-
-  // Leads
-  'leads.new': 'New Lead',
-  'leads.save': 'Save',
-  'leads.delete': 'Delete',
-  'leads.convert': 'Convert Lead',
-  'leads.confirmConvert': 'Confirm',
-  'leads.createAnyway': 'Create anyway',
-  'leads.showDisqualified': 'Show disqualified',
-  'leads.showConverted': 'Show converted',
-
-  // Notifications / profile
-  'profile.save': 'Save',
-
-  // Admin settings — email notifications
-  'settings.emailNotifications.sectionTitle': 'Email Notifications',
-
-  // Tags (MINCRM-186)
-  'tags.pageTitle': 'Tag Management',
-  'tags.empty': 'No tags yet.',
-  'tags.delete': 'Delete',
-  'tags.save': 'Save',
-  'tags.renameInputLabel': 'New tag name',
-  'tags.inputLabel': 'Add tags',
-
   // Common actions
   'common.save': 'Save',
   'common.cancel': 'Cancel',
@@ -127,10 +84,6 @@ const EN: LocaleMap = {
 const ES: LocaleMap = {
   // Navigation
   'nav.dashboard': 'Panel',
-  'nav.contacts': 'Contactos',
-  'nav.accounts': 'Cuentas',
-  'nav.deals': 'Negocios',
-  'nav.pipeline': 'Canal',
   'nav.myTasks': 'Mis tareas',
   'nav.users': 'Usuarios',
   'nav.logout': 'Cerrar sesión',
@@ -161,47 +114,6 @@ const ES: LocaleMap = {
   'setPassword.confirmPasswordLabel': 'Confirmar contraseña',
   'setPassword.submitButton': 'Establecer contraseña',
 
-  // Contacts
-  'contacts.saveChanges': 'Guardar cambios',
-  'contacts.save': 'Guardar',
-  'contacts.cancel': 'Cancelar',
-  'contacts.delete': 'Eliminar',
-  'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
-
-  // Accounts
-  'accounts.save': 'Guardar',
-  'accounts.saveChanges': 'Guardar cambios',
-  'accounts.cancel': 'Cancelar',
-  'accounts.delete': 'Eliminar',
-  'accounts.edit': 'Editar',
-  'accounts.newAccount': 'Nueva cuenta',
-  'accounts.empty': 'Aún no hay cuentas. Agrega una para empezar.',
-  'accounts.linkedContactsEmpty': 'No hay contactos vinculados a esta cuenta.',
-
-  // Leads
-  'leads.new': 'Nuevo lead',
-  'leads.save': 'Guardar',
-  'leads.delete': 'Eliminar',
-  'leads.convert': 'Convertir lead',
-  'leads.confirmConvert': 'Confirmar',
-  'leads.createAnyway': 'Crear de todas formas',
-  'leads.showDisqualified': 'Mostrar descalificados',
-  'leads.showConverted': 'Mostrar convertidos',
-
-  // Notifications / profile
-  'profile.save': 'Guardar',
-
-  // Admin settings — email notifications
-  'settings.emailNotifications.sectionTitle': 'Notificaciones de correo electrónico',
-
-  // Tags (MINCRM-186)
-  'tags.pageTitle': 'Gestión de etiquetas',
-  'tags.empty': 'Aún no hay etiquetas.',
-  'tags.delete': 'Eliminar',
-  'tags.save': 'Guardar',
-  'tags.renameInputLabel': 'Nuevo nombre de etiqueta',
-  'tags.inputLabel': 'Añadir etiquetas',
-
   // Common actions
   'common.save': 'Guardar',
   'common.cancel': 'Cancelar',
@@ -213,15 +125,11 @@ const ES: LocaleMap = {
 
 /**
  * French strings used in E2E text-based strategies.
- * Translations sourced from client/src/locales/fr.json. (MINCRM-242)
+ * Translations sourced from client/src/locales/fr.json.
  */
 const FR: LocaleMap = {
   // Navigation
   'nav.dashboard': 'Tableau de bord',
-  'nav.contacts': 'Contacts',
-  'nav.accounts': 'Comptes',
-  'nav.deals': 'Opportunités',
-  'nav.pipeline': 'Pipeline',
   'nav.myTasks': 'Mes tâches',
   'nav.users': 'Utilisateurs',
   'nav.logout': 'Se déconnecter',
@@ -252,47 +160,6 @@ const FR: LocaleMap = {
   'setPassword.confirmPasswordLabel': 'Confirmer le mot de passe',
   'setPassword.submitButton': 'Définir le mot de passe',
 
-  // Contacts
-  'contacts.saveChanges': 'Enregistrer les modifications',
-  'contacts.save': 'Enregistrer',
-  'contacts.cancel': 'Annuler',
-  'contacts.delete': 'Supprimer',
-  'contacts.empty': "Aucun contact pour l'instant. Ajoutez-en un pour commencer.",
-
-  // Accounts
-  'accounts.save': 'Enregistrer',
-  'accounts.saveChanges': 'Enregistrer les modifications',
-  'accounts.cancel': 'Annuler',
-  'accounts.delete': 'Supprimer',
-  'accounts.edit': 'Modifier',
-  'accounts.newAccount': 'Nouveau compte',
-  'accounts.empty': "Aucun compte pour l'instant. Ajoutez-en un pour commencer.",
-  'accounts.linkedContactsEmpty': 'Aucun contact associé à ce compte.',
-
-  // Leads
-  'leads.new': 'Nouveau prospect',
-  'leads.save': 'Enregistrer',
-  'leads.delete': 'Supprimer',
-  'leads.convert': 'Convertir le prospect',
-  'leads.confirmConvert': 'Convertir',
-  'leads.createAnyway': 'Créer quand même',
-  'leads.showDisqualified': 'Afficher les disqualifiés',
-  'leads.showConverted': 'Afficher les convertis',
-
-  // Notifications / profile
-  'profile.save': 'Enregistrer',
-
-  // Admin settings — email notifications
-  'settings.emailNotifications.sectionTitle': 'Notifications par e-mail',
-
-  // Tags (MINCRM-186)
-  'tags.pageTitle': 'Gestion des étiquettes',
-  'tags.empty': "Aucune étiquette pour l'instant.",
-  'tags.delete': 'Supprimer',
-  'tags.save': 'Enregistrer',
-  'tags.renameInputLabel': "Nouveau nom d'étiquette",
-  'tags.inputLabel': 'Ajouter des étiquettes',
-
   // Common actions
   'common.save': 'Enregistrer',
   'common.cancel': 'Annuler',
@@ -304,15 +171,11 @@ const FR: LocaleMap = {
 
 /**
  * German strings used in E2E text-based strategies.
- * Translations sourced from client/src/locales/de.json. (MINCRM-242)
+ * Translations sourced from client/src/locales/de.json.
  */
 const DE: LocaleMap = {
   // Navigation
   'nav.dashboard': 'Dashboard',
-  'nav.contacts': 'Kontakte',
-  'nav.accounts': 'Konten',
-  'nav.deals': 'Geschäfte',
-  'nav.pipeline': 'Pipeline',
   'nav.myTasks': 'Meine Aufgaben',
   'nav.users': 'Benutzer',
   'nav.logout': 'Abmelden',
@@ -343,47 +206,6 @@ const DE: LocaleMap = {
   'setPassword.confirmPasswordLabel': 'Passwort bestätigen',
   'setPassword.submitButton': 'Passwort festlegen',
 
-  // Contacts
-  'contacts.saveChanges': 'Änderungen speichern',
-  'contacts.save': 'Speichern',
-  'contacts.cancel': 'Abbrechen',
-  'contacts.delete': 'Löschen',
-  'contacts.empty': 'Noch keine Kontakte. Fügen Sie einen hinzu.',
-
-  // Accounts
-  'accounts.save': 'Speichern',
-  'accounts.saveChanges': 'Änderungen speichern',
-  'accounts.cancel': 'Abbrechen',
-  'accounts.delete': 'Löschen',
-  'accounts.edit': 'Bearbeiten',
-  'accounts.newAccount': 'Neues Konto',
-  'accounts.empty': 'Noch keine Konten. Fügen Sie eines hinzu.',
-  'accounts.linkedContactsEmpty': 'Keine Kontakte mit diesem Konto verknüpft.',
-
-  // Leads
-  'leads.new': 'Neuer Lead',
-  'leads.save': 'Speichern',
-  'leads.delete': 'Löschen',
-  'leads.convert': 'Lead konvertieren',
-  'leads.confirmConvert': 'Konvertieren',
-  'leads.createAnyway': 'Trotzdem erstellen',
-  'leads.showDisqualified': 'Disqualifizierte anzeigen',
-  'leads.showConverted': 'Konvertierte anzeigen',
-
-  // Notifications / profile
-  'profile.save': 'Speichern',
-
-  // Admin settings — email notifications
-  'settings.emailNotifications.sectionTitle': 'E-Mail-Benachrichtigungen',
-
-  // Tags (MINCRM-186)
-  'tags.pageTitle': 'Tag-Verwaltung',
-  'tags.empty': 'Noch keine Tags.',
-  'tags.delete': 'Löschen',
-  'tags.save': 'Speichern',
-  'tags.renameInputLabel': 'Neuer Tag-Name',
-  'tags.inputLabel': 'Tags hinzufügen',
-
   // Common actions
   'common.save': 'Speichern',
   'common.cancel': 'Abbrechen',
@@ -395,15 +217,11 @@ const DE: LocaleMap = {
 
 /**
  * Simplified Chinese strings used in E2E text-based strategies.
- * Translations sourced from client/src/locales/zh-Hans.json. (MINCRM-242)
+ * Translations sourced from client/src/locales/zh-Hans.json.
  */
 const ZH_HANS: LocaleMap = {
   // Navigation
   'nav.dashboard': '仪表板',
-  'nav.contacts': '联系人',
-  'nav.accounts': '客户',
-  'nav.deals': '商机',
-  'nav.pipeline': '管道看板',
   'nav.myTasks': '我的任务',
   'nav.users': '用户',
   'nav.logout': '退出登录',
@@ -434,47 +252,6 @@ const ZH_HANS: LocaleMap = {
   'setPassword.confirmPasswordLabel': '确认密码',
   'setPassword.submitButton': '设置密码',
 
-  // Contacts
-  'contacts.saveChanges': '保存更改',
-  'contacts.save': '保存',
-  'contacts.cancel': '取消',
-  'contacts.delete': '删除',
-  'contacts.empty': '暂无联系人，请添加。',
-
-  // Accounts
-  'accounts.save': '保存',
-  'accounts.saveChanges': '保存更改',
-  'accounts.cancel': '取消',
-  'accounts.delete': '删除',
-  'accounts.edit': '编辑',
-  'accounts.newAccount': '新建客户',
-  'accounts.empty': '暂无客户，请添加。',
-  'accounts.linkedContactsEmpty': '此客户暂无关联联系人。',
-
-  // Leads
-  'leads.new': '新建潜在客户',
-  'leads.save': '保存',
-  'leads.delete': '删除',
-  'leads.convert': '转化潜在客户',
-  'leads.confirmConvert': '转化',
-  'leads.createAnyway': '仍然创建',
-  'leads.showDisqualified': '显示已失效',
-  'leads.showConverted': '显示已转化',
-
-  // Notifications / profile
-  'profile.save': '保存',
-
-  // Admin settings — email notifications
-  'settings.emailNotifications.sectionTitle': '电子邮件通知',
-
-  // Tags (MINCRM-186)
-  'tags.pageTitle': '标签管理',
-  'tags.empty': '暂无标签。',
-  'tags.delete': '删除',
-  'tags.save': '保存',
-  'tags.renameInputLabel': '新标签名称',
-  'tags.inputLabel': '添加标签',
-
   // Common actions
   'common.save': '保存',
   'common.cancel': '取消',
@@ -494,10 +271,36 @@ const LOCALE_MAPS: Partial<Record<LocaleCode, LocaleMap>> = {
 };
 
 // ---------------------------------------------------------------------------
+// Extension registration
+// ---------------------------------------------------------------------------
+
+/**
+ * Merges additional locale keys into the registered locale maps.
+ *
+ * Call this once at app-fixture startup to register app-domain keys that
+ * do not belong in the framework layer.
+ * Extension keys are merged additively — existing framework keys are never
+ * removed. Calling this multiple times is safe; each call adds or overwrites
+ * the keys provided.
+ *
+ * @param extension - Partial map of locale code → additional key/value pairs.
+ */
+export function registerLocaleExtension(extension: Partial<Record<LocaleCode, LocaleMap>>): void {
+  for (const [code, keys] of Object.entries(extension) as [LocaleCode, LocaleMap][]) {
+    const existing = LOCALE_MAPS[code];
+    if (existing !== undefined) {
+      Object.assign(existing, keys);
+    } else {
+      LOCALE_MAPS[code] = { ...keys };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Active locale resolution
 // ---------------------------------------------------------------------------
 
-/** Overrides the active locale at runtime (e.g. from i18n E2E specs). MINCRM-242 */
+/** Overrides the active locale at runtime (e.g. from i18n E2E specs). */
 let _runtimeLocale: LocaleCode | null = null;
 
 /**

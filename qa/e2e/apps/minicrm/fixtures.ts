@@ -24,6 +24,7 @@
 
 import { test as baseTest, expect } from '@framework/fixtures/index.js';
 import { TestDataManager } from './test-data-manager.js';
+import './locale.js';
 
 export type { TeardownResult } from './test-data-manager.js';
 
