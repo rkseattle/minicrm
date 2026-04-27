@@ -24,6 +24,16 @@ interface LossReasonRow {
   count: string;
 }
 
+/** PostgreSQL row shape for the per-rep win/loss breakdown query (MINCRM-264) */
+interface WinLossRepAggRow {
+  owner_id: string;
+  owner_name: string;
+  won_count: string;
+  won_value: string;
+  lost_count: string;
+  lost_value: string;
+}
+
 /** PostgreSQL row shape for the win/loss aggregation query */
 interface WinLossAggRow {
   won_count: string;
@@ -54,6 +64,17 @@ interface WinLossAggRow {
 export interface LossReasonBreakdown {
   reason: string;
   count: number;
+}
+
+/** A single rep row in the win/loss per-rep breakdown (MINCRM-264) */
+export interface WinLossRepRow {
+  ownerId: string;
+  ownerName: string;
+  wonCount: number;
+  wonValue: string;
+  lostCount: number;
+  lostValue: string;
+  winRate: number | null;
 }
 
 /** Shape of the win/loss report returned to the controller */
@@ -94,6 +115,11 @@ export interface WinLossReport {
   ratesLastUpdated: string | null;
   /** True when at least one non-home currency rate exists (MINCRM-253) */
   hasRates: boolean;
+  /**
+   * Per-rep breakdown rows — only populated when ownerId is null (team-wide view).
+   * Empty array when a specific owner filter is applied. (MINCRM-264)
+   */
+  repRows: WinLossRepRow[];
 }
 
 /**
@@ -210,6 +236,44 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   const hasRates = hasRatesCount > 0;
   const unratedCount = parseInt(String(aggRow.unrated_count ?? '0'), 10);
 
+  // ── Per-rep breakdown (team-wide only) ────────────────────────────────────
+  // Only populated when no owner filter is applied; empty array for scoped queries.
+  // Sorted by owner name ascending. (MINCRM-264)
+  let repRows: WinLossRepRow[] = [];
+  if (!ownerFilter) {
+    const repAggResult = await pool.query<WinLossRepAggRow>(
+      `SELECT
+         d.owner_id,
+         u.name AS owner_name,
+         COUNT(*) FILTER (WHERE d.stage = 'Closed Won')::text                   AS won_count,
+         COALESCE(SUM(d.value) FILTER (WHERE d.stage = 'Closed Won'), 0)::text  AS won_value,
+         COUNT(*) FILTER (WHERE d.stage = 'Closed Lost')::text                  AS lost_count,
+         COALESCE(SUM(d.value) FILTER (WHERE d.stage = 'Closed Lost'), 0)::text AS lost_value
+       FROM deals d
+       JOIN users u ON u.id = d.owner_id
+       WHERE d.stage IN ('Closed Won', 'Closed Lost')
+         AND d.close_date >= $1
+         AND d.close_date <= $2
+       GROUP BY d.owner_id, u.name
+       ORDER BY u.name ASC`,
+      [startDate, endDate],
+    );
+    repRows = repAggResult.rows.map((row) => {
+      const wc = parseInt(row.won_count, 10);
+      const lc = parseInt(row.lost_count, 10);
+      const total = wc + lc;
+      return {
+        ownerId: row.owner_id,
+        ownerName: row.owner_name,
+        wonCount: wc,
+        wonValue: row.won_value,
+        lostCount: lc,
+        lostValue: row.lost_value,
+        winRate: total > 0 ? wc / total : null,
+      };
+    });
+  }
+
   return {
     wonCount,
     wonValue,
@@ -226,6 +290,7 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     unratedCount,
     ratesLastUpdated: aggRow.rates_last_updated ?? null,
     hasRates,
+    repRows,
   };
 }
 

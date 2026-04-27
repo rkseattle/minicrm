@@ -5,11 +5,12 @@
  * - Columns: Note, Call, Email, Meeting, Task, Total
  * - Totals row at the bottom
  * - Date range filter (this week / this month / this quarter / custom)
+ * - Admin-only My View / Team View toggle (MINCRM-264)
  * - Admin-only rep filter dropdown
  * - Clicking a count cell navigates to Activities filtered to that rep/type/range
  * - CSV export of the full table
  *
- * Implements MINCRM-181.
+ * Implements MINCRM-181, MINCRM-264.
  */
 
 import { useState, useMemo } from 'react';
@@ -26,6 +27,9 @@ import {
   type ActivityTypeCounts,
   type ActivityVolumeRepRow,
 } from '@/api/reports.js';
+
+/** View mode for the admin toggle (MINCRM-264) */
+type ViewMode = 'team' | 'my';
 
 /** Date range preset identifier */
 type DatePreset = 'thisWeek' | 'currentMonth' | 'currentQuarter' | 'custom';
@@ -157,7 +161,7 @@ function downloadCsv(csv: string, filename: string): void {
 
 /**
  * Activity volume report page.
- * Implements MINCRM-181.
+ * Implements MINCRM-181, MINCRM-264.
  */
 export default function ActivityVolumeReportPage() {
   const { t } = useTranslation();
@@ -182,6 +186,9 @@ export default function ActivityVolumeReportPage() {
     return { start: customStart, end: customEnd };
   }, [preset, customStart, customEnd]);
 
+  // ── View mode toggle (admin only) — defaults to Team View, resets on mount ─
+  const [viewMode, setViewMode] = useState<ViewMode>('team');
+
   // ── Owner filter state (admin only) ────────────────────────────────────────
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
@@ -193,10 +200,19 @@ export default function ActivityVolumeReportPage() {
   });
 
   // ── Report query ───────────────────────────────────────────────────────────
+  // For reps: no ownerId in params (server always scopes to req.user.id).
+  // For admin My View: pass the admin's own userId.
+  // For admin Team View: no ownerId; server returns team-wide data.
+  const adminOwnerId = isAdmin
+    ? viewMode === 'my'
+      ? (user?.id ?? undefined)
+      : selectedOwnerId || undefined
+    : undefined;
+
   const reportParams: ActivityVolumeReportParams = {
     start,
     end,
-    ownerId: isAdmin && selectedOwnerId ? selectedOwnerId : undefined,
+    ownerId: adminOwnerId,
   };
 
   const {
@@ -208,6 +224,12 @@ export default function ActivityVolumeReportPage() {
     queryFn: () => getActivityVolumeReport(reportParams),
     enabled: start <= end,
   });
+
+  // ── Dynamic heading key ────────────────────────────────────────────────────
+  const headingKey =
+    !isAdmin || viewMode === 'my'
+      ? 'reports.activityVolume.pageTitleMy'
+      : 'reports.activityVolume.pageTitleTeam';
 
   // ── CSV export ─────────────────────────────────────────────────────────────
   function handleExportCsv(): void {
@@ -227,7 +249,7 @@ export default function ActivityVolumeReportPage() {
               className="text-2xl font-bold text-gray-900"
               data-testid="activity-volume-report-heading"
             >
-              {t('reports.activityVolume.pageTitle')}
+              {t(headingKey)}
             </h1>
             <p className="text-sm text-gray-500 mt-1">{t('reports.activityVolume.subtitle')}</p>
           </div>
@@ -242,6 +264,39 @@ export default function ActivityVolumeReportPage() {
             </button>
           )}
         </div>
+
+        {/* My View / Team View toggle — admin only (MINCRM-264) */}
+        {isAdmin && (
+          <div
+            className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"
+            data-testid="view-mode-toggle"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('team')}
+              className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+                viewMode === 'team'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="view-mode-team"
+            >
+              {t('reports.activityVolume.viewToggleTeamView')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('my')}
+              className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+                viewMode === 'my'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              data-testid="view-mode-my"
+            >
+              {t('reports.activityVolume.viewToggleMyView')}
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div
