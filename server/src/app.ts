@@ -10,6 +10,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import 'dotenv/config';
 import logger from './logger.js';
+import pool from './db.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import contactRoutes from './routes/contacts.js';
@@ -104,8 +105,41 @@ app.use('/api/leads', leadRoutes);
 app.use('/api/tags', tagRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
+// No authentication — must remain public for load balancers and orchestrators.
+app.get('/api/health', async (_req: Request, res: Response) => {
+  const client = await pool.connect().catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(503).json({
+      status: 'degraded',
+      db: 'error',
+      db_error: message,
+      uptime_seconds: Math.floor(process.uptime()),
+    });
+    return null;
+  });
+
+  if (!client) return;
+
+  try {
+    // SET LOCAL limits this timeout to the current transaction only (MINCRM-258)
+    await client.query("SET LOCAL statement_timeout = '2s'");
+    await client.query('SELECT 1');
+    res.status(200).json({
+      status: 'ok',
+      db: 'ok',
+      uptime_seconds: Math.floor(process.uptime()),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(503).json({
+      status: 'degraded',
+      db: 'error',
+      db_error: message,
+      uptime_seconds: Math.floor(process.uptime()),
+    });
+  } finally {
+    client.release();
+  }
 });
 
 // ── API docs (development + staging only) ─────────────────────────────────────
