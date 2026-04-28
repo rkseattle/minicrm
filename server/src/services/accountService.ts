@@ -437,6 +437,7 @@ export async function updateAccount(
 
 /** Shape of an account row enriched with display names and counts for CSV export */
 export interface AccountExportRow {
+  id: string;
   name: string;
   industry: string | null;
   website: string | null;
@@ -494,6 +495,7 @@ export async function exportAccountsForCsv(
 
   const result = await pool.query<AccountExportRow>(
     `SELECT
+       a.id,
        a.name,
        a.industry,
        a.website,

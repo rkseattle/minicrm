@@ -29,6 +29,7 @@ import { queueAssignmentNotification } from '../services/notificationService.js'
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
+import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import logger from '../logger.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
@@ -303,6 +304,21 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
 
   const rows = await exportContactsForCsv({ ownerId, accountId, search, accountSearch });
 
+  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  const customDefs = await listDefinitions('contact');
+  const recordIds = rows.map((r) => r.id);
+  const valuesByRecord = new Map<string, Map<string, string | null>>();
+  await Promise.all(
+    recordIds.map(async (recordId) => {
+      const vals = await getValuesForRecord(recordId);
+      const byDef = new Map<string, string | null>();
+      for (const v of vals) {
+        byDef.set(v.definition_id, v.value);
+      }
+      valuesByRecord.set(recordId, byDef);
+    }),
+  );
+
   const headers = [
     'First Name',
     'Last Name',
@@ -322,28 +338,36 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
     'Owner',
     'Created',
     'Updated',
+    ...customDefs.map((d) => d.name),
   ];
 
-  const csvRows = rows.map((r) => ({
-    'First Name': r.first_name,
-    'Last Name': r.last_name,
-    Email: r.email,
-    Phone: r.phone,
-    Title: r.title,
-    Department: r.department,
-    'Address Line 1': r.address_line1,
-    'Address Line 2': r.address_line2,
-    City: r.city,
-    'State/Region': r.state_region,
-    'Postal Code': r.postal_code,
-    Country: r.country,
-    'LinkedIn URL': r.linkedin_url,
-    'Twitter/X URL': r.twitter_x_url,
-    Account: r.account_name,
-    Owner: r.owner_name,
-    Created: r.created_at,
-    Updated: r.updated_at,
-  }));
+  const csvRows = rows.map((r) => {
+    const base: Record<string, string | number | Date | null | undefined> = {
+      'First Name': r.first_name,
+      'Last Name': r.last_name,
+      Email: r.email,
+      Phone: r.phone,
+      Title: r.title,
+      Department: r.department,
+      'Address Line 1': r.address_line1,
+      'Address Line 2': r.address_line2,
+      City: r.city,
+      'State/Region': r.state_region,
+      'Postal Code': r.postal_code,
+      Country: r.country,
+      'LinkedIn URL': r.linkedin_url,
+      'Twitter/X URL': r.twitter_x_url,
+      Account: r.account_name,
+      Owner: r.owner_name,
+      Created: r.created_at,
+      Updated: r.updated_at,
+    };
+    const recordVals = valuesByRecord.get(r.id);
+    for (const def of customDefs) {
+      base[def.name] = recordVals?.get(def.id) ?? '';
+    }
+    return base;
+  });
 
   const csv = serializeToCsv(headers, csvRows);
   const filename = csvFilename('contacts');

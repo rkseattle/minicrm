@@ -25,6 +25,7 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -232,6 +233,21 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
 
   const rows = await exportAccountsForCsv({ ownerId, search, industry });
 
+  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  const customDefs = await listDefinitions('account');
+  const recordIds = rows.map((r) => r.id);
+  const valuesByRecord = new Map<string, Map<string, string | null>>();
+  await Promise.all(
+    recordIds.map(async (recordId) => {
+      const vals = await getValuesForRecord(recordId);
+      const byDef = new Map<string, string | null>();
+      for (const v of vals) {
+        byDef.set(v.definition_id, v.value);
+      }
+      valuesByRecord.set(recordId, byDef);
+    }),
+  );
+
   const headers = [
     'Name',
     'Type',
@@ -245,22 +261,30 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
     'Deals',
     'Created',
     'Updated',
+    ...customDefs.map((d) => d.name),
   ];
 
-  const csvRows = rows.map((r) => ({
-    Name: r.name,
-    Type: r.account_type,
-    Industry: r.industry,
-    Website: r.website,
-    Employees: r.employee_range,
-    'Revenue Range': r.revenue_range,
-    'Parent Account': r.parent_account_name,
-    Owner: r.owner_name,
-    Contacts: r.contact_count,
-    Deals: r.deal_count,
-    Created: r.created_at,
-    Updated: r.updated_at,
-  }));
+  const csvRows = rows.map((r) => {
+    const base: Record<string, string | number | Date | null | undefined> = {
+      Name: r.name,
+      Type: r.account_type,
+      Industry: r.industry,
+      Website: r.website,
+      Employees: r.employee_range,
+      'Revenue Range': r.revenue_range,
+      'Parent Account': r.parent_account_name,
+      Owner: r.owner_name,
+      Contacts: r.contact_count,
+      Deals: r.deal_count,
+      Created: r.created_at,
+      Updated: r.updated_at,
+    };
+    const recordVals = valuesByRecord.get(r.id);
+    for (const def of customDefs) {
+      base[def.name] = recordVals?.get(def.id) ?? '';
+    }
+    return base;
+  });
 
   const csv = serializeToCsv(headers, csvRows);
   const filename = csvFilename('accounts');

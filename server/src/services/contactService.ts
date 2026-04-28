@@ -425,6 +425,7 @@ export async function updateContact(
 
 /** Shape of a contact row enriched with display names for CSV export */
 export interface ContactExportRow {
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -503,6 +504,7 @@ export async function exportContactsForCsv(
 
   const result = await pool.query<ContactExportRow>(
     `SELECT
+       c.id,
        c.first_name,
        c.last_name,
        c.email,
