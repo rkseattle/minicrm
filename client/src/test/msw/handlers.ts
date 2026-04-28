@@ -1551,4 +1551,58 @@ export const handlers = [
       activityId: '00000000-0000-0000-0000-000000000e01',
     });
   }),
+
+  /** Custom fields: GET /api/custom-fields/definitions — returns empty list (MINCRM-276) */
+  http.get('/api/custom-fields/definitions', () => {
+    return HttpResponse.json({ definitions: [] });
+  }),
+
+  /** Custom fields: POST /api/custom-fields/definitions — create definition (MINCRM-276) */
+  http.post('/api/custom-fields/definitions', async ({ request }) => {
+    const body = (await request.json()) as {
+      entity_type: string;
+      name: string;
+      field_type: string;
+    };
+    return HttpResponse.json(
+      {
+        id: '00000000-0000-0000-0000-000000000cf1',
+        entity_type: body.entity_type,
+        name: body.name,
+        field_type: body.field_type,
+        options: null,
+        sort_order: 0,
+        created_at: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition (MINCRM-276) */
+  http.patch('/api/custom-fields/definitions/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params['id'],
+      entity_type: 'contact',
+      name: 'Updated Field',
+      field_type: 'text',
+      options: null,
+      sort_order: 0,
+      created_at: new Date().toISOString(),
+    });
+  }),
+
+  /** Custom fields: DELETE /api/custom-fields/definitions/:id — delete definition (MINCRM-276) */
+  http.delete('/api/custom-fields/definitions/:id', ({ params }) => {
+    return HttpResponse.json({ id: params['id'] });
+  }),
+
+  /** Custom fields: GET /api/custom-fields/:entityType/:recordId/custom-fields — returns empty (MINCRM-276) */
+  http.get('/api/custom-fields/:entityType/:recordId/custom-fields', () => {
+    return HttpResponse.json({ values: [] });
+  }),
+
+  /** Custom fields: PUT /api/custom-fields/:entityType/:recordId/custom-fields — upsert values (MINCRM-276) */
+  http.put('/api/custom-fields/:entityType/:recordId/custom-fields', () => {
+    return HttpResponse.json({ values: [] });
+  }),
 ];
