@@ -14,6 +14,8 @@ import {
   sendPasswordResetEmail,
   sendOverdueTaskDigest,
   sendAssignmentNotification,
+  sendContactEmail,
+  escapeHtml,
 } from '../services/emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from '../services/emailService.js';
 
@@ -153,5 +155,41 @@ describe('sendAssignmentNotification', () => {
     await expect(
       sendAssignmentNotification('user@example.com', '&Name', items),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('escapeHtml', () => {
+  it('escapes all five HTML special characters', () => {
+    expect(escapeHtml('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#x27;');
+  });
+
+  it('leaves safe strings unchanged', () => {
+    expect(escapeHtml('Hello, World!')).toBe('Hello, World!');
+  });
+});
+
+describe('sendContactEmail', () => {
+  it('returns delivered: false with reason smtp_not_configured when no SMTP is set', async () => {
+    // In test environment no SMTP is configured so resolveTransport returns null
+    const result = await sendContactEmail(
+      'contact@example.com',
+      'Test subject',
+      'Test body',
+      'Rep User',
+    );
+    expect(result.delivered).toBe(false);
+    expect(result.reason).toBe('smtp_not_configured');
+  });
+
+  it('resolves without throwing and returns a result object', async () => {
+    await expect(
+      sendContactEmail('contact@example.com', 'Hello', 'Body text', 'Alice'),
+    ).resolves.toMatchObject({ delivered: expect.any(Boolean) });
+  });
+
+  it('HTML-escapes body content containing special characters', async () => {
+    await expect(
+      sendContactEmail('contact@example.com', '<script>', '<b>xss</b>', "O'Brien"),
+    ).resolves.toMatchObject({ delivered: expect.any(Boolean) });
   });
 });

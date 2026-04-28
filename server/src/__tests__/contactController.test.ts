@@ -302,3 +302,102 @@ describe('GET /api/contacts/:id — visibility', () => {
     expect(res.body.contact.id).toBe(contact.id);
   });
 });
+
+// ── POST /api/contacts/:id/send-email (MINCRM-275) ──────────────────────────
+
+describe('POST /api/contacts/:id/send-email', () => {
+  it('returns 200 with delivered: false and an activityId when SMTP is not configured', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post(`/api/contacts/${contact.id}/send-email`)
+      .set('Cookie', repCookie)
+      .send({ subject: 'Hello', body: 'Hi there' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toBe(false);
+    expect(res.body.activityId).toBeTruthy();
+  });
+
+  it('logs an Email activity linked to the contact', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    await request(app)
+      .post(`/api/contacts/${contact.id}/send-email`)
+      .set('Cookie', repCookie)
+      .send({ subject: 'Test subject', body: 'Test body' });
+
+    const activityRes = await request(app)
+      .get(`/api/activities?contact=${contact.id}`)
+      .set('Cookie', repCookie);
+
+    expect(activityRes.status).toBe(200);
+    const emailActivities = (activityRes.body.data as { type: string; subject: string }[]).filter(
+      (a) => a.type === 'Email',
+    );
+    expect(emailActivities.length).toBeGreaterThanOrEqual(1);
+    expect(emailActivities[0].subject).toBe('Test subject');
+  });
+
+  it('returns 400 when the contact has an empty email address', async () => {
+    // Bypass the schema validation — insert a contact with an empty email string
+    // (the DB column is NOT NULL but the app-layer check rejects empty strings)
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('No', 'Email', '', $1) RETURNING id`,
+      [repId],
+    );
+    const contactId = result.rows[0].id;
+
+    const res = await request(app)
+      .post(`/api/contacts/${contactId}/send-email`)
+      .set('Cookie', repCookie)
+      .send({ subject: 'Hello', body: 'Hi' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NO_EMAIL');
+  });
+
+  it('returns 400 when subject is missing', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post(`/api/contacts/${contact.id}/send-email`)
+      .set('Cookie', repCookie)
+      .send({ body: 'Hi' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when subject exceeds 255 characters', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post(`/api/contacts/${contact.id}/send-email`)
+      .set('Cookie', repCookie)
+      .send({ subject: 'a'.repeat(256), body: 'Hi' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 for a non-existent contact', async () => {
+    const res = await request(app)
+      .post('/api/contacts/00000000-0000-0000-0000-000000000000/send-email')
+      .set('Cookie', repCookie)
+      .send({ subject: 'Hello', body: 'Hi' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+
+    const res = await request(app)
+      .post(`/api/contacts/${contact.id}/send-email`)
+      .send({ subject: 'Hello', body: 'Hi' });
+
+    expect(res.status).toBe(401);
+  });
+});
