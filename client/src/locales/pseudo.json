@@ -591,6 +591,38 @@
       "deleteError": "[Fäïlëd tö dëlëtë. Plëäŝë try ägäïñ.~~~~~~~~~~~]",
       "reorderError": "[Fäïlëd tö ŝävë ñëw ördër. Plëäŝë try ägäïñ.~~~~~~~~~~~~~]"
     },
+    "customFields": {
+      "sectionTitle": "[Ĉüŝtöm Fïëldŝ~~~~]",
+      "sectionHint": "[Ädd ĉüŝtöm fïëldŝ tö ĉöñtäĉtŝ, äĉĉöüñtŝ, äñd dëälŝ tö ĉäptürë dätä ŝpëĉïfïĉ tö yöür ŝälëŝ pröĉëŝŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "entityTypeLabel": "[Ëñtïty typë~~~~]",
+      "entityContact": "[Ĉöñtäĉt~~~~]",
+      "entityAccount": "[Äĉĉöüñt~~~~]",
+      "entityDeal": "[Dëäl~~]",
+      "nameLabel": "[Fïëld Ñämë~~~]",
+      "namePlaceholder": "[ë.g. ÑPŜ Ŝĉörë~~~~~]",
+      "fieldTypeLabel": "[Fïëld Typë~~~]",
+      "fieldTypeText": "[Tëxt~~]",
+      "fieldTypeNumber": "[Ñümbër~~~]",
+      "fieldTypeDate": "[Dätë~~]",
+      "fieldTypeBoolean": "[Yëŝ / Ñö~~~]",
+      "fieldTypeSelect": "[Drôpdöwñ~~~]",
+      "optionsLabel": "[Öptïöñŝ (ĉömmä-ŝëpärätëd)~~~~~~~~~~]",
+      "optionsPlaceholder": "[ë.g. Brôñzë, Ŝïlvër, Gôld~~~~~~~~~]",
+      "addButton": "[Ädd Fïëld~~~]",
+      "editButton": "[Ëdït~~]",
+      "saveButton": "[Ŝävë~~]",
+      "cancelButton": "[Ĉäñĉël~~]",
+      "deleteButton": "[Dëlëtë~~]",
+      "deleteConfirmTitle": "[Dëlëtë ĉüŝtöm fïëld?~~~~~~~]",
+      "deleteConfirmBody": "[Thïŝ wïll përmäñëñtly rëmövë thë fïëld äñd äll ïtŝ välüëŝ äĉröŝŝ äll rëĉördŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "nameRequiredError": "[Fïëld ñämë ïŝ rëqüïrëd.~~~~~~~]",
+      "nameTooLongError": "[Fïëld ñämë müŝt bë 100 ĉhäräĉtërŝ ör fëwër.~~~~~~~~~~~~~]",
+      "nameConflictError": "[Ä fïëld wïth thïŝ ñämë älrëädy ëxïŝtŝ för thïŝ ëñtïty typë.~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "saveSuccess": "[Fïëld ŝävëd.~~~~]",
+      "saveError": "[Fäïlëd tö ŝävë. Plëäŝë try ägäïñ.~~~~~~~~~~]",
+      "deleteSuccess": "[Fïëld dëlëtëd.~~~~~]",
+      "deleteError": "[Fäïlëd tö dëlëtë. Plëäŝë try ägäïñ.~~~~~~~~~~~]"
+    },
     "import": {
       "sectionTitle": "[Ïmpört Dätä~~~~]",
       "sectionHint": "[Ïmpört ĉöñtäĉtŝ, äĉĉöüñtŝ, äñd dëälŝ fröm ĈŜV fïlëŝ. Ïmpört äĉĉöüñtŝ bëförë ĉöñtäĉtŝ för bëŝt rëŝültŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
@@ -1086,6 +1118,10 @@
     "suggestionsLabel": "[Ëxïŝtïñg tägŝ~~~~]",
     "removeTag": "[Rëmövë täg {{name}}~~~~~~]",
     "sectionTitle": "[Tägŝ~~]"
+  },
+  "customFields": {
+    "sectionTitle": "[Ĉüŝtöm Fïëldŝ~~~~]",
+    "noValues": "[Ñö ĉüŝtöm fïëld välüëŝ ŝët.~~~~~~~~~~]"
   },
   "onboarding": {
     "title": "[Ŵéļčöмé ţö МιɳιСЯМ]",
