@@ -16,6 +16,7 @@ import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import SendEmailModal from '@/components/SendEmailModal.js';
+import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
 import {
   getContact,
@@ -29,6 +30,8 @@ import {
   deleteContactAddress,
   setDefaultContactAddress,
 } from '@/api/contacts.js';
+import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
+import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import type { ContactAddress, ContactAddressInput } from '@/api/contacts.js';
 import { listAccounts, getAccount } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -72,6 +75,7 @@ export default function ContactDetailPage() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -154,7 +158,20 @@ export default function ContactDetailPage() {
         twitter_x_url: values.twitter_x_url || undefined,
         other_url: values.other_url || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Save custom field values after core record is saved (MINCRM-276)
+      if (customFieldValues.length > 0) {
+        try {
+          await putCustomFieldValues('contact', id!, customFieldValues);
+          void queryClient.invalidateQueries({
+            queryKey: customFieldValuesQueryKey('contact', id!),
+          });
+        } catch (err: unknown) {
+          const apiErr = err as { response?: { data?: { error?: { message?: string } } } };
+          setUpdateError(apiErr.response?.data?.error?.message ?? t('errors.generic'));
+          return;
+        }
+      }
       queryClient.invalidateQueries({ queryKey: contactQueryKey });
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       setIsEditing(false);
@@ -622,6 +639,16 @@ export default function ContactDetailPage() {
               )}
             </div>
 
+            {/* Custom field values — edit mode (MINCRM-276) */}
+            {id && (
+              <CustomFieldsSection
+                entityType="contact"
+                recordId={id}
+                isEditing={true}
+                onValuesChange={setCustomFieldValues}
+              />
+            )}
+
             {updateError && (
               <p role="alert" className="mt-4 text-sm text-red-600" data-testid="update-error">
                 {updateError}
@@ -727,6 +754,11 @@ export default function ContactDetailPage() {
               testId="detail-owner"
             />
           </div>
+        )}
+
+        {/* Custom field values — read mode (MINCRM-276) */}
+        {!isEditing && id && (
+          <CustomFieldsSection entityType="contact" recordId={id} isEditing={false} />
         )}
 
         {/* Address section — shown when at least one field is populated (MINCRM-182) */}

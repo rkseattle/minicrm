@@ -15,11 +15,14 @@ import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
 import { getAccount, updateAccount, deleteAccount, listChildAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import type { ActiveUser } from '@/api/users.js';
+import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
@@ -34,6 +37,7 @@ export default function AccountDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
@@ -88,7 +92,11 @@ export default function AccountDetailPage() {
         account_type: values.account_type || null,
         parent_account_id: values.parent_account_id || null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (customFieldValues.length > 0) {
+        await putCustomFieldValues('account', id!, customFieldValues);
+        queryClient.invalidateQueries({ queryKey: customFieldValuesQueryKey('account', id!) });
+      }
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: linkedContactsQueryKey });
@@ -213,29 +221,39 @@ export default function AccountDetailPage() {
         </div>
 
         {isEditing ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">
-              {t('accounts.saveChanges')}
-            </h2>
-            <AccountForm
-              initialValues={account}
-              initialContactIds={linkedContactsData?.data.map((c) => c.id) ?? []}
-              accountId={id}
-              users={activeUsers}
-              initialParentAccountName={parentAccountData?.account?.name}
-              onSubmit={(values) => {
-                setUpdateError(null);
-                updateMutation.mutate(values);
-              }}
-              onCancel={() => {
-                setIsEditing(false);
-                setUpdateError(null);
-              }}
-              isSubmitting={updateMutation.isPending}
-              submitLabel={t('accounts.saveChanges')}
-              error={updateError ?? undefined}
-            />
-          </div>
+          <>
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                {t('accounts.saveChanges')}
+              </h2>
+              <AccountForm
+                initialValues={account}
+                initialContactIds={linkedContactsData?.data.map((c) => c.id) ?? []}
+                accountId={id}
+                users={activeUsers}
+                initialParentAccountName={parentAccountData?.account?.name}
+                onSubmit={(values) => {
+                  setUpdateError(null);
+                  updateMutation.mutate(values);
+                }}
+                onCancel={() => {
+                  setIsEditing(false);
+                  setUpdateError(null);
+                }}
+                isSubmitting={updateMutation.isPending}
+                submitLabel={t('accounts.saveChanges')}
+                error={updateError ?? undefined}
+              />
+            </div>
+            {id && (
+              <CustomFieldsSection
+                entityType="account"
+                recordId={id}
+                isEditing={true}
+                onValuesChange={setCustomFieldValues}
+              />
+            )}
+          </>
         ) : (
           <>
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
@@ -297,6 +315,14 @@ export default function AccountDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {id && (
+              <CustomFieldsSection
+                entityType="account"
+                recordId={id}
+                isEditing={false}
+              />
+            )}
 
             {/* Tags (MINCRM-186) */}
             {id && (
