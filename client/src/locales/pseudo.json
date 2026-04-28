@@ -262,7 +262,20 @@
     "phoneLabel2": "[Phöñë~~]",
     "titleLabel2": "[Jöb tïtlë~~~]",
     "departmentLabel2": "[Dëpärtmëñt~~~]",
-    "account_idLabel": "[Äĉĉöüñt~~~]"
+    "account_idLabel": "[Äĉĉöüñt~~~]",
+    "sendEmail": {
+      "buttonLabel": "[Šëñd Émäïl~~~]",
+      "modalTitle": "[Šëñd Émäïl~~~]",
+      "toLabel": "[Tö~~]",
+      "subjectLabel": "[Šübjëĉt~~~]",
+      "subjectPlaceholder": "[Šübjëĉt~~~]",
+      "bodyLabel": "[Mëŝŝägë~~~]",
+      "bodyPlaceholder": "[Týpë ýöür mëŝŝägë hërë…~~~~~~~~]",
+      "sendButton": "[Šëñd~~]",
+      "sending": "[Šëñdïñg…~~~]",
+      "successDelivered": "[Émäïl ŝëñt tö {{name}}~~~~~~~~~]",
+      "successNotConfigured": "[Émäïl lóggëd (ŠMTP ñöt ĉöñfïgürëd)~~~~~~~~~~~~~~~~]"
+    }
   },
   "accounts": {
     "pageTitle": "[Äĉĉöüñtŝ~~~]",

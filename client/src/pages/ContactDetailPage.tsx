@@ -15,6 +15,7 @@ import AttachmentsSection from '@/components/AttachmentsSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import SendEmailModal from '@/components/SendEmailModal.js';
 import { Button } from '@/components/ui/Button.js';
 import {
   getContact,
@@ -74,6 +75,7 @@ export default function ContactDetailPage() {
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isSendEmailOpen, setIsSendEmailOpen] = useState(false);
 
   // Merge state (MINCRM-187)
   const [isMerging, setIsMerging] = useState(false);
@@ -654,12 +656,31 @@ export default function ContactDetailPage() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-            <DetailRow
-              label={t('contacts.emailLabel')}
-              value={contact.email}
-              testId="detail-email"
-              nowrap
-            />
+            {/* Email row with optional Send Email action (MINCRM-275) */}
+            <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
+              <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
+                {t('contacts.emailLabel')}
+              </span>
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className="text-sm text-gray-900 whitespace-nowrap"
+                  data-testid="detail-email"
+                >
+                  {contact.email}
+                </span>
+                {contact.email && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="send-email-button"
+                    onClick={() => setIsSendEmailOpen(true)}
+                  >
+                    {t('contacts.sendEmail.buttonLabel')}
+                  </Button>
+                )}
+              </div>
+            </div>
             <DetailRow
               label={t('contacts.phoneLabel')}
               value={contact.phone ?? '—'}
@@ -1224,6 +1245,20 @@ export default function ContactDetailPage() {
         }}
         onCancel={() => setIsConfirmDeleteOpen(false)}
       />
+
+      {/* Send Email modal — MINCRM-275 */}
+      {contact.email && (
+        <SendEmailModal
+          isOpen={isSendEmailOpen}
+          contactId={contact.id}
+          contactEmail={contact.email}
+          contactName={`${contact.first_name} ${contact.last_name}`}
+          onClose={() => setIsSendEmailOpen(false)}
+          onSent={() => {
+            queryClient.invalidateQueries({ queryKey: ['activities'] });
+          }}
+        />
+      )}
     </div>
   );
 }

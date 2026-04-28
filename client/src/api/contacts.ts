@@ -320,3 +320,28 @@ export async function setDefaultContactAddress(
   );
   return response.data;
 }
+
+/** Response from the send-email endpoint (MINCRM-275) */
+export interface SendContactEmailResponse {
+  delivered: boolean;
+  activityId: string | null;
+}
+
+/**
+ * Sends a user-composed email to a contact and logs an Email activity.
+ *
+ * @param contactId - Contact UUID
+ * @param subject - Email subject line
+ * @param body - Plain text body
+ */
+export async function sendContactEmail(
+  contactId: string,
+  subject: string,
+  body: string,
+): Promise<SendContactEmailResponse> {
+  const response = await apiClient.post<SendContactEmailResponse>(
+    `/contacts/${contactId}/send-email`,
+    { subject, body },
+  );
+  return response.data;
+}

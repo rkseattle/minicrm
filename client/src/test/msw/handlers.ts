@@ -1543,4 +1543,12 @@ export const handlers = [
   http.put('/api/settings/onboarding', () => {
     return HttpResponse.json({ onboarding_completed: true });
   }),
+
+  /** Contacts: POST /api/contacts/:id/send-email — SMTP not configured in test (MINCRM-275) */
+  http.post('/api/contacts/:id/send-email', () => {
+    return HttpResponse.json({
+      delivered: false,
+      activityId: '00000000-0000-0000-0000-000000000e01',
+    });
+  }),
 ];

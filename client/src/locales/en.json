@@ -265,7 +265,20 @@
     "phoneLabel2": "Phone",
     "titleLabel2": "Job title",
     "departmentLabel2": "Department",
-    "account_idLabel": "Account"
+    "account_idLabel": "Account",
+    "sendEmail": {
+      "buttonLabel": "Send Email",
+      "modalTitle": "Send Email",
+      "toLabel": "To",
+      "subjectLabel": "Subject",
+      "subjectPlaceholder": "Subject",
+      "bodyLabel": "Message",
+      "bodyPlaceholder": "Type your message here…",
+      "sendButton": "Send",
+      "sending": "Sending…",
+      "successDelivered": "Email sent to {{name}}",
+      "successNotConfigured": "Email logged (SMTP not configured)"
+    }
   },
   "accounts": {
     "pageTitle": "Accounts",

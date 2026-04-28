@@ -265,7 +265,20 @@
     "phoneLabel2": "Telefon",
     "titleLabel2": "Berufsbezeichnung",
     "departmentLabel2": "Abteilung",
-    "account_idLabel": "Konto"
+    "account_idLabel": "Konto",
+    "sendEmail": {
+      "buttonLabel": "E-Mail senden",
+      "modalTitle": "E-Mail senden",
+      "toLabel": "An",
+      "subjectLabel": "Betreff",
+      "subjectPlaceholder": "Betreff",
+      "bodyLabel": "Nachricht",
+      "bodyPlaceholder": "Geben Sie hier Ihre Nachricht ein…",
+      "sendButton": "Senden",
+      "sending": "Wird gesendet…",
+      "successDelivered": "E-Mail an {{name}} gesendet",
+      "successNotConfigured": "E-Mail protokolliert (SMTP nicht konfiguriert)"
+    }
   },
   "accounts": {
     "pageTitle": "Konten",
