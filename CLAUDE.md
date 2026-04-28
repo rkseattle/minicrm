@@ -444,10 +444,11 @@ Use these constants everywhere — never inline strings in `queryKey`.
 > touching the E2E suite. Violating it wastes significant time and can pollute the
 > `minicrm_e2e` database.
 
-**RULE 1 — Run the functional suite at most once per Claude Code session.**
+**RULE 1 — Run the functional suite at most once per code change.**
 Never invoke `npx playwright test`, `npm run test`, `cd qa && ... npm run test`,
-or any other form of the E2E test runner more than one time per session. If the
-first run fails or you later make a fix, do **not** re-run to verify. Move on.
+or any other form of the E2E test runner more than one time per code change. If the
+first run fails and you have not made a code change to fix, do **not** re-run to verify: read
+the report files instead.
 
 **RULE 2 — Read report files, not console output, for results.**
 After a run completes, determine pass/fail counts by reading the generated report
