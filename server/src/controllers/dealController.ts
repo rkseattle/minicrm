@@ -23,6 +23,7 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { z } from 'zod';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
@@ -323,6 +324,21 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
 
   const rows = await exportDealsForCsv({ ownerId, accountId });
 
+  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  const customDefs = await listDefinitions('deal');
+  const recordIds = rows.map((r) => r.id);
+  const valuesByRecord = new Map<string, Map<string, string | null>>();
+  await Promise.all(
+    recordIds.map(async (recordId) => {
+      const vals = await getValuesForRecord(recordId);
+      const byDef = new Map<string, string | null>();
+      for (const v of vals) {
+        byDef.set(v.definition_id, v.value);
+      }
+      valuesByRecord.set(recordId, byDef);
+    }),
+  );
+
   const headers = [
     'Name',
     'Stage',
@@ -335,21 +351,29 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
     'Owner',
     'Created',
     'Updated',
+    ...customDefs.map((d) => d.name),
   ];
 
-  const csvRows = rows.map((r) => ({
-    Name: r.name,
-    Stage: r.stage,
-    Value: r.value,
-    Currency: r.currency,
-    'Close Date': r.close_date,
-    'Loss Reason': r.loss_reason,
-    Account: r.account_name,
-    Contacts: r.contact_names,
-    Owner: r.owner_name,
-    Created: r.created_at,
-    Updated: r.updated_at,
-  }));
+  const csvRows = rows.map((r) => {
+    const base: Record<string, string | number | Date | null | undefined> = {
+      Name: r.name,
+      Stage: r.stage,
+      Value: r.value,
+      Currency: r.currency,
+      'Close Date': r.close_date,
+      'Loss Reason': r.loss_reason,
+      Account: r.account_name,
+      Contacts: r.contact_names,
+      Owner: r.owner_name,
+      Created: r.created_at,
+      Updated: r.updated_at,
+    };
+    const recordVals = valuesByRecord.get(r.id);
+    for (const def of customDefs) {
+      base[def.name] = recordVals?.get(def.id) ?? '';
+    }
+    return base;
+  });
 
   const csv = serializeToCsv(headers, csvRows);
   const filename = csvFilename('deals');

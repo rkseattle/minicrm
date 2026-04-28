@@ -365,6 +365,7 @@ export async function updateDeal(
 
 /** Shape of a deal row enriched with display names and contact names for CSV export */
 export interface DealExportRow {
+  id: string;
   name: string;
   stage: string;
   value: string | null;
@@ -415,6 +416,7 @@ export async function exportDealsForCsv(
 
   const result = await pool.query<DealExportRow>(
     `SELECT
+       d.id,
        d.name,
        d.stage,
        d.value,
