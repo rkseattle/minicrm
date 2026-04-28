@@ -33,7 +33,7 @@ const HTML_ESCAPE_MAP: Record<string, string> = {
  * @param str - Raw string value from user or DB.
  * @returns HTML-safe string.
  */
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch);
 }
 
@@ -264,4 +264,51 @@ export async function sendAssignmentNotification(
   `;
 
   await sendEmail(email, subject, html);
+}
+
+/** Result of a user-initiated contact email send */
+export interface SendContactEmailResult {
+  /** Whether the email was actually delivered via SMTP */
+  delivered: boolean;
+  /** Set when delivered is false */
+  reason?: 'smtp_not_configured';
+}
+
+/**
+ * Sends a user-composed email to a contact.
+ * Returns { delivered: false, reason: 'smtp_not_configured' } instead of throwing
+ * when no SMTP transport is available — the caller logs an activity either way.
+ *
+ * @param to - Recipient email address.
+ * @param subject - Email subject line (user-supplied).
+ * @param body - Plain-text body (user-supplied); will be HTML-escaped.
+ * @param sentByName - Display name of the sending rep, shown in the email footer.
+ */
+export async function sendContactEmail(
+  to: string,
+  subject: string,
+  body: string,
+  sentByName: string,
+): Promise<SendContactEmailResult> {
+  const transport = await resolveTransport();
+
+  if (!transport) {
+    logger.info({ to, subject }, '[NO-SMTP] Contact email (not delivered)');
+    return { delivered: false, reason: 'smtp_not_configured' };
+  }
+
+  const html = `
+    <p>${escapeHtml(body).replace(/\n/g, '<br>')}</p>
+    <p style="color:#888;font-size:12px;margin-top:24px">
+      Sent by ${escapeHtml(sentByName)} via MiniCRM
+    </p>
+  `;
+
+  try {
+    await transport.sendMail({ from: getFromAddress(), to, subject, html });
+    return { delivered: true };
+  } catch (err) {
+    logger.error({ err, to, subject }, 'emailService: failed to send contact email');
+    throw err;
+  }
 }

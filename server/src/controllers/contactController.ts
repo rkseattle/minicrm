@@ -27,6 +27,9 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { sendContactEmail } from '../services/emailService.js';
+import { createActivity } from '../services/activityService.js';
+import logger from '../logger.js';
 
 const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
 
@@ -544,4 +547,67 @@ export async function setDefaultContactAddressHandler(req: Request, res: Respons
     return;
   }
   res.status(200).json({ address });
+}
+
+/** Zod schema for the send-email request body (MINCRM-275) */
+const sendContactEmailSchema = z.object({
+  subject: z
+    .string({ required_error: 'Subject is required' })
+    .min(1, 'Subject is required')
+    .max(255, 'Subject must be 255 characters or fewer')
+    .trim(),
+  body: z.string({ required_error: 'Body is required' }).min(1, 'Body is required').trim(),
+  deal_id: z.string().uuid('deal_id must be a valid UUID').optional(),
+});
+
+/**
+ * POST /api/contacts/:id/send-email
+ * Sends a composed email to the contact and logs an Email activity. (MINCRM-275)
+ */
+export async function sendContactEmailHandler(req: Request, res: Response): Promise<void> {
+  const contactId = String(req.params['id']);
+
+  const contact = await findContactById(contactId);
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  if (!contact.email) {
+    res.status(400).json({
+      error: { code: 'NO_EMAIL', message: 'This contact does not have an email address' },
+    });
+    return;
+  }
+
+  const parsed = sendContactEmailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const { subject, body, deal_id } = parsed.data;
+  const actor = req.user!;
+
+  const sendResult = await sendContactEmail(contact.email, subject, body, actor.name);
+
+  let activityId: string | null = null;
+  try {
+    const activity = await createActivity({
+      type: 'Email',
+      direction: 'Outbound',
+      subject,
+      notes: body,
+      contact_id: contactId,
+      deal_id: deal_id ?? undefined,
+      owner_id: actor.id,
+    });
+    activityId = activity.id;
+  } catch (err) {
+    logger.error({ err, contactId }, 'sendContactEmailHandler: failed to log Email activity');
+  }
+
+  res.status(200).json({ delivered: sendResult.delivered, activityId });
 }

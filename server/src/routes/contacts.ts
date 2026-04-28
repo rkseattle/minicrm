@@ -20,6 +20,7 @@ import {
   updateContactAddressHandler,
   deleteContactAddressHandler,
   setDefaultContactAddressHandler,
+  sendContactEmailHandler,
 } from '../controllers/contactController.js';
 import {
   listContactTagsHandler,
@@ -605,6 +606,84 @@ router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
  *         description: Contact not found
  */
 router.post('/:id/merge', authenticate, asyncHandler(mergeContactHandler));
+
+/**
+ * @openapi
+ * /api/contacts/{id}/send-email:
+ *   post:
+ *     tags: [Contacts]
+ *     operationId: sendContactEmail
+ *     summary: Send an email to a contact
+ *     description: >
+ *       Sends a user-composed email to the contact's email address via the configured SMTP
+ *       transport and logs an Email activity against the contact.
+ *       If SMTP is not configured, the email is not delivered but the activity is still logged
+ *       and the response returns delivered: false rather than an error.
+ *       Returns 400 if the contact has no email address. (MINCRM-275)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Contact ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [subject, body]
+ *             properties:
+ *               subject:
+ *                 type: string
+ *                 maxLength: 255
+ *               body:
+ *                 type: string
+ *               deal_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional deal to link the logged activity to
+ *           example:
+ *             subject: Following up on our last call
+ *             body: Hi Jane, just wanted to touch base...
+ *     responses:
+ *       200:
+ *         description: Email sent (or logged only when SMTP is not configured)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 delivered:
+ *                   type: boolean
+ *                 activityId:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *       400:
+ *         description: Validation error or contact has no email address
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Contact not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/:id/send-email', authenticate, asyncHandler(sendContactEmailHandler));
 
 // ── Contact Address Routes ─────────────────────────────────────────────────────
 
