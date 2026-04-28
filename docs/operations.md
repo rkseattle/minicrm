@@ -5,6 +5,50 @@ the PostgreSQL database.
 
 ---
 
+## Required Secrets
+
+Two secrets must be set before production use. Both should be generated with a
+cryptographically random source and never reused across deployments.
+
+### `JWT_SECRET`
+
+**Required at startup.** Signs and verifies all session tokens (JWTs stored in httpOnly
+cookies). The server rejects weak values (`changeme`, `secret`, `password`, `''`) and any
+string shorter than 32 characters at boot time.
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Set this in your `.env` file (or `docker-compose.yml` via the `.env` substitution) before
+the first `docker compose up`.
+
+### `NODE_ENCRYPTION_KEY`
+
+**Required when file storage or UI-configured SMTP is used.** Encrypts the S3/MinIO secret
+access key and SMTP password at rest in `system_settings` using AES-256-GCM. Must be a
+64-character hex string (32 bytes).
+
+If this variable is absent or malformed, any admin action that writes or reads a storage or
+SMTP secret throws:
+
+```
+Error: NODE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)...
+```
+
+Generate a value the same way as `JWT_SECRET`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Set `NODE_ENCRYPTION_KEY` in your `.env` before enabling file attachments or configuring
+SMTP via the Admin Settings UI. Once set, **do not rotate this key** without first decrypting
+and re-encrypting any existing stored secrets — rotating without migration will make stored
+secrets unreadable.
+
+---
+
 ## Upgrade Procedure
 
 > **Back up your data before every upgrade.** Follow the [Backup](#backup-and-restore)
