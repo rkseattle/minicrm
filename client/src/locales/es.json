@@ -673,6 +673,38 @@
       "resetButton": "Restablecer incorporación",
       "resetSuccess": "Incorporación restablecida. El banner de configuración reaparecerá en la próxima carga de página.",
       "resetError": "Error al restablecer la incorporación. Intenta de nuevo."
+    },
+    "customFields": {
+      "sectionTitle": "Campos personalizados",
+      "sectionHint": "Añade campos personalizados a contactos, cuentas y tratos para capturar datos específicos de tu proceso de ventas.",
+      "entityTypeLabel": "Tipo de entidad",
+      "entityContact": "Contacto",
+      "entityAccount": "Cuenta",
+      "entityDeal": "Trato",
+      "nameLabel": "Nombre del campo",
+      "namePlaceholder": "p. ej. Puntuación NPS",
+      "fieldTypeLabel": "Tipo de campo",
+      "fieldTypeText": "Texto",
+      "fieldTypeNumber": "Número",
+      "fieldTypeDate": "Fecha",
+      "fieldTypeBoolean": "Sí / No",
+      "fieldTypeSelect": "Desplegable",
+      "optionsLabel": "Opciones (separadas por comas)",
+      "optionsPlaceholder": "p. ej. Bronce, Plata, Oro",
+      "addButton": "Añadir campo",
+      "editButton": "Editar",
+      "saveButton": "Guardar",
+      "cancelButton": "Cancelar",
+      "deleteButton": "Eliminar",
+      "deleteConfirmTitle": "¿Eliminar campo personalizado?",
+      "deleteConfirmBody": "Esto eliminará permanentemente el campo y todos sus valores en todos los registros.",
+      "nameRequiredError": "El nombre del campo es obligatorio.",
+      "nameTooLongError": "El nombre del campo debe tener 100 caracteres o menos.",
+      "nameConflictError": "Ya existe un campo con este nombre para este tipo de entidad.",
+      "saveSuccess": "Campo guardado.",
+      "saveError": "Error al guardar. Por favor, inténtelo de nuevo.",
+      "deleteSuccess": "Campo eliminado.",
+      "deleteError": "Error al eliminar. Por favor, inténtelo de nuevo."
     }
   },
   "import": {
@@ -1191,5 +1223,9 @@
       "addFirstContact": "Añadir tu primer contacto",
       "startExploring": "Empezar a explorar"
     }
+  },
+  "customFields": {
+    "sectionTitle": "Campos personalizados",
+    "noValues": "No hay valores de campos personalizados definidos."
   }
 }

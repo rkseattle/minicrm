@@ -673,6 +673,38 @@
       "resetButton": "重置引导",
       "resetSuccess": "引导已重置。设置横幅将在下次页面加载时重新出现。",
       "resetError": "重置引导失败，请重试。"
+    },
+    "customFields": {
+      "sectionTitle": "自定义字段",
+      "sectionHint": "为联系人、客户和交易添加自定义字段，以捕获特定于您销售流程的数据。",
+      "entityTypeLabel": "实体类型",
+      "entityContact": "联系人",
+      "entityAccount": "客户",
+      "entityDeal": "交易",
+      "nameLabel": "字段名称",
+      "namePlaceholder": "例如：NPS 评分",
+      "fieldTypeLabel": "字段类型",
+      "fieldTypeText": "文本",
+      "fieldTypeNumber": "数字",
+      "fieldTypeDate": "日期",
+      "fieldTypeBoolean": "是 / 否",
+      "fieldTypeSelect": "下拉列表",
+      "optionsLabel": "选项（逗号分隔）",
+      "optionsPlaceholder": "例如：铜，银，金",
+      "addButton": "添加字段",
+      "editButton": "编辑",
+      "saveButton": "保存",
+      "cancelButton": "取消",
+      "deleteButton": "删除",
+      "deleteConfirmTitle": "删除自定义字段？",
+      "deleteConfirmBody": "这将永久删除该字段及其在所有记录中的所有值。",
+      "nameRequiredError": "字段名称为必填项。",
+      "nameTooLongError": "字段名称不得超过 100 个字符。",
+      "nameConflictError": "该实体类型已存在同名字段。",
+      "saveSuccess": "字段已保存。",
+      "saveError": "保存失败，请重试。",
+      "deleteSuccess": "字段已删除。",
+      "deleteError": "删除失败，请重试。"
     }
   },
   "import": {
@@ -1191,5 +1223,9 @@
       "addFirstContact": "添加第一个联系人",
       "startExploring": "开始探索"
     }
+  },
+  "customFields": {
+    "sectionTitle": "自定义字段",
+    "noValues": "尚未设置自定义字段值。"
   }
 }
