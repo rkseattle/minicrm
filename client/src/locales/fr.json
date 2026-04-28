@@ -673,6 +673,38 @@
       "resetButton": "Réinitialiser l'intégration",
       "resetSuccess": "Intégration réinitialisée. La bannière de configuration réapparaîtra au prochain chargement de page.",
       "resetError": "Échec de la réinitialisation. Veuillez réessayer."
+    },
+    "customFields": {
+      "sectionTitle": "Champs personnalisés",
+      "sectionHint": "Ajoutez des champs personnalisés aux contacts, comptes et affaires pour capturer des données spécifiques à votre processus de vente.",
+      "entityTypeLabel": "Type d'entité",
+      "entityContact": "Contact",
+      "entityAccount": "Compte",
+      "entityDeal": "Affaire",
+      "nameLabel": "Nom du champ",
+      "namePlaceholder": "ex. Score NPS",
+      "fieldTypeLabel": "Type de champ",
+      "fieldTypeText": "Texte",
+      "fieldTypeNumber": "Nombre",
+      "fieldTypeDate": "Date",
+      "fieldTypeBoolean": "Oui / Non",
+      "fieldTypeSelect": "Liste déroulante",
+      "optionsLabel": "Options (séparées par des virgules)",
+      "optionsPlaceholder": "ex. Bronze, Argent, Or",
+      "addButton": "Ajouter un champ",
+      "editButton": "Modifier",
+      "saveButton": "Enregistrer",
+      "cancelButton": "Annuler",
+      "deleteButton": "Supprimer",
+      "deleteConfirmTitle": "Supprimer le champ personnalisé ?",
+      "deleteConfirmBody": "Cela supprimera définitivement le champ et toutes ses valeurs dans tous les enregistrements.",
+      "nameRequiredError": "Le nom du champ est obligatoire.",
+      "nameTooLongError": "Le nom du champ doit comporter 100 caractères ou moins.",
+      "nameConflictError": "Un champ portant ce nom existe déjà pour ce type d'entité.",
+      "saveSuccess": "Champ enregistré.",
+      "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+      "deleteSuccess": "Champ supprimé.",
+      "deleteError": "Échec de la suppression. Veuillez réessayer."
     }
   },
   "import": {
@@ -1191,5 +1223,9 @@
       "addFirstContact": "Ajouter votre premier contact",
       "startExploring": "Commencer à explorer"
     }
+  },
+  "customFields": {
+    "sectionTitle": "Champs personnalisés",
+    "noValues": "Aucune valeur de champ personnalisé définie."
   }
 }

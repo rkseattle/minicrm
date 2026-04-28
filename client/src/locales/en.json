@@ -673,6 +673,38 @@
       "resetButton": "Reset onboarding",
       "resetSuccess": "Onboarding reset. The setup banner will reappear on the next page load.",
       "resetError": "Failed to reset onboarding. Please try again."
+    },
+    "customFields": {
+      "sectionTitle": "Custom Fields",
+      "sectionHint": "Add custom fields to contacts, accounts, and deals to capture data specific to your sales process.",
+      "entityTypeLabel": "Entity type",
+      "entityContact": "Contact",
+      "entityAccount": "Account",
+      "entityDeal": "Deal",
+      "nameLabel": "Field Name",
+      "namePlaceholder": "e.g. NPS Score",
+      "fieldTypeLabel": "Field Type",
+      "fieldTypeText": "Text",
+      "fieldTypeNumber": "Number",
+      "fieldTypeDate": "Date",
+      "fieldTypeBoolean": "Yes / No",
+      "fieldTypeSelect": "Dropdown",
+      "optionsLabel": "Options (comma-separated)",
+      "optionsPlaceholder": "e.g. Bronze, Silver, Gold",
+      "addButton": "Add Field",
+      "editButton": "Edit",
+      "saveButton": "Save",
+      "cancelButton": "Cancel",
+      "deleteButton": "Delete",
+      "deleteConfirmTitle": "Delete custom field?",
+      "deleteConfirmBody": "This will permanently remove the field and all its values across all records.",
+      "nameRequiredError": "Field name is required.",
+      "nameTooLongError": "Field name must be 100 characters or fewer.",
+      "nameConflictError": "A field with this name already exists for this entity type.",
+      "saveSuccess": "Field saved.",
+      "saveError": "Failed to save. Please try again.",
+      "deleteSuccess": "Field deleted.",
+      "deleteError": "Failed to delete. Please try again."
     }
   },
   "profileSettings": {
@@ -1191,5 +1223,9 @@
       "addFirstContact": "Add your first contact",
       "startExploring": "Start exploring"
     }
+  },
+  "customFields": {
+    "sectionTitle": "Custom Fields",
+    "noValues": "No custom field values set."
   }
 }

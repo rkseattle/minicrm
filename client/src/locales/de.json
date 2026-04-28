@@ -673,6 +673,38 @@
       "resetButton": "Onboarding zurücksetzen",
       "resetSuccess": "Onboarding zurückgesetzt. Das Einrichtungs-Banner erscheint beim nächsten Seitenaufruf erneut.",
       "resetError": "Onboarding konnte nicht zurückgesetzt werden. Bitte erneut versuchen."
+    },
+    "customFields": {
+      "sectionTitle": "Benutzerdefinierte Felder",
+      "sectionHint": "Fügen Sie benutzerdefinierte Felder zu Kontakten, Konten und Deals hinzu, um prozessspezifische Daten zu erfassen.",
+      "entityTypeLabel": "Entitätstyp",
+      "entityContact": "Kontakt",
+      "entityAccount": "Konto",
+      "entityDeal": "Deal",
+      "nameLabel": "Feldname",
+      "namePlaceholder": "z. B. NPS-Punktzahl",
+      "fieldTypeLabel": "Feldtyp",
+      "fieldTypeText": "Text",
+      "fieldTypeNumber": "Zahl",
+      "fieldTypeDate": "Datum",
+      "fieldTypeBoolean": "Ja / Nein",
+      "fieldTypeSelect": "Dropdown",
+      "optionsLabel": "Optionen (durch Kommas getrennt)",
+      "optionsPlaceholder": "z. B. Bronze, Silber, Gold",
+      "addButton": "Feld hinzufügen",
+      "editButton": "Bearbeiten",
+      "saveButton": "Speichern",
+      "cancelButton": "Abbrechen",
+      "deleteButton": "Löschen",
+      "deleteConfirmTitle": "Benutzerdefiniertes Feld löschen?",
+      "deleteConfirmBody": "Dadurch werden das Feld und alle seine Werte in allen Datensätzen dauerhaft entfernt.",
+      "nameRequiredError": "Feldname ist erforderlich.",
+      "nameTooLongError": "Der Feldname darf höchstens 100 Zeichen lang sein.",
+      "nameConflictError": "Ein Feld mit diesem Namen existiert bereits für diesen Entitätstyp.",
+      "saveSuccess": "Feld gespeichert.",
+      "saveError": "Fehler beim Speichern. Bitte erneut versuchen.",
+      "deleteSuccess": "Feld gelöscht.",
+      "deleteError": "Fehler beim Löschen. Bitte erneut versuchen."
     }
   },
   "import": {
@@ -1191,5 +1223,9 @@
       "addFirstContact": "Ersten Kontakt hinzufügen",
       "startExploring": "Erkunden"
     }
+  },
+  "customFields": {
+    "sectionTitle": "Benutzerdefinierte Felder",
+    "noValues": "Keine benutzerdefinierten Feldwerte gesetzt."
   }
 }
