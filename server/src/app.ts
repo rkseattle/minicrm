@@ -28,6 +28,8 @@ import attachmentRoutes from './routes/attachments.js';
 import auditLogRoutes from './routes/auditLog.js';
 import leadRoutes from './routes/leads.js';
 import tagRoutes from './routes/tags.js';
+import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
+import customFieldValueRoutes from './routes/customFieldValues.js';
 import { setupSwagger } from './swagger.js';
 
 const app = express();
@@ -103,6 +105,8 @@ app.use('/api/attachments', attachmentRoutes);
 app.use('/api/audit-log', auditLogRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/custom-fields/definitions', customFieldDefinitionRoutes);
+app.use('/api/custom-fields', customFieldValueRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 // No authentication — must remain public for load balancers and orchestrators.
