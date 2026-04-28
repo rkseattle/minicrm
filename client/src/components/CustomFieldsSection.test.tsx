@@ -37,29 +37,30 @@ function mockValues(values: object[]) {
 }
 
 describe('CustomFieldsSection — read mode', () => {
-  it('renders nothing when there are no definitions', async () => {
+  it('is hidden when there are no definitions', async () => {
     mockDefinitions([]);
     mockValues([]);
 
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={false} />,
     );
 
+    // Container always renders; hidden attribute makes it not visible
     await waitFor(() => {
-      expect(container.firstChild).toBeNull();
+      expect(screen.getByTestId('custom-fields-section')).not.toBeVisible();
     });
   });
 
-  it('renders nothing when definitions exist but all values are empty', async () => {
+  it('is hidden when definitions exist but all values are empty', async () => {
     mockDefinitions([{ id: DEF_ID, name: 'Field A', field_type: 'text', options: null, sort_order: 0 }]);
     mockValues([{ definition_id: DEF_ID, value: null, definition: { id: DEF_ID, name: 'Field A', field_type: 'text' } }]);
 
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={false} />,
     );
 
     await waitFor(() => {
-      expect(container.firstChild).toBeNull();
+      expect(screen.getByTestId('custom-fields-section')).not.toBeVisible();
     });
   });
 
@@ -78,24 +79,25 @@ describe('CustomFieldsSection — read mode', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('custom-fields-read-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('custom-fields-section')).toBeVisible();
     });
+    expect(screen.getByTestId('custom-fields-read-grid')).toBeInTheDocument();
     expect(screen.getByTestId(`custom-field-label-${DEF_ID}`)).toBeInTheDocument();
     expect(screen.getByText('High')).toBeInTheDocument();
   });
 });
 
 describe('CustomFieldsSection — edit mode', () => {
-  it('renders nothing when there are no definitions', async () => {
+  it('is hidden when there are no definitions', async () => {
     mockDefinitions([]);
     mockValues([]);
 
-    const { container } = renderWithProviders(
+    renderWithProviders(
       <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
     );
 
     await waitFor(() => {
-      expect(container.firstChild).toBeNull();
+      expect(screen.getByTestId('custom-fields-section')).not.toBeVisible();
     });
   });
 
@@ -108,7 +110,7 @@ describe('CustomFieldsSection — edit mode', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('custom-fields-edit-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('custom-fields-section')).toBeVisible();
     });
     const input = screen.getByTestId(`custom-field-input-${DEF_ID}`);
     expect(input).toHaveAttribute('type', 'text');

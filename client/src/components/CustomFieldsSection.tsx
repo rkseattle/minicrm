@@ -71,20 +71,24 @@ export default function CustomFieldsSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editValues, isEditing]);
 
-  if (definitions.length === 0) return null;
-
   function handleChange(definitionId: string, value: string | null): void {
     setEditValues((prev) => ({ ...prev, [definitionId]: value }));
   }
 
-  if (!isEditing) {
-    const visibleValues = serverValues.filter((v) => v.value !== null && v.value !== '');
-    if (visibleValues.length === 0) return null;
+  const visibleValues = !isEditing
+    ? serverValues.filter((v) => v.value !== null && v.value !== '')
+    : [];
 
+  // Always render the container so data-testid="custom-fields-section" is always
+  // in the DOM; E2E can check isVisible() === false when there is nothing to show.
+  const isEmpty = definitions.length === 0 || (!isEditing && visibleValues.length === 0);
+
+  if (!isEditing) {
     return (
       <div
         className="bg-white border border-gray-200 rounded-lg p-6 mt-4"
         data-testid="custom-fields-section"
+        hidden={isEmpty}
       >
         <h3 className="text-sm font-semibold text-gray-900 mb-4">
           {t('customFields.sectionTitle')}
@@ -108,11 +112,12 @@ export default function CustomFieldsSection({
     );
   }
 
-  // Edit mode
+  // Edit mode — only render when there are definitions to show
   return (
     <div
       className="bg-white border border-gray-200 rounded-lg p-6 mt-4"
       data-testid="custom-fields-section"
+      hidden={isEmpty}
     >
       <h3 className="text-sm font-semibold text-gray-900 mb-4">
         {t('customFields.sectionTitle')}
