@@ -265,7 +265,20 @@
     "phoneLabel2": "Téléphone",
     "titleLabel2": "Titre du poste",
     "departmentLabel2": "Département",
-    "account_idLabel": "Compte"
+    "account_idLabel": "Compte",
+    "sendEmail": {
+      "buttonLabel": "Envoyer un e-mail",
+      "modalTitle": "Envoyer un e-mail",
+      "toLabel": "À",
+      "subjectLabel": "Objet",
+      "subjectPlaceholder": "Objet",
+      "bodyLabel": "Message",
+      "bodyPlaceholder": "Saisissez votre message ici…",
+      "sendButton": "Envoyer",
+      "sending": "Envoi en cours…",
+      "successDelivered": "E-mail envoyé à {{name}}",
+      "successNotConfigured": "E-mail enregistré (SMTP non configuré)"
+    }
   },
   "accounts": {
     "pageTitle": "Comptes",

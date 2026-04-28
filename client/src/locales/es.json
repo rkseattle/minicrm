@@ -265,7 +265,20 @@
     "phoneLabel2": "Teléfono",
     "titleLabel2": "Cargo",
     "departmentLabel2": "Departamento",
-    "account_idLabel": "Cuenta"
+    "account_idLabel": "Cuenta",
+    "sendEmail": {
+      "buttonLabel": "Enviar correo",
+      "modalTitle": "Enviar correo",
+      "toLabel": "Para",
+      "subjectLabel": "Asunto",
+      "subjectPlaceholder": "Asunto",
+      "bodyLabel": "Mensaje",
+      "bodyPlaceholder": "Escriba su mensaje aquí…",
+      "sendButton": "Enviar",
+      "sending": "Enviando…",
+      "successDelivered": "Correo enviado a {{name}}",
+      "successNotConfigured": "Correo registrado (SMTP no configurado)"
+    }
   },
   "accounts": {
     "pageTitle": "Cuentas",

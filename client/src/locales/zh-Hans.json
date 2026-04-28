@@ -265,7 +265,20 @@
     "phoneLabel2": "电话",
     "titleLabel2": "职位",
     "departmentLabel2": "部门",
-    "account_idLabel": "客户"
+    "account_idLabel": "客户",
+    "sendEmail": {
+      "buttonLabel": "发送邮件",
+      "modalTitle": "发送邮件",
+      "toLabel": "收件人",
+      "subjectLabel": "主题",
+      "subjectPlaceholder": "主题",
+      "bodyLabel": "正文",
+      "bodyPlaceholder": "在此输入您的消息…",
+      "sendButton": "发送",
+      "sending": "发送中…",
+      "successDelivered": "已发送邮件至 {{name}}",
+      "successNotConfigured": "邮件已记录（SMTP 未配置）"
+    }
   },
   "accounts": {
     "pageTitle": "客户",
