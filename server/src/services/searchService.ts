@@ -3,10 +3,10 @@
  * and activities. Queries all entity types in parallel using ILIKE for
  * case-insensitive partial-word matching. (MINCRM-207)
  *
- * Performance note: all searches use %pattern% ILIKE which cannot use standard
- * B-tree indexes. At larger data volumes, pg_trgm GIN indexes on the searched
- * columns are the recommended scaling path. See:
- * https://www.postgresql.org/docs/current/pgtrgm.html
+ * Performance: all searches use %pattern% ILIKE. GIN trigram indexes
+ * (pg_trgm) on contacts.first_name, contacts.last_name, contacts.email,
+ * accounts.name, and deals.name were added in migration 041 (MINCRM-274) and
+ * allow PostgreSQL to use index scans for leading-wildcard ILIKE patterns.
  */
 
 import pool from '../db.js';
