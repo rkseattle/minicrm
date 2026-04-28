@@ -49,6 +49,24 @@ secrets unreadable.
 
 ---
 
+## Client Build Process
+
+The client container uses a multi-stage Docker build:
+
+1. **Build stage** (`node:20-alpine`): installs npm workspace dependencies and runs
+   `npm run build --workspace=minicrm-client` to produce an optimized production bundle
+   in `client/dist/`.
+
+2. **Runtime stage** (`nginx:alpine`): serves the compiled `dist/` directory as static
+   files and proxies `/api` requests to the `server` container on port 3001. The Vite
+   development server is not used in production.
+
+The client is available at `http://localhost` (port 80) when running via Docker Compose.
+Direct navigation to any React Router route (e.g. `http://localhost/contacts`) loads
+correctly because `nginx.conf` falls back to `index.html` via `try_files`.
+
+---
+
 ## Upgrade Procedure
 
 > **Back up your data before every upgrade.** Follow the [Backup](#backup-and-restore)

@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 # Build from the repo root so npm workspaces can resolve hoisted dependencies
 WORKDIR /app
@@ -13,10 +13,13 @@ COPY server/package.json ./server/
 # (e.g. @rollup/rollup-linux-arm64-musl) that aren't in a macOS-generated lockfile
 RUN npm install --workspace=minicrm-client
 
-# Copy source files needed at runtime
+# Copy source files needed for the build
 COPY client/ ./client/
 COPY shared/ ./shared/
 
-EXPOSE 5173
+RUN npm run build --workspace=minicrm-client
 
-CMD ["npm", "run", "dev", "--workspace=minicrm-client"]
+FROM nginx:alpine
+COPY --from=builder /app/client/dist /usr/share/nginx/html
+COPY client/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
