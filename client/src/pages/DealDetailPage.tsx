@@ -18,6 +18,7 @@ import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import {
@@ -32,8 +33,10 @@ import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { listAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
+import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
+import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import type { DealFormValues } from '@/components/DealForm.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
@@ -69,6 +72,7 @@ export default function DealDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
@@ -121,7 +125,11 @@ export default function DealDetailPage() {
         // null clears the override; undefined leaves it unchanged
         probability: values.probability !== '' ? parseInt(values.probability, 10) : null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (customFieldValues.length > 0) {
+        await putCustomFieldValues('deal', id!, customFieldValues);
+        queryClient.invalidateQueries({ queryKey: customFieldValuesQueryKey('deal', id!) });
+      }
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
@@ -325,29 +333,39 @@ export default function DealDetailPage() {
         )}
 
         {isEditing ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('deals.saveChanges')}</h2>
-            <DealForm
-              initialValues={deal}
-              accounts={accounts}
-              users={activeUsers}
-              onCloseRequested={(stage, formValues) => {
-                setCloseError(null);
-                setPendingClose({ stage, formValues });
-              }}
-              onSubmit={(values) => {
-                setUpdateError(null);
-                updateMutation.mutate(values);
-              }}
-              onCancel={() => {
-                setIsEditing(false);
-                setUpdateError(null);
-              }}
-              isSubmitting={updateMutation.isPending}
-              submitLabel={t('deals.saveChanges')}
-              error={updateError ?? undefined}
-            />
-          </div>
+          <>
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('deals.saveChanges')}</h2>
+              <DealForm
+                initialValues={deal}
+                accounts={accounts}
+                users={activeUsers}
+                onCloseRequested={(stage, formValues) => {
+                  setCloseError(null);
+                  setPendingClose({ stage, formValues });
+                }}
+                onSubmit={(values) => {
+                  setUpdateError(null);
+                  updateMutation.mutate(values);
+                }}
+                onCancel={() => {
+                  setIsEditing(false);
+                  setUpdateError(null);
+                }}
+                isSubmitting={updateMutation.isPending}
+                submitLabel={t('deals.saveChanges')}
+                error={updateError ?? undefined}
+              />
+            </div>
+            {id && (
+              <CustomFieldsSection
+                entityType="deal"
+                recordId={id}
+                isEditing={true}
+                onValuesChange={setCustomFieldValues}
+              />
+            )}
+          </>
         ) : (
           <>
             <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
@@ -400,6 +418,14 @@ export default function DealDetailPage() {
                 testId="detail-owner"
               />
             </div>
+
+            {id && (
+              <CustomFieldsSection
+                entityType="deal"
+                recordId={id}
+                isEditing={false}
+              />
+            )}
 
             {/* Tags (MINCRM-186) */}
             {id && (
