@@ -661,11 +661,8 @@ export default function ContactDetailPage() {
               <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
                 {t('contacts.emailLabel')}
               </span>
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className="text-sm text-gray-900 whitespace-nowrap"
-                  data-testid="detail-email"
-                >
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                <span className="text-sm text-gray-900 break-all" data-testid="detail-email">
                   {contact.email}
                 </span>
                 {contact.email && (
