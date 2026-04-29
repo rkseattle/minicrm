@@ -10,31 +10,37 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createLead } from '../services/leadsService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, uid } from './testUtils.js';
 
-const REP_EMAIL = 'rep-leads-ctrl@example.com';
-const OTHER_REP_EMAIL = 'other-rep-leads-ctrl@example.com';
-const ADMIN_EMAIL = 'admin-leads-ctrl@example.com';
+const FILE_PREFIX = 'leads-ctrl';
+const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
+const OTHER_REP_EMAIL = `${FILE_PREFIX}-other@example.com`;
+const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 
 let repId: string;
 let repCookie: string;
 let otherRepCookie: string;
 let adminCookie: string;
 
-/** Minimal valid lead body */
-const BASE_LEAD = {
+/** Returns a fresh lead body with a unique email on each call. */
+const makeLead = () => ({
   first_name: 'Dana',
   last_name: 'Kim',
-  email: 'dana.kim.ctrl@example.com',
+  email: `${FILE_PREFIX}-${uid()}-dana@example.com`,
   company_name: 'Acme',
   lead_source: 'Web' as const,
-};
+});
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM leads');
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_EMAIL, OTHER_REP_EMAIL, ADMIN_EMAIL],
-  ]);
+  await pool.query(
+    'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser({
     email: REP_EMAIL,
@@ -76,41 +82,62 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM lead_status_history');
-  await pool.query('DELETE FROM leads');
+  await pool.query(
+    'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
   // Clean up in FK-safe order: child tables first, then parents
-  await pool.query('DELETE FROM lead_status_history');
-  await pool.query('DELETE FROM leads');
-  // Convert tests create contacts, accounts, deals — remove before deleting users
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals WHERE name LIKE $1', ['%Ctrl%']);
-  await pool.query('DELETE FROM accounts WHERE name LIKE $1', ['%Ctrl%']);
   await pool.query(
-    "DELETE FROM contacts WHERE email LIKE '%ctrl@example.com' OR email LIKE '%convert%'",
+    'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_EMAIL, OTHER_REP_EMAIL, ADMIN_EMAIL],
-  ]);
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  // Convert tests create contacts, accounts, deals — remove before deleting users
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── POST /api/leads ───────────────────────────────────────────────────────────
 
 describe('POST /api/leads', () => {
   it('creates a lead and returns 201 with the lead object', async () => {
-    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(BASE_LEAD);
+    const lead = makeLead();
+    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(lead);
 
     expect(res.status).toBe(201);
     expect(res.body.lead.first_name).toBe('Dana');
-    expect(res.body.lead.email).toBe('dana.kim.ctrl@example.com');
+    expect(res.body.lead.email).toBe(lead.email);
     expect(res.body.lead.owner_id).toBe(repId);
     expect(res.body.lead.status).toBe('New');
   });
 
   it('returns 400 when email is missing', async () => {
-    const { email: _removed, ...noEmail } = BASE_LEAD;
+    const { email: _removed, ...noEmail } = makeLead();
     const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(noEmail);
 
     expect(res.status).toBe(400);
@@ -121,16 +148,17 @@ describe('POST /api/leads', () => {
     const res = await request(app)
       .post('/api/leads')
       .set('Cookie', repCookie)
-      .send({ ...BASE_LEAD, email: 'not-an-email' });
+      .send({ ...makeLead(), email: 'not-an-email' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns 409 DUPLICATE_EMAIL for an existing email', async () => {
-    await request(app).post('/api/leads').set('Cookie', repCookie).send(BASE_LEAD);
+    const dupLead = makeLead();
+    await request(app).post('/api/leads').set('Cookie', repCookie).send(dupLead);
 
-    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(BASE_LEAD);
+    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(dupLead);
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
@@ -138,18 +166,19 @@ describe('POST /api/leads', () => {
   });
 
   it('bypasses duplicate check when ?force=true', async () => {
-    await request(app).post('/api/leads').set('Cookie', repCookie).send(BASE_LEAD);
+    const forceLead = makeLead();
+    await request(app).post('/api/leads').set('Cookie', repCookie).send(forceLead);
 
     const res = await request(app)
       .post('/api/leads?force=true')
       .set('Cookie', repCookie)
-      .send(BASE_LEAD);
+      .send(forceLead);
 
     expect(res.status).toBe(201);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/leads').send(BASE_LEAD);
+    const res = await request(app).post('/api/leads').send(makeLead());
 
     expect(res.status).toBe(401);
   });
@@ -159,7 +188,7 @@ describe('POST /api/leads', () => {
 
 describe('GET /api/leads', () => {
   it('returns paginated leads list', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: repId }, { id: repId, name: 'Leads Rep' });
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
     const res = await request(app).get('/api/leads').set('Cookie', repCookie);
 
@@ -171,7 +200,7 @@ describe('GET /api/leads', () => {
 
   it('filters by ?owner=me', async () => {
     await createLead(
-      { ...BASE_LEAD, email: 'other-ctrl@example.com', owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -183,7 +212,7 @@ describe('GET /api/leads', () => {
   });
 
   it('filters by status', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: repId }, { id: repId, name: 'Leads Rep' });
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
     const res = await request(app).get('/api/leads?status=New').set('Cookie', repCookie);
 
@@ -195,7 +224,7 @@ describe('GET /api/leads', () => {
   });
 
   it('filters by lead_source', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: repId }, { id: repId, name: 'Leads Rep' });
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
     const res = await request(app).get('/api/leads?lead_source=Web').set('Cookie', repCookie);
 
@@ -209,7 +238,7 @@ describe('GET /api/leads', () => {
 describe('GET /api/leads/:id', () => {
   it('returns the lead when found', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -234,7 +263,7 @@ describe('GET /api/leads/:id', () => {
 describe('PATCH /api/leads/:id', () => {
   it('updates lead status and returns 200', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -249,7 +278,7 @@ describe('PATCH /api/leads/:id', () => {
 
   it('returns 400 when status value is invalid', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -264,7 +293,7 @@ describe('PATCH /api/leads/:id', () => {
 
   it("returns 403 when a rep updates another rep's lead", async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -279,7 +308,7 @@ describe('PATCH /api/leads/:id', () => {
 
   it('allows an admin to update any lead', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -307,7 +336,7 @@ describe('PATCH /api/leads/:id', () => {
 describe('DELETE /api/leads/:id', () => {
   it('deletes the lead and returns 204', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -318,7 +347,7 @@ describe('DELETE /api/leads/:id', () => {
 
   it("returns 403 when a rep deletes another rep's lead", async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -330,7 +359,7 @@ describe('DELETE /api/leads/:id', () => {
 
   it('allows an admin to delete any lead', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -353,7 +382,7 @@ describe('DELETE /api/leads/:id', () => {
 describe('GET /api/leads/:id/status-history', () => {
   it('returns the status history for a lead', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -381,7 +410,7 @@ describe('GET /api/leads/:id/status-history', () => {
 describe('POST /api/leads/:id/convert', () => {
   it('converts the lead and returns 201 with contact/account/deal IDs', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -392,7 +421,7 @@ describe('POST /api/leads/:id/convert', () => {
         contact: {
           first_name: 'Dana',
           last_name: 'Kim',
-          email: 'dana.convert.ctrl@example.com',
+          email: `${FILE_PREFIX}-${uid()}-convert@example.com`,
         },
         account: { mode: 'create', name: 'Acme Corp Ctrl' },
         deal: { name: 'New Deal Ctrl', stage: 'Prospecting' },
@@ -406,7 +435,7 @@ describe('POST /api/leads/:id/convert', () => {
 
   it('returns 400 when contact is missing required fields', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -425,7 +454,7 @@ describe('POST /api/leads/:id/convert', () => {
 
   it('returns 409 ALREADY_CONVERTED on second conversion attempt', async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 
@@ -433,7 +462,7 @@ describe('POST /api/leads/:id/convert', () => {
       contact: {
         first_name: 'Dana',
         last_name: 'Kim',
-        email: 'dana.convert2.ctrl@example.com',
+        email: `${FILE_PREFIX}-${uid()}-convert2@example.com`,
       },
       account: { mode: 'create', name: 'Acme Corp Ctrl 2' },
       deal: { name: 'New Deal Ctrl 2', stage: 'Prospecting' },
@@ -451,7 +480,7 @@ describe('POST /api/leads/:id/convert', () => {
       .set('Cookie', repCookie)
       .send({
         ...convertBody,
-        contact: { ...convertBody.contact, email: 'dana.convert3.ctrl@example.com' },
+        contact: { ...convertBody.contact, email: `${FILE_PREFIX}-${uid()}-convert3@example.com` },
       });
 
     expect(res.status).toBe(409);
@@ -460,7 +489,7 @@ describe('POST /api/leads/:id/convert', () => {
 
   it("returns 403 when a rep converts another rep's lead", async () => {
     const lead = await createLead(
-      { ...BASE_LEAD, owner_id: repId },
+      { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
     );
 

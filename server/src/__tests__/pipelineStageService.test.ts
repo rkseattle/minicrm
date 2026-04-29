@@ -20,6 +20,8 @@ import {
 } from '../services/pipelineStageService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'pipeline-stage-svc';
+
 /** Re-seeds the six default pipeline stages before each test */
 async function resetStages(): Promise<void> {
   await pool.query('DELETE FROM pipeline_stages');
@@ -35,8 +37,14 @@ async function resetStages(): Promise<void> {
 }
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
+  await pool.query(
+    "DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))",
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    "DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)",
+    [`${FILE_PREFIX}-%`],
+  );
   await resetStages();
 });
 
@@ -158,7 +166,7 @@ describe('updatePipelineStage', () => {
     // Create a minimal owner and deal
     const userResult = await pool.query<{ id: string }>(
       `INSERT INTO users (email, password_hash, name, role, status)
-       VALUES ('stage-rename@example.com', 'x', 'Stage Test', 'rep', 'active')
+       VALUES ('pipeline-stage-svc-rename@example.com', 'x', 'Stage Test', 'rep', 'active')
        RETURNING id`,
     );
     const ownerId = userResult.rows[0].id;

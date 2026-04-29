@@ -23,9 +23,11 @@ import {
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'acct-svc';
+
 /** Minimal user fixture used as account owner */
 const OWNER_USER = {
-  email: 'account-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Account Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -43,32 +45,41 @@ const BASE_ACCOUNT = {
 
 let ownerId: string;
 
-/** Secondary user emails created in individual tests — cleaned up in beforeAll to prevent duplicate key errors on rerun */
-const SECONDARY_USERS = [
-  'other-account-owner@example.com',
-  'acct-search-other@example.com',
-  'industry-other@example.com',
-];
-
 beforeAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [SECONDARY_USERS]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [SECONDARY_USERS]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── createAccount ───────────────────────────────────────────────────────────────
@@ -125,7 +136,7 @@ describe('findAccountById', () => {
 
 describe('listAccounts', () => {
   it('returns an empty array when no accounts exist', async () => {
-    const result = await listAccounts();
+    const result = await listAccounts({ ownerId });
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
   });
@@ -134,7 +145,7 @@ describe('listAccounts', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Alpha Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Beta Corp', owner_id: ownerId });
 
-    const result = await listAccounts();
+    const result = await listAccounts({ ownerId });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(2);
     expect(result.data[0].name).toBe('Alpha Corp');
@@ -144,7 +155,7 @@ describe('listAccounts', () => {
   it('filters by ownerId when provided', async () => {
     const other = await createUser({
       ...OWNER_USER,
-      email: 'other-account-owner@example.com',
+      email: `${FILE_PREFIX}-other-owner@example.com`,
     });
 
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine LLC', owner_id: ownerId });
@@ -163,7 +174,7 @@ describe('listAccounts — search filter', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Acme Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Beta Inc', owner_id: ownerId });
 
-    const results = await listAccounts({ search: 'acme' });
+    const results = await listAccounts({ ownerId, search: 'acme' });
     expect(results.data).toHaveLength(1);
     expect(results.data[0].name).toBe('Acme Corp');
   });
@@ -175,7 +186,7 @@ describe('listAccounts — search filter', () => {
   });
 
   it('combines search with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'acct-search-other@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-search-other@example.com` });
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: other.id });
 
@@ -200,7 +211,7 @@ describe('listAccounts — industry filter', () => {
       owner_id: ownerId,
     });
 
-    const results = await listAccounts({ industry: 'technology' });
+    const results = await listAccounts({ ownerId, industry: 'technology' });
     expect(results.data).toHaveLength(1);
     expect(results.data[0].name).toBe('Tech Co');
   });
@@ -219,7 +230,7 @@ describe('listAccounts — industry filter', () => {
       owner_id: ownerId,
     });
 
-    const results = await listAccounts({ industry: 'tech' });
+    const results = await listAccounts({ ownerId, industry: 'tech' });
     expect(results.data).toHaveLength(1);
     expect(results.data[0].name).toBe('Tech Co');
   });
@@ -231,7 +242,7 @@ describe('listAccounts — industry filter', () => {
   });
 
   it('combines industry filter with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'industry-other@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-industry-other@example.com` });
     await createAccount({
       ...BASE_ACCOUNT,
       name: 'Mine Tech',
@@ -259,7 +270,7 @@ describe('listAccounts — pagination', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'B Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'C Corp', owner_id: ownerId });
 
-    const result = await listAccounts({ page: 1, limit: 2 });
+    const result = await listAccounts({ ownerId, page: 1, limit: 2 });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(3);
     expect(result.page).toBe(1);
@@ -271,7 +282,7 @@ describe('listAccounts — pagination', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Second', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Third', owner_id: ownerId });
 
-    const result = await listAccounts({ page: 2, limit: 2 });
+    const result = await listAccounts({ ownerId, page: 2, limit: 2 });
     expect(result.data).toHaveLength(1);
     expect(result.data[0].name).toBe('Third');
     expect(result.total).toBe(3);
@@ -281,7 +292,7 @@ describe('listAccounts — pagination', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Zebra Inc', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Acme Corp', owner_id: ownerId });
 
-    const result = await listAccounts({ sort: 'name', dir: 'ASC' });
+    const result = await listAccounts({ ownerId, sort: 'name', dir: 'ASC' });
     expect(result.data[0].name).toBe('Acme Corp');
     expect(result.data[1].name).toBe('Zebra Inc');
   });
@@ -290,6 +301,7 @@ describe('listAccounts — pagination', () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Safe Co', owner_id: ownerId });
 
     const result = await listAccounts({
+      ownerId,
       sort: 'invalid; DROP TABLE accounts;--' as unknown as 'created_at',
     });
     expect(result.data).toHaveLength(1);
@@ -369,7 +381,7 @@ describe('deleteAccount', () => {
 
 describe('exportAccountsForCsv', () => {
   it('returns an empty array when no accounts exist', async () => {
-    const rows = await exportAccountsForCsv();
+    const rows = await exportAccountsForCsv({ ownerId });
     expect(rows).toEqual([]);
   });
 
@@ -389,13 +401,13 @@ describe('exportAccountsForCsv', () => {
   it('filters by ownerId', async () => {
     // Guard against leftover user from a prior failed run
     await pool.query(
-      `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = 'acct-export-other@example.com')`,
+      `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = 'acct-svc-export-other@example.com')`,
     );
-    await pool.query(`DELETE FROM users WHERE email = 'acct-export-other@example.com'`);
+    await pool.query(`DELETE FROM users WHERE email = 'acct-svc-export-other@example.com'`);
 
     const otherUser = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, password_hash, status)
-       VALUES ('acct-export-other@example.com', 'Other', 'rep', 'x', 'active') RETURNING id`,
+       VALUES ('acct-svc-export-other@example.com', 'Other', 'rep', 'x', 'active') RETURNING id`,
     );
     const otherOwnerId = otherUser.rows[0].id;
 
@@ -407,7 +419,7 @@ describe('exportAccountsForCsv', () => {
 
     // Must delete accounts before user due to FK constraint
     await pool.query('DELETE FROM accounts WHERE owner_id = $1', [otherOwnerId]);
-    await pool.query('DELETE FROM users WHERE email = $1', ['acct-export-other@example.com']);
+    await pool.query('DELETE FROM users WHERE email = $1', ['acct-svc-export-other@example.com']);
   });
 
   it('filters by search', async () => {
@@ -595,7 +607,7 @@ describe('listAccounts — accountType filter', () => {
     await createAccount({ name: 'Customer Co', owner_id: ownerId, account_type: 'Customer' });
     await createAccount({ name: 'Untyped Co', owner_id: ownerId });
 
-    const result = await listAccounts({});
+    const result = await listAccounts({ ownerId });
     expect(result.data).toHaveLength(2);
   });
 });

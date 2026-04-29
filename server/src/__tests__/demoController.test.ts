@@ -11,14 +11,15 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-const ADMIN_EMAIL = 'admin-demo-ctrl@example.com';
-const REP_EMAIL = 'rep-demo-ctrl@example.com';
+const FILE_PREFIX = 'demo-ctrl';
+const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
+const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
 
 let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -67,7 +68,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await clearDemoData();
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── GET /api/admin/demo/status ────────────────────────────────────────────────

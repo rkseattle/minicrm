@@ -231,6 +231,8 @@ interface ListUsersOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+  /** When set, restrict results to users whose email starts with this prefix (test isolation only) */
+  emailPrefix?: string;
 }
 
 /**
@@ -245,6 +247,25 @@ export async function listUsers(
   const page = options.page ?? 1;
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
+
+  if (options.emailPrefix) {
+    const prefix = options.emailPrefix;
+    const [countResult, dataResult] = await Promise.all([
+      pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM users WHERE email LIKE $1', [
+        `${prefix}%`,
+      ]),
+      pool.query<UserRow>(
+        'SELECT * FROM users WHERE email LIKE $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3',
+        [`${prefix}%`, limit, offset],
+      ),
+    ]);
+    return {
+      data: dataResult.rows,
+      total: parseInt(countResult.rows[0].count, 10),
+      page,
+      limit,
+    };
+  }
 
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM users'),
@@ -272,11 +293,18 @@ export interface ActiveUserRow {
  * Returns id and name for every user with status = 'active', ordered alphabetically by name.
  * Intended for owner-assignment dropdowns accessible to all authenticated users,
  * not just admins.
+ *
+ * @param emailPrefix - When set, restrict to users whose email starts with this prefix (test isolation only)
  */
-export async function listActiveUsers(): Promise<ActiveUserRow[]> {
-  const result = await pool.query<ActiveUserRow>(
-    `SELECT id, name FROM users WHERE status = 'active' ORDER BY name ASC`,
-  );
+export async function listActiveUsers(emailPrefix?: string): Promise<ActiveUserRow[]> {
+  const result = emailPrefix
+    ? await pool.query<ActiveUserRow>(
+        `SELECT id, name FROM users WHERE status = 'active' AND email LIKE $1 ORDER BY name ASC`,
+        [`${emailPrefix}%`],
+      )
+    : await pool.query<ActiveUserRow>(
+        `SELECT id, name FROM users WHERE status = 'active' ORDER BY name ASC`,
+      );
   return result.rows;
 }
 
@@ -284,9 +312,14 @@ export async function listActiveUsers(): Promise<ActiveUserRow[]> {
  * Seeds a default admin user if no users exist in the database.
  * Reads credentials from ADMIN_EMAIL, ADMIN_NAME, and ADMIN_PASSWORD env vars.
  * No-op if any user already exists.
+ *
+ * @param emailPrefix - When set, the "no users exist" check is scoped to emails starting with
+ *   this prefix (test isolation only — do not pass in production).
  */
-export async function seedDefaultAdmin(): Promise<void> {
-  const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
+export async function seedDefaultAdmin(emailPrefix?: string): Promise<void> {
+  const { rows } = emailPrefix
+    ? await pool.query('SELECT 1 FROM users WHERE email LIKE $1 LIMIT 1', [`${emailPrefix}%`])
+    : await pool.query('SELECT 1 FROM users LIMIT 1');
   if (rows.length > 0) return;
 
   const { ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } = process.env;

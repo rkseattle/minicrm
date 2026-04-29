@@ -13,8 +13,10 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import type { PoolClient } from 'pg';
 
+const FILE_PREFIX = 'acct-link-svc';
+
 const OWNER_USER = {
-  email: 'acct-link-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Account Link Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -48,22 +50,40 @@ async function getContactAccountId(contactId: string): Promise<string | null> {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── setAccountContacts ──────────────────────────────────────────────────────────

@@ -16,6 +16,8 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
+const FILE_PREFIX = 'account-ctrl';
+
 const BASE_ACCOUNT = {
   name: 'Test Corp',
   industry: 'Technology',
@@ -27,12 +29,18 @@ let otherRepCookie: string;
 let adminCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query("DELETE FROM users WHERE email LIKE '%account-ctrl%'");
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser({
-    email: 'rep-account-ctrl@example.com',
+    email: `${FILE_PREFIX}-rep@example.com`,
     name: 'Rep User',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
@@ -42,7 +50,7 @@ beforeAll(async () => {
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
 
   const otherRep = await createUser({
-    email: 'other-account-ctrl@example.com',
+    email: `${FILE_PREFIX}-other@example.com`,
     name: 'Other Rep',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
@@ -56,7 +64,7 @@ beforeAll(async () => {
   });
 
   const admin = await createUser({
-    email: 'admin-account-ctrl@example.com',
+    email: `${FILE_PREFIX}-admin@example.com`,
     name: 'Admin User',
     role: 'admin',
     passwordHash: '$2b$12$placeholder',
@@ -71,13 +79,22 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM accounts');
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query("DELETE FROM users WHERE email LIKE '%account-ctrl%'");
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── POST /api/accounts ───────────────────────────────────────────────────────
@@ -117,7 +134,7 @@ describe('GET /api/accounts', () => {
   it('returns all accounts', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).get('/api/accounts').set('Cookie', repCookie);
+    const res = await request(app).get('/api/accounts?owner=me').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);

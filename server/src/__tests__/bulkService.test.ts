@@ -15,9 +15,12 @@ import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { uid } from './testUtils.js';
+
+const FILE_PREFIX = 'bulk-svc';
 
 const OWNER_USER = {
-  email: 'bulk-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Bulk Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -25,7 +28,7 @@ const OWNER_USER = {
 };
 
 const OTHER_USER = {
-  email: 'bulk-other@example.com',
+  email: `${FILE_PREFIX}-other@example.com`,
   name: 'Bulk Other',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -33,7 +36,7 @@ const OTHER_USER = {
 };
 
 const ADMIN_USER = {
-  email: 'bulk-admin@example.com',
+  email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Bulk Admin',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -44,24 +47,20 @@ let ownerId: string;
 let otherUserId: string;
 let adminId: string;
 
-const OWNER_EMAILS = [OWNER_USER.email, OTHER_USER.email, ADMIN_USER.email];
-
 beforeAll(async () => {
-  for (const email of OWNER_EMAILS) {
-    await pool.query(
-      'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-      [email],
-    );
-    await pool.query(
-      'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-      [email],
-    );
-    await pool.query(
-      'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-      [email],
-    );
-    await pool.query('DELETE FROM users WHERE email = $1', [email]);
-  }
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -91,9 +90,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM accounts WHERE owner_id = ANY($1)', [
     [ownerId, otherUserId, adminId],
   ]);
-  for (const email of OWNER_EMAILS) {
-    await pool.query('DELETE FROM users WHERE email = $1', [email]);
-  }
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 const ownerActor = () => ({ id: ownerId, name: OWNER_USER.name, role: 'rep' as const });
@@ -107,7 +104,7 @@ describe('bulkContacts — delete', () => {
       {
         first_name: 'Alice',
         last_name: 'A',
-        email: 'ba1@example.com',
+        email: `${FILE_PREFIX}-${uid()}-ba1@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -116,7 +113,7 @@ describe('bulkContacts — delete', () => {
       {
         first_name: 'Bob',
         last_name: 'B',
-        email: 'ba2@example.com',
+        email: `${FILE_PREFIX}-${uid()}-ba2@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -151,7 +148,7 @@ describe('bulkContacts — reassign', () => {
       {
         first_name: 'Carol',
         last_name: 'C',
-        email: 'bc1@example.com',
+        email: `${FILE_PREFIX}-${uid()}-bc1@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -160,7 +157,7 @@ describe('bulkContacts — reassign', () => {
       {
         first_name: 'Dave',
         last_name: 'D',
-        email: 'bc2@example.com',
+        email: `${FILE_PREFIX}-${uid()}-bc2@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -192,7 +189,7 @@ describe('bulkContacts — ownership enforcement', () => {
       {
         first_name: 'Eve',
         last_name: 'E',
-        email: 'be1@example.com',
+        email: `${FILE_PREFIX}-${uid()}-be1@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -201,7 +198,7 @@ describe('bulkContacts — ownership enforcement', () => {
       {
         first_name: 'Frank',
         last_name: 'F',
-        email: 'be2@example.com',
+        email: `${FILE_PREFIX}-${uid()}-be2@example.com`,
         owner_id: otherUserId,
       },
       { id: otherUserId, name: OTHER_USER.name },
@@ -226,7 +223,7 @@ describe('bulkContacts — ownership enforcement', () => {
       {
         first_name: 'Grace',
         last_name: 'G',
-        email: 'bg1@example.com',
+        email: `${FILE_PREFIX}-${uid()}-bg1@example.com`,
         owner_id: ownerId,
       },
       ownerActor(),
@@ -235,7 +232,7 @@ describe('bulkContacts — ownership enforcement', () => {
       {
         first_name: 'Henry',
         last_name: 'H',
-        email: 'bg2@example.com',
+        email: `${FILE_PREFIX}-${uid()}-bg2@example.com`,
         owner_id: otherUserId,
       },
       { id: otherUserId, name: OTHER_USER.name },

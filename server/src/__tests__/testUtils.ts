@@ -3,7 +3,11 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+
+/** Returns an 8-character random hex string for use in test email addresses. */
+export const uid = () => randomUUID().slice(0, 8);
 
 /**
  * Signs a JWT with the test secret and returns a cookie string

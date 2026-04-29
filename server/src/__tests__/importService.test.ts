@@ -21,9 +21,11 @@ import {
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'import-svc';
+
 /** Minimal admin user used as the importing admin */
 const ADMIN_USER = {
-  email: 'import-admin@example.com',
+  email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Import Admin',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -33,22 +35,64 @@ const ADMIN_USER = {
 let adminId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id = $1)',
+    [adminId],
+  );
+  await pool.query('DELETE FROM activities WHERE owner_id = $1', [adminId]);
+  await pool.query('DELETE FROM deals WHERE owner_id = $1', [adminId]);
+  await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
+  await pool.query('DELETE FROM accounts WHERE owner_id = $1', [adminId]);
+});
+
+afterAll(async () => {
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── parseCsvBuffer ─────────────────────────────────────────────────────────────
@@ -123,7 +167,10 @@ describe('importAccounts', () => {
     expect(result.skipped).toBe(0);
     expect(result.failed).toHaveLength(0);
 
-    const { rows: dbRows } = await pool.query('SELECT name FROM accounts ORDER BY name');
+    const { rows: dbRows } = await pool.query(
+      'SELECT name FROM accounts WHERE owner_id = $1 ORDER BY name',
+      [adminId],
+    );
     expect(dbRows.map((r: { name: string }) => r.name)).toEqual(['Acme Corp', 'Global Inc']);
   });
 
@@ -189,8 +236,8 @@ describe('importContacts', () => {
 
   it('creates new contacts', async () => {
     const rows = [
-      { First: 'Alice', Last: 'Smith', Email: 'alice@example.com' },
-      { First: 'Bob', Last: 'Jones', Email: 'bob@example.com' },
+      { First: 'Alice', Last: 'Smith', Email: `${FILE_PREFIX}-alice@example.com` },
+      { First: 'Bob', Last: 'Jones', Email: `${FILE_PREFIX}-bob@example.com` },
     ];
     const result = await importContacts(rows, mapping, adminId);
     expect(result.created).toBe(2);
@@ -224,7 +271,7 @@ describe('importContacts', () => {
   });
 
   it('fails rows with missing required fields', async () => {
-    const rows = [{ First: '', Last: 'Smith', Email: 'alice@example.com' }];
+    const rows = [{ First: '', Last: 'Smith', Email: `${FILE_PREFIX}-alice@example.com` }];
     const result = await importContacts(rows, mapping, adminId);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0].reason).toContain('first_name');
@@ -242,23 +289,23 @@ describe('importContacts', () => {
       account_name: 'AccountName',
     };
     const rows = [
-      { First: 'Alice', Last: 'Smith', Email: 'alice@example.com', AccountName: 'Target Account' },
+      { First: 'Alice', Last: 'Smith', Email: `${FILE_PREFIX}-alice@example.com`, AccountName: 'Target Account' },
     ];
     const result = await importContacts(rows, mappingWithAccount, adminId);
     expect(result.created).toBe(1);
 
     const { rows: dbRows } = await pool.query('SELECT account_id FROM contacts WHERE email = $1', [
-      'alice@example.com',
+      `${FILE_PREFIX}-alice@example.com`,
     ]);
     expect(dbRows[0].account_id).toBe(accountId);
   });
 
   it('sets owner_id to the importing admin for all created contacts', async () => {
-    const rows = [{ First: 'Alice', Last: 'Smith', Email: 'alice@example.com' }];
+    const rows = [{ First: 'Alice', Last: 'Smith', Email: `${FILE_PREFIX}-alice@example.com` }];
     await importContacts(rows, mapping, adminId);
 
     const { rows: dbRows } = await pool.query('SELECT owner_id FROM contacts WHERE email = $1', [
-      'alice@example.com',
+      `${FILE_PREFIX}-alice@example.com`,
     ]);
     expect(dbRows[0].owner_id).toBe(adminId);
   });
@@ -278,7 +325,10 @@ describe('importDeals', () => {
     expect(result.created).toBe(2);
     expect(result.failed).toHaveLength(0);
 
-    const { rows: dbRows } = await pool.query('SELECT name, stage FROM deals ORDER BY name');
+    const { rows: dbRows } = await pool.query(
+      'SELECT name, stage FROM deals WHERE owner_id = $1 ORDER BY name',
+      [adminId],
+    );
     expect(dbRows[0]).toMatchObject({ name: 'Big Sale', stage: 'Prospecting' });
   });
 

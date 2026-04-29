@@ -25,9 +25,11 @@ import { updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'deal-svc';
+
 /** Minimal user fixture used as deal owner */
 const OWNER_USER = {
-  email: 'deal-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Deal Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -46,11 +48,23 @@ let ownerId: string;
 let accountId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -64,16 +78,34 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── updateDealSchema — close_date validation (MINCRM-121) ─────────────────────────
@@ -241,7 +273,7 @@ describe('findDealById', () => {
 
 describe('listDeals', () => {
   it('returns an empty array when no deals exist', async () => {
-    const result = await listDeals();
+    const result = await listDeals({ ownerId });
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
   });
@@ -250,7 +282,7 @@ describe('listDeals', () => {
     await createDeal({ ...BASE_DEAL, name: 'Alpha Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Beta Deal', owner_id: ownerId });
 
-    const result = await listDeals();
+    const result = await listDeals({ ownerId });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(2);
     expect(result.data[0].name).toBe('Alpha Deal');
@@ -258,7 +290,7 @@ describe('listDeals', () => {
   });
 
   it('filters by ownerId when provided', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'other-deal-owner@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-owner@example.com` });
 
     await createDeal({ ...BASE_DEAL, name: 'My Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Their Deal', owner_id: other.id });
@@ -304,10 +336,10 @@ describe('listDeals', () => {
       loss_reason: 'Budget',
     });
 
-    const withClosed = await listDeals();
+    const withClosed = await listDeals({ ownerId });
     expect(withClosed.total).toBe(3);
 
-    const withoutClosed = await listDeals({ excludeClosedStages: true });
+    const withoutClosed = await listDeals({ ownerId, excludeClosedStages: true });
     expect(withoutClosed.data).toHaveLength(1);
     expect(withoutClosed.total).toBe(1);
     expect(withoutClosed.data[0].name).toBe('Open Deal');
@@ -322,7 +354,7 @@ describe('listDeals — pagination', () => {
     await createDeal({ ...BASE_DEAL, name: 'Deal 2', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Deal 3', owner_id: ownerId });
 
-    const result = await listDeals({ page: 1, limit: 2 });
+    const result = await listDeals({ ownerId, page: 1, limit: 2 });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(3);
     expect(result.page).toBe(1);
@@ -334,7 +366,7 @@ describe('listDeals — pagination', () => {
     await createDeal({ ...BASE_DEAL, name: 'Second Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Third Deal', owner_id: ownerId });
 
-    const result = await listDeals({ page: 2, limit: 2 });
+    const result = await listDeals({ ownerId, page: 2, limit: 2 });
     expect(result.data).toHaveLength(1);
     expect(result.data[0].name).toBe('Third Deal');
     expect(result.total).toBe(3);
@@ -344,6 +376,7 @@ describe('listDeals — pagination', () => {
     await createDeal({ ...BASE_DEAL, name: 'Safe Deal', owner_id: ownerId });
 
     const result = await listDeals({
+      ownerId,
       sort: 'evil; DROP TABLE deals;--' as unknown as 'created_at',
     });
     expect(result.data).toHaveLength(1);

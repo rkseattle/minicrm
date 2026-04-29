@@ -29,14 +29,23 @@ import {
 const RECORD_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const RECORD_ID_2 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const ACTOR = { id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', name: 'Test Actor' };
+/** Second actor used only in listAuditLogActors tests. */
+const ACTOR_2_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+/** record_ids and actor IDs written exclusively by this file. */
+const FILE_RECORD_IDS = [RECORD_ID, RECORD_ID_2];
+const FILE_ACTOR_IDS = [ACTOR.id, ACTOR_2_ID];
 
 /**
- * Helper: truncate the audit_log table before each test.
+ * Helper: clear only this file's audit_log entries (scoped by record_id or actor).
+ * Temporarily disables the append-only trigger so we can delete test data.
  */
 async function clearAuditLog(): Promise<void> {
-  // Temporarily disable the append-only trigger so we can clear test data.
   await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-  await pool.query('DELETE FROM audit_log');
+  await pool.query(
+    'DELETE FROM audit_log WHERE record_id = ANY($1) OR changed_by_id = ANY($2)',
+    [FILE_RECORD_IDS, FILE_ACTOR_IDS],
+  );
   await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 }
 
@@ -145,7 +154,10 @@ describe('writeAuditEntry', () => {
       client.release();
     }
 
-    const result = await pool.query('SELECT * FROM audit_log');
+    const result = await pool.query(
+      'SELECT * FROM audit_log WHERE changed_by_id = $1',
+      [ACTOR.id],
+    );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].old_value).toBeNull();
     expect(result.rows[0].new_value).toBeNull();
@@ -455,21 +467,21 @@ describe('listAuditLog', () => {
 
   it('returns all entries when no filters applied', async () => {
     await seedEntries();
-    const result = await listAuditLog();
+    const result = await listAuditLog({ userId: ACTOR.id });
     expect(result.total).toBe(3);
     expect(result.data).toHaveLength(3);
   });
 
   it('filters by recordType', async () => {
     await seedEntries();
-    const result = await listAuditLog({ recordType: 'contact' });
+    const result = await listAuditLog({ recordType: 'contact', userId: ACTOR.id });
     expect(result.total).toBe(1);
     expect(result.data[0].record_type).toBe('contact');
   });
 
   it('filters by eventType', async () => {
     await seedEntries();
-    const result = await listAuditLog({ eventType: 'deleted' });
+    const result = await listAuditLog({ eventType: 'deleted', userId: ACTOR.id });
     expect(result.total).toBe(1);
     expect(result.data[0].event_type).toBe('deleted');
   });
@@ -501,12 +513,12 @@ describe('listAuditLog', () => {
       client.release();
     }
 
-    const page1 = await listAuditLog({ page: 1, limit: 2 });
+    const page1 = await listAuditLog({ page: 1, limit: 2, userId: ACTOR.id });
     expect(page1.data).toHaveLength(2);
     expect(page1.total).toBe(5);
     expect(page1.page).toBe(1);
 
-    const page3 = await listAuditLog({ page: 3, limit: 2 });
+    const page3 = await listAuditLog({ page: 3, limit: 2, userId: ACTOR.id });
     expect(page3.data).toHaveLength(1);
   });
 });
@@ -515,7 +527,7 @@ describe('listAuditLog', () => {
 
 describe('listAuditLogActors', () => {
   it('returns distinct actors ordered by name', async () => {
-    const actor2 = { id: 'dddddddd-dddd-dddd-dddd-dddddddddddd', name: 'Alice Admin' };
+    const actor2 = { id: ACTOR_2_ID, name: 'Alice Admin' };
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -546,7 +558,7 @@ describe('listAuditLogActors', () => {
       client.release();
     }
 
-    const actors = await listAuditLogActors();
+    const actors = await listAuditLogActors(FILE_ACTOR_IDS);
     expect(actors).toHaveLength(2);
     // Ordered by name ASC
     expect(actors[0].name).toBe('Alice Admin');
@@ -554,7 +566,7 @@ describe('listAuditLogActors', () => {
   });
 
   it('returns an empty array when the log is empty', async () => {
-    const actors = await listAuditLogActors();
+    const actors = await listAuditLogActors(FILE_ACTOR_IDS);
     expect(actors).toHaveLength(0);
   });
 });

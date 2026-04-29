@@ -15,8 +15,9 @@ import { createUser } from '../services/userService.js';
 import { getDashboardSummary } from '../services/dashboardService.js';
 import { getWinLossReport } from '../services/reportService.js';
 
-const REP_EMAIL = 'currency-conversion-rep@example.com';
-const CONTACT_EMAIL = 'currency-conversion-contact@example.com';
+const FILE_PREFIX = 'currency-conv';
+const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
+const CONTACT_EMAIL = `${FILE_PREFIX}-contact@example.com`;
 
 let repId: string;
 let contactId: string;
@@ -65,7 +66,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   // Reset deals and currencies to a clean state before each test
-  await pool.query('DELETE FROM deal_contacts');
+  await pool.query('DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id = $1)', [repId]);
   await pool.query('DELETE FROM deals WHERE owner_id = $1', [repId]);
   await pool.query('DELETE FROM currencies');
   await pool.query(

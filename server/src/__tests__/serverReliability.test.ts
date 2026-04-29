@@ -25,10 +25,13 @@ import { createDeal, updateDeal } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
 import { createAutomationRule } from '../services/automationService.js';
 import pool from '../db.js';
+import { uid } from './testUtils.js';
+
+const FILE_PREFIX = 'reliability';
 
 /** Minimal user fixture */
 const OWNER_USER = {
-  email: 'reliability-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Reliability Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -39,14 +42,35 @@ let ownerId: string;
 let accountId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -59,23 +83,62 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── MINCRM-122: fire-and-forget automation trigger ─────────────────────────
@@ -85,7 +148,7 @@ describe('MINCRM-122: fire-and-forget automation triggers', () => {
     const contact = await createContact({
       first_name: 'Alice',
       last_name: 'Test',
-      email: 'alice-reliability@example.com',
+      email: `${FILE_PREFIX}-${uid()}-alice@example.com`,
       owner_id: ownerId,
     });
 
@@ -112,7 +175,7 @@ describe('MINCRM-122: fire-and-forget automation triggers', () => {
     const contact = await createContact({
       first_name: 'Bob',
       last_name: 'Reliability',
-      email: 'bob-reliability@example.com',
+      email: `${FILE_PREFIX}-${uid()}-bob@example.com`,
       owner_id: ownerId,
     });
 

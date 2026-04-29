@@ -16,6 +16,7 @@ import {
 } from '../services/customFieldService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'custom-field-svc';
 const SYSTEM_ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 async function truncate(): Promise<void> {

@@ -20,8 +20,10 @@ import pool from '../db.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
+const FILE_PREFIX = 'notif-svc';
+
 const BASE_USER = {
-  email: 'notif-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Notif Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -34,10 +36,19 @@ let contactId: string;
 
 beforeAll(async () => {
   // Clean related tables
-  await pool.query('DELETE FROM overdue_task_notifications');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['notif-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = $1', [BASE_USER.email]);
+  await pool.query(
+    'DELETE FROM overdue_task_notifications WHERE activity_id IN (SELECT id FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const owner = await createUser(BASE_USER);
   ownerId = owner.id;
@@ -45,15 +56,18 @@ beforeAll(async () => {
 
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
-     VALUES ('Notif', 'Contact', 'notif-contact@example.com', $1) RETURNING id`,
-    [ownerId],
+     VALUES ('Notif', 'Contact', $1, $2) RETURNING id`,
+    [`${FILE_PREFIX}-contact@example.com`, ownerId],
   );
   contactId = contactResult.rows[0].id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM overdue_task_notifications');
-  await pool.query('DELETE FROM activities');
+  await pool.query(
+    'DELETE FROM overdue_task_notifications WHERE activity_id IN (SELECT id FROM activities WHERE owner_id = $1)',
+    [ownerId],
+  );
+  await pool.query('DELETE FROM activities WHERE owner_id = $1', [ownerId]);
   // Reset user notification prefs and global setting to defaults
   await pool.query(
     `UPDATE users SET notify_overdue_tasks = true, notify_assignments = true,
@@ -68,10 +82,19 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM overdue_task_notifications');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['notif-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = $1', [BASE_USER.email]);
+  await pool.query(
+    'DELETE FROM overdue_task_notifications WHERE activity_id IN (SELECT id FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── sendOverdueDigests ────────────────────────────────────────────────────────

@@ -1,15 +1,4 @@
-/**
- * Vitest configuration for the MiniCRM server test suite (MINCRM-191).
- *
- * Replaces Jest (--runInBand --forceExit) with Vitest's native ESM/TS
- * compilation. All test files execute sequentially (fileParallelism: false)
- * because 28 of 33 files use broad `DELETE FROM <table>` statements without
- * per-file owner scoping; true parallel file execution requires scoping those
- * DELETEs and is tracked as follow-up work.
- *
- * Wall-clock improvement comes from dropping ts-jest + --experimental-vm-modules
- * in favour of Vitest's built-in esbuild transform (~15 s vs ~8-10 min locally).
- */
+/** Vitest configuration for the MiniCRM server test suite (MINCRM-191, MINCRM-277). */
 
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
@@ -17,16 +6,64 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
+/**
+ * These test files mutate shared global tables (currencies, pipeline_stages,
+ * is_demo rows, system_settings storage keys) or run team-wide aggregate queries
+ * that are not owner-scoped. They must run serially to avoid cross-file interference.
+ */
+const SERIAL_FILES = [
+  'src/__tests__/currencyService.test.ts',
+  'src/__tests__/currencyConversion.test.ts',
+  'src/__tests__/pipelineStageService.test.ts',
+  'src/__tests__/demoService.test.ts',
+  'src/__tests__/demoController.test.ts',
+  'src/__tests__/demoSeed.test.ts',
+  'src/__tests__/dashboardService.test.ts',
+  // storageService writes file_storage_* keys to system_settings; running it
+  // in parallel with attachmentController causes a race where the controller
+  // test sees a non-null storage config and gets a 500 instead of 503.
+  'src/__tests__/storageService.test.ts',
+  // smtpSettingsService writes smtp_host/smtp_enabled to system_settings; running
+  // it in parallel with emailService or contactController causes those tests to
+  // attempt a real SMTP connection to smtp.example.com and fail with ENOTFOUND.
+  'src/__tests__/smtpSettingsService.test.ts',
+  // automationService creates enabled rules and fires global triggers that match
+  // ALL enabled rules for the trigger type — parallel runs cause cross-file log
+  // entries that break the toHaveLength(1) assertions.
+  'src/__tests__/automationService.test.ts',
+  // notificationService writes email_notifications_enabled to system_settings;
+  // parallel tests resetting this key cause the overdue-digest logic to skip
+  // sending and fail the dedup-row assertions.
+  'src/__tests__/notificationService.test.ts',
+  // importService and importController both call importAccounts(), which queries
+  // ALL accounts globally (no owner filter) for duplicate detection. Running them
+  // in parallel causes cross-file name collisions (e.g. 'Acme Corp') that flip
+  // created/skipped counts and break the duplicate-detection assertions.
+  'src/__tests__/importService.test.ts',
+  'src/__tests__/importController.test.ts',
+  // userService.countActiveNotificationRecipients queries ALL active users globally;
+  // parallel tests creating/deleting users between the before/after count snapshots
+  // cause the ">= countBefore + 1" assertion to flap.
+  'src/__tests__/userService.test.ts',
+];
+
+const sharedResolve = {
+  alias: {
+    /**
+     * Subsumes both Jest moduleNameMapper patterns:
+     *   ^@minicrm/shared/schemas/(.*)\\.js$  (with extension)
+     *   ^@minicrm/shared/schemas/(.*)$       (without extension)
+     * Vitest's Rollup-based resolver treats this as a prefix substitution
+     * so both import forms resolve correctly via the single entry.
+     */
+    '@minicrm/shared/schemas': resolve(__dirname, '../shared/schemas'),
+  },
+};
+
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    /**
-     * fileParallelism: false — test files execute sequentially.
-     * See header comment for why parallel execution is not yet safe.
-     */
-    fileParallelism: false,
-    include: ['src/__tests__/**/*.test.ts'],
 
     /**
      * globalSetup runs once in the main Vitest process before any worker is
@@ -67,18 +104,30 @@ export default defineConfig({
         },
       },
     },
+
+    // Two inline projects: most files run in parallel; global-state files run serially.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'parallel',
+          include: ['src/__tests__/**/*.test.ts'],
+          exclude: SERIAL_FILES,
+          fileParallelism: true,
+        },
+        resolve: sharedResolve,
+      },
+      {
+        extends: true,
+        test: {
+          name: 'serial',
+          include: SERIAL_FILES,
+          fileParallelism: false,
+        },
+        resolve: sharedResolve,
+      },
+    ],
   },
 
-  resolve: {
-    alias: {
-      /**
-       * Subsumes both Jest moduleNameMapper patterns:
-       *   ^@minicrm/shared/schemas/(.*)\\.js$  (with extension)
-       *   ^@minicrm/shared/schemas/(.*)$       (without extension)
-       * Vitest's Rollup-based resolver treats this as a prefix substitution
-       * so both import forms resolve correctly via the single entry.
-       */
-      '@minicrm/shared/schemas': resolve(__dirname, '../shared/schemas'),
-    },
-  },
+  resolve: sharedResolve,
 });

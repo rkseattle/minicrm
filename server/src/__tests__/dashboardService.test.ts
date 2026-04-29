@@ -13,9 +13,11 @@ import { getDashboardSummary } from '../services/dashboardService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'dash-svc';
+
 /** Rep user fixture */
 const REP_USER = {
-  email: 'dashboard-rep@example.com',
+  email: `${FILE_PREFIX}-rep@example.com`,
   name: 'Dashboard Rep',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -24,7 +26,7 @@ const REP_USER = {
 
 /** Another rep — used to verify admin sees both users' data */
 const OTHER_REP_USER = {
-  email: 'dashboard-other@example.com',
+  email: `${FILE_PREFIX}-other@example.com`,
   name: 'Dashboard Other',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -49,13 +51,23 @@ function yesterdayString(): string {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['dashboard-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_USER.email, OTHER_REP_USER.email],
-  ]);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser(REP_USER);
   repId = rep.id;
@@ -66,27 +78,46 @@ beforeAll(async () => {
   // A shared contact used as the required parent record for all test activities
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
-     VALUES ('Dashboard', 'Contact', 'dashboard-contact@example.com', $1)
+     VALUES ('Dashboard', 'Contact', $1, $2)
      RETURNING id`,
-    [repId],
+    [`${FILE_PREFIX}-contact@example.com`, repId],
   );
   contactId = contactResult.rows[0].id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['dashboard-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [
-    [REP_USER.email, OTHER_REP_USER.email],
-  ]);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── Task count tests ──────────────────────────────────────────────────────────

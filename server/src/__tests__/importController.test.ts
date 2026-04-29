@@ -13,8 +13,9 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-const ADMIN_EMAIL = 'admin-import-ctrl@example.com';
-const REP_EMAIL = 'rep-import-ctrl@example.com';
+const FILE_PREFIX = 'import-ctrl';
+const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
+const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
 
 let _adminId: string;
 let adminCookie: string;
@@ -41,7 +42,7 @@ async function waitForJob(jobId: string, cookie: string, timeoutMs = 10000): Pro
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -70,12 +71,19 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up imported test data in FK-safe order (deals reference accounts/contacts)
-  await pool.query(`DELETE FROM deals WHERE name IN ('Deal One','Deal Two')`);
-  await pool.query(`DELETE FROM accounts WHERE name IN ('Acme Corp','Beta Inc')`);
   await pool.query(
-    `DELETE FROM contacts WHERE email IN ('alice.import@example.com','bob.import@example.com')`,
+    `DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await pool.query(
+    `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── POST /api/admin/import/accounts/parse ─────────────────────────────────────
@@ -117,7 +125,10 @@ describe('POST /api/admin/import/accounts/parse', () => {
 
 describe('POST /api/admin/import/accounts/run', () => {
   beforeEach(async () => {
-    await pool.query(`DELETE FROM accounts WHERE name IN ('Acme Corp','Beta Inc')`);
+    await pool.query(
+      `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
+      [`${FILE_PREFIX}-%`],
+    );
   });
 
   it('returns 202 with job_id and completes with created count', async () => {
@@ -360,7 +371,10 @@ describe('POST /api/admin/import/deals/parse', () => {
 
 describe('POST /api/admin/import/deals/run', () => {
   afterEach(async () => {
-    await pool.query(`DELETE FROM deals WHERE name IN ('Deal One','Deal Two')`);
+    await pool.query(
+      `DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
+      [`${FILE_PREFIX}-%`],
+    );
   });
 
   it('returns 202 with job_id and completes with created count', async () => {
