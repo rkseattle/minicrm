@@ -405,11 +405,13 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
-      # MINCRM-278: Create the test bucket using the already-pulled minio/mc image.
+      # MINCRM-278: Create the test bucket using mc inside the running minio/minio
+      # service container — no separate image pull, alias persists across commands.
       - name: Create MinIO test bucket
         run: |
-          docker run --rm --network host minio/mc alias set local http://localhost:9000 minioadmin minioadmin
-          docker run --rm --network host minio/mc mb local/minicrm-test-bucket
+          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
 
       # MINCRM-278: Write MinIO storage config into system_settings so the server
       # finds a configured backend at startup — no manual admin setup required.
