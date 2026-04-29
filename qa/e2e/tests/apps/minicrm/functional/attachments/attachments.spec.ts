@@ -17,12 +17,7 @@
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - No raw locators in this file — UI interaction via healPage.locate / click / fill only
  *
- * Storage note: tests that exercise the full upload→presigned-URL chain require
- * a configured S3-compatible storage backend (MinIO/localstack). When storage is
- * not configured the AttachmentsSection renders "not configured" state and upload
- * tests will still exercise the client-side guard paths.
- *
- * MINCRM-199
+ * MINCRM-199, MINCRM-278
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -66,30 +61,11 @@ interface AttachmentListResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Storage availability guard
-// ---------------------------------------------------------------------------
-
-/**
- * Skip the test when storage is not configured in the environment.
- * AttachmentsSection renders "not configured" state and the upload UI is
- * hidden, making upload/download/delete assertions unreachable.
- */
-async function skipIfStorageNotConfigured(restClient: {
-  get: <T>(path: string) => Promise<{ body: T }>;
-}): Promise<void> {
-  const res = await restClient.get<{ configured: boolean }>('/api/settings/storage/status');
-  if (!res.body.configured) {
-    test.skip(true, 'Storage not configured in this environment — skipping attachment tests');
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await skipIfStorageNotConfigured(restClient);
 });
 
 // ---------------------------------------------------------------------------
