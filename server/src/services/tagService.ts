@@ -33,12 +33,9 @@ const ENTITY_TABLE: Record<TaggableEntity, { table: string; fkCol: string }> = {
  *
  * @returns Array of tag rows
  */
-export async function listTags(namePrefix?: string): Promise<TagRow[]> {
+export async function listTags(): Promise<TagRow[]> {
   const result = await pool.query<TagRow>(
-    namePrefix
-      ? `SELECT id, name, created_at, updated_at FROM tags WHERE name LIKE $1 ORDER BY name ASC`
-      : `SELECT id, name, created_at, updated_at FROM tags ORDER BY name ASC`,
-    namePrefix ? [`${namePrefix}%`] : [],
+    `SELECT id, name, created_at, updated_at FROM tags ORDER BY name ASC`,
   );
   return result.rows;
 }

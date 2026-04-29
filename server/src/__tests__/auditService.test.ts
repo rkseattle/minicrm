@@ -558,7 +558,7 @@ describe('listAuditLogActors', () => {
       client.release();
     }
 
-    const actors = await listAuditLogActors(FILE_ACTOR_IDS);
+    const actors = (await listAuditLogActors()).filter((a) => FILE_ACTOR_IDS.includes(a.id));
     expect(actors).toHaveLength(2);
     // Ordered by name ASC
     expect(actors[0].name).toBe('Alice Admin');
@@ -566,7 +566,7 @@ describe('listAuditLogActors', () => {
   });
 
   it('returns an empty array when the log is empty', async () => {
-    const actors = await listAuditLogActors(FILE_ACTOR_IDS);
+    const actors = (await listAuditLogActors()).filter((a) => FILE_ACTOR_IDS.includes(a.id));
     expect(actors).toHaveLength(0);
   });
 });

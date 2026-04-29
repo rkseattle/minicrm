@@ -117,20 +117,12 @@ export async function findAutomationRuleById(id: string): Promise<AutomationRule
  *
  * @returns Array of rule rows
  */
-export async function listAutomationRules(createdBy?: string): Promise<AutomationRuleRow[]> {
-  const result = createdBy
-    ? await pool.query<AutomationRuleRow>(
-        `SELECT id, name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, created_at, updated_at
-         FROM automation_rules
-         WHERE created_by = $1
-         ORDER BY created_at DESC`,
-        [createdBy],
-      )
-    : await pool.query<AutomationRuleRow>(
-        `SELECT id, name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, created_at, updated_at
-         FROM automation_rules
-         ORDER BY created_at DESC`,
-      );
+export async function listAutomationRules(): Promise<AutomationRuleRow[]> {
+  const result = await pool.query<AutomationRuleRow>(
+    `SELECT id, name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, created_at, updated_at
+     FROM automation_rules
+     ORDER BY created_at DESC`,
+  );
   return result.rows;
 }
 
