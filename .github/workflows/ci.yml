@@ -347,8 +347,8 @@ jobs:
         ports:
           - 9000:9000
         env:
-          MINIO_ROOT_USER: minicrm-test
-          MINIO_ROOT_PASSWORD: minicrm-test-secret
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
         options: >-
           --health-cmd "curl -f http://localhost:9000/minio/health/live"
           --health-interval 5s
@@ -408,7 +408,7 @@ jobs:
       # MINCRM-278: Create the test bucket using the already-pulled minio/mc image.
       - name: Create MinIO test bucket
         run: |
-          docker run --rm --network host minio/mc alias set local http://localhost:9000 minicrm-test minicrm-test-secret
+          docker run --rm --network host minio/mc alias set local http://localhost:9000 minioadmin minioadmin
           docker run --rm --network host minio/mc mb local/minicrm-test-bucket
 
       # MINCRM-278: Write MinIO storage config into system_settings so the server
@@ -424,8 +424,8 @@ jobs:
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           E2E_STORAGE_ENDPOINT: http://localhost:9000
           E2E_STORAGE_BUCKET: minicrm-test-bucket
-          E2E_STORAGE_ACCESS_KEY_ID: minicrm-test
-          E2E_STORAGE_SECRET_ACCESS_KEY: minicrm-test-secret
+          E2E_STORAGE_ACCESS_KEY_ID: minioadmin
+          E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
 
       - name: Start application server
         run: npm run start --workspace=minicrm-server &
