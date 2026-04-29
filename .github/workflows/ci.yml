@@ -340,6 +340,22 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # MINCRM-278: MinIO provides an S3-compatible storage backend so attachment
+      # E2E tests run unconditionally instead of skipping.
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minicrm-test
+          MINIO_ROOT_PASSWORD: minicrm-test-secret
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        command: server /data --console-address :9001
+
     steps:
       - uses: actions/checkout@v4
 
@@ -389,6 +405,30 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
+      # MINCRM-278: Create the test bucket in MinIO before the app starts.
+      - name: Create MinIO test bucket
+        run: |
+          curl -s https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set local http://localhost:9000 minicrm-test minicrm-test-secret
+          mc mb local/minicrm-test-bucket
+
+      # MINCRM-278: Write MinIO storage config into system_settings so the server
+      # finds a configured backend at startup — no manual admin setup required.
+      - name: Seed E2E storage config
+        run: npm run seed:e2e-storage
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          E2E_STORAGE_ENDPOINT: http://localhost:9000
+          E2E_STORAGE_BUCKET: minicrm-test-bucket
+          E2E_STORAGE_ACCESS_KEY_ID: minicrm-test
+          E2E_STORAGE_SECRET_ACCESS_KEY: minicrm-test-secret
+
       - name: Start application server
         run: npm run start --workspace=minicrm-server &
         env:
@@ -401,6 +441,8 @@ jobs:
           NODE_ENV: development
           PORT: 3001
           E2E: true
+          # MINCRM-278: Required to decrypt the storage secret stored in system_settings.
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
