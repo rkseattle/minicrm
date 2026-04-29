@@ -18,9 +18,11 @@ import { attachTag } from '../services/tagService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'search-svc';
+
 /** Minimal user fixture */
 const ADMIN_USER = {
-  email: 'search-admin@example.com',
+  email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Search Admin',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -28,7 +30,7 @@ const ADMIN_USER = {
 };
 
 const REP_USER = {
-  email: 'search-rep@example.com',
+  email: `${FILE_PREFIX}-rep@example.com`,
   name: 'Search Rep',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -40,18 +42,48 @@ let repId: string;
 let accountId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM deal_tags');
-  await pool.query('DELETE FROM account_tags');
-  await pool.query('DELETE FROM contact_tags');
-  await pool.query('DELETE FROM tags');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM leads');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contact_addresses');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query("DELETE FROM users WHERE email LIKE 'search-%'");
+  await pool.query(
+    'DELETE FROM deal_tags WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM account_tags WHERE account_id IN (SELECT id FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_tags WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM tags WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_addresses WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
@@ -63,34 +95,92 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM deal_tags');
-  await pool.query('DELETE FROM account_tags');
-  await pool.query('DELETE FROM contact_tags');
-  await pool.query('DELETE FROM tags');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM leads');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contact_addresses');
-  await pool.query('DELETE FROM contacts');
-  await pool.query("DELETE FROM accounts WHERE name <> 'Search Test Account'");
+  await pool.query(
+    'DELETE FROM deal_tags WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM account_tags WHERE account_id IN (SELECT id FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_tags WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM tags WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_addresses WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1) AND name <> 'Search Test Account'",
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM deal_tags');
-  await pool.query('DELETE FROM account_tags');
-  await pool.query('DELETE FROM contact_tags');
-  await pool.query('DELETE FROM tags');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM leads');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contact_addresses');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query("DELETE FROM users WHERE email LIKE 'search-%'");
+  await pool.query(
+    'DELETE FROM deal_tags WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM account_tags WHERE account_id IN (SELECT id FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_tags WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM tags WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contact_addresses WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 describe('SEARCH_MIN_LENGTH', () => {
@@ -737,17 +827,17 @@ describe('globalSearch — tags (MINCRM-207)', () => {
       email: 'tagcontact@example.com',
       owner_id: adminId,
     });
-    await attachTag('contact', contact.id, { name: 'vip-search-tag' });
+    await attachTag('contact', contact.id, { name: `${FILE_PREFIX}-vip-search-tag` });
 
-    const results = await globalSearch('vip-search-tag', { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-vip-search-tag`, { userId: adminId, role: 'admin' });
     expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
   });
 
   it('searching a tag name returns accounts carrying that tag', async () => {
     const acct = await createAccount({ name: 'TagAccount', owner_id: adminId });
-    await attachTag('account', acct.id, { name: 'key-acct-search-tag' });
+    await attachTag('account', acct.id, { name: `${FILE_PREFIX}-key-acct-search-tag` });
 
-    const results = await globalSearch('key-acct-search-tag', { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-key-acct-search-tag`, { userId: adminId, role: 'admin' });
     expect(results.accounts.some((a) => a.id === acct.id)).toBe(true);
   });
 
@@ -758,9 +848,9 @@ describe('globalSearch — tags (MINCRM-207)', () => {
       account_id: accountId,
       owner_id: adminId,
     });
-    await attachTag('deal', deal.id, { name: 'enterprise-search-tag' });
+    await attachTag('deal', deal.id, { name: `${FILE_PREFIX}-enterprise-search-tag` });
 
-    const results = await globalSearch('enterprise-search-tag', { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-enterprise-search-tag`, { userId: adminId, role: 'admin' });
     expect(results.deals.some((d) => d.id === deal.id)).toBe(true);
   });
 
@@ -768,12 +858,12 @@ describe('globalSearch — tags (MINCRM-207)', () => {
     const contact = await createContact({
       first_name: 'NoDupTagContact',
       last_name: 'Person',
-      email: 'noduptagcontact@example.com',
+      email: `${FILE_PREFIX}-noduptagcontact@example.com`,
       owner_id: adminId,
     });
-    await attachTag('contact', contact.id, { name: 'NoDupTagContact' });
+    await attachTag('contact', contact.id, { name: `${FILE_PREFIX}-NoDupTagContact` });
 
-    const results = await globalSearch('NoDupTagContact', { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-NoDupTagContact`, { userId: adminId, role: 'admin' });
     const matches = results.contacts.filter((c) => c.id === contact.id);
     expect(matches).toHaveLength(1);
   });

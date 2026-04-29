@@ -17,18 +17,26 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
+const FILE_PREFIX = 'activity-ctrl';
+
 let repId: string;
 let repCookie: string;
 /** A contact used as the required parent record for test activities */
 let contactId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['activity-ctrl-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = $1', ['activity-ctrl-rep@example.com']);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser({
-    email: 'activity-ctrl-rep@example.com',
+    email: `${FILE_PREFIX}-rep@example.com`,
     name: 'Activity Ctrl Rep',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
@@ -39,21 +47,30 @@ beforeAll(async () => {
 
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
-     VALUES ('Activity', 'Ctrl', 'activity-ctrl-contact@example.com', $1)
+     VALUES ('Activity', 'Ctrl', $1, $2)
      RETURNING id`,
-    [repId],
+    [`${FILE_PREFIX}-contact@example.com`, repId],
   );
   contactId = contactResult.rows[0].id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM activities');
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM contacts WHERE email = $1', ['activity-ctrl-contact@example.com']);
-  await pool.query('DELETE FROM users WHERE email = $1', ['activity-ctrl-rep@example.com']);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── Cross-field direction null-guard ──────────────────────────────────────────

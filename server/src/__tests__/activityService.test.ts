@@ -24,9 +24,11 @@ import {
 } from '@minicrm/shared/schemas/activitySchema.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'act-svc';
+
 /** Minimal user fixture used as activity owner */
 const OWNER_USER = {
-  email: 'activity-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Activity Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -39,12 +41,27 @@ let accountId: string;
 let dealId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -57,7 +74,7 @@ beforeAll(async () => {
 
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
-     VALUES ('Test', 'Contact', 'activity-contact@example.com', $1) RETURNING id`,
+     VALUES ('Test', 'Contact', '${FILE_PREFIX}-contact@example.com', $1) RETURNING id`,
     [ownerId],
   );
   contactId = contactResult.rows[0].id;
@@ -70,16 +87,34 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM activities');
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── createActivity ──────────────────────────────────────────────────────────────
@@ -300,7 +335,7 @@ describe('findActivityById', () => {
 
 describe('listActivities', () => {
   it('returns an empty array when no activities exist', async () => {
-    const result = await listActivities();
+    const result = await listActivities({ ownerId });
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
   });
@@ -319,7 +354,7 @@ describe('listActivities', () => {
       owner_id: ownerId,
     });
 
-    const result = await listActivities();
+    const result = await listActivities({ ownerId });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(2);
     // Newest first
@@ -387,7 +422,7 @@ describe('listActivities', () => {
   });
 
   it('filters by ownerId when provided', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'other-activity-owner@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-owner@example.com` });
 
     await createActivity({
       type: 'Note',
@@ -431,7 +466,7 @@ describe('listActivities — pagination', () => {
       owner_id: ownerId,
     });
 
-    const result = await listActivities({ page: 1, limit: 2 });
+    const result = await listActivities({ ownerId, page: 1, limit: 2 });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(3);
     expect(result.page).toBe(1);
@@ -459,7 +494,7 @@ describe('listActivities — pagination', () => {
     });
 
     // Activities are ordered newest-first, so page 2 of limit 2 returns the oldest
-    const result = await listActivities({ page: 2, limit: 2 });
+    const result = await listActivities({ ownerId, page: 2, limit: 2 });
     expect(result.data).toHaveLength(1);
     expect(result.data[0].subject).toBe('Oldest');
     expect(result.total).toBe(3);
@@ -490,7 +525,7 @@ describe('listMyTasks', () => {
   });
 
   it('excludes tasks owned by other users', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'other-tasks-owner@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-tasks@example.com` });
     await createActivity({
       type: 'Task',
       subject: 'Their task',

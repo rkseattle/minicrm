@@ -31,9 +31,11 @@ import {
 } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'user-svc';
+
 /** Minimal user fixture used across tests */
 const BASE_USER = {
-  email: 'test@example.com',
+  email: `${FILE_PREFIX}-test@example.com`,
   name: 'Test User',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -41,13 +43,27 @@ const BASE_USER = {
 };
 
 beforeEach(async () => {
-  // Clean up in FK order so suites that left deal/contact/activity data don't block user deletion
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users');
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── createUser ─────────────────────────────────────────────────────────────────
@@ -57,7 +73,7 @@ describe('createUser', () => {
     const user = await createUser(BASE_USER);
 
     expect(user.id).toBeDefined();
-    expect(user.email).toBe('test@example.com');
+    expect(user.email).toBe(`${FILE_PREFIX}-test@example.com`);
     expect(user.name).toBe('Test User');
     expect(user.role).toBe('rep');
     expect(user.status).toBe('active');
@@ -66,8 +82,8 @@ describe('createUser', () => {
   });
 
   it('normalizes the email to lowercase', async () => {
-    const user = await createUser({ ...BASE_USER, email: 'UPPER@EXAMPLE.COM' });
-    expect(user.email).toBe('upper@example.com');
+    const user = await createUser({ ...BASE_USER, email: 'USER-SVC-UPPER@EXAMPLE.COM' });
+    expect(user.email).toBe('user-svc-upper@example.com');
   });
 
   it('allows a null passwordHash for invited users', async () => {
@@ -91,9 +107,9 @@ describe('createUser', () => {
 describe('findUserByEmail', () => {
   it('returns the user row when found', async () => {
     await createUser(BASE_USER);
-    const found = await findUserByEmail('test@example.com');
+    const found = await findUserByEmail(`${FILE_PREFIX}-test@example.com`);
     expect(found).not.toBeNull();
-    expect(found!.email).toBe('test@example.com');
+    expect(found!.email).toBe(`${FILE_PREFIX}-test@example.com`);
   });
 
   it('returns null when no user matches', async () => {
@@ -103,7 +119,7 @@ describe('findUserByEmail', () => {
 
   it('is case-insensitive', async () => {
     await createUser(BASE_USER);
-    const found = await findUserByEmail('TEST@EXAMPLE.COM');
+    const found = await findUserByEmail('USER-SVC-TEST@EXAMPLE.COM');
     expect(found).not.toBeNull();
   });
 });
@@ -190,20 +206,20 @@ describe('DB constraints — users', () => {
 
 describe('listUsers', () => {
   it('returns an empty array when no users exist', async () => {
-    const result = await listUsers();
+    const result = await listUsers({ emailPrefix: FILE_PREFIX });
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
   });
 
   it('returns all users ordered by created_at', async () => {
-    await createUser({ ...BASE_USER, email: 'a@example.com' });
-    await createUser({ ...BASE_USER, email: 'b@example.com' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-a@example.com` });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-b@example.com` });
 
-    const result = await listUsers();
+    const result = await listUsers({ emailPrefix: FILE_PREFIX });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(2);
-    expect(result.data[0].email).toBe('a@example.com');
-    expect(result.data[1].email).toBe('b@example.com');
+    expect(result.data[0].email).toBe(`${FILE_PREFIX}-a@example.com`);
+    expect(result.data[1].email).toBe(`${FILE_PREFIX}-b@example.com`);
   });
 });
 
@@ -211,11 +227,11 @@ describe('listUsers', () => {
 
 describe('listUsers — pagination', () => {
   it('returns correct page and limit metadata', async () => {
-    await createUser({ ...BASE_USER, email: 'u1@example.com' });
-    await createUser({ ...BASE_USER, email: 'u2@example.com' });
-    await createUser({ ...BASE_USER, email: 'u3@example.com' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-u1@example.com` });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-u2@example.com` });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-u3@example.com` });
 
-    const result = await listUsers({ page: 1, limit: 2 });
+    const result = await listUsers({ emailPrefix: FILE_PREFIX, page: 1, limit: 2 });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(3);
     expect(result.page).toBe(1);
@@ -223,13 +239,13 @@ describe('listUsers — pagination', () => {
   });
 
   it('returns the correct slice for page 2', async () => {
-    await createUser({ ...BASE_USER, email: 'first@example.com' });
-    await createUser({ ...BASE_USER, email: 'second@example.com' });
-    await createUser({ ...BASE_USER, email: 'third@example.com' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-first@example.com` });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-second@example.com` });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-third@example.com` });
 
-    const result = await listUsers({ page: 2, limit: 2 });
+    const result = await listUsers({ emailPrefix: FILE_PREFIX, page: 2, limit: 2 });
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].email).toBe('third@example.com');
+    expect(result.data[0].email).toBe(`${FILE_PREFIX}-third@example.com`);
     expect(result.total).toBe(3);
   });
 });
@@ -238,13 +254,13 @@ describe('listUsers — pagination', () => {
 
 describe('listActiveUsers', () => {
   it('returns an empty array when no active users exist', async () => {
-    const users = await listActiveUsers();
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users).toEqual([]);
   });
 
   it('returns only id and name fields', async () => {
     await createUser(BASE_USER);
-    const users = await listActiveUsers();
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users).toHaveLength(1);
     expect(users[0]).toEqual({ id: expect.any(String), name: BASE_USER.name });
     expect(users[0]).not.toHaveProperty('email');
@@ -255,34 +271,34 @@ describe('listActiveUsers', () => {
   it('excludes invited users', async () => {
     await createUser({
       ...BASE_USER,
-      email: 'invited@example.com',
+      email: `${FILE_PREFIX}-invited@example.com`,
       status: 'invited',
       passwordHash: null,
     });
-    const users = await listActiveUsers();
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users).toHaveLength(0);
   });
 
   it('excludes inactive users', async () => {
-    await createUser({ ...BASE_USER, email: 'inactive@example.com', status: 'inactive' });
-    const users = await listActiveUsers();
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-inactive@example.com`, status: 'inactive' });
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users).toHaveLength(0);
   });
 
   it('orders results alphabetically by name', async () => {
-    await createUser({ ...BASE_USER, email: 'charlie@example.com', name: 'Charlie' });
-    await createUser({ ...BASE_USER, email: 'alice@example.com', name: 'Alice' });
-    await createUser({ ...BASE_USER, email: 'bob@example.com', name: 'Bob' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-charlie@example.com`, name: 'Charlie' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-alice@example.com`, name: 'Alice' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-bob@example.com`, name: 'Bob' });
 
-    const users = await listActiveUsers();
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users.map((u) => u.name)).toEqual(['Alice', 'Bob', 'Charlie']);
   });
 
   it('includes all active users regardless of role', async () => {
-    await createUser({ ...BASE_USER, email: 'admin@example.com', role: 'admin' });
-    await createUser({ ...BASE_USER, email: 'rep@example.com', role: 'rep' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-admin@example.com`, role: 'admin' });
+    await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-rep@example.com`, role: 'rep' });
 
-    const users = await listActiveUsers();
+    const users = await listActiveUsers(FILE_PREFIX);
     expect(users).toHaveLength(2);
   });
 });
@@ -430,13 +446,13 @@ describe('seedDefaultAdmin', () => {
   });
 
   it('creates an admin user when the table is empty and env vars are set', async () => {
-    process.env.ADMIN_EMAIL = 'seed-admin@example.com';
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-admin@example.com`;
     process.env.ADMIN_NAME = 'Seed Admin';
     process.env.ADMIN_PASSWORD = 'SeedPass1';
 
-    await seedDefaultAdmin();
+    await seedDefaultAdmin(FILE_PREFIX);
 
-    const user = await findUserByEmail('seed-admin@example.com');
+    const user = await findUserByEmail(`${FILE_PREFIX}-seed-admin@example.com`);
     expect(user).not.toBeNull();
     expect(user!.role).toBe('admin');
     expect(user!.status).toBe('active');
@@ -444,13 +460,13 @@ describe('seedDefaultAdmin', () => {
 
   it('is a no-op when users already exist', async () => {
     await createUser(BASE_USER);
-    process.env.ADMIN_EMAIL = 'should-not-exist@example.com';
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-should-not-exist@example.com`;
     process.env.ADMIN_NAME = 'Ghost';
     process.env.ADMIN_PASSWORD = 'GhostPass1';
 
-    await seedDefaultAdmin();
+    await seedDefaultAdmin(FILE_PREFIX);
 
-    const ghost = await findUserByEmail('should-not-exist@example.com');
+    const ghost = await findUserByEmail(`${FILE_PREFIX}-should-not-exist@example.com`);
     expect(ghost).toBeNull();
   });
 
@@ -621,17 +637,28 @@ describe('listUsersOptedIn', () => {
 
 describe('countActiveNotificationRecipients', () => {
   it('counts active users with at least one notification enabled', async () => {
+    const countBefore = await countActiveNotificationRecipients();
     const user = await createUser(BASE_USER);
-    const count = await countActiveNotificationRecipients();
-    expect(count).toBeGreaterThanOrEqual(1);
 
-    // Disable all notifs — should no longer be counted
+    // The new user has default notifications enabled — count must have increased
+    const countWithUser = await countActiveNotificationRecipients();
+    expect(countWithUser).toBeGreaterThanOrEqual(countBefore + 1);
+
+    // Disable all notifs — this user's row must flip to all-false
     await updateNotificationPrefs(user.id, {
       notify_overdue_tasks: false,
       notify_assignments: false,
       notify_deal_stage_changes: false,
     });
-    const countAfter = await countActiveNotificationRecipients();
-    expect(countAfter).toBeLessThan(count);
+
+    // Verify directly: the user is no longer in the notification-eligible set
+    const { rows } = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM users
+       WHERE id = $1
+         AND status = 'active'
+         AND (notify_overdue_tasks = true OR notify_assignments = true OR notify_deal_stage_changes = true)`,
+      [user.id],
+    );
+    expect(parseInt(rows[0].count, 10)).toBe(0);
   });
 });

@@ -17,8 +17,10 @@ import 'dotenv/config';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'demo-seed';
+
 const OWNER_USER = {
-  email: 'demo-seed-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Demo Seed Owner',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -27,32 +29,43 @@ const OWNER_USER = {
 
 let ownerId: string;
 
+async function cleanOwnerData(): Promise<void> {
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+}
+
 beforeAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await cleanOwnerData();
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
+  await cleanOwnerData();
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM accounts');
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await cleanOwnerData();
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── Accounts ─────────────────────────────────────────────────────────────────
@@ -80,7 +93,8 @@ describe('is_demo column — accounts', () => {
       [ownerId],
     );
     const result = await pool.query<{ name: string }>(
-      `SELECT name FROM accounts WHERE is_demo = true`,
+      `SELECT name FROM accounts WHERE is_demo = true AND owner_id = $1`,
+      [ownerId],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].name).toBe('Demo');
@@ -92,7 +106,7 @@ describe('is_demo column — accounts', () => {
       [ownerId],
     );
     await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
-    const result = await pool.query<{ name: string }>(`SELECT name FROM accounts`);
+    const result = await pool.query<{ name: string }>(`SELECT name FROM accounts WHERE owner_id = $1`, [ownerId]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].name).toBe('Real');
   });
@@ -129,7 +143,7 @@ describe('is_demo column — contacts', () => {
       [ownerId],
     );
     await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
-    const result = await pool.query<{ first_name: string }>(`SELECT first_name FROM contacts`);
+    const result = await pool.query<{ first_name: string }>(`SELECT first_name FROM contacts WHERE owner_id = $1`, [ownerId]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].first_name).toBe('Real');
   });
@@ -162,7 +176,7 @@ describe('is_demo column — deals', () => {
       [ownerId],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true`);
-    const result = await pool.query<{ name: string }>(`SELECT name FROM deals`);
+    const result = await pool.query<{ name: string }>(`SELECT name FROM deals WHERE owner_id = $1`, [ownerId]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].name).toBe('Real Deal');
   });
@@ -211,7 +225,7 @@ describe('is_demo column — activities', () => {
       [contactId, ownerId],
     );
     await pool.query(`DELETE FROM activities WHERE is_demo = true`);
-    const result = await pool.query<{ subject: string }>(`SELECT subject FROM activities`);
+    const result = await pool.query<{ subject: string }>(`SELECT subject FROM activities WHERE owner_id = $1`, [ownerId]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].subject).toBe('Real note');
   });

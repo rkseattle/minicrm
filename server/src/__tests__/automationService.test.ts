@@ -21,9 +21,11 @@ import {
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
+const FILE_PREFIX = 'auto-svc';
+
 /** Minimal admin user fixture */
 const ADMIN_USER = {
-  email: 'automation-admin@example.com',
+  email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Automation Admin',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -32,7 +34,7 @@ const ADMIN_USER = {
 
 /** Minimal rep user fixture (used as task assignee) */
 const REP_USER = {
-  email: 'automation-rep@example.com',
+  email: `${FILE_PREFIX}-rep@example.com`,
   name: 'Automation Rep',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
@@ -61,13 +63,31 @@ let contactId: string;
 
 beforeAll(async () => {
   // Clean up any leftovers from prior runs
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals');
-  await pool.query('DELETE FROM contacts');
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_USER.email, REP_USER.email]]);
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
@@ -85,25 +105,52 @@ beforeAll(async () => {
   const contactResult = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
      VALUES ($1, $2, $3, $4) RETURNING id`,
-    ['Trigger', 'Contact', 'trigger-contact@example.com', adminId],
+    ['Trigger', 'Contact', `${FILE_PREFIX}-trigger-contact@example.com`, adminId],
   );
   contactId = contactResult.rows[0].id;
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM automation_rule_logs');
-  await pool.query('DELETE FROM automation_rules');
-  await pool.query('DELETE FROM activities');
-  await pool.query('DELETE FROM deal_contacts');
-  await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
-  await pool.query('DELETE FROM contacts WHERE id = $1', [contactId]);
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_USER.email, REP_USER.email]]);
+  await pool.query(
+    'DELETE FROM automation_rule_logs WHERE rule_id IN (SELECT id FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── createAutomationRule ────────────────────────────────────────────────────────
@@ -175,7 +222,7 @@ describe('findAutomationRuleById', () => {
 
 describe('listAutomationRules', () => {
   it('returns an empty array when no rules exist', async () => {
-    const rules = await listAutomationRules();
+    const rules = await listAutomationRules(adminId);
     expect(rules).toEqual([]);
   });
 
@@ -183,7 +230,7 @@ describe('listAutomationRules', () => {
     await createAutomationRule({ ...BASE_RULE, name: 'Alpha Rule', created_by: adminId });
     await createAutomationRule({ ...BASE_RULE, name: 'Beta Rule', created_by: adminId });
 
-    const rules = await listAutomationRules();
+    const rules = await listAutomationRules(adminId);
     expect(rules).toHaveLength(2);
     // Most recently created rule should be first
     expect(rules[0].name).toBe('Beta Rule');
@@ -386,9 +433,11 @@ describe('fireAutomationTrigger — create_task action', () => {
       ownerId: adminId,
     });
 
+    // Parallel tests may fire deal_created independently, producing extra log entries
+    // for this rule. Check that at least one error log was written.
     const logs = await listRuleLogs(rule.id);
-    expect(logs).toHaveLength(1);
-    expect(logs[0].outcome).toBe('error');
+    expect(logs.length).toBeGreaterThanOrEqual(1);
+    expect(logs.every((l) => l.outcome === 'error')).toBe(true);
     expect(logs[0].error_message).not.toBeNull();
   });
 });
@@ -495,10 +544,11 @@ describe('MINCRM-83 — failing rule does not abort the triggering operation', (
       }),
     ).resolves.toBeUndefined();
 
-    // The error log must have been written
+    // The error log must have been written (parallel tests may fire the same
+    // trigger, so there can be more than one log entry for this rule).
     const logs = await listRuleLogs(failingRule.id);
-    expect(logs).toHaveLength(1);
-    expect(logs[0].outcome).toBe('error');
+    expect(logs.length).toBeGreaterThanOrEqual(1);
+    expect(logs.every((l) => l.outcome === 'error')).toBe(true);
     expect(logs[0].error_message).not.toBeNull();
 
     // The DB should show no tasks were created (action failed)
@@ -588,8 +638,11 @@ describe('fireAutomationTrigger — send_notification', () => {
     expect(logs).toHaveLength(1);
     expect(logs[0].outcome).toBe('success');
 
-    // No activities should be created
-    const activities = await pool.query(`SELECT * FROM activities WHERE deal_id = $1`, [dealId]);
+    // No activities should be created by this file's rules (owner scoped to adminId)
+    const activities = await pool.query(
+      `SELECT * FROM activities WHERE deal_id = $1 AND owner_id = $2`,
+      [dealId, adminId],
+    );
     expect(activities.rows).toHaveLength(0);
   });
 });

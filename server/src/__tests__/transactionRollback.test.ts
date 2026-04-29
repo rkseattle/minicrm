@@ -16,6 +16,7 @@ import { convertLead, createLead } from '../services/leadsService.js';
 import * as auditService from '../services/auditService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { uid } from './testUtils.js';
 
 const OWNER_USER = {
   email: 'rollback-owner@example.com',
@@ -85,7 +86,7 @@ afterAll(async () => {
 
 describe('contact creation rollback', () => {
   it('rolls back the contact INSERT when writeAuditEntry throws mid-transaction', async () => {
-    const testEmail = 'rollback-contact@example.com';
+    const testEmail = `rollback-${uid()}-contact@example.com`;
 
     const auditSpy = vi
       .spyOn(auditService, 'writeAuditEntry')
@@ -146,7 +147,7 @@ describe('lead conversion rollback', () => {
     // DB unique constraint (migration 034) fires mid-transaction — after the
     // account INSERT but before the deal INSERT.  The ROLLBACK must leave
     // the DB with no new account and no new deal.
-    const conflictEmail = 'convert-conflict@example.com';
+    const conflictEmail = `convert-${uid()}-conflict@example.com`;
     await pool.query(
       `INSERT INTO contacts (first_name, last_name, email, owner_id)
        VALUES ('Pre', 'Existing', $1, $2)`,
@@ -160,7 +161,7 @@ describe('lead conversion rollback', () => {
       {
         first_name: 'Convert',
         last_name: 'Rollback',
-        email: 'convert-lead-rollback@example.com',
+        email: `convert-${uid()}-lead-rollback@example.com`,
         owner_id: ownerId,
       },
       { id: ownerId, name: OWNER_USER.name },

@@ -14,30 +14,30 @@ import app from '../app.js';
 import { createContact } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, uid } from './testUtils.js';
 
-const BASE_CONTACT = {
+const FILE_PREFIX = 'contact-ctrl';
+
+const makeContact = () => ({
   first_name: 'Test',
   last_name: 'Contact',
-  email: 'test@example.com',
-};
+  email: `${FILE_PREFIX}-${uid()}@example.com`,
+});
 
 let repId: string;
 let repCookie: string;
 let otherRepCookie: string;
 let adminCookie: string;
 
-const CONTACT_CTRL_EMAILS = ['rep@example.com', 'other@example.com', 'admin@example.com'];
-
 beforeAll(async () => {
   await pool.query(
-    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = ANY($1))',
-    [CONTACT_CTRL_EMAILS],
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [CONTACT_CTRL_EMAILS]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser({
-    email: 'rep@example.com',
+    email: `${FILE_PREFIX}-rep@example.com`,
     name: 'Rep User',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
@@ -47,7 +47,7 @@ beforeAll(async () => {
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
 
   const otherRep = await createUser({
-    email: 'other@example.com',
+    email: `${FILE_PREFIX}-other@example.com`,
     name: 'Other Rep',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
@@ -61,7 +61,7 @@ beforeAll(async () => {
   });
 
   const admin = await createUser({
-    email: 'admin@example.com',
+    email: `${FILE_PREFIX}-admin@example.com`,
     name: 'Admin User',
     role: 'admin',
     passwordHash: '$2b$12$placeholder',
@@ -76,22 +76,25 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM contacts');
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
   await pool.query(
-    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = ANY($1))',
-    [CONTACT_CTRL_EMAILS],
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [CONTACT_CTRL_EMAILS]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── PATCH /api/contacts/:id ──────────────────────────────────────────────────
 
 describe('PATCH /api/contacts/:id — ownership', () => {
   it('allows the owning rep to update their own contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .patch(`/api/contacts/${contact.id}`)
@@ -103,7 +106,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
   });
 
   it("returns 403 when a rep attempts to update another rep's contact", async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .patch(`/api/contacts/${contact.id}`)
@@ -115,7 +118,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
   });
 
   it('allows an admin to update any contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .patch(`/api/contacts/${contact.id}`)
@@ -140,7 +143,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
 
 describe('DELETE /api/contacts/:id — ownership', () => {
   it('allows the owning rep to delete their own contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', repCookie);
 
@@ -148,7 +151,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   });
 
   it("returns 403 when a rep attempts to delete another rep's contact", async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .delete(`/api/contacts/${contact.id}`)
@@ -159,7 +162,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   });
 
   it('allows an admin to delete any contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', adminCookie);
 
@@ -202,17 +205,17 @@ describe('GET /api/contacts — ?search filter', () => {
     await createContact({
       first_name: 'Alice',
       last_name: 'Smith',
-      email: 'alice@example.com',
+      email: `${FILE_PREFIX}-${uid()}-alice@example.com`,
       owner_id: repId,
     });
     await createContact({
       first_name: 'Bob',
       last_name: 'Jones',
-      email: 'bob@example.com',
+      email: `${FILE_PREFIX}-${uid()}-bob@example.com`,
       owner_id: repId,
     });
 
-    const res = await request(app).get('/api/contacts?search=alice').set('Cookie', repCookie);
+    const res = await request(app).get('/api/contacts?search=alice&owner=me').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
@@ -220,7 +223,7 @@ describe('GET /api/contacts — ?search filter', () => {
   });
 
   it('returns empty array when search matches no contacts', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: repId });
+    await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app).get('/api/contacts?search=zzznomatch').set('Cookie', repCookie);
 
@@ -233,7 +236,7 @@ describe('GET /api/contacts — ?search filter', () => {
 
 describe('GET /api/contacts — ?accountSearch filter', () => {
   it('ignores whitespace-only accountSearch', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: repId });
+    await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app).get('/api/contacts?accountSearch=%20').set('Cookie', repCookie);
 
@@ -247,19 +250,20 @@ describe('GET /api/contacts — ?accountSearch filter', () => {
 
 describe('POST /api/contacts — duplicate detection', () => {
   it('returns 409 with duplicate info when a contact with the same email exists', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const dupContact = makeContact();
+    await createContact({ ...dupContact, owner_id: repId });
 
     const res = await request(app)
       .post('/api/contacts')
       .set('Cookie', repCookie)
-      .send({ first_name: 'Other', last_name: 'Person', email: BASE_CONTACT.email });
+      .send({ first_name: 'Other', last_name: 'Person', email: dupContact.email });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
     expect(res.body.duplicate).toMatchObject({
-      first_name: BASE_CONTACT.first_name,
-      last_name: BASE_CONTACT.last_name,
-      email: BASE_CONTACT.email,
+      first_name: dupContact.first_name,
+      last_name: dupContact.last_name,
+      email: dupContact.email,
     });
     expect(res.body.duplicate.id).toBeDefined();
   });
@@ -268,25 +272,27 @@ describe('POST /api/contacts — duplicate detection', () => {
   // longer bypass the duplicate check — the constraint fires at the DB level and the
   // controller returns 409 with DUPLICATE_EMAIL instead of creating a duplicate.
   it('returns 409 DUPLICATE_EMAIL when ?force=true but the DB unique constraint fires', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const dupContact = makeContact();
+    await createContact({ ...dupContact, owner_id: repId });
 
     const res = await request(app)
       .post('/api/contacts?force=true')
       .set('Cookie', repCookie)
-      .send({ first_name: 'Other', last_name: 'Person', email: BASE_CONTACT.email });
+      .send({ first_name: 'Other', last_name: 'Person', email: dupContact.email });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
   });
 
   it('creates a contact without a warning when no duplicate email exists', async () => {
+    const newEmail = `${FILE_PREFIX}-${uid()}-brandnew@example.com`;
     const res = await request(app)
       .post('/api/contacts')
       .set('Cookie', repCookie)
-      .send({ first_name: 'New', last_name: 'User', email: 'brandnew@example.com' });
+      .send({ first_name: 'New', last_name: 'User', email: newEmail });
 
     expect(res.status).toBe(201);
-    expect(res.body.contact.email).toBe('brandnew@example.com');
+    expect(res.body.contact.email).toBe(newEmail);
   });
 });
 
@@ -294,7 +300,7 @@ describe('POST /api/contacts — duplicate detection', () => {
 
 describe('GET /api/contacts/:id — visibility', () => {
   it('allows any authenticated user to view any contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app).get(`/api/contacts/${contact.id}`).set('Cookie', otherRepCookie);
 
@@ -307,7 +313,7 @@ describe('GET /api/contacts/:id — visibility', () => {
 
 describe('POST /api/contacts/:id/send-email', () => {
   it('returns 200 with delivered: false and an activityId when SMTP is not configured', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .post(`/api/contacts/${contact.id}/send-email`)
@@ -320,7 +326,7 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 
   it('logs an Email activity linked to the contact', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     await request(app)
       .post(`/api/contacts/${contact.id}/send-email`)
@@ -359,7 +365,7 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 
   it('returns 400 when subject is missing', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .post(`/api/contacts/${contact.id}/send-email`)
@@ -371,7 +377,7 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 
   it('returns 400 when subject exceeds 255 characters', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .post(`/api/contacts/${contact.id}/send-email`)
@@ -392,7 +398,7 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: repId });
+    const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .post(`/api/contacts/${contact.id}/send-email`)

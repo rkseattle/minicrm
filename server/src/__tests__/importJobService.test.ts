@@ -21,7 +21,8 @@ import {
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-const ADMIN_EMAIL = 'admin-import-job@example.com';
+const FILE_PREFIX = 'import-job';
+const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 
 let adminId: string;
 let adminCookie: string;
@@ -32,7 +33,7 @@ const CONTACTS_CSV = Buffer.from(
 );
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_EMAIL]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -54,7 +55,7 @@ afterAll(async () => {
   await pool.query(
     `DELETE FROM contacts WHERE email IN ('alice.job@example.com','bob.job@example.com')`,
   );
-  await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_EMAIL]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── 1. POST /run returns 202 + job_id within 500ms ────────────────────────────
@@ -146,7 +147,7 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
   });
 
   it('returns 403 for a rep', async () => {
-    const repEmail = 'rep-import-job@example.com';
+    const repEmail = `${FILE_PREFIX}-rep@example.com`;
     await pool.query('DELETE FROM users WHERE email = $1', [repEmail]);
     const rep = await createUser({
       email: repEmail,
@@ -167,8 +168,6 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
     const res = await request(app).get(`/api/admin/import/jobs/${job.id}`).set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
-
-    await pool.query('DELETE FROM users WHERE email = $1', [repEmail]);
   });
 });
 

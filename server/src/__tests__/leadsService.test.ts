@@ -26,24 +26,27 @@ import {
 import { findContactById } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { uid } from './testUtils.js';
+
+const FILE_PREFIX = 'leads-svc';
 
 const OWNER_USER = {
-  email: 'leads-test-owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Leads Test Owner',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
   status: 'active' as const,
 };
 
-const BASE_LEAD = {
+const makeLead = () => ({
   first_name: 'Dana',
   last_name: 'Kim',
-  email: 'dana.kim@example.com',
+  email: `${FILE_PREFIX}-${uid()}-dana@example.com`,
   phone: '+1-555-0200',
   company_name: 'Acme Corp',
   lead_source: 'Web' as const,
   notes: 'Found via website',
-};
+});
 
 let ownerId: string;
 
@@ -105,12 +108,13 @@ afterAll(async () => {
 
 describe('createLead', () => {
   it('inserts a lead and returns the full row', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const base = makeLead();
+    const lead = await createLead({ ...base, owner_id: ownerId });
 
     expect(lead.id).toBeDefined();
     expect(lead.first_name).toBe('Dana');
     expect(lead.last_name).toBe('Kim');
-    expect(lead.email).toBe('dana.kim@example.com');
+    expect(lead.email).toBe(base.email);
     expect(lead.company_name).toBe('Acme Corp');
     expect(lead.lead_source).toBe('Web');
     expect(lead.status).toBe('New');
@@ -119,16 +123,17 @@ describe('createLead', () => {
   });
 
   it('lowercases the email', async () => {
+    const rawEmail = `${FILE_PREFIX}-UPPER-${uid()}@EXAMPLE.COM`;
     const lead = await createLead({
-      ...BASE_LEAD,
-      email: 'DANA.KIM@EXAMPLE.COM',
+      ...makeLead(),
+      email: rawEmail,
       owner_id: ownerId,
     });
-    expect(lead.email).toBe('dana.kim@example.com');
+    expect(lead.email).toBe(rawEmail.toLowerCase());
   });
 
   it('writes an initial status history entry', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const history = await getLeadStatusHistory(lead.id);
 
     expect(history).toHaveLength(1);
@@ -141,10 +146,11 @@ describe('createLead', () => {
 
 describe('findLeadByEmail', () => {
   it('returns the lead when found (case-insensitive)', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: ownerId });
-    const found = await findLeadByEmail('DANA.KIM@EXAMPLE.COM');
+    const base = makeLead();
+    await createLead({ ...base, owner_id: ownerId });
+    const found = await findLeadByEmail(base.email.toUpperCase());
     expect(found).not.toBeNull();
-    expect(found!.email).toBe('dana.kim@example.com');
+    expect(found!.email).toBe(base.email);
   });
 
   it('returns null when no match', async () => {
@@ -153,7 +159,7 @@ describe('findLeadByEmail', () => {
   });
 
   it('excludes the given id when excludeId is passed', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const found = await findLeadByEmail(lead.email, lead.id);
     expect(found).toBeNull();
   });
@@ -163,36 +169,37 @@ describe('findLeadByEmail', () => {
 
 describe('listLeads', () => {
   it('returns paginated leads, excluding Disqualified and converted by default', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: ownerId });
-    await createLead({ ...BASE_LEAD, email: 'disq@example.com', owner_id: ownerId });
+    const mainLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
 
-    // Disqualify the second lead
-    const disqLead = await findLeadByEmail('disq@example.com');
-    await updateLead(disqLead!.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
+    await updateLead(disqLead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
 
     const result = await listLeads({ ownerId });
     expect(result.total).toBe(1);
-    expect(result.data[0].email).toBe('dana.kim@example.com');
+    expect(result.data[0].id).toBe(mainLead.id);
   });
 
   it('includes Disqualified leads when includeDisqualified=true', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: ownerId });
-    await createLead({ ...BASE_LEAD, email: 'disq@example.com', owner_id: ownerId });
-    const disqLead = await findLeadByEmail('disq@example.com');
-    await updateLead(disqLead!.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
+    const mainLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    await updateLead(disqLead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
 
     const result = await listLeads({ ownerId, includeDisqualified: true });
     expect(result.total).toBe(2);
+    // Verify both IDs are present
+    const ids = result.data.map((l) => l.id);
+    expect(ids).toContain(mainLead.id);
+    expect(ids).toContain(disqLead.id);
   });
 
   it('filters by status', async () => {
-    await createLead({ ...BASE_LEAD, owner_id: ownerId });
-    await createLead({ ...BASE_LEAD, email: 'contacted@example.com', owner_id: ownerId });
-    const contactedLead = await findLeadByEmail('contacted@example.com');
-    await updateLead(contactedLead!.id, { status: 'Contacted' }, { id: ownerId, name: 'Tester' });
+    await createLead({ ...makeLead(), owner_id: ownerId });
+    const contactedLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    await updateLead(contactedLead.id, { status: 'Contacted' }, { id: ownerId, name: 'Tester' });
 
-    const result = await listLeads({ status: 'Contacted' });
+    const result = await listLeads({ ownerId, status: 'Contacted' });
     expect(result.data.every((l) => l.status === 'Contacted')).toBe(true);
+    expect(result.data.some((l) => l.id === contactedLead.id)).toBe(true);
   });
 });
 
@@ -200,7 +207,7 @@ describe('listLeads', () => {
 
 describe('updateLead — status lifecycle', () => {
   it('writes a status history entry when status changes', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     await updateLead(lead.id, { status: 'Contacted' }, { id: ownerId, name: 'Tester' });
 
     const history = await getLeadStatusHistory(lead.id);
@@ -210,7 +217,7 @@ describe('updateLead — status lifecycle', () => {
   });
 
   it('does not write a history entry when status is unchanged', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     await updateLead(lead.id, { first_name: 'Updated' }, { id: ownerId, name: 'Tester' });
 
     const history = await getLeadStatusHistory(lead.id);
@@ -218,7 +225,7 @@ describe('updateLead — status lifecycle', () => {
   });
 
   it('can set disqualification_reason when Disqualifying', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const updated = await updateLead(
       lead.id,
       { status: 'Disqualified', disqualification_reason: 'Not a fit' },
@@ -232,7 +239,7 @@ describe('updateLead — status lifecycle', () => {
 
 describe('deleteLead', () => {
   it('removes the lead and returns the deleted row', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const deleted = await deleteLead(lead.id);
     expect(deleted!.id).toBe(lead.id);
 
@@ -250,7 +257,7 @@ describe('deleteLead', () => {
 
 describe('convertLead', () => {
   it('atomically creates contact, account, and deal from a lead', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
 
     const result = await convertLead(
       lead.id,
@@ -283,7 +290,7 @@ describe('convertLead', () => {
   });
 
   it('throws ALREADY_CONVERTED when lead is already converted', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const convInput = {
       contact: { first_name: lead.first_name, email: lead.email },
       account: { mode: 'create' as const, name: 'Acme' },
@@ -300,7 +307,7 @@ describe('convertLead', () => {
   });
 
   it('throws DISQUALIFIED when lead status is Disqualified', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     await updateLead(lead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
 
     await expect(
@@ -317,7 +324,7 @@ describe('convertLead', () => {
   });
 
   it('throws ACCOUNT_NOT_FOUND when linking to a non-existent account', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
 
     await expect(
       convertLead(
@@ -333,7 +340,7 @@ describe('convertLead', () => {
   });
 
   it('links to an existing account instead of creating one', async () => {
-    const lead = await createLead({ ...BASE_LEAD, owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
 
     // Create an account first
     const acctResult = await pool.query<{ id: string }>(
@@ -360,23 +367,21 @@ describe('convertLead', () => {
 
 describe('listLeads — lead_source filter', () => {
   it('filters by lead_source', async () => {
-    await createLead({
-      ...BASE_LEAD,
+    const webLead = await createLead({
+      ...makeLead(),
       lead_source: 'Web',
-      email: 'web@example.com',
       owner_id: ownerId,
     });
-    await createLead({
-      ...BASE_LEAD,
+    const refLead = await createLead({
+      ...makeLead(),
       lead_source: 'Referral',
-      email: 'ref@example.com',
       owner_id: ownerId,
     });
 
-    const result = await listLeads({ lead_source: 'Referral' });
+    const result = await listLeads({ ownerId, lead_source: 'Referral' });
     expect(result.data.every((l) => l.lead_source === 'Referral')).toBe(true);
-    expect(result.data.some((l) => l.email === 'ref@example.com')).toBe(true);
-    expect(result.data.some((l) => l.email === 'web@example.com')).toBe(false);
+    expect(result.data.some((l) => l.id === refLead.id)).toBe(true);
+    expect(result.data.some((l) => l.id === webLead.id)).toBe(false);
   });
 });
 
@@ -385,8 +390,7 @@ describe('listLeads — lead_source filter', () => {
 describe('findLeadByContactId', () => {
   it('returns the source lead for a converted contact', async () => {
     const lead = await createLead({
-      ...BASE_LEAD,
-      email: 'bycontact@example.com',
+      ...makeLead(),
       owner_id: ownerId,
     });
     const result = await convertLead(
@@ -407,7 +411,7 @@ describe('findLeadByContactId', () => {
   it('returns null when the contact has no source lead', async () => {
     const contactResult = await pool.query<{ id: string }>(
       `INSERT INTO contacts (first_name, last_name, email, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`,
-      ['No', 'Lead', 'nolead@example.com', ownerId],
+      ['No', 'Lead', `${FILE_PREFIX}-${uid()}-nolead@example.com`, ownerId],
     );
     const found = await findLeadByContactId(contactResult.rows[0].id);
     expect(found).toBeNull();
@@ -416,7 +420,7 @@ describe('findLeadByContactId', () => {
 
 describe('findLeadByDealId', () => {
   it('returns the source lead for a converted deal', async () => {
-    const lead = await createLead({ ...BASE_LEAD, email: 'bydeal@example.com', owner_id: ownerId });
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const result = await convertLead(
       lead.id,
       {

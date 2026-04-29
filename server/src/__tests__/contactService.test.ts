@@ -26,55 +26,55 @@ import {
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { uid } from './testUtils.js';
+
+const FILE_PREFIX = 'contact-svc';
 
 /** Minimal user fixture used as contact owner */
 const OWNER_USER = {
-  email: 'owner@example.com',
+  email: `${FILE_PREFIX}-owner@example.com`,
   name: 'Owner User',
   role: 'rep' as const,
   passwordHash: '$2b$12$placeholder_hash',
   status: 'active' as const,
 };
 
-/** Minimal contact fixture */
-const BASE_CONTACT = {
+/** Returns a fresh contact fixture with a unique email on each call. */
+const makeContact = () => ({
   first_name: 'Alice',
   last_name: 'Smith',
-  email: 'alice@example.com',
   phone: '+1-555-0100',
   title: 'VP Sales',
   department: 'Sales',
-};
+  email: `${FILE_PREFIX}-${uid()}@example.com`,
+});
 
 let ownerId: string;
 
 let accountId: string;
 
-/** Secondary user emails created in individual tests — cleaned up in beforeAll to prevent duplicate key errors on rerun */
-const SECONDARY_USERS = ['other@example.com', 'search-other@example.com'];
-
 beforeAll(async () => {
   await pool.query(
-    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1))',
-    [OWNER_USER.email],
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
   );
   await pool.query(
-    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-    [OWNER_USER.email],
-  );
-  await pool.query('DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1)', [
-    OWNER_USER.email,
-  ]);
-  await pool.query(
-    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-    [OWNER_USER.email],
+    'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
   );
   await pool.query(
-    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-    [OWNER_USER.email],
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [SECONDARY_USERS]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
   const account = await createAccount({ name: 'Test Account', owner_id: ownerId });
@@ -82,38 +82,43 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM contacts');
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
 });
 
 afterAll(async () => {
   await pool.query(
-    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1))',
-    [OWNER_USER.email],
-  );
-  await pool.query('DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email = $1)', [
-    OWNER_USER.email,
-  ]);
-  await pool.query(
-    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-    [OWNER_USER.email],
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
+    [`${FILE_PREFIX}-%`],
   );
   await pool.query(
-    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
-    [OWNER_USER.email],
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await pool.query(
+    'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
 // ── createContact ───────────────────────────────────────────────────────────────
 
 describe('createContact', () => {
   it('inserts a contact and returns the full row', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const base = makeContact();
+    const contact = await createContact({ ...base, owner_id: ownerId });
 
     expect(contact.id).toBeDefined();
     expect(contact.first_name).toBe('Alice');
     expect(contact.last_name).toBe('Smith');
-    expect(contact.email).toBe('alice@example.com');
+    expect(contact.email).toBe(base.email);
     expect(contact.phone).toBe('+1-555-0100');
     expect(contact.title).toBe('VP Sales');
     expect(contact.department).toBe('Sales');
@@ -123,18 +128,18 @@ describe('createContact', () => {
 
   it('normalizes email to lowercase', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'UPPER@EXAMPLE.COM',
+      ...makeContact(),
+      email: `${FILE_PREFIX}-UPPER-${uid()}@EXAMPLE.COM`,
       owner_id: ownerId,
     });
-    expect(contact.email).toBe('upper@example.com');
+    expect(contact.email).toMatch(/^contact-svc-upper-[a-f0-9]+@example\.com$/);
   });
 
   it('stores null for optional fields when omitted', async () => {
     const contact = await createContact({
       first_name: 'Bob',
       last_name: 'Jones',
-      email: 'bob@example.com',
+      email: `${FILE_PREFIX}-${uid()}-bob@example.com`,
       owner_id: ownerId,
     });
 
@@ -146,8 +151,7 @@ describe('createContact', () => {
 
   it('stores account_id when provided', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'linked@example.com',
+      ...makeContact(),
       account_id: accountId,
       owner_id: ownerId,
     });
@@ -156,7 +160,7 @@ describe('createContact', () => {
 
   it('throws when owner_id does not reference a real user', async () => {
     await expect(
-      createContact({ ...BASE_CONTACT, owner_id: '00000000-0000-0000-0000-000000000000' }),
+      createContact({ ...makeContact(), owner_id: '00000000-0000-0000-0000-000000000000' }),
     ).rejects.toThrow();
   });
 });
@@ -187,8 +191,7 @@ describe('DB constraints — contacts', () => {
   it('rejects a contact whose account_id references a non-existent account (FK)', async () => {
     await expect(
       createContact({
-        ...BASE_CONTACT,
-        email: 'bad-fk@example.com',
+        ...makeContact(),
         account_id: '00000000-0000-0000-0000-000000000000',
         owner_id: ownerId,
       }),
@@ -199,12 +202,14 @@ describe('DB constraints — contacts', () => {
   // SELECT duplicate check by inserting directly into contacts, then calling
   // createContact. This exercises the 23505 catch added for TOCTOU safety.
   it('throws DUPLICATE_EMAIL when the DB unique constraint fires on concurrent inserts', async () => {
+    const dupEmail = `${FILE_PREFIX}-dup-${uid()}@example.com`;
+
     // Insert directly to simulate a row already committed by a concurrent request,
     // bypassing the service-layer duplicate check.
     await pool.query(
       `INSERT INTO contacts (first_name, last_name, email, owner_id)
-       VALUES ('Existing', 'User', 'dup@example.com', $1)`,
-      [ownerId],
+       VALUES ('Existing', 'User', $1, $2)`,
+      [dupEmail, ownerId],
     );
 
     // Now createContact will pass the SELECT check (it won't find a duplicate if we
@@ -214,8 +219,8 @@ describe('DB constraints — contacts', () => {
     const error = await pool
       .query(
         `INSERT INTO contacts (first_name, last_name, email, owner_id)
-         VALUES ('Duplicate', 'User', 'dup@example.com', $1)`,
-        [ownerId],
+         VALUES ('Duplicate', 'User', $1, $2)`,
+        [dupEmail, ownerId],
       )
       .catch((e: unknown) => e);
 
@@ -227,12 +232,15 @@ describe('DB constraints — contacts', () => {
     // would normally catch it, but we simulate the race by inserting the row
     // between the SELECT and INSERT. The simplest way: call createContact twice
     // with the same email concurrently (no await on first, then await both).
-    await pool.query('DELETE FROM contacts');
+    await pool.query(
+      'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+      [`${FILE_PREFIX}-%`],
+    );
 
-    const email = 'race@example.com';
+    const raceEmail = `${FILE_PREFIX}-race-${uid()}@example.com`;
     const [result1, result2] = await Promise.allSettled([
-      createContact({ first_name: 'A', last_name: 'B', email, owner_id: ownerId }),
-      createContact({ first_name: 'C', last_name: 'D', email, owner_id: ownerId }),
+      createContact({ first_name: 'A', last_name: 'B', email: raceEmail, owner_id: ownerId }),
+      createContact({ first_name: 'C', last_name: 'D', email: raceEmail, owner_id: ownerId }),
     ]);
 
     const statuses = [result1.status, result2.status];
@@ -251,40 +259,42 @@ describe('DB constraints — contacts', () => {
 
 describe('findContactByEmail', () => {
   it('returns the contact row when the email matches (case-insensitive)', async () => {
-    const created = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
-    const found = await findContactByEmail('ALICE@EXAMPLE.COM');
+    const base = makeContact();
+    const created = await createContact({ ...base, owner_id: ownerId });
+    const found = await findContactByEmail(base.email.toUpperCase());
 
     expect(found).not.toBeNull();
     expect(found!.id).toBe(created.id);
   });
 
   it('returns null when no contact matches the email', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
     const found = await findContactByEmail('nobody@example.com');
 
     expect(found).toBeNull();
   });
 
   it('excludes the contact with the given excludeId', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
-    const found = await findContactByEmail(BASE_CONTACT.email, contact.id);
+    const base = makeContact();
+    const contact = await createContact({ ...base, owner_id: ownerId });
+    const found = await findContactByEmail(base.email, contact.id);
 
     expect(found).toBeNull();
   });
 
   it('returns the contact when a different contact shares the email and excludeId does not match', async () => {
+    const sharedEmail = `${FILE_PREFIX}-shared-${uid()}@example.com`;
     const first = await createContact({
-      ...BASE_CONTACT,
-      email: 'shared@example.com',
+      ...makeContact(),
+      email: sharedEmail,
       owner_id: ownerId,
     });
     const second = await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Bob',
-      email: 'other@example.com',
       owner_id: ownerId,
     });
-    const found = await findContactByEmail('shared@example.com', second.id);
+    const found = await findContactByEmail(sharedEmail, second.id);
 
     expect(found).not.toBeNull();
     expect(found!.id).toBe(first.id);
@@ -295,7 +305,7 @@ describe('findContactByEmail', () => {
 
 describe('findContactById', () => {
   it('returns the contact row when found', async () => {
-    const created = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const created = await createContact({ ...makeContact(), owner_id: ownerId });
     const found = await findContactById(created.id);
 
     expect(found).not.toBeNull();
@@ -313,49 +323,55 @@ describe('findContactById', () => {
 
 describe('listContacts', () => {
   it('returns an empty array when no contacts exist', async () => {
-    const result = await listContacts();
+    const result = await listContacts({ ownerId });
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);
   });
 
   it('returns all contacts ordered by created_at', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'a@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'b@example.com', owner_id: ownerId });
+    const emailA = `${FILE_PREFIX}-${uid()}-a@example.com`;
+    const emailB = `${FILE_PREFIX}-${uid()}-b@example.com`;
+    await createContact({ ...makeContact(), email: emailA, owner_id: ownerId });
+    await createContact({ ...makeContact(), email: emailB, owner_id: ownerId });
 
-    const result = await listContacts();
+    const result = await listContacts({ ownerId });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(2);
-    expect(result.data[0].email).toBe('a@example.com');
-    expect(result.data[1].email).toBe('b@example.com');
+    expect(result.data[0].email).toBe(emailA);
+    expect(result.data[1].email).toBe(emailB);
   });
 
   it('filters by ownerId when provided', async () => {
     // Create a second owner
     const other = await createUser({
       ...OWNER_USER,
-      email: 'other@example.com',
+      email: `${FILE_PREFIX}-other@example.com`,
     });
 
-    await createContact({ ...BASE_CONTACT, email: 'mine@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'theirs@example.com', owner_id: other.id });
+    const mineEmail = `${FILE_PREFIX}-${uid()}-mine@example.com`;
+    const theirsEmail = `${FILE_PREFIX}-${uid()}-theirs@example.com`;
+    await createContact({ ...makeContact(), email: mineEmail, owner_id: ownerId });
+    await createContact({ ...makeContact(), email: theirsEmail, owner_id: other.id });
 
     const result = await listContacts({ ownerId });
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].email).toBe('mine@example.com');
+    expect(result.data[0].email).toBe(mineEmail);
   });
 
   it('filters by accountId when provided', async () => {
+    const linkedEmail = `${FILE_PREFIX}-${uid()}-linked@example.com`;
+    const unlinkedEmail = `${FILE_PREFIX}-${uid()}-unlinked@example.com`;
     await createContact({
-      ...BASE_CONTACT,
-      email: 'linked@example.com',
+      ...makeContact(),
+      email: linkedEmail,
       account_id: accountId,
       owner_id: ownerId,
     });
-    await createContact({ ...BASE_CONTACT, email: 'unlinked@example.com', owner_id: ownerId });
+    await createContact({ ...makeContact(), email: unlinkedEmail, owner_id: ownerId });
 
     const result = await listContacts({ accountId });
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].email).toBe('linked@example.com');
+    expect(result.data[0].email).toBe(linkedEmail);
   });
 });
 
@@ -364,15 +380,13 @@ describe('listContacts', () => {
 describe('listContacts — search filter', () => {
   it('returns contacts whose first_name matches the search term (case-insensitive)', async () => {
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Alice',
-      email: 'a@example.com',
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Bob',
-      email: 'b@example.com',
       owner_id: ownerId,
     });
 
@@ -383,15 +397,13 @@ describe('listContacts — search filter', () => {
 
   it('returns contacts whose last_name matches the search term (case-insensitive)', async () => {
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       last_name: 'Smith',
-      email: 'smith@example.com',
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       last_name: 'Jones',
-      email: 'jones@example.com',
       owner_id: ownerId,
     });
 
@@ -401,61 +413,62 @@ describe('listContacts — search filter', () => {
   });
 
   it('returns contacts whose email matches the search term', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'find.me@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'other@example.com', owner_id: ownerId });
+    const findMeEmail = `${FILE_PREFIX}-${uid()}-findme@example.com`;
+    await createContact({ ...makeContact(), email: findMeEmail, owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
-    const results = await listContacts({ search: 'find.me' });
+    const results = await listContacts({ search: findMeEmail.split('@')[0] });
     expect(results.data).toHaveLength(1);
-    expect(results.data[0].email).toBe('find.me@example.com');
+    expect(results.data[0].email).toBe(findMeEmail);
   });
 
   it('returns empty array when search matches nothing', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
     const results = await listContacts({ search: 'zzznomatch' });
     expect(results.data).toHaveLength(0);
   });
 
   it('combines search with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: 'search-other@example.com' });
+    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-search-other@example.com` });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Alice',
-      email: 'mine-alice@example.com',
+      email: `${FILE_PREFIX}-${uid()}-mine-alice@example.com`,
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Alice',
-      email: 'theirs-alice@example.com',
+      email: `${FILE_PREFIX}-${uid()}-theirs-alice@example.com`,
       owner_id: other.id,
     });
 
     const results = await listContacts({ ownerId, search: 'Alice' });
     expect(results.data).toHaveLength(1);
-    expect(results.data[0].email).toBe('mine-alice@example.com');
+    expect(results.data[0].owner_id).toBe(ownerId);
   });
 });
 
 describe('listContacts — accountSearch filter', () => {
   it('returns only contacts linked to accounts matching the name substring', async () => {
+    const linkedEmail = `${FILE_PREFIX}-${uid()}-linked@example.com`;
     await createContact({
-      ...BASE_CONTACT,
-      email: 'linked@example.com',
+      ...makeContact(),
+      email: linkedEmail,
       account_id: accountId,
       owner_id: ownerId,
     });
-    await createContact({ ...BASE_CONTACT, email: 'unlinked@example.com', owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
     // accountId was created with name 'Test Account'
     const results = await listContacts({ accountSearch: 'Test' });
     expect(results.data).toHaveLength(1);
-    expect(results.data[0].email).toBe('linked@example.com');
+    expect(results.data[0].email).toBe(linkedEmail);
   });
 
   it('returns empty array when account name search matches nothing', async () => {
     await createContact({
-      ...BASE_CONTACT,
-      email: 'x@example.com',
+      ...makeContact(),
       account_id: accountId,
       owner_id: ownerId,
     });
@@ -468,11 +481,11 @@ describe('listContacts — accountSearch filter', () => {
 
 describe('listContacts — pagination', () => {
   it('returns correct page and limit metadata', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'p1@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'p2@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'p3@example.com', owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
-    const result = await listContacts({ page: 1, limit: 2 });
+    const result = await listContacts({ ownerId, page: 1, limit: 2 });
     expect(result.data).toHaveLength(2);
     expect(result.total).toBe(3);
     expect(result.page).toBe(1);
@@ -480,66 +493,66 @@ describe('listContacts — pagination', () => {
   });
 
   it('returns the correct slice for page 2', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'first@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'second@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'third@example.com', owner_id: ownerId });
+    const firstEmail = `${FILE_PREFIX}-${uid()}-first@example.com`;
+    const secondEmail = `${FILE_PREFIX}-${uid()}-second@example.com`;
+    const thirdEmail = `${FILE_PREFIX}-${uid()}-third@example.com`;
+    await createContact({ ...makeContact(), email: firstEmail, owner_id: ownerId });
+    await createContact({ ...makeContact(), email: secondEmail, owner_id: ownerId });
+    await createContact({ ...makeContact(), email: thirdEmail, owner_id: ownerId });
 
-    const result = await listContacts({ page: 2, limit: 2 });
+    const result = await listContacts({ ownerId, page: 2, limit: 2 });
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].email).toBe('third@example.com');
+    expect(result.data[0].email).toBe(thirdEmail);
     expect(result.total).toBe(3);
   });
 
   it('returns empty data array when page exceeds total', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'only@example.com', owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
-    const result = await listContacts({ page: 5, limit: 10 });
+    const result = await listContacts({ ownerId, page: 5, limit: 10 });
     expect(result.data).toHaveLength(0);
     expect(result.total).toBe(1);
   });
 
   it('sorts by first_name ascending when sort=first_name dir=ASC', async () => {
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Zara',
-      email: 'z@example.com',
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Alice',
-      email: 'a@example.com',
       owner_id: ownerId,
     });
 
-    const result = await listContacts({ sort: 'first_name', dir: 'ASC' });
+    const result = await listContacts({ ownerId, sort: 'first_name', dir: 'ASC' });
     expect(result.data[0].first_name).toBe('Alice');
     expect(result.data[1].first_name).toBe('Zara');
   });
 
   it('sorts by first_name descending when sort=first_name dir=DESC', async () => {
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Alice',
-      email: 'a@example.com',
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Zara',
-      email: 'z@example.com',
       owner_id: ownerId,
     });
 
-    const result = await listContacts({ sort: 'first_name', dir: 'DESC' });
+    const result = await listContacts({ ownerId, sort: 'first_name', dir: 'DESC' });
     expect(result.data[0].first_name).toBe('Zara');
   });
 
   it('falls back to created_at sort for invalid sort column', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'safe@example.com', owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
     // Should not throw; falls back to created_at
     const result = await listContacts({
+      ownerId,
       sort: 'invalid_col; DROP TABLE contacts;--' as unknown as 'created_at',
     });
     expect(result.data).toHaveLength(1);
@@ -550,7 +563,8 @@ describe('listContacts — pagination', () => {
 
 describe('updateContact', () => {
   it('updates the specified fields and returns the updated row', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const base = makeContact();
+    const contact = await createContact({ ...base, owner_id: ownerId });
 
     const updated = await updateContact(contact.id, { first_name: 'Alicia', title: 'CRO' });
 
@@ -558,18 +572,18 @@ describe('updateContact', () => {
     expect(updated!.title).toBe('CRO');
     // Unchanged fields remain intact
     expect(updated!.last_name).toBe('Smith');
-    expect(updated!.email).toBe('alice@example.com');
+    expect(updated!.email).toBe(base.email);
   });
 
   it('updates updated_at timestamp', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     const updated = await updateContact(contact.id, { phone: '+1-555-9999' });
 
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(contact.updated_at.getTime());
   });
 
   it('links a contact to an account', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     expect(contact.account_id).toBeNull();
 
     const updated = await updateContact(contact.id, { account_id: accountId });
@@ -578,8 +592,7 @@ describe('updateContact', () => {
 
   it('unlinks a contact from an account by setting account_id to null', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'linked2@example.com',
+      ...makeContact(),
       account_id: accountId,
       owner_id: ownerId,
     });
@@ -601,7 +614,7 @@ describe('updateContact', () => {
 
 describe('deleteContact', () => {
   it('removes the contact and returns the deleted row', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
 
     const deleted = await deleteContact(contact.id);
     expect(deleted!.id).toBe(contact.id);
@@ -620,12 +633,13 @@ describe('deleteContact', () => {
 
 describe('exportContactsForCsv', () => {
   it('returns an empty array when no contacts exist', async () => {
-    const rows = await exportContactsForCsv();
+    const rows = await exportContactsForCsv({ ownerId });
     expect(rows).toEqual([]);
   });
 
   it('returns enriched rows with owner_name and account_name', async () => {
-    await createContact({ ...BASE_CONTACT, account_id: accountId, owner_id: ownerId });
+    const base = makeContact();
+    await createContact({ ...base, account_id: accountId, owner_id: ownerId });
 
     const rows = await exportContactsForCsv({ ownerId });
 
@@ -633,13 +647,13 @@ describe('exportContactsForCsv', () => {
     const row = rows[0];
     expect(row.first_name).toBe('Alice');
     expect(row.last_name).toBe('Smith');
-    expect(row.email).toBe('alice@example.com');
+    expect(row.email).toBe(base.email);
     expect(row.owner_name).toBe('Owner User');
     expect(row.account_name).toBe('Test Account');
   });
 
   it('returns null account_name when contact has no account', async () => {
-    await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
 
     const rows = await exportContactsForCsv({ ownerId });
 
@@ -650,54 +664,54 @@ describe('exportContactsForCsv', () => {
   it('filters by ownerId', async () => {
     // Guard against leftover user from a prior failed run
     await pool.query(
-      `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = 'export-other@example.com')`,
+      `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = 'contact-svc-export-other@example.com')`,
     );
-    await pool.query(`DELETE FROM users WHERE email = 'export-other@example.com'`);
+    await pool.query(`DELETE FROM users WHERE email = 'contact-svc-export-other@example.com'`);
 
     const otherUser = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, password_hash, status)
-       VALUES ('export-other@example.com', 'Other User', 'rep', 'x', 'active') RETURNING id`,
+       VALUES ('contact-svc-export-other@example.com', 'Other User', 'rep', 'x', 'active') RETURNING id`,
     );
     const otherOwnerId = otherUser.rows[0].id;
 
-    await createContact({ ...BASE_CONTACT, email: 'mine@example.com', owner_id: ownerId });
-    await createContact({ ...BASE_CONTACT, email: 'theirs@example.com', owner_id: otherOwnerId });
+    await createContact({ ...makeContact(), owner_id: ownerId });
+    await createContact({ ...makeContact(), owner_id: otherOwnerId });
 
     const rows = await exportContactsForCsv({ ownerId });
     expect(rows.every((r) => r.owner_name === 'Owner User')).toBe(true);
 
     // Must delete contacts before user due to FK constraint
     await pool.query('DELETE FROM contacts WHERE owner_id = $1', [otherOwnerId]);
-    await pool.query('DELETE FROM users WHERE email = $1', ['export-other@example.com']);
+    await pool.query('DELETE FROM users WHERE email = $1', ['contact-svc-export-other@example.com']);
   });
 
   it('filters by search', async () => {
-    await createContact({ ...BASE_CONTACT, email: 'alice@example.com', owner_id: ownerId });
+    const aliceEmail = `${FILE_PREFIX}-${uid()}-alice-csv@example.com`;
+    const bobEmail = `${FILE_PREFIX}-${uid()}-bob-csv@example.com`;
+    await createContact({ ...makeContact(), email: aliceEmail, first_name: 'Alice', owner_id: ownerId });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Bob',
-      email: 'bob@example.com',
+      email: bobEmail,
       owner_id: ownerId,
     });
 
-    const rows = await exportContactsForCsv({ search: 'alice' });
+    const rows = await exportContactsForCsv({ search: aliceEmail.split('@')[0] });
     expect(rows).toHaveLength(1);
-    expect(rows[0].email).toBe('alice@example.com');
+    expect(rows[0].email).toBe(aliceEmail);
   });
 
   it('orders results by last_name then first_name', async () => {
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Zara',
       last_name: 'Zzz',
-      email: 'z@example.com',
       owner_id: ownerId,
     });
     await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'Aaron',
       last_name: 'Aaa',
-      email: 'a@example.com',
       owner_id: ownerId,
     });
 
@@ -708,8 +722,7 @@ describe('exportContactsForCsv', () => {
 
   it('includes address and social fields in export rows', async () => {
     await createContact({
-      ...BASE_CONTACT,
-      email: 'csv-export@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       address_line1: '123 Main St',
       city: 'Springfield',
@@ -731,8 +744,7 @@ describe('exportContactsForCsv', () => {
 describe('createContact — address and social fields', () => {
   it('stores address fields when provided', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'addr@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       address_line1: '100 Oak Ave',
       address_line2: 'Suite 200',
@@ -754,7 +766,7 @@ describe('createContact — address and social fields', () => {
     const contact = await createContact({
       first_name: 'No',
       last_name: 'Address',
-      email: 'noaddr@example.com',
+      email: `${FILE_PREFIX}-${uid()}-noaddr@example.com`,
       owner_id: ownerId,
     });
 
@@ -765,8 +777,7 @@ describe('createContact — address and social fields', () => {
 
   it('stores linkedin_url and twitter_x_url when provided', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'social@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       linkedin_url: 'https://linkedin.com/in/alicesmith',
       twitter_x_url: 'https://x.com/alicesmith',
@@ -780,7 +791,7 @@ describe('createContact — address and social fields', () => {
     const contact = await createContact({
       first_name: 'No',
       last_name: 'Social',
-      email: 'nosocial@example.com',
+      email: `${FILE_PREFIX}-${uid()}-nosocial@example.com`,
       owner_id: ownerId,
     });
     expect(contact.linkedin_url).toBeNull();
@@ -792,7 +803,7 @@ describe('createContact — address and social fields', () => {
 
 describe('updateContact — address and social fields', () => {
   it('updates city and country', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     const updated = await updateContact(contact.id, { city: 'Seattle', country: 'US' });
     expect(updated!.city).toBe('Seattle');
     expect(updated!.country).toBe('US');
@@ -801,7 +812,7 @@ describe('updateContact — address and social fields', () => {
   });
 
   it('updates linkedin_url', async () => {
-    const contact = await createContact({ ...BASE_CONTACT, owner_id: ownerId });
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     const updated = await updateContact(contact.id, {
       linkedin_url: 'https://www.linkedin.com/in/testuser',
     });
@@ -810,8 +821,7 @@ describe('updateContact — address and social fields', () => {
 
   it('overwrites linkedin_url with a new value', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'clearme@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       linkedin_url: 'https://linkedin.com/in/old-url',
     });
@@ -830,13 +840,11 @@ describe('mergeContacts', () => {
 
   it('deletes the loser contact after merge', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
-      email: 'loser@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
 
@@ -848,13 +856,11 @@ describe('mergeContacts', () => {
 
   it('winner contact still exists after merge', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'alive-winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
-      email: 'alive-loser@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
 
@@ -866,8 +872,7 @@ describe('mergeContacts', () => {
 
   it('rejects self-merge (winner === loser)', async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: 'self@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
 
@@ -878,15 +883,13 @@ describe('mergeContacts', () => {
 
   it('uses loser field value when fieldChoices specifies loser', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'WinnerFirst',
-      email: 'fc-winner@example.com',
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'LoserFirst',
-      email: 'fc-loser@example.com',
       owner_id: ownerId,
     });
 
@@ -901,13 +904,11 @@ describe('mergeContacts', () => {
 
   it('re-links loser activities to winner', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'act-winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
-      email: 'act-loser@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
 
@@ -932,14 +933,12 @@ describe('mergeContacts', () => {
 
   it('writes a merged audit entry', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'audit-winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
+      ...makeContact(),
       first_name: 'AuditLoser',
-      email: 'audit-loser@example.com',
       owner_id: ownerId,
     });
 
@@ -954,13 +953,11 @@ describe('mergeContacts', () => {
 
   it('re-links loser deal_contacts to winner, skipping duplicates', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'deal-winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
-      email: 'deal-loser@example.com',
+      ...makeContact(),
       owner_id: ownerId,
     });
 
@@ -993,16 +990,14 @@ describe('mergeContacts', () => {
 
   it('uses loser address and social field values when fieldChoices specifies loser', async () => {
     const winner = await createContact({
-      ...BASE_CONTACT,
-      email: 'addr-winner@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       address_line1: 'Winner Street 1',
       city: 'Winner City',
       linkedin_url: 'https://linkedin.com/in/winner',
     });
     const loser = await createContact({
-      ...BASE_CONTACT,
-      email: 'addr-loser@example.com',
+      ...makeContact(),
       owner_id: ownerId,
       address_line1: 'Loser Avenue 2',
       city: 'Loser City',
@@ -1032,8 +1027,7 @@ describe('contact addresses', () => {
 
   beforeEach(async () => {
     const contact = await createContact({
-      ...BASE_CONTACT,
-      email: `addr-test-${Date.now()}@example.com`,
+      ...makeContact(),
       owner_id: ownerId,
     });
     contactId = contact.id;
