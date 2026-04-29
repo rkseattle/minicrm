@@ -14,7 +14,8 @@
     "test:coverage": "npm test -- --coverage",
     "generate-spec": "tsx src/scripts/generateSpec.ts",
     "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json",
-    "seed:e2e-admin": "tsx src/scripts/seed-e2e-admin.ts"
+    "seed:e2e-admin": "tsx src/scripts/seed-e2e-admin.ts",
+    "seed:e2e-storage": "tsx src/scripts/seed-e2e-storage.ts"
   },
   "dependencies": {
     "@minicrm/shared": "*",
