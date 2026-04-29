@@ -222,19 +222,21 @@ describe('findAutomationRuleById', () => {
 
 describe('listAutomationRules', () => {
   it('returns an empty array when no rules exist', async () => {
-    const rules = await listAutomationRules(adminId);
-    expect(rules).toEqual([]);
+    const rules = await listAutomationRules();
+    const mine = rules.filter((r) => r.created_by === adminId);
+    expect(mine).toEqual([]);
   });
 
   it('returns all rules ordered by created_at descending', async () => {
     await createAutomationRule({ ...BASE_RULE, name: 'Alpha Rule', created_by: adminId });
     await createAutomationRule({ ...BASE_RULE, name: 'Beta Rule', created_by: adminId });
 
-    const rules = await listAutomationRules(adminId);
-    expect(rules).toHaveLength(2);
+    const rules = await listAutomationRules();
+    const mine = rules.filter((r) => r.created_by === adminId);
+    expect(mine).toHaveLength(2);
     // Most recently created rule should be first
-    expect(rules[0].name).toBe('Beta Rule');
-    expect(rules[1].name).toBe('Alpha Rule');
+    expect(mine[0].name).toBe('Beta Rule');
+    expect(mine[1].name).toBe('Alpha Rule');
   });
 });
 

@@ -160,7 +160,7 @@ describe('listTags', () => {
   it('returns all tags ordered by name', async () => {
     await createTag({ name: `${FILE_PREFIX}-zebra` });
     await createTag({ name: `${FILE_PREFIX}-alpha` });
-    const tags = await listTags(FILE_PREFIX);
+    const tags = (await listTags()).filter((t) => t.name.startsWith(FILE_PREFIX));
     const names = tags.map((t) => t.name);
     expect(names).toEqual([...names].sort());
     expect(names).toContain(`${FILE_PREFIX}-alpha`);
@@ -168,7 +168,7 @@ describe('listTags', () => {
   });
 
   it('returns empty array when no tags exist', async () => {
-    const tags = await listTags(FILE_PREFIX);
+    const tags = (await listTags()).filter((t) => t.name.startsWith(FILE_PREFIX));
     expect(tags).toEqual([]);
   });
 });
@@ -240,7 +240,7 @@ describe('contact tag attachment', () => {
   it('creates the tag if it does not already exist', async () => {
     const tag = await attachTag('contact', contactId, { name: `${FILE_PREFIX}-brand-new-tag` });
     expect(tag.id).toBeTruthy();
-    const allTags = await listTags(FILE_PREFIX);
+    const allTags = (await listTags()).filter((t) => t.name.startsWith(FILE_PREFIX));
     expect(allTags.map((t) => t.name)).toContain(`${FILE_PREFIX}-brand-new-tag`);
   });
 

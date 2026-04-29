@@ -33,6 +33,7 @@ const BASE_RULE = {
 
 let adminCookie: string;
 let repCookie: string;
+let adminId: string;
 
 beforeAll(async () => {
   await pool.query(
@@ -52,6 +53,7 @@ beforeAll(async () => {
     passwordHash: '$2b$12$placeholder',
     status: 'active',
   });
+  adminId = admin.id;
   adminCookie = makeAuthCookie({
     id: admin.id,
     email: admin.email,
@@ -184,7 +186,10 @@ describe('GET /api/automation/rules', () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.rules)).toBe(true);
-    expect(res.body.rules).toHaveLength(0);
+    const mine = (res.body.rules as { created_by: string }[]).filter(
+      (r) => r.created_by === adminId,
+    );
+    expect(mine).toHaveLength(0);
   });
 
   it('returns all rules after creation', async () => {
@@ -197,7 +202,10 @@ describe('GET /api/automation/rules', () => {
     const res = await request(app).get('/api/automation/rules').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.rules).toHaveLength(2);
+    const mine = (res.body.rules as { created_by: string }[]).filter(
+      (r) => r.created_by === adminId,
+    );
+    expect(mine).toHaveLength(2);
   });
 
   it('returns 403 when a rep requests the list', async () => {

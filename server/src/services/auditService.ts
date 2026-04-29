@@ -368,22 +368,14 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
  * Returns all distinct users who have entries in the audit log.
  * Used to populate the user filter dropdown on the admin audit log page.
  *
- * @param actorIds Optional allowlist of changed_by_id values; returns all actors when omitted.
  * @returns Array of { id, name } pairs ordered by name
  */
-export async function listAuditLogActors(actorIds?: string[]): Promise<{ id: string; name: string }[]> {
+export async function listAuditLogActors(): Promise<{ id: string; name: string }[]> {
   const result = await pool.query<{ id: string; name: string }>(
-    actorIds && actorIds.length > 0
-      ? `SELECT DISTINCT changed_by_id AS id, changed_by_name AS name
-         FROM audit_log
-         WHERE changed_by_id IS NOT NULL
-           AND changed_by_id = ANY($1)
-         ORDER BY changed_by_name ASC`
-      : `SELECT DISTINCT changed_by_id AS id, changed_by_name AS name
-         FROM audit_log
-         WHERE changed_by_id IS NOT NULL
-         ORDER BY changed_by_name ASC`,
-    actorIds && actorIds.length > 0 ? [actorIds] : [],
+    `SELECT DISTINCT changed_by_id AS id, changed_by_name AS name
+     FROM audit_log
+     WHERE changed_by_id IS NOT NULL
+     ORDER BY changed_by_name ASC`,
   );
   return result.rows;
 }
