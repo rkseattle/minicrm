@@ -438,7 +438,7 @@ Use these constants everywhere — never inline strings in `queryKey`.
 - Dashboard summary → `staleTime: 0` (intentional — always fresh)
 - No global `staleTime` on the QueryClient
 
-### ⛔ E2E Functional Test Suite — ONE RUN PER SESSION, NO EXCEPTIONS
+### ⛔ E2E Functional Test Suite — ONE RUN PER CODE CHANGE, NO EXCEPTIONS
 
 > **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED.** Read it in full before
 > touching the E2E suite. Violating it wastes significant time and can pollute the
@@ -457,15 +457,9 @@ files — never from scrolling back through terminal output:
 - `qa/e2e/test-results/results.xml` — JUnit XML; `tests`, `failures`, `errors` attributes
 - `qa/e2e/test-results/healing-report.json` — heal event counts and detail
 
-**RULE 3 — Re-running to "verify a fix" is prohibited.**
-If you make a code change after the first run, you cannot confirm it with a second
-run in the same session. Make the fix, then note in your response that CI will
-confirm correctness. The fix either holds up in CI or it doesn't — a second local
-run does not add safety and costs time.
-
-**RULE 4 — Delete stale results before the one permitted run.**
+**RULE 3 — Delete stale results before the each run.**
 Per the general testing directive: delete `qa/e2e/test-results/` before starting
-the single permitted run so stale output cannot influence pass/fail determination.
+the run so stale output cannot influence pass/fail determination.
 
 ### E2E — Conventions
 
