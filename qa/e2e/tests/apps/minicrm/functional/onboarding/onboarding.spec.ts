@@ -49,71 +49,78 @@ async function setOnboardingCompleted(completed: boolean, restClient: RestClient
 
 // ---------------------------------------------------------------------------
 // Tests
+//
+// All four tests mutate the same system_settings row (onboarding_completed).
+// Running them in parallel causes races where one test's setup overwrites
+// another test's state mid-run. test.describe.serial forces sequential
+// execution within this file while the rest of the suite stays parallel.
 // ---------------------------------------------------------------------------
 
-test('@functional F-OB1: banner is visible for admin when is_first_run is true', async ({
-  page,
-  restClient,
-}) => {
-  await setOnboardingCompleted(false, restClient);
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test.describe.serial('Onboarding banner (MINCRM-256)', () => {
+  test('@functional F-OB1: banner is visible for admin when is_first_run is true', async ({
+    page,
+    restClient,
+  }) => {
+    await setOnboardingCompleted(false, restClient);
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
-  await expect(banner).toBeVisible({ timeout: 10_000 });
-});
+    const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+    await expect(banner).toBeVisible({ timeout: 10_000 });
+  });
 
-test('@functional F-OB2: banner is NOT visible when is_first_run is false', async ({
-  page,
-  restClient,
-}) => {
-  await setOnboardingCompleted(true, restClient);
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  test('@functional F-OB2: banner is NOT visible when is_first_run is false', async ({
+    page,
+    restClient,
+  }) => {
+    await setOnboardingCompleted(true, restClient);
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  // Navigate explicitly to the dashboard and wait for its heading — this is
-  // layout- and viewport-agnostic, and guarantees all queries have settled
-  // before we assert the banner is absent.
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await page.waitFor([{ type: 'testId', value: 'dashboard-heading' }], 'visible', {}, 10_000);
-  expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
-});
+    // Navigate explicitly to the dashboard and wait for its heading — this is
+    // layout- and viewport-agnostic, and guarantees all queries have settled
+    // before we assert the banner is absent.
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.waitFor([{ type: 'testId', value: 'dashboard-heading' }], 'visible', {}, 10_000);
+    expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
+  });
 
-test('@functional F-OB3: dismiss (X) hides the banner and persists onboarding_completed=true', async ({
-  page,
-  restClient,
-}) => {
-  await setOnboardingCompleted(false, restClient);
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  test('@functional F-OB3: dismiss (X) hides the banner and persists onboarding_completed=true', async ({
+    page,
+    restClient,
+  }) => {
+    await setOnboardingCompleted(false, restClient);
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
-  await expect(banner).toBeVisible({ timeout: 10_000 });
+    const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+    await expect(banner).toBeVisible({ timeout: 10_000 });
 
-  await page.click([{ type: 'testId', value: 'onboarding-dismiss-button' }]);
+    await page.click([{ type: 'testId', value: 'onboarding-dismiss-button' }]);
 
-  // Banner should disappear after dismiss.
-  expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
+    // Banner should disappear after dismiss.
+    expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
 
-  // Verify persistence via API.
-  const res = await restClient.get<{ is_first_run: boolean; onboarding_completed: boolean }>(
-    '/api/v1/settings/onboarding',
-  );
-  expect(res.body.onboarding_completed).toBe(true);
-  expect(res.body.is_first_run).toBe(false);
-});
+    // Verify persistence via API.
+    const res = await restClient.get<{ is_first_run: boolean; onboarding_completed: boolean }>(
+      '/api/v1/settings/onboarding',
+    );
+    expect(res.body.onboarding_completed).toBe(true);
+    expect(res.body.is_first_run).toBe(false);
+  });
 
-test('@functional F-OB4: step 1 advances to step 2 when "Looks good" is clicked', async ({
-  page,
-  restClient,
-}) => {
-  await setOnboardingCompleted(false, restClient);
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  test('@functional F-OB4: step 1 advances to step 2 when "Looks good" is clicked', async ({
+    page,
+    restClient,
+  }) => {
+    await setOnboardingCompleted(false, restClient);
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  await expect(
-    await page.locate([{ type: 'testId', value: 'onboarding-step-1' }]).resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      await page.locate([{ type: 'testId', value: 'onboarding-step-1' }]).resolve(),
+    ).toBeVisible({ timeout: 10_000 });
 
-  await page.click([{ type: 'testId', value: 'onboarding-step1-looks-good' }]);
+    await page.click([{ type: 'testId', value: 'onboarding-step1-looks-good' }]);
 
-  await expect(
-    await page.locate([{ type: 'testId', value: 'onboarding-step-2' }]).resolve(),
-  ).toBeVisible({ timeout: 5_000 });
-});
+    await expect(
+      await page.locate([{ type: 'testId', value: 'onboarding-step-2' }]).resolve(),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+}); // end describe.serial
