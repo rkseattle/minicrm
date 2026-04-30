@@ -154,20 +154,18 @@ export async function openHamburgerMenu(
     { type: 'testId', value: 'nav-menu-toggle' },
     { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
   ]);
-  // The hamburger drawer is conditionally rendered — click the toggle first,
-  // then resolve it once it's mounted.
+  // The hamburger drawer is conditionally rendered — resolve() throws if not
+  // found (no silent catch), and waitFor throws if it never becomes visible.
+  // This guarantees the drawer is fully mounted before the caller proceeds,
+  // eliminating the mount-race that caused F8-HB2 to fail on slow CI runners.
   const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
       { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
     ])
-    .resolve()
-    .catch(() => null);
-  // Wait for React to render the drawer — isVisible() after click() is a
-  // snapshot that races React state updates (Greptile P1 finding).
-  await drawer?.waitFor({ state: 'visible' }).catch(() => null);
-  const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
-  return { drawerVisible };
+    .resolve();
+  await drawer.waitFor({ state: 'visible' });
+  return { drawerVisible: true };
 }
 
 // ---------------------------------------------------------------------------
