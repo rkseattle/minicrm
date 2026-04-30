@@ -10,6 +10,7 @@
     "users": "[Üŝërŝ~~]",
     "winLossReport": "[Wïñ/Löŝŝ Rëpört~~~~~]",
     "activityVolumeReport": "[Äĉtïvïty Rëpört~~~~~]",
+    "stageTrendReport": "[Ŝtägë Trëñd Rëpört~~~~~~]",
     "automation": "[Äütömätïöñ~~~]",
     "adminSettings": "[Ädmïñ Ŝëttïñgŝ~~~~~]",
     "profileSettings": "[Pröfïlë Ŝëttïñgŝ~~~~~]",
@@ -737,6 +738,25 @@
       "lossReasonEmpty": "[Ñö löŝŝ rëäŝöñŝ rëĉördëd för thïŝ përïöd.~~~~~~~~~~~~~]",
       "columnReason": "[Rëäŝöñ~~]",
       "columnCount": "[Ĉöüñt~~]"
+    },
+    "stageTrend": {
+      "pageTitle": "[Pïpëlïñë Ŝtägë Trëñd~~~~~~~]",
+      "subtitle": "[Dëälŝ ëñtërïñg äñd ädväñĉïñg thröügh ëäĉh pïpëlïñë ŝtägë övër tïmë.~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "dateRangeLabel": "[Dätë räñgë~~~]",
+      "preset30": "[Läŝt 30 däyŝ~~~~]",
+      "preset60": "[Läŝt 60 däyŝ~~~~]",
+      "preset90": "[Läŝt 90 däyŝ~~~~]",
+      "loading": "[Löädïñg rëpört…~~~~~]",
+      "errorLoad": "[Fäïlëd tö löäd rëpört. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
+      "empty": "[Ñö ŝtägë äĉtïvïty föüñd för thïŝ përïöd.~~~~~~~~~~~~]",
+      "columnStage": "[Ŝtägë~~]",
+      "columnPeriod": "[Përïöd~~]",
+      "columnEntered": "[Ëñtërëd~~~]",
+      "columnConverted": "[Ädväñĉëd~~~]",
+      "columnRate": "[Ädväñĉë rätë~~~~]",
+      "chartEnteredLabel": "[Ëñtërëd~~~]",
+      "chartConvertedLabel": "[Ädväñĉëd~~~]",
+      "tableHeading": "[Brëäkdöwñ by ŝtägë äñd përïöd~~~~~~~~~~]"
     }
   },
   "automation": {
