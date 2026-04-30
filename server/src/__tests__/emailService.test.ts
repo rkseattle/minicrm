@@ -168,6 +168,51 @@ describe('escapeHtml', () => {
   });
 });
 
+describe('sendOverdueTaskDigest — APP_URL branch', () => {
+  it('uses APP_URL env var when set', async () => {
+    const original = process.env.APP_URL;
+    process.env.APP_URL = 'https://crm.example.com';
+    try {
+      await expect(
+        sendOverdueTaskDigest('user@example.com', 'Eve', [
+          {
+            id: '00000000-0000-0000-0000-000000000010',
+            subject: 'Call back',
+            due_date: '2026-02-01',
+            linked_record_name: 'Acme',
+            linked_record_path: '/accounts/uuid',
+          },
+        ]),
+      ).resolves.toBeUndefined();
+    } finally {
+      if (original === undefined) delete process.env.APP_URL;
+      else process.env.APP_URL = original;
+    }
+  });
+});
+
+describe('sendAssignmentNotification — APP_URL branch', () => {
+  it('uses APP_URL env var when set', async () => {
+    const original = process.env.APP_URL;
+    process.env.APP_URL = 'https://crm.example.com';
+    try {
+      await expect(
+        sendAssignmentNotification('user@example.com', 'Frank', [
+          {
+            recordType: 'deal',
+            recordName: 'Big Deal',
+            recordPath: '/deals/uuid',
+            assignedByName: 'Admin',
+          },
+        ]),
+      ).resolves.toBeUndefined();
+    } finally {
+      if (original === undefined) delete process.env.APP_URL;
+      else process.env.APP_URL = original;
+    }
+  });
+});
+
 describe('sendContactEmail', () => {
   it('returns delivered: false with reason smtp_not_configured when no SMTP is set', async () => {
     // In test environment no SMTP is configured so resolveTransport returns null

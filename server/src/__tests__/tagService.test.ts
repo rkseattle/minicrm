@@ -203,6 +203,13 @@ describe('updateTag', () => {
     const result = await updateTag('00000000-0000-0000-0000-000000000000', { name: 'x' });
     expect(result).toBeNull();
   });
+
+  it('returns the existing tag unchanged when name is empty (no-op branch)', async () => {
+    const tag = await createTag({ name: `${FILE_PREFIX}-no-op` });
+    const result = await updateTag(tag.id, { name: '' });
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe(`${FILE_PREFIX}-no-op`);
+  });
 });
 
 // ── deleteTag ─────────────────────────────────────────────────────────────────
@@ -232,7 +239,9 @@ describe('contact tag attachment', () => {
 
   it('is idempotent — attaching the same tag twice does not error', async () => {
     await attachTag('contact', contactId, { name: `${FILE_PREFIX}-needs-renewal` });
-    await expect(attachTag('contact', contactId, { name: `${FILE_PREFIX}-needs-renewal` })).resolves.not.toThrow();
+    await expect(
+      attachTag('contact', contactId, { name: `${FILE_PREFIX}-needs-renewal` }),
+    ).resolves.not.toThrow();
     const tags = await listEntityTags('contact', contactId);
     expect(tags.filter((t) => t.name === `${FILE_PREFIX}-needs-renewal`).length).toBe(1);
   });
