@@ -89,13 +89,13 @@ jobs:
           NODE_ENV: development
 
   # MINCRM-203: npm audit runs in a separate parallel job so it does not delay
-  # Phase 2 (server + client tests). Runs alongside Phase 1, non-blocking.
+  # Phase 2 (server + client tests). Runs alongside Phase 1.
+  # MINCRM-282: job is now blocking — continue-on-error removed.
   security-audit:
     name: Phase 1 - Security Audit
     needs: changes
     if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -108,8 +108,7 @@ jobs:
         run: npm ci
 
       - name: Audit dependencies for high/critical vulnerabilities
-        run: |
-          npm audit --audit-level=high || echo "::warning::npm audit found high/critical vulnerabilities — review the output above"
+        run: npm audit --audit-level=high
 
   server-tests:
     name: Phase 2 - Server Unit Tests
@@ -865,40 +864,50 @@ jobs:
     name: Phase 2 - Unit Tests — Coverage Report
     needs: [server-tests, client-tests, e2e-framework-specs]
     runs-on: ubuntu-latest
+    # MINCRM-293: run whenever any test suite ran, regardless of which paths changed.
     if: (needs.server-tests.result == 'success' || needs.client-tests.result == 'success' || needs.e2e-framework-specs.result == 'success') && github.event_name == 'pull_request'
     steps:
+      # MINCRM-293: Each download step uses continue-on-error because only the suites
+      # that ran for this PR will have uploaded artifacts. Missing artifacts are handled
+      # gracefully in the build step below with per-file existence checks.
       - name: Download server coverage artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: server-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/server-coverage
 
       - name: Download client coverage artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-coverage
 
       - name: Download server test results artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: server-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/server-test-results
 
       - name: Download client test results artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: client-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-test-results
 
       - name: Download framework test results artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: framework-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/framework-test-results
 
       - name: Download framework coverage artifact
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: framework-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/framework-coverage
@@ -909,40 +918,48 @@ jobs:
           parse_summary() {
             local json_file="$1"
             python3 - "$json_file" <<'PYEOF'
-          import sys, json
-          try:
-              with open(sys.argv[1]) as f:
-                  data = json.load(f)
-              # json-summary format: { "total": { "lines": { "pct": N }, ... } }
-              t = data.get("total", {})
-              lines  = t.get("lines",      {}).get("pct", "?")
-              funcs  = t.get("functions",  {}).get("pct", "?")
-              branch = t.get("branches",   {}).get("pct", "?")
-              stmts  = t.get("statements", {}).get("pct", "?")
-              print(f"{lines}|{funcs}|{branch}|{stmts}")
-          except Exception as e:
-              print("?|?|?|?")
+          import sys, json, os
+          path = sys.argv[1]
+          if not os.path.exists(path):
+              print("—|—|—|—")
+          else:
+              try:
+                  with open(path) as f:
+                      data = json.load(f)
+                  # json-summary format: { "total": { "lines": { "pct": N }, ... } }
+                  t = data.get("total", {})
+                  lines  = t.get("lines",      {}).get("pct", "?")
+                  funcs  = t.get("functions",  {}).get("pct", "?")
+                  branch = t.get("branches",   {}).get("pct", "?")
+                  stmts  = t.get("statements", {}).get("pct", "?")
+                  print(f"{lines}|{funcs}|{branch}|{stmts}")
+              except Exception as e:
+                  print("?|?|?|?")
           PYEOF
           }
 
           parse_xml() {
             local xml_file="$1"
             python3 - "$xml_file" <<'PYEOF'
-          import sys, xml.etree.ElementTree as ET
-          try:
-              tree = ET.parse(sys.argv[1])
-              root = tree.getroot()
-              suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
-              tests    = sum(int(s.attrib.get('tests',    0)) for s in suites)
-              failures = sum(int(s.attrib.get('failures', 0)) for s in suites)
-              errors   = sum(int(s.attrib.get('errors',   0)) for s in suites)
-              skipped  = sum(int(s.attrib.get('skipped',  0)) for s in suites)
-              failed  = failures + errors
-              passed  = tests - failed - skipped
-              status  = '✅ Passed' if failed == 0 else '❌ Failed'
-              print(f"{status}|{tests}|{passed}|{failed}|{skipped}")
-          except Exception as e:
-              print(f"❓ Unknown|0|0|0|0")
+          import sys, xml.etree.ElementTree as ET, os
+          path = sys.argv[1]
+          if not os.path.exists(path):
+              print("⏭ Skipped|—|—|—|—")
+          else:
+              try:
+                  tree = ET.parse(path)
+                  root = tree.getroot()
+                  suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
+                  tests    = sum(int(s.attrib.get('tests',    0)) for s in suites)
+                  failures = sum(int(s.attrib.get('failures', 0)) for s in suites)
+                  errors   = sum(int(s.attrib.get('errors',   0)) for s in suites)
+                  skipped  = sum(int(s.attrib.get('skipped',  0)) for s in suites)
+                  failed  = failures + errors
+                  passed  = tests - failed - skipped
+                  status  = '✅ Passed' if failed == 0 else '❌ Failed'
+                  print(f"{status}|{tests}|{passed}|{failed}|{skipped}")
+              except Exception as e:
+                  print(f"❓ Unknown|0|0|0|0")
           PYEOF
           }
 
@@ -1008,12 +1025,13 @@ jobs:
 
   # MINCRM-269: Sentinel job — sole required status check for branch protection.
   # Treats skipped jobs as passing so that path-scoped PRs are not blocked by
-  # jobs that legitimately did not run. security-audit is excluded because it
-  # has continue-on-error: true and is intentionally non-blocking.
+  # jobs that legitimately did not run.
+  # MINCRM-282: security-audit is now blocking and included in this gate.
   ci-gate:
     name: CI gate
     needs:
       - lint-and-typecheck
+      - security-audit
       - server-tests
       - client-tests
       - e2e-framework-purity
@@ -1026,6 +1044,7 @@ jobs:
         run: |
           results=( \
             "${{ needs.lint-and-typecheck.result }}" \
+            "${{ needs.security-audit.result }}" \
             "${{ needs.server-tests.result }}" \
             "${{ needs.client-tests.result }}" \
             "${{ needs.e2e-framework-purity.result }}" \
