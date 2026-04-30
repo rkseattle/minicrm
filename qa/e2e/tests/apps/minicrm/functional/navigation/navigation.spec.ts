@@ -352,6 +352,13 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Deals via hamburger, then open menu again to check active state.
         await navigateViaNavLink('hamburger', 'deals', { page });
 
+        // Confirm the URL has settled on /deals before reopening the menu.
+        // The hamburger link click uses force:true (bypasses actionability), so
+        // React Router's location update may not be committed by the time
+        // openHamburgerMenu triggers a fresh popover mount — waiting for the
+        // URL guarantees NavLink sees the correct active location on first render.
+        await page.waitForURL('**/deals', { timeout: 10_000 });
+
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
