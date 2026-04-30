@@ -21,7 +21,7 @@ export type AutomationTriggerType = (typeof AUTOMATION_TRIGGER_TYPES)[number];
 // ── Action types ───────────────────────────────────────────────────────────────
 
 /** All supported automation action types. */
-export const AUTOMATION_ACTION_TYPES = ['create_task', 'send_notification'] as const;
+export const AUTOMATION_ACTION_TYPES = ['create_task', 'send_notification', 'send_webhook'] as const;
 
 export type AutomationActionType = (typeof AUTOMATION_ACTION_TYPES)[number];
 
@@ -68,6 +68,13 @@ export const createTaskActionConfigSchema = z
 /** Config for the send_notification action. */
 export const sendNotificationActionConfigSchema = z.object({
   message: z.string().min(1, 'Notification message is required').trim(),
+});
+
+/** Config for the send_webhook action. */
+export const sendWebhookActionConfigSchema = z.object({
+  url: z.string().url('URL must be a valid URL'),
+  method: z.enum(['POST', 'GET']),
+  headers: z.record(z.string()).optional(),
 });
 
 // ── Rule create schema ─────────────────────────────────────────────────────────
@@ -146,3 +153,4 @@ export type AutomationRuleResponse = z.infer<typeof automationRuleResponseSchema
 export type AutomationRuleLogResponse = z.infer<typeof automationRuleLogResponseSchema>;
 export type CreateTaskActionConfig = z.infer<typeof createTaskActionConfigSchema>;
 export type SendNotificationActionConfig = z.infer<typeof sendNotificationActionConfigSchema>;
+export type SendWebhookActionConfig = z.infer<typeof sendWebhookActionConfigSchema>;

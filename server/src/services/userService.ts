@@ -12,6 +12,7 @@ import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry } from './auditService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 
 /** Actor info required to write audit entries on write operations */
 export interface AuditActor {
@@ -117,6 +118,17 @@ export async function createUser(
     }
 
     await client.query('COMMIT');
+
+    // Dispatch user.invited for admin-initiated invite (actor present)
+    if (actor) {
+      void dispatchWebhookEvent('user.invited', {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      });
+    }
+
     return user;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -166,6 +178,23 @@ export async function updateUserStatus(
     }
 
     await client.query('COMMIT');
+
+    if (user) {
+      if (status === 'active') {
+        void dispatchWebhookEvent('user.activated', {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        });
+      } else if (status === 'inactive') {
+        void dispatchWebhookEvent('user.deactivated', {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        });
+      }
+    }
+
     return user;
   } catch (error) {
     await client.query('ROLLBACK');

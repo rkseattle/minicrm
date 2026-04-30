@@ -14,7 +14,9 @@ import {
   dealStageChangedConfigSchema,
   createTaskActionConfigSchema,
   sendNotificationActionConfigSchema,
+  sendWebhookActionConfigSchema,
 } from '@minicrm/shared/schemas/automationSchema.js';
+import { sendWebhookForAutomation } from './webhookService.js';
 
 /** Columns that may be updated via updateAutomationRule — guards against SQL injection */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAutomationRuleInput> = new Set([
@@ -299,6 +301,18 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
         },
         'Automation notification triggered',
       );
+    } else if (rule.action_type === 'send_webhook') {
+      const configParsed = sendWebhookActionConfigSchema.safeParse(rule.action_config);
+      if (!configParsed.success) {
+        throw new Error(`Invalid action_config: ${configParsed.error.errors[0].message}`);
+      }
+      await sendWebhookForAutomation({
+        url: configParsed.data.url,
+        method: configParsed.data.method,
+        headers: configParsed.data.headers,
+        eventType: 'automation.send_webhook',
+        data: { recordId: context.recordId, recordType: context.recordType },
+      });
     } else {
       throw new Error(`Unsupported action_type: ${rule.action_type}`);
     }
