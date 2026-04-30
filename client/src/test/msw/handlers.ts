@@ -13,7 +13,11 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import type { MyTaskResponse } from '@/api/activities.js';
 import type { DashboardSummaryResponse } from '@/api/dashboard.js';
-import type { WinLossReportResponse, ActivityVolumeReportResponse } from '@/api/reports.js';
+import type {
+  WinLossReportResponse,
+  ActivityVolumeReportResponse,
+  StageTrendReportResponse,
+} from '@/api/reports.js';
 import type {
   AutomationRuleResponse,
   AutomationRuleLogResponse,
@@ -195,6 +199,21 @@ export const ACTIVITY_VOLUME_REPORT: ActivityVolumeReportResponse = {
     },
   ],
   totals: { Note: 4, Call: 7, Email: 2, Meeting: 1, Task: 5, total: 19 },
+};
+
+/** Reusable fixture: stage trend report response (MINCRM-284) */
+export const STAGE_TREND_REPORT: StageTrendReportResponse = {
+  stages: ['Prospecting', 'Qualification', 'Proposal'],
+  dataPoints: [
+    { stage: 'Prospecting', period: '2026-04-01', entered: 5, converted: 3 },
+    { stage: 'Prospecting', period: '2026-04-08', entered: 4, converted: 2 },
+    { stage: 'Qualification', period: '2026-04-01', entered: 3, converted: 2 },
+    { stage: 'Qualification', period: '2026-04-08', entered: 2, converted: 1 },
+    { stage: 'Proposal', period: '2026-04-01', entered: 2, converted: 1 },
+    { stage: 'Proposal', period: '2026-04-08', entered: 1, converted: 0 },
+  ],
+  windowStart: '2026-04-01',
+  windowEnd: '2026-04-30',
 };
 
 /** Reusable fixture: admin user */
@@ -794,6 +813,11 @@ export const handlers = [
   /** Reports: GET /api/reports/activity-volume — returns activity volume report (MINCRM-181) */
   http.get('/api/v1/reports/activity-volume', () => {
     return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
+  }),
+
+  /** Reports: GET /api/reports/stage-trend — returns stage trend report (MINCRM-284) */
+  http.get('/api/v1/reports/stage-trend', () => {
+    return HttpResponse.json(STAGE_TREND_REPORT);
   }),
 
   /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */

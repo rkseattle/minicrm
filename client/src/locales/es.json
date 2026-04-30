@@ -872,6 +872,25 @@
       "convertedFootnote": "Valores convertidos a {{currency}} · tasas al {{date}}",
       "unratedNote": "{{count}} moneda de negocio no tiene tasa configurada.",
       "unratedNote_other": "{{count}} monedas de negocios no tienen tasa configurada."
+    },
+    "stageTrend": {
+      "pageTitle": "Tendencia de etapas del pipeline",
+      "subtitle": "Negocios que entran y avanzan por cada etapa del pipeline a lo largo del tiempo.",
+      "dateRangeLabel": "Rango de fechas",
+      "preset30": "Últimos 30 días",
+      "preset60": "Últimos 60 días",
+      "preset90": "Últimos 90 días",
+      "loading": "Cargando informe…",
+      "errorLoad": "Error al cargar el informe. Por favor, inténtelo de nuevo.",
+      "empty": "No se encontró actividad de etapas para este período.",
+      "columnStage": "Etapa",
+      "columnPeriod": "Período",
+      "columnEntered": "Entrados",
+      "columnConverted": "Avanzados",
+      "columnRate": "Tasa de avance",
+      "chartEnteredLabel": "Entrados",
+      "chartConvertedLabel": "Avanzados",
+      "tableHeading": "Desglose por etapa y período"
     }
   },
   "automation": {

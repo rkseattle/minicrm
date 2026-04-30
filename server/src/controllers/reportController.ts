@@ -5,7 +5,13 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { getWinLossReport, getActivityVolumeReport } from '../services/reportService.js';
+import {
+  getWinLossReport,
+  getActivityVolumeReport,
+  getStageTrendReport,
+  STAGE_TREND_DAYS_OPTIONS,
+  type StageTrendDays,
+} from '../services/reportService.js';
 
 /** Zod schema for win/loss report query parameters */
 const winLossQuerySchema = z.object({
@@ -102,5 +108,43 @@ export async function getActivityVolumeReportHandler(req: Request, res: Response
   }
 
   const report = await getActivityVolumeReport({ startDate: start, endDate: end, ownerId });
+  res.status(200).json(report);
+}
+
+// ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────
+
+/** Zod schema for stage trend report query parameters */
+const stageTrendQuerySchema = z.object({
+  days: z
+    .enum(['30', '60', '90'])
+    .transform((v) => parseInt(v, 10) as StageTrendDays)
+    .optional()
+    .default('30'),
+});
+
+/**
+ * GET /api/v1/reports/stage-trend
+ * Returns stage entry and conversion counts over the last 30, 60, or 90 days.
+ * Accessible to all authenticated users; no owner scoping (aggregated data).
+ * Implements MINCRM-284.
+ */
+export async function getStageTrendReportHandler(req: Request, res: Response): Promise<void> {
+  const parsed = stageTrendQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
+    });
+    return;
+  }
+
+  const { days } = parsed.data;
+  if (!STAGE_TREND_DAYS_OPTIONS.includes(days)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'days must be 30, 60, or 90' },
+    });
+    return;
+  }
+
+  const report = await getStageTrendReport(days);
   res.status(200).json(report);
 }

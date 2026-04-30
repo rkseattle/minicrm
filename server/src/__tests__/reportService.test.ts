@@ -18,7 +18,11 @@
  */
 
 import 'dotenv/config';
-import { getWinLossReport, getActivityVolumeReport } from '../services/reportService.js';
+import {
+  getWinLossReport,
+  getActivityVolumeReport,
+  getStageTrendReport,
+} from '../services/reportService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -515,5 +519,152 @@ describe('getActivityVolumeReport — types default to zero', () => {
     expect(row.counts.Email).toBe(0);
     expect(row.counts.Meeting).toBe(0);
     expect(row.counts.Task).toBe(0);
+  });
+});
+
+// ── getStageTrendReport (MINCRM-284) ──────────────────────────────────────────
+
+/** Insert an audit_log entry recording a deal entering a given stage at a given timestamp */
+async function insertDealStageEntry(
+  dealId: string,
+  stage: string,
+  enteredAt: string,
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO audit_log (record_type, record_id, record_name, event_type, field_name, new_value, created_at)
+     VALUES ('deal', $1, 'Test Deal', 'updated', 'stage', $2, $3)`,
+    [dealId, stage, enteredAt],
+  );
+}
+
+/** Sums entered count for a given stage across all periods in a report */
+function stageTotalEntered(
+  dataPoints: { stage: string; entered: number }[],
+  stage: string,
+): number {
+  return dataPoints.filter((dp) => dp.stage === stage).reduce((sum, dp) => sum + dp.entered, 0);
+}
+
+/** Sums converted count for a given stage across all periods in a report */
+function stageTotalConverted(
+  dataPoints: { stage: string; converted: number }[],
+  stage: string,
+): number {
+  return dataPoints.filter((dp) => dp.stage === stage).reduce((sum, dp) => sum + dp.converted, 0);
+}
+
+describe('getStageTrendReport — stage entry counting', () => {
+  it('counts new deal entries within the window (delta increases after insert)', async () => {
+    // Baseline before inserting test data
+    const before = await getStageTrendReport(30);
+    const beforeEntered = stageTotalEntered(before.dataPoints, 'Prospecting');
+
+    // Create a deal and an audit entry within the last 30 days
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, close_date, owner_id) VALUES ('Trend Deal A', 'Prospecting', NOW()::date, $1) RETURNING id`,
+      [repId],
+    );
+    const dealId = dealResult.rows[0].id;
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 5);
+    await insertDealStageEntry(dealId, 'Prospecting', recentDate.toISOString());
+
+    const after = await getStageTrendReport(30);
+    const afterEntered = stageTotalEntered(after.dataPoints, 'Prospecting');
+    expect(afterEntered).toBe(beforeEntered + 1);
+  });
+
+  it('excludes audit entries outside the look-back window (delta unchanged after old insert)', async () => {
+    // Baseline before inserting test data
+    const before = await getStageTrendReport(30);
+    const beforeEntered = stageTotalEntered(before.dataPoints, 'Prospecting');
+
+    // Create a deal and an audit entry 45 days ago — outside the 30-day window
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, close_date, owner_id) VALUES ('Trend Deal Old', 'Prospecting', NOW()::date, $1) RETURNING id`,
+      [repId],
+    );
+    const dealId = dealResult.rows[0].id;
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 45);
+    await insertDealStageEntry(dealId, 'Prospecting', oldDate.toISOString());
+
+    const after = await getStageTrendReport(30);
+    const afterEntered = stageTotalEntered(after.dataPoints, 'Prospecting');
+    // Old entry must not increment the count
+    expect(afterEntered).toBe(beforeEntered);
+  });
+});
+
+describe('getStageTrendReport — conversion counting', () => {
+  it('marks a deal as converted when it has a subsequent stage change (delta increases)', async () => {
+    const before = await getStageTrendReport(30);
+    const beforeConverted = stageTotalConverted(before.dataPoints, 'Qualification');
+
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, close_date, owner_id) VALUES ('Trend Deal Conv', 'Qualification', NOW()::date, $1) RETURNING id`,
+      [repId],
+    );
+    const dealId = dealResult.rows[0].id;
+
+    const t1 = new Date();
+    t1.setDate(t1.getDate() - 10);
+    const t2 = new Date();
+    t2.setDate(t2.getDate() - 5);
+
+    // Deal entered Qualification at t1, then moved to Proposal at t2
+    await insertDealStageEntry(dealId, 'Qualification', t1.toISOString());
+    await insertDealStageEntry(dealId, 'Proposal', t2.toISOString());
+
+    const after = await getStageTrendReport(30);
+    const afterConverted = stageTotalConverted(after.dataPoints, 'Qualification');
+    expect(afterConverted).toBe(beforeConverted + 1);
+  });
+
+  it('does not mark a deal as converted when it has no subsequent stage change (delta unchanged)', async () => {
+    const before = await getStageTrendReport(30);
+    const beforeConverted = stageTotalConverted(before.dataPoints, 'Prospecting');
+
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, close_date, owner_id) VALUES ('Trend Deal NoConv', 'Prospecting', NOW()::date, $1) RETURNING id`,
+      [repId],
+    );
+    const dealId = dealResult.rows[0].id;
+
+    const enteredAt = new Date();
+    enteredAt.setDate(enteredAt.getDate() - 8);
+    await insertDealStageEntry(dealId, 'Prospecting', enteredAt.toISOString());
+
+    const after = await getStageTrendReport(30);
+    const afterConverted = stageTotalConverted(after.dataPoints, 'Prospecting');
+    // No subsequent entry — converted count must not increase
+    expect(afterConverted).toBe(beforeConverted);
+  });
+});
+
+describe('getStageTrendReport — metadata', () => {
+  it('returns windowStart and windowEnd ISO date strings', async () => {
+    const report = await getStageTrendReport(30);
+    expect(report.windowStart).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(report.windowEnd).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('uses monthly buckets for 60-day window', async () => {
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, close_date, owner_id) VALUES ('Trend Deal 60d', 'Prospecting', NOW()::date, $1) RETURNING id`,
+      [repId],
+    );
+    const dealId = dealResult.rows[0].id;
+
+    const enteredAt = new Date();
+    enteredAt.setDate(enteredAt.getDate() - 10);
+    await insertDealStageEntry(dealId, 'Prospecting', enteredAt.toISOString());
+
+    const report = await getStageTrendReport(60);
+    if (report.dataPoints.length > 0) {
+      // Monthly bucket period should be the start of the month (day = '01')
+      const period = report.dataPoints[0].period;
+      expect(period).toMatch(/^\d{4}-\d{2}-01$/);
+    }
   });
 });

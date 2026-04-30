@@ -872,6 +872,25 @@
       "convertedFootnote": "已换算为 {{currency}} · 汇率截至 {{date}}",
       "unratedNote": "{{count}} 种交易货币未配置汇率。",
       "unratedNote_other": "{{count}} 种交易货币未配置汇率。"
+    },
+    "stageTrend": {
+      "pageTitle": "销售阶段趋势",
+      "subtitle": "随时间推移各销售阶段的商机进入和推进情况。",
+      "dateRangeLabel": "日期范围",
+      "preset30": "最近30天",
+      "preset60": "最近60天",
+      "preset90": "最近90天",
+      "loading": "正在加载报告…",
+      "errorLoad": "加载报告失败，请重试。",
+      "empty": "此时段内未找到阶段活动。",
+      "columnStage": "阶段",
+      "columnPeriod": "时段",
+      "columnEntered": "进入",
+      "columnConverted": "推进",
+      "columnRate": "推进率",
+      "chartEnteredLabel": "进入",
+      "chartConvertedLabel": "推进",
+      "tableHeading": "按阶段和时段细分"
     }
   },
   "automation": {

@@ -872,6 +872,25 @@
       "convertedFootnote": "Werte umgerechnet in {{currency}} · Kurse vom {{date}}",
       "unratedNote": "{{count}} Deal-Währung hat keinen konfigurierten Kurs.",
       "unratedNote_other": "{{count}} Deal-Währungen haben keine konfigurierten Kurse."
+    },
+    "stageTrend": {
+      "pageTitle": "Pipeline-Phasentrend",
+      "subtitle": "Deals, die in jede Pipeline-Phase eingetreten sind und diese durchlaufen haben.",
+      "dateRangeLabel": "Zeitraum",
+      "preset30": "Letzte 30 Tage",
+      "preset60": "Letzte 60 Tage",
+      "preset90": "Letzte 90 Tage",
+      "loading": "Bericht wird geladen…",
+      "errorLoad": "Bericht konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "empty": "Keine Phasenaktivität für diesen Zeitraum gefunden.",
+      "columnStage": "Phase",
+      "columnPeriod": "Zeitraum",
+      "columnEntered": "Eingetreten",
+      "columnConverted": "Weiterentwickelt",
+      "columnRate": "Weiterentwicklungsrate",
+      "chartEnteredLabel": "Eingetreten",
+      "chartConvertedLabel": "Weiterentwickelt",
+      "tableHeading": "Aufschlüsselung nach Phase und Zeitraum"
     }
   },
   "automation": {

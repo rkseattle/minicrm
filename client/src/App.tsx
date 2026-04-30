@@ -36,6 +36,7 @@ const UsersPage = lazy(() => import('@/pages/UsersPage.js'));
 const AdminSettingsPage = lazy(() => import('@/pages/AdminSettingsPage.js'));
 const WinLossReportPage = lazy(() => import('@/pages/WinLossReportPage.js'));
 const ActivityVolumeReportPage = lazy(() => import('@/pages/ActivityVolumeReportPage.js'));
+const StageTrendReportPage = lazy(() => import('@/pages/StageTrendReportPage.js'));
 const ActivitiesPage = lazy(() => import('@/pages/ActivitiesPage.js'));
 const AutomationRulesPage = lazy(() => import('@/pages/AutomationRulesPage.js'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage.js'));
@@ -97,6 +98,7 @@ function AppRoutes() {
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/reports/activity-volume" element={<ActivityVolumeReportPage />} />
             <Route path="/reports/win-loss" element={<WinLossReportPage />} />
+            <Route path="/reports/stage-trend" element={<StageTrendReportPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>

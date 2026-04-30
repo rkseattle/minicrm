@@ -1,7 +1,7 @@
 /**
  * Reports API module.
- * Wraps report endpoints (win/loss, activity volume). Requires authentication.
- * Implements MINCRM-26 (win/loss) and MINCRM-181 (activity volume).
+ * Wraps report endpoints (win/loss, activity volume, stage trend). Requires authentication.
+ * Implements MINCRM-26 (win/loss), MINCRM-181 (activity volume), MINCRM-284 (stage trend).
  */
 
 import apiClient from './axiosInstance.js';
@@ -147,6 +147,57 @@ export async function getActivityVolumeReport(
   }
   const response = await apiClient.get<ActivityVolumeReportResponse>('/reports/activity-volume', {
     params: query,
+  });
+  return response.data;
+}
+
+// ── Stage Trend Report (MINCRM-284) ───────────────────────────────────────────
+
+/** React Query cache key for stage trend report queries */
+export const STAGE_TREND_REPORT_QUERY_KEY = ['reports', 'stage-trend'] as const;
+
+/** Allowed look-back window values */
+export type StageTrendDays = 30 | 60 | 90;
+
+/** Parameters for the stage trend report request */
+export interface StageTrendReportParams {
+  /** Look-back window in days */
+  days: StageTrendDays;
+}
+
+/** A single data point: one stage for one time bucket */
+export interface StageTrendDataPoint {
+  stage: string;
+  /** ISO date string for the start of the bucket */
+  period: string;
+  /** Deals that entered this stage during the period */
+  entered: number;
+  /** Of those deals, how many subsequently advanced to a different stage */
+  converted: number;
+}
+
+/** Shape of the stage trend report response from the API */
+export interface StageTrendReportResponse {
+  /** Ordered stage names present in the result */
+  stages: string[];
+  dataPoints: StageTrendDataPoint[];
+  /** ISO date string for the start of the requested window */
+  windowStart: string;
+  /** ISO date string for the end of the window (today) */
+  windowEnd: string;
+}
+
+/**
+ * Fetches a stage trend report for the given look-back window.
+ *
+ * @param params - Look-back window
+ * @returns StageTrendReportResponse
+ */
+export async function getStageTrendReport(
+  params: StageTrendReportParams,
+): Promise<StageTrendReportResponse> {
+  const response = await apiClient.get<StageTrendReportResponse>('/reports/stage-trend', {
+    params: { days: params.days },
   });
   return response.data;
 }

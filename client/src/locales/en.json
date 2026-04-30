@@ -837,6 +837,25 @@
       "convertedFootnote": "Values converted to {{currency}} · rates as of {{date}}",
       "unratedNote": "{{count}} deal currency has no rate configured.",
       "unratedNote_other": "{{count}} deal currencies have no rate configured."
+    },
+    "stageTrend": {
+      "pageTitle": "Pipeline Stage Trend",
+      "subtitle": "Deals entering and advancing through each pipeline stage over time.",
+      "dateRangeLabel": "Date range",
+      "preset30": "Last 30 days",
+      "preset60": "Last 60 days",
+      "preset90": "Last 90 days",
+      "loading": "Loading report…",
+      "errorLoad": "Failed to load report. Please try again.",
+      "empty": "No stage activity found for this period.",
+      "columnStage": "Stage",
+      "columnPeriod": "Period",
+      "columnEntered": "Entered",
+      "columnConverted": "Advanced",
+      "columnRate": "Advance rate",
+      "chartEnteredLabel": "Entered",
+      "chartConvertedLabel": "Advanced",
+      "tableHeading": "Breakdown by stage and period"
     }
   },
   "automation": {
