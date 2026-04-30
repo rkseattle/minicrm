@@ -8,6 +8,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getWinLossReportHandler,
   getActivityVolumeReportHandler,
+  getStageTrendReportHandler,
 } from '../controllers/reportController.js';
 
 const router = Router();
@@ -137,5 +138,50 @@ router.get('/win-loss', authenticate, asyncHandler(getWinLossReportHandler));
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/activity-volume', authenticate, asyncHandler(getActivityVolumeReportHandler));
+
+/**
+ * @openapi
+ * /api/v1/reports/stage-trend:
+ *   get:
+ *     tags: [Reports]
+ *     operationId: getStageTrendReport
+ *     summary: Get the pipeline stage trend report
+ *     description: >
+ *       Returns deal entry and conversion counts per pipeline stage, bucketed by
+ *       week (30-day window) or month (60- or 90-day window). Uses audit_log entries
+ *       to detect when deals entered each stage and whether they subsequently advanced.
+ *       Accessible to all authenticated users. Implements MINCRM-284.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           enum: [30, 60, 90]
+ *           default: 30
+ *         description: Look-back window in days (30, 60, or 90)
+ *     responses:
+ *       200:
+ *         description: Stage trend report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StageTrendReport'
+ *       400:
+ *         description: Invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/stage-trend', authenticate, asyncHandler(getStageTrendReportHandler));
 
 export default router;

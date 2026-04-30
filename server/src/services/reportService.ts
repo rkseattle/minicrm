@@ -430,3 +430,126 @@ export async function getActivityVolumeReport(
 
   return { rows, totals };
 }
+
+// ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────
+
+/** Allowed values for the stageTrend `days` parameter */
+export const STAGE_TREND_DAYS_OPTIONS = [30, 60, 90] as const;
+export type StageTrendDays = (typeof STAGE_TREND_DAYS_OPTIONS)[number];
+
+/** A single data point: one stage for one time bucket */
+export interface StageTrendDataPoint {
+  /** Pipeline stage name */
+  stage: string;
+  /** ISO date string for the start of the bucket (week or month) */
+  period: string;
+  /** Number of deals that entered this stage in this period */
+  entered: number;
+  /** Number of those entered deals that subsequently advanced to any other stage */
+  converted: number;
+}
+
+/** Shape of the stage trend report returned to the controller */
+export interface StageTrendReport {
+  /** Ordered stage names (by pipeline sort_order) present in the result */
+  stages: string[];
+  /** All data points, ordered by stage sort_order then period ascending */
+  dataPoints: StageTrendDataPoint[];
+  /** ISO date string for the start of the requested window */
+  windowStart: string;
+  /** ISO date string for the end of the requested window (today) */
+  windowEnd: string;
+}
+
+/** PostgreSQL row shape from the stage trend query */
+interface StageTrendRow {
+  stage: string;
+  period: string;
+  entered: string;
+  converted: string;
+}
+
+/**
+ * Returns a stage trend report for the given look-back window.
+ *
+ * Uses the audit_log table to find when deals entered each pipeline stage
+ * (field_name = 'stage', new_value = stage name) and whether the deal
+ * subsequently moved to a different stage within the window.
+ *
+ * Buckets are monthly for 60- and 90-day windows, weekly for 30-day windows.
+ * Stages are ordered by pipeline_stages.sort_order.
+ *
+ * @param days - Look-back window in days (30, 60, or 90)
+ * @returns StageTrendReport
+ */
+export async function getStageTrendReport(days: StageTrendDays): Promise<StageTrendReport> {
+  // Use weekly buckets for 30-day windows, monthly for 60/90.
+  const bucketFn =
+    days === 30 ? `date_trunc('week', al.created_at)` : `date_trunc('month', al.created_at)`;
+
+  // windowStart is computed server-side so the query and returned metadata always agree.
+  const windowStart = new Date();
+  windowStart.setDate(windowStart.getDate() - days);
+  const windowStartStr = windowStart.toISOString().slice(0, 10);
+  const windowEndStr = new Date().toISOString().slice(0, 10);
+
+  // ── Main query ─────────────────────────────────────────────────────────────
+  // For each audit_log entry recording a deal stage entry (field_name='stage'),
+  // count how many deals entered that stage in each bucket, and how many of
+  // those deals appear in a *later* audit_log entry where field_name='stage'
+  // (meaning they advanced to a different stage).
+  //
+  // The correlated subquery for `converted` counts distinct deals that entered
+  // the given stage in the given bucket AND have at least one subsequent stage
+  // change logged after the entry event.
+  const result = await pool.query<StageTrendRow>(
+    `
+    WITH entries AS (
+      SELECT
+        al.new_value                        AS stage,
+        ${bucketFn}::date::text             AS period,
+        al.record_id                        AS deal_id,
+        al.created_at                       AS entered_at
+      FROM audit_log al
+      WHERE al.record_type = 'deal'
+        AND al.field_name = 'stage'
+        AND al.created_at >= NOW() - ($1 || ' days')::interval
+    ),
+    conversions AS (
+      SELECT DISTINCT e.deal_id, e.period, e.stage
+      FROM entries e
+      WHERE EXISTS (
+        SELECT 1
+        FROM audit_log al2
+        WHERE al2.record_id = e.deal_id
+          AND al2.record_type = 'deal'
+          AND al2.field_name = 'stage'
+          AND al2.created_at > e.entered_at
+      )
+    )
+    SELECT
+      e.stage,
+      e.period,
+      COUNT(DISTINCT e.deal_id)::text                                             AS entered,
+      COUNT(DISTINCT c.deal_id)::text                                             AS converted
+    FROM entries e
+    LEFT JOIN conversions c USING (deal_id, period, stage)
+    JOIN pipeline_stages ps ON ps.name = e.stage
+    GROUP BY e.stage, e.period, ps.sort_order
+    ORDER BY ps.sort_order ASC, e.period ASC
+    `,
+    [days],
+  );
+
+  // ── Ordered stage list ─────────────────────────────────────────────────────
+  const stages = [...new Set(result.rows.map((r) => r.stage))];
+
+  const dataPoints: StageTrendDataPoint[] = result.rows.map((row) => ({
+    stage: row.stage,
+    period: row.period,
+    entered: parseInt(row.entered, 10),
+    converted: parseInt(row.converted, 10),
+  }));
+
+  return { stages, dataPoints, windowStart: windowStartStr, windowEnd: windowEndStr };
+}

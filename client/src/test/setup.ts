@@ -14,6 +14,14 @@ import en from '../locales/en.json';
 import fr from '../locales/fr.json';
 import { handlers } from './msw/handlers.js';
 
+// jsdom does not implement ResizeObserver. Stub it so components that use it do not throw.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
 // jsdom does not implement window.matchMedia. Default to desktop (>= 768 px) so
 // components that use useBreakpoint() render their desktop subtree in tests,
 // keeping all existing test assertions valid. Individual tests that need to
