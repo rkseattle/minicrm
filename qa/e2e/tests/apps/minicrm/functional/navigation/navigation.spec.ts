@@ -92,6 +92,7 @@ const REP_DESTINATIONS: Record<string, string> = {
   tasks: '/tasks',
   'win-loss': '/reports/win-loss',
   'activity-volume': '/reports/activity-volume',
+  'stage-trend': '/reports/stage-trend',
 };
 
 /**
