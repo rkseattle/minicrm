@@ -10,6 +10,7 @@
  * - /pipeline redirects to /deals
  */
 
+import { Suspense } from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -31,7 +32,9 @@ function renderApp(initialPath: string) {
     <QueryClientProvider client={queryClient}>
       <BreakpointProvider>
         <MemoryRouter initialEntries={[initialPath]}>
-          <App />
+          <Suspense fallback={null}>
+            <App />
+          </Suspense>
         </MemoryRouter>
       </BreakpointProvider>
     </QueryClientProvider>,
