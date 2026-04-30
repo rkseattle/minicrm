@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/custom-fields/{entityType}/{recordId}/custom-fields:
+ * /api/v1/custom-fields/{entityType}/{recordId}/custom-fields:
  *   get:
  *     tags: [CustomFields]
  *     operationId: getCustomFieldValues
@@ -48,7 +48,7 @@ router.get(
 
 /**
  * @openapi
- * /api/custom-fields/{entityType}/{recordId}/custom-fields:
+ * /api/v1/custom-fields/{entityType}/{recordId}/custom-fields:
  *   put:
  *     tags: [CustomFields]
  *     operationId: putCustomFieldValues

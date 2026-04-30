@@ -50,7 +50,7 @@ describe('NavHeader', () => {
   it('logout button calls POST /api/auth/logout', async () => {
     let logoutCalled = false;
     server.use(
-      http.post('/api/auth/logout', () => {
+      http.post('/api/v1/auth/logout', () => {
         logoutCalled = true;
         return HttpResponse.json({ message: 'Logged out' });
       }),
@@ -72,9 +72,7 @@ describe('NavHeader', () => {
   it('renders hamburger button when hamburger prop is provided', () => {
     const onToggle = vi.fn();
     renderWithProviders(
-      <NavHeader
-        hamburger={{ isOpen: false, onToggle, controls: 'nav-drawer' }}
-      />,
+      <NavHeader hamburger={{ isOpen: false, onToggle, controls: 'nav-drawer' }} />,
     );
 
     expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();

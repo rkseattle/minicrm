@@ -95,7 +95,7 @@ beforeAll(async () => {
 
   // Invite a user to warm up the invite flow; fresh tokens are fetched per-test
   await request(app)
-    .post('/api/users/invite')
+    .post('/api/v1/users/invite')
     .set('Cookie', adminCookie)
     .send({ email: 'pwdcx-invited@example.com', name: 'PwdCx Invited', role: 'rep' });
 });
@@ -111,7 +111,7 @@ async function getFreshInviteToken(): Promise<string> {
   // We delete and recreate the invited user for each set-password scenario.
   await pool.query("DELETE FROM users WHERE email = 'pwdcx-invited-fresh@example.com'");
   const inviteRes = await request(app)
-    .post('/api/users/invite')
+    .post('/api/v1/users/invite')
     .set('Cookie', adminCookie)
     .send({ email: 'pwdcx-invited-fresh@example.com', name: 'PwdCx Fresh Invite', role: 'rep' });
   return (inviteRes.body as { inviteToken?: string }).inviteToken ?? '';
@@ -121,7 +121,7 @@ async function getFreshInviteToken(): Promise<string> {
 
 async function getFreshResetToken(): Promise<string> {
   const tokenRes = await request(app)
-    .post('/api/auth/dev/reset-token')
+    .post('/api/v1/auth/dev/reset-token')
     .send({ email: 'pwdcx-rep@example.com' });
   return (tokenRes.body as { token?: string }).token ?? '';
 }
@@ -131,7 +131,9 @@ async function getFreshResetToken(): Promise<string> {
 describe('MINCRM-246 — POST /api/users/set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const token = await getFreshInviteToken();
-    const res = await request(app).post('/api/users/set-password').send({ token, password: value });
+    const res = await request(app)
+      .post('/api/v1/users/set-password')
+      .send({ token, password: value });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -140,7 +142,7 @@ describe('MINCRM-246 — POST /api/users/set-password password complexity', () =
   it('accepts a valid password and activates the account', async () => {
     const token = await getFreshInviteToken();
     const res = await request(app)
-      .post('/api/users/set-password')
+      .post('/api/v1/users/set-password')
       .send({ token, password: VALID_PASSWORD });
 
     expect(res.status).toBe(200);
@@ -154,7 +156,7 @@ describe('MINCRM-246 — POST /api/auth/change-password password complexity', ()
     // The complexity check fires before the credential check — any currentPassword
     // value is fine here; the response will be 400 before bcrypt is reached.
     const res = await request(app)
-      .post('/api/auth/change-password')
+      .post('/api/v1/auth/change-password')
       .set('Cookie', repCookie)
       .send({ currentPassword: 'anything', newPassword: value });
 
@@ -164,7 +166,7 @@ describe('MINCRM-246 — POST /api/auth/change-password password complexity', ()
 
   it('accepts a valid password when the current password is also correct', async () => {
     const res = await request(app)
-      .post('/api/auth/change-password')
+      .post('/api/v1/auth/change-password')
       .set('Cookie', repCookie)
       .send({ currentPassword: 'CurrentPass1', newPassword: VALID_PASSWORD });
 
@@ -179,7 +181,7 @@ describe('MINCRM-246 — POST /api/auth/reset-password password complexity', () 
     // Zod validates the password field before the token is verified, so any
     // token value triggers a 400 on a weak password.
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token: 'any-token', password: value });
 
     expect(res.status).toBe(400);
@@ -194,7 +196,7 @@ describe('MINCRM-246 — POST /api/auth/reset-password password complexity', () 
 
     const token = await getFreshResetToken();
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token, password: VALID_PASSWORD });
 
     expect(res.status).toBe(200);
@@ -206,7 +208,7 @@ describe('MINCRM-246 — POST /api/auth/reset-password password complexity', () 
 describe('MINCRM-246 — POST /api/users/:id/admin-set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const res = await request(app)
-      .post(`/api/users/${targetUserId}/admin-set-password`)
+      .post(`/api/v1/users/${targetUserId}/admin-set-password`)
       .set('Cookie', adminCookie)
       .send({ password: value });
 
@@ -216,7 +218,7 @@ describe('MINCRM-246 — POST /api/users/:id/admin-set-password password complex
 
   it('accepts a valid password', async () => {
     const res = await request(app)
-      .post(`/api/users/${targetUserId}/admin-set-password`)
+      .post(`/api/v1/users/${targetUserId}/admin-set-password`)
       .set('Cookie', adminCookie)
       .send({ password: VALID_PASSWORD });
 

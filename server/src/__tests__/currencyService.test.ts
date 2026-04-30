@@ -251,7 +251,7 @@ describe('getRateToHome()', () => {
 
 describe('GET /api/settings/currencies', () => {
   it('returns 200 with home_currency and currencies array for admin', async () => {
-    const res = await request(app).get('/api/settings/currencies').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/settings/currencies').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.home_currency).toBe('USD');
@@ -260,12 +260,12 @@ describe('GET /api/settings/currencies', () => {
   });
 
   it('returns 200 for an authenticated rep', async () => {
-    const res = await request(app).get('/api/settings/currencies').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/settings/currencies').set('Cookie', repCookie);
     expect(res.status).toBe(200);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/settings/currencies');
+    const res = await request(app).get('/api/v1/settings/currencies');
     expect(res.status).toBe(401);
   });
 });
@@ -281,7 +281,7 @@ describe('PUT /api/settings/currencies', () => {
     };
 
     const res = await request(app)
-      .put('/api/settings/currencies')
+      .put('/api/v1/settings/currencies')
       .set('Cookie', adminCookie)
       .send(payload);
 
@@ -294,17 +294,20 @@ describe('PUT /api/settings/currencies', () => {
   });
 
   it('returns 403 when a rep attempts to update', async () => {
-    const res = await request(app).put('/api/settings/currencies').set('Cookie', repCookie).send({
-      home_currency: 'USD',
-      currencies: [],
-    });
+    const res = await request(app)
+      .put('/api/v1/settings/currencies')
+      .set('Cookie', repCookie)
+      .send({
+        home_currency: 'USD',
+        currencies: [],
+      });
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .put('/api/settings/currencies')
+      .put('/api/v1/settings/currencies')
       .send({ home_currency: 'USD', currencies: [] });
 
     expect(res.status).toBe(401);
@@ -312,7 +315,7 @@ describe('PUT /api/settings/currencies', () => {
 
   it('returns 400 when home_currency appears in currencies array', async () => {
     const res = await request(app)
-      .put('/api/settings/currencies')
+      .put('/api/v1/settings/currencies')
       .set('Cookie', adminCookie)
       .send({
         home_currency: 'USD',
@@ -325,7 +328,7 @@ describe('PUT /api/settings/currencies', () => {
 
   it('returns 400 when currency codes are not distinct', async () => {
     const res = await request(app)
-      .put('/api/settings/currencies')
+      .put('/api/v1/settings/currencies')
       .set('Cookie', adminCookie)
       .send({
         home_currency: 'USD',
@@ -341,7 +344,7 @@ describe('PUT /api/settings/currencies', () => {
 
   it('returns 400 when rate_to_home is zero or negative', async () => {
     const res = await request(app)
-      .put('/api/settings/currencies')
+      .put('/api/v1/settings/currencies')
       .set('Cookie', adminCookie)
       .send({
         home_currency: 'USD',

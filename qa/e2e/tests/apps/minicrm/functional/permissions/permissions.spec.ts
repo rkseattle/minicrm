@@ -61,7 +61,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F7] E2E_ADMIN_PASSWORD is not set');
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ async function createActivatedUser(
  * @param tag - Test tag for logging.
  */
 async function deactivateUser(restClient: RestClient, userId: string, tag: string): Promise<void> {
-  await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+  await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
     console.error(`[${tag}] teardown: failed to deactivate user ${userId}: ${String(err)}`);
   });
 }
@@ -123,22 +123,22 @@ async function deactivateUser(restClient: RestClient, userId: string, tag: strin
 // ---------------------------------------------------------------------------
 
 test('@functional F7-AA1: admin can read contacts list', async ({ restClient }) => {
-  const res = await restClient.get('/api/contacts');
+  const res = await restClient.get('/api/v1/contacts');
   expect(res.status, 'admin GET /api/contacts should return 200').toBe(200);
 });
 
 test('@functional F7-AA2: admin can read accounts list', async ({ restClient }) => {
-  const res = await restClient.get('/api/accounts');
+  const res = await restClient.get('/api/v1/accounts');
   expect(res.status, 'admin GET /api/accounts should return 200').toBe(200);
 });
 
 test('@functional F7-AA3: admin can read deals list', async ({ restClient }) => {
-  const res = await restClient.get('/api/deals');
+  const res = await restClient.get('/api/v1/deals');
   expect(res.status, 'admin GET /api/deals should return 200').toBe(200);
 });
 
 test('@functional F7-AA4: admin can read user management list', async ({ restClient }) => {
-  const res = await restClient.get('/api/users');
+  const res = await restClient.get('/api/v1/users');
   expect(res.status, 'admin GET /api/users should return 200').toBe(200);
 });
 
@@ -160,13 +160,13 @@ test('@functional F7-AA5: admin can read a contact owned by a rep', async ({
     });
 
     // Admin must be able to read the rep's contact.
-    const res = await restClient.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
+    const res = await restClient.get<{ contact: { id: string } }>(`/api/v1/contacts/${contact.id}`);
     expect(res.status, 'admin should be able to read a contact owned by a rep').toBe(200);
     expect(res.body.contact.id, 'returned contact id should match').toBe(contact.id);
   } finally {
     await repRequestContext.dispose().catch(() => null);
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-AA5');
   }
@@ -193,12 +193,12 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
 
     // Admin should be able to delete the rep's contact.
     // Server returns 204 No Content on successful DELETE.
-    const res = await restClient.delete(`/api/contacts/${contact.id}`);
+    const res = await restClient.delete(`/api/v1/contacts/${contact.id}`);
     expect(res.status, 'admin should be able to delete a contact owned by a rep').toBe(204);
   } finally {
     await repRequestContext.dispose().catch(() => null);
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-AA6');
   }
@@ -225,7 +225,7 @@ test('@functional F7-RP1: rep can create and read their own contact', async ({
       last_name: `Own-${Date.now()}`,
     });
 
-    const res = await repClient.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
+    const res = await repClient.get<{ contact: { id: string } }>(`/api/v1/contacts/${contact.id}`);
     expect(res.status, 'rep should be able to read their own contact').toBe(200);
     expect(res.body.contact.id).toBe(contact.id);
   } finally {
@@ -257,14 +257,14 @@ test('@functional F7-RP2: rep can read a contact owned by another rep', async ({
 
     // rep2 should be able to read rep1's contact (product spec permits read).
     await loginAndVerify(rep2Client, rep2.email, TEST_USER_PASSWORD);
-    const res = await rep2Client.get<{ contact: { id: string } }>(`/api/contacts/${contact.id}`);
+    const res = await rep2Client.get<{ contact: { id: string } }>(`/api/v1/contacts/${contact.id}`);
     expect(res.status, 'rep2 should be able to read a contact owned by rep1').toBe(200);
     expect(res.body.contact.id).toBe(contact.id);
   } finally {
     await rep1Context.dispose().catch(() => null);
     await rep2Context.dispose().catch(() => null);
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep1.id, 'F7-RP2-rep1');
     await deactivateUser(restClient, rep2.id, 'F7-RP2-rep2');
@@ -295,7 +295,7 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
 
     // Rep completes their own task.
     const res = await repClient.patch<{ activity: { id: string; status: string } }>(
-      `/api/activities/${activity.id}`,
+      `/api/v1/activities/${activity.id}`,
       { status: 'complete' },
     );
     expect(res.status, 'rep should be able to complete their own task').toBe(200);
@@ -332,7 +332,7 @@ test('@functional F7-FU1: rep navigating directly to /users is redirected to das
     expect(finalPath, 'rep navigating to /users should be redirected to /').toBe('/');
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FU1');
   }
@@ -357,7 +357,7 @@ test('@functional F7-FU2: rep navigating directly to /admin/settings is redirect
     expect(finalPath, 'rep navigating to /admin/settings should be redirected to /').toBe('/');
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FU2');
   }
@@ -382,7 +382,7 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
     expect(finalPath, 'rep navigating to /admin/automation should be redirected to /').toBe('/');
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FU3');
   }
@@ -406,7 +406,7 @@ test('@functional F7-FU4: rep navigating directly to /reports/win-loss can acces
     );
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FU4');
   }
@@ -440,7 +440,7 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page,
     }
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FU5');
   }
@@ -463,7 +463,7 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
 
     let errorStatus: number | null = null;
     try {
-      await repClient.get('/api/users');
+      await repClient.get('/api/v1/users');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -491,7 +491,7 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
 
     let errorStatus: number | null = null;
     try {
-      await repClient.post('/api/users/invite', {
+      await repClient.post('/api/v1/users/invite', {
         name: 'Forbidden Invite',
         email: `f7-forbidden-${Date.now()}@example.com`,
         role: 'rep',
@@ -525,7 +525,7 @@ test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC
 
     let errorStatus: number | null = null;
     try {
-      await repClient.patch(`/api/users/${target.id}/role`, { role: 'admin' });
+      await repClient.patch(`/api/v1/users/${target.id}/role`, { role: 'admin' });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -556,7 +556,7 @@ test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 4
 
     let errorStatus: number | null = null;
     try {
-      await repClient.patch(`/api/users/${target.id}/deactivate`);
+      await repClient.patch(`/api/v1/users/${target.id}/deactivate`);
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -579,7 +579,7 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
   const { user: rep } = await createActivatedUser(restClient);
   // Create a second rep and deactivate them so there is a valid reactivation target.
   const { user: target } = await createActivatedUser(restClient);
-  await restClient.patch(`/api/users/${target.id}/deactivate`);
+  await restClient.patch(`/api/v1/users/${target.id}/deactivate`);
 
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
@@ -589,7 +589,7 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
 
     let errorStatus: number | null = null;
     try {
-      await repClient.patch(`/api/users/${target.id}/reactivate`);
+      await repClient.patch(`/api/v1/users/${target.id}/reactivate`);
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -602,7 +602,7 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
     await repContext.dispose().catch(() => null);
     await deactivateUser(restClient, rep.id, 'F7-FA5-rep');
     // target is already deactivated; suppress harmless second-deactivate error.
-    await restClient.patch(`/api/users/${target.id}/deactivate`).catch(() => null);
+    await restClient.patch(`/api/v1/users/${target.id}/deactivate`).catch(() => null);
   }
 });
 
@@ -621,7 +621,7 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
 
     let errorStatus: number | null = null;
     try {
-      await repClient.post(`/api/users/${target.id}/admin-set-password`, {
+      await repClient.post(`/api/v1/users/${target.id}/admin-set-password`, {
         password: 'SomeNewPass1!',
       });
     } catch (err: unknown) {
@@ -653,7 +653,7 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
     let errorStatus: number | null = null;
     try {
       // Automation routes are mounted at /api/automation/rules (not /api/automation).
-      await repClient.get('/api/automation/rules');
+      await repClient.get('/api/v1/automation/rules');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -682,7 +682,7 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
     let errorStatus: number | null = null;
     try {
       // Automation routes are mounted at /api/automation/rules (not /api/automation).
-      await repClient.post('/api/automation/rules', {
+      await repClient.post('/api/v1/automation/rules', {
         name: 'Forbidden Rule',
         trigger: 'deal_created',
         action: 'log',
@@ -715,7 +715,7 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
 
     let errorStatus: number | null = null;
     try {
-      await repClient.patch('/api/settings/default-language', { language: 'fr' });
+      await repClient.patch('/api/v1/settings/default-language', { language: 'fr' });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -743,7 +743,7 @@ test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 4
 
     let errorStatus: number | null = null;
     try {
-      await repClient.patch('/api/settings/nav-layout', { layout: 'left' });
+      await repClient.patch('/api/v1/settings/nav-layout', { layout: 'left' });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -788,7 +788,7 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
 
     let errorStatus: number | null = null;
     try {
-      await rep2Client.delete(`/api/contacts/${contact.id}`);
+      await rep2Client.delete(`/api/v1/contacts/${contact.id}`);
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;
@@ -807,7 +807,7 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
     await rep1Context.dispose().catch(() => null);
     await rep2Context.dispose().catch(() => null);
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     await deactivateUser(restClient, rep1.id, 'F7-FA11-rep1');
     await deactivateUser(restClient, rep2.id, 'F7-FA11-rep2');
@@ -832,7 +832,7 @@ test('@functional F7-EH1: forbidden API response includes structured error body'
     let errorBody: unknown = null;
     let errorStatus: number | null = null;
     try {
-      await repClient.get('/api/users');
+      await repClient.get('/api/v1/users');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         errorStatus = err.status;

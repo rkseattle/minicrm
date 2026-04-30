@@ -54,7 +54,7 @@ describe('DealDetailPage', () => {
 
   it('shows not found message for an unknown deal', async () => {
     server.use(
-      http.get('/api/deals/:id', () =>
+      http.get('/api/v1/deals/:id', () =>
         HttpResponse.json(
           { error: { code: 'NOT_FOUND', message: 'Deal not found' } },
           { status: 404 },
@@ -108,7 +108,7 @@ describe('DealDetailPage', () => {
 
   it('renders linked contacts when present', async () => {
     server.use(
-      http.get('/api/deals/:id', ({ params }) => {
+      http.get('/api/v1/deals/:id', ({ params }) => {
         if (params.id === DEAL_1.id) {
           return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
         }
@@ -127,7 +127,7 @@ describe('DealDetailPage', () => {
 
   it('shows a loading state while fetching', async () => {
     server.use(
-      http.get('/api/deals/:id', async () => {
+      http.get('/api/v1/deals/:id', async () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         return HttpResponse.json({ deal: DEAL_1, contacts: [] });
       }),
@@ -138,7 +138,7 @@ describe('DealDetailPage', () => {
 
   it('shows an unlink button next to each linked contact', async () => {
     server.use(
-      http.get('/api/deals/:id', ({ params }) => {
+      http.get('/api/v1/deals/:id', ({ params }) => {
         if (params.id === DEAL_1.id) {
           return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
         }
@@ -157,7 +157,7 @@ describe('DealDetailPage', () => {
   it('calls unlink API and refreshes when unlink button is clicked', async () => {
     const unlinkSpy = vi.fn();
     server.use(
-      http.get('/api/deals/:id', ({ params }) => {
+      http.get('/api/v1/deals/:id', ({ params }) => {
         if (params.id === DEAL_1.id) {
           return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
         }
@@ -166,7 +166,7 @@ describe('DealDetailPage', () => {
           { status: 404 },
         );
       }),
-      http.delete('/api/deals/:id/contacts/:contactId', ({ params }) => {
+      http.delete('/api/v1/deals/:id/contacts/:contactId', ({ params }) => {
         unlinkSpy(params.id, params.contactId);
         return HttpResponse.json({ contacts: [] });
       }),
@@ -195,7 +195,7 @@ describe('DealDetailPage', () => {
   it('calls link API when a contact is selected and Link button is clicked', async () => {
     const linkSpy = vi.fn();
     server.use(
-      http.post('/api/deals/:id/contacts/:contactId', ({ params }) => {
+      http.post('/api/v1/deals/:id/contacts/:contactId', ({ params }) => {
         linkSpy(params.id, params.contactId);
         return HttpResponse.json({ contacts: [CONTACT_1] });
       }),
@@ -257,7 +257,7 @@ describe('DealDetailPage', () => {
   it('calls PATCH with correct stage payload when close modal is confirmed', async () => {
     const patchSpy = vi.fn();
     server.use(
-      http.patch('/api/deals/:id', async ({ params, request }) => {
+      http.patch('/api/v1/deals/:id', async ({ params, request }) => {
         const body = await request.json();
         patchSpy(params.id, body);
         return HttpResponse.json({ deal: { ...DEAL_1, ...(body as object) } });
@@ -295,7 +295,7 @@ describe('DealDetailPage', () => {
   it('closes the modal without saving when cancel is clicked', async () => {
     const patchSpy = vi.fn();
     server.use(
-      http.patch('/api/deals/:id', async ({ params, request }) => {
+      http.patch('/api/v1/deals/:id', async ({ params, request }) => {
         const body = (await request.json()) as { stage: string };
         patchSpy(params.id, body.stage);
         return HttpResponse.json({ deal: { ...DEAL_1, stage: body.stage } });
@@ -333,7 +333,7 @@ describe('DealDetailPage', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     server.use(
-      http.patch('/api/deals/:id', async ({ request }) => {
+      http.patch('/api/v1/deals/:id', async ({ request }) => {
         const body = (await request.json()) as object;
         return HttpResponse.json({ deal: { ...DEAL_1, ...body } });
       }),
@@ -371,7 +371,7 @@ describe('DealDetailPage', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     server.use(
-      http.patch('/api/deals/:id', async ({ request }) => {
+      http.patch('/api/v1/deals/:id', async ({ request }) => {
         const body = (await request.json()) as object;
         return HttpResponse.json({ deal: { ...DEAL_1, ...body } });
       }),
@@ -465,7 +465,7 @@ describe('DealDetailPage', () => {
 
   it('shows error message when contacts fetch fails (MINCRM-117)', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json(
           { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
           { status: 500 },
@@ -480,7 +480,7 @@ describe('DealDetailPage', () => {
 
   it('hides link contact form when contacts fetch fails (MINCRM-117)', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json(
           { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
           { status: 500 },
@@ -496,7 +496,7 @@ describe('DealDetailPage', () => {
 
   it('hides link select when all contacts are already linked', async () => {
     server.use(
-      http.get('/api/deals/:id', ({ params }) => {
+      http.get('/api/v1/deals/:id', ({ params }) => {
         if (params.id === DEAL_1.id) {
           // All contacts (CONTACT_1, CONTACT_2) are linked
           return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1, CONTACT_2] });

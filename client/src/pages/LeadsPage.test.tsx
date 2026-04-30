@@ -37,7 +37,9 @@ describe('LeadsPage', () => {
 
   it('shows empty state when no leads are returned', async () => {
     server.use(
-      http.get('/api/leads', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 })),
+      http.get('/api/v1/leads', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
+      ),
     );
     renderWithProviders(<LeadsPage />);
     await waitFor(() => {
@@ -47,7 +49,7 @@ describe('LeadsPage', () => {
 
   it('shows error state when the API fails', async () => {
     server.use(
-      http.get('/api/leads', () =>
+      http.get('/api/v1/leads', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -89,7 +91,7 @@ describe('LeadsPage', () => {
 
   it('shows a "Converted" badge for a converted lead', async () => {
     server.use(
-      http.get('/api/leads', () =>
+      http.get('/api/v1/leads', () =>
         HttpResponse.json({
           data: [{ ...LEAD_1, converted_at: '2025-06-01T00:00:00.000Z' }],
           total: 1,
@@ -116,7 +118,7 @@ describe('LeadsPage', () => {
 
   it('shows duplicate warning when 409 is returned', async () => {
     server.use(
-      http.post('/api/leads', () =>
+      http.post('/api/v1/leads', () =>
         HttpResponse.json(
           {
             error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate' },

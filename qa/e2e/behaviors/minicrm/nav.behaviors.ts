@@ -55,7 +55,7 @@ export async function setNavLayoutViaAPI(
   restClient: RestClient,
 ): Promise<SetNavLayoutResult> {
   try {
-    const res = await restClient.patch<{ layout: NavLayout }>('/api/settings/nav-layout', {
+    const res = await restClient.patch<{ layout: NavLayout }>('/api/v1/settings/nav-layout', {
       layout,
     });
     return { success: res.status === 200, status: res.status };

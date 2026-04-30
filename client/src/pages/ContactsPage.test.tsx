@@ -41,7 +41,7 @@ describe('ContactsPage', () => {
 
   it('shows empty state when no contacts are returned', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
       ),
     );
@@ -53,7 +53,7 @@ describe('ContactsPage', () => {
 
   it('shows error state when the API fails', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -117,7 +117,7 @@ describe('ContactsPage', () => {
       owner_id: REP_USER.id,
     };
     server.use(
-      http.get('/api/contacts', ({ request }) => {
+      http.get('/api/v1/contacts', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const contacts = owner === 'me' ? [CONTACT_1] : [CONTACT_1, repContact];
         return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 50 });
@@ -148,7 +148,7 @@ describe('ContactsPage', () => {
 
   it('shows fallback text for contacts with an unresolvable owner', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json({
           data: [{ ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
           total: 1,
@@ -180,7 +180,7 @@ describe('ContactsPage', () => {
   it('passes the search param to the API when the search input changes', async () => {
     let capturedSearch: string | null = null;
     server.use(
-      http.get('/api/contacts', ({ request }) => {
+      http.get('/api/v1/contacts', ({ request }) => {
         capturedSearch = new URL(request.url).searchParams.get('search');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
@@ -203,7 +203,7 @@ describe('ContactsPage', () => {
   it('passes the accountSearch param to the API when the account search input changes', async () => {
     let capturedAccountSearch: string | null = null;
     server.use(
-      http.get('/api/contacts', ({ request }) => {
+      http.get('/api/v1/contacts', ({ request }) => {
         capturedAccountSearch = new URL(request.url).searchParams.get('accountSearch');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
@@ -226,7 +226,7 @@ describe('ContactsPage', () => {
   it('shows the duplicate warning banner when the API returns 409', async () => {
     const duplicateContact = CONTACT_1;
     server.use(
-      http.post('/api/contacts', () =>
+      http.post('/api/v1/contacts', () =>
         HttpResponse.json(
           {
             error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
@@ -263,7 +263,7 @@ describe('ContactsPage', () => {
   it('shows the "Go to existing contact" link in the duplicate warning', async () => {
     const duplicateContact = CONTACT_1;
     server.use(
-      http.post('/api/contacts', () =>
+      http.post('/api/v1/contacts', () =>
         HttpResponse.json(
           {
             error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
@@ -304,7 +304,7 @@ describe('ContactsPage', () => {
     let lastForceParam: string | null = null;
     const duplicateContact = CONTACT_1;
     server.use(
-      http.post('/api/contacts', ({ request }) => {
+      http.post('/api/v1/contacts', ({ request }) => {
         postCount++;
         lastForceParam = new URL(request.url).searchParams.get('force');
         if (postCount === 1) {
@@ -395,7 +395,7 @@ describe('ContactsPage', () => {
     });
 
     it('does not render the Export All button for rep users', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<ContactsPage />);
       await waitFor(() => {
         expect(screen.getByTestId('contacts-export-csv-button')).toBeInTheDocument();

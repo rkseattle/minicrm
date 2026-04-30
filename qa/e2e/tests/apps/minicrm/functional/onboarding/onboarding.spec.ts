@@ -43,8 +43,8 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 
 /** Resets onboarding_completed to the given value via the admin API. */
 async function setOnboardingCompleted(completed: boolean, restClient: RestClient): Promise<void> {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await restClient.put('/api/settings/onboarding', { onboarding_completed: completed });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.put('/api/v1/settings/onboarding', { onboarding_completed: completed });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ test('@functional F-OB3: dismiss (X) hides the banner and persists onboarding_co
 
   // Verify persistence via API.
   const res = await restClient.get<{ is_first_run: boolean; onboarding_completed: boolean }>(
-    '/api/settings/onboarding',
+    '/api/v1/settings/onboarding',
   );
   expect(res.body.onboarding_completed).toBe(true);
   expect(res.body.is_first_run).toBe(false);

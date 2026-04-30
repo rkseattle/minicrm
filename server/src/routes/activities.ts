@@ -19,7 +19,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/activities:
+ * /api/v1/activities:
  *   get:
  *     tags: [Activities]
  *     operationId: listActivities
@@ -106,7 +106,7 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
 
 /**
  * @openapi
- * /api/activities/my-tasks:
+ * /api/v1/activities/my-tasks:
  *   get:
  *     tags: [Activities]
  *     operationId: listMyTasks
@@ -158,7 +158,7 @@ router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
 
 /**
  * @openapi
- * /api/activities:
+ * /api/v1/activities:
  *   post:
  *     tags: [Activities]
  *     operationId: createActivity
@@ -230,7 +230,7 @@ router.post('/', authenticate, asyncHandler(createActivityHandler));
 
 /**
  * @openapi
- * /api/activities/{id}:
+ * /api/v1/activities/{id}:
  *   get:
  *     tags: [Activities]
  *     operationId: getActivity
@@ -294,7 +294,7 @@ router.get('/:id', authenticate, asyncHandler(getActivityHandler));
 
 /**
  * @openapi
- * /api/activities/{id}:
+ * /api/v1/activities/{id}:
  *   patch:
  *     tags: [Activities]
  *     operationId: updateActivity
@@ -391,7 +391,7 @@ router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
 
 /**
  * @openapi
- * /api/activities/{id}:
+ * /api/v1/activities/{id}:
  *   delete:
  *     tags: [Activities]
  *     operationId: deleteActivity

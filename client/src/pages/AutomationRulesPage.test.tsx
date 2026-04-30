@@ -39,7 +39,7 @@ describe('AutomationRulesPage', () => {
 
   describe('loading state', () => {
     it('shows a loading message while fetching', () => {
-      server.use(http.get('/api/automation/rules', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/automation/rules', () => new Promise(() => {})));
       renderWithProviders(<AutomationRulesPage />);
       expect(screen.getByTestId('rules-loading')).toBeInTheDocument();
     });
@@ -48,7 +48,7 @@ describe('AutomationRulesPage', () => {
   describe('error state', () => {
     it('shows an error message when the request fails', async () => {
       server.use(
-        http.get('/api/automation/rules', () =>
+        http.get('/api/v1/automation/rules', () =>
           HttpResponse.json(
             { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
             { status: 500 },
@@ -64,7 +64,7 @@ describe('AutomationRulesPage', () => {
 
   describe('empty state', () => {
     it('shows an empty state when there are no rules', async () => {
-      server.use(http.get('/api/automation/rules', () => HttpResponse.json({ rules: [] })));
+      server.use(http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [] })));
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
         expect(screen.getByTestId('rules-empty')).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('AutomationRulesPage', () => {
     it('toggle switch is unchecked when rule is disabled', async () => {
       const disabledRule = { ...AUTOMATION_RULE_1, enabled: false };
       server.use(
-        http.get('/api/automation/rules', () => HttpResponse.json({ rules: [disabledRule] })),
+        http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [disabledRule] })),
       );
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
@@ -137,7 +137,7 @@ describe('AutomationRulesPage', () => {
       let patchCalled = false;
 
       server.use(
-        http.patch('/api/automation/rules/:id', async ({ params, request }) => {
+        http.patch('/api/v1/automation/rules/:id', async ({ params, request }) => {
           if (params.id === AUTOMATION_RULE_1.id) {
             patchCalled = true;
             const body = (await request.json()) as { enabled: boolean };
@@ -207,13 +207,13 @@ describe('AutomationRulesPage', () => {
 
       // Override handlers after initial load so the list renders first
       server.use(
-        http.delete('/api/automation/rules/:id', ({ params }) => {
+        http.delete('/api/v1/automation/rules/:id', ({ params }) => {
           if (params.id === AUTOMATION_RULE_1.id) {
             deleteCalled = true;
           }
           return new HttpResponse(null, { status: 204 });
         }),
-        http.get('/api/automation/rules', () => HttpResponse.json({ rules: [] })),
+        http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [] })),
       );
 
       await user.click(screen.getByTestId(`delete-rule-${AUTOMATION_RULE_1.id}`));
@@ -370,7 +370,7 @@ describe('AutomationRulesPage', () => {
       let postCalled = false;
 
       server.use(
-        http.post('/api/automation/rules', async () => {
+        http.post('/api/v1/automation/rules', async () => {
           postCalled = true;
           return HttpResponse.json({ rule: AUTOMATION_RULE_1 }, { status: 201 });
         }),
@@ -464,7 +464,9 @@ describe('AutomationRulesPage', () => {
 
     it('shows empty state when there are no logs', async () => {
       const user = userEvent.setup();
-      server.use(http.get('/api/automation/rules/:id/logs', () => HttpResponse.json({ logs: [] })));
+      server.use(
+        http.get('/api/v1/automation/rules/:id/logs', () => HttpResponse.json({ logs: [] })),
+      );
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
         expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();

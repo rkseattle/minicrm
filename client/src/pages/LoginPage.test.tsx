@@ -94,7 +94,7 @@ describe('LoginPage', () => {
     const user = userEvent.setup();
 
     // Override auth/me to return the logged-in user after successful login
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
     renderLoginPage();
 
@@ -109,7 +109,7 @@ describe('LoginPage', () => {
 
   it('redirects to the saved location (from state) after successful login (MINCRM-147)', async () => {
     const user = userEvent.setup();
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
     renderLoginPageWithFrom('/contacts');
 
@@ -126,7 +126,7 @@ describe('LoginPage', () => {
     // /change-password must never be a redirect-back destination — it is reserved
     // for the forced-change flow and redirecting back there would create a loop.
     const user = userEvent.setup();
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
     renderLoginPageWithFrom('/change-password');
 
@@ -141,7 +141,7 @@ describe('LoginPage', () => {
 
   it('redirects to dashboard when no from state is present', async () => {
     const user = userEvent.setup();
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
     renderLoginPage();
 
@@ -175,7 +175,7 @@ describe('LoginPage', () => {
 
     // Make the login response slow so we can observe the pending state
     server.use(
-      http.post('/api/auth/login', async () => {
+      http.post('/api/v1/auth/login', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return HttpResponse.json({ user: ADMIN_USER });
       }),

@@ -45,6 +45,13 @@ const SERIAL_FILES = [
   // parallel tests creating/deleting users between the before/after count snapshots
   // cause the ">= countBefore + 1" assertion to flap.
   'src/__tests__/userService.test.ts',
+  // settingsService writes default_currency to system_settings; parallel runs cause
+  // duplicate-key races on the INSERT in getDefaultCurrency tests.
+  'src/__tests__/settingsService.test.ts',
+  // contactController's send-email tests check that an Email activity is created;
+  // smtpSettingsService running in parallel can set smtp_host mid-test which causes
+  // the activity query to return 0 results if the write races with the read.
+  'src/__tests__/contactController.test.ts',
 ];
 
 const sharedResolve = {

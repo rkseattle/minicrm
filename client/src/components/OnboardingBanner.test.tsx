@@ -21,7 +21,7 @@ import OnboardingBanner from './OnboardingBanner.js';
 /** Mock user helpers */
 function mockAdminUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-1',
@@ -38,7 +38,7 @@ function mockAdminUser() {
 
 function mockRepUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-2',
@@ -55,7 +55,7 @@ function mockRepUser() {
 
 function mockFirstRun() {
   server.use(
-    http.get('/api/settings/onboarding', () =>
+    http.get('/api/v1/settings/onboarding', () =>
       HttpResponse.json({ is_first_run: true, onboarding_completed: false }),
     ),
   );
@@ -63,14 +63,14 @@ function mockFirstRun() {
 
 function mockNotFirstRun() {
   server.use(
-    http.get('/api/settings/onboarding', () =>
+    http.get('/api/v1/settings/onboarding', () =>
       HttpResponse.json({ is_first_run: false, onboarding_completed: false }),
     ),
   );
 }
 
 beforeEach(() => {
-  server.use(http.get('/api/settings/nav-layout', () => HttpResponse.json({ layout: 'top' })));
+  server.use(http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout: 'top' })));
 });
 
 describe('OnboardingBanner', () => {
@@ -140,7 +140,9 @@ describe('OnboardingBanner', () => {
     mockAdminUser();
     mockFirstRun();
     server.use(
-      http.put('/api/settings/onboarding', () => HttpResponse.json({ onboarding_completed: true })),
+      http.put('/api/v1/settings/onboarding', () =>
+        HttpResponse.json({ onboarding_completed: true }),
+      ),
     );
 
     renderWithProviders(<OnboardingBanner />);
@@ -163,14 +165,14 @@ describe('OnboardingBanner', () => {
     // Set up first run, then after dismiss return completed
     let requestCount = 0;
     server.use(
-      http.get('/api/settings/onboarding', () => {
+      http.get('/api/v1/settings/onboarding', () => {
         requestCount += 1;
         if (requestCount === 1) {
           return HttpResponse.json({ is_first_run: true, onboarding_completed: false });
         }
         return HttpResponse.json({ is_first_run: false, onboarding_completed: true });
       }),
-      http.put('/api/settings/onboarding', () => {
+      http.put('/api/v1/settings/onboarding', () => {
         dismissCalled = true;
         return HttpResponse.json({ onboarding_completed: true });
       }),
@@ -192,7 +194,7 @@ describe('OnboardingBanner', () => {
     mockAdminUser();
     mockFirstRun();
     server.use(
-      http.post('/api/users/invite', () =>
+      http.post('/api/v1/users/invite', () =>
         HttpResponse.json({
           user: {
             id: 'new-user',

@@ -173,7 +173,7 @@ describe('AccountForm', () => {
   describe('parent account type-ahead', () => {
     it('shows autocomplete suggestions when a query of 2+ chars is typed', async () => {
       server.use(
-        http.get('/api/accounts/search', () => HttpResponse.json({ accounts: [ACCOUNT_1] })),
+        http.get('/api/v1/accounts/search', () => HttpResponse.json({ accounts: [ACCOUNT_1] })),
       );
       const user = userEvent.setup();
       renderWithProviders(<AccountForm onSubmit={noop} />);
@@ -197,7 +197,7 @@ describe('AccountForm', () => {
 
     it('selects a parent account and hides the search input', async () => {
       server.use(
-        http.get('/api/accounts/search', () => HttpResponse.json({ accounts: [ACCOUNT_1] })),
+        http.get('/api/v1/accounts/search', () => HttpResponse.json({ accounts: [ACCOUNT_1] })),
       );
       const user = userEvent.setup();
       renderWithProviders(<AccountForm onSubmit={noop} />);

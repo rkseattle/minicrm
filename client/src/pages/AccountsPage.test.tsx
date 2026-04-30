@@ -39,7 +39,7 @@ describe('AccountsPage', () => {
 
   it('shows empty state when no accounts are returned', async () => {
     server.use(
-      http.get('/api/accounts', () =>
+      http.get('/api/v1/accounts', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
       ),
     );
@@ -51,7 +51,7 @@ describe('AccountsPage', () => {
 
   it('shows error state when the API fails', async () => {
     server.use(
-      http.get('/api/accounts', () =>
+      http.get('/api/v1/accounts', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -114,7 +114,7 @@ describe('AccountsPage', () => {
       owner_id: REP_USER.id,
     };
     server.use(
-      http.get('/api/accounts', ({ request }) => {
+      http.get('/api/v1/accounts', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const accounts = owner === 'me' ? [ACCOUNT_1] : [ACCOUNT_1, repAccount];
         return HttpResponse.json({ data: accounts, total: accounts.length, page: 1, limit: 50 });
@@ -139,7 +139,7 @@ describe('AccountsPage', () => {
 
   it('shows fallback text for accounts with an unresolvable owner', async () => {
     server.use(
-      http.get('/api/accounts', () =>
+      http.get('/api/v1/accounts', () =>
         HttpResponse.json({
           data: [{ ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
           total: 1,
@@ -171,7 +171,7 @@ describe('AccountsPage', () => {
   it('passes the search param to the API when the search input changes', async () => {
     let capturedSearch: string | null = null;
     server.use(
-      http.get('/api/accounts', ({ request }) => {
+      http.get('/api/v1/accounts', ({ request }) => {
         capturedSearch = new URL(request.url).searchParams.get('search');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
@@ -194,7 +194,7 @@ describe('AccountsPage', () => {
   it('passes the industry param to the API when the industry input changes', async () => {
     let capturedIndustry: string | null = null;
     server.use(
-      http.get('/api/accounts', ({ request }) => {
+      http.get('/api/v1/accounts', ({ request }) => {
         capturedIndustry = new URL(request.url).searchParams.get('industry');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
@@ -241,7 +241,7 @@ describe('AccountsPage', () => {
 
     beforeEach(() => {
       server.use(
-        http.get('/api/accounts', () =>
+        http.get('/api/v1/accounts', () =>
           HttpResponse.json({ data: [ACCOUNT_1, ACCOUNT_2], total: 2, page: 1, limit: 50 }),
         ),
       );
@@ -349,7 +349,7 @@ describe('AccountsPage', () => {
     });
 
     it('does not render the Export All button for rep users', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<AccountsPage />);
       await waitFor(() => {
         expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();

@@ -23,7 +23,7 @@ import CurrencySettings from './CurrencySettings.js';
 
 function mockRepUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-rep',
@@ -72,7 +72,10 @@ describe('CurrencySettings — default currency', () => {
 
   it('shows error message when save fails', async () => {
     server.use(
-      http.patch('/api/settings/default-currency', () => new HttpResponse(null, { status: 500 })),
+      http.patch(
+        '/api/v1/settings/default-currency',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
     );
 
     renderWithProviders(<CurrencySettings />);
@@ -162,7 +165,7 @@ describe('CurrencySettings — exchange rates', () => {
 
   it('removes a rate row when Remove is clicked', async () => {
     server.use(
-      http.get('/api/settings/currencies', () =>
+      http.get('/api/v1/settings/currencies', () =>
         HttpResponse.json({
           home_currency: 'USD',
           currencies: [
@@ -211,7 +214,9 @@ describe('CurrencySettings — exchange rates', () => {
   });
 
   it('shows error when saving exchange rates fails', async () => {
-    server.use(http.put('/api/settings/currencies', () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      http.put('/api/v1/settings/currencies', () => new HttpResponse(null, { status: 500 })),
+    );
 
     renderWithProviders(<CurrencySettings />);
 

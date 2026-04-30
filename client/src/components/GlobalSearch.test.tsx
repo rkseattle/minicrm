@@ -42,7 +42,7 @@ describe('GlobalSearch', () => {
 
   it('shows the empty state when query returns no results', async () => {
     server.use(
-      http.get('/api/search', () =>
+      http.get('/api/v1/search', () =>
         HttpResponse.json({ contacts: [], accounts: [], deals: [], leads: [] }),
       ),
     );
@@ -120,7 +120,7 @@ describe('GlobalSearch', () => {
 
   it('shows lead results when query matches leads', async () => {
     server.use(
-      http.get('/api/search', () =>
+      http.get('/api/v1/search', () =>
         HttpResponse.json({
           contacts: [],
           accounts: [],
@@ -149,7 +149,7 @@ describe('GlobalSearch', () => {
 
   it('lead result links to the correct lead detail URL', async () => {
     server.use(
-      http.get('/api/search', () =>
+      http.get('/api/v1/search', () =>
         HttpResponse.json({
           contacts: [],
           accounts: [],

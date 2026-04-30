@@ -582,17 +582,19 @@ const swaggerOptions: swaggerJsdoc.Options = {
 Request and response bodies use \`snake_case\` field names throughout the API (e.g., \`first_name\`, \`owner_id\`, \`close_date\`).
 
 **Exception:** The following fields use \`camelCase\` rather than \`snake_case\`:
-- \`POST /api/auth/login\` response: \`mustChangePassword\`
-- \`POST /api/auth/change-password\` request: \`currentPassword\`, \`newPassword\`
-- \`POST /api/users/invite\` response: \`inviteToken\`, \`setPasswordPath\`
+- \`POST /api/v1/auth/login\` response: \`mustChangePassword\`
+- \`POST /api/v1/auth/change-password\` request: \`currentPassword\`, \`newPassword\`
+- \`POST /api/v1/users/invite\` response: \`inviteToken\`, \`setPasswordPath\`
 
 These are intentional exceptions and will not be changed to snake_case.
 
 ## Authentication
 
-All endpoints except \`POST /api/auth/login\`, \`POST /api/auth/logout\`, \`POST /api/users/set-password\`, and \`GET /api/settings/default-language\` require a valid session cookie obtained by calling \`POST /api/auth/login\`.`,
+All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, \`POST /api/v1/users/set-password\`, and \`GET /api/v1/settings/default-language\` require a valid session cookie obtained by calling \`POST /api/v1/auth/login\`.`,
     },
-    servers: [{ url: 'http://localhost:3001', description: 'Local development server' }],
+    servers: [
+      { url: 'http://localhost:3001/api/v1', description: 'Local development server (v1)' },
+    ],
     tags: [
       {
         name: 'Auth',
@@ -641,7 +643,7 @@ All endpoints except \`POST /api/auth/login\`, \`POST /api/auth/logout\`, \`POST
           in: 'cookie',
           name: 'minicrm_token',
           description: `JWT stored in an httpOnly, SameSite=lax cookie named 'minicrm_token'.
-Obtain by calling POST /api/auth/login. Token expires after 8 hours of inactivity.
+Obtain by calling POST /api/v1/auth/login. Token expires after 8 hours of inactivity.
 Expired tokens return 401 on the next request — re-authenticate to obtain a new token.
 The cookie is not accessible to JavaScript (httpOnly) and is scoped to same-site requests.`,
         },

@@ -49,6 +49,41 @@ secrets unreadable.
 
 ---
 
+## API Versioning Policy
+
+All MiniCRM resource endpoints are served under the `/api/v1/` URL prefix (e.g.
+`GET /api/v1/contacts`). The `/api/health` endpoint is intentionally unversioned — it is an
+infrastructure endpoint, not part of the resource API. (MINCRM-283)
+
+### Chosen scheme: URL prefix
+
+The URL-prefix approach (`/api/v1/`) was chosen over content negotiation
+(`Accept: application/vnd.minicrm+json;version=1`) because it is simpler to implement,
+simpler to test, and unambiguously visible in logs, proxies, and browser dev-tools.
+
+### Backward-compatibility redirects
+
+The server issues `301 Permanent Redirect` from the old unversioned paths to their v1
+equivalents (e.g. `GET /api/contacts` → `GET /api/v1/contacts`). This gives existing
+consumers a graceful migration path. **These redirects will be removed in a future release —
+migrate to `/api/v1/` as soon as possible.**
+
+### Introducing v2
+
+When a breaking change is required, mount the changed routes alongside the v1 routes under
+`/api/v2/`. Non-breaking changes are added to the existing version. Breaking changes are
+defined as:
+
+- Removing or renaming a field in a response body
+- Changing the semantics of an existing query parameter
+- Removing an endpoint
+- Changing a required field to a different type
+
+Additive changes (new optional fields, new endpoints, new optional query parameters) do not
+require a version bump.
+
+---
+
 ## Client Build Process
 
 The client container uses a multi-stage Docker build:

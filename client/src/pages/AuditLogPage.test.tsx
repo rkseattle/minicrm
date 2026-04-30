@@ -53,7 +53,7 @@ describe('AuditLogPage', () => {
   it('renders entries from the API', async () => {
     const entry = makeEntry();
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );
@@ -67,7 +67,7 @@ describe('AuditLogPage', () => {
   it('renders actor, event type, and record type columns', async () => {
     const entry = makeEntry();
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );
@@ -82,7 +82,7 @@ describe('AuditLogPage', () => {
 
   it('shows error state when the API call fails', async () => {
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ error: 'Server error' }, { status: 500 }),
       ),
     );
@@ -107,7 +107,7 @@ describe('AuditLogPage', () => {
   it('applies filters when the Apply button is clicked', async () => {
     let capturedUrl: string | undefined;
     server.use(
-      http.get('/api/audit-log', ({ request }) => {
+      http.get('/api/v1/audit-log', ({ request }) => {
         capturedUrl = request.url;
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
@@ -139,7 +139,7 @@ describe('AuditLogPage', () => {
       makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i + 1).padStart(2, '0')}` }),
     );
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: entries, total: 100, page: 1, limit: 50 }),
       ),
     );
@@ -155,7 +155,7 @@ describe('AuditLogPage', () => {
   it('does not show pagination when all entries fit on one page', async () => {
     const entry = makeEntry();
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );
@@ -173,7 +173,7 @@ describe('AuditLogPage', () => {
       new_value: 'new@example.com',
     });
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );
@@ -198,7 +198,7 @@ describe('AuditLogPage', () => {
       new_value: 'new@example.com',
     });
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );
@@ -217,7 +217,7 @@ describe('AuditLogPage', () => {
   it('renders the timestamp column', async () => {
     const entry = makeEntry();
     server.use(
-      http.get('/api/audit-log', () =>
+      http.get('/api/v1/audit-log', () =>
         HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
       ),
     );

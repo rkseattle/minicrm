@@ -30,7 +30,7 @@ router.use(authenticate);
 
 /**
  * @openapi
- * /api/attachments:
+ * /api/v1/attachments:
  *   get:
  *     tags: [Attachments]
  *     operationId: listAttachments
@@ -62,7 +62,7 @@ router.get('/', asyncHandler(listAttachmentsHandler));
 
 /**
  * @openapi
- * /api/attachments:
+ * /api/v1/attachments:
  *   post:
  *     tags: [Attachments]
  *     operationId: uploadAttachment
@@ -99,7 +99,7 @@ router.post('/', upload.single('file'), asyncHandler(uploadAttachmentHandler));
 
 /**
  * @openapi
- * /api/attachments/{id}/download:
+ * /api/v1/attachments/{id}/download:
  *   get:
  *     tags: [Attachments]
  *     operationId: downloadAttachment
@@ -125,7 +125,7 @@ router.get('/:id/download', asyncHandler(downloadAttachmentHandler));
 
 /**
  * @openapi
- * /api/attachments/{id}:
+ * /api/v1/attachments/{id}:
  *   delete:
  *     tags: [Attachments]
  *     operationId: deleteAttachment

@@ -425,7 +425,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
 
     let caught: unknown;
     try {
-      await client.get('/api/resource/42', { schema });
+      await client.get('/api/v1/resource/42', { schema });
     } catch (err) {
       caught = err;
     }
@@ -434,7 +434,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
     const restErr = caught as RestClientError;
     // Error message must identify the method and endpoint.
     expect(restErr.message).toContain('GET');
-    expect(restErr.message).toContain('/api/resource/42');
+    expect(restErr.message).toContain('/api/v1/resource/42');
     // validationError field should be populated with the ZodError.
     expect(restErr.validationError).toBeDefined();
     expect(restErr.validationError?.issues.length).toBeGreaterThan(0);
@@ -448,7 +448,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
 
     let caught: unknown;
     try {
-      await client.patch('/api/items/7', { value: 1 }, { schema });
+      await client.patch('/api/v1/items/7', { value: 1 }, { schema });
     } catch (err) {
       caught = err;
     }
@@ -456,7 +456,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
     expect(caught).toBeInstanceOf(RestClientError);
     const restErr = caught as RestClientError;
     expect(restErr.message).toContain('PATCH');
-    expect(restErr.message).toContain('/api/items/7');
+    expect(restErr.message).toContain('/api/v1/items/7');
     expect(restErr.validationError).toBeDefined();
   });
 
@@ -469,7 +469,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
     const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
 
     // No schema — should resolve without throwing even though the shape is wrong.
-    const result = await client.get<{ id: number; name: string }>('/api/resource/1');
+    const result = await client.get<{ id: number; name: string }>('/api/v1/resource/1');
     expect(result.status).toBe(200);
     // The body is the raw cast object.
     expect((result.body as unknown as { wrong: string }).wrong).toBe('shape');
@@ -479,7 +479,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
     const ctx = mockContext(() => mockApiResponse(204, {}));
     const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
 
-    const result = await client.delete<Record<string, never>>('/api/resource/1');
+    const result = await client.delete<Record<string, never>>('/api/v1/resource/1');
     expect(result.status).toBe(204);
   });
 

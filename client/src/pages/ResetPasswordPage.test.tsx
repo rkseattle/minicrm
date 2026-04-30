@@ -109,7 +109,7 @@ describe('ResetPasswordPage — with token', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/reset-password', () => {
+      http.post('/api/v1/auth/reset-password', () => {
         return HttpResponse.json(
           {
             error: {
@@ -140,7 +140,7 @@ describe('ResetPasswordPage — with token', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/reset-password', async () => {
+      http.post('/api/v1/auth/reset-password', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return HttpResponse.json({
           user: {

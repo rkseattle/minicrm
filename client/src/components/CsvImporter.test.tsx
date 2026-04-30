@@ -32,10 +32,10 @@ function mockCompletedJob(overrides?: {
   error_csv?: string | null;
 }) {
   server.use(
-    http.post('/api/admin/import/contacts/run', () =>
+    http.post('/api/v1/admin/import/contacts/run', () =>
       HttpResponse.json({ job_id: 'test-job-id', status: 'pending' }, { status: 202 }),
     ),
-    http.get('/api/admin/import/jobs/:job_id', () =>
+    http.get('/api/v1/admin/import/jobs/:job_id', () =>
       HttpResponse.json({
         job_id: 'test-job-id',
         type: 'contacts',
@@ -96,7 +96,7 @@ describe('CsvImporter', () => {
 
     it('shows a parse error when the server rejects the CSV', async () => {
       server.use(
-        http.post('/api/admin/import/contacts/parse', () =>
+        http.post('/api/v1/admin/import/contacts/parse', () =>
           HttpResponse.json(
             { error: { code: 'CSV_PARSE_ERROR', message: 'Bad CSV' } },
             { status: 400 },
@@ -216,10 +216,10 @@ describe('CsvImporter', () => {
     it('shows the running state (spinner) after clicking Import', async () => {
       // Keep the job in 'running' status so polling never transitions to summary
       server.use(
-        http.post('/api/admin/import/contacts/run', () =>
+        http.post('/api/v1/admin/import/contacts/run', () =>
           HttpResponse.json({ job_id: 'run-job-id', status: 'pending' }, { status: 202 }),
         ),
-        http.get('/api/admin/import/jobs/:job_id', () =>
+        http.get('/api/v1/admin/import/jobs/:job_id', () =>
           HttpResponse.json({
             job_id: 'run-job-id',
             type: 'contacts',
@@ -294,7 +294,7 @@ describe('CsvImporter', () => {
 
     it('shows a run error and returns to preview when the POST /run fails', async () => {
       server.use(
-        http.post('/api/admin/import/contacts/run', () =>
+        http.post('/api/v1/admin/import/contacts/run', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'oops' } }, { status: 500 }),
         ),
       );
@@ -306,10 +306,10 @@ describe('CsvImporter', () => {
 
     it('shows failed job summary when status is failed', async () => {
       server.use(
-        http.post('/api/admin/import/contacts/run', () =>
+        http.post('/api/v1/admin/import/contacts/run', () =>
           HttpResponse.json({ job_id: 'fail-job-id', status: 'pending' }, { status: 202 }),
         ),
-        http.get('/api/admin/import/jobs/:job_id', () =>
+        http.get('/api/v1/admin/import/jobs/:job_id', () =>
           HttpResponse.json({
             job_id: 'fail-job-id',
             type: 'contacts',

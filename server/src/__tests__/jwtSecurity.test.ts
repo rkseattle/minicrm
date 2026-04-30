@@ -61,7 +61,7 @@ describe('MINCRM-244 — forged JWT (wrong secret)', () => {
     );
     const forgedCookie = `${AUTH_COOKIE_NAME}=${forgedToken}`;
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', forgedCookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', forgedCookie);
 
     expect(res.status).toBe(401);
   });
@@ -94,7 +94,7 @@ describe('MINCRM-244 — tampered payload (role escalation)', () => {
     const tamperedCookie = `${AUTH_COOKIE_NAME}=${tamperedToken}`;
 
     // GET /api/users is admin-only; must return 401 (signature mismatch), not 200 or 403
-    const res = await request(app).get('/api/users').set('Cookie', tamperedCookie);
+    const res = await request(app).get('/api/v1/users').set('Cookie', tamperedCookie);
 
     expect(res.status).toBe(401);
   });
@@ -111,7 +111,7 @@ describe('MINCRM-244 — expired JWT', () => {
     );
     const expiredCookie = `${AUTH_COOKIE_NAME}=${expiredToken}`;
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', expiredCookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', expiredCookie);
 
     expect(res.status).toBe(401);
   });
@@ -132,7 +132,7 @@ describe('MINCRM-244 — malformed cookie values', () => {
     async (value) => {
       const malformedCookie = `${AUTH_COOKIE_NAME}=${value}`;
 
-      const res = await request(app).get('/api/auth/me').set('Cookie', malformedCookie);
+      const res = await request(app).get('/api/v1/auth/me').set('Cookie', malformedCookie);
 
       expect(res.status).toBe(401);
       // Must not throw an unhandled exception (which would produce 500)
@@ -145,7 +145,7 @@ describe('MINCRM-244 — malformed cookie values', () => {
 
 describe('MINCRM-244 — no cookie', () => {
   it('returns 401 on an authenticated endpoint when no cookie is sent', async () => {
-    const res = await request(app).get('/api/contacts');
+    const res = await request(app).get('/api/v1/contacts');
 
     expect(res.status).toBe(401);
   });

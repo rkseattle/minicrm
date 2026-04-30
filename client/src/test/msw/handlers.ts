@@ -433,12 +433,12 @@ export const ACTIVITY_2: ActivityResponse = {
 /** Default handlers — can be overridden in individual tests with server.use() */
 export const handlers = [
   /** Auth: GET /api/auth/me — returns admin by default */
-  http.get('/api/auth/me', () => {
+  http.get('/api/v1/auth/me', () => {
     return HttpResponse.json({ user: ADMIN_USER });
   }),
 
   /** Auth: POST /api/auth/login */
-  http.post('/api/auth/login', async ({ request }) => {
+  http.post('/api/v1/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email: string; password: string };
     if (body.email === 'admin@example.com' && body.password === 'correct-password') {
       return HttpResponse.json({ user: ADMIN_USER });
@@ -450,18 +450,18 @@ export const handlers = [
   }),
 
   /** Auth: POST /api/auth/logout */
-  http.post('/api/auth/logout', () => {
+  http.post('/api/v1/auth/logout', () => {
     return HttpResponse.json({ message: 'Logged out' });
   }),
 
   /** Users: GET /api/users */
-  http.get('/api/users', () => {
+  http.get('/api/v1/users', () => {
     const users = [ADMIN_USER, REP_USER, INVITED_USER];
     return HttpResponse.json({ data: users, total: users.length, page: 1, limit: 50 });
   }),
 
   /** Users: GET /api/users/active — returns only active users with id+name */
-  http.get('/api/users/active', () => {
+  http.get('/api/v1/users/active', () => {
     return HttpResponse.json({
       users: [
         { id: ADMIN_USER.id, name: ADMIN_USER.name },
@@ -471,7 +471,7 @@ export const handlers = [
   }),
 
   /** Users: POST /api/users/invite */
-  http.post('/api/users/invite', async ({ request }) => {
+  http.post('/api/v1/users/invite', async ({ request }) => {
     const body = (await request.json()) as { email: string; name: string; role: string };
     return HttpResponse.json(
       {
@@ -492,7 +492,7 @@ export const handlers = [
   }),
 
   /** Users: PATCH /api/users/:id/role */
-  http.patch('/api/users/:id/role', async ({ params, request }) => {
+  http.patch('/api/v1/users/:id/role', async ({ params, request }) => {
     const body = (await request.json()) as { role: string };
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, role: body.role },
@@ -500,45 +500,45 @@ export const handlers = [
   }),
 
   /** Users: PATCH /api/users/:id/deactivate */
-  http.patch('/api/users/:id/deactivate', ({ params }) => {
+  http.patch('/api/v1/users/:id/deactivate', ({ params }) => {
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'inactive' },
     });
   }),
 
   /** Users: PATCH /api/users/:id/reactivate */
-  http.patch('/api/users/:id/reactivate', ({ params }) => {
+  http.patch('/api/v1/users/:id/reactivate', ({ params }) => {
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'active' },
     });
   }),
 
   /** Users: POST /api/users/:id/admin-set-password — admin sets a user's password */
-  http.post('/api/users/:id/admin-set-password', ({ params }) => {
+  http.post('/api/v1/users/:id/admin-set-password', ({ params }) => {
     return HttpResponse.json({
       user: { ...REP_USER, id: params.id as string, must_change_password: true },
     });
   }),
 
   /** Auth: POST /api/auth/change-password */
-  http.post('/api/auth/change-password', () => {
+  http.post('/api/v1/auth/change-password', () => {
     return HttpResponse.json({ message: 'Password changed successfully' });
   }),
 
   /** Auth: POST /api/auth/forgot-password — always returns 200 */
-  http.post('/api/auth/forgot-password', () => {
+  http.post('/api/v1/auth/forgot-password', () => {
     return HttpResponse.json({
       message: 'If an account with that email exists, a reset link has been sent.',
     });
   }),
 
   /** Auth: POST /api/auth/reset-password — returns admin user on success */
-  http.post('/api/auth/reset-password', () => {
+  http.post('/api/v1/auth/reset-password', () => {
     return HttpResponse.json({ user: ADMIN_USER });
   }),
 
   /** Contacts: GET /api/contacts — supports ?account=<id> and ?owner=me filters */
-  http.get('/api/contacts', ({ request }) => {
+  http.get('/api/v1/contacts', ({ request }) => {
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account');
     const owner = url.searchParams.get('owner');
@@ -549,7 +549,7 @@ export const handlers = [
   }),
 
   /** Contacts: POST /api/contacts */
-  http.post('/api/contacts', async ({ request }) => {
+  http.post('/api/v1/contacts', async ({ request }) => {
     const body = (await request.json()) as Partial<ContactResponse>;
     return HttpResponse.json(
       {
@@ -570,7 +570,7 @@ export const handlers = [
   }),
 
   /** Contacts: GET /api/contacts/:id */
-  http.get('/api/contacts/:id', ({ params }) => {
+  http.get('/api/v1/contacts/:id', ({ params }) => {
     if (params.id === CONTACT_1.id) {
       return HttpResponse.json({ contact: CONTACT_1 });
     }
@@ -581,7 +581,7 @@ export const handlers = [
   }),
 
   /** Contacts: PATCH /api/contacts/:id */
-  http.patch('/api/contacts/:id', async ({ params, request }) => {
+  http.patch('/api/v1/contacts/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<ContactResponse>;
     return HttpResponse.json({
       contact: { ...CONTACT_1, ...body, id: params.id as string },
@@ -589,12 +589,12 @@ export const handlers = [
   }),
 
   /** Contacts: DELETE /api/contacts/:id */
-  http.delete('/api/contacts/:id', () => {
+  http.delete('/api/v1/contacts/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Contacts: GET /api/contacts/:id/deals — returns deals linked to a contact */
-  http.get('/api/contacts/:id/deals', ({ params }) => {
+  http.get('/api/v1/contacts/:id/deals', ({ params }) => {
     // By default return DEAL_1 when fetching CONTACT_1's deals; empty for others
     if (params.id === CONTACT_1.id) {
       return HttpResponse.json({ deals: [DEAL_1] });
@@ -603,12 +603,12 @@ export const handlers = [
   }),
 
   /** Accounts: GET /api/accounts */
-  http.get('/api/accounts', () => {
+  http.get('/api/v1/accounts', () => {
     return HttpResponse.json({ data: [ACCOUNT_1], total: 1, page: 1, limit: 50 });
   }),
 
   /** Accounts: POST /api/accounts */
-  http.post('/api/accounts', async ({ request }) => {
+  http.post('/api/v1/accounts', async ({ request }) => {
     const body = (await request.json()) as Partial<AccountResponse>;
     return HttpResponse.json(
       {
@@ -627,7 +627,7 @@ export const handlers = [
   }),
 
   /** Accounts: GET /api/accounts/:id */
-  http.get('/api/accounts/:id', ({ params }) => {
+  http.get('/api/v1/accounts/:id', ({ params }) => {
     if (params.id === ACCOUNT_1.id) {
       return HttpResponse.json({ account: ACCOUNT_1 });
     }
@@ -638,7 +638,7 @@ export const handlers = [
   }),
 
   /** Accounts: PATCH /api/accounts/:id */
-  http.patch('/api/accounts/:id', async ({ params, request }) => {
+  http.patch('/api/v1/accounts/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<AccountResponse>;
     return HttpResponse.json({
       account: { ...ACCOUNT_1, ...body, id: params.id as string },
@@ -646,27 +646,27 @@ export const handlers = [
   }),
 
   /** Accounts: DELETE /api/accounts/:id */
-  http.delete('/api/accounts/:id', () => {
+  http.delete('/api/v1/accounts/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Accounts: GET /api/accounts/:id/children — returns empty list by default */
-  http.get('/api/accounts/:id/children', () => {
+  http.get('/api/v1/accounts/:id/children', () => {
     return HttpResponse.json([]);
   }),
 
   /** Accounts: GET /api/accounts/search — returns empty list by default */
-  http.get('/api/accounts/search', () => {
+  http.get('/api/v1/accounts/search', () => {
     return HttpResponse.json([]);
   }),
 
   /** Contacts: GET /api/contacts/:id/addresses — returns empty list by default */
-  http.get('/api/contacts/:id/addresses', () => {
+  http.get('/api/v1/contacts/:id/addresses', () => {
     return HttpResponse.json({ addresses: [] });
   }),
 
   /** Contacts: POST /api/contacts/:id/addresses */
-  http.post('/api/contacts/:id/addresses', async ({ request }) => {
+  http.post('/api/v1/contacts/:id/addresses', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
       address: {
@@ -687,12 +687,12 @@ export const handlers = [
   }),
 
   /** Contacts: DELETE /api/contacts/:id/addresses/:addressId */
-  http.delete('/api/contacts/:id/addresses/:addressId', () => {
+  http.delete('/api/v1/contacts/:id/addresses/:addressId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Contacts: POST /api/contacts/:id/addresses/:addressId/set-default */
-  http.post('/api/contacts/:id/addresses/:addressId/set-default', ({ params }) => {
+  http.post('/api/v1/contacts/:id/addresses/:addressId/set-default', ({ params }) => {
     return HttpResponse.json({
       address: {
         id: params['addressId'],
@@ -712,7 +712,7 @@ export const handlers = [
   }),
 
   /** Deals: GET /api/deals — supports ?owner=me filter */
-  http.get('/api/deals', ({ request }) => {
+  http.get('/api/v1/deals', ({ request }) => {
     const url = new URL(request.url);
     const owner = url.searchParams.get('owner');
     let deals = [DEAL_1];
@@ -721,7 +721,7 @@ export const handlers = [
   }),
 
   /** Deals: POST /api/deals */
-  http.post('/api/deals', async ({ request }) => {
+  http.post('/api/v1/deals', async ({ request }) => {
     const body = (await request.json()) as Partial<DealResponse>;
     return HttpResponse.json(
       {
@@ -740,7 +740,7 @@ export const handlers = [
   }),
 
   /** Deals: GET /api/deals/:id */
-  http.get('/api/deals/:id', ({ params }) => {
+  http.get('/api/v1/deals/:id', ({ params }) => {
     if (params.id === DEAL_1.id) {
       return HttpResponse.json({ deal: DEAL_1, contacts: [] });
     }
@@ -751,7 +751,7 @@ export const handlers = [
   }),
 
   /** Deals: PATCH /api/deals/:id */
-  http.patch('/api/deals/:id', async ({ params, request }) => {
+  http.patch('/api/v1/deals/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<DealResponse>;
     return HttpResponse.json({
       deal: { ...DEAL_1, ...body, id: params.id as string },
@@ -759,12 +759,12 @@ export const handlers = [
   }),
 
   /** Deals: DELETE /api/deals/:id */
-  http.delete('/api/deals/:id', () => {
+  http.delete('/api/v1/deals/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Deals: POST /api/deals/:id/contacts/:contactId — link a contact to a deal */
-  http.post('/api/deals/:id/contacts/:contactId', ({ params }) => {
+  http.post('/api/v1/deals/:id/contacts/:contactId', ({ params }) => {
     // Return CONTACT_1 as a linked contact by default
     const linkedContact = {
       id: params.contactId as string,
@@ -777,32 +777,32 @@ export const handlers = [
   }),
 
   /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
-  http.delete('/api/deals/:id/contacts/:contactId', () => {
+  http.delete('/api/v1/deals/:id/contacts/:contactId', () => {
     return HttpResponse.json({ contacts: [] });
   }),
 
   /** Dashboard: GET /api/dashboard/summary — returns dashboard summary metrics */
-  http.get('/api/dashboard/summary', () => {
+  http.get('/api/v1/dashboard/summary', () => {
     return HttpResponse.json(DASHBOARD_SUMMARY);
   }),
 
   /** Reports: GET /api/reports/win-loss — returns win/loss report */
-  http.get('/api/reports/win-loss', () => {
+  http.get('/api/v1/reports/win-loss', () => {
     return HttpResponse.json(WIN_LOSS_REPORT);
   }),
 
   /** Reports: GET /api/reports/activity-volume — returns activity volume report (MINCRM-181) */
-  http.get('/api/reports/activity-volume', () => {
+  http.get('/api/v1/reports/activity-volume', () => {
     return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
   }),
 
   /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */
-  http.get('/api/activities/my-tasks', () => {
+  http.get('/api/v1/activities/my-tasks', () => {
     return HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_OVERDUE] });
   }),
 
   /** Activities: GET /api/activities — supports ?contact, ?account, ?deal, ?owner=me filters */
-  http.get('/api/activities', ({ request }) => {
+  http.get('/api/v1/activities', ({ request }) => {
     const url = new URL(request.url);
     const contactId = url.searchParams.get('contact');
     const accountId = url.searchParams.get('account');
@@ -815,7 +815,7 @@ export const handlers = [
   }),
 
   /** Activities: POST /api/activities */
-  http.post('/api/activities', async ({ request }) => {
+  http.post('/api/v1/activities', async ({ request }) => {
     const body = (await request.json()) as Partial<ActivityResponse>;
     return HttpResponse.json(
       {
@@ -837,7 +837,7 @@ export const handlers = [
   }),
 
   /** Activities: GET /api/activities/:id */
-  http.get('/api/activities/:id', ({ params }) => {
+  http.get('/api/v1/activities/:id', ({ params }) => {
     if (params.id === ACTIVITY_1.id) return HttpResponse.json({ activity: ACTIVITY_1 });
     if (params.id === ACTIVITY_2.id) return HttpResponse.json({ activity: ACTIVITY_2 });
     return HttpResponse.json(
@@ -847,63 +847,63 @@ export const handlers = [
   }),
 
   /** Activities: PATCH /api/activities/:id */
-  http.patch('/api/activities/:id', async ({ params, request }) => {
+  http.patch('/api/v1/activities/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<ActivityResponse>;
     const base = params.id === ACTIVITY_2.id ? ACTIVITY_2 : ACTIVITY_1;
     return HttpResponse.json({ activity: { ...base, ...body, id: params.id as string } });
   }),
 
   /** Activities: DELETE /api/activities/:id */
-  http.delete('/api/activities/:id', () => {
+  http.delete('/api/v1/activities/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Settings: GET /api/settings/default-language */
-  http.get('/api/settings/default-language', () => {
+  http.get('/api/v1/settings/default-language', () => {
     return HttpResponse.json({ language: 'en' });
   }),
 
   /** Settings: PATCH /api/settings/default-language */
-  http.patch('/api/settings/default-language', async ({ request }) => {
+  http.patch('/api/v1/settings/default-language', async ({ request }) => {
     const body = (await request.json()) as { language: string };
     return HttpResponse.json({ language: body.language });
   }),
 
   /** Settings: GET /api/settings/nav-layout (MINCRM-133) */
-  http.get('/api/settings/nav-layout', () => {
+  http.get('/api/v1/settings/nav-layout', () => {
     return HttpResponse.json({ layout: 'top' });
   }),
 
   /** Settings: PATCH /api/settings/nav-layout (MINCRM-133) */
-  http.patch('/api/settings/nav-layout', async ({ request }) => {
+  http.patch('/api/v1/settings/nav-layout', async ({ request }) => {
     const body = (await request.json()) as { layout: string };
     return HttpResponse.json({ layout: body.layout });
   }),
 
   /** Settings: GET /api/settings/email-notifications (MINCRM-163) */
-  http.get('/api/settings/email-notifications', () => {
+  http.get('/api/v1/settings/email-notifications', () => {
     return HttpResponse.json({ enabled: true });
   }),
 
   /** Settings: PATCH /api/settings/email-notifications (MINCRM-163) */
-  http.patch('/api/settings/email-notifications', async ({ request }) => {
+  http.patch('/api/v1/settings/email-notifications', async ({ request }) => {
     const body = (await request.json()) as { enabled: boolean };
     return HttpResponse.json({ enabled: body.enabled });
   }),
 
   /** Settings: GET /api/settings/default-currency (MINCRM-189) */
-  http.get('/api/settings/default-currency', () => {
+  http.get('/api/v1/settings/default-currency', () => {
     return HttpResponse.json({ currency: 'USD' });
   }),
 
   /** Settings: PATCH /api/settings/default-currency (MINCRM-189) */
-  http.patch('/api/settings/default-currency', async ({ request }) => {
+  http.patch('/api/v1/settings/default-currency', async ({ request }) => {
     const body = (await request.json()) as { currency: string };
     return HttpResponse.json({ currency: body.currency });
   }),
 
   /** Settings: GET /api/settings/currencies (MINCRM-251) */
-  http.get('/api/settings/currencies', () => {
+  http.get('/api/v1/settings/currencies', () => {
     return HttpResponse.json({
       home_currency: 'USD',
       currencies: [
@@ -920,7 +920,7 @@ export const handlers = [
   }),
 
   /** Settings: PUT /api/settings/currencies (MINCRM-251) */
-  http.put('/api/settings/currencies', async ({ request }) => {
+  http.put('/api/v1/settings/currencies', async ({ request }) => {
     const body = (await request.json()) as {
       home_currency: string;
       currencies: Array<{ code: string; name: string; symbol: string; rate_to_home: number }>;
@@ -946,12 +946,12 @@ export const handlers = [
   }),
 
   /** Users: GET /api/users/notification-recipient-count (MINCRM-163) */
-  http.get('/api/users/notification-recipient-count', () => {
+  http.get('/api/v1/users/notification-recipient-count', () => {
     return HttpResponse.json({ count: 2 });
   }),
 
   /** Users: GET /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
-  http.get('/api/users/me/notification-preferences', () => {
+  http.get('/api/v1/users/me/notification-preferences', () => {
     return HttpResponse.json({
       preferences: {
         notify_overdue_tasks: true,
@@ -962,7 +962,7 @@ export const handlers = [
   }),
 
   /** Users: PATCH /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
-  http.patch('/api/users/me/notification-preferences', async ({ request }) => {
+  http.patch('/api/v1/users/me/notification-preferences', async ({ request }) => {
     const body = (await request.json()) as {
       notify_overdue_tasks?: boolean;
       notify_assignments?: boolean;
@@ -978,23 +978,23 @@ export const handlers = [
   }),
 
   /** Users: GET /api/users/me/language — returns null preference by default */
-  http.get('/api/users/me/language', () => {
+  http.get('/api/v1/users/me/language', () => {
     return HttpResponse.json({ language: null });
   }),
 
   /** Users: PATCH /api/users/me/language — echoes back the saved language */
-  http.patch('/api/users/me/language', async ({ request }) => {
+  http.patch('/api/v1/users/me/language', async ({ request }) => {
     const body = (await request.json()) as { language: string | null };
     return HttpResponse.json({ language: body.language });
   }),
 
   /** Automation: GET /api/automation/rules */
-  http.get('/api/automation/rules', () => {
+  http.get('/api/v1/automation/rules', () => {
     return HttpResponse.json({ rules: [AUTOMATION_RULE_1] });
   }),
 
   /** Automation: POST /api/automation/rules */
-  http.post('/api/automation/rules', async ({ request }) => {
+  http.post('/api/v1/automation/rules', async ({ request }) => {
     const body = (await request.json()) as Partial<AutomationRuleResponse>;
     return HttpResponse.json(
       {
@@ -1014,7 +1014,7 @@ export const handlers = [
   }),
 
   /** Automation: GET /api/automation/rules/:id */
-  http.get('/api/automation/rules/:id', ({ params }) => {
+  http.get('/api/v1/automation/rules/:id', ({ params }) => {
     if (params.id === AUTOMATION_RULE_1.id) {
       return HttpResponse.json({ rule: AUTOMATION_RULE_1 });
     }
@@ -1025,7 +1025,7 @@ export const handlers = [
   }),
 
   /** Automation: PATCH /api/automation/rules/:id */
-  http.patch('/api/automation/rules/:id', async ({ params, request }) => {
+  http.patch('/api/v1/automation/rules/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<AutomationRuleResponse>;
     return HttpResponse.json({
       rule: { ...AUTOMATION_RULE_1, ...body, id: params.id as string },
@@ -1033,12 +1033,12 @@ export const handlers = [
   }),
 
   /** Automation: DELETE /api/automation/rules/:id */
-  http.delete('/api/automation/rules/:id', () => {
+  http.delete('/api/v1/automation/rules/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Automation: GET /api/automation/rules/:id/logs */
-  http.get('/api/automation/rules/:id/logs', ({ params }) => {
+  http.get('/api/v1/automation/rules/:id/logs', ({ params }) => {
     if (params.id === AUTOMATION_RULE_1.id) {
       return HttpResponse.json({ logs: [AUTOMATION_LOG_1] });
     }
@@ -1046,27 +1046,27 @@ export const handlers = [
   }),
 
   /** Admin: GET /api/admin/demo/status — no demo data by default */
-  http.get('/api/admin/demo/status', () => {
+  http.get('/api/v1/admin/demo/status', () => {
     return HttpResponse.json({ active: false });
   }),
 
   /** Admin: POST /api/admin/demo/seed */
-  http.post('/api/admin/demo/seed', () => {
+  http.post('/api/v1/admin/demo/seed', () => {
     return HttpResponse.json({ success: true });
   }),
 
   /** Admin: POST /api/admin/demo/reset */
-  http.post('/api/admin/demo/reset', () => {
+  http.post('/api/v1/admin/demo/reset', () => {
     return HttpResponse.json({ success: true });
   }),
 
   /** Admin: DELETE /api/admin/demo */
-  http.delete('/api/admin/demo', () => {
+  http.delete('/api/v1/admin/demo', () => {
     return HttpResponse.json({ success: true });
   }),
 
   /** Import: POST /api/admin/import/:entity/parse — returns headers, fields, preview */
-  http.post('/api/admin/import/:entity/parse', ({ params }) => {
+  http.post('/api/v1/admin/import/:entity/parse', ({ params }) => {
     const entity = params.entity as string;
     const headers =
       entity === 'contacts'
@@ -1098,12 +1098,12 @@ export const handlers = [
   }),
 
   /** Import: POST /api/admin/import/:entity/run — returns job_id immediately (202) */
-  http.post('/api/admin/import/:entity/run', () => {
+  http.post('/api/v1/admin/import/:entity/run', () => {
     return HttpResponse.json({ job_id: 'test-job-id', status: 'pending' }, { status: 202 });
   }),
 
   /** Import: GET /api/admin/import/jobs/:job_id — returns completed job status */
-  http.get('/api/admin/import/jobs/:job_id', () => {
+  http.get('/api/v1/admin/import/jobs/:job_id', () => {
     return HttpResponse.json({
       job_id: 'test-job-id',
       type: 'contacts',
@@ -1121,7 +1121,7 @@ export const handlers = [
   }),
 
   /** Search: GET /api/search — returns contacts, accounts, and deals matching ?q= */
-  http.get('/api/search', ({ request }) => {
+  http.get('/api/v1/search', ({ request }) => {
     const url = new URL(request.url);
     const query = url.searchParams.get('q') ?? '';
     if (query.length < 2) {
@@ -1160,12 +1160,12 @@ export const handlers = [
   // ── Attachments (MINCRM-167) ─────────────────────────────────────────────────
 
   /** Attachments: GET /api/attachments — returns empty list by default */
-  http.get('/api/attachments', () => {
+  http.get('/api/v1/attachments', () => {
     return HttpResponse.json({ attachments: [] });
   }),
 
   /** Attachments: POST /api/attachments — returns a created attachment */
-  http.post('/api/attachments', () => {
+  http.post('/api/v1/attachments', () => {
     return HttpResponse.json(
       {
         attachment: {
@@ -1185,24 +1185,24 @@ export const handlers = [
   }),
 
   /** Attachments: DELETE /api/attachments/:id */
-  http.delete('/api/attachments/:id', () => {
+  http.delete('/api/v1/attachments/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   // ── Storage settings (MINCRM-169) ────────────────────────────────────────────
 
   /** Settings: GET /api/settings/storage/status — not configured by default */
-  http.get('/api/settings/storage/status', () => {
+  http.get('/api/v1/settings/storage/status', () => {
     return HttpResponse.json({ configured: false });
   }),
 
   /** Settings: GET /api/settings/storage — not configured by default */
-  http.get('/api/settings/storage', () => {
+  http.get('/api/v1/settings/storage', () => {
     return HttpResponse.json({ configured: false, config: null });
   }),
 
   /** Settings: PUT /api/settings/storage */
-  http.put('/api/settings/storage', async ({ request }) => {
+  http.put('/api/v1/settings/storage', async ({ request }) => {
     const body = (await request.json()) as {
       endpoint: string;
       bucket: string;
@@ -1221,28 +1221,28 @@ export const handlers = [
   }),
 
   /** Settings: DELETE /api/settings/storage */
-  http.delete('/api/settings/storage', () => {
+  http.delete('/api/v1/settings/storage', () => {
     return HttpResponse.json({ configured: false, config: null });
   }),
 
   /** Settings: POST /api/settings/storage/test */
-  http.post('/api/settings/storage/test', () => {
+  http.post('/api/v1/settings/storage/test', () => {
     return HttpResponse.json({ success: true });
   }),
 
   /** Settings: GET /api/settings/tags-restrict-creation (MINCRM-263) */
-  http.get('/api/settings/tags-restrict-creation', () => {
+  http.get('/api/v1/settings/tags-restrict-creation', () => {
     return HttpResponse.json({ restricted: false });
   }),
 
   /** Settings: PATCH /api/settings/tags-restrict-creation (MINCRM-263) */
-  http.patch('/api/settings/tags-restrict-creation', async ({ request }) => {
+  http.patch('/api/v1/settings/tags-restrict-creation', async ({ request }) => {
     const body = (await request.json()) as { restricted: boolean };
     return HttpResponse.json({ restricted: body.restricted });
   }),
 
   /** Settings: GET /api/settings/smtp — no password set by default (MINCRM-254) */
-  http.get('/api/settings/smtp', () => {
+  http.get('/api/v1/settings/smtp', () => {
     return HttpResponse.json({
       smtp_host: '',
       smtp_port: 587,
@@ -1253,7 +1253,7 @@ export const handlers = [
   }),
 
   /** Settings: PUT /api/settings/smtp (MINCRM-254) */
-  http.put('/api/settings/smtp', async ({ request }) => {
+  http.put('/api/v1/settings/smtp', async ({ request }) => {
     const body = (await request.json()) as {
       smtp_host: string;
       smtp_port: number;
@@ -1271,17 +1271,17 @@ export const handlers = [
   }),
 
   /** Settings: POST /api/settings/smtp/test (MINCRM-254) */
-  http.post('/api/settings/smtp/test', () => {
+  http.post('/api/v1/settings/smtp/test', () => {
     return HttpResponse.json({ success: true });
   }),
 
   /** Leads: GET /api/leads — returns LEAD_1 by default (MINCRM-173) */
-  http.get('/api/leads', () => {
+  http.get('/api/v1/leads', () => {
     return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
   }),
 
   /** Leads: POST /api/leads */
-  http.post('/api/leads', async ({ request }) => {
+  http.post('/api/v1/leads', async ({ request }) => {
     const body = (await request.json()) as Partial<LeadResponse>;
     return HttpResponse.json(
       {
@@ -1298,7 +1298,7 @@ export const handlers = [
   }),
 
   /** Leads: GET /api/leads/:id */
-  http.get('/api/leads/:id', ({ params }) => {
+  http.get('/api/v1/leads/:id', ({ params }) => {
     if (params.id === LEAD_1.id) {
       return HttpResponse.json({ lead: LEAD_1 });
     }
@@ -1309,23 +1309,23 @@ export const handlers = [
   }),
 
   /** Leads: PATCH /api/leads/:id */
-  http.patch('/api/leads/:id', async ({ params, request }) => {
+  http.patch('/api/v1/leads/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<LeadResponse>;
     return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
   }),
 
   /** Leads: DELETE /api/leads/:id */
-  http.delete('/api/leads/:id', () => {
+  http.delete('/api/v1/leads/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Leads: GET /api/leads/:id/status-history */
-  http.get('/api/leads/:id/status-history', () => {
+  http.get('/api/v1/leads/:id/status-history', () => {
     return HttpResponse.json({ history: [] });
   }),
 
   /** Leads: POST /api/leads/:id/convert */
-  http.post('/api/leads/:id/convert', () => {
+  http.post('/api/v1/leads/:id/convert', () => {
     return HttpResponse.json(
       {
         conversion: {
@@ -1339,32 +1339,32 @@ export const handlers = [
   }),
 
   /** Leads: GET /api/leads/accounts/search */
-  http.get('/api/leads/accounts/search', () => {
+  http.get('/api/v1/leads/accounts/search', () => {
     return HttpResponse.json({ accounts: [{ id: ACCOUNT_1.id, name: ACCOUNT_1.name }] });
   }),
 
   /** Audit log: GET /api/audit-log/record — returns empty history by default */
-  http.get('/api/audit-log/record', () => {
+  http.get('/api/v1/audit-log/record', () => {
     return HttpResponse.json({ entries: [] });
   }),
 
   /** Audit log: GET /api/audit-log — returns empty paginated list by default */
-  http.get('/api/audit-log', () => {
+  http.get('/api/v1/audit-log', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
   }),
 
   /** Audit log: GET /api/audit-log/actors — returns empty list by default */
-  http.get('/api/audit-log/actors', () => {
+  http.get('/api/v1/audit-log/actors', () => {
     return HttpResponse.json({ actors: [] });
   }),
 
   /** Pipeline stages: GET /api/settings/pipeline-stages — returns six seed stages */
-  http.get('/api/settings/pipeline-stages', () => {
+  http.get('/api/v1/settings/pipeline-stages', () => {
     return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
   }),
 
   /** Pipeline stages: POST /api/settings/pipeline-stages — creates a new stage */
-  http.post('/api/settings/pipeline-stages', async ({ request }) => {
+  http.post('/api/v1/settings/pipeline-stages', async ({ request }) => {
     const body = (await request.json()) as { name: string; probability?: number };
     const newStage: PipelineStageResponse = {
       id: '00000000-0000-0000-0000-000000000901',
@@ -1378,7 +1378,7 @@ export const handlers = [
   }),
 
   /** Pipeline stages: PATCH /api/settings/pipeline-stages/:id — updates a stage */
-  http.patch('/api/settings/pipeline-stages/:id', async ({ params, request }) => {
+  http.patch('/api/v1/settings/pipeline-stages/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<PipelineStageResponse>;
     const existing = PIPELINE_STAGES_FIXTURE.find((s) => s.id === params.id);
     if (!existing) {
@@ -1391,36 +1391,36 @@ export const handlers = [
   }),
 
   /** Pipeline stages: DELETE /api/settings/pipeline-stages/:id — deletes a stage */
-  http.delete('/api/settings/pipeline-stages/:id', ({ params }) => {
+  http.delete('/api/v1/settings/pipeline-stages/:id', ({ params }) => {
     return HttpResponse.json({ id: params.id });
   }),
 
   // ── Bulk operations (MINCRM-188) ─────────────────────────────────────────────
 
   /** Bulk: POST /api/contacts/bulk — returns affected count */
-  http.post('/api/contacts/bulk', () => {
+  http.post('/api/v1/contacts/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
   /** Bulk: POST /api/accounts/bulk — returns affected count */
-  http.post('/api/accounts/bulk', () => {
+  http.post('/api/v1/accounts/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
   /** Bulk: POST /api/deals/bulk — returns affected count */
-  http.post('/api/deals/bulk', () => {
+  http.post('/api/v1/deals/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
   // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
 
   /** Tags: GET /api/tags — returns empty list by default */
-  http.get('/api/tags', () => {
+  http.get('/api/v1/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
   /** Tags: POST /api/tags */
-  http.post('/api/tags', async ({ request }) => {
+  http.post('/api/v1/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json(
       {
@@ -1436,7 +1436,7 @@ export const handlers = [
   }),
 
   /** Tags: GET /api/tags/:id */
-  http.get('/api/tags/:id', ({ params }) => {
+  http.get('/api/v1/tags/:id', ({ params }) => {
     return HttpResponse.json({
       tag: {
         id: params.id,
@@ -1448,7 +1448,7 @@ export const handlers = [
   }),
 
   /** Tags: PATCH /api/tags/:id — admin rename */
-  http.patch('/api/tags/:id', async ({ params, request }) => {
+  http.patch('/api/v1/tags/:id', async ({ params, request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
@@ -1461,17 +1461,17 @@ export const handlers = [
   }),
 
   /** Tags: DELETE /api/tags/:id — admin delete */
-  http.delete('/api/tags/:id', () => {
+  http.delete('/api/v1/tags/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Contacts: GET /api/contacts/:id/tags — returns empty list by default */
-  http.get('/api/contacts/:id/tags', () => {
+  http.get('/api/v1/contacts/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
   /** Contacts: POST /api/contacts/:id/tags — attach a tag */
-  http.post('/api/contacts/:id/tags', async ({ request }) => {
+  http.post('/api/v1/contacts/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
@@ -1484,17 +1484,17 @@ export const handlers = [
   }),
 
   /** Contacts: DELETE /api/contacts/:id/tags/:tagId — detach a tag */
-  http.delete('/api/contacts/:id/tags/:tagId', () => {
+  http.delete('/api/v1/contacts/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Accounts: GET /api/accounts/:id/tags — returns empty list by default */
-  http.get('/api/accounts/:id/tags', () => {
+  http.get('/api/v1/accounts/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
   /** Accounts: POST /api/accounts/:id/tags — attach a tag */
-  http.post('/api/accounts/:id/tags', async ({ request }) => {
+  http.post('/api/v1/accounts/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
@@ -1507,17 +1507,17 @@ export const handlers = [
   }),
 
   /** Accounts: DELETE /api/accounts/:id/tags/:tagId — detach a tag */
-  http.delete('/api/accounts/:id/tags/:tagId', () => {
+  http.delete('/api/v1/accounts/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Deals: GET /api/deals/:id/tags — returns empty list by default */
-  http.get('/api/deals/:id/tags', () => {
+  http.get('/api/v1/deals/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
   /** Deals: POST /api/deals/:id/tags — attach a tag */
-  http.post('/api/deals/:id/tags', async ({ request }) => {
+  http.post('/api/v1/deals/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
@@ -1530,22 +1530,22 @@ export const handlers = [
   }),
 
   /** Deals: DELETE /api/deals/:id/tags/:tagId — detach a tag */
-  http.delete('/api/deals/:id/tags/:tagId', () => {
+  http.delete('/api/v1/deals/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Onboarding: GET /api/settings/onboarding — not first run by default (MINCRM-256) */
-  http.get('/api/settings/onboarding', () => {
+  http.get('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({ is_first_run: false, onboarding_completed: false });
   }),
 
   /** Onboarding: PUT /api/settings/onboarding — mark completed (MINCRM-256) */
-  http.put('/api/settings/onboarding', () => {
+  http.put('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({ onboarding_completed: true });
   }),
 
   /** Contacts: POST /api/contacts/:id/send-email — SMTP not configured in test (MINCRM-275) */
-  http.post('/api/contacts/:id/send-email', () => {
+  http.post('/api/v1/contacts/:id/send-email', () => {
     return HttpResponse.json({
       delivered: false,
       activityId: '00000000-0000-0000-0000-000000000e01',
@@ -1553,12 +1553,12 @@ export const handlers = [
   }),
 
   /** Custom fields: GET /api/custom-fields/definitions — returns empty list (MINCRM-276) */
-  http.get('/api/custom-fields/definitions', () => {
+  http.get('/api/v1/custom-fields/definitions', () => {
     return HttpResponse.json({ definitions: [] });
   }),
 
   /** Custom fields: POST /api/custom-fields/definitions — create definition (MINCRM-276) */
-  http.post('/api/custom-fields/definitions', async ({ request }) => {
+  http.post('/api/v1/custom-fields/definitions', async ({ request }) => {
     const body = (await request.json()) as {
       entity_type: string;
       name: string;
@@ -1579,7 +1579,7 @@ export const handlers = [
   }),
 
   /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition (MINCRM-276) */
-  http.patch('/api/custom-fields/definitions/:id', ({ params }) => {
+  http.patch('/api/v1/custom-fields/definitions/:id', ({ params }) => {
     return HttpResponse.json({
       id: params['id'],
       entity_type: 'contact',
@@ -1592,29 +1592,29 @@ export const handlers = [
   }),
 
   /** Custom fields: DELETE /api/custom-fields/definitions/:id — delete definition (MINCRM-276) */
-  http.delete('/api/custom-fields/definitions/:id', ({ params }) => {
+  http.delete('/api/v1/custom-fields/definitions/:id', ({ params }) => {
     return HttpResponse.json({ id: params['id'] });
   }),
 
   /** Custom fields: GET /api/custom-fields/:entityType/:recordId/custom-fields — returns empty (MINCRM-276) */
-  http.get('/api/custom-fields/:entityType/:recordId/custom-fields', () => {
+  http.get('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
   /** Custom fields: PUT /api/custom-fields/:entityType/:recordId/custom-fields — upsert values (MINCRM-276) */
-  http.put('/api/custom-fields/:entityType/:recordId/custom-fields', () => {
+  http.put('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
   // ── Webhooks (MINCRM-279) ────────────────────────────────────────────────────
 
   /** Webhooks: GET /api/admin/webhooks — returns empty list by default */
-  http.get('/api/admin/webhooks', () => {
+  http.get('/api/v1/admin/webhooks', () => {
     return HttpResponse.json({ subscriptions: [] });
   }),
 
   /** Webhooks: POST /api/admin/webhooks */
-  http.post('/api/admin/webhooks', async ({ request }) => {
+  http.post('/api/v1/admin/webhooks', async ({ request }) => {
     const body = (await request.json()) as { url: string; events: string[] };
     return HttpResponse.json(
       {
@@ -1633,7 +1633,7 @@ export const handlers = [
   }),
 
   /** Webhooks: GET /api/admin/webhooks/:id */
-  http.get('/api/admin/webhooks/:id', ({ params }) => {
+  http.get('/api/v1/admin/webhooks/:id', ({ params }) => {
     return HttpResponse.json({
       subscription: {
         id: params.id,
@@ -1647,7 +1647,7 @@ export const handlers = [
   }),
 
   /** Webhooks: PATCH /api/admin/webhooks/:id */
-  http.patch('/api/admin/webhooks/:id', async ({ params, request }) => {
+  http.patch('/api/v1/admin/webhooks/:id', async ({ params, request }) => {
     const body = (await request.json()) as { url?: string; events?: string[]; status?: string };
     return HttpResponse.json({
       subscription: {
@@ -1662,12 +1662,12 @@ export const handlers = [
   }),
 
   /** Webhooks: DELETE /api/admin/webhooks/:id */
-  http.delete('/api/admin/webhooks/:id', () => {
+  http.delete('/api/v1/admin/webhooks/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   /** Webhooks: GET /api/admin/webhooks/:id/logs — returns empty paginated list by default */
-  http.get('/api/admin/webhooks/:id/logs', () => {
+  http.get('/api/v1/admin/webhooks/:id/logs', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }),
 ];

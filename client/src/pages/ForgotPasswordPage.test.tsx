@@ -66,7 +66,7 @@ describe('ForgotPasswordPage', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/forgot-password', async () => {
+      http.post('/api/v1/auth/forgot-password', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return HttpResponse.json({
           message: 'If an account with that email exists, a reset link has been sent.',
@@ -87,7 +87,7 @@ describe('ForgotPasswordPage', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/forgot-password', () => {
+      http.post('/api/v1/auth/forgot-password', () => {
         return HttpResponse.json(
           { error: { code: 'VALIDATION_ERROR', message: 'Must be a valid email address' } },
           { status: 400 },

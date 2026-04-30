@@ -29,7 +29,7 @@ if (!ADMIN_PASSWORD) throw new Error('[SENDEMAIL] E2E_ADMIN_PASSWORD is not set'
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ test(
     const activitiesRes = await restClient.get<{
       data: Array<{ id: string; type: string; subject: string; direction: string }>;
       total: number;
-    }>(`/api/activities?contact=${contact.id}`);
+    }>(`/api/v1/activities?contact=${contact.id}`);
 
     const emailActivities = activitiesRes.body.data.filter((a) => a.type === 'Email');
     expect(emailActivities.length, 'at least one Email activity should be logged').toBeGreaterThan(

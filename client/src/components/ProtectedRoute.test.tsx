@@ -38,7 +38,7 @@ describe('ProtectedRoute', () => {
   it('shows a loading indicator while the auth check is in progress', () => {
     // Delay the response so the loading state is visible on initial render
     server.use(
-      http.get('/api/auth/me', async () => {
+      http.get('/api/v1/auth/me', async () => {
         await new Promise((resolve) => setTimeout(resolve, 500));
         return HttpResponse.json({ user: ADMIN_USER });
       }),
@@ -56,7 +56,7 @@ describe('ProtectedRoute', () => {
 
   it('redirects to /login when the user is not authenticated', async () => {
     server.use(
-      http.get('/api/auth/me', () => {
+      http.get('/api/v1/auth/me', () => {
         return HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 });
       }),
     );
@@ -68,7 +68,7 @@ describe('ProtectedRoute', () => {
 
   it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
       ),
     );
@@ -88,7 +88,7 @@ describe('ProtectedRoute', () => {
 
   it('redirects to /change-password when must_change_password is true', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ user: { ...ADMIN_USER, must_change_password: true } }),
       ),
     );

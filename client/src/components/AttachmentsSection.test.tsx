@@ -39,14 +39,14 @@ const ATTACHMENT_2: Attachment = {
 /** Sets up a storage-configured response and an optional attachment list. */
 function withStorageConfigured(attachments: Attachment[] = []) {
   server.use(
-    http.get('/api/settings/storage/status', () => HttpResponse.json({ configured: true })),
-    http.get('/api/attachments', () => HttpResponse.json({ attachments })),
+    http.get('/api/v1/settings/storage/status', () => HttpResponse.json({ configured: true })),
+    http.get('/api/v1/attachments', () => HttpResponse.json({ attachments })),
   );
 }
 
 function withStorageNotConfigured() {
   server.use(
-    http.get('/api/settings/storage/status', () => HttpResponse.json({ configured: false })),
+    http.get('/api/v1/settings/storage/status', () => HttpResponse.json({ configured: false })),
   );
 }
 
@@ -153,7 +153,7 @@ describe('AttachmentsSection — delete confirmation dialog', () => {
     withStorageConfigured([ATTACHMENT_1]);
     server.use(
       http.delete(
-        `/api/attachments/${ATTACHMENT_1.id}`,
+        `/api/v1/attachments/${ATTACHMENT_1.id}`,
         () => new HttpResponse(null, { status: 204 }),
       ),
     );
@@ -164,7 +164,7 @@ describe('AttachmentsSection — delete confirmation dialog', () => {
     });
 
     // After confirming, the list will re-fetch. Set up the empty list response
-    server.use(http.get('/api/attachments', () => HttpResponse.json({ attachments: [] })));
+    server.use(http.get('/api/v1/attachments', () => HttpResponse.json({ attachments: [] })));
 
     fireEvent.click(screen.getByTestId('attachment-delete-confirm'));
 

@@ -67,7 +67,7 @@ describe('NavLeft', () => {
   });
 
   it('hides admin links for rep users', async () => {
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
     renderNavLeft();
     await waitFor(() => {
       expect(screen.getByTestId('nav-left-dashboard')).toBeInTheDocument();

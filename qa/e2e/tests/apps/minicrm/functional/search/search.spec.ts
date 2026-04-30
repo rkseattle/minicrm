@@ -82,7 +82,7 @@ interface SearchApiResponse {
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ test('@functional @search F9-RC1: search by contact name returns matching contac
 
   // AC2: verify API returns the same record.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(`ContactSearch-${suffix}`)}`,
+    `/api/v1/search?q=${encodeURIComponent(`ContactSearch-${suffix}`)}`,
   );
   expect(
     apiResult.body.contacts.some((c) => c.id === contact.id),
@@ -134,7 +134,7 @@ test('@functional @search F9-RC2: search by account name returns matching accoun
 
   // AC2: API cross-check.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(`AccountSearch-${suffix}`)}`,
+    `/api/v1/search?q=${encodeURIComponent(`AccountSearch-${suffix}`)}`,
   );
   expect(
     apiResult.body.accounts.some((a) => a.id === account.id),
@@ -164,7 +164,7 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
 
   // AC2: API cross-check.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(`DealSearch-${suffix}`)}`,
+    `/api/v1/search?q=${encodeURIComponent(`DealSearch-${suffix}`)}`,
   );
   expect(
     apiResult.body.deals.some((d) => d.id === deal.id),
@@ -237,7 +237,7 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
 
   // API confirms the term returns nothing for contacts.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(`F9RA1-no-match-${suffix}`)}`,
+    `/api/v1/search?q=${encodeURIComponent(`F9RA1-no-match-${suffix}`)}`,
   );
   expect(
     apiResult.body.contacts.some((c) => c.id === unrelated.id),
@@ -267,7 +267,7 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
 
   // API cross-check with uppercase term.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(uppercaseQuery)}`,
+    `/api/v1/search?q=${encodeURIComponent(uppercaseQuery)}`,
   );
   expect(
     apiResult.body.contacts.some((c) => c.id === contact.id),
@@ -296,7 +296,7 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
 
   // AC2: API also returns the record.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(suffix)}`,
+    `/api/v1/search?q=${encodeURIComponent(suffix)}`,
   );
   expect(
     apiResult.body.accounts.some((a) => a.id === account.id),
@@ -324,7 +324,7 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
 
   // AC2: API returns at least 1 contact match and the seeded contact is included.
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(`ExactMatch-${suffix}`)}`,
+    `/api/v1/search?q=${encodeURIComponent(`ExactMatch-${suffix}`)}`,
   );
   expect(
     apiResult.body.contacts.length,
@@ -530,7 +530,7 @@ test('@functional @search F9-EC3: query with special characters is handled grace
     // Also verify via API — must not return a 500 (4xx is acceptable for validation).
     try {
       const apiResult = await restClient.get<SearchApiResponse>(
-        `/api/search?q=${encodeURIComponent(query)}`,
+        `/api/v1/search?q=${encodeURIComponent(query)}`,
       );
       expect(apiResult.status, `API must not 500 for special-char query "${query}"`).toBeLessThan(
         500,
@@ -562,7 +562,7 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
   // API must also handle gracefully (4xx is fine — 500 is not).
   try {
     const apiResult = await restClient.get<SearchApiResponse>(
-      `/api/search?q=${encodeURIComponent(longQuery)}`,
+      `/api/v1/search?q=${encodeURIComponent(longQuery)}`,
     );
     expect(apiResult.status, 'API must not 500 for very long query').toBeLessThan(500);
   } catch (err: unknown) {
@@ -600,7 +600,7 @@ test('@functional @search F9-EX1: searching a contact phone number returns that 
   expect(result.visible, 'contact should appear in search results for phone query').toBe(true);
 
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent(phone)}`,
+    `/api/v1/search?q=${encodeURIComponent(phone)}`,
   );
   expect(
     apiResult.body.contacts.some((c) => c.id === contact.id),
@@ -630,7 +630,7 @@ test('@functional @search F9-EX2: searching a deal value returns that deal (MINC
   expect(result.visible, 'deal should appear when searching by its numeric value').toBe(true);
 
   const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/search?q=${encodeURIComponent('$777,777')}`,
+    `/api/v1/search?q=${encodeURIComponent('$777,777')}`,
   );
   expect(
     apiResult.body.deals.some((d) => d.id === deal.id),

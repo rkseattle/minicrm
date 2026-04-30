@@ -33,7 +33,7 @@ describe('MINCRM-243 — login rate limiter', () => {
     // not 429 (the limiter has not fired yet).
     for (let i = 0; i < 10; i++) {
       const res = await request(app)
-        .post('/api/auth/login')
+        .post('/api/v1/auth/login')
         .set('X-Forwarded-For', '10.0.0.1')
         .send({ email: 'ratelimit-test@example.com', password: 'WrongPass1' });
 
@@ -42,7 +42,7 @@ describe('MINCRM-243 — login rate limiter', () => {
 
     // 11th attempt must be blocked by the rate limiter
     const blocked = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .set('X-Forwarded-For', '10.0.0.1')
       .send({ email: 'ratelimit-test@example.com', password: 'WrongPass1' });
 
@@ -55,13 +55,13 @@ describe('MINCRM-243 — login rate limiter', () => {
     // Use a different IP so this test is independent of the one above.
     for (let i = 0; i < 10; i++) {
       await request(app)
-        .post('/api/auth/login')
+        .post('/api/v1/auth/login')
         .set('X-Forwarded-For', '10.0.0.2')
         .send({ email: 'ratelimit-test@example.com', password: 'WrongPass1' });
     }
 
     const blocked = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .set('X-Forwarded-For', '10.0.0.2')
       .send({ email: 'ratelimit-test@example.com', password: 'WrongPass1' });
 
@@ -78,7 +78,7 @@ describe('MINCRM-243 — forgot-password rate limiter', () => {
   it('allows exactly 5 requests then blocks the 6th with 429', async () => {
     for (let i = 0; i < 5; i++) {
       const res = await request(app)
-        .post('/api/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .set('X-Forwarded-For', '10.0.1.1')
         .send({ email: 'nobody@example.com' });
 
@@ -87,7 +87,7 @@ describe('MINCRM-243 — forgot-password rate limiter', () => {
     }
 
     const blocked = await request(app)
-      .post('/api/auth/forgot-password')
+      .post('/api/v1/auth/forgot-password')
       .set('X-Forwarded-For', '10.0.1.1')
       .send({ email: 'nobody@example.com' });
 
@@ -98,13 +98,13 @@ describe('MINCRM-243 — forgot-password rate limiter', () => {
   it('includes standard rate limit headers on the 429 response', async () => {
     for (let i = 0; i < 5; i++) {
       await request(app)
-        .post('/api/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .set('X-Forwarded-For', '10.0.1.2')
         .send({ email: 'nobody@example.com' });
     }
 
     const blocked = await request(app)
-      .post('/api/auth/forgot-password')
+      .post('/api/v1/auth/forgot-password')
       .set('X-Forwarded-For', '10.0.1.2')
       .send({ email: 'nobody@example.com' });
 
@@ -123,7 +123,7 @@ describe('MINCRM-243 — reset-password rate limiter', () => {
     // (invalid token), not 429.
     for (let i = 0; i < 10; i++) {
       const res = await request(app)
-        .post('/api/auth/reset-password')
+        .post('/api/v1/auth/reset-password')
         .set('X-Forwarded-For', '10.0.2.1')
         .send({ token: 'invalid-token', password: 'NewPass1!' });
 
@@ -131,7 +131,7 @@ describe('MINCRM-243 — reset-password rate limiter', () => {
     }
 
     const blocked = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .set('X-Forwarded-For', '10.0.2.1')
       .send({ token: 'invalid-token', password: 'NewPass1!' });
 
@@ -142,13 +142,13 @@ describe('MINCRM-243 — reset-password rate limiter', () => {
   it('includes standard rate limit headers on the 429 response', async () => {
     for (let i = 0; i < 10; i++) {
       await request(app)
-        .post('/api/auth/reset-password')
+        .post('/api/v1/auth/reset-password')
         .set('X-Forwarded-For', '10.0.2.2')
         .send({ token: 'invalid-token', password: 'NewPass1!' });
     }
 
     const blocked = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .set('X-Forwarded-For', '10.0.2.2')
       .send({ token: 'invalid-token', password: 'NewPass1!' });
 

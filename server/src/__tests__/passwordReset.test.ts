@@ -191,7 +191,7 @@ describe('POST /api/auth/forgot-password', () => {
   it('returns 200 for a known active user email', async () => {
     const user = await createTestUser('forgot-known');
 
-    const res = await request(app).post('/api/auth/forgot-password').send({ email: user.email });
+    const res = await request(app).post('/api/v1/auth/forgot-password').send({ email: user.email });
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBeDefined();
@@ -199,7 +199,7 @@ describe('POST /api/auth/forgot-password', () => {
 
   it('returns 200 for an unknown email (no user enumeration)', async () => {
     const res = await request(app)
-      .post('/api/auth/forgot-password')
+      .post('/api/v1/auth/forgot-password')
       .send({ email: 'no-such-user-xyz@example.com' });
 
     expect(res.status).toBe(200);
@@ -215,14 +215,14 @@ describe('POST /api/auth/forgot-password', () => {
       status: 'inactive',
     });
 
-    const res = await request(app).post('/api/auth/forgot-password').send({ email: user.email });
+    const res = await request(app).post('/api/v1/auth/forgot-password').send({ email: user.email });
 
     expect(res.status).toBe(200);
   });
 
   it('returns 400 for an invalid email address', async () => {
     const res = await request(app)
-      .post('/api/auth/forgot-password')
+      .post('/api/v1/auth/forgot-password')
       .send({ email: 'not-an-email' });
 
     expect(res.status).toBe(400);
@@ -240,7 +240,7 @@ describe('POST /api/auth/reset-password', () => {
     const { plaintextToken } = await createPasswordResetToken(user.id);
 
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token: plaintextToken, password: 'NewPass1' });
 
     expect(res.status).toBe(200);
@@ -261,7 +261,7 @@ describe('POST /api/auth/reset-password', () => {
     );
 
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token: plaintextToken, password: 'NewPass1' });
 
     expect(res.status).toBe(400);
@@ -270,7 +270,7 @@ describe('POST /api/auth/reset-password', () => {
 
   it('returns 400 with RESET_TOKEN_INVALID for an unknown token', async () => {
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token: '0'.repeat(64), password: 'NewPass1' });
 
     expect(res.status).toBe(400);
@@ -282,7 +282,7 @@ describe('POST /api/auth/reset-password', () => {
     const { plaintextToken } = await createPasswordResetToken(user.id);
 
     const res = await request(app)
-      .post('/api/auth/reset-password')
+      .post('/api/v1/auth/reset-password')
       .send({ token: plaintextToken, password: 'tooshort' });
 
     expect(res.status).toBe(400);
@@ -313,7 +313,7 @@ describe('authenticate middleware — session invalidation after password reset'
       [user.id],
     );
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', cookie);
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('AUTH_INVALID_TOKEN');
@@ -335,7 +335,7 @@ describe('authenticate middleware — session invalidation after password reset'
       role: user.role,
     });
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', cookie);
 
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe(user.id);

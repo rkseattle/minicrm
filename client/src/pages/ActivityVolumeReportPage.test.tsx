@@ -55,7 +55,7 @@ describe('ActivityVolumeReportPage', () => {
     });
 
     it('rep sees My Activity Report heading — no toggle', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => {
         expect(screen.getByTestId('activity-volume-report-heading')).toHaveTextContent(
@@ -68,7 +68,7 @@ describe('ActivityVolumeReportPage', () => {
 
   describe('loading state', () => {
     it('shows a loading message while fetching', () => {
-      server.use(http.get('/api/reports/activity-volume', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/reports/activity-volume', () => new Promise(() => {})));
       renderWithProviders(<ActivityVolumeReportPage />);
       expect(screen.getByTestId('report-loading')).toBeInTheDocument();
     });
@@ -77,7 +77,7 @@ describe('ActivityVolumeReportPage', () => {
   describe('error state', () => {
     it('shows an error message when the request fails', async () => {
       server.use(
-        http.get('/api/reports/activity-volume', () =>
+        http.get('/api/v1/reports/activity-volume', () =>
           HttpResponse.json(
             { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
             { status: 500 },
@@ -167,7 +167,7 @@ describe('ActivityVolumeReportPage', () => {
   describe('empty state', () => {
     it('shows the empty state when there are no activity rows', async () => {
       server.use(
-        http.get('/api/reports/activity-volume', () =>
+        http.get('/api/v1/reports/activity-volume', () =>
           HttpResponse.json({
             rows: [],
             totals: { Note: 0, Call: 0, Email: 0, Meeting: 0, Task: 0, total: 0 },
@@ -236,7 +236,7 @@ describe('ActivityVolumeReportPage', () => {
     });
 
     it('does not show the owner filter dropdown for reps', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => expect(screen.queryByTestId('report-loading')).not.toBeInTheDocument());
       expect(screen.queryByTestId('owner-filter-select')).not.toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('ActivityVolumeReportPage', () => {
 
     it('does not render the export button when rows are empty', async () => {
       server.use(
-        http.get('/api/reports/activity-volume', () =>
+        http.get('/api/v1/reports/activity-volume', () =>
           HttpResponse.json({
             rows: [],
             totals: { Note: 0, Call: 0, Email: 0, Meeting: 0, Task: 0, total: 0 },

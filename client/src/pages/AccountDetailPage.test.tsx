@@ -43,7 +43,7 @@ describe('AccountDetailPage', () => {
 
   it('shows not-found state for a missing account', async () => {
     server.use(
-      http.get('/api/accounts/:id', () =>
+      http.get('/api/v1/accounts/:id', () =>
         HttpResponse.json(
           { error: { code: 'NOT_FOUND', message: 'Account not found' } },
           { status: 404 },
@@ -97,7 +97,7 @@ describe('AccountDetailPage', () => {
 
   it('renders the empty state when no contacts are linked', async () => {
     server.use(
-      http.get('/api/contacts', () => {
+      http.get('/api/v1/contacts', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
       }),
     );
@@ -117,7 +117,7 @@ describe('AccountDetailPage', () => {
 
   it('shows fallback owner text when owner is not in the active users list', async () => {
     server.use(
-      http.get('/api/accounts/:id', ({ params }) => {
+      http.get('/api/v1/accounts/:id', ({ params }) => {
         if (params.id === ACCOUNT_1.id) {
           return HttpResponse.json({
             account: { ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
@@ -138,7 +138,7 @@ describe('AccountDetailPage', () => {
   it('renders the owner select immediately when the edit form opens, even if the active users query is still loading', async () => {
     // Hang the active users response so it never resolves during this test.
     // The owner select must still render — the form cannot gate on this query.
-    server.use(http.get('/api/users/active', () => new Promise(() => {})));
+    server.use(http.get('/api/v1/users/active', () => new Promise(() => {})));
 
     const user = userEvent.setup();
     renderAccountDetail();
@@ -176,7 +176,7 @@ describe('AccountDetailPage', () => {
     const user = userEvent.setup();
     let patchedBody: Record<string, unknown> = {};
     server.use(
-      http.patch('/api/accounts/:id', async ({ params, request }) => {
+      http.patch('/api/v1/accounts/:id', async ({ params, request }) => {
         patchedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           account: { ...ACCOUNT_1, ...patchedBody, id: params.id as string },

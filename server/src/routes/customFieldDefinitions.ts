@@ -18,7 +18,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/custom-fields/definitions:
+ * /api/v1/custom-fields/definitions:
  *   get:
  *     tags: [CustomFields]
  *     operationId: listCustomFieldDefinitions
@@ -42,7 +42,7 @@ router.get('/', authenticate, asyncHandler(listCustomFieldDefinitionsHandler));
 
 /**
  * @openapi
- * /api/custom-fields/definitions:
+ * /api/v1/custom-fields/definitions:
  *   post:
  *     tags: [CustomFields]
  *     operationId: createCustomFieldDefinition
@@ -66,7 +66,7 @@ router.post(
 
 /**
  * @openapi
- * /api/custom-fields/definitions/{id}:
+ * /api/v1/custom-fields/definitions/{id}:
  *   patch:
  *     tags: [CustomFields]
  *     operationId: updateCustomFieldDefinition
@@ -95,7 +95,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/custom-fields/definitions/{id}:
+ * /api/v1/custom-fields/definitions/{id}:
  *   delete:
  *     tags: [CustomFields]
  *     operationId: deleteCustomFieldDefinition

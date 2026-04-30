@@ -97,7 +97,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/contacts/${contact.id}`)
+      .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', repCookie)
       .send({ first_name: 'Updated' });
 
@@ -109,7 +109,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/contacts/${contact.id}`)
+      .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', otherRepCookie)
       .send({ first_name: 'Hijacked' });
 
@@ -121,7 +121,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/contacts/${contact.id}`)
+      .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', adminCookie)
       .send({ first_name: 'AdminUpdated' });
 
@@ -131,7 +131,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
 
   it('returns 404 for a non-existent contact', async () => {
     const res = await request(app)
-      .patch('/api/contacts/00000000-0000-0000-0000-000000000000')
+      .patch('/api/v1/contacts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
       .send({ first_name: 'Ghost' });
 
@@ -145,7 +145,9 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   it('allows the owning rep to delete their own contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
-    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', repCookie);
+    const res = await request(app)
+      .delete(`/api/v1/contacts/${contact.id}`)
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(204);
   });
@@ -154,7 +156,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .delete(`/api/contacts/${contact.id}`)
+      .delete(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
@@ -164,14 +166,16 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   it('allows an admin to delete any contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
-    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', adminCookie);
+    const res = await request(app)
+      .delete(`/api/v1/contacts/${contact.id}`)
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
 
   it('returns 404 for a non-existent contact', async () => {
     const res = await request(app)
-      .delete('/api/contacts/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/contacts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(404);
@@ -182,7 +186,9 @@ describe('DELETE /api/contacts/:id — ownership', () => {
 
 describe('GET /api/contacts — ?account filter', () => {
   it('returns 400 when ?account is not a valid UUID', async () => {
-    const res = await request(app).get('/api/contacts?account=not-a-uuid').set('Cookie', repCookie);
+    const res = await request(app)
+      .get('/api/v1/contacts?account=not-a-uuid')
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -190,7 +196,7 @@ describe('GET /api/contacts — ?account filter', () => {
 
   it('returns 200 with an empty array for a valid UUID that matches no contacts', async () => {
     const res = await request(app)
-      .get('/api/contacts?account=00000000-0000-0000-0000-000000000000')
+      .get('/api/v1/contacts?account=00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -215,7 +221,9 @@ describe('GET /api/contacts — ?search filter', () => {
       owner_id: repId,
     });
 
-    const res = await request(app).get('/api/contacts?search=alice&owner=me').set('Cookie', repCookie);
+    const res = await request(app)
+      .get('/api/v1/contacts?search=alice&owner=me')
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
@@ -225,7 +233,9 @@ describe('GET /api/contacts — ?search filter', () => {
   it('returns empty array when search matches no contacts', async () => {
     await createContact({ ...makeContact(), owner_id: repId });
 
-    const res = await request(app).get('/api/contacts?search=zzznomatch').set('Cookie', repCookie);
+    const res = await request(app)
+      .get('/api/v1/contacts?search=zzznomatch')
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
@@ -238,7 +248,9 @@ describe('GET /api/contacts — ?accountSearch filter', () => {
   it('ignores whitespace-only accountSearch', async () => {
     await createContact({ ...makeContact(), owner_id: repId });
 
-    const res = await request(app).get('/api/contacts?accountSearch=%20').set('Cookie', repCookie);
+    const res = await request(app)
+      .get('/api/v1/contacts?accountSearch=%20')
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     // whitespace-only should be treated as no filter — all contacts returned
@@ -254,7 +266,7 @@ describe('POST /api/contacts — duplicate detection', () => {
     await createContact({ ...dupContact, owner_id: repId });
 
     const res = await request(app)
-      .post('/api/contacts')
+      .post('/api/v1/contacts')
       .set('Cookie', repCookie)
       .send({ first_name: 'Other', last_name: 'Person', email: dupContact.email });
 
@@ -276,7 +288,7 @@ describe('POST /api/contacts — duplicate detection', () => {
     await createContact({ ...dupContact, owner_id: repId });
 
     const res = await request(app)
-      .post('/api/contacts?force=true')
+      .post('/api/v1/contacts?force=true')
       .set('Cookie', repCookie)
       .send({ first_name: 'Other', last_name: 'Person', email: dupContact.email });
 
@@ -287,7 +299,7 @@ describe('POST /api/contacts — duplicate detection', () => {
   it('creates a contact without a warning when no duplicate email exists', async () => {
     const newEmail = `${FILE_PREFIX}-${uid()}-brandnew@example.com`;
     const res = await request(app)
-      .post('/api/contacts')
+      .post('/api/v1/contacts')
       .set('Cookie', repCookie)
       .send({ first_name: 'New', last_name: 'User', email: newEmail });
 
@@ -302,7 +314,9 @@ describe('GET /api/contacts/:id — visibility', () => {
   it('allows any authenticated user to view any contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
-    const res = await request(app).get(`/api/contacts/${contact.id}`).set('Cookie', otherRepCookie);
+    const res = await request(app)
+      .get(`/api/v1/contacts/${contact.id}`)
+      .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.contact.id).toBe(contact.id);
@@ -316,7 +330,7 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .post(`/api/contacts/${contact.id}/send-email`)
+      .post(`/api/v1/contacts/${contact.id}/send-email`)
       .set('Cookie', repCookie)
       .send({ subject: 'Hello', body: 'Hi there' });
 
@@ -329,12 +343,12 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     await request(app)
-      .post(`/api/contacts/${contact.id}/send-email`)
+      .post(`/api/v1/contacts/${contact.id}/send-email`)
       .set('Cookie', repCookie)
       .send({ subject: 'Test subject', body: 'Test body' });
 
     const activityRes = await request(app)
-      .get(`/api/activities?contact=${contact.id}`)
+      .get(`/api/v1/activities?contact=${contact.id}`)
       .set('Cookie', repCookie);
 
     expect(activityRes.status).toBe(200);
@@ -356,7 +370,7 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contactId = result.rows[0].id;
 
     const res = await request(app)
-      .post(`/api/contacts/${contactId}/send-email`)
+      .post(`/api/v1/contacts/${contactId}/send-email`)
       .set('Cookie', repCookie)
       .send({ subject: 'Hello', body: 'Hi' });
 
@@ -368,7 +382,7 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .post(`/api/contacts/${contact.id}/send-email`)
+      .post(`/api/v1/contacts/${contact.id}/send-email`)
       .set('Cookie', repCookie)
       .send({ body: 'Hi' });
 
@@ -380,7 +394,7 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .post(`/api/contacts/${contact.id}/send-email`)
+      .post(`/api/v1/contacts/${contact.id}/send-email`)
       .set('Cookie', repCookie)
       .send({ subject: 'a'.repeat(256), body: 'Hi' });
 
@@ -390,7 +404,7 @@ describe('POST /api/contacts/:id/send-email', () => {
 
   it('returns 404 for a non-existent contact', async () => {
     const res = await request(app)
-      .post('/api/contacts/00000000-0000-0000-0000-000000000000/send-email')
+      .post('/api/v1/contacts/00000000-0000-0000-0000-000000000000/send-email')
       .set('Cookie', repCookie)
       .send({ subject: 'Hello', body: 'Hi' });
 
@@ -401,7 +415,7 @@ describe('POST /api/contacts/:id/send-email', () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
-      .post(`/api/contacts/${contact.id}/send-email`)
+      .post(`/api/v1/contacts/${contact.id}/send-email`)
       .send({ subject: 'Hello', body: 'Hi' });
 
     expect(res.status).toBe(401);

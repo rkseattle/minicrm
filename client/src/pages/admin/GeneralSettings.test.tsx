@@ -17,7 +17,7 @@ import GeneralSettings from './GeneralSettings.js';
 
 function mockAdminUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-admin',
@@ -34,7 +34,7 @@ function mockAdminUser() {
 
 function mockRepUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-rep',
@@ -73,7 +73,7 @@ describe('GeneralSettings — reset onboarding', () => {
     mockAdminUser();
     let resetCalled = false;
     server.use(
-      http.put('/api/settings/onboarding', async ({ request }) => {
+      http.put('/api/v1/settings/onboarding', async ({ request }) => {
         const body = (await request.json()) as { onboarding_completed: boolean };
         if (body.onboarding_completed === false) resetCalled = true;
         return HttpResponse.json({ onboarding_completed: false });
@@ -94,7 +94,9 @@ describe('GeneralSettings — reset onboarding', () => {
 
   it('shows error message when reset fails', async () => {
     mockAdminUser();
-    server.use(http.put('/api/settings/onboarding', () => new HttpResponse(null, { status: 500 })));
+    server.use(
+      http.put('/api/v1/settings/onboarding', () => new HttpResponse(null, { status: 500 })),
+    );
 
     renderWithProviders(<GeneralSettings />);
 

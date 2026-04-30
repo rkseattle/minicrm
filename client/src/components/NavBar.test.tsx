@@ -23,7 +23,7 @@ import { server } from '../test/setup.js';
  * @param layout - The nav layout to simulate ('top' | 'left' | 'hamburger').
  */
 function renderNavBar(layout: 'top' | 'left' | 'hamburger') {
-  server.use(http.get('/api/settings/nav-layout', () => HttpResponse.json({ layout })));
+  server.use(http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout })));
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },

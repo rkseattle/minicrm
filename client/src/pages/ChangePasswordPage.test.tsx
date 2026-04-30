@@ -100,7 +100,7 @@ describe('ChangePasswordPage', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/change-password', async () => {
+      http.post('/api/v1/auth/change-password', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return HttpResponse.json({ message: 'Password changed successfully' });
       }),
@@ -122,7 +122,7 @@ describe('ChangePasswordPage', () => {
     const user = userEvent.setup();
 
     server.use(
-      http.post('/api/auth/change-password', () => {
+      http.post('/api/v1/auth/change-password', () => {
         return HttpResponse.json(
           { error: { code: 'INVALID_PASSWORD', message: 'Current password is incorrect.' } },
           { status: 400 },

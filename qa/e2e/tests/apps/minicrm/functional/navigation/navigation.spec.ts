@@ -129,7 +129,7 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -959,11 +959,14 @@ test.describe('Rep deep-link redirect', () => {
     const repPassword = 'F8RepPass1!';
 
     const inviteRes = await restClient.post<{ user: { id: string }; inviteToken: string }>(
-      '/api/users/invite',
+      '/api/v1/users/invite',
       { name: `F8 Rep ${uniqueSuffix}`, email: repEmail, role: 'rep' },
     );
     const { user: rep, inviteToken } = inviteRes.body;
-    await restClient.post('/api/users/set-password', { token: inviteToken, password: repPassword });
+    await restClient.post('/api/v1/users/set-password', {
+      token: inviteToken,
+      password: repPassword,
+    });
 
     try {
       await login({ email: repEmail, password: repPassword }, { page });
@@ -980,9 +983,9 @@ test.describe('Rep deep-link redirect', () => {
       expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
     } finally {
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${rep.id}/deactivate`).catch(() => null);
+      await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch(() => null);
     }
   });
 });

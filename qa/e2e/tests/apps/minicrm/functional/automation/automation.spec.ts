@@ -78,7 +78,7 @@ async function pollForTask(
     await new Promise((resolve) => setTimeout(resolve, backoff));
     backoff = Math.min(backoff * 2, 2_000);
 
-    const query = dealId ? `/api/activities?deal=${dealId}` : `/api/activities`;
+    const query = dealId ? `/api/v1/activities?deal=${dealId}` : `/api/v1/activities`;
 
     const response = await restClient.get<ActivityListResponse>(query);
     const match = response.body.data.find((a) => a.subject === subject && a.type === 'Task');
@@ -115,13 +115,13 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC1 Follow Up ${suffix}`;
 
   // Create the automation rule
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/automation/rules', {
+  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
     name: `F13DC1 Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_created',
@@ -135,7 +135,7 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
     },
   });
   const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/automation/rules/${ruleId}`);
+  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
 
   // Create a deal to fire the trigger
   const account = await createTestAccount(testData, restClient);
@@ -155,20 +155,20 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
   expect(task.due_date, 'task should have a due date').not.toBeNull();
 
   // Register task for teardown
-  testData.register('activity', task.id, `/api/activities/${task.id}`);
+  testData.register('activity', task.id, `/api/v1/activities/${task.id}`);
 });
 
 test('@functional F13-DC2: deal_created trigger — disabled rule does not fire', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC2 Should Not Appear ${suffix}`;
 
   // Create a disabled rule
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/automation/rules', {
+  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
     name: `F13DC2 Disabled Rule ${suffix}`,
     enabled: false,
     trigger_type: 'deal_created',
@@ -182,7 +182,7 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
     },
   });
   const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/automation/rules/${ruleId}`);
+  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
 
   // Create a deal
   const account = await createTestAccount(testData, restClient);
@@ -194,7 +194,7 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
   // Wait a reasonable window and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>('/api/activities');
+  const response = await restClient.get<ActivityListResponse>('/api/v1/activities');
   const spuriousTask = response.body.data.find(
     (a) => a.subject === taskSubject && a.type === 'Task',
   );
@@ -209,13 +209,13 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS1 Proposal Follow Up ${suffix}`;
 
   // Create rule: fire when deal moves to Proposal
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/automation/rules', {
+  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
     name: `F13DS1 Stage Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_stage_changed',
@@ -229,7 +229,7 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
     },
   });
   const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/automation/rules/${ruleId}`);
+  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
 
   // Create deal in Prospecting
   const account = await createTestAccount(testData, restClient);
@@ -240,7 +240,7 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   });
 
   // Advance to Proposal — this fires the trigger
-  await restClient.patch(`/api/deals/${deal.id}`, { stage: 'Proposal' });
+  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Proposal' });
 
   // Poll until the task appears
   const task = await pollForTask(restClient, taskSubject, deal.id);
@@ -250,20 +250,20 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   expect(task.deal_id, 'task should be linked to the triggering deal').toBe(deal.id);
 
   // Register for teardown
-  testData.register('activity', task.id, `/api/activities/${task.id}`);
+  testData.register('activity', task.id, `/api/v1/activities/${task.id}`);
 });
 
 test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal moves to a different stage', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS2 Wrong Stage Task ${suffix}`;
 
   // Rule configured for Proposal, but we will move deal to Qualification only
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/automation/rules', {
+  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
     name: `F13DS2 Wrong Stage Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_stage_changed',
@@ -277,7 +277,7 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
     },
   });
   const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/automation/rules/${ruleId}`);
+  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
 
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, {
@@ -287,12 +287,12 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
   });
 
   // Move to Qualification — not the trigger stage
-  await restClient.patch(`/api/deals/${deal.id}`, { stage: 'Qualification' });
+  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Qualification' });
 
   // Wait briefly and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>(`/api/activities?deal=${deal.id}`);
+  const response = await restClient.get<ActivityListResponse>(`/api/v1/activities?deal=${deal.id}`);
   const spuriousTask = response.body.data.find(
     (a) => a.subject === taskSubject && a.type === 'Task',
   );

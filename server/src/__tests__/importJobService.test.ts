@@ -70,7 +70,7 @@ describe('POST /api/admin/import/contacts/run — async timing', () => {
 
     const start = Date.now();
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -88,7 +88,7 @@ describe('POST /api/admin/import/contacts/run — async timing', () => {
 describe('GET /api/admin/import/jobs/:job_id', () => {
   it('returns 404 for a non-existent job', async () => {
     const res = await request(app)
-      .get('/api/admin/import/jobs/00000000-0000-0000-0000-000000000000')
+      .get('/api/v1/admin/import/jobs/00000000-0000-0000-0000-000000000000')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(404);
@@ -99,7 +99,7 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
     const job = await createJob('contacts', 10, adminId);
 
     const res = await request(app)
-      .get(`/api/admin/import/jobs/${job.id}`)
+      .get(`/api/v1/admin/import/jobs/${job.id}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -119,7 +119,7 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
     await updateJobProgress(job.id, 100, 95, 3, 2);
 
     const res = await request(app)
-      .get(`/api/admin/import/jobs/${job.id}`)
+      .get(`/api/v1/admin/import/jobs/${job.id}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -135,7 +135,7 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
     await completeJob(job.id, 4, 1, 0, '');
 
     const res = await request(app)
-      .get(`/api/admin/import/jobs/${job.id}`)
+      .get(`/api/v1/admin/import/jobs/${job.id}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -165,7 +165,9 @@ describe('GET /api/admin/import/jobs/:job_id', () => {
 
     const job = await createJob('contacts', 5, adminId);
 
-    const res = await request(app).get(`/api/admin/import/jobs/${job.id}`).set('Cookie', repCookie);
+    const res = await request(app)
+      .get(`/api/v1/admin/import/jobs/${job.id}`)
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });

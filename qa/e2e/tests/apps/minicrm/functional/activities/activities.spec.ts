@@ -108,7 +108,7 @@ interface MyTasksResponse {
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -144,12 +144,12 @@ test('@smoke @functional F5-C1: create Task → appears in my-tasks with type Ta
   });
 
   // Verify via API: GET /api/activities/:id returns correct type.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.type, 'type should be Task').toBe('Task');
   expect(detail.body.activity.status, 'status should be open').toBe('open');
 
   // Verify via my-tasks: task appears in the authenticated user's task list.
-  const tasks = await restClient.get<MyTasksResponse>('/api/activities/my-tasks');
+  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
   const found = tasks.body.tasks.find((t) => t.id === activity.id);
   expect(found, 'created task should appear in my-tasks').toBeDefined();
   expect(found!.type, 'my-tasks entry should have type Task').toBe('Task');
@@ -166,14 +166,14 @@ test('@functional F5-C2: create Call Log → saved with correct type', async ({
     last_name: `CallCreate-${uniqueSuffix}`,
   });
 
-  const response = await restClient.post<ActivitySingleResponse>('/api/activities', {
+  const response = await restClient.post<ActivitySingleResponse>('/api/v1/activities', {
     type: 'Call',
     subject: `F5-C2 Discovery Call ${uniqueSuffix}`,
     direction: 'Outbound',
     contact_id: contact.id,
   });
   const activity = response.body.activity;
-  testData.register('activity', activity.id, `/api/activities/${activity.id}`);
+  testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
   expect(activity.type, 'type should be Call').toBe('Call');
   expect(activity.status, 'status should be open').toBe('open');
@@ -198,7 +198,7 @@ test('@functional F5-C3: create Meeting Note → saved with correct type and ass
     contact_id: contact.id,
   });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.type, 'type should be Meeting').toBe('Meeting');
   expect(detail.body.activity.contact_id, 'contact_id should match').toBe(contact.id);
   expect(detail.body.activity.notes, 'notes should be persisted').toBe('Agreed on next steps.');
@@ -217,7 +217,7 @@ test('@functional F5-C4: missing required field (subject) → 400 validation err
 
   let caughtStatus: number | null = null;
   try {
-    await restClient.post('/api/activities', {
+    await restClient.post('/api/v1/activities', {
       type: 'Task',
       // subject intentionally omitted
       contact_id: contact.id,
@@ -238,7 +238,7 @@ test('@functional F5-C5: missing linked record → 400 validation error', async 
 }) => {
   let caughtStatus: number | null = null;
   try {
-    await restClient.post('/api/activities', {
+    await restClient.post('/api/v1/activities', {
       type: 'Task',
       subject: 'No linked record',
       // contact_id, account_id, deal_id all omitted
@@ -270,7 +270,9 @@ test('@functional F5-C6: activity visible on associated contact via GET /api/act
     contact_id: contact.id,
   });
 
-  const list = await restClient.get<ActivityListResponse>(`/api/activities?contact=${contact.id}`);
+  const list = await restClient.get<ActivityListResponse>(
+    `/api/v1/activities?contact=${contact.id}`,
+  );
   const found = list.body.data.find((a) => a.id === activity.id);
   expect(found, 'activity should appear when filtering by its contact').toBeDefined();
 });
@@ -296,7 +298,7 @@ test('@functional F5-MY1: task created by self → appears in my-tasks for that 
     contact_id: contact.id,
   });
 
-  const tasks = await restClient.get<MyTasksResponse>('/api/activities/my-tasks');
+  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
   const found = tasks.body.tasks.find((t) => t.id === activity.id);
   expect(found, "task should appear in creator's my-tasks").toBeDefined();
 });
@@ -327,31 +329,31 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
   const repRequestContext = await playwright.request.newContext();
   const repClient = new RestClient(repRequestContext);
   try {
-    await repClient.post('/api/auth/login', {
+    await repClient.post('/api/v1/auth/login', {
       email: repUser.email,
       password: repPassword,
     });
 
-    const response = await repClient.post<ActivitySingleResponse>('/api/activities', {
+    const response = await repClient.post<ActivitySingleResponse>('/api/v1/activities', {
       type: 'Task',
       subject: `F5-MY2 Rep Task ${uniqueSuffix}`,
       contact_id: contact.id,
     });
     const activity = response.body.activity;
-    testData.register('activity', activity.id, `/api/activities/${activity.id}`);
+    testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
     // Rep's my-tasks should include the task.
-    const repTasks = await repClient.get<MyTasksResponse>('/api/activities/my-tasks');
+    const repTasks = await repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
     const repFound = repTasks.body.tasks.find((t) => t.id === activity.id);
     expect(repFound, "task should appear in rep's my-tasks").toBeDefined();
 
     // Admin's my-tasks should NOT include the rep's task (different owner_id).
-    const adminTasks = await restClient.get<MyTasksResponse>('/api/activities/my-tasks');
+    const adminTasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
     const adminFound = adminTasks.body.tasks.find((t) => t.id === activity.id);
     expect(adminFound, 'rep task should not appear in admin my-tasks').toBeUndefined();
   } finally {
     await repRequestContext.dispose().catch(() => null);
-    await restClient.patch(`/api/users/${repUser.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${repUser.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F5-MY2] teardown: failed to deactivate rep ${repUser.id}: ${String(err)}`);
     });
   }
@@ -388,17 +390,17 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/auth/login', { email: rep.email, password: repPassword });
+    await repClient.post('/api/v1/auth/login', { email: rep.email, password: repPassword });
 
-    const response = await repClient.post<ActivitySingleResponse>('/api/activities', {
+    const response = await repClient.post<ActivitySingleResponse>('/api/v1/activities', {
       type: 'Task',
       subject: `F5-MY3 Owner Stable ${uniqueSuffix}`,
       contact_id: contact.id,
     });
     const activity = response.body.activity;
-    testData.register('activity', activity.id, `/api/activities/${activity.id}`);
+    testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
-    const repTasks = await repClient.get<MyTasksResponse>('/api/activities/my-tasks');
+    const repTasks = await repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
     expect(
       repTasks.body.tasks.some((t) => t.id === activity.id),
       'task should be in rep my-tasks',
@@ -408,7 +410,9 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
     // refine fires: "At least one field must be provided" → 400.
     let caughtStatus: number | null = null;
     try {
-      await restClient.patch(`/api/activities/${activity.id}`, { owner_id: 'not-a-valid-field' });
+      await restClient.patch(`/api/v1/activities/${activity.id}`, {
+        owner_id: 'not-a-valid-field',
+      });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         caughtStatus = err.status;
@@ -422,8 +426,8 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
     ).toBe(400);
 
     const [detail, repTasksAfter] = await Promise.all([
-      restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`),
-      repClient.get<MyTasksResponse>('/api/activities/my-tasks'),
+      restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`),
+      repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks'),
     ]);
     expect(detail.body.activity.owner_id, 'owner_id should remain the rep').toBe(activity.owner_id);
     expect(
@@ -432,7 +436,7 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
     ).toBe(true);
   } finally {
     await repContext.dispose().catch(() => null);
-    await restClient.patch(`/api/users/${rep.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F5-MY3] teardown: failed to deactivate rep ${rep.id}: ${String(err)}`);
     });
   }
@@ -470,7 +474,7 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
     'future task should not show overdue badge',
   ).toBe(true);
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be open').toBe('open');
   expect(
     detail.body.activity.due_date! > daysFromToday(0),
@@ -498,7 +502,7 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   });
 
   // AC1: verify overdue state via API (due_date < today, status = open).
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be open').toBe('open');
   expect(
     detail.body.activity.due_date! < daysFromToday(0),
@@ -537,7 +541,7 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
     contact_id: contact.id,
   });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.due_date, 'due_date should be null').toBeNull();
   expect(detail.body.activity.status, 'status should be open').toBe('open');
 
@@ -569,9 +573,9 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
     contact_id: contact.id,
   });
 
-  await restClient.patch(`/api/activities/${activity.id}`, { status: 'complete' });
+  await restClient.patch(`/api/v1/activities/${activity.id}`, { status: 'complete' });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be complete').toBe('complete');
 
   const navResult = await navigateToMyTasks({ page });
@@ -627,7 +631,9 @@ test("@functional F5-FL1: filter by contact → only that contact's activities r
     }),
   ]);
 
-  const list = await restClient.get<ActivityListResponse>(`/api/activities?contact=${contactA.id}`);
+  const list = await restClient.get<ActivityListResponse>(
+    `/api/v1/activities?contact=${contactA.id}`,
+  );
   const ids = list.body.data.map((a) => a.id);
   expect(ids, 'contact A activity should be in filtered list').toContain(activityA.id);
   expect(ids, 'contact B activity should NOT be in filtered list').not.toContain(activityB.id);
@@ -661,7 +667,9 @@ test('@functional F5-FL2: filter by type → only matching activity types return
 
   // Filter account activities and check by type manually (API doesn't have a type filter,
   // so we filter by account and verify both exist, then confirm type field correctness).
-  const list = await restClient.get<ActivityListResponse>(`/api/activities?account=${account.id}`);
+  const list = await restClient.get<ActivityListResponse>(
+    `/api/v1/activities?account=${account.id}`,
+  );
   const taskEntry = list.body.data.find((a) => a.id === taskActivity.id);
   const noteEntry = list.body.data.find((a) => a.id === noteActivity.id);
 
@@ -703,8 +711,8 @@ test('@functional F5-FL3: combined filter (contact + account) → only activitie
 
   // AC3: cross-reference filter results — each contact's query must return only its own activities.
   const [listA, listB] = await Promise.all([
-    restClient.get<ActivityListResponse>(`/api/activities?contact=${contactA.id}`),
-    restClient.get<ActivityListResponse>(`/api/activities?contact=${contactB.id}`),
+    restClient.get<ActivityListResponse>(`/api/v1/activities?contact=${contactA.id}`),
+    restClient.get<ActivityListResponse>(`/api/v1/activities?contact=${contactB.id}`),
   ]);
 
   const idsA = listA.body.data.map((a) => a.id);
@@ -750,7 +758,7 @@ test('@smoke @functional F5-CP1: mark task complete via UI → removed from open
   ).toBe(true);
 
   // API confirms status=complete.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.status, 'API should reflect status complete').toBe('complete');
 });
 
@@ -771,7 +779,7 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
   });
 
   const afterComplete = await restClient.patch<ActivitySingleResponse>(
-    `/api/activities/${activity.id}`,
+    `/api/v1/activities/${activity.id}`,
     { status: 'complete' },
   );
   expect(afterComplete.body.activity.status, 'should be complete after first patch').toBe(
@@ -779,12 +787,12 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
   );
 
   const afterUndo = await restClient.patch<ActivitySingleResponse>(
-    `/api/activities/${activity.id}`,
+    `/api/v1/activities/${activity.id}`,
     { status: 'open' },
   );
   expect(afterUndo.body.activity.status, 'status should be open after undo').toBe('open');
 
-  const tasks = await restClient.get<MyTasksResponse>('/api/activities/my-tasks');
+  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
   const found = tasks.body.tasks.find((t) => t.id === activity.id);
   expect(found, 'task should reappear in my-tasks after undo').toBeDefined();
 });
@@ -806,10 +814,10 @@ test('@functional F5-CP3: completed task with past due date → not overdue (AC1
     contact_id: contact.id,
   });
 
-  await restClient.patch(`/api/activities/${activity.id}`, { status: 'complete' });
+  await restClient.patch(`/api/v1/activities/${activity.id}`, { status: 'complete' });
 
   // AC1: overdue = open AND due_date < today. Completed task must NOT satisfy this.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/activities/${activity.id}`);
+  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   const apiOverdue =
     detail.body.activity.status === 'open' &&
     detail.body.activity.due_date !== null &&
@@ -846,7 +854,7 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
 
   // PATCH type from Task to Meeting — currently accepted (200).
   const patchResponse = await restClient.patch<ActivitySingleResponse>(
-    `/api/activities/${activity.id}`,
+    `/api/v1/activities/${activity.id}`,
     { type: 'Meeting' },
   );
   expect(patchResponse.status, 'PATCH type currently returns 200 (type is mutable)').toBe(200);

@@ -33,7 +33,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/contacts:
+ * /api/v1/contacts:
  *   get:
  *     tags: [Contacts]
  *     operationId: listContacts
@@ -106,7 +106,7 @@ router.get('/', authenticate, asyncHandler(listContactsHandler));
 
 /**
  * @openapi
- * /api/contacts/export:
+ * /api/v1/contacts/export:
  *   get:
  *     tags: [Contacts]
  *     operationId: exportContacts
@@ -156,7 +156,7 @@ router.get('/export', authenticate, asyncHandler(exportContactsHandler));
 
 /**
  * @openapi
- * /api/contacts/bulk:
+ * /api/v1/contacts/bulk:
  *   post:
  *     tags: [Contacts]
  *     operationId: bulkContacts
@@ -210,7 +210,7 @@ router.post('/bulk', authenticate, asyncHandler(bulkContactsHandler));
 
 /**
  * @openapi
- * /api/contacts:
+ * /api/v1/contacts:
  *   post:
  *     tags: [Contacts]
  *     operationId: createContact
@@ -282,7 +282,7 @@ router.post('/', authenticate, asyncHandler(createContactHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}:
+ * /api/v1/contacts/{id}:
  *   get:
  *     tags: [Contacts]
  *     operationId: getContact
@@ -345,7 +345,7 @@ router.get('/:id', authenticate, asyncHandler(getContactHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}:
+ * /api/v1/contacts/{id}:
  *   patch:
  *     tags: [Contacts]
  *     operationId: updateContact
@@ -440,7 +440,7 @@ router.patch('/:id', authenticate, asyncHandler(updateContactHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}:
+ * /api/v1/contacts/{id}:
  *   delete:
  *     tags: [Contacts]
  *     operationId: deleteContact
@@ -496,7 +496,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteContactHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}/deals:
+ * /api/v1/contacts/{id}/deals:
  *   get:
  *     tags: [Contacts]
  *     operationId: listContactDeals
@@ -562,7 +562,7 @@ router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}/merge:
+ * /api/v1/contacts/{id}/merge:
  *   post:
  *     tags: [Contacts]
  *     operationId: mergeContacts
@@ -609,7 +609,7 @@ router.post('/:id/merge', authenticate, asyncHandler(mergeContactHandler));
 
 /**
  * @openapi
- * /api/contacts/{id}/send-email:
+ * /api/v1/contacts/{id}/send-email:
  *   post:
  *     tags: [Contacts]
  *     operationId: sendContactEmail

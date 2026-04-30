@@ -74,20 +74,20 @@ describe('swaggerSpec — generated spec structure', () => {
   it('documents all expected API paths', () => {
     const paths = Object.keys((swaggerSpec as { paths: Record<string, unknown> }).paths);
     const expectedPaths = [
-      '/api/auth/login',
-      '/api/auth/logout',
-      '/api/auth/me',
-      '/api/auth/change-password',
-      '/api/contacts',
-      '/api/contacts/{id}',
-      '/api/accounts',
-      '/api/accounts/{id}',
-      '/api/deals',
-      '/api/deals/{id}',
-      '/api/activities',
-      '/api/activities/my-tasks',
-      '/api/dashboard/summary',
-      '/api/settings/default-language',
+      '/api/v1/auth/login',
+      '/api/v1/auth/logout',
+      '/api/v1/auth/me',
+      '/api/v1/auth/change-password',
+      '/api/v1/contacts',
+      '/api/v1/contacts/{id}',
+      '/api/v1/accounts',
+      '/api/v1/accounts/{id}',
+      '/api/v1/deals',
+      '/api/v1/deals/{id}',
+      '/api/v1/activities',
+      '/api/v1/activities/my-tasks',
+      '/api/v1/dashboard/summary',
+      '/api/v1/settings/default-language',
     ];
     for (const path of expectedPaths) {
       expect(paths).toContain(path);

@@ -25,7 +25,7 @@ import NotificationSettings from './NotificationSettings.js';
 
 function mockRepUser() {
   server.use(
-    http.get('/api/auth/me', () =>
+    http.get('/api/v1/auth/me', () =>
       HttpResponse.json({
         user: {
           id: 'user-rep',
@@ -60,9 +60,7 @@ describe('NotificationSettings — email notifications toggle', () => {
 
   it('renders the toggle in disabled state when notifications are off', async () => {
     server.use(
-      http.get('/api/settings/email-notifications', () =>
-        HttpResponse.json({ enabled: false }),
-      ),
+      http.get('/api/v1/settings/email-notifications', () => HttpResponse.json({ enabled: false })),
     );
 
     renderWithProviders(<NotificationSettings />);
@@ -87,7 +85,10 @@ describe('NotificationSettings — email notifications toggle', () => {
 
   it('shows error when toggling fails', async () => {
     server.use(
-      http.patch('/api/settings/email-notifications', () => new HttpResponse(null, { status: 500 })),
+      http.patch(
+        '/api/v1/settings/email-notifications',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
     );
 
     renderWithProviders(<NotificationSettings />);
@@ -102,7 +103,10 @@ describe('NotificationSettings — email notifications toggle', () => {
 
   it('shows load error when email-notifications fetch fails', async () => {
     server.use(
-      http.get('/api/settings/email-notifications', () => new HttpResponse(null, { status: 500 })),
+      http.get(
+        '/api/v1/settings/email-notifications',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
     );
 
     renderWithProviders(<NotificationSettings />);
@@ -161,7 +165,7 @@ describe('NotificationSettings — SMTP section', () => {
 
   it('shows masked hint and Change Password button when password is already set', async () => {
     server.use(
-      http.get('/api/settings/smtp', () =>
+      http.get('/api/v1/settings/smtp', () =>
         HttpResponse.json({
           smtp_host: 'smtp.example.com',
           smtp_port: 587,
@@ -183,7 +187,7 @@ describe('NotificationSettings — SMTP section', () => {
 
   it('reveals password input after clicking Change Password', async () => {
     server.use(
-      http.get('/api/settings/smtp', () =>
+      http.get('/api/v1/settings/smtp', () =>
         HttpResponse.json({
           smtp_host: 'smtp.example.com',
           smtp_port: 587,
@@ -196,7 +200,9 @@ describe('NotificationSettings — SMTP section', () => {
 
     renderWithProviders(<NotificationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId('smtp-change-password-button')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('smtp-change-password-button')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId('smtp-change-password-button'));
 
     expect(screen.getByTestId('smtp-pass-input')).toBeInTheDocument();
@@ -219,7 +225,7 @@ describe('NotificationSettings — SMTP section', () => {
   });
 
   it('shows error when SMTP save fails', async () => {
-    server.use(http.put('/api/settings/smtp', () => new HttpResponse(null, { status: 500 })));
+    server.use(http.put('/api/v1/settings/smtp', () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<NotificationSettings />);
 
@@ -256,7 +262,7 @@ describe('NotificationSettings — SMTP section', () => {
 
   it('shows SMTP test error when test fails', async () => {
     server.use(
-      http.post('/api/settings/smtp/test', () =>
+      http.post('/api/v1/settings/smtp/test', () =>
         HttpResponse.json({ success: false, error: 'Connection refused' }),
       ),
     );

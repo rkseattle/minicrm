@@ -55,7 +55,7 @@ afterAll(async () => {
 
 describe('GET /api/audit-log', () => {
   it('returns paginated entries with no filters', async () => {
-    const res = await request(app).get('/api/audit-log').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/audit-log').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
@@ -64,7 +64,7 @@ describe('GET /api/audit-log', () => {
 
   it('accepts date range filters without error', async () => {
     const res = await request(app)
-      .get('/api/audit-log?from=2020-01-01&to=2030-01-01')
+      .get('/api/v1/audit-log?from=2020-01-01&to=2030-01-01')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -80,7 +80,7 @@ describe('GET /api/audit-log', () => {
     );
 
     const res = await request(app)
-      .get(`/api/audit-log?userId=${adminId}`)
+      .get(`/api/v1/audit-log?userId=${adminId}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -93,7 +93,9 @@ describe('GET /api/audit-log', () => {
   });
 
   it('filters by recordType', async () => {
-    const res = await request(app).get('/api/audit-log?recordType=user').set('Cookie', adminCookie);
+    const res = await request(app)
+      .get('/api/v1/audit-log?recordType=user')
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
@@ -104,7 +106,7 @@ describe('GET /api/audit-log', () => {
 
   it('returns 400 for an invalid recordType', async () => {
     const res = await request(app)
-      .get('/api/audit-log?recordType=not_valid')
+      .get('/api/v1/audit-log?recordType=not_valid')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -112,13 +114,13 @@ describe('GET /api/audit-log', () => {
   });
 
   it('returns 403 when a rep requests the audit log', async () => {
-    const res = await request(app).get('/api/audit-log').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/audit-log').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/audit-log');
+    const res = await request(app).get('/api/v1/audit-log');
 
     expect(res.status).toBe(401);
   });
@@ -137,7 +139,7 @@ describe('GET /api/audit-log/record', () => {
     );
 
     const res = await request(app)
-      .get(`/api/audit-log/record?record_type=contact&record_id=${recordId}`)
+      .get(`/api/v1/audit-log/record?record_type=contact&record_id=${recordId}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -147,7 +149,7 @@ describe('GET /api/audit-log/record', () => {
 
   it('returns 400 when record_type is missing', async () => {
     const res = await request(app)
-      .get('/api/audit-log/record?record_id=00000000-0000-0000-0000-000000000001')
+      .get('/api/v1/audit-log/record?record_id=00000000-0000-0000-0000-000000000001')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -156,7 +158,7 @@ describe('GET /api/audit-log/record', () => {
 
   it('returns 400 when record_id is not a UUID', async () => {
     const res = await request(app)
-      .get('/api/audit-log/record?record_type=contact&record_id=not-a-uuid')
+      .get('/api/v1/audit-log/record?record_type=contact&record_id=not-a-uuid')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -166,7 +168,7 @@ describe('GET /api/audit-log/record', () => {
   it('is accessible to authenticated reps', async () => {
     const res = await request(app)
       .get(
-        '/api/audit-log/record?record_type=contact&record_id=00000000-0000-0000-0000-000000000001',
+        '/api/v1/audit-log/record?record_type=contact&record_id=00000000-0000-0000-0000-000000000001',
       )
       .set('Cookie', repCookie);
 
@@ -179,7 +181,7 @@ describe('GET /api/audit-log/record', () => {
 
 describe('GET /api/audit-log/actors', () => {
   it('returns an actors array', async () => {
-    const res = await request(app).get('/api/audit-log/actors').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/audit-log/actors').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.actors)).toBe(true);
@@ -190,7 +192,7 @@ describe('GET /api/audit-log/actors', () => {
   });
 
   it('returns 403 when a rep requests actors', async () => {
-    const res = await request(app).get('/api/audit-log/actors').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/audit-log/actors').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });

@@ -53,7 +53,7 @@ afterAll(async () => {
 
 describe('GET /api/dashboard/summary', () => {
   it('returns 200 with the expected summary shape for an admin', async () => {
-    const res = await request(app).get('/api/dashboard/summary').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/dashboard/summary').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.overdueTasks).toBe('number');
@@ -67,7 +67,7 @@ describe('GET /api/dashboard/summary', () => {
   });
 
   it('returns 200 with the expected summary shape for a rep', async () => {
-    const res = await request(app).get('/api/dashboard/summary').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/dashboard/summary').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.overdueTasks).toBe('number');
@@ -82,7 +82,7 @@ describe('GET /api/dashboard/summary', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/dashboard/summary');
+    const res = await request(app).get('/api/v1/dashboard/summary');
 
     expect(res.status).toBe(401);
   });

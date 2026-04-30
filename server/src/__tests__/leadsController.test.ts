@@ -127,7 +127,7 @@ afterAll(async () => {
 describe('POST /api/leads', () => {
   it('creates a lead and returns 201 with the lead object', async () => {
     const lead = makeLead();
-    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(lead);
+    const res = await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(lead);
 
     expect(res.status).toBe(201);
     expect(res.body.lead.first_name).toBe('Dana');
@@ -138,7 +138,7 @@ describe('POST /api/leads', () => {
 
   it('returns 400 when email is missing', async () => {
     const { email: _removed, ...noEmail } = makeLead();
-    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(noEmail);
+    const res = await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(noEmail);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -146,7 +146,7 @@ describe('POST /api/leads', () => {
 
   it('returns 400 when email is not valid', async () => {
     const res = await request(app)
-      .post('/api/leads')
+      .post('/api/v1/leads')
       .set('Cookie', repCookie)
       .send({ ...makeLead(), email: 'not-an-email' });
 
@@ -156,9 +156,9 @@ describe('POST /api/leads', () => {
 
   it('returns 409 DUPLICATE_EMAIL for an existing email', async () => {
     const dupLead = makeLead();
-    await request(app).post('/api/leads').set('Cookie', repCookie).send(dupLead);
+    await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(dupLead);
 
-    const res = await request(app).post('/api/leads').set('Cookie', repCookie).send(dupLead);
+    const res = await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(dupLead);
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DUPLICATE_EMAIL');
@@ -167,10 +167,10 @@ describe('POST /api/leads', () => {
 
   it('bypasses duplicate check when ?force=true', async () => {
     const forceLead = makeLead();
-    await request(app).post('/api/leads').set('Cookie', repCookie).send(forceLead);
+    await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(forceLead);
 
     const res = await request(app)
-      .post('/api/leads?force=true')
+      .post('/api/v1/leads?force=true')
       .set('Cookie', repCookie)
       .send(forceLead);
 
@@ -178,7 +178,7 @@ describe('POST /api/leads', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/leads').send(makeLead());
+    const res = await request(app).post('/api/v1/leads').send(makeLead());
 
     expect(res.status).toBe(401);
   });
@@ -190,7 +190,7 @@ describe('GET /api/leads', () => {
   it('returns paginated leads list', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
-    const res = await request(app).get('/api/leads').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/leads').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
@@ -199,12 +199,9 @@ describe('GET /api/leads', () => {
   });
 
   it('filters by ?owner=me', async () => {
-    await createLead(
-      { ...makeLead(), owner_id: repId },
-      { id: repId, name: 'Leads Rep' },
-    );
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
-    const res = await request(app).get('/api/leads?owner=me').set('Cookie', otherRepCookie);
+    const res = await request(app).get('/api/v1/leads?owner=me').set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(200);
     // The otherRep has no leads, so result should be empty
@@ -214,7 +211,7 @@ describe('GET /api/leads', () => {
   it('filters by status', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
-    const res = await request(app).get('/api/leads?status=New').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/leads?status=New').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeGreaterThan(0);
@@ -226,7 +223,7 @@ describe('GET /api/leads', () => {
   it('filters by lead_source', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
-    const res = await request(app).get('/api/leads?lead_source=Web').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/leads?lead_source=Web').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeGreaterThan(0);
@@ -242,7 +239,7 @@ describe('GET /api/leads/:id', () => {
       { id: repId, name: 'Leads Rep' },
     );
 
-    const res = await request(app).get(`/api/leads/${lead.id}`).set('Cookie', repCookie);
+    const res = await request(app).get(`/api/v1/leads/${lead.id}`).set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.lead.id).toBe(lead.id);
@@ -250,7 +247,7 @@ describe('GET /api/leads/:id', () => {
 
   it('returns 404 for a non-existent lead', async () => {
     const res = await request(app)
-      .get('/api/leads/00000000-0000-0000-0000-000000000000')
+      .get('/api/v1/leads/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(404);
@@ -268,7 +265,7 @@ describe('PATCH /api/leads/:id', () => {
     );
 
     const res = await request(app)
-      .patch(`/api/leads/${lead.id}`)
+      .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', repCookie)
       .send({ status: 'Contacted' });
 
@@ -283,7 +280,7 @@ describe('PATCH /api/leads/:id', () => {
     );
 
     const res = await request(app)
-      .patch(`/api/leads/${lead.id}`)
+      .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', repCookie)
       .send({ status: 'NotAStatus' });
 
@@ -298,7 +295,7 @@ describe('PATCH /api/leads/:id', () => {
     );
 
     const res = await request(app)
-      .patch(`/api/leads/${lead.id}`)
+      .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', otherRepCookie)
       .send({ status: 'Contacted' });
 
@@ -313,7 +310,7 @@ describe('PATCH /api/leads/:id', () => {
     );
 
     const res = await request(app)
-      .patch(`/api/leads/${lead.id}`)
+      .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', adminCookie)
       .send({ status: 'Qualified' });
 
@@ -323,7 +320,7 @@ describe('PATCH /api/leads/:id', () => {
 
   it('returns 404 for a non-existent lead', async () => {
     const res = await request(app)
-      .patch('/api/leads/00000000-0000-0000-0000-000000000000')
+      .patch('/api/v1/leads/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
       .send({ status: 'Contacted' });
 
@@ -340,7 +337,7 @@ describe('DELETE /api/leads/:id', () => {
       { id: repId, name: 'Leads Rep' },
     );
 
-    const res = await request(app).delete(`/api/leads/${lead.id}`).set('Cookie', repCookie);
+    const res = await request(app).delete(`/api/v1/leads/${lead.id}`).set('Cookie', repCookie);
 
     expect(res.status).toBe(204);
   });
@@ -351,7 +348,7 @@ describe('DELETE /api/leads/:id', () => {
       { id: repId, name: 'Leads Rep' },
     );
 
-    const res = await request(app).delete(`/api/leads/${lead.id}`).set('Cookie', otherRepCookie);
+    const res = await request(app).delete(`/api/v1/leads/${lead.id}`).set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -363,14 +360,14 @@ describe('DELETE /api/leads/:id', () => {
       { id: repId, name: 'Leads Rep' },
     );
 
-    const res = await request(app).delete(`/api/leads/${lead.id}`).set('Cookie', adminCookie);
+    const res = await request(app).delete(`/api/v1/leads/${lead.id}`).set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
 
   it('returns 404 for a non-existent lead', async () => {
     const res = await request(app)
-      .delete('/api/leads/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/leads/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(404);
@@ -387,7 +384,7 @@ describe('GET /api/leads/:id/status-history', () => {
     );
 
     const res = await request(app)
-      .get(`/api/leads/${lead.id}/status-history`)
+      .get(`/api/v1/leads/${lead.id}/status-history`)
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -398,7 +395,7 @@ describe('GET /api/leads/:id/status-history', () => {
 
   it('returns 404 for a non-existent lead', async () => {
     const res = await request(app)
-      .get('/api/leads/00000000-0000-0000-0000-000000000000/status-history')
+      .get('/api/v1/leads/00000000-0000-0000-0000-000000000000/status-history')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(404);
@@ -415,7 +412,7 @@ describe('POST /api/leads/:id/convert', () => {
     );
 
     const res = await request(app)
-      .post(`/api/leads/${lead.id}/convert`)
+      .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', repCookie)
       .send({
         contact: {
@@ -440,7 +437,7 @@ describe('POST /api/leads/:id/convert', () => {
     );
 
     const res = await request(app)
-      .post(`/api/leads/${lead.id}/convert`)
+      .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', repCookie)
       .send({
         contact: { first_name: 'Dana' }, // missing email
@@ -470,13 +467,13 @@ describe('POST /api/leads/:id/convert', () => {
 
     // First conversion
     await request(app)
-      .post(`/api/leads/${lead.id}/convert`)
+      .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', repCookie)
       .send(convertBody);
 
     // Second conversion attempt should conflict
     const res = await request(app)
-      .post(`/api/leads/${lead.id}/convert`)
+      .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', repCookie)
       .send({
         ...convertBody,
@@ -494,7 +491,7 @@ describe('POST /api/leads/:id/convert', () => {
     );
 
     const res = await request(app)
-      .post(`/api/leads/${lead.id}/convert`)
+      .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', otherRepCookie)
       .send({
         contact: { first_name: 'Dana', email: 'x@x.com' },
@@ -508,7 +505,7 @@ describe('POST /api/leads/:id/convert', () => {
 
   it('returns 404 for a non-existent lead', async () => {
     const res = await request(app)
-      .post('/api/leads/00000000-0000-0000-0000-000000000000/convert')
+      .post('/api/v1/leads/00000000-0000-0000-0000-000000000000/convert')
       .set('Cookie', repCookie)
       .send({
         contact: { first_name: 'Dana', email: 'x@x.com' },
@@ -531,7 +528,7 @@ describe('GET /api/leads/accounts/search', () => {
     ]);
 
     const res = await request(app)
-      .get('/api/leads/accounts/search?q=Searchable')
+      .get('/api/v1/leads/accounts/search?q=Searchable')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -542,14 +539,14 @@ describe('GET /api/leads/accounts/search', () => {
   });
 
   it('returns 400 when q param is empty', async () => {
-    const res = await request(app).get('/api/leads/accounts/search?q=').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/leads/accounts/search?q=').set('Cookie', repCookie);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns 400 when q param is missing', async () => {
-    const res = await request(app).get('/api/leads/accounts/search').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/leads/accounts/search').set('Cookie', repCookie);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');

@@ -58,7 +58,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create a second rep to reassign to.
   const newOwner = await createTestUser(restClient, {
@@ -121,14 +121,14 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify via API that both contacts now have the new owner.
-  const r1 = await restClient.get<ContactSingleResponse>(`/api/contacts/${c1.id}`);
+  const r1 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`);
   expect(r1.body.contact.owner_id, 'c1 should have new owner').toBe(newOwner.id);
 
-  const r2 = await restClient.get<ContactSingleResponse>(`/api/contacts/${c2.id}`);
+  const r2 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`);
   expect(r2.body.contact.owner_id, 'c2 should have new owner').toBe(newOwner.id);
 
   // Deactivate the temp user (users cannot be hard-deleted).
-  await restClient.patch(`/api/users/${newOwner.id}/deactivate`, {});
+  await restClient.patch(`/api/v1/users/${newOwner.id}/deactivate`, {});
 });
 
 test('@functional F2-BK2: select multiple contacts → bulk delete → contacts return 404 via API', async ({
@@ -138,7 +138,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   // Create two contacts to be deleted.
   const c1 = await createTestContact(testData, restClient, {
@@ -186,12 +186,12 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
 
   // Verify both contacts return 404 via API.
   const err1 = await restClient
-    .get<ContactSingleResponse>(`/api/contacts/${c1.id}`)
+    .get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`)
     .catch((e: unknown) => e);
   expect(err1 instanceof RestClientError && err1.status === 404, 'c1 should be deleted').toBe(true);
 
   const err2 = await restClient
-    .get<ContactSingleResponse>(`/api/contacts/${c2.id}`)
+    .get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`)
     .catch((e: unknown) => e);
   expect(err2 instanceof RestClientError && err2.status === 404, 'c2 should be deleted').toBe(true);
 });

@@ -11,7 +11,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/search:
+ * /api/v1/search:
  *   get:
  *     tags: [Search]
  *     operationId: globalSearch

@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/reports/win-loss:
+ * /api/v1/reports/win-loss:
  *   get:
  *     tags: [Reports]
  *     operationId: getWinLossReport
@@ -82,7 +82,7 @@ router.get('/win-loss', authenticate, asyncHandler(getWinLossReportHandler));
 
 /**
  * @openapi
- * /api/reports/activity-volume:
+ * /api/v1/reports/activity-volume:
  *   get:
  *     tags: [Reports]
  *     operationId: getActivityVolumeReport

@@ -86,7 +86,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${call.id}`)
+      .patch(`/api/v1/activities/${call.id}`)
       .set('Cookie', repCookie)
       .send({ direction: null });
 
@@ -104,7 +104,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${email.id}`)
+      .patch(`/api/v1/activities/${email.id}`)
       .set('Cookie', repCookie)
       .send({ direction: null });
 
@@ -122,7 +122,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${call.id}`)
+      .patch(`/api/v1/activities/${call.id}`)
       .set('Cookie', repCookie)
       .send({ subject: 'Updated subject' });
 
@@ -140,7 +140,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${note.id}`)
+      .patch(`/api/v1/activities/${note.id}`)
       .set('Cookie', repCookie)
       .send({ direction: null });
 
@@ -156,7 +156,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${note.id}`)
+      .patch(`/api/v1/activities/${note.id}`)
       .set('Cookie', repCookie)
       .send({ type: 'Call', direction: null });
 

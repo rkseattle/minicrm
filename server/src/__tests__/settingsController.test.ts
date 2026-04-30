@@ -53,7 +53,7 @@ afterAll(async () => {
 
 describe('GET /api/settings/default-language', () => {
   it('returns 200 with a language string (public endpoint)', async () => {
-    const res = await request(app).get('/api/settings/default-language');
+    const res = await request(app).get('/api/v1/settings/default-language');
 
     expect(res.status).toBe(200);
     expect(typeof res.body.language).toBe('string');
@@ -65,7 +65,7 @@ describe('GET /api/settings/default-language', () => {
 describe('PATCH /api/settings/default-language', () => {
   it('updates the default language and returns 200', async () => {
     const res = await request(app)
-      .patch('/api/settings/default-language')
+      .patch('/api/v1/settings/default-language')
       .set('Cookie', adminCookie)
       .send({ language: 'es' });
 
@@ -74,14 +74,14 @@ describe('PATCH /api/settings/default-language', () => {
 
     // Restore to English
     await request(app)
-      .patch('/api/settings/default-language')
+      .patch('/api/v1/settings/default-language')
       .set('Cookie', adminCookie)
       .send({ language: 'en' });
   });
 
   it('returns 400 when language is invalid', async () => {
     const res = await request(app)
-      .patch('/api/settings/default-language')
+      .patch('/api/v1/settings/default-language')
       .set('Cookie', adminCookie)
       .send({ language: 'klingon' });
 
@@ -91,7 +91,7 @@ describe('PATCH /api/settings/default-language', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .patch('/api/settings/default-language')
+      .patch('/api/v1/settings/default-language')
       .set('Cookie', repCookie)
       .send({ language: 'fr' });
 
@@ -99,7 +99,9 @@ describe('PATCH /api/settings/default-language', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).patch('/api/settings/default-language').send({ language: 'fr' });
+    const res = await request(app)
+      .patch('/api/v1/settings/default-language')
+      .send({ language: 'fr' });
 
     expect(res.status).toBe(401);
   });
@@ -109,7 +111,7 @@ describe('PATCH /api/settings/default-language', () => {
 
 describe('GET /api/settings/nav-layout', () => {
   it('returns 200 with a layout string (public endpoint)', async () => {
-    const res = await request(app).get('/api/settings/nav-layout');
+    const res = await request(app).get('/api/v1/settings/nav-layout');
 
     expect(res.status).toBe(200);
     expect(typeof res.body.layout).toBe('string');
@@ -121,7 +123,7 @@ describe('GET /api/settings/nav-layout', () => {
 describe('PATCH /api/settings/nav-layout', () => {
   it('updates the nav layout and returns 200', async () => {
     const res = await request(app)
-      .patch('/api/settings/nav-layout')
+      .patch('/api/v1/settings/nav-layout')
       .set('Cookie', adminCookie)
       .send({ layout: 'left' });
 
@@ -131,7 +133,7 @@ describe('PATCH /api/settings/nav-layout', () => {
 
   it('returns 400 when layout value is invalid', async () => {
     const res = await request(app)
-      .patch('/api/settings/nav-layout')
+      .patch('/api/v1/settings/nav-layout')
       .set('Cookie', adminCookie)
       .send({ layout: 'unknown-layout' });
 
@@ -141,7 +143,7 @@ describe('PATCH /api/settings/nav-layout', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .patch('/api/settings/nav-layout')
+      .patch('/api/v1/settings/nav-layout')
       .set('Cookie', repCookie)
       .send({ layout: 'sidebar' });
 
@@ -149,7 +151,7 @@ describe('PATCH /api/settings/nav-layout', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).patch('/api/settings/nav-layout').send({ layout: 'left' });
+    const res = await request(app).patch('/api/v1/settings/nav-layout').send({ layout: 'left' });
 
     expect(res.status).toBe(401);
   });
@@ -160,7 +162,7 @@ describe('PATCH /api/settings/nav-layout', () => {
 describe('GET /api/settings/email-notifications', () => {
   it('returns 200 with an enabled boolean', async () => {
     const res = await request(app)
-      .get('/api/settings/email-notifications')
+      .get('/api/v1/settings/email-notifications')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -169,7 +171,7 @@ describe('GET /api/settings/email-notifications', () => {
 
   it('is accessible to authenticated reps', async () => {
     const res = await request(app)
-      .get('/api/settings/email-notifications')
+      .get('/api/v1/settings/email-notifications')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -177,7 +179,7 @@ describe('GET /api/settings/email-notifications', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/settings/email-notifications');
+    const res = await request(app).get('/api/v1/settings/email-notifications');
 
     expect(res.status).toBe(401);
   });
@@ -188,7 +190,7 @@ describe('GET /api/settings/email-notifications', () => {
 describe('PATCH /api/settings/email-notifications', () => {
   it('enables email notifications and returns 200', async () => {
     const res = await request(app)
-      .patch('/api/settings/email-notifications')
+      .patch('/api/v1/settings/email-notifications')
       .set('Cookie', adminCookie)
       .send({ enabled: true });
 
@@ -198,7 +200,7 @@ describe('PATCH /api/settings/email-notifications', () => {
 
   it('disables email notifications and returns 200', async () => {
     const res = await request(app)
-      .patch('/api/settings/email-notifications')
+      .patch('/api/v1/settings/email-notifications')
       .set('Cookie', adminCookie)
       .send({ enabled: false });
 
@@ -208,7 +210,7 @@ describe('PATCH /api/settings/email-notifications', () => {
 
   it('returns 400 when enabled is not a boolean', async () => {
     const res = await request(app)
-      .patch('/api/settings/email-notifications')
+      .patch('/api/v1/settings/email-notifications')
       .set('Cookie', adminCookie)
       .send({ enabled: 'yes' });
 
@@ -218,7 +220,7 @@ describe('PATCH /api/settings/email-notifications', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .patch('/api/settings/email-notifications')
+      .patch('/api/v1/settings/email-notifications')
       .set('Cookie', repCookie)
       .send({ enabled: false });
 
@@ -227,7 +229,7 @@ describe('PATCH /api/settings/email-notifications', () => {
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .patch('/api/settings/email-notifications')
+      .patch('/api/v1/settings/email-notifications')
       .send({ enabled: true });
 
     expect(res.status).toBe(401);
@@ -238,7 +240,7 @@ describe('PATCH /api/settings/email-notifications', () => {
 
 describe('GET /api/settings/onboarding', () => {
   it('returns 200 with is_first_run and onboarding_completed for admin', async () => {
-    const res = await request(app).get('/api/settings/onboarding').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.is_first_run).toBe('boolean');
@@ -246,13 +248,13 @@ describe('GET /api/settings/onboarding', () => {
   });
 
   it('returns 403 when a rep attempts to access', async () => {
-    const res = await request(app).get('/api/settings/onboarding').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/settings/onboarding');
+    const res = await request(app).get('/api/v1/settings/onboarding');
 
     expect(res.status).toBe(401);
   });
@@ -272,7 +274,7 @@ describe('PUT /api/settings/onboarding', () => {
 
   it('sets onboarding_completed to true and returns 200', async () => {
     const res = await request(app)
-      .put('/api/settings/onboarding')
+      .put('/api/v1/settings/onboarding')
       .set('Cookie', adminCookie)
       .send({ onboarding_completed: true });
 
@@ -282,7 +284,7 @@ describe('PUT /api/settings/onboarding', () => {
 
   it('returns 400 when onboarding_completed is not a boolean', async () => {
     const res = await request(app)
-      .put('/api/settings/onboarding')
+      .put('/api/v1/settings/onboarding')
       .set('Cookie', adminCookie)
       .send({ onboarding_completed: 'yes' });
 
@@ -292,7 +294,7 @@ describe('PUT /api/settings/onboarding', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .put('/api/settings/onboarding')
+      .put('/api/v1/settings/onboarding')
       .set('Cookie', repCookie)
       .send({ onboarding_completed: true });
 
@@ -301,7 +303,7 @@ describe('PUT /api/settings/onboarding', () => {
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .put('/api/settings/onboarding')
+      .put('/api/v1/settings/onboarding')
       .send({ onboarding_completed: true });
 
     expect(res.status).toBe(401);

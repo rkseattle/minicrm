@@ -96,7 +96,7 @@ describe('IntegrationSettings', () => {
   });
 
   it('shows error message when save fails', async () => {
-    server.use(http.put('/api/settings/storage', () => new HttpResponse(null, { status: 500 })));
+    server.use(http.put('/api/v1/settings/storage', () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<IntegrationSettings />);
 
@@ -123,7 +123,7 @@ describe('IntegrationSettings', () => {
   });
 
   it('shows storage load error state', async () => {
-    server.use(http.get('/api/settings/storage', () => new HttpResponse(null, { status: 500 })));
+    server.use(http.get('/api/v1/settings/storage', () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<IntegrationSettings />);
 
@@ -134,7 +134,7 @@ describe('IntegrationSettings', () => {
 
   it('shows Clear button and masked hint when storage is already configured', async () => {
     server.use(
-      http.get('/api/settings/storage', () =>
+      http.get('/api/v1/settings/storage', () =>
         HttpResponse.json({
           configured: true,
           config: {
@@ -156,7 +156,7 @@ describe('IntegrationSettings', () => {
 
   it('calls DELETE and removes Clear button after clearing storage config', async () => {
     server.use(
-      http.get('/api/settings/storage', () =>
+      http.get('/api/v1/settings/storage', () =>
         HttpResponse.json({
           configured: true,
           config: {
@@ -170,7 +170,7 @@ describe('IntegrationSettings', () => {
 
     let deleteCalled = false;
     server.use(
-      http.delete('/api/settings/storage', () => {
+      http.delete('/api/v1/settings/storage', () => {
         deleteCalled = true;
         return HttpResponse.json({ configured: false, config: null });
       }),

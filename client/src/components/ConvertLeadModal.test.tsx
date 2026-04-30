@@ -82,7 +82,7 @@ describe('ConvertLeadModal', () => {
 
     it('shows account search results in Link mode after typing', async () => {
       server.use(
-        http.get('/api/leads/accounts/search', () =>
+        http.get('/api/v1/leads/accounts/search', () =>
           HttpResponse.json({ accounts: [{ id: ACCOUNT_1.id, name: ACCOUNT_1.name }] }),
         ),
       );
@@ -100,7 +100,7 @@ describe('ConvertLeadModal', () => {
 
     it('selects an account from search results in Link mode', async () => {
       server.use(
-        http.get('/api/leads/accounts/search', () =>
+        http.get('/api/v1/leads/accounts/search', () =>
           HttpResponse.json({ accounts: [{ id: ACCOUNT_1.id, name: ACCOUNT_1.name }] }),
         ),
       );

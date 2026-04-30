@@ -51,7 +51,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F6] E2E_ADMIN_PASSWORD is not set');
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ async function createUserWithForcedPasswordChange(
 ): Promise<{ user: UserRow; tempPassword: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  const inviteRes = await restClient.post<InviteResponse>('/api/users/invite', {
+  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
     name: `F6 FPC User ${uniqueSuffix}`,
     email: `f6-fpc-${uniqueSuffix}@example.com`,
     role: 'rep',
@@ -137,10 +137,13 @@ async function createUserWithForcedPasswordChange(
   const { user, inviteToken } = inviteRes.body;
 
   // Activate the account first (required before admin-set-password).
-  await restClient.post('/api/users/set-password', { token: inviteToken, password: 'Activate1!' });
+  await restClient.post('/api/v1/users/set-password', {
+    token: inviteToken,
+    password: 'Activate1!',
+  });
 
   // admin-set-password sets must_change_password=true.
-  await restClient.post(`/api/users/${user.id}/admin-set-password`, { password: tempPassword });
+  await restClient.post(`/api/v1/users/${user.id}/admin-set-password`, { password: tempPassword });
 
   return { user, tempPassword };
 }
@@ -157,7 +160,7 @@ async function findUserById(restClient: RestClient, userId: string): Promise<Use
   // (server max is 100 per page) until the user is found or pages are exhausted.
   let page = 1;
   while (true) {
-    const res = await restClient.get<UserListResponse>(`/api/users?limit=100&page=${page}`);
+    const res = await restClient.get<UserListResponse>(`/api/v1/users?limit=100&page=${page}`);
     const found = res.body.data.find((u) => u.id === userId);
     if (found) return found;
     const { total, limit } = res.body;
@@ -178,7 +181,7 @@ test('@smoke @functional F6-IN1: admin invites user with valid email and role �
 
   let userId: string | null = null;
   try {
-    const res = await restClient.post<InviteResponse>('/api/users/invite', {
+    const res = await restClient.post<InviteResponse>('/api/v1/users/invite', {
       name: `F6 IN1 User ${uniqueSuffix}`,
       email,
       role: 'rep',
@@ -196,7 +199,7 @@ test('@smoke @functional F6-IN1: admin invites user with valid email and role �
     expect(found?.status, 'user status in list should be invited').toBe('invited');
   } finally {
     if (userId) {
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
         console.error(`[F6-IN1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
       });
     }
@@ -213,7 +216,7 @@ test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no dup
     let conflictStatus: number | null = null;
     let conflictCode: string | null = null;
     try {
-      await restClient.post<InviteResponse>('/api/users/invite', {
+      await restClient.post<InviteResponse>('/api/v1/users/invite', {
         name: 'Duplicate User',
         email: user.email,
         role: 'rep',
@@ -236,7 +239,7 @@ test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no dup
     // findUserById returning the original user confirms the email exists exactly once;
     // the 409 above guarantees the duplicate invite was rejected.
   } finally {
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F6-IN2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
     });
   }
@@ -247,7 +250,7 @@ test('@functional F6-IN3: admin invites with invalid email format → 400 valida
 }) => {
   let errorStatus: number | null = null;
   try {
-    await restClient.post('/api/users/invite', {
+    await restClient.post('/api/v1/users/invite', {
       name: 'Bad Email User',
       email: 'not-a-valid-email',
       role: 'rep',
@@ -270,7 +273,7 @@ test('@functional F6-IN4: invited user is visible in list before they log in', a
   let userId: string | null = null;
 
   try {
-    const res = await restClient.post<InviteResponse>('/api/users/invite', {
+    const res = await restClient.post<InviteResponse>('/api/v1/users/invite', {
       name: `F6 IN4 User ${uniqueSuffix}`,
       email: `f6-in4-${uniqueSuffix}@example.com`,
       role: 'rep',
@@ -284,7 +287,7 @@ test('@functional F6-IN4: invited user is visible in list before they log in', a
   } finally {
     if (userId) {
       // Invited (not yet activated) users can still be deactivated.
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
         console.error(`[F6-IN4] teardown: failed to deactivate user ${userId}: ${String(err)}`);
       });
     }
@@ -305,7 +308,7 @@ test('@functional F6-RA1: role assigned at invite time is reflected on the user 
     expect(found, 'user should appear in list').toBeDefined();
     expect(found?.role, 'role should match the role supplied at invite time').toBe('admin');
   } finally {
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F6-RA1] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
     });
   }
@@ -323,7 +326,7 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
     expect(before?.role, 'initial role should be rep').toBe('rep');
 
     // Change role to admin.
-    const roleRes = await restClient.patch<{ user: UserRow }>(`/api/users/${user.id}/role`, {
+    const roleRes = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${user.id}/role`, {
       role: 'admin',
     });
     expect(roleRes.status, 'role update should return 200').toBe(200);
@@ -333,7 +336,7 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
     const after = await findUserById(restClient, user.id);
     expect(after?.role, 'role change should be persisted in the user record').toBe('admin');
   } finally {
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F6-RA2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
     });
   }
@@ -371,9 +374,9 @@ test.describe('First login tests', () => {
     } finally {
       if (userId) {
         await restClient
-          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
           .catch(() => null);
-        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+        await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
           console.error(`[F6-FL1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
         });
       }
@@ -416,9 +419,9 @@ test.describe('First login tests', () => {
     } finally {
       if (userId) {
         await restClient
-          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
           .catch(() => null);
-        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+        await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
           console.error(`[F6-FL2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
         });
       }
@@ -457,9 +460,9 @@ test.describe('First login tests', () => {
     } finally {
       if (userId) {
         await restClient
-          .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+          .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
           .catch(() => null);
-        await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+        await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
           console.error(`[F6-FL3] teardown: failed to deactivate user ${userId}: ${String(err)}`);
         });
       }
@@ -479,7 +482,7 @@ test('@functional F6-DX1: deactivated user cannot log in — blocked at API laye
   try {
     // Deactivate the user.
     const deactivateRes = await restClient.patch<{ user: UserRow }>(
-      `/api/users/${user.id}/deactivate`,
+      `/api/v1/users/${user.id}/deactivate`,
     );
     expect(deactivateRes.status, 'deactivate should return 200').toBe(200);
     expect(deactivateRes.body.user.status, 'user status should be inactive').toBe('inactive');
@@ -487,7 +490,7 @@ test('@functional F6-DX1: deactivated user cannot log in — blocked at API laye
     // AC1: verify at the API layer that login is rejected.
     let loginStatus: number | null = null;
     try {
-      await restClient.post('/api/auth/login', { email: user.email, password });
+      await restClient.post('/api/v1/auth/login', { email: user.email, password });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         loginStatus = err.status;
@@ -505,10 +508,10 @@ test('@functional F6-DX1: deactivated user cannot log in — blocked at API laye
   } finally {
     // Re-auth as admin in case the restClient cookie was overwritten by the login attempt.
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
     // User is already deactivated; a second deactivate is harmless but we catch errors.
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch(() => null);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch(() => null);
   }
 });
 
@@ -525,7 +528,7 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
   const userClient = new RestClient(userRequestContext);
 
   try {
-    await userClient.post('/api/auth/login', { email: user.email, password });
+    await userClient.post('/api/v1/auth/login', { email: user.email, password });
 
     // Create a contact as the test user (owner_id will be the test user's ID).
     const contact = await createTestContact(testData, userClient, {
@@ -534,11 +537,11 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
     });
 
     // Deactivate the user via the admin client.
-    await restClient.patch(`/api/users/${user.id}/deactivate`);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`);
 
     // Admin must still be able to read the now-deactivated user's contact.
     const contactRes = await restClient.get<{ contact: { id: string } }>(
-      `/api/contacts/${contact.id}`,
+      `/api/v1/contacts/${contact.id}`,
     );
     expect(
       contactRes.status,
@@ -548,9 +551,9 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
   } finally {
     await userRequestContext.dispose().catch(() => null);
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch(() => null);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch(() => null);
   }
 });
 
@@ -560,14 +563,14 @@ test('@functional F6-DX3: deactivated user appears in list with inactive status'
   const { user } = await createActivatedUser(restClient);
 
   try {
-    await restClient.patch(`/api/users/${user.id}/deactivate`);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`);
 
     const found = await findUserById(restClient, user.id);
     expect(found, 'deactivated user should still appear in admin list').toBeDefined();
     expect(found?.status, 'deactivated user status should be inactive').toBe('inactive');
   } finally {
     // Already deactivated; suppress second-deactivate errors.
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch(() => null);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch(() => null);
   }
 });
 
@@ -580,11 +583,11 @@ test('@functional F6-RX1: reactivated user can log in again', async ({ restClien
 
   try {
     // Deactivate.
-    await restClient.patch(`/api/users/${user.id}/deactivate`);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`);
 
     // Reactivate.
     const reactivateRes = await restClient.patch<{ user: UserRow }>(
-      `/api/users/${user.id}/reactivate`,
+      `/api/v1/users/${user.id}/reactivate`,
     );
     expect(reactivateRes.status, 'reactivate should return 200').toBe(200);
     expect(reactivateRes.body.user.status, 'user status should be active after reactivation').toBe(
@@ -592,16 +595,16 @@ test('@functional F6-RX1: reactivated user can log in again', async ({ restClien
     );
 
     // Login should succeed after reactivation.
-    const loginRes = await restClient.post('/api/auth/login', {
+    const loginRes = await restClient.post('/api/v1/auth/login', {
       email: user.email,
       password,
     });
     expect(loginRes.status, 'reactivated user should be able to log in').toBe(200);
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F6-RX1] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
     });
   }
@@ -622,8 +625,8 @@ test('@functional F6-RX2: reactivated user role and records are unchanged', asyn
     });
 
     // Deactivate then reactivate.
-    await restClient.patch(`/api/users/${user.id}/deactivate`);
-    await restClient.patch(`/api/users/${user.id}/reactivate`);
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`);
+    await restClient.patch(`/api/v1/users/${user.id}/reactivate`);
 
     // Role should be unchanged.
     const found = await findUserById(restClient, user.id);
@@ -633,14 +636,14 @@ test('@functional F6-RX2: reactivated user role and records are unchanged', asyn
 
     // Contact should still be accessible.
     const contactRes = await restClient.get<{ contact: { id: string } }>(
-      `/api/contacts/${contact.id}`,
+      `/api/v1/contacts/${contact.id}`,
     );
     expect(contactRes.status, 'contact should be accessible after reactivation').toBe(200);
   } finally {
     await restClient
-      .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await restClient.patch(`/api/users/${user.id}/deactivate`).catch((err: unknown) => {
+    await restClient.patch(`/api/v1/users/${user.id}/deactivate`).catch((err: unknown) => {
       console.error(`[F6-RX2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
     });
   }

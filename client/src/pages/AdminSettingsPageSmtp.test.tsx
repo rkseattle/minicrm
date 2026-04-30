@@ -22,7 +22,7 @@ function renderOnNotificationsTab() {
 describe('AdminSettingsPage — SMTP section', () => {
   describe('loading state', () => {
     it('shows loading text while fetching SMTP config', async () => {
-      server.use(http.get('/api/settings/smtp', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/settings/smtp', () => new Promise(() => {})));
       renderOnNotificationsTab();
       await waitFor(() => {
         expect(screen.getByTestId('smtp-loading')).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe('AdminSettingsPage — SMTP section', () => {
   describe('load error', () => {
     it('shows error when SMTP config fails to load', async () => {
       server.use(
-        http.get('/api/settings/smtp', () =>
+        http.get('/api/v1/settings/smtp', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -67,7 +67,7 @@ describe('AdminSettingsPage — SMTP section', () => {
 
     it('shows the masked placeholder and change-password button when password is set', async () => {
       server.use(
-        http.get('/api/settings/smtp', () =>
+        http.get('/api/v1/settings/smtp', () =>
           HttpResponse.json({
             smtp_host: 'smtp.example.com',
             smtp_port: 587,
@@ -88,7 +88,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     it('reveals the password input when "Change password" is clicked', async () => {
       const user = userEvent.setup();
       server.use(
-        http.get('/api/settings/smtp', () =>
+        http.get('/api/v1/settings/smtp', () =>
           HttpResponse.json({
             smtp_host: 'smtp.example.com',
             smtp_port: 587,
@@ -110,7 +110,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     it('hides the password input when "Cancel" is clicked after opening change mode', async () => {
       const user = userEvent.setup();
       server.use(
-        http.get('/api/settings/smtp', () =>
+        http.get('/api/v1/settings/smtp', () =>
           HttpResponse.json({
             smtp_host: 'smtp.example.com',
             smtp_port: 587,
@@ -148,7 +148,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     it('shows error message when save fails', async () => {
       const user = userEvent.setup();
       server.use(
-        http.put('/api/settings/smtp', () =>
+        http.put('/api/v1/settings/smtp', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -188,7 +188,7 @@ describe('AdminSettingsPage — SMTP section', () => {
     it('shows error result when test send fails', async () => {
       const user = userEvent.setup();
       server.use(
-        http.post('/api/settings/smtp/test', () =>
+        http.post('/api/v1/settings/smtp/test', () =>
           HttpResponse.json({ success: false, error: 'Connection refused' }),
         ),
       );
