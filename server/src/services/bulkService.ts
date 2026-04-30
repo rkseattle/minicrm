@@ -10,6 +10,8 @@ import { writeAuditEntry } from './auditService.js';
 import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { fireAutomationTrigger } from './automationService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
+import { findDealById } from './dealService.js';
 import { getStageNames } from './pipelineStageService.js';
 import type { AuditActor } from './contactService.js';
 
@@ -345,6 +347,7 @@ export async function bulkDeals(
     }>('SELECT id, name, stage, owner_id FROM deals WHERE id = ANY($1)', [actualIds]);
     const nameMap = new Map(beforeResult.rows.map((r) => [r.id, r.name]));
     const ownerMap = new Map(beforeResult.rows.map((r) => [r.id, r.owner_id]));
+    const previousStageMap = new Map(beforeResult.rows.map((r) => [r.id, r.stage]));
 
     if (action === 'delete') {
       await client.query('DELETE FROM deals WHERE id = ANY($1)', [actualIds]);
@@ -425,6 +428,24 @@ export async function bulkDeals(
           newStage: stage!,
         });
       }
+
+      // Dispatch webhook events for each changed deal in the background
+      setImmediate(() => {
+        for (const id of actualIds) {
+          void (async () => {
+            const deal = await findDealById(id);
+            if (!deal) return;
+            const dealData = deal as unknown as Record<string, unknown>;
+            void dispatchWebhookEvent('deal.stage_changed', dealData, { stage: previousStageMap?.get(id) });
+            if (deal.stage === 'Closed Won') {
+              void dispatchWebhookEvent('deal.won', dealData);
+            }
+            if (deal.stage === 'Closed Lost') {
+              void dispatchWebhookEvent('deal.lost', dealData);
+            }
+          })().catch(() => {/* errors swallowed — webhook dispatch must not affect bulk result */});
+        }
+      });
     }
 
     return { affected: actualIds.length };

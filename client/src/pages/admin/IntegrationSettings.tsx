@@ -14,6 +14,7 @@ import {
   STORAGE_CONFIG_QUERY_KEY,
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
+import WebhookSettings from '@/pages/admin/WebhookSettings.js';
 
 export default function IntegrationSettings() {
   const { t } = useTranslation();
@@ -277,6 +278,10 @@ export default function IntegrationSettings() {
           </div>
         </form>
       )}
+
+      <hr className="my-8 border-gray-200" />
+
+      <WebhookSettings />
     </div>
   );
 }

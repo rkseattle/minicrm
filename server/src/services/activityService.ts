@@ -9,6 +9,7 @@ import type {
   UpdateActivityInput,
 } from '@minicrm/shared/schemas/activitySchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -100,7 +101,11 @@ export async function createActivity(
     ],
   );
 
-  return (await findActivityById(insertResult.rows[0].id))!;
+  const activity = (await findActivityById(insertResult.rows[0].id))!;
+
+  void dispatchWebhookEvent('activity.created', activity as unknown as Record<string, unknown>);
+
+  return activity;
 }
 
 /**
@@ -212,7 +217,13 @@ export async function updateActivity(
   );
 
   if (!updateResult.rows[0]) return null;
-  return findActivityById(updateResult.rows[0].id);
+  const activity = await findActivityById(updateResult.rows[0].id);
+
+  if (activity && params.status === 'complete') {
+    void dispatchWebhookEvent('activity.completed', activity as unknown as Record<string, unknown>);
+  }
+
+  return activity;
 }
 
 /** Shape of a task row enriched with the linked record name and type */

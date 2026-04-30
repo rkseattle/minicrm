@@ -11,6 +11,7 @@ import {
   dealStageChangedConfigSchema,
   createTaskActionConfigSchema,
   sendNotificationActionConfigSchema,
+  sendWebhookActionConfigSchema,
 } from '@minicrm/shared/schemas/automationSchema.js';
 import {
   createAutomationRule,
@@ -52,6 +53,11 @@ function validateConfigShapes(
     }
   } else if (actionType === 'send_notification') {
     const parsed = sendNotificationActionConfigSchema.safeParse(actionConfig);
+    if (!parsed.success) {
+      return `action_config: ${parsed.error.errors[0].message}`;
+    }
+  } else if (actionType === 'send_webhook') {
+    const parsed = sendWebhookActionConfigSchema.safeParse(actionConfig);
     if (!parsed.success) {
       return `action_config: ${parsed.error.errors[0].message}`;
     }

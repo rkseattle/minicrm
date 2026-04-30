@@ -468,6 +468,7 @@ describe('seedDefaultAdmin', () => {
     await pool.query('DELETE FROM automation_rule_logs');
     await pool.query('DELETE FROM automation_rules');
     await pool.query('DELETE FROM overdue_task_notifications');
+    await pool.query('DELETE FROM webhook_subscriptions');
     await pool.query('DELETE FROM activities');
     await pool.query('DELETE FROM deal_contacts');
     await pool.query('DELETE FROM deals');

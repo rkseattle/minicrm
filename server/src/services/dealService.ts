@@ -8,6 +8,7 @@ import type { PoolClient } from 'pg';
 import type { CreateDealInput, UpdateDealInput } from '@minicrm/shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditEntryInput } from './auditService.js';
 import { getDefaultCurrency } from './settingsService.js';
@@ -154,6 +155,8 @@ export async function createDeal(
       recordType: 'deal',
       ownerId: owner_id,
     });
+
+    void dispatchWebhookEvent('deal.created', deal as unknown as Record<string, unknown>);
 
     return deal;
   } catch (error) {
@@ -354,6 +357,24 @@ export async function updateDeal(
       });
     }
 
+    if (deal) {
+      const dealData = deal as unknown as Record<string, unknown>;
+      const beforeData = before ? (before as unknown as Record<string, unknown>) : undefined;
+
+      void dispatchWebhookEvent('deal.updated', dealData, beforeData);
+
+      if (params.stage !== undefined && deal.stage !== previousStage) {
+        void dispatchWebhookEvent('deal.stage_changed', dealData, { stage: previousStage });
+
+        if (deal.stage === 'Closed Won' && previousStage !== 'Closed Won') {
+          void dispatchWebhookEvent('deal.won', dealData);
+        }
+        if (deal.stage === 'Closed Lost' && previousStage !== 'Closed Lost') {
+          void dispatchWebhookEvent('deal.lost', dealData);
+        }
+      }
+    }
+
     return deal;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -496,6 +517,14 @@ export async function deleteDeal(
     }
 
     await client.query('COMMIT');
+
+    if (deal) {
+      void dispatchWebhookEvent('deal.deleted', {
+        id: deal.id,
+        name: deal.name,
+      });
+    }
+
     return deal;
   } catch (error) {
     await client.query('ROLLBACK');

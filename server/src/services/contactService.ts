@@ -11,6 +11,7 @@ import type {
 } from '@minicrm/shared/schemas/contactSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { fireAutomationTrigger } from './automationService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditEntryInput } from './auditService.js';
 
@@ -197,6 +198,8 @@ export async function createContact(
       recordType: 'contact',
       ownerId: owner_id,
     });
+
+    void dispatchWebhookEvent('contact.created', contact as unknown as Record<string, unknown>);
 
     return contact;
   } catch (error) {
@@ -414,6 +417,15 @@ export async function updateContact(
     }
 
     await client.query('COMMIT');
+
+    if (contact) {
+      void dispatchWebhookEvent(
+        'contact.updated',
+        contact as unknown as Record<string, unknown>,
+        before ? (before as unknown as Record<string, unknown>) : undefined,
+      );
+    }
+
     return contact;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -572,6 +584,16 @@ export async function deleteContact(
     }
 
     await client.query('COMMIT');
+
+    if (contact) {
+      void dispatchWebhookEvent('contact.deleted', {
+        id: contact.id,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email,
+      });
+    }
+
     return contact;
   } catch (error) {
     await client.query('ROLLBACK');

@@ -13,6 +13,7 @@ import type { AccountType } from '@minicrm/shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditEntryInput } from './auditService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 
 /** Actor info required to write audit entries on write operations */
 export interface AuditActor {
@@ -235,6 +236,9 @@ export async function createAccount(
     });
 
     await client.query('COMMIT');
+
+    void dispatchWebhookEvent('account.created', account as unknown as Record<string, unknown>);
+
     return account;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -426,6 +430,15 @@ export async function updateAccount(
     }
 
     await client.query('COMMIT');
+
+    if (account) {
+      void dispatchWebhookEvent(
+        'account.updated',
+        account as unknown as Record<string, unknown>,
+        before ? (before as unknown as Record<string, unknown>) : undefined,
+      );
+    }
+
     return account;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -561,6 +574,14 @@ export async function deleteAccount(
     }
 
     await client.query('COMMIT');
+
+    if (account) {
+      void dispatchWebhookEvent('account.deleted', {
+        id: account.id,
+        name: account.name,
+      });
+    }
+
     return account;
   } catch (error) {
     await client.query('ROLLBACK');

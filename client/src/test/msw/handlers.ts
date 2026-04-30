@@ -1605,4 +1605,69 @@ export const handlers = [
   http.put('/api/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
+
+  // ── Webhooks (MINCRM-279) ────────────────────────────────────────────────────
+
+  /** Webhooks: GET /api/admin/webhooks — returns empty list by default */
+  http.get('/api/admin/webhooks', () => {
+    return HttpResponse.json({ subscriptions: [] });
+  }),
+
+  /** Webhooks: POST /api/admin/webhooks */
+  http.post('/api/admin/webhooks', async ({ request }) => {
+    const body = (await request.json()) as { url: string; events: string[] };
+    return HttpResponse.json(
+      {
+        subscription: {
+          id: '00000000-0000-0000-0000-000000000wh1',
+          url: body.url,
+          events: body.events,
+          status: 'active',
+          created_by: '00000000-0000-0000-0000-000000000001',
+          created_at: new Date().toISOString(),
+        },
+        plaintextSecret: 'test-plaintext-secret-64-chars-placeholder-value-padding-here',
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Webhooks: GET /api/admin/webhooks/:id */
+  http.get('/api/admin/webhooks/:id', ({ params }) => {
+    return HttpResponse.json({
+      subscription: {
+        id: params.id,
+        url: 'https://example.com/hook',
+        events: ['contact.created'],
+        status: 'active',
+        created_by: '00000000-0000-0000-0000-000000000001',
+        created_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Webhooks: PATCH /api/admin/webhooks/:id */
+  http.patch('/api/admin/webhooks/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { url?: string; events?: string[]; status?: string };
+    return HttpResponse.json({
+      subscription: {
+        id: params.id,
+        url: body.url ?? 'https://example.com/hook',
+        events: body.events ?? ['contact.created'],
+        status: body.status ?? 'active',
+        created_by: '00000000-0000-0000-0000-000000000001',
+        created_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Webhooks: DELETE /api/admin/webhooks/:id */
+  http.delete('/api/admin/webhooks/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Webhooks: GET /api/admin/webhooks/:id/logs — returns empty paginated list by default */
+  http.get('/api/admin/webhooks/:id/logs', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 20 });
+  }),
 ];
