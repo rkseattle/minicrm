@@ -549,4 +549,74 @@ describe('AutomationRulesPage', () => {
       });
     });
   });
+
+  describe('execution logs drawer — focus trap (MINCRM-280)', () => {
+    it('moves focus to the close button when the drawer opens', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+      });
+    });
+
+    it('returns focus to the trigger button when the drawer closes', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      const triggerButton = screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`);
+      await user.click(triggerButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+      });
+
+      await user.click(screen.getByTestId('logs-drawer-close'));
+
+      await waitFor(() => {
+        expect(triggerButton).toHaveFocus();
+      });
+    });
+
+    it('wraps Tab from the last focusable element back to the first', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+      });
+
+      // The close button is the only focusable element; Tab should wrap back to it
+      await user.tab();
+      expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+    });
+
+    it('wraps Shift+Tab from the first focusable element back to the last', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+      });
+
+      // Shift+Tab from the only focusable element should wrap back to it
+      await user.tab({ shift: true });
+      expect(screen.getByTestId('logs-drawer-close')).toHaveFocus();
+    });
+  });
 });

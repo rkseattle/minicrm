@@ -128,6 +128,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
   const { t, i18n } = useTranslation();
   const headingId = `logs-drawer-title-${rule.id}`;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [...AUTOMATION_RULES_QUERY_KEY, rule.id, 'logs'],
@@ -155,10 +156,47 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleClose]);
 
+  // Trap focus within the drawer panel while open (WCAG 2.1.1 / MINCRM-280)
+  useEffect(() => {
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+
+      const focusable = Array.from(
+        drawer!.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'));
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleTab);
+    return () => document.removeEventListener('keydown', handleTab);
+  }, []);
+
   return (
-    // Backdrop — clicking the overlay background (not the panel) dismisses the drawer
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    // Backdrop — role="presentation" lets click-outside dismissal work without an interactive role,
+    // removing the need for jsx-a11y suppressions (MINCRM-280)
     <div
+      role="presentation"
       className="fixed inset-0 bg-black/30 z-20 flex justify-end"
       data-testid="logs-drawer-overlay"
       onClick={(e) => {
@@ -166,6 +204,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
       }}
     >
       <div
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
