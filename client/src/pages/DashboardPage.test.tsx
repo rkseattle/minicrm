@@ -38,7 +38,7 @@ describe('DashboardPage', () => {
   describe('loading state', () => {
     it('shows a loading message while fetching', () => {
       // Override handler to hang so loading state is visible
-      server.use(http.get('/api/dashboard/summary', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/dashboard/summary', () => new Promise(() => {})));
       renderWithProviders(<DashboardPage />);
       expect(screen.getByTestId('dashboard-loading')).toBeInTheDocument();
     });
@@ -47,7 +47,7 @@ describe('DashboardPage', () => {
   describe('error state', () => {
     it('shows an error message when the request fails', async () => {
       server.use(
-        http.get('/api/dashboard/summary', () =>
+        http.get('/api/v1/dashboard/summary', () =>
           HttpResponse.json(
             { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
             { status: 500 },
@@ -108,7 +108,7 @@ describe('DashboardPage', () => {
     });
 
     it('overdue task card links to My Tasks filtered to overdue for reps', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
         const link = screen.getByTestId('stat-overdue-tasks-link');
@@ -155,7 +155,7 @@ describe('DashboardPage', () => {
 
     it('shows the empty state when there are no open deals', async () => {
       server.use(
-        http.get('/api/dashboard/summary', () =>
+        http.get('/api/v1/dashboard/summary', () =>
           HttpResponse.json({
             ...DASHBOARD_SUMMARY,
             openDealCount: 0,
@@ -260,7 +260,7 @@ describe('DashboardPage', () => {
 
     it('shows the empty state when there are no recent activities', async () => {
       server.use(
-        http.get('/api/dashboard/summary', () =>
+        http.get('/api/v1/dashboard/summary', () =>
           HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [] }),
         ),
       );
@@ -278,7 +278,7 @@ describe('DashboardPage', () => {
         linkedRecordName: 'Unlinked Record',
       };
       server.use(
-        http.get('/api/dashboard/summary', () =>
+        http.get('/api/v1/dashboard/summary', () =>
           HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [noPathActivity] }),
         ),
       );
@@ -298,7 +298,7 @@ describe('DashboardPage', () => {
         linkedRecordName: null,
       };
       server.use(
-        http.get('/api/dashboard/summary', () =>
+        http.get('/api/v1/dashboard/summary', () =>
           HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [noLinkActivity] }),
         ),
       );
@@ -323,7 +323,7 @@ describe('DashboardPage', () => {
     });
 
     it('shows "Your" scope label for reps', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
         const card = screen.getByTestId('stat-overdue-tasks');

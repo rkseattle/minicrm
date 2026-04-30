@@ -55,7 +55,7 @@ test(
   'F8-MC1: deal created with explicit EUR currency stores EUR via API',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC1-Acct ${test.info().title}`,
@@ -70,7 +70,7 @@ test(
     });
 
     // Verify the stored currency via GET
-    const fetched = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);
+    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('EUR');
   },
 );
@@ -83,7 +83,7 @@ test(
   'F8-MC2: deal created without currency defaults to USD',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC2-Acct ${test.info().title}`,
@@ -96,7 +96,7 @@ test(
       account_id: account.id,
     });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);
+    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('USD');
   },
 );
@@ -109,7 +109,7 @@ test(
   'F8-MC3: currency is preserved after a PATCH update that does not touch currency',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC3-Acct ${test.info().title}`,
@@ -124,11 +124,11 @@ test(
     });
 
     // PATCH only the name — currency should remain GBP
-    await restClient.patch(`/api/deals/${deal.id}`, {
+    await restClient.patch(`/api/v1/deals/${deal.id}`, {
       name: `MC3-Deal Updated ${test.info().title}`,
     });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);
+    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('GBP');
   },
 );
@@ -141,7 +141,7 @@ test(
   'F8-MC4: currency can be changed via PATCH',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC4-Acct ${test.info().title}`,
@@ -155,9 +155,9 @@ test(
       account_id: account.id,
     });
 
-    await restClient.patch(`/api/deals/${deal.id}`, { currency: 'CAD' });
+    await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'CAD' });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/deals/${deal.id}`);
+    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('CAD');
   },
 );
@@ -170,7 +170,7 @@ test(
   'F8-MC5: PATCH with unsupported currency returns 400',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC5-Acct ${test.info().title}`,
@@ -183,12 +183,12 @@ test(
       account_id: account.id,
     });
 
-    await expect(restClient.patch(`/api/deals/${deal.id}`, { currency: 'XYZ' })).rejects.toThrow(
+    await expect(restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ' })).rejects.toThrow(
       RestClientError,
     );
 
     try {
-      await restClient.patch(`/api/deals/${deal.id}`, { currency: 'XYZ' });
+      await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ' });
     } catch (err) {
       expect(err).toBeInstanceOf(RestClientError);
       expect((err as RestClientError).status).toBe(400);
@@ -204,7 +204,7 @@ test(
   'F8-MC6: deal CSV export includes a Currency column',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC6-Acct ${test.info().title}`,
@@ -218,7 +218,7 @@ test(
       account_id: account.id,
     });
 
-    const response = await restClient.get<string>('/api/deals/export', {
+    const response = await restClient.get<string>('/api/v1/deals/export', {
       headers: { Accept: 'text/csv' },
     });
 

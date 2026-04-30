@@ -49,7 +49,7 @@ router.use(requireRole('admin'));
 
 /**
  * @openapi
- * /api/admin/import/accounts/parse:
+ * /api/v1/admin/import/accounts/parse:
  *   post:
  *     tags: [Import]
  *     operationId: parseAccountsCsv
@@ -80,7 +80,7 @@ router.post('/accounts/parse', upload.single('file'), asyncHandler(parseAccounts
 
 /**
  * @openapi
- * /api/admin/import/accounts/run:
+ * /api/v1/admin/import/accounts/run:
  *   post:
  *     tags: [Import]
  *     operationId: runAccountsImport
@@ -114,7 +114,7 @@ router.post('/accounts/run', upload.single('file'), asyncHandler(runAccountsImpo
 
 /**
  * @openapi
- * /api/admin/import/contacts/parse:
+ * /api/v1/admin/import/contacts/parse:
  *   post:
  *     tags: [Import]
  *     operationId: parseContactsCsv
@@ -145,7 +145,7 @@ router.post('/contacts/parse', upload.single('file'), asyncHandler(parseContacts
 
 /**
  * @openapi
- * /api/admin/import/contacts/run:
+ * /api/v1/admin/import/contacts/run:
  *   post:
  *     tags: [Import]
  *     operationId: runContactsImport
@@ -179,7 +179,7 @@ router.post('/contacts/run', upload.single('file'), asyncHandler(runContactsImpo
 
 /**
  * @openapi
- * /api/admin/import/deals/parse:
+ * /api/v1/admin/import/deals/parse:
  *   post:
  *     tags: [Import]
  *     operationId: parseDealsCsv
@@ -210,7 +210,7 @@ router.post('/deals/parse', upload.single('file'), asyncHandler(parseDealsCsv));
 
 /**
  * @openapi
- * /api/admin/import/deals/run:
+ * /api/v1/admin/import/deals/run:
  *   post:
  *     tags: [Import]
  *     operationId: runDealsImport
@@ -244,7 +244,7 @@ router.post('/deals/run', upload.single('file'), asyncHandler(runDealsImport));
 
 /**
  * @openapi
- * /api/admin/import/jobs/{job_id}:
+ * /api/v1/admin/import/jobs/{job_id}:
  *   get:
  *     tags: [Import]
  *     operationId: getImportJob

@@ -78,7 +78,7 @@ interface AccountSingleResponse {
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -101,12 +101,12 @@ test('@functional F3-C1: all required fields submitted → account created and a
 
   // Verify via API that the account exists and register for teardown.
   const search = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(name)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(name)}`,
   );
   expect(search.body.total, 'created account should be findable via API').toBe(1);
   const created = search.body.data[0];
   expect(created).toBeDefined();
-  testData.register('account', created!.id, `/api/accounts/${created!.id}`);
+  testData.register('account', created!.id, `/api/v1/accounts/${created!.id}`);
 });
 
 test('@functional F3-C2: optional fields included → all saved on detail page', async ({
@@ -132,13 +132,13 @@ test('@functional F3-C2: optional fields included → all saved on detail page',
 
   // Retrieve via API to confirm all fields were persisted.
   const search = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(name)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(name)}`,
   );
   expect(search.body.total, 'account should be findable via API').toBe(1);
   const id = search.body.data[0]!.id;
-  testData.register('account', id, `/api/accounts/${id}`);
+  testData.register('account', id, `/api/v1/accounts/${id}`);
 
-  const detail = await restClient.get<AccountSingleResponse>(`/api/accounts/${id}`);
+  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${id}`);
   const account = detail.body.account;
   expect(account.industry).toBe('Technology');
   expect(account.website).toBe('https://f3c2.example.com');
@@ -180,12 +180,12 @@ test('@functional F3-R1: seeded accounts are visible in the list', async ({
 
   // Both seeded accounts should be findable via API.
   const searchA = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(accountA.name)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(accountA.name)}`,
   );
   expect(searchA.body.total, 'first seeded account should exist').toBeGreaterThanOrEqual(1);
 
   const searchB = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(accountB.name)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(accountB.name)}`,
   );
   expect(searchB.body.total, 'second seeded account should exist').toBeGreaterThanOrEqual(1);
 });
@@ -203,7 +203,7 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
 
   // Verify API returns correct sort order ascending.
   const ascResult = await restClient.get<AccountListResponse>(
-    '/api/accounts?sort=name&dir=asc&limit=5',
+    '/api/v1/accounts?sort=name&dir=asc&limit=5',
   );
   expect(ascResult.status).toBe(200);
   const ascNames = ascResult.body.data.map((a) => a.name);
@@ -212,7 +212,7 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
 
   // Verify API returns correct sort order descending.
   const descResult = await restClient.get<AccountListResponse>(
-    '/api/accounts?sort=name&dir=desc&limit=5',
+    '/api/v1/accounts?sort=name&dir=desc&limit=5',
   );
   expect(descResult.status).toBe(200);
   const descNames = descResult.body.data.map((a) => a.name);
@@ -252,7 +252,7 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 
   // Verify via API that the search returns zero results.
   const result = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(sentinel)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(sentinel)}`,
   );
   expect(result.body.total, 'search should return 0 results').toBe(0);
 
@@ -284,7 +284,7 @@ test('@functional F3-U1: edit account name → change reflected in detail view',
   expect(result.saved, 'edit should save successfully').toBe(true);
 
   // Verify the name change is reflected via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/accounts/${account.id}`);
+  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
   expect(detail.body.account.name, 'updated name should be persisted').toBe(updatedName);
 });
 
@@ -301,7 +301,7 @@ test('@functional F3-U2: edit industry field → change reflected in detail view
 
   expect(result.saved, 'edit should save successfully').toBe(true);
 
-  const detail = await restClient.get<AccountSingleResponse>(`/api/accounts/${account.id}`);
+  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
   expect(detail.body.account.industry, 'updated industry should be persisted').toBe('Healthcare');
 });
 
@@ -321,7 +321,7 @@ test('@functional F3-U3: cancel edit → no change persisted', async ({
   expect(result.backToReadMode, 'cancel should return to read mode').toBe(true);
 
   // Verify name is unchanged via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/accounts/${account.id}`);
+  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
   expect(detail.body.account.name, 'name should not change after cancel').toBe(originalName);
 });
 
@@ -346,7 +346,7 @@ test('@functional F3-D1: delete account with no contacts → removed from list, 
   // AC1: verify the account returns 404 from the API.
   let threw = false;
   try {
-    await restClient.get(`/api/accounts/${account.id}`);
+    await restClient.get(`/api/v1/accounts/${account.id}`);
   } catch (err) {
     threw = true;
     expect(err instanceof RestClientError, 'should be a RestClientError').toBe(true);
@@ -375,7 +375,7 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
   // AC3: account is gone (404).
   let threw = false;
   try {
-    await restClient.get(`/api/accounts/${account.id}`);
+    await restClient.get(`/api/v1/accounts/${account.id}`);
   } catch (err) {
     threw = true;
     expect((err as RestClientError).status).toBe(404);
@@ -385,7 +385,7 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
   // AC3: contact still exists but its account_id is now null (unlinked).
   const contactDetail = await restClient.get<{
     contact: { id: string; account_id: string | null };
-  }>(`/api/contacts/${contact.id}`);
+  }>(`/api/v1/contacts/${contact.id}`);
   expect(
     contactDetail.body.contact.account_id,
     'contact should be unlinked from deleted account',
@@ -406,7 +406,7 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
   expect(result.stillOnDetailPage, 'cancel should keep user on detail page').toBe(true);
 
   // Verify account still exists via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/accounts/${account.id}`);
+  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
   expect(detail.status, 'account should still exist after cancel').toBe(200);
 });
 
@@ -478,7 +478,7 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   });
 
   // Unlink the contact by patching account_id to null via REST.
-  await restClient.patch(`/api/contacts/${contact.id}`, { account_id: null });
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: null });
 
   await navigateToAccount(page, account.id);
 
@@ -511,10 +511,10 @@ test('@functional F3-P1: sort order is stable across pages (AC2)', async ({
 
   // Fetch page 1 and page 2 sorted by name asc.
   const page1 = await restClient.get<AccountListResponse>(
-    `/api/accounts?sort=name&dir=asc&limit=2&search=${encodeURIComponent(prefix)}`,
+    `/api/v1/accounts?sort=name&dir=asc&limit=2&search=${encodeURIComponent(prefix)}`,
   );
   const page2 = await restClient.get<AccountListResponse>(
-    `/api/accounts?sort=name&dir=asc&limit=2&page=2&search=${encodeURIComponent(prefix)}`,
+    `/api/v1/accounts?sort=name&dir=asc&limit=2&page=2&search=${encodeURIComponent(prefix)}`,
   );
 
   expect(page1.status).toBe(200);

@@ -52,7 +52,7 @@ describe('App routing', () => {
 
   it('redirects unauthenticated users to /login', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json(
           { error: { code: 'UNAUTHENTICATED', message: 'Not authenticated' } },
           { status: 401 },

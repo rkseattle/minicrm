@@ -47,7 +47,7 @@ describe('ChangeHistory', () => {
 
   it('renders history entries from the API', async () => {
     const entry = makeEntry();
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {
@@ -57,7 +57,7 @@ describe('ChangeHistory', () => {
 
   it('renders the timestamp element with data-testid', async () => {
     const entry = makeEntry();
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {
@@ -69,7 +69,7 @@ describe('ChangeHistory', () => {
     const entries = Array.from({ length: 20 }, (_, i) =>
       makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i).padStart(2, '0')}` }),
     );
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {
@@ -79,7 +79,7 @@ describe('ChangeHistory', () => {
 
   it('does not show the toggle when there are fewer than 20 entries', async () => {
     const entry = makeEntry();
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {
@@ -94,7 +94,7 @@ describe('ChangeHistory', () => {
     const extra = makeEntry({ id: '00000000-0000-0000-0000-000000000099' });
 
     server.use(
-      http.get('/api/audit-log/record', ({ request }) => {
+      http.get('/api/v1/audit-log/record', ({ request }) => {
         const url = new URL(request.url);
         if (url.searchParams.get('all') === 'true') {
           return HttpResponse.json({ entries: [...preview, extra] });
@@ -128,7 +128,7 @@ describe('ChangeHistory', () => {
       old_value: 'old@example.com',
       new_value: 'new@example.com',
     });
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {
@@ -140,7 +140,7 @@ describe('ChangeHistory', () => {
 
   it('renders a deleted entry summary', async () => {
     const entry = makeEntry({ event_type: 'deleted' });
-    server.use(http.get('/api/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
 
     renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
     await waitFor(() => {

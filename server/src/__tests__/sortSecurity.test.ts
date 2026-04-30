@@ -70,7 +70,7 @@ afterAll(async () => {
 describe('MINCRM-73 — GET /api/contacts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
-      .get('/api/contacts')
+      .get('/api/v1/contacts')
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
@@ -80,7 +80,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
 
   it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
     const res = await request(app)
-      .get('/api/contacts')
+      .get('/api/v1/contacts')
       .query({ dir: dirPayload })
       .set('Cookie', authCookie);
 
@@ -90,7 +90,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
 
   it('returns a contacts array regardless of injected sort params', async () => {
     const res = await request(app)
-      .get('/api/contacts')
+      .get('/api/v1/contacts')
       .query({ sort: '1; DROP TABLE contacts--', dir: "'; SELECT 1--" })
       .set('Cookie', authCookie);
 
@@ -104,7 +104,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
 describe('MINCRM-73 — GET /api/accounts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
-      .get('/api/accounts')
+      .get('/api/v1/accounts')
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
@@ -114,7 +114,7 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
 
   it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
     const res = await request(app)
-      .get('/api/accounts')
+      .get('/api/v1/accounts')
       .query({ dir: dirPayload })
       .set('Cookie', authCookie);
 
@@ -124,7 +124,7 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
 
   it('returns an accounts array regardless of injected sort params', async () => {
     const res = await request(app)
-      .get('/api/accounts')
+      .get('/api/v1/accounts')
       .query({ sort: '1; DROP TABLE accounts--', dir: 'invalid' })
       .set('Cookie', authCookie);
 
@@ -138,7 +138,7 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
 describe('MINCRM-73 — GET /api/deals sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
-      .get('/api/deals')
+      .get('/api/v1/deals')
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
@@ -148,7 +148,7 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
 
   it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
     const res = await request(app)
-      .get('/api/deals')
+      .get('/api/v1/deals')
       .query({ dir: dirPayload })
       .set('Cookie', authCookie);
 
@@ -158,7 +158,7 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
 
   it('returns a deals array regardless of injected sort params', async () => {
     const res = await request(app)
-      .get('/api/deals')
+      .get('/api/v1/deals')
       .query({ sort: "'; DROP TABLE deals--", dir: 'invalid' })
       .set('Cookie', authCookie);
 
@@ -172,7 +172,7 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
 describe('MINCRM-73 — GET /api/activities sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
-      .get('/api/activities')
+      .get('/api/v1/activities')
       .query({ sort: sortPayload })
       .set('Cookie', authCookie);
 
@@ -182,7 +182,7 @@ describe('MINCRM-73 — GET /api/activities sort injection', () => {
 
   it.each(DIRECTION_PAYLOADS)('does not return 500 when dir="%s"', async (dirPayload) => {
     const res = await request(app)
-      .get('/api/activities')
+      .get('/api/v1/activities')
       .query({ dir: dirPayload })
       .set('Cookie', authCookie);
 
@@ -192,7 +192,7 @@ describe('MINCRM-73 — GET /api/activities sort injection', () => {
 
   it('returns an activities array regardless of injected sort params', async () => {
     const res = await request(app)
-      .get('/api/activities')
+      .get('/api/v1/activities')
       .query({ sort: "'; DROP TABLE activities--", dir: 'invalid' })
       .set('Cookie', authCookie);
 

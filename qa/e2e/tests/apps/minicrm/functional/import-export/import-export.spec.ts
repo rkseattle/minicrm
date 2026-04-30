@@ -47,7 +47,7 @@ async function importParse(
   status: number;
   body: { headers: string[]; fields: Array<{ key: string; label: string; required?: boolean }> };
 }> {
-  const response = await request.post(`${BASE_URL}/api/admin/import/${entity}/parse`, {
+  const response = await request.post(`${BASE_URL}/api/v1/admin/import/${entity}/parse`, {
     multipart: { file: { name: `${entity}.csv`, mimeType: 'text/csv', buffer: csvBuffer } },
   });
   const body = (await response.json()) as {
@@ -63,7 +63,7 @@ async function importRun(
   csvBuffer: Buffer,
   mapping: Record<string, string | boolean>,
 ): Promise<{ status: number; body: ImportSummaryResponse }> {
-  const runResponse = await request.post(`${BASE_URL}/api/admin/import/${entity}/run`, {
+  const runResponse = await request.post(`${BASE_URL}/api/v1/admin/import/${entity}/run`, {
     multipart: {
       file: { name: `${entity}.csv`, mimeType: 'text/csv', buffer: csvBuffer },
       mapping: JSON.stringify(mapping),
@@ -82,7 +82,7 @@ async function importRun(
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 500));
-    const jobResponse = await request.get(`${BASE_URL}/api/admin/import/jobs/${job_id}`);
+    const jobResponse = await request.get(`${BASE_URL}/api/v1/admin/import/jobs/${job_id}`);
     const job = (await jobResponse.json()) as ImportSummaryResponse & { status: string };
     if (job.status === 'complete' || job.status === 'failed') {
       return { status: 200, body: job };
@@ -118,7 +118,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F11-import-export] E2E_ADMIN_PASSWORD is 
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -202,15 +202,15 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
 
   // Verify contacts are queryable via API
   const listResponse = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(email1)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(email1)}`,
   );
   expect(listResponse.body.total, 'imported contact should be findable').toBeGreaterThanOrEqual(1);
 
   // Register created contacts for teardown
-  const allContacts = await restClient.get<ContactListResponse>(`/api/contacts?search=f11ic1`);
+  const allContacts = await restClient.get<ContactListResponse>(`/api/v1/contacts?search=f11ic1`);
   for (const contact of allContacts.body.data) {
     if (contact.email === email1 || contact.email === email2) {
-      testData.register('contact', contact.id, `/api/contacts/${contact.id}`);
+      testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
     }
   }
 });
@@ -288,12 +288,12 @@ test('@functional F11-IA1: Upload a valid accounts CSV — accounts created and 
 
   // Verify and register for teardown
   const listResponse = await restClient.get<AccountListResponse>(
-    `/api/accounts?search=${encodeURIComponent(accountName)}`,
+    `/api/v1/accounts?search=${encodeURIComponent(accountName)}`,
   );
   expect(listResponse.body.total, 'imported account should be findable').toBeGreaterThanOrEqual(1);
   for (const account of listResponse.body.data) {
     if (account.name === accountName) {
-      testData.register('account', account.id, `/api/accounts/${account.id}`);
+      testData.register('account', account.id, `/api/v1/accounts/${account.id}`);
     }
   }
 });
@@ -324,11 +324,11 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
 
   // Look up the imported deal by account so we can register it for teardown
   const dealList = await restClient.get<DealListResponse>(
-    `/api/deals?account=${account.id}&limit=10`,
+    `/api/v1/deals?account=${account.id}&limit=10`,
   );
   for (const deal of dealList.body.data) {
     if (deal.name === dealName) {
-      testData.register('deal', deal.id, `/api/deals/${deal.id}`);
+      testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
       break;
     }
   }
@@ -368,7 +368,7 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
   const repUser = await createTestUser(restClient, { role: 'rep' });
 
   try {
-    await restClient.post('/api/auth/login', {
+    await restClient.post('/api/v1/auth/login', {
       email: repUser.email,
       password: 'BvtPassword1!',
     });
@@ -383,8 +383,8 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
     const parsed = await importParse(request, 'contacts', csvBuffer);
     expect(parsed.status, 'rep should be blocked from import endpoint').toBe(403);
   } finally {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch(`/api/users/${repUser.id}/deactivate`, {});
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.patch(`/api/v1/users/${repUser.id}/deactivate`, {});
   }
 });
 
@@ -400,7 +400,7 @@ test('@functional F11-EC1: Export contacts CSV — download triggered with corre
   // Seed a known contact so there is at least one row in the export
   await createTestContact(testData, restClient, { first_name: 'F11EC1', last_name: 'Export' });
 
-  const response = await request.get(`${BASE_URL}/api/contacts/export`);
+  const response = await request.get(`${BASE_URL}/api/v1/contacts/export`);
   expect(response.status(), 'export should return 200').toBe(200);
 
   const disposition = response.headers()['content-disposition'] ?? '';
@@ -432,7 +432,7 @@ test('@functional F11-EC2: Export contacts with active search filter — filtere
   });
 
   const response = await request.get(
-    `${BASE_URL}/api/contacts/export?search=${encodeURIComponent(uniqueName)}`,
+    `${BASE_URL}/api/v1/contacts/export?search=${encodeURIComponent(uniqueName)}`,
   );
   expect(response.status()).toBe(200);
 
@@ -454,7 +454,7 @@ test('@functional F11-EA1: Export accounts CSV — download triggered', async ({
 }) => {
   await createTestAccount(testData, restClient, { name: 'F11EA1 ExportCo' });
 
-  const response = await request.get(`${BASE_URL}/api/accounts/export`);
+  const response = await request.get(`${BASE_URL}/api/v1/accounts/export`);
   expect(response.status(), 'accounts export should return 200').toBe(200);
 
   const disposition = response.headers()['content-disposition'] ?? '';
@@ -476,7 +476,7 @@ test('@functional F11-ED1: Export deals CSV — download triggered', async ({
     name: 'F11ED1 Deal',
   });
 
-  const response = await request.get(`${BASE_URL}/api/deals/export`);
+  const response = await request.get(`${BASE_URL}/api/v1/deals/export`);
   expect(response.status(), 'deals export should return 200').toBe(200);
 
   const disposition = response.headers()['content-disposition'] ?? '';

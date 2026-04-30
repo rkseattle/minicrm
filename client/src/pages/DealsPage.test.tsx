@@ -134,7 +134,7 @@ describe('DealsPage', () => {
 
   it('shows error state in board view when the API fails', async () => {
     server.use(
-      http.get('/api/deals', () =>
+      http.get('/api/v1/deals', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -159,7 +159,7 @@ describe('DealsPage', () => {
 
   it('shows an inline error banner when a stage change fails in board view', async () => {
     server.use(
-      http.patch('/api/deals/:id', () =>
+      http.patch('/api/v1/deals/:id', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -211,7 +211,9 @@ describe('DealsPage', () => {
 
   it('shows empty state in list view when no deals are returned', async () => {
     server.use(
-      http.get('/api/deals', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 })),
+      http.get('/api/v1/deals', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
+      ),
     );
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
@@ -243,7 +245,7 @@ describe('DealsPage', () => {
     };
     // Server-side: respect hideClosed=true param so pagination total is also accurate
     server.use(
-      http.get('/api/deals', ({ request }) => {
+      http.get('/api/v1/deals', ({ request }) => {
         const hideClosed = new URL(request.url).searchParams.get('hideClosed') === 'true';
         const deals = hideClosed ? [DEAL_1] : [DEAL_1, closedDeal];
         return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
@@ -274,7 +276,7 @@ describe('DealsPage', () => {
     const requests: URL[] = [];
     // Return enough total to show pagination (total > limit)
     server.use(
-      http.get('/api/deals', ({ request }) => {
+      http.get('/api/v1/deals', ({ request }) => {
         requests.push(new URL(request.url));
         return HttpResponse.json({ data: [DEAL_1], total: 100, page: 1, limit: 50 });
       }),
@@ -301,7 +303,7 @@ describe('DealsPage', () => {
 
   it('shows error state in list view when the API fails', async () => {
     server.use(
-      http.get('/api/deals', () =>
+      http.get('/api/v1/deals', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -352,7 +354,7 @@ describe('DealsPage', () => {
       owner_id: REP_USER.id,
     };
     server.use(
-      http.get('/api/deals', ({ request }) => {
+      http.get('/api/v1/deals', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const deals = owner === 'me' ? [DEAL_1] : [DEAL_1, repDeal];
         return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
@@ -381,7 +383,7 @@ describe('DealsPage', () => {
 
   it('shows fallback text for deals with an unresolvable owner in list view', async () => {
     server.use(
-      http.get('/api/deals', () =>
+      http.get('/api/v1/deals', () =>
         HttpResponse.json({
           data: [{ ...DEAL_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
           total: 1,
@@ -409,7 +411,7 @@ describe('DealsPage', () => {
       owner_id: '00000000-0000-0000-0000-000000000002',
     };
     server.use(
-      http.get('/api/deals', ({ request }) => {
+      http.get('/api/v1/deals', ({ request }) => {
         const owner = new URL(request.url).searchParams.get('owner');
         const deals = owner === 'me' ? [DEAL_1] : [DEAL_1, repDeal];
         return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
@@ -489,7 +491,7 @@ describe('DealsPage', () => {
 
   it('does not render the pipeline summary bar when the API errors in list view', async () => {
     server.use(
-      http.get('/api/deals', () =>
+      http.get('/api/v1/deals', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -581,7 +583,7 @@ describe('DealsPage', () => {
     });
 
     it('does not render the Export All button for rep users', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<DealsPage />);
       await waitFor(() => {
         expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
@@ -628,7 +630,7 @@ describe('DealsPage', () => {
 
     beforeEach(() => {
       server.use(
-        http.get('/api/deals', () =>
+        http.get('/api/v1/deals', () =>
           HttpResponse.json({ data: [DEAL_1, DEAL_2], total: 2, page: 1, limit: 50 }),
         ),
       );

@@ -59,7 +59,7 @@ describe('NavLayoutContext', () => {
 
   it('exposes the layout fetched from the server', async () => {
     server.use(
-      http.get('/api/settings/nav-layout', () => HttpResponse.json({ layout: 'left' })),
+      http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout: 'left' })),
     );
 
     renderInProvider(<LayoutConsumer />);
@@ -72,7 +72,7 @@ describe('NavLayoutContext', () => {
   it('saveLayout calls PATCH and updates the displayed layout', async () => {
     let patched = false;
     server.use(
-      http.patch('/api/settings/nav-layout', async ({ request }) => {
+      http.patch('/api/v1/settings/nav-layout', async ({ request }) => {
         const body = (await request.json()) as { layout: string };
         patched = true;
         return HttpResponse.json({ layout: body.layout });

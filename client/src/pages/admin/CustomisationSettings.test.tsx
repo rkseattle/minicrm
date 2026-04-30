@@ -21,15 +21,13 @@ const FIELD_ID = '00000000-0000-0000-0000-000000000099';
 
 function mockEmptyCustomFields() {
   server.use(
-    http.get('/api/custom-fields/definitions', () =>
-      HttpResponse.json({ definitions: [] }),
-    ),
+    http.get('/api/v1/custom-fields/definitions', () => HttpResponse.json({ definitions: [] })),
   );
 }
 
 function mockCustomFieldsWithOne() {
   server.use(
-    http.get('/api/custom-fields/definitions', () =>
+    http.get('/api/v1/custom-fields/definitions', () =>
       HttpResponse.json({
         definitions: [
           {
@@ -117,7 +115,7 @@ describe('CustomisationSettings — custom fields section', () => {
   it('shows success feedback after successfully adding a field', async () => {
     mockEmptyCustomFields();
     server.use(
-      http.post('/api/custom-fields/definitions', async () =>
+      http.post('/api/v1/custom-fields/definitions', async () =>
         HttpResponse.json(
           {
             id: FIELD_ID,
@@ -136,7 +134,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     await waitFor(() => expect(screen.getByTestId('add-field-button')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('add-field-button'));
-    fireEvent.change(screen.getByTestId('add-field-name-input'), { target: { value: 'New Field' } });
+    fireEvent.change(screen.getByTestId('add-field-name-input'), {
+      target: { value: 'New Field' },
+    });
     fireEvent.click(screen.getByTestId('add-field-submit'));
 
     await waitFor(() => {
@@ -147,7 +147,7 @@ describe('CustomisationSettings — custom fields section', () => {
   it('shows name conflict error when server returns CUSTOM_FIELD_NAME_CONFLICT', async () => {
     mockEmptyCustomFields();
     server.use(
-      http.post('/api/custom-fields/definitions', async () =>
+      http.post('/api/v1/custom-fields/definitions', async () =>
         HttpResponse.json(
           { error: { code: 'CUSTOM_FIELD_NAME_CONFLICT', message: 'conflict' } },
           { status: 409 },
@@ -159,7 +159,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     await waitFor(() => expect(screen.getByTestId('add-field-button')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('add-field-button'));
-    fireEvent.change(screen.getByTestId('add-field-name-input'), { target: { value: 'Dup Field' } });
+    fireEvent.change(screen.getByTestId('add-field-name-input'), {
+      target: { value: 'Dup Field' },
+    });
     fireEvent.click(screen.getByTestId('add-field-submit'));
 
     await waitFor(() => {
@@ -185,7 +187,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument(),
+    );
 
     fireEvent.click(screen.getByTestId(`custom-field-delete-${FIELD_ID}`));
 
@@ -199,7 +203,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId(`custom-field-delete-${FIELD_ID}`));
     expect(screen.getByTestId('delete-field-confirm-dialog')).toBeInTheDocument();
 
@@ -210,14 +216,16 @@ describe('CustomisationSettings — custom fields section', () => {
   it('shows success feedback after deleting a field', async () => {
     mockCustomFieldsWithOne();
     server.use(
-      http.delete(`/api/custom-fields/definitions/${FIELD_ID}`, () =>
+      http.delete(`/api/v1/custom-fields/definitions/${FIELD_ID}`, () =>
         HttpResponse.json({ id: FIELD_ID }),
       ),
     );
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-delete-${FIELD_ID}`)).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId(`custom-field-delete-${FIELD_ID}`));
     await waitFor(() => expect(screen.getByTestId('delete-field-confirm')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('delete-field-confirm'));
@@ -232,7 +240,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId(`custom-field-edit-${FIELD_ID}`));
 
     expect(screen.getByTestId(`custom-field-name-input-${FIELD_ID}`)).toBeInTheDocument();
@@ -245,7 +255,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId(`custom-field-edit-${FIELD_ID}`));
     expect(screen.getByTestId(`custom-field-name-input-${FIELD_ID}`)).toBeInTheDocument();
 
@@ -256,13 +268,20 @@ describe('CustomisationSettings — custom fields section', () => {
 
   it('changes entity type when a different option is selected', async () => {
     server.use(
-      http.get('/api/custom-fields/definitions', ({ request }) => {
+      http.get('/api/v1/custom-fields/definitions', ({ request }) => {
         const url = new URL(request.url);
         const entityType = url.searchParams.get('entity_type');
         if (entityType === 'deal') {
           return HttpResponse.json({
             definitions: [
-              { id: 'deal-field-1', entity_type: 'deal', name: 'Deal Priority', field_type: 'text', options: null, sort_order: 0 },
+              {
+                id: 'deal-field-1',
+                entity_type: 'deal',
+                name: 'Deal Priority',
+                field_type: 'text',
+                options: null,
+                sort_order: 0,
+              },
             ],
           });
         }
@@ -272,7 +291,9 @@ describe('CustomisationSettings — custom fields section', () => {
 
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => expect(screen.getByTestId('custom-fields-entity-select')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('custom-fields-entity-select')).toBeInTheDocument(),
+    );
 
     fireEvent.change(screen.getByTestId('custom-fields-entity-select'), {
       target: { value: 'deal' },

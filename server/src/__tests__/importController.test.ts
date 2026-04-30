@@ -32,7 +32,7 @@ const DEALS_CSV = Buffer.from('Deal Name,Stage\nDeal One,Prospecting\nDeal Two,Q
 async function waitForJob(jobId: string, cookie: string, timeoutMs = 10000): Promise<Response> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const res = await request(app).get(`/api/admin/import/jobs/${jobId}`).set('Cookie', cookie);
+    const res = await request(app).get(`/api/v1/admin/import/jobs/${jobId}`).set('Cookie', cookie);
     if (res.body.status === 'complete' || res.body.status === 'failed') {
       return res;
     }
@@ -91,7 +91,7 @@ afterAll(async () => {
 describe('POST /api/admin/import/accounts/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
-      .post('/api/admin/import/accounts/parse')
+      .post('/api/v1/admin/import/accounts/parse')
       .set('Cookie', adminCookie)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
 
@@ -104,7 +104,7 @@ describe('POST /api/admin/import/accounts/parse', () => {
 
   it('returns 400 when no file is provided', async () => {
     const res = await request(app)
-      .post('/api/admin/import/accounts/parse')
+      .post('/api/v1/admin/import/accounts/parse')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -113,7 +113,7 @@ describe('POST /api/admin/import/accounts/parse', () => {
 
   it('returns 403 for a rep', async () => {
     const res = await request(app)
-      .post('/api/admin/import/accounts/parse')
+      .post('/api/v1/admin/import/accounts/parse')
       .set('Cookie', repCookie)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
 
@@ -135,7 +135,7 @@ describe('POST /api/admin/import/accounts/run', () => {
     const mapping = JSON.stringify({ name: 'Name', industry: 'Industry' });
 
     const res = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -155,7 +155,7 @@ describe('POST /api/admin/import/accounts/run', () => {
 
     // First import
     const firstRes = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -163,7 +163,7 @@ describe('POST /api/admin/import/accounts/run', () => {
 
     // Second import — should skip duplicates
     const res = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -177,7 +177,7 @@ describe('POST /api/admin/import/accounts/run', () => {
 
   it('returns 400 when mapping JSON is invalid', async () => {
     const res = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', adminCookie)
       .field('mapping', 'not-valid-json')
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -190,7 +190,7 @@ describe('POST /api/admin/import/accounts/run', () => {
     const mapping = JSON.stringify({ industry: 'Industry' }); // name is required
 
     const res = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -203,7 +203,7 @@ describe('POST /api/admin/import/accounts/run', () => {
     const mapping = JSON.stringify({ name: 'Name' });
 
     const res = await request(app)
-      .post('/api/admin/import/accounts/run')
+      .post('/api/v1/admin/import/accounts/run')
       .set('Cookie', repCookie)
       .field('mapping', mapping)
       .attach('file', ACCOUNTS_CSV, { filename: 'accounts.csv', contentType: 'text/csv' });
@@ -217,7 +217,7 @@ describe('POST /api/admin/import/accounts/run', () => {
 describe('POST /api/admin/import/contacts/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
-      .post('/api/admin/import/contacts/parse')
+      .post('/api/v1/admin/import/contacts/parse')
       .set('Cookie', adminCookie)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
 
@@ -229,7 +229,7 @@ describe('POST /api/admin/import/contacts/parse', () => {
 
   it('returns 400 when no file is provided', async () => {
     const res = await request(app)
-      .post('/api/admin/import/contacts/parse')
+      .post('/api/v1/admin/import/contacts/parse')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -254,7 +254,7 @@ describe('POST /api/admin/import/contacts/run', () => {
     });
 
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -277,7 +277,7 @@ describe('POST /api/admin/import/contacts/run', () => {
     });
 
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', badCsv, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -296,14 +296,14 @@ describe('POST /api/admin/import/contacts/run', () => {
     });
 
     const firstRes = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
     await waitForJob(firstRes.body.job_id, adminCookie);
 
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -318,7 +318,7 @@ describe('POST /api/admin/import/contacts/run', () => {
     const mapping = JSON.stringify({ first_name: 'First Name' }); // missing last_name and email
 
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -335,7 +335,7 @@ describe('POST /api/admin/import/contacts/run', () => {
     });
 
     const res = await request(app)
-      .post('/api/admin/import/contacts/run')
+      .post('/api/v1/admin/import/contacts/run')
       .set('Cookie', repCookie)
       .field('mapping', mapping)
       .attach('file', CONTACTS_CSV, { filename: 'contacts.csv', contentType: 'text/csv' });
@@ -349,7 +349,7 @@ describe('POST /api/admin/import/contacts/run', () => {
 describe('POST /api/admin/import/deals/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
-      .post('/api/admin/import/deals/parse')
+      .post('/api/v1/admin/import/deals/parse')
       .set('Cookie', adminCookie)
       .attach('file', DEALS_CSV, { filename: 'deals.csv', contentType: 'text/csv' });
 
@@ -360,7 +360,9 @@ describe('POST /api/admin/import/deals/parse', () => {
   });
 
   it('returns 400 when no file is provided', async () => {
-    const res = await request(app).post('/api/admin/import/deals/parse').set('Cookie', adminCookie);
+    const res = await request(app)
+      .post('/api/v1/admin/import/deals/parse')
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -381,7 +383,7 @@ describe('POST /api/admin/import/deals/run', () => {
     const mapping = JSON.stringify({ name: 'Deal Name', stage: 'Stage' });
 
     const res = await request(app)
-      .post('/api/admin/import/deals/run')
+      .post('/api/v1/admin/import/deals/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', DEALS_CSV, { filename: 'deals.csv', contentType: 'text/csv' });
@@ -399,7 +401,7 @@ describe('POST /api/admin/import/deals/run', () => {
     const mapping = JSON.stringify({ name: 'Deal Name' }); // stage is required
 
     const res = await request(app)
-      .post('/api/admin/import/deals/run')
+      .post('/api/v1/admin/import/deals/run')
       .set('Cookie', adminCookie)
       .field('mapping', mapping)
       .attach('file', DEALS_CSV, { filename: 'deals.csv', contentType: 'text/csv' });
@@ -412,7 +414,7 @@ describe('POST /api/admin/import/deals/run', () => {
     const mapping = JSON.stringify({ name: 'Deal Name', stage: 'Stage' });
 
     const res = await request(app)
-      .post('/api/admin/import/deals/run')
+      .post('/api/v1/admin/import/deals/run')
       .set('Cookie', repCookie)
       .field('mapping', mapping)
       .attach('file', DEALS_CSV, { filename: 'deals.csv', contentType: 'text/csv' });

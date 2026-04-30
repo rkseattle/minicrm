@@ -126,7 +126,7 @@ describe('SendEmailModal', () => {
 
   it('shows "Email sent to [name]" success message when delivered is true', async () => {
     server.use(
-      http.post('/api/contacts/:id/send-email', () => {
+      http.post('/api/v1/contacts/:id/send-email', () => {
         return HttpResponse.json({
           delivered: true,
           activityId: '00000000-0000-0000-0000-000000000e02',
@@ -162,7 +162,7 @@ describe('SendEmailModal', () => {
 
   it('shows an error message when the API returns an error', async () => {
     server.use(
-      http.post('/api/contacts/:id/send-email', () => {
+      http.post('/api/v1/contacts/:id/send-email', () => {
         return HttpResponse.json(
           { error: { code: 'SMTP_ERROR', message: 'SMTP connection refused' } },
           { status: 500 },

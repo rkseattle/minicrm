@@ -27,7 +27,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/deals:
+ * /api/v1/deals:
  *   get:
  *     tags: [Deals]
  *     operationId: listDeals
@@ -93,7 +93,7 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
 
 /**
  * @openapi
- * /api/deals/export:
+ * /api/v1/deals/export:
  *   get:
  *     tags: [Deals]
  *     operationId: exportDeals
@@ -132,7 +132,7 @@ router.get('/export', authenticate, asyncHandler(exportDealsHandler));
 
 /**
  * @openapi
- * /api/deals/bulk:
+ * /api/v1/deals/bulk:
  *   post:
  *     tags: [Deals]
  *     operationId: bulkDeals
@@ -190,7 +190,7 @@ router.post('/bulk', authenticate, asyncHandler(bulkDealsHandler));
 
 /**
  * @openapi
- * /api/deals:
+ * /api/v1/deals:
  *   post:
  *     tags: [Deals]
  *     operationId: createDeal
@@ -257,7 +257,7 @@ router.post('/', authenticate, asyncHandler(createDealHandler));
 
 /**
  * @openapi
- * /api/deals/{id}:
+ * /api/v1/deals/{id}:
  *   get:
  *     tags: [Deals]
  *     operationId: getDeal
@@ -319,7 +319,7 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
 
 /**
  * @openapi
- * /api/deals/{id}:
+ * /api/v1/deals/{id}:
  *   patch:
  *     tags: [Deals]
  *     operationId: updateDeal
@@ -413,7 +413,7 @@ router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
 
 /**
  * @openapi
- * /api/deals/{id}:
+ * /api/v1/deals/{id}:
  *   delete:
  *     tags: [Deals]
  *     operationId: deleteDeal
@@ -468,7 +468,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
 
 /**
  * @openapi
- * /api/deals/{id}/contacts/{contactId}:
+ * /api/v1/deals/{id}/contacts/{contactId}:
  *   post:
  *     tags: [Deals]
  *     operationId: linkContactToDeal
@@ -532,7 +532,7 @@ router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHa
 
 /**
  * @openapi
- * /api/deals/{id}/contacts/{contactId}:
+ * /api/v1/deals/{id}/contacts/{contactId}:
  *   delete:
  *     tags: [Deals]
  *     operationId: unlinkContactFromDeal

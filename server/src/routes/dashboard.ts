@@ -11,7 +11,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/dashboard/summary:
+ * /api/v1/dashboard/summary:
  *   get:
  *     tags: [Dashboard]
  *     operationId: getDashboardSummary

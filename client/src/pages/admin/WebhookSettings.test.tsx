@@ -18,7 +18,10 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import WebhookSettings from './WebhookSettings.js';
-import type { WebhookSubscriptionResponse, WebhookDeliveryLogResponse } from '@shared/schemas/webhookSchema.js';
+import type {
+  WebhookSubscriptionResponse,
+  WebhookDeliveryLogResponse,
+} from '@shared/schemas/webhookSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -65,20 +68,16 @@ const DELIVERY_LOG_1: WebhookDeliveryLogResponse = {
 // ── MSW handlers ──────────────────────────────────────────────────────────────
 
 function mockWebhookList(subs: WebhookSubscriptionResponse[]) {
-  server.use(
-    http.get('/api/admin/webhooks', () => HttpResponse.json({ subscriptions: subs })),
-  );
+  server.use(http.get('/api/v1/admin/webhooks', () => HttpResponse.json({ subscriptions: subs })));
 }
 
 function mockWebhookListError() {
-  server.use(
-    http.get('/api/admin/webhooks', () => new HttpResponse(null, { status: 500 })),
-  );
+  server.use(http.get('/api/v1/admin/webhooks', () => new HttpResponse(null, { status: 500 })));
 }
 
 function mockWebhookCreate(plaintextSecret = 'abc123secretvalue') {
   server.use(
-    http.post('/api/admin/webhooks', async ({ request }) => {
+    http.post('/api/v1/admin/webhooks', async ({ request }) => {
       const body = (await request.json()) as { url: string; events: string[] };
       return HttpResponse.json(
         {
@@ -100,7 +99,7 @@ function mockWebhookCreate(plaintextSecret = 'abc123secretvalue') {
 
 function mockDeliveryLogs(subscriptionId: string, logs: WebhookDeliveryLogResponse[]) {
   server.use(
-    http.get(`/api/admin/webhooks/${subscriptionId}/logs`, () => {
+    http.get(`/api/v1/admin/webhooks/${subscriptionId}/logs`, () => {
       const result: PaginatedResponse<WebhookDeliveryLogResponse> = {
         data: logs,
         total: logs.length,
@@ -163,7 +162,7 @@ describe('WebhookSettings — create form', () => {
     mockWebhookCreate('my-plaintext-secret-value');
     // After create, re-fetch returns the new subscription
     server.use(
-      http.get('/api/admin/webhooks', () =>
+      http.get('/api/v1/admin/webhooks', () =>
         HttpResponse.json({
           subscriptions: [
             {
@@ -228,7 +227,7 @@ describe('WebhookSettings — disable / enable toggle', () => {
 
     mockWebhookList([WEBHOOK_1]);
     server.use(
-      http.patch('/api/admin/webhooks/:id', async ({ params, request }) => {
+      http.patch('/api/v1/admin/webhooks/:id', async ({ params, request }) => {
         patchedId = params.id as string;
         const body = (await request.json()) as { status?: string };
         patchedStatus = body.status ?? null;
@@ -256,7 +255,7 @@ describe('WebhookSettings — disable / enable toggle', () => {
 
     mockWebhookList([WEBHOOK_2]);
     server.use(
-      http.patch('/api/admin/webhooks/:id', async ({ request }) => {
+      http.patch('/api/v1/admin/webhooks/:id', async ({ request }) => {
         const body = (await request.json()) as { status?: string };
         patchedStatus = body.status ?? null;
         return HttpResponse.json({
@@ -313,7 +312,7 @@ describe('WebhookSettings — delete', () => {
 
     mockWebhookList([WEBHOOK_1]);
     server.use(
-      http.delete('/api/admin/webhooks/:id', ({ params }) => {
+      http.delete('/api/v1/admin/webhooks/:id', ({ params }) => {
         deletedId = params.id as string;
         return new HttpResponse(null, { status: 204 });
       }),

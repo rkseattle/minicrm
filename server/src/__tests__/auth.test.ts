@@ -91,21 +91,21 @@ afterAll(async () => {
 
 describe('MINCRM-74 — deactivated user mid-session', () => {
   it('returns 401 with USER_INACTIVE for a deactivated user on an authenticated route', async () => {
-    const res = await request(app).get('/api/contacts').set('Cookie', deactivatedCookie);
+    const res = await request(app).get('/api/v1/contacts').set('Cookie', deactivatedCookie);
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('USER_INACTIVE');
   });
 
   it('returns 401 for a deactivated user hitting /api/auth/me', async () => {
-    const res = await request(app).get('/api/auth/me').set('Cookie', deactivatedCookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', deactivatedCookie);
 
     // me() itself also checks status — either the middleware or controller returns 401
     expect(res.status).toBe(401);
   });
 
   it('allows a still-active user through', async () => {
-    const res = await request(app).get('/api/auth/me').set('Cookie', activeCookie);
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', activeCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe(activeUserId);
@@ -116,7 +116,7 @@ describe('MINCRM-74 — deactivated user mid-session', () => {
 
 describe('MINCRM-74 — must_change_password enforcement', () => {
   it('returns 403 PASSWORD_CHANGE_REQUIRED on non-change-password routes', async () => {
-    const res = await request(app).get('/api/contacts').set('Cookie', mustChangeCookie);
+    const res = await request(app).get('/api/v1/contacts').set('Cookie', mustChangeCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
@@ -125,7 +125,7 @@ describe('MINCRM-74 — must_change_password enforcement', () => {
   it('allows the must-change user to reach /api/auth/change-password', async () => {
     // Wrong current password — but we should get 401 (credential error), not 403
     const res = await request(app)
-      .post('/api/auth/change-password')
+      .post('/api/v1/auth/change-password')
       .set('Cookie', mustChangeCookie)
       .send({ currentPassword: 'wrong', newPassword: 'NewPass1' });
 
@@ -157,7 +157,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     );
 
     const res = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email: 'auth-test-login@example.com', password: 'TestPass1' });
 
     expect(res.status).toBe(200);
@@ -177,7 +177,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     );
 
     const res = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email: 'auth-test-login@example.com', password: 'TestPass1' });
 
     const cookies = res.headers['set-cookie'] as unknown as string[];
@@ -194,7 +194,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     );
 
     const res = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email: 'auth-test-login@example.com', password: 'TestPass1' });
 
     const cookies = res.headers['set-cookie'] as unknown as string[];
@@ -216,7 +216,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     );
 
     const res = await request(app)
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email: 'auth-test-login@example.com', password: 'TestPass1' });
 
     const cookies = res.headers['set-cookie'] as unknown as string[];

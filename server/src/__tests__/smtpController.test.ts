@@ -72,12 +72,12 @@ afterAll(async () => {
 
 describe('GET /api/settings/smtp', () => {
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/settings/smtp');
+    const res = await request(app).get('/api/v1/settings/smtp');
     expect(res.status).toBe(401);
   });
 
   it('returns config for admin', async () => {
-    const res = await request(app).get('/api/settings/smtp').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/settings/smtp').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       smtp_host: '',
@@ -89,13 +89,13 @@ describe('GET /api/settings/smtp', () => {
   });
 
   it('returns config for rep (read-only access)', async () => {
-    const res = await request(app).get('/api/settings/smtp').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/settings/smtp').set('Cookie', repCookie);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('smtp_pass_set');
   });
 
   it('never returns smtp_pass_encrypted or smtp_pass in the response', async () => {
-    const res = await request(app).get('/api/settings/smtp').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/settings/smtp').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
     expect(res.body).not.toHaveProperty('smtp_pass_encrypted');
     expect(res.body).not.toHaveProperty('smtp_pass');
@@ -105,7 +105,7 @@ describe('GET /api/settings/smtp', () => {
 describe('PUT /api/settings/smtp', () => {
   it('returns 403 for rep', async () => {
     const res = await request(app)
-      .put('/api/settings/smtp')
+      .put('/api/v1/settings/smtp')
       .set('Cookie', repCookie)
       .send({ smtp_host: 'smtp.example.com', smtp_port: 587, smtp_user: '', smtp_enabled: false });
     expect(res.status).toBe(403);
@@ -113,13 +113,13 @@ describe('PUT /api/settings/smtp', () => {
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .put('/api/settings/smtp')
+      .put('/api/v1/settings/smtp')
       .send({ smtp_host: 'smtp.example.com', smtp_port: 587, smtp_user: '', smtp_enabled: false });
     expect(res.status).toBe(401);
   });
 
   it('saves config and returns public view for admin', async () => {
-    const res = await request(app).put('/api/settings/smtp').set('Cookie', adminCookie).send({
+    const res = await request(app).put('/api/v1/settings/smtp').set('Cookie', adminCookie).send({
       smtp_host: 'smtp.example.com',
       smtp_port: 465,
       smtp_user: 'user@example.com',
@@ -139,22 +139,19 @@ describe('PUT /api/settings/smtp', () => {
   });
 
   it('returns 400 for invalid port', async () => {
-    const res = await request(app)
-      .put('/api/settings/smtp')
-      .set('Cookie', adminCookie)
-      .send({
-        smtp_host: 'smtp.example.com',
-        smtp_port: 99999,
-        smtp_user: '',
-        smtp_enabled: false,
-      });
+    const res = await request(app).put('/api/v1/settings/smtp').set('Cookie', adminCookie).send({
+      smtp_host: 'smtp.example.com',
+      smtp_port: 99999,
+      smtp_user: '',
+      smtp_enabled: false,
+    });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('preserves password when smtp_pass is omitted', async () => {
     // First save with a password
-    await request(app).put('/api/settings/smtp').set('Cookie', adminCookie).send({
+    await request(app).put('/api/v1/settings/smtp').set('Cookie', adminCookie).send({
       smtp_host: 'smtp.example.com',
       smtp_port: 587,
       smtp_user: 'original@example.com',
@@ -163,7 +160,7 @@ describe('PUT /api/settings/smtp', () => {
     });
 
     // Update without smtp_pass
-    const res = await request(app).put('/api/settings/smtp').set('Cookie', adminCookie).send({
+    const res = await request(app).put('/api/v1/settings/smtp').set('Cookie', adminCookie).send({
       smtp_host: 'smtp.updated.com',
       smtp_port: 587,
       smtp_user: 'updated@example.com',
@@ -178,7 +175,7 @@ describe('PUT /api/settings/smtp', () => {
 describe('POST /api/settings/smtp/test — validation', () => {
   it('returns 400 for invalid email address', async () => {
     const res = await request(app)
-      .post('/api/settings/smtp/test')
+      .post('/api/v1/settings/smtp/test')
       .set('Cookie', adminCookie)
       .send({ to: 'not-an-email' });
     expect(res.status).toBe(400);
@@ -187,7 +184,7 @@ describe('POST /api/settings/smtp/test — validation', () => {
 
   it('returns 403 for rep', async () => {
     const res = await request(app)
-      .post('/api/settings/smtp/test')
+      .post('/api/v1/settings/smtp/test')
       .set('Cookie', repCookie)
       .send({ to: 'someone@example.com' });
     expect(res.status).toBe(403);
@@ -197,12 +194,12 @@ describe('POST /api/settings/smtp/test — validation', () => {
     // No host is set (reset in beforeEach)
     // We need smtp_enabled = true to reach the send attempt
     await request(app)
-      .put('/api/settings/smtp')
+      .put('/api/v1/settings/smtp')
       .set('Cookie', adminCookie)
       .send({ smtp_host: '', smtp_port: 587, smtp_user: '', smtp_enabled: true });
 
     const res = await request(app)
-      .post('/api/settings/smtp/test')
+      .post('/api/v1/settings/smtp/test')
       .set('Cookie', adminCookie)
       .send({ to: 'test@example.com' });
     expect(res.status).toBe(200);

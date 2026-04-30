@@ -75,20 +75,20 @@ afterAll(async () => {
 
 describe('GET /api/admin/demo/status', () => {
   it('returns 200 with a status object', async () => {
-    const res = await request(app).get('/api/admin/demo/status').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/admin/demo/status').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.active).toBe('boolean');
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).get('/api/admin/demo/status').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/admin/demo/status').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/admin/demo/status');
+    const res = await request(app).get('/api/v1/admin/demo/status');
 
     expect(res.status).toBe(401);
   });
@@ -98,7 +98,7 @@ describe('GET /api/admin/demo/status', () => {
 
 describe('POST /api/admin/demo/seed', () => {
   it('seeds demo data and returns 200 with success:true', async () => {
-    const res = await request(app).post('/api/admin/demo/seed').set('Cookie', adminCookie);
+    const res = await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -106,23 +106,23 @@ describe('POST /api/admin/demo/seed', () => {
 
   it('returns 409 DEMO_ALREADY_EXISTS when demo data is already present', async () => {
     // First seed succeeds
-    await request(app).post('/api/admin/demo/seed').set('Cookie', adminCookie);
+    await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
     // Second seed should conflict
-    const res = await request(app).post('/api/admin/demo/seed').set('Cookie', adminCookie);
+    const res = await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DEMO_ALREADY_EXISTS');
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).post('/api/admin/demo/seed').set('Cookie', repCookie);
+    const res = await request(app).post('/api/v1/admin/demo/seed').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/admin/demo/seed');
+    const res = await request(app).post('/api/v1/admin/demo/seed');
 
     expect(res.status).toBe(401);
   });
@@ -133,22 +133,22 @@ describe('POST /api/admin/demo/seed', () => {
 describe('POST /api/admin/demo/reset', () => {
   it('resets demo data and returns 200 with success:true', async () => {
     // Seed first so there is something to reset
-    await request(app).post('/api/admin/demo/seed').set('Cookie', adminCookie);
+    await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
-    const res = await request(app).post('/api/admin/demo/reset').set('Cookie', adminCookie);
+    const res = await request(app).post('/api/v1/admin/demo/reset').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).post('/api/admin/demo/reset').set('Cookie', repCookie);
+    const res = await request(app).post('/api/v1/admin/demo/reset').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/admin/demo/reset');
+    const res = await request(app).post('/api/v1/admin/demo/reset');
 
     expect(res.status).toBe(401);
   });
@@ -158,29 +158,29 @@ describe('POST /api/admin/demo/reset', () => {
 
 describe('DELETE /api/admin/demo', () => {
   it('removes demo data and returns 200 with success:true', async () => {
-    await request(app).post('/api/admin/demo/seed').set('Cookie', adminCookie);
+    await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
-    const res = await request(app).delete('/api/admin/demo').set('Cookie', adminCookie);
+    const res = await request(app).delete('/api/v1/admin/demo').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
   });
 
   it('returns 409 DEMO_NOT_PRESENT when no demo data exists', async () => {
-    const res = await request(app).delete('/api/admin/demo').set('Cookie', adminCookie);
+    const res = await request(app).delete('/api/v1/admin/demo').set('Cookie', adminCookie);
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('DEMO_NOT_PRESENT');
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).delete('/api/admin/demo').set('Cookie', repCookie);
+    const res = await request(app).delete('/api/v1/admin/demo').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).delete('/api/admin/demo');
+    const res = await request(app).delete('/api/v1/admin/demo');
 
     expect(res.status).toBe(401);
   });

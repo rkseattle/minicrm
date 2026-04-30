@@ -123,7 +123,7 @@ async function applyPseudoLocale(page: SafePage): Promise<void> {
 
 test.describe('Pseudolocalization (MINCRM-241)', () => {
   test.beforeEach(async ({ restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   });
 
   test('@functional F10-PL1: no hardcoded ASCII strings on testid elements after pseudo locale switch', async ({

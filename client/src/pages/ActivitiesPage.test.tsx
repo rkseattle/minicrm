@@ -25,7 +25,7 @@ describe('ActivitiesPage', () => {
 
   it('shows the loading state while fetching', () => {
     server.use(
-      http.get('/api/activities', async () => {
+      http.get('/api/v1/activities', async () => {
         await new Promise(() => {}); // never resolves
       }),
     );
@@ -35,7 +35,7 @@ describe('ActivitiesPage', () => {
 
   it('shows the error state when the fetch fails', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'boom' } }, { status: 500 }),
       ),
     );
@@ -47,7 +47,7 @@ describe('ActivitiesPage', () => {
 
   it('shows the empty state when no activities are returned', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 100 }),
       ),
     );
@@ -116,7 +116,7 @@ describe('ActivitiesPage', () => {
       deal_id: null,
     };
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [noRecord], total: 1, page: 1, limit: 100 }),
       ),
     );
@@ -167,8 +167,8 @@ describe('ActivitiesPage', () => {
   it('scopes owner filter to "me" for reps regardless of URL param', async () => {
     let capturedOwner: string | null = null;
     server.use(
-      http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })),
-      http.get('/api/activities', ({ request }) => {
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/activities', ({ request }) => {
         const url = new URL(request.url);
         capturedOwner = url.searchParams.get('owner');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 100 });
@@ -186,7 +186,7 @@ describe('ActivitiesPage', () => {
     const adminUuid = '00000000-0000-0000-0000-000000000001';
     let capturedOwner: string | null = null;
     server.use(
-      http.get('/api/activities', ({ request }) => {
+      http.get('/api/v1/activities', ({ request }) => {
         const url = new URL(request.url);
         capturedOwner = url.searchParams.get('owner');
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 100 });

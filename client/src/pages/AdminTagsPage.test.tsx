@@ -35,7 +35,7 @@ describe('AdminTagsPage', () => {
 
   it('shows loading state while fetching', async () => {
     server.use(
-      http.get('/api/tags', async () => {
+      http.get('/api/v1/tags', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return HttpResponse.json({ tags: [] });
       }),
@@ -45,7 +45,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows empty state when no tags exist', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId('admin-tags-empty')).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('AdminTagsPage', () => {
 
   it('shows error state when the API fails', async () => {
     server.use(
-      http.get('/api/tags', () =>
+      http.get('/api/v1/tags', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -65,7 +65,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('renders tag rows when tags are returned', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`admin-tag-row-${TAG_1.id}`)).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('renders rename and delete buttons for each tag', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows rename form when rename button is clicked', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -97,8 +97,8 @@ describe('AdminTagsPage', () => {
 
   it('submits the rename form and closes on success', async () => {
     server.use(
-      http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })),
-      http.patch('/api/tags/:id', async ({ params, request }) => {
+      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+      http.patch('/api/v1/tags/:id', async ({ params, request }) => {
         const body = (await request.json()) as { name: string };
         return HttpResponse.json({
           tag: { ...TAG_1, id: params.id, name: body.name },
@@ -120,7 +120,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows validation error when rename input is empty', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe('AdminTagsPage', () => {
   });
 
   it('cancels rename and restores tag display', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -149,8 +149,8 @@ describe('AdminTagsPage', () => {
   it('calls delete API and removes tag from list on success', async () => {
     let deleted = false;
     server.use(
-      http.get('/api/tags', () => HttpResponse.json({ tags: deleted ? [] : [TAG_1] })),
-      http.delete('/api/tags/:id', () => {
+      http.get('/api/v1/tags', () => HttpResponse.json({ tags: deleted ? [] : [TAG_1] })),
+      http.delete('/api/v1/tags/:id', () => {
         deleted = true;
         return new HttpResponse(null, { status: 204 });
       }),
@@ -167,8 +167,8 @@ describe('AdminTagsPage', () => {
 
   it('shows delete error alert when delete API fails', async () => {
     server.use(
-      http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })),
-      http.delete('/api/tags/:id', () =>
+      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+      http.delete('/api/v1/tags/:id', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );
@@ -195,7 +195,7 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('toggle is unchecked when restriction is disabled', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: false }),
       ),
     );
@@ -207,7 +207,7 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('toggle is checked when restriction is enabled', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: true }),
       ),
     );
@@ -219,7 +219,7 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('shows description when restriction is enabled', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: true }),
       ),
     );
@@ -231,7 +231,7 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('does not show description when restriction is disabled', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: false }),
       ),
     );
@@ -244,10 +244,10 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('calls the API on toggle change and shows success message', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: false }),
       ),
-      http.patch('/api/settings/tags-restrict-creation', async ({ request }) => {
+      http.patch('/api/v1/settings/tags-restrict-creation', async ({ request }) => {
         const body = (await request.json()) as { restricted: boolean };
         return HttpResponse.json({ restricted: body.restricted });
       }),
@@ -264,10 +264,10 @@ describe('AdminTagsPage restrict-creation toggle', () => {
 
   it('shows error message when API save fails', async () => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: false }),
       ),
-      http.patch('/api/settings/tags-restrict-creation', () =>
+      http.patch('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),
     );

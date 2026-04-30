@@ -47,7 +47,7 @@ describe('LeadDetailPage', () => {
 
   it('shows a "Converted" badge when the lead is converted', async () => {
     server.use(
-      http.get(`/api/leads/${LEAD_1.id}`, () =>
+      http.get(`/api/v1/leads/${LEAD_1.id}`, () =>
         HttpResponse.json({
           lead: { ...LEAD_1, converted_at: '2025-06-01T00:00:00.000Z' },
         }),
@@ -64,7 +64,7 @@ describe('LeadDetailPage', () => {
 
   it('shows "not found" when the lead does not exist', async () => {
     server.use(
-      http.get('/api/leads/:id', () =>
+      http.get('/api/v1/leads/:id', () =>
         HttpResponse.json(
           { error: { code: 'NOT_FOUND', message: 'Lead not found' } },
           { status: 404 },
@@ -120,7 +120,7 @@ describe('LeadDetailPage', () => {
 
   it('does NOT show Convert Lead button when lead is Disqualified', async () => {
     server.use(
-      http.get(`/api/leads/${LEAD_1.id}`, () =>
+      http.get(`/api/v1/leads/${LEAD_1.id}`, () =>
         HttpResponse.json({ lead: { ...LEAD_1, status: 'Disqualified' } }),
       ),
     );
@@ -136,7 +136,7 @@ describe('LeadDetailPage', () => {
 
   it('does NOT show Convert Lead button when lead is already converted', async () => {
     server.use(
-      http.get(`/api/leads/${LEAD_1.id}`, () =>
+      http.get(`/api/v1/leads/${LEAD_1.id}`, () =>
         HttpResponse.json({
           lead: { ...LEAD_1, converted_at: '2025-06-01T00:00:00.000Z' },
         }),
@@ -167,7 +167,7 @@ describe('LeadDetailPage', () => {
 
   it('shows status history when entries are returned', async () => {
     server.use(
-      http.get(`/api/leads/${LEAD_1.id}/status-history`, () =>
+      http.get(`/api/v1/leads/${LEAD_1.id}/status-history`, () =>
         HttpResponse.json({
           history: [
             {
@@ -205,7 +205,7 @@ describe('LeadDetailPage', () => {
   it('shows the converted-from-lead banner on a converted lead', async () => {
     const leadId = LEAD_1.id;
     server.use(
-      http.get(`/api/leads/${leadId}`, () =>
+      http.get(`/api/v1/leads/${leadId}`, () =>
         HttpResponse.json({
           lead: {
             ...LEAD_1,

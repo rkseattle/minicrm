@@ -26,7 +26,7 @@ if (!ADMIN_PASSWORD) throw new Error('[settings-spec] E2E_ADMIN_PASSWORD is not 
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   restClient,
 }) => {
   // Reset currencies to just USD home so test state is predictable
-  await restClient.put('/api/settings/currencies', {
+  await restClient.put('/api/v1/settings/currencies', {
     home_currency: 'USD',
     currencies: [],
   });
@@ -120,7 +120,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await expect(eurRow).toBeVisible();
 
   // Restore to USD home for other tests
-  await restClient.put('/api/settings/currencies', {
+  await restClient.put('/api/v1/settings/currencies', {
     home_currency: 'USD',
     currencies: [],
   });

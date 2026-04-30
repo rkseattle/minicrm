@@ -27,9 +27,7 @@ describe('ContactSelector', () => {
   });
 
   it('does not show none state when contacts are selected', async () => {
-    renderWithProviders(
-      <ContactSelector selectedIds={[CONTACT_1.id]} onChange={vi.fn()} />,
-    );
+    renderWithProviders(<ContactSelector selectedIds={[CONTACT_1.id]} onChange={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.queryByTestId('contact-selector-none')).not.toBeInTheDocument();
@@ -37,9 +35,7 @@ describe('ContactSelector', () => {
   });
 
   it('renders chips for selected contacts once fetched', async () => {
-    renderWithProviders(
-      <ContactSelector selectedIds={[CONTACT_1.id]} onChange={vi.fn()} />,
-    );
+    renderWithProviders(<ContactSelector selectedIds={[CONTACT_1.id]} onChange={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByTestId(`contact-selector-chip-${CONTACT_1.id}`)).toBeInTheDocument();
@@ -88,7 +84,7 @@ describe('ContactSelector', () => {
 
   it('shows no-results state when search returns empty', async () => {
     server.use(
-      http.get('/api/contacts', () =>
+      http.get('/api/v1/contacts', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
       ),
     );
@@ -111,9 +107,7 @@ describe('ContactSelector', () => {
     fireEvent.change(input, { target: { value: 'Alice' } });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId(`contact-selector-option-${CONTACT_1.id}`),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`contact-selector-option-${CONTACT_1.id}`)).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId(`contact-selector-option-${CONTACT_1.id}`));
@@ -123,9 +117,7 @@ describe('ContactSelector', () => {
 
   it('does not add the same contact twice', async () => {
     const onChange = vi.fn();
-    renderWithProviders(
-      <ContactSelector selectedIds={[CONTACT_1.id]} onChange={onChange} />,
-    );
+    renderWithProviders(<ContactSelector selectedIds={[CONTACT_1.id]} onChange={onChange} />);
 
     const input = screen.getByTestId('contact-selector-search');
     fireEvent.change(input, { target: { value: 'Alice' } });

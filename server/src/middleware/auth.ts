@@ -73,10 +73,13 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 
   // Enforce password change — all routes except change-password itself are blocked.
-  // Use req.originalUrl so the check is path-prefix-agnostic.
+  // Match by path suffix so the check works regardless of the API version prefix.
   // Strip query string before comparing — .includes() on the full originalUrl is bypassable
   // via crafted query params (e.g. ?redirect=/change-password).
-  if (user.must_change_password && req.originalUrl.split('?')[0] !== '/api/auth/change-password') {
+  if (
+    user.must_change_password &&
+    !req.originalUrl.split('?')[0].endsWith('/auth/change-password')
+  ) {
     res.status(403).json({
       error: {
         code: 'PASSWORD_CHANGE_REQUIRED',

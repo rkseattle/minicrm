@@ -75,13 +75,13 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     // ── Step 0: Authenticate the REST client ──────────────────────────────
     // POST /api/auth/login sets the JWT cookie on the Playwright
     // APIRequestContext, so all subsequent restClient calls are authenticated.
-    await restClient.post('/api/auth/login', {
+    await restClient.post('/api/v1/auth/login', {
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
     });
 
     // ── Step 1: Confirm the contacts endpoint is reachable ───────────────
-    await restClient.get<ContactListResponse>('/api/contacts');
+    await restClient.get<ContactListResponse>('/api/v1/contacts');
 
     // ── Step 2: Create test contact via API ───────────────────────────────
     // createTestContact registers the contact with testData immediately so
@@ -114,7 +114,7 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     // Note: asserting total == countBefore + 1 is racey with --workers=4
     // because other workers may create contacts between the two reads.
     const searchResponse = await restClient.get<ContactListResponse>(
-      `/api/contacts?search=${encodeURIComponent(contact.last_name)}`,
+      `/api/v1/contacts?search=${encodeURIComponent(contact.last_name)}`,
     );
     expect(searchResponse.body.total).toBe(1);
     const found = searchResponse.body.data as Array<{ id: string }>;

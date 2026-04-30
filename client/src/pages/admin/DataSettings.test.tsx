@@ -98,9 +98,7 @@ describe('DataSettings — demo data', () => {
   });
 
   it('shows active badge when demo data is seeded', async () => {
-    server.use(
-      http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })),
-    );
+    server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
 
     renderWithProviders(<DataSettings />);
 
@@ -111,7 +109,7 @@ describe('DataSettings — demo data', () => {
 
   it('shows demo status error on load failure', async () => {
     server.use(
-      http.get('/api/admin/demo/status', () => new HttpResponse(null, { status: 500 })),
+      http.get('/api/v1/admin/demo/status', () => new HttpResponse(null, { status: 500 })),
     );
 
     renderWithProviders(<DataSettings />);
@@ -146,7 +144,7 @@ describe('DataSettings — demo data', () => {
   it('calls seed API and shows success feedback on confirm', async () => {
     let seedCalled = false;
     server.use(
-      http.post('/api/admin/demo/seed', () => {
+      http.post('/api/v1/admin/demo/seed', () => {
         seedCalled = true;
         return HttpResponse.json({ success: true });
       }),
@@ -177,7 +175,7 @@ describe('DataSettings — demo data', () => {
   it('calls reset API on confirm', async () => {
     let resetCalled = false;
     server.use(
-      http.post('/api/admin/demo/reset', () => {
+      http.post('/api/v1/admin/demo/reset', () => {
         resetCalled = true;
         return HttpResponse.json({ success: true });
       }),
@@ -200,13 +198,11 @@ describe('DataSettings — demo data', () => {
   });
 
   it('Remove button is enabled and calls DELETE API when demo is active', async () => {
-    server.use(
-      http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })),
-    );
+    server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
 
     let removeCalled = false;
     server.use(
-      http.delete('/api/admin/demo', () => {
+      http.delete('/api/v1/admin/demo', () => {
         removeCalled = true;
         return HttpResponse.json({ success: true });
       }),
@@ -225,9 +221,7 @@ describe('DataSettings — demo data', () => {
   });
 
   it('shows error feedback when seed API fails', async () => {
-    server.use(
-      http.post('/api/admin/demo/seed', () => new HttpResponse(null, { status: 500 })),
-    );
+    server.use(http.post('/api/v1/admin/demo/seed', () => new HttpResponse(null, { status: 500 })));
 
     renderWithProviders(<DataSettings />);
 

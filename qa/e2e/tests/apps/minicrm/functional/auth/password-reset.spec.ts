@@ -72,14 +72,14 @@ async function createActiveTestUser(
   initialPassword: string,
 ): Promise<{ userId: string; email: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const inviteRes = await restClient.post<InviteResponse>('/api/users/invite', {
+  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
     name: `F1-PR User ${uniqueSuffix}`,
     email: `f1-pr-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
   const { user, inviteToken } = inviteRes.body;
 
-  await restClient.post('/api/users/set-password', {
+  await restClient.post('/api/v1/users/set-password', {
     token: inviteToken,
     password: initialPassword,
   });
@@ -96,7 +96,9 @@ async function createActiveTestUser(
  * @returns The plaintext reset token.
  */
 async function getDevResetToken(restClient: RestClient, email: string): Promise<string> {
-  const res = await restClient.post<DevResetTokenResponse>('/api/auth/dev/reset-token', { email });
+  const res = await restClient.post<DevResetTokenResponse>('/api/v1/auth/dev/reset-token', {
+    email,
+  });
   return res.body.token;
 }
 
@@ -145,7 +147,7 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
 }) => {
   const INITIAL_PASSWORD = 'InitPass1!';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   let userId: string | null = null;
   try {
@@ -166,9 +168,9 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
   } finally {
     if (userId) {
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
         console.error(`[F1-PR4] teardown failed: ${String(err)}`);
       });
     }
@@ -182,7 +184,7 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   let userId: string | null = null;
   try {
@@ -222,9 +224,9 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
   } finally {
     if (userId) {
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
         console.error(`[F1-PR5] teardown failed: ${String(err)}`);
       });
     }
@@ -238,7 +240,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   let userId: string | null = null;
   try {
@@ -246,13 +248,13 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     userId = uid;
 
     // ── 1. Establish a restClient session for the test user ───────────────────
-    await restClient.post('/api/auth/login', { email, password: INITIAL_PASSWORD });
-    const beforeReset = await restClient.get<{ user: { id: string } }>('/api/auth/me');
+    await restClient.post('/api/v1/auth/login', { email, password: INITIAL_PASSWORD });
+    const beforeReset = await restClient.get<{ user: { id: string } }>('/api/v1/auth/me');
     expect(beforeReset.status, 'restClient session should be valid before reset').toBe(200);
 
     // ── 2. Reset password via browser ─────────────────────────────────────────
     // Re-auth admin to get a new dev token (restClient now holds test-user session).
-    const adminClient = await restClient.post('/api/auth/login', {
+    const adminClient = await restClient.post('/api/v1/auth/login', {
       email: ADMIN_EMAIL,
       password: ADMIN_PASSWORD,
     });
@@ -268,7 +270,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     // as the test user with the OLD password — which should now fail.
     let caughtStatus: number | null = null;
     try {
-      await restClient.post('/api/auth/login', { email, password: INITIAL_PASSWORD });
+      await restClient.post('/api/v1/auth/login', { email, password: INITIAL_PASSWORD });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         caughtStatus = err.status;
@@ -284,9 +286,9 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
   } finally {
     if (userId) {
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${userId}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
         console.error(`[F1-PR6] teardown failed: ${String(err)}`);
       });
     }

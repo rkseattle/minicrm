@@ -99,7 +99,7 @@ afterAll(async () => {
 describe('POST /api/automation/rules', () => {
   it('creates a rule and returns 201 with rule object', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
 
@@ -112,7 +112,7 @@ describe('POST /api/automation/rules', () => {
 
   it('returns 400 when name is missing', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send({ ...BASE_RULE, name: '' });
 
@@ -122,7 +122,7 @@ describe('POST /api/automation/rules', () => {
 
   it('returns 400 when trigger_type is invalid', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send({ ...BASE_RULE, trigger_type: 'not_a_trigger' });
 
@@ -132,7 +132,7 @@ describe('POST /api/automation/rules', () => {
 
   it('returns 400 when action_config fails deep validation for create_task', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send({
         ...BASE_RULE,
@@ -150,7 +150,7 @@ describe('POST /api/automation/rules', () => {
 
   it('returns 400 when deal_stage_changed trigger_config is missing stage', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send({
         ...BASE_RULE,
@@ -164,7 +164,7 @@ describe('POST /api/automation/rules', () => {
 
   it('returns 403 when a rep attempts to create a rule', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', repCookie)
       .send(BASE_RULE);
 
@@ -172,7 +172,7 @@ describe('POST /api/automation/rules', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/automation/rules').send(BASE_RULE);
+    const res = await request(app).post('/api/v1/automation/rules').send(BASE_RULE);
 
     expect(res.status).toBe(401);
   });
@@ -182,7 +182,7 @@ describe('POST /api/automation/rules', () => {
 
 describe('GET /api/automation/rules', () => {
   it('returns empty rules array when none exist', async () => {
-    const res = await request(app).get('/api/automation/rules').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/automation/rules').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.rules)).toBe(true);
@@ -193,13 +193,13 @@ describe('GET /api/automation/rules', () => {
   });
 
   it('returns all rules after creation', async () => {
-    await request(app).post('/api/automation/rules').set('Cookie', adminCookie).send(BASE_RULE);
+    await request(app).post('/api/v1/automation/rules').set('Cookie', adminCookie).send(BASE_RULE);
     await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send({ ...BASE_RULE, name: 'Second Rule' });
 
-    const res = await request(app).get('/api/automation/rules').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/automation/rules').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     const mine = (res.body.rules as { created_by: string }[]).filter(
@@ -209,7 +209,7 @@ describe('GET /api/automation/rules', () => {
   });
 
   it('returns 403 when a rep requests the list', async () => {
-    const res = await request(app).get('/api/automation/rules').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/automation/rules').set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });
@@ -220,13 +220,13 @@ describe('GET /api/automation/rules', () => {
 describe('GET /api/automation/rules/:id', () => {
   it('returns the rule when found', async () => {
     const created = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
     const ruleId = created.body.rule.id as string;
 
     const res = await request(app)
-      .get(`/api/automation/rules/${ruleId}`)
+      .get(`/api/v1/automation/rules/${ruleId}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -235,7 +235,7 @@ describe('GET /api/automation/rules/:id', () => {
 
   it('returns 404 for a non-existent rule', async () => {
     const res = await request(app)
-      .get('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .get('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(404);
@@ -244,7 +244,7 @@ describe('GET /api/automation/rules/:id', () => {
 
   it('returns 403 when a rep requests a rule', async () => {
     const res = await request(app)
-      .get('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .get('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
@@ -256,13 +256,13 @@ describe('GET /api/automation/rules/:id', () => {
 describe('PATCH /api/automation/rules/:id', () => {
   it('updates the rule name and returns 200', async () => {
     const created = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
     const ruleId = created.body.rule.id as string;
 
     const res = await request(app)
-      .patch(`/api/automation/rules/${ruleId}`)
+      .patch(`/api/v1/automation/rules/${ruleId}`)
       .set('Cookie', adminCookie)
       .send({ name: 'Updated Rule' });
 
@@ -272,13 +272,13 @@ describe('PATCH /api/automation/rules/:id', () => {
 
   it('returns 400 when update body is empty', async () => {
     const created = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
     const ruleId = created.body.rule.id as string;
 
     const res = await request(app)
-      .patch(`/api/automation/rules/${ruleId}`)
+      .patch(`/api/v1/automation/rules/${ruleId}`)
       .set('Cookie', adminCookie)
       .send({});
 
@@ -288,7 +288,7 @@ describe('PATCH /api/automation/rules/:id', () => {
 
   it('returns 404 for a non-existent rule', async () => {
     const res = await request(app)
-      .patch('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .patch('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', adminCookie)
       .send({ enabled: false });
 
@@ -297,7 +297,7 @@ describe('PATCH /api/automation/rules/:id', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .patch('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .patch('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
       .send({ enabled: false });
 
@@ -310,13 +310,13 @@ describe('PATCH /api/automation/rules/:id', () => {
 describe('DELETE /api/automation/rules/:id', () => {
   it('deletes the rule and returns 204', async () => {
     const created = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
     const ruleId = created.body.rule.id as string;
 
     const res = await request(app)
-      .delete(`/api/automation/rules/${ruleId}`)
+      .delete(`/api/v1/automation/rules/${ruleId}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
@@ -324,7 +324,7 @@ describe('DELETE /api/automation/rules/:id', () => {
 
   it('returns 404 for a non-existent rule', async () => {
     const res = await request(app)
-      .delete('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(404);
@@ -333,7 +333,7 @@ describe('DELETE /api/automation/rules/:id', () => {
 
   it('returns 403 when a rep attempts to delete', async () => {
     const res = await request(app)
-      .delete('/api/automation/rules/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
@@ -345,13 +345,13 @@ describe('DELETE /api/automation/rules/:id', () => {
 describe('GET /api/automation/rules/:id/logs', () => {
   it('returns an empty logs array when no executions have fired', async () => {
     const created = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', adminCookie)
       .send(BASE_RULE);
     const ruleId = created.body.rule.id as string;
 
     const res = await request(app)
-      .get(`/api/automation/rules/${ruleId}/logs`)
+      .get(`/api/v1/automation/rules/${ruleId}/logs`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -361,7 +361,7 @@ describe('GET /api/automation/rules/:id/logs', () => {
 
   it('returns 404 when the rule does not exist', async () => {
     const res = await request(app)
-      .get('/api/automation/rules/00000000-0000-0000-0000-000000000000/logs')
+      .get('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000/logs')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(404);
@@ -370,7 +370,7 @@ describe('GET /api/automation/rules/:id/logs', () => {
 
   it('returns 403 when a rep requests logs', async () => {
     const res = await request(app)
-      .get('/api/automation/rules/00000000-0000-0000-0000-000000000000/logs')
+      .get('/api/v1/automation/rules/00000000-0000-0000-0000-000000000000/logs')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);

@@ -70,7 +70,7 @@ test(
   async ({ page, testData, restClient }) => {
     void testData;
 
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const result = await navigateToAdminTags({ page });
 
@@ -87,7 +87,7 @@ test(
   'F8-TG2: admin renames a tag via UI and new name is persisted via API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const tag = await createTestTag(testData, restClient, { name: `tg2-original-${Date.now()}` });
 
@@ -99,7 +99,7 @@ test(
     expect(renameResult.saved).toBe(true);
 
     // Verify via API that the name was persisted server-side.
-    const fetched = await restClient.get<TagSingleResponse>(`/api/tags/${tag.id}`);
+    const fetched = await restClient.get<TagSingleResponse>(`/api/v1/tags/${tag.id}`);
     expect(fetched.body.tag.name).toBe(newName);
   },
 );
@@ -112,7 +112,7 @@ test(
   'F8-TG3: admin deletes a tag via UI and tag is removed from API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     // Create the tag but unregister it from TestDataManager after we delete it
     // in the test — otherwise teardown will attempt a DELETE on an already-gone
@@ -127,7 +127,7 @@ test(
 
     // The row disappeared from the UI; verify the API also returns 404.
     const fetched = await restClient
-      .get<TagSingleResponse>(`/api/tags/${tag.id}`)
+      .get<TagSingleResponse>(`/api/v1/tags/${tag.id}`)
       .catch((err: { status?: number }) => err);
     expect((fetched as { status?: number }).status).toBe(404);
   },
@@ -141,7 +141,7 @@ test(
   'F8-TG4: tag attached to a contact via TagInput widget badge appears and API confirms',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const tag = await createTestTag(testData, restClient, { name: `tg4-attach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -157,7 +157,9 @@ test(
     expect(attachResult.badgeVisible).toBe(true);
 
     // Verify via API that the tag is recorded on the contact.
-    const fetched = await restClient.get<ContactTagsResponse>(`/api/contacts/${contact.id}/tags`);
+    const fetched = await restClient.get<ContactTagsResponse>(
+      `/api/v1/contacts/${contact.id}/tags`,
+    );
     const tagIds = fetched.body.tags.map((t) => t.id);
     expect(tagIds).toContain(tag.id);
   },
@@ -171,7 +173,7 @@ test(
   'F8-TG5: tag detached from a contact via TagInput remove button disappears from UI and API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const tag = await createTestTag(testData, restClient, { name: `tg5-detach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -180,7 +182,7 @@ test(
     });
 
     // Attach via API so the badge is visible when we load the page.
-    await restClient.post(`/api/contacts/${contact.id}/tags`, { name: tag.name });
+    await restClient.post(`/api/v1/contacts/${contact.id}/tags`, { name: tag.name });
 
     await page.goto(`/contacts/${contact.id}`);
     await page.waitForLoadState('networkidle');
@@ -189,7 +191,9 @@ test(
     expect(detachResult.badgeGone).toBe(true);
 
     // Verify via API that the tag is no longer on the contact.
-    const fetched = await restClient.get<ContactTagsResponse>(`/api/contacts/${contact.id}/tags`);
+    const fetched = await restClient.get<ContactTagsResponse>(
+      `/api/v1/contacts/${contact.id}/tags`,
+    );
     const tagIds = fetched.body.tags.map((t) => t.id);
     expect(tagIds).not.toContain(tag.id);
   },
@@ -203,7 +207,7 @@ test(
   'F8-TG6: tag attached to a deal via TagInput widget persists via API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     const tag = await createTestTag(testData, restClient, { name: `tg6-deal-${Date.now()}` });
     const account = await createTestAccount(testData, restClient, {
@@ -223,7 +227,7 @@ test(
     expect(attachResult.badgeVisible).toBe(true);
 
     // Verify via API that the tag is recorded on the deal.
-    const fetched = await restClient.get<DealTagsResponse>(`/api/deals/${deal.id}/tags`);
+    const fetched = await restClient.get<DealTagsResponse>(`/api/v1/deals/${deal.id}/tags`);
     const tagIds = fetched.body.tags.map((t) => t.id);
     expect(tagIds).toContain(tag.id);
   },

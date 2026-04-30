@@ -1,9 +1,9 @@
 /**
  * Audit log routes. (MINCRM-170, MINCRM-171, MINCRM-172)
  *
- * GET /api/audit-log         — admin only: paginated, filtered system-wide log
- * GET /api/audit-log/record  — any authenticated user: entries for a specific record
- * GET /api/audit-log/actors  — admin only: distinct users in the audit log
+ * GET /api/v1/audit-log         — admin only: paginated, filtered system-wide log
+ * GET /api/v1/audit-log/record  — any authenticated user: entries for a specific record
+ * GET /api/v1/audit-log/actors  — admin only: distinct users in the audit log
  */
 
 import { Router } from 'express';
@@ -20,7 +20,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/audit-log:
+ * /api/v1/audit-log:
  *   get:
  *     tags: [Audit]
  *     operationId: listAuditLog
@@ -59,7 +59,7 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listAuditLogHan
 
 /**
  * @openapi
- * /api/audit-log/record:
+ * /api/v1/audit-log/record:
  *   get:
  *     tags: [Audit]
  *     operationId: getRecordAuditLog
@@ -87,7 +87,7 @@ router.get('/record', authenticate, asyncHandler(getRecordAuditLogHandler));
 
 /**
  * @openapi
- * /api/audit-log/actors:
+ * /api/v1/audit-log/actors:
  *   get:
  *     tags: [Audit]
  *     operationId: listAuditLogActors

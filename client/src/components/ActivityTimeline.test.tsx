@@ -18,7 +18,7 @@ describe('ActivityTimeline', () => {
 
   it('shows the empty state when there are no activities', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 10 }),
       ),
     );
@@ -70,7 +70,7 @@ describe('ActivityTimeline', () => {
 
   it('shows completed badge for complete activities', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
       ),
     );
@@ -84,7 +84,7 @@ describe('ActivityTimeline', () => {
 
   it('applies line-through styling to completed activity subjects', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
       ),
     );
@@ -110,7 +110,7 @@ describe('ActivityTimeline', () => {
 
   it('does not show edit/delete for activities owned by another user', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json({
           user: { ...ADMIN_USER, id: '00000000-0000-0000-0000-000000000999', role: 'rep' },
         }),
@@ -169,7 +169,7 @@ describe('ActivityTimeline', () => {
 
   it('shows "Load more" button when total exceeds currently loaded count', async () => {
     server.use(
-      http.get('/api/activities', () =>
+      http.get('/api/v1/activities', () =>
         HttpResponse.json({ data: [ACTIVITY_1], total: 5, page: 1, limit: 10 }),
       ),
     );

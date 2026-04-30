@@ -118,7 +118,7 @@ describe('TagInput', () => {
   });
 
   it('shows tag suggestions when typing a matching prefix', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
     renderWithProviders(<TagInput {...makeProps()} />);
     const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
     await userEvent.type(input, 'ent');
@@ -129,7 +129,7 @@ describe('TagInput', () => {
   });
 
   it('does not show already-attached tags in suggestions', async () => {
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
     renderWithProviders(<TagInput {...makeProps({ tags: [TAG_1] })} />);
     const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
     await userEvent.type(input, 'ent');
@@ -140,7 +140,7 @@ describe('TagInput', () => {
 
   it('calls onAttach when a suggestion is clicked', async () => {
     const onAttach = vi.fn().mockResolvedValue(undefined);
-    server.use(http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
     renderWithProviders(<TagInput {...makeProps({ onAttach })} />);
     const input = screen.getByTestId(`tag-input-${ENTITY_ID}`);
     await userEvent.type(input, 'ent');
@@ -158,11 +158,11 @@ describe('TagInput — rep with restriction enabled', () => {
   beforeEach(() => {
     // Override auth to return a rep user and restriction to true
     server.use(
-      http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })),
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: true }),
       ),
-      http.get('/api/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })),
     );
   });
 
@@ -200,10 +200,10 @@ describe('TagInput — rep with restriction enabled', () => {
 describe('TagInput — admin with restriction enabled', () => {
   beforeEach(() => {
     server.use(
-      http.get('/api/settings/tags-restrict-creation', () =>
+      http.get('/api/v1/settings/tags-restrict-creation', () =>
         HttpResponse.json({ restricted: true }),
       ),
-      http.get('/api/tags', () => HttpResponse.json({ tags: [] })),
+      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [] })),
     );
     // Default /api/auth/me handler returns ADMIN_USER
   });

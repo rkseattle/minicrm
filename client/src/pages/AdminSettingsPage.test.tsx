@@ -22,7 +22,7 @@ function renderOnTab(tab: string) {
 describe('AdminSettingsPage', () => {
   describe('loading state', () => {
     it('shows loading text while fetching the current setting', () => {
-      server.use(http.get('/api/settings/default-language', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/settings/default-language', () => new Promise(() => {})));
       renderWithProviders(<AdminSettingsPage />);
       expect(screen.getByTestId('settings-loading')).toBeInTheDocument();
     });
@@ -31,7 +31,7 @@ describe('AdminSettingsPage', () => {
   describe('load error state', () => {
     it('shows an error alert when the settings API fails on load', async () => {
       server.use(
-        http.get('/api/settings/default-language', () =>
+        http.get('/api/v1/settings/default-language', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -43,7 +43,7 @@ describe('AdminSettingsPage', () => {
 
     it('does not render the form when the settings API fails on load', async () => {
       server.use(
-        http.get('/api/settings/default-language', () =>
+        http.get('/api/v1/settings/default-language', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -117,7 +117,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows an error message when the save request fails', async () => {
       server.use(
-        http.patch('/api/settings/default-language', () =>
+        http.patch('/api/v1/settings/default-language', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -138,7 +138,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows an error message when the server rejects the language value (400)', async () => {
       server.use(
-        http.patch('/api/settings/default-language', () =>
+        http.patch('/api/v1/settings/default-language', () =>
           HttpResponse.json(
             { error: { code: 'VALIDATION_ERROR', message: 'Invalid request' } },
             { status: 400 },
@@ -196,7 +196,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('disables the save button while the mutation is pending', async () => {
-      server.use(http.patch('/api/settings/default-language', () => new Promise(() => {})));
+      server.use(http.patch('/api/v1/settings/default-language', () => new Promise(() => {})));
 
       const user = userEvent.setup();
       renderWithProviders(<AdminSettingsPage />);
@@ -231,7 +231,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('shows "Demo data active" status badge when demo is active', async () => {
-      server.use(http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })));
+      server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       renderOnTab('data');
       await waitFor(() => {
         expect(screen.getByTestId('demo-status-badge')).toHaveTextContent('Demo data active');
@@ -240,7 +240,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows an error when demo status fails to load', async () => {
       server.use(
-        http.get('/api/admin/demo/status', () =>
+        http.get('/api/v1/admin/demo/status', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -251,7 +251,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('seed button is disabled when demo data is active', async () => {
-      server.use(http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })));
+      server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       renderOnTab('data');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeDisabled();
@@ -266,7 +266,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('remove button is enabled when demo data is active', async () => {
-      server.use(http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })));
+      server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       renderOnTab('data');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
@@ -296,7 +296,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('remove button opens confirmation dialog when demo is active', async () => {
-      server.use(http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })));
+      server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       const user = userEvent.setup();
       renderOnTab('data');
       await waitFor(() => {
@@ -351,7 +351,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('confirming remove shows success feedback', async () => {
-      server.use(http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })));
+      server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       const user = userEvent.setup();
       renderOnTab('data');
       await waitFor(() => {
@@ -368,7 +368,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows error feedback when seed fails', async () => {
       server.use(
-        http.post('/api/admin/demo/seed', () =>
+        http.post('/api/v1/admin/demo/seed', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -388,7 +388,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows error feedback when reset fails', async () => {
       server.use(
-        http.post('/api/admin/demo/reset', () =>
+        http.post('/api/v1/admin/demo/reset', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -421,7 +421,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows name conflict error when adding a duplicate stage name', async () => {
       server.use(
-        http.post('/api/settings/pipeline-stages', () =>
+        http.post('/api/v1/settings/pipeline-stages', () =>
           HttpResponse.json(
             {
               error: {
@@ -462,7 +462,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows blocked message with deal count when delete is blocked', async () => {
       server.use(
-        http.delete('/api/settings/pipeline-stages/:id', () =>
+        http.delete('/api/v1/settings/pipeline-stages/:id', () =>
           HttpResponse.json(
             {
               error: {
@@ -503,7 +503,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows generic error when add stage request fails with a server error', async () => {
       server.use(
-        http.post('/api/settings/pipeline-stages', () =>
+        http.post('/api/v1/settings/pipeline-stages', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -558,7 +558,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows error message when the currency save request fails', async () => {
       server.use(
-        http.patch('/api/settings/default-currency', () =>
+        http.patch('/api/v1/settings/default-currency', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -663,7 +663,7 @@ describe('AdminSettingsPage', () => {
 
     it('clicking Remove removes the row from the table', async () => {
       server.use(
-        http.get('/api/settings/currencies', () =>
+        http.get('/api/v1/settings/currencies', () =>
           HttpResponse.json({
             home_currency: 'USD',
             currencies: [
@@ -710,7 +710,7 @@ describe('AdminSettingsPage', () => {
 
     it('changing home currency removes the editable rate input for the new home', async () => {
       server.use(
-        http.get('/api/settings/currencies', () =>
+        http.get('/api/v1/settings/currencies', () =>
           HttpResponse.json({
             home_currency: 'USD',
             currencies: [
@@ -761,7 +761,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows error banner when the save request fails', async () => {
       server.use(
-        http.put('/api/settings/currencies', () =>
+        http.put('/api/v1/settings/currencies', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -781,8 +781,8 @@ describe('AdminSettingsPage', () => {
   describe('demo data section — remove failure', () => {
     it('shows error feedback when remove fails', async () => {
       server.use(
-        http.get('/api/admin/demo/status', () => HttpResponse.json({ active: true })),
-        http.delete('/api/admin/demo', () =>
+        http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })),
+        http.delete('/api/v1/admin/demo', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );

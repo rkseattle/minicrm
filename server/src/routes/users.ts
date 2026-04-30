@@ -26,7 +26,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/users/set-password:
+ * /api/v1/users/set-password:
  *   post:
  *     tags: [Users]
  *     operationId: setPassword
@@ -84,7 +84,7 @@ router.post('/set-password', asyncHandler(setPassword));
 
 /**
  * @openapi
- * /api/users/active:
+ * /api/v1/users/active:
  *   get:
  *     tags: [Users]
  *     operationId: listActiveUsers
@@ -141,7 +141,7 @@ router.get('/active', authenticate, asyncHandler(listActiveUsersHandler));
 
 /**
  * @openapi
- * /api/users/me/language:
+ * /api/v1/users/me/language:
  *   get:
  *     tags: [Users]
  *     operationId: getMyLanguage
@@ -180,7 +180,7 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
 
 /**
  * @openapi
- * /api/users/me/language:
+ * /api/v1/users/me/language:
  *   patch:
  *     tags: [Users]
  *     operationId: setMyLanguage
@@ -237,7 +237,7 @@ router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage))
 
 /**
  * @openapi
- * /api/users/me/notification-preferences:
+ * /api/v1/users/me/notification-preferences:
  *   get:
  *     tags: [Users]
  *     operationId: getMyNotificationPrefs
@@ -265,7 +265,7 @@ router.get('/me/notification-preferences', authenticate, asyncHandler(getMyNotif
 
 /**
  * @openapi
- * /api/users/me/notification-preferences:
+ * /api/v1/users/me/notification-preferences:
  *   patch:
  *     tags: [Users]
  *     operationId: updateMyNotificationPrefs
@@ -297,7 +297,7 @@ router.use(authenticate, requireRole('admin'));
 
 /**
  * @openapi
- * /api/users:
+ * /api/v1/users:
  *   get:
  *     tags: [Users]
  *     operationId: listUsers
@@ -362,14 +362,14 @@ router.get('/', asyncHandler(listUsers));
 
 /**
  * @openapi
- * /api/users/invite:
+ * /api/v1/users/invite:
  *   post:
  *     tags: [Users]
  *     operationId: inviteUser
  *     summary: Invite a new user (admin only)
  *     description: >
  *       Creates a user with status 'invited' and returns an invite token. The
- *       invited user must call POST /api/users/set-password to activate their account.
+ *       invited user must call POST /api/v1/users/set-password to activate their account.
  *       Requires admin role.
  *     security:
  *       - cookieAuth: []
@@ -458,7 +458,7 @@ router.get('/', asyncHandler(listUsers));
  */
 /**
  * @openapi
- * /api/users/notification-recipient-count:
+ * /api/v1/users/notification-recipient-count:
  *   get:
  *     tags: [Users]
  *     operationId: getNotificationRecipientCount
@@ -483,7 +483,7 @@ router.get('/notification-recipient-count', asyncHandler(getNotificationRecipien
 
 /**
  * @openapi
- * /api/users/invite:
+ * /api/v1/users/invite:
  *   post:
  *     tags: [Users]
  *     operationId: inviteUser
@@ -518,7 +518,7 @@ router.post('/invite', asyncHandler(inviteUser));
 
 /**
  * @openapi
- * /api/users/{id}/role:
+ * /api/v1/users/{id}/role:
  *   patch:
  *     tags: [Users]
  *     operationId: updateUserRole
@@ -607,7 +607,7 @@ router.patch('/:id/role', asyncHandler(updateUserRole));
 
 /**
  * @openapi
- * /api/users/{id}/deactivate:
+ * /api/v1/users/{id}/deactivate:
  *   patch:
  *     tags: [Users]
  *     operationId: deactivateUser
@@ -680,7 +680,7 @@ router.patch('/:id/deactivate', asyncHandler(deactivateUser));
 
 /**
  * @openapi
- * /api/users/{id}/reactivate:
+ * /api/v1/users/{id}/reactivate:
  *   patch:
  *     tags: [Users]
  *     operationId: reactivateUser
@@ -751,7 +751,7 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
 
 /**
  * @openapi
- * /api/users/{id}/admin-set-password:
+ * /api/v1/users/{id}/admin-set-password:
  *   post:
  *     tags: [Users]
  *     operationId: adminSetPassword

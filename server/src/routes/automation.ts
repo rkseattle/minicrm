@@ -19,7 +19,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/automation/rules:
+ * /api/v1/automation/rules:
  *   get:
  *     tags: [Automation]
  *     operationId: listAutomationRules
@@ -48,7 +48,7 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listAutomationR
 
 /**
  * @openapi
- * /api/automation/rules:
+ * /api/v1/automation/rules:
  *   post:
  *     tags: [Automation]
  *     operationId: createAutomationRule
@@ -76,7 +76,7 @@ router.post('/', authenticate, requireRole('admin'), asyncHandler(createAutomati
 
 /**
  * @openapi
- * /api/automation/rules/{id}:
+ * /api/v1/automation/rules/{id}:
  *   get:
  *     tags: [Automation]
  *     operationId: getAutomationRule
@@ -104,7 +104,7 @@ router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getAutomatio
 
 /**
  * @openapi
- * /api/automation/rules/{id}:
+ * /api/v1/automation/rules/{id}:
  *   patch:
  *     tags: [Automation]
  *     operationId: updateAutomationRule
@@ -134,7 +134,7 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateAuto
 
 /**
  * @openapi
- * /api/automation/rules/{id}:
+ * /api/v1/automation/rules/{id}:
  *   delete:
  *     tags: [Automation]
  *     operationId: deleteAutomationRule
@@ -167,7 +167,7 @@ router.delete(
 
 /**
  * @openapi
- * /api/automation/rules/{id}/logs:
+ * /api/v1/automation/rules/{id}/logs:
  *   get:
  *     tags: [Automation]
  *     operationId: listRuleLogs

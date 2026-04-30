@@ -129,7 +129,7 @@ async function insertAttachment(opts: {
 describe('GET /api/attachments', () => {
   it('returns an attachments array for a record with no uploads', async () => {
     const res = await request(app)
-      .get(`/api/attachments?recordType=contact&recordId=${contactId}`)
+      .get(`/api/v1/attachments?recordType=contact&recordId=${contactId}`)
       .set('Cookie', uploaderCookie);
 
     expect(res.status).toBe(200);
@@ -142,7 +142,7 @@ describe('GET /api/attachments', () => {
     await insertAttachment({ filename: 'doc2.pdf' });
 
     const res = await request(app)
-      .get(`/api/attachments?recordType=contact&recordId=${contactId}`)
+      .get(`/api/v1/attachments?recordType=contact&recordId=${contactId}`)
       .set('Cookie', uploaderCookie);
 
     expect(res.status).toBe(200);
@@ -155,7 +155,7 @@ describe('GET /api/attachments', () => {
 
   it('returns 400 when recordType is invalid', async () => {
     const res = await request(app)
-      .get(`/api/attachments?recordType=invoice&recordId=${contactId}`)
+      .get(`/api/v1/attachments?recordType=invoice&recordId=${contactId}`)
       .set('Cookie', uploaderCookie);
 
     expect(res.status).toBe(400);
@@ -164,7 +164,7 @@ describe('GET /api/attachments', () => {
 
   it('returns 400 when recordId is missing', async () => {
     const res = await request(app)
-      .get('/api/attachments?recordType=contact')
+      .get('/api/v1/attachments?recordType=contact')
       .set('Cookie', uploaderCookie);
 
     expect(res.status).toBe(400);
@@ -172,7 +172,9 @@ describe('GET /api/attachments', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get(`/api/attachments?recordType=contact&recordId=${contactId}`);
+    const res = await request(app).get(
+      `/api/v1/attachments?recordType=contact&recordId=${contactId}`,
+    );
 
     expect(res.status).toBe(401);
   });
@@ -184,7 +186,7 @@ describe('POST /api/attachments', () => {
   it('returns 503 STORAGE_NOT_CONFIGURED when storage is not set up', async () => {
     // The test database has no storage config — upload will hit the STORAGE_NOT_CONFIGURED branch
     const res = await request(app)
-      .post('/api/attachments')
+      .post('/api/v1/attachments')
       .set('Cookie', uploaderCookie)
       .field('recordType', 'contact')
       .field('recordId', contactId)
@@ -199,7 +201,7 @@ describe('POST /api/attachments', () => {
 
   it('returns 400 when no file is provided', async () => {
     const res = await request(app)
-      .post('/api/attachments')
+      .post('/api/v1/attachments')
       .set('Cookie', uploaderCookie)
       .field('recordType', 'contact')
       .field('recordId', contactId);
@@ -210,7 +212,7 @@ describe('POST /api/attachments', () => {
 
   it('returns 400 when recordType is invalid', async () => {
     const res = await request(app)
-      .post('/api/attachments')
+      .post('/api/v1/attachments')
       .set('Cookie', uploaderCookie)
       .field('recordType', 'invoice')
       .field('recordId', contactId)
@@ -225,7 +227,7 @@ describe('POST /api/attachments', () => {
 
   it('returns 400 when MIME type is not allowed', async () => {
     const res = await request(app)
-      .post('/api/attachments')
+      .post('/api/v1/attachments')
       .set('Cookie', uploaderCookie)
       .field('recordType', 'contact')
       .field('recordId', contactId)
@@ -240,7 +242,7 @@ describe('POST /api/attachments', () => {
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .post('/api/attachments')
+      .post('/api/v1/attachments')
       .field('recordType', 'contact')
       .field('recordId', contactId)
       .attach('file', Buffer.from('%PDF-1.4'), {
@@ -265,7 +267,7 @@ describe('DELETE /api/attachments/:id', () => {
     const attachmentId = await insertAttachment({ uploaderId, filename: 'protected.pdf' });
 
     const res = await request(app)
-      .delete(`/api/attachments/${attachmentId}`)
+      .delete(`/api/v1/attachments/${attachmentId}`)
       .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
@@ -274,7 +276,7 @@ describe('DELETE /api/attachments/:id', () => {
 
   it('returns 404 when the attachment does not exist', async () => {
     const res = await request(app)
-      .delete('/api/attachments/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/attachments/00000000-0000-0000-0000-000000000000')
       .set('Cookie', uploaderCookie);
 
     expect(res.status).toBe(404);
@@ -284,7 +286,7 @@ describe('DELETE /api/attachments/:id', () => {
   it('returns 401 when unauthenticated', async () => {
     const attachmentId = await insertAttachment({ uploaderId, filename: 'unauth.pdf' });
 
-    const res = await request(app).delete(`/api/attachments/${attachmentId}`);
+    const res = await request(app).delete(`/api/v1/attachments/${attachmentId}`);
 
     expect(res.status).toBe(401);
   });

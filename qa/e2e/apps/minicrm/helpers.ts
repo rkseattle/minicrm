@@ -126,14 +126,14 @@ export async function createTestContact(
 
   // Step 1: create via REST with response schema validation (MINCRM-229).
   // Server returns { contact: ContactRow } — validate the envelope + inner object.
-  const response = await restClient.post<{ contact: TestContact }>('/api/contacts', payload, {
+  const response = await restClient.post<{ contact: TestContact }>('/api/v1/contacts', payload, {
     schema: contactResponseEnvelopeSchema,
   });
   const contact = response.body.contact;
 
   // Step 2: register for teardown immediately so cleanup runs even if the
   // test throws before completing setup.
-  testData.register('contact', contact.id, `/api/contacts/${contact.id}`);
+  testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
 
   // Step 3: return entity for test assertions.
   return contact;
@@ -165,13 +165,13 @@ export async function createTestAccount(
 
   // Step 1: create via REST with response schema validation (MINCRM-229).
   // Server returns { account: AccountRow } — validate the envelope + inner object.
-  const response = await restClient.post<{ account: TestAccount }>('/api/accounts', payload, {
+  const response = await restClient.post<{ account: TestAccount }>('/api/v1/accounts', payload, {
     schema: accountResponseEnvelopeSchema,
   });
   const account = response.body.account;
 
   // Step 2: register for teardown.
-  testData.register('account', account.id, `/api/accounts/${account.id}`);
+  testData.register('account', account.id, `/api/v1/accounts/${account.id}`);
 
   // Step 3: return entity.
   return account;
@@ -246,12 +246,12 @@ export async function createTestDeal(
   if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
   // Server returns { deal: DealRow } — validate the envelope + inner object (MINCRM-229).
-  const response = await restClient.post<{ deal: TestDeal }>('/api/deals', payload, {
+  const response = await restClient.post<{ deal: TestDeal }>('/api/v1/deals', payload, {
     schema: dealResponseEnvelopeSchema,
   });
   const deal = response.body.deal;
 
-  testData.register('deal', deal.id, `/api/deals/${deal.id}`);
+  testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
   return deal;
 }
 
@@ -295,11 +295,11 @@ export async function createTestTag(
   };
 
   // Server returns { tag: TagRow } on 201.
-  const response = await restClient.post<{ tag: TestTag }>('/api/tags', payload);
+  const response = await restClient.post<{ tag: TestTag }>('/api/v1/tags', payload);
   const tag = response.body.tag;
 
   // Tags require admin to delete (DELETE /api/tags/:id is admin-only).
-  testData.register('tag', tag.id, `/api/tags/${tag.id}`);
+  testData.register('tag', tag.id, `/api/v1/tags/${tag.id}`);
 
   return tag;
 }
@@ -368,10 +368,10 @@ export async function createTestActivity(
   if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
 
   // Server returns { activity: ActivityRow } — unwrap.
-  const response = await restClient.post<{ activity: TestActivity }>('/api/activities', payload);
+  const response = await restClient.post<{ activity: TestActivity }>('/api/v1/activities', payload);
   const activity = response.body.activity;
 
-  testData.register('activity', activity.id, `/api/activities/${activity.id}`);
+  testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
   return activity;
 }
 
@@ -427,7 +427,7 @@ export async function createTestUser(
 
   // Server returns { user, inviteToken }.
   const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
-    '/api/users/invite',
+    '/api/v1/users/invite',
     payload,
   );
   const { user, inviteToken } = response.body;
@@ -438,7 +438,7 @@ export async function createTestUser(
   // and breaks the BVT login assertion. set-password with the invite token
   // activates the account with must_change_password=false.
   const password = overrides.password ?? 'BvtPassword1!';
-  await restClient.post('/api/users/set-password', { token: inviteToken, password });
+  await restClient.post('/api/v1/users/set-password', { token: inviteToken, password });
 
   return { ...user, status: 'active' };
 }
@@ -446,7 +446,7 @@ export async function createTestUser(
 /**
  * Logs in via the REST API and verifies the session is active before returning.
  *
- * Use this instead of a bare `restClient.post('/api/auth/login', ...)` when the
+ * Use this instead of a bare `restClient.post('/api/v1/auth/login', ...)` when the
  * client will immediately make authenticated requests — the GET /api/auth/me call
  * confirms the session cookie has been set and the server has accepted it, which
  * prevents race conditions under parallel CI load.
@@ -460,8 +460,8 @@ export async function loginAndVerify(
   email: string,
   password: string,
 ): Promise<void> {
-  await restClient.post('/api/auth/login', { email, password });
-  await restClient.get('/api/auth/me');
+  await restClient.post('/api/v1/auth/login', { email, password });
+  await restClient.get('/api/v1/auth/me');
 }
 
 // ---------------------------------------------------------------------------

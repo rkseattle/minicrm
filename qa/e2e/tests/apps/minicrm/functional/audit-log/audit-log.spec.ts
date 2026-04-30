@@ -35,7 +35,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F12-audit-log] E2E_ADMIN_PASSWORD is not 
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 const REP_PASSWORD = 'BvtPassword1!';
@@ -111,7 +111,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   });
 
   // Update a field so an 'updated' entry is written
-  await restClient.patch(`/api/contacts/${contact.id}`, { first_name: 'F12AL1Updated' });
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, { first_name: 'F12AL1Updated' });
 
   // Navigate to audit log
   await page.goto('/admin/audit-log');
@@ -132,7 +132,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
 
   // Verify via API that the entry exists
   const auditResponse = await restClient.get<AuditLogListResponse>(
-    `/api/audit-log?recordType=contact`,
+    `/api/v1/audit-log?recordType=contact`,
   );
   expect(
     auditResponse.body.total,
@@ -172,7 +172,7 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 
   // Check via API that the filtered results only contain account entries
   const auditResponse = await restClient.get<AuditLogListResponse>(
-    `/api/audit-log?recordType=account`,
+    `/api/v1/audit-log?recordType=account`,
   );
   const nonAccountEntries = auditResponse.body.data.filter((e) => e.record_type !== 'account');
   expect(nonAccountEntries.length, 'filtered audit log should only contain account entries').toBe(
@@ -191,11 +191,11 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   });
 
   // Update to generate change entries (one row per changed field in the audit log)
-  await restClient.patch(`/api/contacts/${contact.id}`, { first_name: 'F12AL3Updated' });
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, { first_name: 'F12AL3Updated' });
 
   // Use the record-scoped endpoint to avoid pagination gaps in the system-wide list.
   const auditResponse = await restClient.get<{ entries: AuditLogEntry[] }>(
-    `/api/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
+    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
   );
   // The audit service stores the display name via getFieldDisplayName(), so
   // 'first_name' (DB column) is stored as 'First Name' in field_name.
@@ -246,18 +246,18 @@ test('@functional F12-AL4: Rep navigating to audit log is blocked', async ({ res
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
   try {
-    await restClient.post('/api/auth/login', { email: rep.email, password: REP_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: rep.email, password: REP_PASSWORD });
 
     let got403 = false;
     try {
-      await restClient.get<AuditLogListResponse>('/api/audit-log');
+      await restClient.get<AuditLogListResponse>('/api/v1/audit-log');
     } catch (err) {
       if (err instanceof RestClientError && err.status === 403) got403 = true;
     }
     expect(got403, 'rep should get 403 when accessing audit log').toBe(true);
   } finally {
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch(`/api/users/${rep.id}/deactivate`, {}).catch(() => null);
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {}).catch(() => null);
   }
 });
 
@@ -275,50 +275,50 @@ test('@functional F12-V1: Lead conversion — contact, account, and deal all exi
   const dealName = `${companyName} — Opportunity`;
 
   // Create lead
-  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/leads', {
+  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/v1/leads', {
     first_name: 'F12V1',
     last_name: 'Lead',
     email: leadEmail,
     company_name: companyName,
   });
   const leadId = leadResp.body.lead.id;
-  testData.register('lead', leadId, `/api/leads/${leadId}`);
+  testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   // Convert atomically
-  const conversion = await restClient.post<ConversionResponse>(`/api/leads/${leadId}/convert`, {
+  const conversion = await restClient.post<ConversionResponse>(`/api/v1/leads/${leadId}/convert`, {
     contact: { first_name: 'F12V1', last_name: 'Lead', email: leadEmail },
     account: { mode: 'create', name: companyName },
     deal: { name: dealName },
   });
   const { contact_id, account_id, deal_id } = conversion.body.conversion;
 
-  testData.register('contact', contact_id, `/api/contacts/${contact_id}`);
-  testData.register('deal', deal_id, `/api/deals/${deal_id}`);
+  testData.register('contact', contact_id, `/api/v1/contacts/${contact_id}`);
+  testData.register('deal', deal_id, `/api/v1/deals/${deal_id}`);
   // Accounts created by conversion are not directly deleteable in teardown if they have deals;
   // register anyway and teardown will handle 409 gracefully.
-  testData.register('account', account_id, `/api/accounts/${account_id}`);
+  testData.register('account', account_id, `/api/v1/accounts/${account_id}`);
 
   // Verify contact exists with correct email
-  const contactResp = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact_id}`);
+  const contactResp = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact_id}`);
   expect(contactResp.body.contact.email, 'converted contact email should match lead email').toBe(
     leadEmail,
   );
 
   // Verify account exists with correct name
-  const accountResp = await restClient.get<AccountSingleResponse>(`/api/accounts/${account_id}`);
+  const accountResp = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account_id}`);
   expect(accountResp.body.account.name, 'converted account name should match company name').toBe(
     companyName,
   );
 
   // Verify deal exists and is linked to the account
-  const dealResp = await restClient.get<DealSingleResponse>(`/api/deals/${deal_id}`);
+  const dealResp = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal_id}`);
   expect(dealResp.body.deal.name, 'converted deal name should match').toBe(dealName);
   expect(dealResp.body.deal.account_id, 'converted deal should be linked to the new account').toBe(
     account_id,
   );
 
   // Verify lead is marked converted
-  const leadDetail = await restClient.get<LeadSingleResponse>(`/api/leads/${leadId}`);
+  const leadDetail = await restClient.get<LeadSingleResponse>(`/api/v1/leads/${leadId}`);
   expect(leadDetail.body.lead.converted_at, 'lead converted_at should be set').not.toBeNull();
   expect(leadDetail.body.lead.converted_contact_id, 'lead should reference converted contact').toBe(
     contact_id,
@@ -332,15 +332,15 @@ test('@functional F12-V2: Converted lead does not appear in default list but app
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const leadEmail = `f12v2-${suffix}@example.com`;
 
-  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/leads', {
+  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/v1/leads', {
     first_name: 'F12V2',
     email: leadEmail,
     company_name: `F12V2 Corp ${suffix}`,
   });
   const leadId = leadResp.body.lead.id;
-  testData.register('lead', leadId, `/api/leads/${leadId}`);
+  testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
-  const conversion = await restClient.post<ConversionResponse>(`/api/leads/${leadId}/convert`, {
+  const conversion = await restClient.post<ConversionResponse>(`/api/v1/leads/${leadId}/convert`, {
     contact: { first_name: 'F12V2', email: leadEmail },
     account: { mode: 'create', name: `F12V2 Corp ${suffix}` },
     deal: { name: `F12V2 Corp — Opportunity` },
@@ -348,27 +348,27 @@ test('@functional F12-V2: Converted lead does not appear in default list but app
   testData.register(
     'contact',
     conversion.body.conversion.contact_id,
-    `/api/contacts/${conversion.body.conversion.contact_id}`,
+    `/api/v1/contacts/${conversion.body.conversion.contact_id}`,
   );
   testData.register(
     'deal',
     conversion.body.conversion.deal_id,
-    `/api/deals/${conversion.body.conversion.deal_id}`,
+    `/api/v1/deals/${conversion.body.conversion.deal_id}`,
   );
   testData.register(
     'account',
     conversion.body.conversion.account_id,
-    `/api/accounts/${conversion.body.conversion.account_id}`,
+    `/api/v1/accounts/${conversion.body.conversion.account_id}`,
   );
 
   // Default list should not include the converted lead
-  const defaultList = await restClient.get<{ data: Array<{ id: string }> }>('/api/leads');
+  const defaultList = await restClient.get<{ data: Array<{ id: string }> }>('/api/v1/leads');
   const foundInDefault = defaultList.body.data.some((l) => l.id === leadId);
   expect(foundInDefault, 'converted lead should be hidden in default list').toBe(false);
 
   // With includeConverted=true, lead should appear
   const fullList = await restClient.get<{ data: Array<{ id: string }> }>(
-    '/api/leads?includeConverted=true',
+    '/api/v1/leads?includeConverted=true',
   );
   const foundInFull = fullList.body.data.some((l) => l.id === leadId);
   expect(foundInFull, 'converted lead should be visible with includeConverted=true').toBe(true);

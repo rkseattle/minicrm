@@ -23,7 +23,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/tags:
+ * /api/v1/tags:
  *   get:
  *     tags: [Tags]
  *     operationId: listTags
@@ -49,7 +49,7 @@ router.get('/', authenticate, asyncHandler(listTagsHandler));
 
 /**
  * @openapi
- * /api/tags:
+ * /api/v1/tags:
  *   post:
  *     tags: [Tags]
  *     operationId: createTag
@@ -78,7 +78,7 @@ router.post('/', authenticate, asyncHandler(createTagHandler));
 
 /**
  * @openapi
- * /api/tags/{id}:
+ * /api/v1/tags/{id}:
  *   get:
  *     tags: [Tags]
  *     operationId: getTag
@@ -104,7 +104,7 @@ router.get('/:id', authenticate, asyncHandler(getTagHandler));
 
 /**
  * @openapi
- * /api/tags/{id}:
+ * /api/v1/tags/{id}:
  *   patch:
  *     tags: [Tags]
  *     operationId: updateTag
@@ -143,7 +143,7 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateTagH
 
 /**
  * @openapi
- * /api/tags/{id}:
+ * /api/v1/tags/{id}:
  *   delete:
  *     tags: [Tags]
  *     operationId: deleteTag

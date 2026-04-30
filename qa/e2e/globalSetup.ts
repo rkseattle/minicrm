@@ -28,7 +28,7 @@ export const ADMIN_STORAGE_STATE = path.join(__dirname, '.auth', 'admin.json');
  */
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   const apiUrl = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
-  const loginUrl = `${apiUrl}/api/auth/login`;
+  const loginUrl = `${apiUrl}/api/v1/auth/login`;
 
   const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const adminPassword = process.env['E2E_ADMIN_PASSWORD'];
@@ -70,7 +70,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   // Mark onboarding as completed so the banner does not appear during E2E runs.
   // The banner is a first-run experience; its own spec manages the flag directly.
-  const onboardingUrl = `${apiUrl}/api/settings/onboarding`;
+  const onboardingUrl = `${apiUrl}/api/v1/settings/onboarding`;
   const onboardingRes = await fetch(onboardingUrl, {
     method: 'PUT',
     headers: {

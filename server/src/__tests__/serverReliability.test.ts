@@ -269,7 +269,7 @@ describe('MINCRM-248: pool exhaustion returns 503', () => {
 
     try {
       const res = await request(app)
-        .post('/api/contacts')
+        .post('/api/v1/contacts')
         .set('Cookie', cookie)
         .send({ first_name: 'A', last_name: 'B', email: 'pool-timeout@example.com' });
 

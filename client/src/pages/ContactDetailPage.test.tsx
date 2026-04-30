@@ -113,7 +113,7 @@ describe('ContactDetailPage', () => {
 
   it('shows not-found message when contact does not exist', async () => {
     server.use(
-      http.get('/api/contacts/:id', () =>
+      http.get('/api/v1/contacts/:id', () =>
         HttpResponse.json(
           { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
           { status: 404 },
@@ -180,7 +180,7 @@ describe('ContactDetailPage', () => {
 
   it('renders "—" in the account row when no account is linked', async () => {
     server.use(
-      http.get('/api/contacts/:id', ({ params }) => {
+      http.get('/api/v1/contacts/:id', ({ params }) => {
         if (params.id === CONTACT_1.id) {
           return HttpResponse.json({ contact: { ...CONTACT_1, account_id: null } });
         }
@@ -212,7 +212,7 @@ describe('ContactDetailPage', () => {
 
   it('shows fallback owner text when owner is not in the active users list', async () => {
     server.use(
-      http.get('/api/contacts/:id', ({ params }) => {
+      http.get('/api/v1/contacts/:id', ({ params }) => {
         if (params.id === CONTACT_1.id) {
           return HttpResponse.json({
             contact: { ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
@@ -236,7 +236,7 @@ describe('ContactDetailPage', () => {
   it('renders the owner select immediately when the edit form opens, even if the active users query is still loading', async () => {
     // Hang the active users response so it never resolves during this test.
     // The owner select must still render — the form cannot gate on this query.
-    server.use(http.get('/api/users/active', () => new Promise(() => {})));
+    server.use(http.get('/api/v1/users/active', () => new Promise(() => {})));
 
     const user = userEvent.setup();
     renderWithProviders(<ContactDetailPage />, {
@@ -279,7 +279,7 @@ describe('ContactDetailPage', () => {
   it('shows a disabled unknown option in the edit form when the owner is deactivated', async () => {
     const deactivatedOwnerId = '00000000-0000-0000-0000-000000000999';
     server.use(
-      http.get('/api/contacts/:id', ({ params }) => {
+      http.get('/api/v1/contacts/:id', ({ params }) => {
         if (params.id === CONTACT_1.id) {
           return HttpResponse.json({
             contact: { ...CONTACT_1, owner_id: deactivatedOwnerId },
@@ -317,7 +317,7 @@ describe('ContactDetailPage', () => {
     const user = userEvent.setup();
     let patchedBody: Record<string, unknown> = {};
     server.use(
-      http.patch('/api/contacts/:id', async ({ params, request }) => {
+      http.patch('/api/v1/contacts/:id', async ({ params, request }) => {
         patchedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           contact: { ...CONTACT_1, ...patchedBody, id: params.id as string },
@@ -365,7 +365,7 @@ describe('ContactDetailPage', () => {
   });
 
   it('shows empty state when no deals are linked', async () => {
-    server.use(http.get('/api/contacts/:id/deals', () => HttpResponse.json({ deals: [] })));
+    server.use(http.get('/api/v1/contacts/:id/deals', () => HttpResponse.json({ deals: [] })));
     renderWithProviders(<ContactDetailPage />, {
       initialEntries: [`/contacts/${CONTACT_1.id}`],
       path: '/contacts/:id',
@@ -419,7 +419,7 @@ describe('ContactDetailPage', () => {
 
   it('shows a delete error message when the delete request fails', async () => {
     server.use(
-      http.delete('/api/contacts/:id', () =>
+      http.delete('/api/v1/contacts/:id', () =>
         HttpResponse.json(
           { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
           { status: 500 },
@@ -445,7 +445,7 @@ describe('ContactDetailPage', () => {
 
   it('shows an update error when saving contact changes fails', async () => {
     server.use(
-      http.patch('/api/contacts/:id', () =>
+      http.patch('/api/v1/contacts/:id', () =>
         HttpResponse.json(
           { error: { code: 'VALIDATION_ERROR', message: 'Email already in use' } },
           { status: 409 },
@@ -543,7 +543,7 @@ describe('ContactDetailPage', () => {
     it('shows existing addresses when the address list is non-empty', async () => {
       const addressId = '00000000-0000-0000-0000-000000000501';
       server.use(
-        http.get('/api/contacts/:id/addresses', () =>
+        http.get('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json({
             addresses: [
               {
@@ -580,7 +580,7 @@ describe('ContactDetailPage', () => {
       const addressId = '00000000-0000-0000-0000-000000000502';
       let deleted = false;
       server.use(
-        http.get('/api/contacts/:id/addresses', () =>
+        http.get('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json({
             addresses: deleted
               ? []
@@ -601,7 +601,7 @@ describe('ContactDetailPage', () => {
                 ],
           }),
         ),
-        http.delete('/api/contacts/:id/addresses/:addressId', () => {
+        http.delete('/api/v1/contacts/:id/addresses/:addressId', () => {
           deleted = true;
           return HttpResponse.json({ success: true });
         }),
@@ -626,7 +626,7 @@ describe('ContactDetailPage', () => {
     it('sets an address as default when Set as Default is clicked', async () => {
       const addressId = '00000000-0000-0000-0000-000000000503';
       server.use(
-        http.get('/api/contacts/:id/addresses', () =>
+        http.get('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json({
             addresses: [
               {
@@ -662,7 +662,7 @@ describe('ContactDetailPage', () => {
 
     it('shows an error message when saving an address fails', async () => {
       server.use(
-        http.post('/api/contacts/:id/addresses', () =>
+        http.post('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json(
             { error: { code: 'VALIDATION_ERROR', message: 'Address is invalid' } },
             { status: 400 },
@@ -704,7 +704,7 @@ describe('ContactDetailPage', () => {
   describe('social profile display', () => {
     it('shows other_url as a clickable link when set', async () => {
       server.use(
-        http.get('/api/contacts/:id', ({ params }) => {
+        http.get('/api/v1/contacts/:id', ({ params }) => {
           if (params.id === CONTACT_1.id) {
             return HttpResponse.json({
               contact: { ...CONTACT_1, other_url: 'https://example.com/profile' },

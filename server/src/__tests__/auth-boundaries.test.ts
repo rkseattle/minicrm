@@ -141,7 +141,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/deals/${deal.id}`)
+      .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repBCookie)
       .send({ name: 'Hijacked Deal' });
 
@@ -156,7 +156,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/deals/${deal.id}`).set('Cookie', repBCookie);
+    const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -170,7 +170,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/deals/${deal.id}`)
+      .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', adminCookie)
       .send({ name: 'Admin Updated Deal' });
 
@@ -185,7 +185,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/deals/${deal.id}`).set('Cookie', adminCookie);
+    const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
@@ -203,7 +203,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${activity.id}`)
+      .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', repBCookie)
       .send({ subject: 'Hijacked Task' });
 
@@ -220,7 +220,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .delete(`/api/activities/${activity.id}`)
+      .delete(`/api/v1/activities/${activity.id}`)
       .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
@@ -236,7 +236,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/activities/${activity.id}`)
+      .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', adminCookie)
       .send({ subject: 'Admin Updated Task' });
 
@@ -253,7 +253,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .delete(`/api/activities/${activity.id}`)
+      .delete(`/api/v1/activities/${activity.id}`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
@@ -265,7 +265,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
 describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
   it('returns 403 FORBIDDEN when rep POSTs to automation rules', async () => {
     const res = await request(app)
-      .post('/api/automation/rules')
+      .post('/api/v1/automation/rules')
       .set('Cookie', repBCookie)
       .send({
         name: 'Test Rule',
@@ -282,7 +282,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
 
   it('returns 403 FORBIDDEN when rep PATCHes the default language setting', async () => {
     const res = await request(app)
-      .patch('/api/settings/default-language')
+      .patch('/api/v1/settings/default-language')
       .set('Cookie', repBCookie)
       .send({ language: 'es' });
 
@@ -293,7 +293,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
   it('returns 403 FORBIDDEN when rep attempts to change another user role', async () => {
     // PATCH /api/users/:id/role is admin-only; rep should be blocked
     const res = await request(app)
-      .patch(`/api/users/${repAId}/role`)
+      .patch(`/api/v1/users/${repAId}/role`)
       .set('Cookie', repBCookie)
       .send({ role: 'admin' });
 
@@ -302,7 +302,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
   });
 
   it('returns 403 FORBIDDEN when rep attempts to list all automation rules', async () => {
-    const res = await request(app).get('/api/automation/rules').set('Cookie', repBCookie);
+    const res = await request(app).get('/api/v1/automation/rules').set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
@@ -313,7 +313,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
     // Reps receive their own deals only (scoped by owner_id = req.user.id).
     // This is by design — the endpoint is NOT admin-only.
     const res = await request(app)
-      .get('/api/reports/win-loss?start=2026-01-01&end=2026-12-31')
+      .get('/api/v1/reports/win-loss?start=2026-01-01&end=2026-12-31')
       .set('Cookie', repBCookie);
 
     expect(res.status).toBe(200);
@@ -332,7 +332,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     });
 
     const res = await request(app)
-      .patch(`/api/contacts/${contact.id}`)
+      .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', repBCookie)
       .send({ first_name: 'Hacked' });
 
@@ -348,7 +348,9 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', repBCookie);
+    const res = await request(app)
+      .delete(`/api/v1/contacts/${contact.id}`)
+      .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -363,7 +365,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     });
 
     const res = await request(app)
-      .patch(`/api/contacts/${contact.id}`)
+      .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', adminCookie)
       .send({ first_name: 'Admin Updated' });
 
@@ -379,7 +381,9 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/contacts/${contact.id}`).set('Cookie', adminCookie);
+    const res = await request(app)
+      .delete(`/api/v1/contacts/${contact.id}`)
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
@@ -393,7 +397,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     });
 
     const res = await request(app)
-      .patch(`/api/accounts/${account.id}`)
+      .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', repBCookie)
       .send({ name: 'Hacked Account' });
 
@@ -407,7 +411,9 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', repBCookie);
+    const res = await request(app)
+      .delete(`/api/v1/accounts/${account.id}`)
+      .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -420,7 +426,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     });
 
     const res = await request(app)
-      .patch(`/api/accounts/${account.id}`)
+      .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', adminCookie)
       .send({ name: 'Admin Updated Account' });
 
@@ -434,7 +440,9 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
       owner_id: repAId,
     });
 
-    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', adminCookie);
+    const res = await request(app)
+      .delete(`/api/v1/accounts/${account.id}`)
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
@@ -444,17 +452,21 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
 
 describe('MINCRM-188 — bulk endpoints require authentication', () => {
   it('returns 401 when unauthenticated POST to /api/contacts/bulk', async () => {
-    const res = await request(app).post('/api/contacts/bulk').send({ action: 'delete', ids: [] });
+    const res = await request(app)
+      .post('/api/v1/contacts/bulk')
+      .send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });
 
   it('returns 401 when unauthenticated POST to /api/accounts/bulk', async () => {
-    const res = await request(app).post('/api/accounts/bulk').send({ action: 'delete', ids: [] });
+    const res = await request(app)
+      .post('/api/v1/accounts/bulk')
+      .send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });
 
   it('returns 401 when unauthenticated POST to /api/deals/bulk', async () => {
-    const res = await request(app).post('/api/deals/bulk').send({ action: 'delete', ids: [] });
+    const res = await request(app).post('/api/v1/deals/bulk').send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });
 });
@@ -469,7 +481,7 @@ describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .post('/api/contacts/bulk')
+      .post('/api/v1/contacts/bulk')
       .set('Cookie', repBCookie)
       .send({ action: 'delete', ids: [contact.id] });
 
@@ -486,7 +498,7 @@ describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .post('/api/contacts/bulk')
+      .post('/api/v1/contacts/bulk')
       .set('Cookie', repBCookie)
       .send({ action: 'reassign', ids: [contact.id], owner_id: repAId });
 
@@ -503,7 +515,7 @@ describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
     });
 
     const res = await request(app)
-      .post('/api/contacts/bulk')
+      .post('/api/v1/contacts/bulk')
       .set('Cookie', adminCookie)
       .send({ action: 'delete', ids: [contact.id] });
 
@@ -524,7 +536,7 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
 
     // Rep B sends a PATCH with owner_id set to rep A's ID — should still be blocked
     const res = await request(app)
-      .patch(`/api/deals/${deal.id}`)
+      .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repBCookie)
       .send({ name: 'Hijacked', owner_id: repAId });
 
@@ -542,7 +554,7 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
 
     // Rep B sends a PATCH with owner_id set to rep A's ID — should still be blocked
     const res = await request(app)
-      .patch(`/api/activities/${activity.id}`)
+      .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', repBCookie)
       .send({ subject: 'Hijacked Task', owner_id: repAId });
 

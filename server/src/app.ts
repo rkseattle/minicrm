@@ -88,27 +88,63 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// ── Routes ─────────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/contacts', contactRoutes);
-app.use('/api/accounts', accountRoutes);
-app.use('/api/deals', dealRoutes);
-app.use('/api/activities', activityRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/automation/rules', automationRoutes);
-app.use('/api/admin/webhooks', webhookRoutes);
-app.use('/api/admin/demo', demoRoutes);
-app.use('/api/admin/import', importRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/attachments', attachmentRoutes);
-app.use('/api/audit-log', auditLogRoutes);
-app.use('/api/leads', leadRoutes);
-app.use('/api/tags', tagRoutes);
-app.use('/api/custom-fields/definitions', customFieldDefinitionRoutes);
-app.use('/api/custom-fields', customFieldValueRoutes);
+// ── Routes (v1) ────────────────────────────────────────────────────────────────
+// All resource routes are mounted under /api/v1/. The /api/health endpoint is
+// intentionally unversioned — it is a platform/infra endpoint, not an API resource.
+// MINCRM-283
+const API_V1 = '/api/v1';
+
+app.use(`${API_V1}/auth`, authRoutes);
+app.use(`${API_V1}/users`, userRoutes);
+app.use(`${API_V1}/contacts`, contactRoutes);
+app.use(`${API_V1}/accounts`, accountRoutes);
+app.use(`${API_V1}/deals`, dealRoutes);
+app.use(`${API_V1}/activities`, activityRoutes);
+app.use(`${API_V1}/dashboard`, dashboardRoutes);
+app.use(`${API_V1}/reports`, reportRoutes);
+app.use(`${API_V1}/settings`, settingsRoutes);
+app.use(`${API_V1}/automation/rules`, automationRoutes);
+app.use(`${API_V1}/admin/webhooks`, webhookRoutes);
+app.use(`${API_V1}/admin/demo`, demoRoutes);
+app.use(`${API_V1}/admin/import`, importRoutes);
+app.use(`${API_V1}/search`, searchRoutes);
+app.use(`${API_V1}/attachments`, attachmentRoutes);
+app.use(`${API_V1}/audit-log`, auditLogRoutes);
+app.use(`${API_V1}/leads`, leadRoutes);
+app.use(`${API_V1}/tags`, tagRoutes);
+app.use(`${API_V1}/custom-fields/definitions`, customFieldDefinitionRoutes);
+app.use(`${API_V1}/custom-fields`, customFieldValueRoutes);
+
+// ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
+// 301 redirects let external consumers that haven't migrated yet reach the
+// versioned routes. The redirect preserves the path suffix so nested routes work.
+// Remove this block once all known consumers are on /api/v1/.
+const LEGACY_PREFIXES = [
+  '/api/auth',
+  '/api/users',
+  '/api/contacts',
+  '/api/accounts',
+  '/api/deals',
+  '/api/activities',
+  '/api/dashboard',
+  '/api/reports',
+  '/api/settings',
+  '/api/automation',
+  '/api/admin',
+  '/api/search',
+  '/api/attachments',
+  '/api/audit-log',
+  '/api/leads',
+  '/api/tags',
+  '/api/custom-fields',
+];
+
+for (const prefix of LEGACY_PREFIXES) {
+  app.use(prefix, (req, res) => {
+    const newUrl = req.originalUrl.replace(/^\/api\//, '/api/v1/');
+    res.redirect(301, newUrl);
+  });
+}
 
 // ── Health check ───────────────────────────────────────────────────────────────
 // No authentication — must remain public for load balancers and orchestrators.

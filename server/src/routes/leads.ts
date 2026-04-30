@@ -21,7 +21,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/leads/accounts/search:
+ * /api/v1/leads/accounts/search:
  *   get:
  *     tags: [Leads]
  *     operationId: searchAccountsForConversion
@@ -47,7 +47,7 @@ router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler)
 
 /**
  * @openapi
- * /api/leads:
+ * /api/v1/leads:
  *   get:
  *     tags: [Leads]
  *     operationId: listLeads
@@ -89,7 +89,7 @@ router.get('/', authenticate, asyncHandler(listLeadsHandler));
 
 /**
  * @openapi
- * /api/leads:
+ * /api/v1/leads:
  *   post:
  *     tags: [Leads]
  *     operationId: createLead
@@ -116,7 +116,7 @@ router.post('/', authenticate, asyncHandler(createLeadHandler));
 
 /**
  * @openapi
- * /api/leads/{id}:
+ * /api/v1/leads/{id}:
  *   get:
  *     tags: [Leads]
  *     operationId: getLead
@@ -142,7 +142,7 @@ router.get('/:id', authenticate, asyncHandler(getLeadHandler));
 
 /**
  * @openapi
- * /api/leads/{id}:
+ * /api/v1/leads/{id}:
  *   patch:
  *     tags: [Leads]
  *     operationId: updateLead
@@ -178,7 +178,7 @@ router.patch('/:id', authenticate, asyncHandler(updateLeadHandler));
 
 /**
  * @openapi
- * /api/leads/{id}:
+ * /api/v1/leads/{id}:
  *   delete:
  *     tags: [Leads]
  *     operationId: deleteLead
@@ -206,7 +206,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteLeadHandler));
 
 /**
  * @openapi
- * /api/leads/{id}/status-history:
+ * /api/v1/leads/{id}/status-history:
  *   get:
  *     tags: [Leads]
  *     operationId: getLeadStatusHistory
@@ -232,7 +232,7 @@ router.get('/:id/status-history', authenticate, asyncHandler(getLeadStatusHistor
 
 /**
  * @openapi
- * /api/leads/{id}/convert:
+ * /api/v1/leads/{id}/convert:
  *   post:
  *     tags: [Leads]
  *     operationId: convertLead

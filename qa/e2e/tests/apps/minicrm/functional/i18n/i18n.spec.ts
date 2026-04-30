@@ -59,9 +59,11 @@ async function setSystemLanguage(
   restClient: RestClient,
   tag: string,
 ): Promise<void> {
-  await restClient.patch('/api/settings/default-language', { language }).catch((err: unknown) => {
-    console.error(`[${tag}] setSystemLanguage(${language}) failed: ${String(err)}`);
-  });
+  await restClient
+    .patch('/api/v1/settings/default-language', { language })
+    .catch((err: unknown) => {
+      console.error(`[${tag}] setSystemLanguage(${language}) failed: ${String(err)}`);
+    });
 }
 
 /**
@@ -79,7 +81,7 @@ async function resetLanguage(restClient: RestClient, tag: string): Promise<void>
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -160,10 +162,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     });
 
     // Set the rep's personal language preference to French via the API.
-    await restClient.post('/api/auth/login', { email: repEmail, password: repPassword });
-    await restClient.patch('/api/users/me/language', { language: 'fr' });
+    await restClient.post('/api/v1/auth/login', { email: repEmail, password: repPassword });
+    await restClient.patch('/api/v1/users/me/language', { language: 'fr' });
     // Restore admin session for teardown.
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     try {
       // Log in as the rep via the browser.
@@ -202,9 +204,9 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       setLocale('en');
       // Re-authenticate as admin and deactivate the test rep.
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${rep.id}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch((err: unknown) => {
         console.error(`[F9-L2] teardown: failed to deactivate rep: ${String(err)}`);
       });
     }
@@ -233,11 +235,11 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
     // Authenticate as the new rep to set their language preference via the API.
     const repRestClient = restClient;
-    await repRestClient.post('/api/auth/login', { email: repEmail, password: repPassword });
-    await repRestClient.patch('/api/users/me/language', { language: 'de' });
+    await repRestClient.post('/api/v1/auth/login', { email: repEmail, password: repPassword });
+    await repRestClient.patch('/api/v1/users/me/language', { language: 'de' });
 
     // Restore admin session for teardown.
-    await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
     try {
       // Log in as the rep via the browser so the session cookie is set for page.
@@ -281,9 +283,9 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       setLocale('en');
       // Re-authenticate as admin to deactivate the test rep.
       await restClient
-        .post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
+        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
         .catch(() => null);
-      await restClient.patch(`/api/users/${rep.id}/deactivate`).catch((err: unknown) => {
+      await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch((err: unknown) => {
         console.error(`[F9-L3] teardown: failed to deactivate rep: ${String(err)}`);
       });
       await resetLanguage(restClient, 'F9-L3');
@@ -352,7 +354,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       if (isMobile) await closeMobileNavViaToggle({ page });
     } finally {
       // Reset both system default and the admin user's personal preference via API.
-      await restClient.patch('/api/users/me/language', { language: null }).catch(() => null);
+      await restClient.patch('/api/v1/users/me/language', { language: null }).catch(() => null);
       await resetLanguage(restClient, 'F9-L4');
     }
   });
@@ -410,7 +412,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await closeMobileNavViaToggle({ page });
     } finally {
       // Reset the admin user's personal language preference and system default.
-      await restClient.patch('/api/users/me/language', { language: null }).catch(() => null);
+      await restClient.patch('/api/v1/users/me/language', { language: null }).catch(() => null);
       await resetLanguage(restClient, 'F9-L5');
     }
   });

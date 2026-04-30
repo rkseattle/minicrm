@@ -21,7 +21,7 @@ router.use(authenticate, requireRole('admin'));
 
 /**
  * @openapi
- * /api/admin/demo/status:
+ * /api/v1/admin/demo/status:
  *   get:
  *     tags: [Admin]
  *     operationId: getDemoStatus
@@ -50,7 +50,7 @@ router.get('/status', asyncHandler(getDemoStatusHandler));
 
 /**
  * @openapi
- * /api/admin/demo/seed:
+ * /api/v1/admin/demo/seed:
  *   post:
  *     tags: [Admin]
  *     operationId: seedDemo
@@ -79,7 +79,7 @@ router.post('/seed', asyncHandler(seedDemoHandler));
 
 /**
  * @openapi
- * /api/admin/demo/reset:
+ * /api/v1/admin/demo/reset:
  *   post:
  *     tags: [Admin]
  *     operationId: resetDemo
@@ -106,7 +106,7 @@ router.post('/reset', asyncHandler(resetDemoHandler));
 
 /**
  * @openapi
- * /api/admin/demo:
+ * /api/v1/admin/demo:
  *   delete:
  *     tags: [Admin]
  *     operationId: removeDemo

@@ -102,7 +102,7 @@ afterAll(async () => {
 describe('POST /api/accounts', () => {
   it('creates an account and returns 201', async () => {
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'New Corp', industry: 'Finance' });
 
@@ -113,7 +113,7 @@ describe('POST /api/accounts', () => {
 
   it('returns 400 when name is missing', async () => {
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ industry: 'Finance' });
 
@@ -122,7 +122,7 @@ describe('POST /api/accounts', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post('/api/accounts').send({ name: 'Test Corp' });
+    const res = await request(app).post('/api/v1/accounts').send({ name: 'Test Corp' });
 
     expect(res.status).toBe(401);
   });
@@ -134,7 +134,7 @@ describe('GET /api/accounts', () => {
   it('returns all accounts', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).get('/api/accounts?owner=me').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/accounts?owner=me').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
@@ -143,7 +143,7 @@ describe('GET /api/accounts', () => {
   it('filters by owner when ?owner=me is passed', async () => {
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine', owner_id: repId });
 
-    const res = await request(app).get('/api/accounts?owner=me').set('Cookie', otherRepCookie);
+    const res = await request(app).get('/api/v1/accounts?owner=me').set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(0);
@@ -157,7 +157,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/accounts/${account.id}`)
+      .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', repCookie)
       .send({ name: 'Updated Corp' });
 
@@ -169,7 +169,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/accounts/${account.id}`)
+      .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', otherRepCookie)
       .send({ name: 'Hijacked' });
 
@@ -181,7 +181,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
-      .patch(`/api/accounts/${account.id}`)
+      .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', adminCookie)
       .send({ name: 'Admin Updated' });
 
@@ -191,7 +191,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
 
   it('returns 404 for a non-existent account', async () => {
     const res = await request(app)
-      .patch('/api/accounts/00000000-0000-0000-0000-000000000000')
+      .patch('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
       .send({ name: 'Ghost' });
 
@@ -205,7 +205,9 @@ describe('DELETE /api/accounts/:id — ownership', () => {
   it('allows the owning rep to delete their own account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', repCookie);
+    const res = await request(app)
+      .delete(`/api/v1/accounts/${account.id}`)
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(204);
   });
@@ -214,7 +216,7 @@ describe('DELETE /api/accounts/:id — ownership', () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
-      .delete(`/api/accounts/${account.id}`)
+      .delete(`/api/v1/accounts/${account.id}`)
       .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
@@ -224,14 +226,16 @@ describe('DELETE /api/accounts/:id — ownership', () => {
   it('allows an admin to delete any account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).delete(`/api/accounts/${account.id}`).set('Cookie', adminCookie);
+    const res = await request(app)
+      .delete(`/api/v1/accounts/${account.id}`)
+      .set('Cookie', adminCookie);
 
     expect(res.status).toBe(204);
   });
 
   it('returns 404 for a non-existent account', async () => {
     const res = await request(app)
-      .delete('/api/accounts/00000000-0000-0000-0000-000000000000')
+      .delete('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(404);
@@ -245,7 +249,7 @@ describe('GET /api/accounts — ?search filter', () => {
     await createAccount({ name: 'Alpha Corp', industry: 'Technology', owner_id: repId });
     await createAccount({ name: 'Beta Inc', industry: 'Finance', owner_id: repId });
 
-    const res = await request(app).get('/api/accounts?search=alpha').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/accounts?search=alpha').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
@@ -255,7 +259,9 @@ describe('GET /api/accounts — ?search filter', () => {
   it('returns empty array when search matches nothing', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).get('/api/accounts?search=zzznomatch').set('Cookie', repCookie);
+    const res = await request(app)
+      .get('/api/v1/accounts?search=zzznomatch')
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
@@ -270,7 +276,7 @@ describe('GET /api/accounts — ?industry filter', () => {
     await createAccount({ name: 'Finance Co', industry: 'Finance', owner_id: repId });
 
     const res = await request(app)
-      .get('/api/accounts?industry=Technology')
+      .get('/api/v1/accounts?industry=Technology')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -281,7 +287,7 @@ describe('GET /api/accounts — ?industry filter', () => {
   it('ignores whitespace-only industry param', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).get('/api/accounts?industry=%20').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/accounts?industry=%20').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeGreaterThanOrEqual(1);
@@ -294,7 +300,9 @@ describe('GET /api/accounts/:id — visibility', () => {
   it('allows any authenticated user to view any account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
-    const res = await request(app).get(`/api/accounts/${account.id}`).set('Cookie', otherRepCookie);
+    const res = await request(app)
+      .get(`/api/v1/accounts/${account.id}`)
+      .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.account.id).toBe(account.id);

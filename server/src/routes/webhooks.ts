@@ -19,7 +19,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/admin/webhooks:
+ * /api/v1/admin/webhooks:
  *   get:
  *     tags: [Webhooks]
  *     operationId: listWebhookSubscriptions
@@ -48,7 +48,7 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listWebhookSubs
 
 /**
  * @openapi
- * /api/admin/webhooks:
+ * /api/v1/admin/webhooks:
  *   post:
  *     tags: [Webhooks]
  *     operationId: createWebhookSubscription
@@ -84,11 +84,16 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listWebhookSubs
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/', authenticate, requireRole('admin'), asyncHandler(createWebhookSubscriptionHandler));
+router.post(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(createWebhookSubscriptionHandler),
+);
 
 /**
  * @openapi
- * /api/admin/webhooks/{id}:
+ * /api/v1/admin/webhooks/{id}:
  *   get:
  *     tags: [Webhooks]
  *     operationId: getWebhookSubscription
@@ -116,7 +121,7 @@ router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getWebhookSu
 
 /**
  * @openapi
- * /api/admin/webhooks/{id}:
+ * /api/v1/admin/webhooks/{id}:
  *   patch:
  *     tags: [Webhooks]
  *     operationId: updateWebhookSubscription
@@ -143,11 +148,16 @@ router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getWebhookSu
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateWebhookSubscriptionHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(updateWebhookSubscriptionHandler),
+);
 
 /**
  * @openapi
- * /api/admin/webhooks/{id}:
+ * /api/v1/admin/webhooks/{id}:
  *   delete:
  *     tags: [Webhooks]
  *     operationId: deleteWebhookSubscription
@@ -172,11 +182,16 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateWebh
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteWebhookSubscriptionHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(deleteWebhookSubscriptionHandler),
+);
 
 /**
  * @openapi
- * /api/admin/webhooks/{id}/logs:
+ * /api/v1/admin/webhooks/{id}/logs:
  *   get:
  *     tags: [Webhooks]
  *     operationId: listWebhookDeliveryLogs
@@ -211,6 +226,11 @@ router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteWeb
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id/logs', authenticate, requireRole('admin'), asyncHandler(listWebhookDeliveryLogsHandler));
+router.get(
+  '/:id/logs',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listWebhookDeliveryLogsHandler),
+);
 
 export default router;

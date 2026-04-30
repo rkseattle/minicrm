@@ -22,15 +22,13 @@ const RECORD_ID = '00000000-0000-0000-0000-000000000010';
 
 function mockDefinitions(defs: object[]) {
   server.use(
-    http.get('/api/custom-fields/definitions', () =>
-      HttpResponse.json({ definitions: defs }),
-    ),
+    http.get('/api/v1/custom-fields/definitions', () => HttpResponse.json({ definitions: defs })),
   );
 }
 
 function mockValues(values: object[]) {
   server.use(
-    http.get(`/api/custom-fields/contact/${RECORD_ID}/custom-fields`, () =>
+    http.get(`/api/v1/custom-fields/contact/${RECORD_ID}/custom-fields`, () =>
       HttpResponse.json({ values }),
     ),
   );
@@ -52,8 +50,16 @@ describe('CustomFieldsSection — read mode', () => {
   });
 
   it('is hidden when definitions exist but all values are empty', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Field A', field_type: 'text', options: null, sort_order: 0 }]);
-    mockValues([{ definition_id: DEF_ID, value: null, definition: { id: DEF_ID, name: 'Field A', field_type: 'text' } }]);
+    mockDefinitions([
+      { id: DEF_ID, name: 'Field A', field_type: 'text', options: null, sort_order: 0 },
+    ]);
+    mockValues([
+      {
+        definition_id: DEF_ID,
+        value: null,
+        definition: { id: DEF_ID, name: 'Field A', field_type: 'text' },
+      },
+    ]);
 
     renderWithProviders(
       <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={false} />,
@@ -65,7 +71,9 @@ describe('CustomFieldsSection — read mode', () => {
   });
 
   it('renders the read grid with field values when data is present', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'NPS Score', field_type: 'text', options: null, sort_order: 0 }]);
+    mockDefinitions([
+      { id: DEF_ID, name: 'NPS Score', field_type: 'text', options: null, sort_order: 0 },
+    ]);
     mockValues([
       {
         definition_id: DEF_ID,
@@ -102,7 +110,9 @@ describe('CustomFieldsSection — edit mode', () => {
   });
 
   it('renders a text input for a text field', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Field A', field_type: 'text', options: null, sort_order: 0 }]);
+    mockDefinitions([
+      { id: DEF_ID, name: 'Field A', field_type: 'text', options: null, sort_order: 0 },
+    ]);
     mockValues([]);
 
     renderWithProviders(
@@ -117,44 +127,8 @@ describe('CustomFieldsSection — edit mode', () => {
   });
 
   it('renders a number input for a number field', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Score', field_type: 'number', options: null, sort_order: 0 }]);
-    mockValues([]);
-
-    renderWithProviders(
-      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
-    );
-
-    await waitFor(() => expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument());
-    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'number');
-  });
-
-  it('renders a date input for a date field', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Renewal Date', field_type: 'date', options: null, sort_order: 0 }]);
-    mockValues([]);
-
-    renderWithProviders(
-      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
-    );
-
-    await waitFor(() => expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument());
-    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'date');
-  });
-
-  it('renders a checkbox for a boolean field', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Active', field_type: 'boolean', options: null, sort_order: 0 }]);
-    mockValues([]);
-
-    renderWithProviders(
-      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
-    );
-
-    await waitFor(() => expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument());
-    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'checkbox');
-  });
-
-  it('renders a select for a select field with its options', async () => {
     mockDefinitions([
-      { id: DEF_ID, name: 'Tier', field_type: 'select', options: ['Bronze', 'Silver', 'Gold'], sort_order: 0 },
+      { id: DEF_ID, name: 'Score', field_type: 'number', options: null, sort_order: 0 },
     ]);
     mockValues([]);
 
@@ -162,7 +136,63 @@ describe('CustomFieldsSection — edit mode', () => {
       <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
     );
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'number');
+  });
+
+  it('renders a date input for a date field', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Renewal Date', field_type: 'date', options: null, sort_order: 0 },
+    ]);
+    mockValues([]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'date');
+  });
+
+  it('renders a checkbox for a boolean field', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Active', field_type: 'boolean', options: null, sort_order: 0 },
+    ]);
+    mockValues([]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toHaveAttribute('type', 'checkbox');
+  });
+
+  it('renders a select for a select field with its options', async () => {
+    mockDefinitions([
+      {
+        id: DEF_ID,
+        name: 'Tier',
+        field_type: 'select',
+        options: ['Bronze', 'Silver', 'Gold'],
+        sort_order: 0,
+      },
+    ]);
+    mockValues([]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
     const select = screen.getByTestId(`custom-field-input-${DEF_ID}`);
     expect(select.tagName).toBe('SELECT');
     expect(screen.getByRole('option', { name: 'Bronze' })).toBeInTheDocument();
@@ -171,7 +201,9 @@ describe('CustomFieldsSection — edit mode', () => {
   });
 
   it('seeds the text input from the existing server value', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Contract Tier', field_type: 'text', options: null, sort_order: 0 }]);
+    mockDefinitions([
+      { id: DEF_ID, name: 'Contract Tier', field_type: 'text', options: null, sort_order: 0 },
+    ]);
     mockValues([
       {
         definition_id: DEF_ID,
@@ -191,7 +223,9 @@ describe('CustomFieldsSection — edit mode', () => {
   });
 
   it('calls onValuesChange with updated values when input changes', async () => {
-    mockDefinitions([{ id: DEF_ID, name: 'Note', field_type: 'text', options: null, sort_order: 0 }]);
+    mockDefinitions([
+      { id: DEF_ID, name: 'Note', field_type: 'text', options: null, sort_order: 0 },
+    ]);
     mockValues([]);
 
     const onValuesChange = vi.fn();
@@ -205,14 +239,19 @@ describe('CustomFieldsSection — edit mode', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
 
     fireEvent.change(screen.getByTestId(`custom-field-input-${DEF_ID}`), {
       target: { value: 'Hello' },
     });
 
     await waitFor(() => {
-      const lastCall = onValuesChange.mock.calls.at(-1)?.[0] as Array<{ definition_id: string; value: string | null }>;
+      const lastCall = onValuesChange.mock.calls.at(-1)?.[0] as Array<{
+        definition_id: string;
+        value: string | null;
+      }>;
       expect(lastCall).toBeDefined();
       const entry = lastCall.find((v) => v.definition_id === DEF_ID);
       expect(entry?.value).toBe('Hello');

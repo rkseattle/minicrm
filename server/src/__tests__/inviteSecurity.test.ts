@@ -65,7 +65,7 @@ describe('MINCRM-87 — invite token expiry', () => {
     );
 
     const res = await request(app)
-      .post('/api/users/set-password')
+      .post('/api/v1/users/set-password')
       .send({ token: expiredToken, password: 'NewPass1' });
 
     expect(res.status).toBe(400);
@@ -74,7 +74,7 @@ describe('MINCRM-87 — invite token expiry', () => {
 
   it('invite token returned by /invite has an expiry claim', async () => {
     const res = await request(app)
-      .post('/api/users/invite')
+      .post('/api/v1/users/invite')
       .set('Cookie', adminCookie)
       .send({ email: 'inv-sec-expiry-check@example.com', name: 'Expiry Check', role: 'rep' });
 
@@ -96,7 +96,7 @@ describe('MINCRM-87 — invite token is single-use', () => {
   it('returns 409 USER_ALREADY_ACTIVATED on second use of the same invite token', async () => {
     // Create an invited user
     const inviteRes = await request(app)
-      .post('/api/users/invite')
+      .post('/api/v1/users/invite')
       .set('Cookie', adminCookie)
       .send({ email: 'inv-sec-singleuse@example.com', name: 'Single Use', role: 'rep' });
 
@@ -105,14 +105,14 @@ describe('MINCRM-87 — invite token is single-use', () => {
 
     // First use — should succeed
     const firstUse = await request(app)
-      .post('/api/users/set-password')
+      .post('/api/v1/users/set-password')
       .send({ token: inviteToken, password: 'NewPass1' });
 
     expect(firstUse.status).toBe(200);
 
     // Second use — same token, same password — should be rejected
     const secondUse = await request(app)
-      .post('/api/users/set-password')
+      .post('/api/v1/users/set-password')
       .send({ token: inviteToken, password: 'AnotherPass1' });
 
     expect(secondUse.status).toBe(409);
@@ -132,7 +132,7 @@ describe('MINCRM-87 — invite token cannot be substituted with an auth JWT', ()
     );
 
     const res = await request(app)
-      .post('/api/users/set-password')
+      .post('/api/v1/users/set-password')
       .send({ token: sessionToken, password: 'NewPass1' });
 
     expect(res.status).toBe(400);
@@ -161,7 +161,7 @@ describe('MINCRM-78 — must_change_password enforced at the API layer', () => {
   });
 
   it('blocks multiple different endpoints — enforcement is in middleware, not per-route', async () => {
-    const endpoints = ['/api/accounts', '/api/deals', '/api/activities'];
+    const endpoints = ['/api/v1/accounts', '/api/v1/deals', '/api/v1/activities'];
 
     for (const endpoint of endpoints) {
       const res = await request(app).get(endpoint).set('Cookie', mustChangeCookie);
@@ -187,7 +187,7 @@ describe('MINCRM-78 — must_change_password enforced at the API layer', () => {
     );
     const craftedCookie = `${AUTH_COOKIE_NAME}=${craftedToken}`;
 
-    const res = await request(app).get('/api/contacts').set('Cookie', craftedCookie);
+    const res = await request(app).get('/api/v1/contacts').set('Cookie', craftedCookie);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');

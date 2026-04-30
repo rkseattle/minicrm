@@ -83,7 +83,7 @@ interface ContactSingleResponse {
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
 // ---------------------------------------------------------------------------
@@ -112,12 +112,12 @@ test('@smoke @functional F2-C1: all required fields submitted → contact create
 
   // Verify via API that the contact exists and register for teardown.
   const search = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(lastName)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(lastName)}`,
   );
   expect(search.body.total, 'created contact should be findable via API').toBe(1);
   const created = search.body.data[0];
   expect(created).toBeDefined();
-  testData.register('contact', created!.id, `/api/contacts/${created!.id}`);
+  testData.register('contact', created!.id, `/api/v1/contacts/${created!.id}`);
 });
 
 test('@functional F2-C2: optional fields included → all saved and displayed on detail page', async ({
@@ -144,13 +144,13 @@ test('@functional F2-C2: optional fields included → all saved and displayed on
 
   // Retrieve via API to confirm all optional fields were persisted.
   const search = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(lastName)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(lastName)}`,
   );
   expect(search.body.total, 'contact should be findable via API').toBe(1);
   const id = search.body.data[0]!.id;
-  testData.register('contact', id, `/api/contacts/${id}`);
+  testData.register('contact', id, `/api/v1/contacts/${id}`);
 
-  const detail = await restClient.get<ContactSingleResponse>(`/api/contacts/${id}`);
+  const detail = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${id}`);
   const contact = detail.body.contact as unknown as {
     phone: string;
     title: string;
@@ -188,7 +188,7 @@ test('@functional F2-C3: missing required field → inline validation, contact n
 
   // Verify no contact was created by searching for the unique email.
   const check = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(uniqueEmail)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(uniqueEmail)}`,
   );
   expect(check.body.total, 'no contact should be created when required field is missing').toBe(0);
 
@@ -222,7 +222,7 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
 
   // Verify no contact was created by searching for the unique last name.
   const check = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(uniqueLastName)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(uniqueLastName)}`,
   );
   expect(check.body.total, 'no contact should be created after invalid email submit').toBe(0);
 
@@ -255,7 +255,7 @@ test('@functional F2-C5: duplicate email address → duplicate warning shown', a
 
   // Only one contact with this email should exist.
   const search = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(sharedEmail)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(sharedEmail)}`,
   );
   expect(search.body.total, 'only one contact with this email should exist').toBe(1);
   expect(search.body.data[0]!.id, 'the existing contact should be unchanged').toBe(existing.id);
@@ -295,7 +295,7 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
 
   // Confirm via API that both records are present (cross-checks the render).
   const search = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`List-${uniqueSuffix}`)}`,
+    `/api/v1/contacts?search=${encodeURIComponent(`List-${uniqueSuffix}`)}`,
   );
   expect(search.body.total, 'both seeded contacts should be findable via API').toBe(2);
 });
@@ -321,7 +321,7 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
 
   // Verify API sort — asc should return Apple before Zebra.
   const asc = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`Sort-${uniqueSuffix}`)}&sort=first_name&dir=asc`,
+    `/api/v1/contacts?search=${encodeURIComponent(`Sort-${uniqueSuffix}`)}&sort=first_name&dir=asc`,
   );
   expect(asc.body.total, 'both contacts should be returned').toBe(2);
   expect(asc.body.data[0]!.first_name, 'Apple should come first in ascending order').toBe(
@@ -333,7 +333,7 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
 
   // Verify API sort — desc should reverse.
   const desc = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`Sort-${uniqueSuffix}`)}&sort=first_name&dir=desc`,
+    `/api/v1/contacts?search=${encodeURIComponent(`Sort-${uniqueSuffix}`)}&sort=first_name&dir=desc`,
   );
   expect(desc.body.data[0]!.first_name, 'Zebra should come first in descending order').toBe(
     'ZebraSort',
@@ -380,7 +380,7 @@ test('@functional F2-R3: sort by email ascending returns correct order', async (
   });
 
   const asc = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`ESort-${uniqueSuffix}`)}&sort=email&dir=asc`,
+    `/api/v1/contacts?search=${encodeURIComponent(`ESort-${uniqueSuffix}`)}&sort=email&dir=asc`,
   );
   expect(asc.body.total, 'both contacts returned').toBe(2);
   expect(asc.body.data[0]!.email, 'aaa email should come first in ascending order').toMatch(
@@ -388,7 +388,7 @@ test('@functional F2-R3: sort by email ascending returns correct order', async (
   );
 
   const desc = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`ESort-${uniqueSuffix}`)}&sort=email&dir=desc`,
+    `/api/v1/contacts?search=${encodeURIComponent(`ESort-${uniqueSuffix}`)}&sort=email&dir=desc`,
   );
   expect(desc.body.data[0]!.email, 'zzz email should come first in descending order').toMatch(
     /^zzz-/,
@@ -416,7 +416,7 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
 
   // API also confirms case-insensitivity.
   const apiSearch = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`CIS-${uniqueSuffix}`.toUpperCase())}`,
+    `/api/v1/contacts?search=${encodeURIComponent(`CIS-${uniqueSuffix}`.toUpperCase())}`,
   );
   expect(apiSearch.body.total, 'API search should also be case-insensitive').toBeGreaterThan(0);
   expect(apiSearch.body.data.some((c) => c.id === contact.id)).toBe(true);
@@ -457,7 +457,7 @@ test('@smoke @functional F2-U1: edit first name → change reflected in detail v
   expect(editResult.saved, 'edit should save successfully').toBe(true);
 
   // Verify change persisted via API.
-  const updated = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const updated = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(updated.body.contact.first_name, 'first name should be updated').toBe(updatedFirst);
 });
 
@@ -478,7 +478,7 @@ test('@functional F2-U2: edit last name → change reflected in detail view and 
 
   expect(editResult.saved, 'edit should save successfully').toBe(true);
 
-  const updated = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const updated = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(updated.body.contact.last_name, 'last name should be updated').toBe(updatedLast);
 });
 
@@ -502,7 +502,7 @@ test('@functional F2-U3: cancel edit → no changes persisted', async ({
   );
 
   // Confirm original first name is unchanged.
-  const unchanged = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const unchanged = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(unchanged.body.contact.first_name, 'first name must not change after cancel').toBe(
     'CancelEditOrig',
   );
@@ -531,7 +531,7 @@ test('@functional F2-D1: delete contact → removed from list and returns 404 fr
   // AC1: verify via API that the contact is actually gone (404).
   let caughtStatus: number | null = null;
   try {
-    await restClient.get(`/api/contacts/${contact.id}`);
+    await restClient.get(`/api/v1/contacts/${contact.id}`);
   } catch (err: unknown) {
     if (err instanceof RestClientError) {
       caughtStatus = err.status;
@@ -562,7 +562,7 @@ test('@functional F2-D2: cancel confirmation dialog → contact not deleted, rem
   expect(cancelResult.stillOnDetailPage, 'should remain on detail page after cancel').toBe(true);
 
   // Confirm contact still exists in the API.
-  const stillExists = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const stillExists = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(stillExists.status, 'contact should still be accessible via API after cancel').toBe(200);
 });
 
@@ -586,7 +586,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   });
 
   // Link the contact to the account via API (PATCH).
-  await restClient.patch(`/api/contacts/${contact.id}`, { account_id: account.id });
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: account.id });
 
   // Navigate to the contact detail page and confirm the account is shown.
   await navigateToContact(page, contact.id);
@@ -600,7 +600,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   );
 
   // Also verify via API that the contact's account_id is set.
-  const detail = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const detail = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(detail.body.contact.account_id, 'contact account_id should match').toBe(account.id);
 });
 
@@ -620,14 +620,14 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
   });
 
   // Verify the contact is linked.
-  const before = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const before = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(before.body.contact.account_id, 'contact should be linked before unlink').toBe(account.id);
 
   // Unlink by patching account_id to null.
-  await restClient.patch(`/api/contacts/${contact.id}`, { account_id: null });
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: null });
 
   // Verify via API.
-  const after = await restClient.get<ContactSingleResponse>(`/api/contacts/${contact.id}`);
+  const after = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);
   expect(after.body.contact.account_id, 'account_id should be null after unlink').toBeNull();
 });
 
@@ -687,7 +687,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
 
   // Verify page 1 with limit=2 returns the first 2 records in first_name asc order.
   const page1 = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`Page-${uniqueSuffix}`)}&sort=first_name&dir=asc&limit=2&page=1`,
+    `/api/v1/contacts?search=${encodeURIComponent(`Page-${uniqueSuffix}`)}&sort=first_name&dir=asc&limit=2&page=1`,
   );
   expect(page1.body.total, 'total should be 3').toBe(3);
   expect(page1.body.data.length, 'page 1 should have 2 records').toBe(2);
@@ -696,7 +696,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
 
   // AC2: page 2 must maintain the same sort order.
   const page2 = await restClient.get<ContactListResponse>(
-    `/api/contacts?search=${encodeURIComponent(`Page-${uniqueSuffix}`)}&sort=first_name&dir=asc&limit=2&page=2`,
+    `/api/v1/contacts?search=${encodeURIComponent(`Page-${uniqueSuffix}`)}&sort=first_name&dir=asc&limit=2&page=2`,
   );
   expect(page2.body.data.length, 'page 2 should have 1 record').toBe(1);
   expect(page2.body.data[0]!.first_name, 'record on page 2 should be Pag02').toBe('Pag02');
@@ -707,7 +707,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   expect(navResult.loaded, 'contacts page should load').toBe(true);
 
   // If the total (all contacts in db) exceeds 50 the pagination component is shown.
-  const total = (await restClient.get<ContactListResponse>('/api/contacts')).body.total;
+  const total = (await restClient.get<ContactListResponse>('/api/v1/contacts')).body.total;
   if (total > 50) {
     const paginationLocator = await page
       .locate([{ type: 'testId', value: 'pagination' }])

@@ -61,7 +61,7 @@ async function createInvitedUser(
   restClient: RestClient,
 ): Promise<{ userId: string; email: string; inviteToken: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const inviteRes = await restClient.post<InviteResponse>('/api/users/invite', {
+  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
     name: `F1-INV User ${uniqueSuffix}`,
     email: `f1-inv-${uniqueSuffix}@example.com`,
     role: 'rep',
@@ -78,7 +78,7 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
   page,
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -98,7 +98,7 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
       'unauthenticated user should stay on /set-password, not be redirected to /login',
     ).toBe('/set-password');
   } finally {
-    await restClient.patch(`/api/users/${userId}/deactivate`, {});
+    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
   }
 });
 
@@ -143,7 +143,7 @@ test('@functional F1-INV4: /set-password — mismatched passwords shows inline v
   page,
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -155,7 +155,7 @@ test('@functional F1-INV4: /set-password — mismatched passwords shows inline v
       '/set-password',
     );
   } finally {
-    await restClient.patch(`/api/users/${userId}/deactivate`, {});
+    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
   }
 });
 
@@ -167,7 +167,7 @@ test('@functional F1-INV5: /set-password — successful activation redirects to 
   page,
   restClient,
 }) => {
-  await restClient.post('/api/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -182,7 +182,7 @@ test('@functional F1-INV5: /set-password — successful activation redirects to 
       'successful set-password should redirect to /login',
     ).toBe('/login');
   } finally {
-    await restClient.patch(`/api/users/${userId}/deactivate`, {});
+    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
   }
 });
 

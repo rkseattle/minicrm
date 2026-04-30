@@ -47,7 +47,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/settings/default-language:
+ * /api/v1/settings/default-language:
  *   get:
  *     tags: [Settings]
  *     operationId: getDefaultLanguage
@@ -71,7 +71,7 @@ router.get('/default-language', asyncHandler(getDefaultLanguageHandler));
 
 /**
  * @openapi
- * /api/settings/default-language:
+ * /api/v1/settings/default-language:
  *   patch:
  *     tags: [Settings]
  *     operationId: setDefaultLanguage
@@ -138,7 +138,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/settings/nav-layout:
+ * /api/v1/settings/nav-layout:
  *   get:
  *     tags: [Settings]
  *     operationId: getNavLayout
@@ -161,7 +161,7 @@ router.get('/nav-layout', asyncHandler(getNavLayoutHandler));
 
 /**
  * @openapi
- * /api/settings/nav-layout:
+ * /api/v1/settings/nav-layout:
  *   patch:
  *     tags: [Settings]
  *     operationId: setNavLayout
@@ -206,7 +206,7 @@ router.patch('/nav-layout', authenticate, requireRole('admin'), asyncHandler(set
 
 /**
  * @openapi
- * /api/settings/email-notifications:
+ * /api/v1/settings/email-notifications:
  *   get:
  *     tags: [Settings]
  *     operationId: getEmailNotificationsEnabled
@@ -227,7 +227,7 @@ router.get('/email-notifications', authenticate, asyncHandler(getEmailNotificati
 
 /**
  * @openapi
- * /api/settings/email-notifications:
+ * /api/v1/settings/email-notifications:
  *   patch:
  *     tags: [Settings]
  *     operationId: setEmailNotificationsEnabled
@@ -263,7 +263,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/settings/tags-restrict-creation:
+ * /api/v1/settings/tags-restrict-creation:
  *   get:
  *     tags: [Settings]
  *     operationId: getTagsRestrictCreation
@@ -290,7 +290,7 @@ router.get('/tags-restrict-creation', authenticate, asyncHandler(getTagsRestrict
 
 /**
  * @openapi
- * /api/settings/tags-restrict-creation:
+ * /api/v1/settings/tags-restrict-creation:
  *   patch:
  *     tags: [Settings]
  *     operationId: setTagsRestrictCreation
@@ -327,7 +327,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/settings/storage/status:
+ * /api/v1/settings/storage/status:
  *   get:
  *     tags: [Settings]
  *     operationId: getStorageStatus
@@ -353,7 +353,7 @@ router.get('/storage/status', authenticate, asyncHandler(getStorageStatusHandler
 
 /**
  * @openapi
- * /api/settings/storage:
+ * /api/v1/settings/storage:
  *   get:
  *     tags: [Settings]
  *     operationId: getStorageConfig
@@ -372,7 +372,7 @@ router.get('/storage', authenticate, requireRole('admin'), asyncHandler(getStora
 
 /**
  * @openapi
- * /api/settings/storage:
+ * /api/v1/settings/storage:
  *   put:
  *     tags: [Settings]
  *     operationId: setStorageConfig
@@ -404,7 +404,7 @@ router.put('/storage', authenticate, requireRole('admin'), asyncHandler(setStora
 
 /**
  * @openapi
- * /api/settings/storage:
+ * /api/v1/settings/storage:
  *   delete:
  *     tags: [Settings]
  *     operationId: clearStorageConfig
@@ -428,7 +428,7 @@ router.delete(
 
 /**
  * @openapi
- * /api/settings/storage/test:
+ * /api/v1/settings/storage/test:
  *   post:
  *     tags: [Settings]
  *     operationId: testStorageConfig
@@ -473,7 +473,7 @@ router.post(
 
 /**
  * @openapi
- * /api/settings/default-currency:
+ * /api/v1/settings/default-currency:
  *   get:
  *     tags: [Settings]
  *     operationId: getDefaultCurrency
@@ -496,7 +496,7 @@ router.get('/default-currency', asyncHandler(getDefaultCurrencyHandler));
 
 /**
  * @openapi
- * /api/settings/default-currency:
+ * /api/v1/settings/default-currency:
  *   patch:
  *     tags: [Settings]
  *     operationId: setDefaultCurrency
@@ -533,7 +533,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/settings/pipeline-stages:
+ * /api/v1/settings/pipeline-stages:
  *   get:
  *     tags: [Settings]
  *     operationId: listPipelineStages
@@ -560,7 +560,7 @@ router.get('/pipeline-stages', asyncHandler(listPipelineStagesHandler));
 
 /**
  * @openapi
- * /api/settings/pipeline-stages:
+ * /api/v1/settings/pipeline-stages:
  *   post:
  *     tags: [Settings]
  *     operationId: createPipelineStage
@@ -599,7 +599,7 @@ router.post(
 
 /**
  * @openapi
- * /api/settings/pipeline-stages/{id}:
+ * /api/v1/settings/pipeline-stages/{id}:
  *   patch:
  *     tags: [Settings]
  *     operationId: updatePipelineStage
@@ -644,7 +644,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/settings/pipeline-stages/{id}:
+ * /api/v1/settings/pipeline-stages/{id}:
  *   delete:
  *     tags: [Settings]
  *     operationId: deletePipelineStage
@@ -679,7 +679,7 @@ router.delete(
 
 /**
  * @openapi
- * /api/settings/currencies:
+ * /api/v1/settings/currencies:
  *   get:
  *     tags: [Settings]
  *     operationId: getCurrencies
@@ -716,7 +716,7 @@ router.get('/currencies', authenticate, asyncHandler(getCurrenciesHandler));
 
 /**
  * @openapi
- * /api/settings/currencies:
+ * /api/v1/settings/currencies:
  *   put:
  *     tags: [Settings]
  *     operationId: updateCurrencies
@@ -768,7 +768,7 @@ router.put(
 
 /**
  * @openapi
- * /api/settings/smtp:
+ * /api/v1/settings/smtp:
  *   get:
  *     tags: [Settings]
  *     operationId: getSmtpConfig
@@ -798,7 +798,7 @@ router.get('/smtp', authenticate, asyncHandler(getSmtpConfigHandler));
 
 /**
  * @openapi
- * /api/settings/smtp:
+ * /api/v1/settings/smtp:
  *   put:
  *     tags: [Settings]
  *     operationId: putSmtpConfig
@@ -835,7 +835,7 @@ router.put('/smtp', authenticate, requireRole('admin'), asyncHandler(putSmtpConf
 
 /**
  * @openapi
- * /api/settings/smtp/test:
+ * /api/v1/settings/smtp/test:
  *   post:
  *     tags: [Settings]
  *     operationId: testSmtp
@@ -878,7 +878,7 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
 
 /**
  * @openapi
- * /api/settings/onboarding:
+ * /api/v1/settings/onboarding:
  *   get:
  *     tags: [Settings]
  *     operationId: getOnboardingStatus
@@ -912,7 +912,7 @@ router.get(
 
 /**
  * @openapi
- * /api/settings/onboarding:
+ * /api/v1/settings/onboarding:
  *   put:
  *     tags: [Settings]
  *     operationId: setOnboardingCompleted

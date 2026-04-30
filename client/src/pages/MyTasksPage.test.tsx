@@ -24,7 +24,7 @@ describe('MyTasksPage', () => {
   });
 
   it('shows the empty state when there are no open tasks', async () => {
-    server.use(http.get('/api/activities/my-tasks', () => HttpResponse.json({ tasks: [] })));
+    server.use(http.get('/api/v1/activities/my-tasks', () => HttpResponse.json({ tasks: [] })));
 
     renderWithProviders(<MyTasksPage />);
 
@@ -90,7 +90,7 @@ describe('MyTasksPage', () => {
 
   it('hides completed tasks by default', async () => {
     server.use(
-      http.get('/api/activities/my-tasks', () =>
+      http.get('/api/v1/activities/my-tasks', () =>
         HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE] }),
       ),
     );
@@ -106,7 +106,7 @@ describe('MyTasksPage', () => {
 
   it('shows completed tasks when the "Show completed" toggle is clicked', async () => {
     server.use(
-      http.get('/api/activities/my-tasks', () =>
+      http.get('/api/v1/activities/my-tasks', () =>
         HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE] }),
       ),
     );
@@ -126,7 +126,9 @@ describe('MyTasksPage', () => {
 
   it('applies line-through styling to completed task subjects', async () => {
     server.use(
-      http.get('/api/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_COMPLETE] })),
+      http.get('/api/v1/activities/my-tasks', () =>
+        HttpResponse.json({ tasks: [MY_TASK_COMPLETE] }),
+      ),
     );
 
     renderWithProviders(<MyTasksPage />);
@@ -145,7 +147,9 @@ describe('MyTasksPage', () => {
 
   it('does not show "Mark complete" for already completed tasks', async () => {
     server.use(
-      http.get('/api/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_COMPLETE] })),
+      http.get('/api/v1/activities/my-tasks', () =>
+        HttpResponse.json({ tasks: [MY_TASK_COMPLETE] }),
+      ),
     );
 
     renderWithProviders(<MyTasksPage />);
@@ -165,7 +169,7 @@ describe('MyTasksPage', () => {
   it('calls the PATCH endpoint and invalidates query when marking a task complete', async () => {
     let patchCalled = false;
     server.use(
-      http.patch('/api/activities/:id', async ({ params }) => {
+      http.patch('/api/v1/activities/:id', async ({ params }) => {
         if (params.id === MY_TASK_1.id) patchCalled = true;
         return HttpResponse.json({ activity: { ...MY_TASK_1, status: 'complete' } });
       }),
@@ -210,7 +214,7 @@ describe('MyTasksPage', () => {
 
     it('shows the empty state when filter=overdue but no tasks are overdue', async () => {
       server.use(
-        http.get('/api/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_1] })),
+        http.get('/api/v1/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_1] })),
       );
 
       renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });

@@ -27,7 +27,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/accounts:
+ * /api/v1/accounts:
  *   get:
  *     tags: [Accounts]
  *     operationId: listAccounts
@@ -92,7 +92,7 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
 
 /**
  * @openapi
- * /api/accounts/export:
+ * /api/v1/accounts/export:
  *   get:
  *     tags: [Accounts]
  *     operationId: exportAccounts
@@ -135,7 +135,7 @@ router.get('/export', authenticate, asyncHandler(exportAccountsHandler));
 
 /**
  * @openapi
- * /api/accounts/bulk:
+ * /api/v1/accounts/bulk:
  *   post:
  *     tags: [Accounts]
  *     operationId: bulkAccounts
@@ -189,7 +189,7 @@ router.post('/bulk', authenticate, asyncHandler(bulkAccountsHandler));
 
 /**
  * @openapi
- * /api/accounts:
+ * /api/v1/accounts:
  *   post:
  *     tags: [Accounts]
  *     operationId: createAccount
@@ -255,7 +255,7 @@ router.post('/', authenticate, asyncHandler(createAccountHandler));
 
 /**
  * @openapi
- * /api/accounts/search:
+ * /api/v1/accounts/search:
  *   get:
  *     tags: [Accounts]
  *     operationId: searchAccounts
@@ -286,7 +286,7 @@ router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
 
 /**
  * @openapi
- * /api/accounts/{id}:
+ * /api/v1/accounts/{id}:
  *   get:
  *     tags: [Accounts]
  *     operationId: getAccount
@@ -347,7 +347,7 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
 
 /**
  * @openapi
- * /api/accounts/{id}:
+ * /api/v1/accounts/{id}:
  *   patch:
  *     tags: [Accounts]
  *     operationId: updateAccount
@@ -440,7 +440,7 @@ router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
 
 /**
  * @openapi
- * /api/accounts/{id}:
+ * /api/v1/accounts/{id}:
  *   delete:
  *     tags: [Accounts]
  *     operationId: deleteAccount
@@ -496,7 +496,7 @@ router.delete('/:id', authenticate, asyncHandler(deleteAccountHandler));
 
 /**
  * @openapi
- * /api/accounts/{id}/children:
+ * /api/v1/accounts/{id}/children:
  *   get:
  *     tags: [Accounts]
  *     operationId: listChildAccounts

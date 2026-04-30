@@ -37,7 +37,7 @@ function renderAdminRoute(initialEntries = ['/admin']) {
 describe('AdminRoute', () => {
   it('shows a loading indicator while the auth check is in progress', () => {
     server.use(
-      http.get('/api/auth/me', async () => {
+      http.get('/api/v1/auth/me', async () => {
         await new Promise((resolve) => setTimeout(resolve, 500));
         return HttpResponse.json({ user: ADMIN_USER });
       }),
@@ -54,7 +54,7 @@ describe('AdminRoute', () => {
   });
 
   it('redirects to / when user is authenticated but is a rep', async () => {
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
     renderAdminRoute();
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('AdminRoute', () => {
 
   it('redirects to /login when user is not authenticated', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
       ),
     );
@@ -75,7 +75,7 @@ describe('AdminRoute', () => {
 
   it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
     server.use(
-      http.get('/api/auth/me', () =>
+      http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
       ),
     );

@@ -91,7 +91,7 @@ describe('NavHamburger', () => {
   });
 
   it('hides admin links in the drawer for rep users', async () => {
-    server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {

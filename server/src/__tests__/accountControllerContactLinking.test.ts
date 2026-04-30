@@ -91,7 +91,7 @@ describe('POST /api/accounts — contact_ids', () => {
     const contactId = await insertContact('post-link@example.com');
 
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'New Corp', contact_ids: [contactId] });
 
@@ -104,7 +104,7 @@ describe('POST /api/accounts — contact_ids', () => {
     const contactId = await insertContact('post-no-link@example.com');
 
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'No Link Corp' });
 
@@ -114,7 +114,7 @@ describe('POST /api/accounts — contact_ids', () => {
 
   it('returns 400 when contact_ids contains a non-UUID value', async () => {
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Bad Corp', contact_ids: ['not-a-uuid'] });
 
@@ -127,7 +127,7 @@ describe('POST /api/accounts — contact_ids', () => {
     const contactB = await insertContact('post-multi-b@example.com');
 
     const res = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Multi Link Corp', contact_ids: [contactA, contactB] });
 
@@ -142,7 +142,7 @@ describe('POST /api/accounts — contact_ids', () => {
 describe('PATCH /api/accounts/:id — contact_ids', () => {
   it('links new contacts when contact_ids is provided', async () => {
     const createRes = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Patch Corp' });
     const accountId: string = createRes.body.account.id;
@@ -150,7 +150,7 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
     const contactId = await insertContact('patch-link@example.com');
 
     const res = await request(app)
-      .patch(`/api/accounts/${accountId}`)
+      .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
       .send({ contact_ids: [contactId] });
 
@@ -163,14 +163,14 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
     const contactB = await insertContact('patch-unlink-b@example.com');
 
     const createRes = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Unlink Corp', contact_ids: [contactA, contactB] });
     const accountId: string = createRes.body.account.id;
 
     // Update to keep only contactA
     const res = await request(app)
-      .patch(`/api/accounts/${accountId}`)
+      .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
       .send({ contact_ids: [contactA] });
 
@@ -183,13 +183,13 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
     const contactId = await insertContact('patch-combined@example.com');
 
     const createRes = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Combined Corp' });
     const accountId: string = createRes.body.account.id;
 
     const res = await request(app)
-      .patch(`/api/accounts/${accountId}`)
+      .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
       .send({ name: 'Renamed Corp', contact_ids: [contactId] });
 
@@ -202,14 +202,14 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
     const contactId = await insertContact('patch-preserve@example.com');
 
     const createRes = await request(app)
-      .post('/api/accounts')
+      .post('/api/v1/accounts')
       .set('Cookie', repCookie)
       .send({ name: 'Preserve Corp', contact_ids: [contactId] });
     const accountId: string = createRes.body.account.id;
 
     // Update name only — contact link must be preserved
     const res = await request(app)
-      .patch(`/api/accounts/${accountId}`)
+      .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
       .send({ name: 'Still Linked Corp' });
 

@@ -89,7 +89,7 @@ describe('SetPasswordPage — with token', () => {
 
   it('redirects to /login on successful submission', async () => {
     server.use(
-      http.post('/api/users/set-password', () => {
+      http.post('/api/v1/users/set-password', () => {
         return HttpResponse.json({ message: 'Password set successfully. You may now log in.' });
       }),
     );
@@ -108,7 +108,7 @@ describe('SetPasswordPage — with token', () => {
 
   it('shows already-activated message when server returns USER_ALREADY_ACTIVATED', async () => {
     server.use(
-      http.post('/api/users/set-password', () => {
+      http.post('/api/v1/users/set-password', () => {
         return HttpResponse.json(
           {
             error: {
@@ -136,7 +136,7 @@ describe('SetPasswordPage — with token', () => {
 
   it('disables the submit button while the request is in flight', async () => {
     server.use(
-      http.post('/api/users/set-password', async () => {
+      http.post('/api/v1/users/set-password', async () => {
         await new Promise((resolve) => setTimeout(resolve, 500));
         return HttpResponse.json({ message: 'Password set successfully. You may now log in.' });
       }),

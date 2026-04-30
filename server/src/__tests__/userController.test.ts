@@ -66,13 +66,13 @@ afterAll(async () => {
 
 describe('GET /api/users', () => {
   it('returns 200 and a users array for admin', async () => {
-    const res = await request(app).get('/api/users').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/users').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
   });
 
   it('never exposes password_hash in the response', async () => {
-    const res = await request(app).get('/api/users').set('Cookie', adminCookie);
+    const res = await request(app).get('/api/v1/users').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
     for (const user of res.body.data) {
       expect(user).not.toHaveProperty('password_hash');
@@ -80,12 +80,12 @@ describe('GET /api/users', () => {
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).get('/api/users').set('Cookie', repCookie);
+    const res = await request(app).get('/api/v1/users').set('Cookie', repCookie);
     expect(res.status).toBe(403);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/users');
+    const res = await request(app).get('/api/v1/users');
     expect(res.status).toBe(401);
   });
 });
@@ -95,7 +95,7 @@ describe('GET /api/users', () => {
 describe('POST /api/users/invite', () => {
   it('creates an invited user and never exposes password_hash', async () => {
     const res = await request(app)
-      .post('/api/users/invite')
+      .post('/api/v1/users/invite')
       .set('Cookie', adminCookie)
       .send({ email: 'user-ctrl-invited@example.com', name: 'Invited User', role: 'rep' });
 
@@ -106,7 +106,7 @@ describe('POST /api/users/invite', () => {
 
   it('returns 409 when the email is already taken', async () => {
     const res = await request(app)
-      .post('/api/users/invite')
+      .post('/api/v1/users/invite')
       .set('Cookie', adminCookie)
       .send({ email: 'user-ctrl-admin@example.com', name: 'Duplicate', role: 'rep' });
 
@@ -116,7 +116,7 @@ describe('POST /api/users/invite', () => {
 
   it('returns 403 for a rep', async () => {
     const res = await request(app)
-      .post('/api/users/invite')
+      .post('/api/v1/users/invite')
       .set('Cookie', repCookie)
       .send({ email: 'user-ctrl-blocked@example.com', name: 'Blocked', role: 'rep' });
 
@@ -133,7 +133,7 @@ describe('PATCH /api/users/:id/role', () => {
 
   it('promotes a rep to admin and never exposes password_hash', async () => {
     const res = await request(app)
-      .patch(`/api/users/${repId}/role`)
+      .patch(`/api/v1/users/${repId}/role`)
       .set('Cookie', adminCookie)
       .send({ role: 'admin' });
 
@@ -144,7 +144,7 @@ describe('PATCH /api/users/:id/role', () => {
 
   it('returns 404 for a non-existent user', async () => {
     const res = await request(app)
-      .patch('/api/users/00000000-0000-0000-0000-000000000000/role')
+      .patch('/api/v1/users/00000000-0000-0000-0000-000000000000/role')
       .set('Cookie', adminCookie)
       .send({ role: 'admin' });
 
@@ -162,7 +162,7 @@ describe('PATCH /api/users/:id/deactivate', () => {
     });
 
     const res = await request(app)
-      .patch(`/api/users/${target.id}/deactivate`)
+      .patch(`/api/v1/users/${target.id}/deactivate`)
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -171,7 +171,9 @@ describe('PATCH /api/users/:id/deactivate', () => {
   });
 
   it('returns 403 for a rep', async () => {
-    const res = await request(app).patch(`/api/users/${repId}/deactivate`).set('Cookie', repCookie);
+    const res = await request(app)
+      .patch(`/api/v1/users/${repId}/deactivate`)
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
   });

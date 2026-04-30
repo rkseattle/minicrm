@@ -41,13 +41,15 @@ describe('ProfilePage', () => {
 
   describe('loading state', () => {
     it('shows loading text while fetching language preference', () => {
-      server.use(http.get('/api/users/me/language', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/users/me/language', () => new Promise(() => {})));
       renderWithProviders(<ProfilePage />);
       expect(screen.getByTestId('profile-lang-loading')).toBeInTheDocument();
     });
 
     it('shows loading text while fetching notification prefs', () => {
-      server.use(http.get('/api/users/me/notification-preferences', () => new Promise(() => {})));
+      server.use(
+        http.get('/api/v1/users/me/notification-preferences', () => new Promise(() => {})),
+      );
       renderWithProviders(<ProfilePage />);
       expect(screen.getByTestId('profile-prefs-loading')).toBeInTheDocument();
     });
@@ -56,7 +58,7 @@ describe('ProfilePage', () => {
   describe('load error state', () => {
     it('shows error when language preference fails to load', async () => {
       server.use(
-        http.get('/api/users/me/language', () =>
+        http.get('/api/v1/users/me/language', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -68,7 +70,7 @@ describe('ProfilePage', () => {
 
     it('shows error when notification prefs fail to load', async () => {
       server.use(
-        http.get('/api/users/me/notification-preferences', () =>
+        http.get('/api/v1/users/me/notification-preferences', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -102,7 +104,7 @@ describe('ProfilePage', () => {
 
     it('shows error message when language save fails', async () => {
       server.use(
-        http.patch('/api/users/me/language', () =>
+        http.patch('/api/v1/users/me/language', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -118,7 +120,7 @@ describe('ProfilePage', () => {
     });
 
     it('disables save button while language mutation is pending', async () => {
-      server.use(http.patch('/api/users/me/language', () => new Promise(() => {})));
+      server.use(http.patch('/api/v1/users/me/language', () => new Promise(() => {})));
       const user = userEvent.setup();
       renderWithProviders(<ProfilePage />);
       await waitFor(() => {
@@ -152,7 +154,7 @@ describe('ProfilePage', () => {
 
     it('reflects opted-out preferences loaded from server', async () => {
       server.use(
-        http.get('/api/users/me/notification-preferences', () =>
+        http.get('/api/v1/users/me/notification-preferences', () =>
           HttpResponse.json({
             preferences: {
               notify_overdue_tasks: false,
@@ -194,7 +196,7 @@ describe('ProfilePage', () => {
 
     it('shows error message when prefs save fails', async () => {
       server.use(
-        http.patch('/api/users/me/notification-preferences', () =>
+        http.patch('/api/v1/users/me/notification-preferences', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -210,7 +212,9 @@ describe('ProfilePage', () => {
     });
 
     it('disables save button while prefs mutation is pending', async () => {
-      server.use(http.patch('/api/users/me/notification-preferences', () => new Promise(() => {})));
+      server.use(
+        http.patch('/api/v1/users/me/notification-preferences', () => new Promise(() => {})),
+      );
       const user = userEvent.setup();
       renderWithProviders(<ProfilePage />);
       await waitFor(() => {

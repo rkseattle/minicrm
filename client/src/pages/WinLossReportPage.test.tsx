@@ -58,7 +58,7 @@ describe('WinLossReportPage', () => {
     });
 
     it('rep sees My Win/Loss Report heading — no toggle', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<WinLossReportPage />);
       await waitFor(() => {
         expect(screen.getByTestId('win-loss-report-heading')).toHaveTextContent(
@@ -84,7 +84,7 @@ describe('WinLossReportPage', () => {
 
     it('renders the per-rep breakdown table in Team View for admins', async () => {
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
         ),
       );
@@ -96,7 +96,7 @@ describe('WinLossReportPage', () => {
 
     it('does not render the per-rep breakdown when admin switches to My View', async () => {
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
         ),
       );
@@ -109,9 +109,9 @@ describe('WinLossReportPage', () => {
     });
 
     it('does not render the per-rep breakdown table for reps', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json({ ...WIN_LOSS_REPORT, repRows: repRowsFixture }),
         ),
       );
@@ -125,7 +125,7 @@ describe('WinLossReportPage', () => {
 
   describe('loading state', () => {
     it('shows a loading message while fetching', () => {
-      server.use(http.get('/api/reports/win-loss', () => new Promise(() => {})));
+      server.use(http.get('/api/v1/reports/win-loss', () => new Promise(() => {})));
       renderWithProviders(<WinLossReportPage />);
       expect(screen.getByTestId('report-loading')).toBeInTheDocument();
     });
@@ -134,7 +134,7 @@ describe('WinLossReportPage', () => {
   describe('error state', () => {
     it('shows an error message when the request fails', async () => {
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json(
             { error: { code: 'INTERNAL_ERROR', message: 'Server error' } },
             { status: 500 },
@@ -202,7 +202,7 @@ describe('WinLossReportPage', () => {
 
     it('displays "—" for win rate when there are no closed deals', async () => {
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json({ ...WIN_LOSS_REPORT, wonCount: 0, lostCount: 0, winRate: null }),
         ),
       );
@@ -241,7 +241,7 @@ describe('WinLossReportPage', () => {
 
     it('shows the empty state when there are no loss reasons', async () => {
       server.use(
-        http.get('/api/reports/win-loss', () =>
+        http.get('/api/v1/reports/win-loss', () =>
           HttpResponse.json({ ...WIN_LOSS_REPORT, lossReasonBreakdown: [] }),
         ),
       );
@@ -308,7 +308,7 @@ describe('WinLossReportPage', () => {
     });
 
     it('does not show the owner filter for reps', async () => {
-      server.use(http.get('/api/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
       renderWithProviders(<WinLossReportPage />);
       await waitFor(() => {
         expect(screen.getByTestId('win-loss-report-heading')).toBeInTheDocument();

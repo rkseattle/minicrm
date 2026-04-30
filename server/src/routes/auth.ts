@@ -79,7 +79,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/auth/login:
+ * /api/v1/auth/login:
  *   post:
  *     tags: [Auth]
  *     operationId: login
@@ -150,7 +150,7 @@ router.post('/login', loginLimiter, asyncHandler(login));
 
 /**
  * @openapi
- * /api/auth/logout:
+ * /api/v1/auth/logout:
  *   post:
  *     tags: [Auth]
  *     operationId: logout
@@ -177,7 +177,7 @@ router.post('/logout', authenticate, asyncHandler(logout));
 
 /**
  * @openapi
- * /api/auth/me:
+ * /api/v1/auth/me:
  *   get:
  *     tags: [Auth]
  *     operationId: getCurrentUser
@@ -222,7 +222,7 @@ router.get('/me', authenticate, asyncHandler(me));
 
 /**
  * @openapi
- * /api/auth/change-password:
+ * /api/v1/auth/change-password:
  *   post:
  *     tags: [Auth]
  *     operationId: changePassword
@@ -280,7 +280,7 @@ router.post('/change-password', authenticate, asyncHandler(changePassword));
 
 /**
  * @openapi
- * /api/auth/forgot-password:
+ * /api/v1/auth/forgot-password:
  *   post:
  *     tags: [Auth]
  *     operationId: forgotPassword
@@ -325,7 +325,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPasswo
 
 /**
  * @openapi
- * /api/auth/reset-password:
+ * /api/v1/auth/reset-password:
  *   post:
  *     tags: [Auth]
  *     operationId: resetPassword
@@ -378,7 +378,7 @@ router.post('/reset-password', resetPasswordLimiter, asyncHandler(resetPassword)
 // Used by E2E tests to bypass the email delivery step. (MINCRM-156)
 if (process.env.NODE_ENV !== 'production') {
   /**
-   * POST /api/auth/dev/reset-token — dev/test only.
+   * POST /api/v1/auth/dev/reset-token — dev/test only.
    * Creates and returns a plaintext reset token for a given email address.
    * Used by E2E tests to bypass the email delivery step. Never available in production.
    */

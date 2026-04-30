@@ -69,7 +69,7 @@ export async function applyResolvedLanguage(userPreference: string | null): Prom
 
   // Fall through to system default
   try {
-    const response = await fetch('/api/settings/default-language');
+    const response = await fetch('/api/v1/settings/default-language');
     const data = (await response.json()) as { language: string };
     if ((SUPPORTED_LOCALES as readonly string[]).includes(data.language)) {
       void i18n.changeLanguage(data.language);

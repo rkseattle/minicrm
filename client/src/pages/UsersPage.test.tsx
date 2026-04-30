@@ -17,7 +17,7 @@ describe('UsersPage', () => {
   describe('loading state', () => {
     it('shows loading text while fetching users', () => {
       server.use(
-        http.get('/api/users', async () => {
+        http.get('/api/v1/users', async () => {
           await new Promise((resolve) => setTimeout(resolve, 200));
           return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
         }),
@@ -73,7 +73,9 @@ describe('UsersPage', () => {
   describe('empty state', () => {
     it('shows empty state message when no users exist', async () => {
       server.use(
-        http.get('/api/users', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 })),
+        http.get('/api/v1/users', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 }),
+        ),
       );
       renderWithProviders(<UsersPage />);
       await waitFor(() => {
@@ -85,7 +87,7 @@ describe('UsersPage', () => {
   describe('error state', () => {
     it('shows generic error alert when the users API fails', async () => {
       server.use(
-        http.get('/api/users', () =>
+        http.get('/api/v1/users', () =>
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
@@ -219,7 +221,7 @@ describe('UsersPage', () => {
       const user = userEvent.setup();
       let capturedBody: unknown;
       server.use(
-        http.patch(`/api/users/${ADMIN_USER.id}/role`, async ({ request }) => {
+        http.patch(`/api/v1/users/${ADMIN_USER.id}/role`, async ({ request }) => {
           capturedBody = await request.json();
           return HttpResponse.json({ user: { ...ADMIN_USER, role: 'rep' } });
         }),
@@ -242,7 +244,7 @@ describe('UsersPage', () => {
       const user = userEvent.setup();
       let capturedBody: unknown;
       server.use(
-        http.patch(`/api/users/${REP_USER.id}/role`, async ({ request }) => {
+        http.patch(`/api/v1/users/${REP_USER.id}/role`, async ({ request }) => {
           capturedBody = await request.json();
           return HttpResponse.json({ user: { ...REP_USER, role: 'admin' } });
         }),
@@ -278,7 +280,7 @@ describe('UsersPage', () => {
       const user = userEvent.setup();
       let deactivateCalled = false;
       server.use(
-        http.patch(`/api/users/${ADMIN_USER.id}/deactivate`, () => {
+        http.patch(`/api/v1/users/${ADMIN_USER.id}/deactivate`, () => {
           deactivateCalled = true;
           return HttpResponse.json({ user: { ...ADMIN_USER, status: 'inactive' } });
         }),
@@ -300,14 +302,14 @@ describe('UsersPage', () => {
     it('Reactivate item triggers the reactivate mutation for inactive users', async () => {
       const INACTIVE_USER = { ...ADMIN_USER, status: 'inactive' as const };
       server.use(
-        http.get('/api/users', () =>
+        http.get('/api/v1/users', () =>
           HttpResponse.json({ data: [INACTIVE_USER], total: 1, page: 1, limit: 50 }),
         ),
       );
 
       let reactivateCalled = false;
       server.use(
-        http.patch(`/api/users/${INACTIVE_USER.id}/reactivate`, () => {
+        http.patch(`/api/v1/users/${INACTIVE_USER.id}/reactivate`, () => {
           reactivateCalled = true;
           return HttpResponse.json({ user: { ...INACTIVE_USER, status: 'active' } });
         }),

@@ -68,7 +68,7 @@ afterAll(async () => {
 describe('GET /api/settings/tags-restrict-creation', () => {
   it('returns the current setting (false by default)', async () => {
     const res = await request(app)
-      .get('/api/settings/tags-restrict-creation')
+      .get('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
@@ -78,7 +78,7 @@ describe('GET /api/settings/tags-restrict-creation', () => {
   it('returns true when restriction is enabled', async () => {
     await setTagsRestrictCreation(true);
     const res = await request(app)
-      .get('/api/settings/tags-restrict-creation')
+      .get('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -87,14 +87,14 @@ describe('GET /api/settings/tags-restrict-creation', () => {
 
   it('is accessible to authenticated reps', async () => {
     const res = await request(app)
-      .get('/api/settings/tags-restrict-creation')
+      .get('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/settings/tags-restrict-creation');
+    const res = await request(app).get('/api/v1/settings/tags-restrict-creation');
     expect(res.status).toBe(401);
   });
 });
@@ -104,7 +104,7 @@ describe('GET /api/settings/tags-restrict-creation', () => {
 describe('PATCH /api/settings/tags-restrict-creation', () => {
   it('admin can enable restriction', async () => {
     const res = await request(app)
-      .patch('/api/settings/tags-restrict-creation')
+      .patch('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', adminCookie)
       .send({ restricted: true });
 
@@ -116,7 +116,7 @@ describe('PATCH /api/settings/tags-restrict-creation', () => {
   it('admin can disable restriction', async () => {
     await setTagsRestrictCreation(true);
     const res = await request(app)
-      .patch('/api/settings/tags-restrict-creation')
+      .patch('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', adminCookie)
       .send({ restricted: false });
 
@@ -126,7 +126,7 @@ describe('PATCH /api/settings/tags-restrict-creation', () => {
 
   it('returns 400 when restricted is not a boolean', async () => {
     const res = await request(app)
-      .patch('/api/settings/tags-restrict-creation')
+      .patch('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', adminCookie)
       .send({ restricted: 'yes' });
 
@@ -136,7 +136,7 @@ describe('PATCH /api/settings/tags-restrict-creation', () => {
 
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
-      .patch('/api/settings/tags-restrict-creation')
+      .patch('/api/v1/settings/tags-restrict-creation')
       .set('Cookie', repCookie)
       .send({ restricted: true });
 
@@ -145,7 +145,7 @@ describe('PATCH /api/settings/tags-restrict-creation', () => {
 
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
-      .patch('/api/settings/tags-restrict-creation')
+      .patch('/api/v1/settings/tags-restrict-creation')
       .send({ restricted: true });
 
     expect(res.status).toBe(401);
@@ -159,7 +159,7 @@ describe('POST /api/tags with restriction enabled', () => {
     await setTagsRestrictCreation(true);
 
     const res = await request(app)
-      .post('/api/tags')
+      .post('/api/v1/tags')
       .set('Cookie', repCookie)
       .send({ name: 'test-restrict-blocked' });
 
@@ -171,7 +171,7 @@ describe('POST /api/tags with restriction enabled', () => {
     await setTagsRestrictCreation(true);
 
     const res = await request(app)
-      .post('/api/tags')
+      .post('/api/v1/tags')
       .set('Cookie', adminCookie)
       .send({ name: 'test-restrict-admin-ok' });
 
@@ -183,7 +183,7 @@ describe('POST /api/tags with restriction enabled', () => {
 describe('POST /api/tags with restriction disabled', () => {
   it('rep can create tags when restriction is false', async () => {
     const res = await request(app)
-      .post('/api/tags')
+      .post('/api/v1/tags')
       .set('Cookie', repCookie)
       .send({ name: 'test-restrict-rep-allowed' });
 
@@ -193,7 +193,7 @@ describe('POST /api/tags with restriction disabled', () => {
 
   it('admin can create tags when restriction is false', async () => {
     const res = await request(app)
-      .post('/api/tags')
+      .post('/api/v1/tags')
       .set('Cookie', adminCookie)
       .send({ name: 'test-restrict-admin-allowed' });
 
