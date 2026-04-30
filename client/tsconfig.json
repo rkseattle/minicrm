@@ -10,6 +10,7 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../shared/*"],

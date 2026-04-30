@@ -7,6 +7,7 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { captureException } from '../sentry.js';
 
 /**
  * Fallback UI rendered when the ErrorBoundary catches a render error.
@@ -81,6 +82,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
    * @param info - React component stack information
    */
   componentDidCatch(error: unknown, info: ErrorInfo): void {
+    captureException(error);
     console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
   }
 

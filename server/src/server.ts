@@ -10,6 +10,7 @@ import http from 'http';
 import cron from 'node-cron';
 import app from './app.js';
 import logger from './logger.js';
+import { initSentry, captureException } from './sentry.js';
 import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
@@ -17,6 +18,8 @@ import pool from './db.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
+
+initSentry();
 
 /** Known-weak JWT_SECRET values that must be rejected at startup */
 const WEAK_JWT_SECRETS = new Set(['changeme', 'secret', 'password', '']);
@@ -37,8 +40,9 @@ if (
   );
 }
 
-// Log unhandled promise rejections (e.g. from fire-and-forget automation triggers — MINCRM-122)
+// Log and report unhandled promise rejections (e.g. from fire-and-forget automation triggers — MINCRM-122)
 process.on('unhandledRejection', (reason) => {
+  captureException(reason);
   logger.error({ reason }, 'Unhandled promise rejection');
 });
 

@@ -6,6 +6,9 @@ import { screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import ErrorBoundary from './ErrorBoundary.js';
+import * as sentry from '../sentry.js';
+
+vi.mock('../sentry.js', () => ({ captureException: vi.fn() }));
 
 /** Component that always throws on render — used to trigger the boundary */
 function ThrowingChild(): never {
@@ -76,5 +79,15 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
     expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('calls captureException when a child throws', () => {
+    const captureExceptionSpy = vi.spyOn(sentry, 'captureException');
+    render(
+      <ErrorBoundary>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+    expect(captureExceptionSpy).toHaveBeenCalledWith(expect.any(Error));
   });
 });
