@@ -32,6 +32,7 @@ import tagRoutes from './routes/tags.js';
 import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
 import customFieldValueRoutes from './routes/customFieldValues.js';
 import { setupSwagger } from './swagger.js';
+import { captureException } from './sentry.js';
 
 const app = express();
 
@@ -212,6 +213,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
+  captureException(err);
   logger.error({ err }, 'Unhandled error');
   res.status(500).json({
     error: {

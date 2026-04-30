@@ -13,6 +13,9 @@ import i18n from './i18n.js';
 import App from './App.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
 import { BreakpointProvider } from './context/BreakpointContext.js';
+import { initSentry } from './sentry.js';
+
+initSentry();
 
 /** Shared React Query client instance */
 const queryClient = new QueryClient({
