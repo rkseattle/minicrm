@@ -44,6 +44,7 @@ export const NAV_LINKS: NavLinkDef[] = [
   { to: '/tasks', labelKey: 'nav.myTasks', adminOnly: false },
   { to: '/reports/win-loss', labelKey: 'nav.winLossReport', adminOnly: false },
   { to: '/reports/activity-volume', labelKey: 'nav.activityVolumeReport', adminOnly: false },
+  { to: '/reports/stage-trend', labelKey: 'nav.stageTrendReport', adminOnly: false },
   {
     to: '/users',
     labelKey: 'nav.users',
@@ -70,6 +71,7 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/users': 'users',
   '/reports/win-loss': 'win-loss',
   '/reports/activity-volume': 'activity-volume',
+  '/reports/stage-trend': 'stage-trend',
   '/admin/automation': 'automation',
   '/admin/tags': 'tags',
   '/admin/settings': 'settings',
