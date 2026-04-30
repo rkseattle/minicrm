@@ -55,6 +55,10 @@ function getFromAddress(): string {
  * @returns A ready-to-use Transporter, or null when no SMTP source is configured.
  */
 async function resolveTransport(): Promise<Transporter | null> {
+  // Never use a live transport in test environments — return null so all
+  // callers take the console-log path regardless of SMTP env vars or DB config.
+  if (process.env.NODE_ENV === 'test') return null;
+
   // 1. Database-stored config takes precedence
   try {
     const dbConfig = await getSmtpConfigInternal();
