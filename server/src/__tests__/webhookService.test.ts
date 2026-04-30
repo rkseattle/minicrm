@@ -155,8 +155,21 @@ describe('updateWebhookSubscription', () => {
       adminActor,
     );
 
-    const updated = await updateWebhookSubscription(subscription.id, { status: 'disabled' }, adminActor);
+    const updated = await updateWebhookSubscription(
+      subscription.id,
+      { status: 'disabled' },
+      adminActor,
+    );
     expect(updated?.status).toBe('disabled');
+  });
+
+  it('returns null when no recognized fields are provided (no-op branch)', async () => {
+    const result = await updateWebhookSubscription(
+      '00000000-0000-0000-0000-000000000000',
+      {} as Parameters<typeof updateWebhookSubscription>[1],
+      adminActor,
+    );
+    expect(result).toBeNull();
   });
 });
 
