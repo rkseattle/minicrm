@@ -102,186 +102,191 @@ export default function IntegrationSettings() {
   }
 
   return (
-    <div
-      className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
-      data-testid="storage-section"
-    >
-      <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="storage-section-title">
-        {t('settings.storage.sectionTitle')}
-      </h2>
-      <p className="text-xs text-gray-500 mb-4">{t('settings.storage.sectionHint')}</p>
+    <>
+      <div
+        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        data-testid="storage-section"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="storage-section-title">
+          {t('settings.storage.sectionTitle')}
+        </h2>
+        <p className="text-xs text-gray-500 mb-4">{t('settings.storage.sectionHint')}</p>
 
-      {storageLoading && (
-        <p className="text-sm text-gray-500" data-testid="storage-loading">
-          {t('common.loading')}
-        </p>
-      )}
+        {storageLoading && (
+          <p className="text-sm text-gray-500" data-testid="storage-loading">
+            {t('common.loading')}
+          </p>
+        )}
 
-      {storageError && (
-        <p role="alert" className="text-sm text-red-600" data-testid="storage-load-error">
-          {t('settings.loadError')}
-        </p>
-      )}
+        {storageError && (
+          <p role="alert" className="text-sm text-red-600" data-testid="storage-load-error">
+            {t('settings.loadError')}
+          </p>
+        )}
 
-      {!storageLoading && !storageError && (
-        <form onSubmit={handleStorageSave} className="space-y-4">
-          <div>
-            <label
-              htmlFor="storage-endpoint"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('settings.storage.endpointLabel')}
-            </label>
-            <input
-              id="storage-endpoint"
-              type="text"
-              data-testid="storage-endpoint-input"
-              placeholder="https://s3.example.com"
-              value={storageForm.endpoint}
-              onChange={(e) => setStorageForm((prev) => ({ ...prev, endpoint: e.target.value }))}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
+        {!storageLoading && !storageError && (
+          <form onSubmit={handleStorageSave} className="space-y-4">
+            <div>
+              <label
+                htmlFor="storage-endpoint"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.storage.endpointLabel')}
+              </label>
+              <input
+                id="storage-endpoint"
+                type="text"
+                data-testid="storage-endpoint-input"
+                placeholder="https://s3.example.com"
+                value={storageForm.endpoint}
+                onChange={(e) => setStorageForm((prev) => ({ ...prev, endpoint: e.target.value }))}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="storage-bucket"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('settings.storage.bucketLabel')}
-            </label>
-            <input
-              id="storage-bucket"
-              type="text"
-              data-testid="storage-bucket-input"
-              value={storageForm.bucket}
-              onChange={(e) => setStorageForm((prev) => ({ ...prev, bucket: e.target.value }))}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="storage-bucket"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.storage.bucketLabel')}
+              </label>
+              <input
+                id="storage-bucket"
+                type="text"
+                data-testid="storage-bucket-input"
+                value={storageForm.bucket}
+                onChange={(e) => setStorageForm((prev) => ({ ...prev, bucket: e.target.value }))}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="storage-access-key-id"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('settings.storage.accessKeyIdLabel')}
-            </label>
-            <input
-              id="storage-access-key-id"
-              type="text"
-              data-testid="storage-access-key-id-input"
-              value={storageForm.accessKeyId}
-              onChange={(e) => setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="storage-access-key-id"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.storage.accessKeyIdLabel')}
+              </label>
+              <input
+                id="storage-access-key-id"
+                type="text"
+                data-testid="storage-access-key-id-input"
+                value={storageForm.accessKeyId}
+                onChange={(e) => setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))}
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="storage-secret-access-key"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('settings.storage.secretAccessKeyLabel')}
-            </label>
-            {storageData?.configured && !storageForm.secretAccessKey && (
-              <p className="text-xs text-gray-400 mb-1" data-testid="storage-secret-masked">
-                {t('settings.storage.secretMasked')}
+            <div>
+              <label
+                htmlFor="storage-secret-access-key"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.storage.secretAccessKeyLabel')}
+              </label>
+              {storageData?.configured && !storageForm.secretAccessKey && (
+                <p className="text-xs text-gray-400 mb-1" data-testid="storage-secret-masked">
+                  {t('settings.storage.secretMasked')}
+                </p>
+              )}
+              <input
+                id="storage-secret-access-key"
+                type="password"
+                data-testid="storage-secret-access-key-input"
+                placeholder={storageData?.configured ? t('settings.storage.secretPlaceholder') : ''}
+                value={storageForm.secretAccessKey}
+                onChange={(e) =>
+                  setStorageForm((prev) => ({ ...prev, secretAccessKey: e.target.value }))
+                }
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+
+            {storageTestStatus === 'ok' && (
+              <p role="status" className="text-sm text-green-700" data-testid="storage-test-ok">
+                {t('settings.storage.testSuccess')}
               </p>
             )}
-            <input
-              id="storage-secret-access-key"
-              type="password"
-              data-testid="storage-secret-access-key-input"
-              placeholder={storageData?.configured ? t('settings.storage.secretPlaceholder') : ''}
-              value={storageForm.secretAccessKey}
-              onChange={(e) =>
-                setStorageForm((prev) => ({ ...prev, secretAccessKey: e.target.value }))
-              }
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
+            {storageTestStatus === 'fail' && (
+              <p role="alert" className="text-sm text-red-600" data-testid="storage-test-fail">
+                {t('settings.storage.testFail')}
+              </p>
+            )}
 
-          {storageTestStatus === 'ok' && (
-            <p role="status" className="text-sm text-green-700" data-testid="storage-test-ok">
-              {t('settings.storage.testSuccess')}
-            </p>
-          )}
-          {storageTestStatus === 'fail' && (
-            <p role="alert" className="text-sm text-red-600" data-testid="storage-test-fail">
-              {t('settings.storage.testFail')}
-            </p>
-          )}
+            {storageSaveSuccess && (
+              <p role="status" className="text-sm text-green-700" data-testid="storage-save-success">
+                {t('settings.storage.saveSuccess')}
+              </p>
+            )}
+            {storageSaveError && (
+              <p role="alert" className="text-sm text-red-600" data-testid="storage-save-error">
+                {t('settings.storage.saveError')}
+              </p>
+            )}
 
-          {storageSaveSuccess && (
-            <p role="status" className="text-sm text-green-700" data-testid="storage-save-success">
-              {t('settings.storage.saveSuccess')}
-            </p>
-          )}
-          {storageSaveError && (
-            <p role="alert" className="text-sm text-red-600" data-testid="storage-save-error">
-              {t('settings.storage.saveError')}
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-3 justify-end">
-            {storageData?.configured && (
+            <div className="flex flex-wrap gap-3 justify-end">
+              {storageData?.configured && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="md"
+                  data-testid="storage-clear-button"
+                  disabled={storageClearMutation.isPending || storageSaveMutation.isPending}
+                  onClick={() => storageClearMutation.mutate()}
+                >
+                  {storageClearMutation.isPending
+                    ? t('common.loading')
+                    : t('settings.storage.clearButton')}
+                </Button>
+              )}
               <Button
                 type="button"
-                variant="danger"
+                variant="secondary"
                 size="md"
-                data-testid="storage-clear-button"
-                disabled={storageClearMutation.isPending || storageSaveMutation.isPending}
-                onClick={() => storageClearMutation.mutate()}
+                data-testid="storage-test-button"
+                disabled={
+                  storageTestStatus === 'testing' ||
+                  storageSaveMutation.isPending ||
+                  !storageForm.endpoint ||
+                  !storageForm.bucket ||
+                  !storageForm.accessKeyId ||
+                  !storageForm.secretAccessKey
+                }
+                onClick={() => void handleStorageTest()}
               >
-                {storageClearMutation.isPending
+                {storageTestStatus === 'testing'
                   ? t('common.loading')
-                  : t('settings.storage.clearButton')}
+                  : t('settings.storage.testButton')}
               </Button>
-            )}
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              data-testid="storage-test-button"
-              disabled={
-                storageTestStatus === 'testing' ||
-                storageSaveMutation.isPending ||
-                !storageForm.endpoint ||
-                !storageForm.bucket ||
-                !storageForm.accessKeyId ||
-                !storageForm.secretAccessKey
-              }
-              onClick={() => void handleStorageTest()}
-            >
-              {storageTestStatus === 'testing'
-                ? t('common.loading')
-                : t('settings.storage.testButton')}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              data-testid="storage-save-button"
-              disabled={
-                storageSaveMutation.isPending ||
-                !storageForm.endpoint ||
-                !storageForm.bucket ||
-                !storageForm.accessKeyId ||
-                !storageForm.secretAccessKey
-              }
-            >
-              {storageSaveMutation.isPending
-                ? t('settings.saving')
-                : t('settings.storage.saveButton')}
-            </Button>
-          </div>
-        </form>
-      )}
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                data-testid="storage-save-button"
+                disabled={
+                  storageSaveMutation.isPending ||
+                  !storageForm.endpoint ||
+                  !storageForm.bucket ||
+                  !storageForm.accessKeyId ||
+                  !storageForm.secretAccessKey
+                }
+              >
+                {storageSaveMutation.isPending
+                  ? t('settings.saving')
+                  : t('settings.storage.saveButton')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
 
-      <hr className="my-8 border-gray-200" />
-
-      <WebhookSettings />
-    </div>
+      <div
+        className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        data-testid="webhooks-section"
+      >
+        <WebhookSettings />
+      </div>
+    </>
   );
 }

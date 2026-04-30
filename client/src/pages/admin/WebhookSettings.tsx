@@ -320,7 +320,7 @@ export default function WebhookSettings() {
   }
 
   return (
-    <div className="mb-8" data-testid="webhook-settings-section">
+    <div data-testid="webhook-settings-section">
       <h2 className="text-lg font-semibold text-gray-900 mb-1">
         {t('settings.webhooks.sectionTitle')}
       </h2>
