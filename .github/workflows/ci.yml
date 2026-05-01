@@ -1029,6 +1029,8 @@ jobs:
   # Treats skipped jobs as passing so that path-scoped PRs are not blocked by
   # jobs that legitimately did not run.
   # MINCRM-282: security-audit is now blocking and included in this gate.
+  # MINCRM-308: e2e-all-shards-passed added so any shard failure blocks this gate
+  # regardless of how branch protection rules are named or configured.
   ci-gate:
     name: CI gate
     needs:
@@ -1039,6 +1041,7 @@ jobs:
       - e2e-framework-purity
       - lint-docs
       - e2e-aggregate
+      - e2e-all-shards-passed
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1052,6 +1055,7 @@ jobs:
             "${{ needs.e2e-framework-purity.result }}" \
             "${{ needs.lint-docs.result }}" \
             "${{ needs.e2e-aggregate.result }}" \
+            "${{ needs.e2e-all-shards-passed.result }}" \
           )
           for result in "${results[@]}"; do
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then

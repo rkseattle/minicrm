@@ -24,6 +24,9 @@ initSentry();
 /** Known-weak JWT_SECRET values that must be rejected at startup */
 const WEAK_JWT_SECRETS = new Set(['changeme', 'secret', 'password', '']);
 
+/** Expected byte length of NODE_ENCRYPTION_KEY expressed as hex chars (32 bytes × 2) */
+const ENCRYPTION_KEY_HEX_LENGTH = 64;
+
 /** Drain timeout in milliseconds before forcing process exit */
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -37,6 +40,18 @@ if (
     'JWT_SECRET is not set or is using a known-weak value. ' +
       'Set a cryptographically random secret of at least 32 characters before starting. ' +
       "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+  );
+}
+
+// MINCRM-301: Validate NODE_ENCRYPTION_KEY at startup so operators discover
+// missing configuration immediately rather than at first use of storage or SMTP.
+const encryptionKey = process.env.NODE_ENCRYPTION_KEY ?? '';
+if (encryptionKey.length !== ENCRYPTION_KEY_HEX_LENGTH || !/^[0-9a-fA-F]+$/.test(encryptionKey)) {
+  throw new Error(
+    'NODE_ENCRYPTION_KEY is not set or is not a valid 64-character hex string (32 bytes). ' +
+      'This key is required for file storage and SMTP secret encryption. ' +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+      'and set it in your .env file. See docs/operations.md for details.',
   );
 }
 
