@@ -14,6 +14,9 @@ const DEFAULT_DB_PORT = 5432;
 /** Default maximum pool size — matches pg's own default so the value is visible in code */
 const DEFAULT_POOL_MAX = 10;
 
+/** Statement timeout in milliseconds — cancels any query running longer than this. (MINCRM-248) */
+const STATEMENT_TIMEOUT_MS = 30_000;
+
 /**
  * Shared connection pool instance.
  * Reads connection parameters from environment variables.
@@ -39,18 +42,16 @@ const pool = new Pool({
   // exhaustion. A non-zero value causes a fast failure that the global error
   // handler converts to a 503 response. (MINCRM-248)
   connectionTimeoutMillis: 5_000,
+
+  // Sent in the PostgreSQL startup message — no separate SET query needed.
+  // Avoids the pg@9 DeprecationWarning that fired when the previous connect-event
+  // approach issued a fire-and-forget SET query before the client was acquired. (MINCRM-292)
+  statement_timeout: STATEMENT_TIMEOUT_MS,
 });
 
 pool.on('error', (err) => {
   // Rethrow fatal pool errors so the process crashes with a visible stack trace
   throw new Error(`Unexpected PostgreSQL pool error: ${err.message}`);
-});
-
-pool.on('connect', (client) => {
-  // Cancel any query running longer than 30 seconds, preventing a misbehaving
-  // query from holding a connection indefinitely and starving the pool.
-  // Can be overridden per-query with SET LOCAL statement_timeout. (MINCRM-248)
-  void client.query(`SET statement_timeout = '30s'`);
 });
 
 export default pool;
