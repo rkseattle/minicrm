@@ -76,5 +76,32 @@ services:
     depends_on:
       - server
 
+  # MINCRM-286: Optional automated backup service — disabled by default.
+  # Enable with: docker compose --profile backup up -d
+  # Configure BACKUP_SCHEDULE and BACKUP_RETENTION_DAYS in your .env file.
+  db-backup:
+    container_name: minicrm-db-backup
+    logging: *default-logging
+    image: prodrigestivus/pg-backup-local:latest
+    restart: unless-stopped
+    profiles:
+      - backup
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_EXTRA_OPTS: --format=custom
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_KEEP_WEEKS: "0"
+      BACKUP_KEEP_MONTHS: "0"
+    volumes:
+      - db_backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db_data:
+  db_backups:
