@@ -150,6 +150,17 @@ export interface OpenHamburgerMenuResult {
 export async function openHamburgerMenu(
   context: NavBehaviorContext,
 ): Promise<OpenHamburgerMenuResult> {
+  // Wait for the toggle to be stable before clicking — after a route navigation
+  // NavHamburger remounts and resets menuOpen to false. Clicking before the new
+  // instance has fully mounted either fires on the old instance (ignored) or
+  // before setMenuOpen is wired up, so the drawer never appears.
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ],
+    'visible',
+  );
   await context.page.click([
     { type: 'testId', value: 'nav-menu-toggle' },
     { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
