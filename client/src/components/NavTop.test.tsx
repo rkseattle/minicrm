@@ -38,7 +38,7 @@ describe('NavTop', () => {
     });
     expect(screen.getByTestId('nav-top-settings')).toBeInTheDocument();
     expect(screen.getByTestId('nav-top-automation')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-top-win-loss')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-top-reports')).toBeInTheDocument();
   });
 
   it('hides admin links for rep users', async () => {

@@ -5,11 +5,14 @@
  *   - Mobile (< 768px): native <select> picker — one line, OS-native UX
  *   - Desktop + left sidebar nav: horizontal tab bar (avoids double sidebar)
  *   - Desktop + top/hamburger nav: vertical tab list on the left
+ *
+ * Navigation chrome is provided by SubPageNav (MINCRM-294).
  */
 
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
+import SubPageNav from '@/components/SubPageNav.js';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
 import GeneralSettings from '@/pages/admin/GeneralSettings.js';
@@ -52,18 +55,21 @@ export default function AdminSettingsPage() {
   const rawTab = searchParams.get('tab');
   const activeTab: TabKey = isValidTab(rawTab) ? rawTab : 'general';
 
-  function selectTab(tab: TabKey): void {
-    if (tab === activeTab) return;
-    setSearchParams({ tab }, { replace: false });
+  function selectTab(key: string): void {
+    setSearchParams({ tab: key }, { replace: false });
   }
 
-  // Desktop + left sidebar → horizontal tab bar (avoids a second left-side list).
-  // Desktop + top/hamburger → vertical tab list beside content.
-  // Mobile → native <select> picker (single line, OS-native scroll wheel).
-  const useHorizontalTabs = !isMobile && navLayout === 'left';
-  const useVerticalTabs = !isMobile && navLayout !== 'left';
-
   const ActivePanel = TAB_CONTENT[activeTab];
+
+  const navItems = TAB_KEYS.map((tab) => ({
+    key: tab,
+    label: t(`settings.tabs.${tab}`),
+    'data-testid': `settings-tab-${tab}`,
+  }));
+
+  // Vertical mode (desktop + top/hamburger) needs a flex row to place nav beside content.
+  // Mobile and horizontal modes render nav above content — no flex wrapper needed.
+  const useVerticalLayout = !isMobile && navLayout !== 'left';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,107 +79,18 @@ export default function AdminSettingsPage() {
           {t('settings.pageTitle')}
         </h1>
 
-        {isMobile && (
-          /* ── Native select picker (mobile) ────────────────────────── */
-          <>
-            <div className="mb-6" data-testid="settings-tab-list">
-              <select
-                value={activeTab}
-                onChange={(e) => selectTab(e.target.value as TabKey)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                aria-label={t('settings.pageTitle')}
-                data-testid="settings-tab-select"
-              >
-                {TAB_KEYS.map((tab) => (
-                  <option key={tab} value={tab} data-testid={`settings-tab-${tab}`}>
-                    {t(`settings.tabs.${tab}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div
-              role="tabpanel"
-              id={`settings-panel-${activeTab}`}
-              aria-labelledby={`settings-tab-select`}
-              data-testid={`settings-panel-${activeTab}`}
-            >
-              <ActivePanel />
-            </div>
-          </>
-        )}
-
-        {useHorizontalTabs && (
-          /* ── Horizontal tab bar (desktop + left sidebar) ──────────── */
-          <div>
-            <div
-              className="flex overflow-x-auto overflow-y-hidden border-b border-gray-200 mb-6"
-              role="tablist"
-              aria-label={t('settings.pageTitle')}
-              data-testid="settings-tab-list"
-            >
-              {TAB_KEYS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab}
-                  aria-controls={`settings-panel-${tab}`}
-                  id={`settings-tab-${tab}`}
-                  data-testid={`settings-tab-${tab}`}
-                  onClick={() => selectTab(tab)}
-                  className={[
-                    'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500',
-                    activeTab === tab
-                      ? 'border-indigo-600 text-indigo-700'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  ].join(' ')}
-                >
-                  {t(`settings.tabs.${tab}`)}
-                </button>
-              ))}
-            </div>
-            <div
-              role="tabpanel"
-              id={`settings-panel-${activeTab}`}
-              aria-labelledby={`settings-tab-${activeTab}`}
-              data-testid={`settings-panel-${activeTab}`}
-            >
-              <ActivePanel />
-            </div>
-          </div>
-        )}
-
-        {useVerticalTabs && (
+        {useVerticalLayout ? (
           /* ── Vertical tab list (desktop + top/hamburger nav) ──────── */
           <div className="flex gap-8 items-start">
-            <div
-              className="w-48 flex-shrink-0"
-              role="tablist"
-              aria-label={t('settings.pageTitle')}
-              aria-orientation="vertical"
+            <SubPageNav
+              items={navItems}
+              activeKey={activeTab}
+              onChange={selectTab}
+              ariaLabel={t('settings.pageTitle')}
               data-testid="settings-tab-list"
-            >
-              {TAB_KEYS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab}
-                  aria-controls={`settings-panel-${tab}`}
-                  id={`settings-tab-${tab}`}
-                  data-testid={`settings-tab-${tab}`}
-                  onClick={() => selectTab(tab)}
-                  className={[
-                    'w-full text-start px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-0.5',
-                    activeTab === tab
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                  ].join(' ')}
-                >
-                  {t(`settings.tabs.${tab}`)}
-                </button>
-              ))}
-            </div>
+              panelTestidPrefix="settings-panel"
+              itemTestidPrefix="settings-tab"
+            />
             <div
               className="flex-1 min-w-0"
               role="tabpanel"
@@ -184,6 +101,27 @@ export default function AdminSettingsPage() {
               <ActivePanel />
             </div>
           </div>
+        ) : (
+          /* ── Mobile select or horizontal tab bar ───────────────────── */
+          <>
+            <SubPageNav
+              items={navItems}
+              activeKey={activeTab}
+              onChange={selectTab}
+              ariaLabel={t('settings.pageTitle')}
+              data-testid="settings-tab-list"
+              panelTestidPrefix="settings-panel"
+              itemTestidPrefix="settings-tab"
+            />
+            <div
+              role="tabpanel"
+              id={`settings-panel-${activeTab}`}
+              aria-labelledby={isMobile ? 'settings-tab-list-select' : `settings-tab-${activeTab}`}
+              data-testid={`settings-panel-${activeTab}`}
+            >
+              <ActivePanel />
+            </div>
+          </>
         )}
       </main>
     </div>

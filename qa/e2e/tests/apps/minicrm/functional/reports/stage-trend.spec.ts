@@ -2,8 +2,11 @@
  * Stage trend report functional tests (MINCRM-284).
  *
  * Tests that an authenticated user can view the stage trend report page,
- * reach it via the nav link, interact with the date range filter, and see
+ * reach it via the reports nav link, interact with the date range filter, and see
  * the expected UI elements after the report loads.
+ *
+ * Updated for MINCRM-294: stage trend is now served at /reports?view=pipeline-stage
+ * via the Reports shell page. The old /reports/stage-trend route redirects there.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -70,7 +73,7 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
 // Tests
 // ---------------------------------------------------------------------------
 
-test('stage trend report: nav link navigates to /reports/stage-trend @functional', async ({
+test('stage trend report: nav link navigates to /reports @functional', async ({
   page,
   restClient,
 }) => {
@@ -79,20 +82,21 @@ test('stage trend report: nav link navigates to /reports/stage-trend @functional
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    const result = await navigateViaNavLink('left', 'stage-trend', { page });
+    // Nav now has a single "Reports" link (MINCRM-294)
+    const result = await navigateViaNavLink('left', 'reports', { page });
 
     expect(result.linkClicked).toBe(true);
-    expect(new URL(result.finalUrl).pathname).toBe('/reports/stage-trend');
+    expect(new URL(result.finalUrl).pathname).toBe('/reports');
   } finally {
     await setNavLayoutViaAPI('top', restClient).catch(() => null);
   }
 });
 
-test('stage trend report: page heading and date range filter are visible @functional', async ({
+test('stage trend report: direct URL /reports?view=pipeline-stage shows heading and filter @functional', async ({
   page,
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  await page.goto('/reports/stage-trend', { waitUntil: 'networkidle' });
+  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const heading = await page
     .locate([{ type: 'testId', value: 'stage-trend-report-heading' }])
@@ -104,11 +108,20 @@ test('stage trend report: page heading and date range filter are visible @functi
   await expect(daysSelect).toHaveValue('30');
 });
 
-test('stage trend report: table or empty state visible after load @functional', async ({
+test('stage trend report: old URL /reports/stage-trend redirects to /reports @functional', async ({
   page,
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports/stage-trend', { waitUntil: 'networkidle' });
+
+  expect(new URL(page.url()).pathname).toBe('/reports');
+});
+
+test('stage trend report: table or empty state visible after load @functional', async ({
+  page,
+}) => {
+  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
 
@@ -122,7 +135,7 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
   page,
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  await page.goto('/reports/stage-trend', { waitUntil: 'networkidle' });
+  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   // Wait for initial load to settle
   await waitForReportLoaded(page);
@@ -144,7 +157,7 @@ test('stage trend report: changing date range to 90 days updates the select @fun
   page,
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  await page.goto('/reports/stage-trend', { waitUntil: 'networkidle' });
+  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const daysSelect = await page.locate([{ type: 'testId', value: 'days-select' }]).resolve();
   await daysSelect.selectOption('90');

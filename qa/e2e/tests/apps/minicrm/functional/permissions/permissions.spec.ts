@@ -388,7 +388,7 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
   }
 });
 
-test('@functional F7-FU4: rep navigating directly to /reports/win-loss can access the page', async ({
+test('@functional F7-FU4: rep navigating directly to /reports can access the reports page', async ({
   page,
   restClient,
 }) => {
@@ -397,12 +397,13 @@ test('@functional F7-FU4: rep navigating directly to /reports/win-loss can acces
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
+    // /reports/win-loss now redirects to /reports?view=win-loss (MINCRM-294)
     await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
 
-    // Win/Loss Report is now accessible to all authenticated users — reps should land on the page.
+    // Rep should be redirected to /reports (the consolidated shell page)
     const finalPath = new URL(page.url()).pathname;
-    expect(finalPath, 'rep navigating to /reports/win-loss should stay on the page').toBe(
-      '/reports/win-loss',
+    expect(finalPath, 'rep navigating to /reports/win-loss should redirect to /reports').toBe(
+      '/reports',
     );
   } finally {
     await restClient

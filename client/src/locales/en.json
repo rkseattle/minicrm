@@ -8,6 +8,7 @@
     "pipeline": "Pipeline",
     "myTasks": "My Tasks",
     "users": "Users",
+    "reports": "Reports",
     "winLossReport": "Win/Loss Report",
     "activityVolumeReport": "Activity Report",
     "stageTrendReport": "Stage Trend Report",
@@ -769,6 +770,12 @@
     }
   },
   "reports": {
+    "pageTitle": "Reports",
+    "nav": {
+      "win_loss": "Win/Loss",
+      "activity": "Activity Volume",
+      "pipeline_stage": "Pipeline Stage"
+    },
     "activityVolume": {
       "pageTitle": "Activity Report",
       "pageTitleMy": "My Activity Report",

@@ -83,10 +83,24 @@ function formatWinRate(rate: number | null): string {
 type DatePreset = 'currentMonth' | 'currentQuarter' | 'custom';
 
 /**
- * Win/loss report page.
- * Implements MINCRM-26, MINCRM-264.
+ * Standalone Win/Loss report page — includes NavBar.
+ * When embedded in ReportsPage shell, use WinLossReportContent instead. (MINCRM-294)
  */
 export default function WinLossReportPage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <WinLossReportContent />
+    </div>
+  );
+}
+
+/**
+ * Win/loss report content — no NavBar wrapper.
+ * Consumed by ReportsPage shell. (MINCRM-294)
+ * Implements MINCRM-26, MINCRM-264.
+ */
+export function WinLossReportContent() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -150,501 +164,485 @@ export default function WinLossReportPage() {
     !isAdmin || viewMode === 'my' ? 'reports.winLoss.pageTitleMy' : 'reports.winLoss.pageTitleTeam';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900" data-testid="win-loss-report-heading">
-            {t(headingKey)}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">{t('reports.winLoss.subtitle')}</p>
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900" data-testid="win-loss-report-heading">
+          {t(headingKey)}
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">{t('reports.winLoss.subtitle')}</p>
+      </div>
+
+      {/* My View / Team View toggle — admin only (MINCRM-264) */}
+      {isAdmin && (
+        <div
+          className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"
+          data-testid="view-mode-toggle"
+        >
+          <button
+            type="button"
+            onClick={() => setViewMode('team')}
+            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+              viewMode === 'team'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            data-testid="view-mode-team"
+          >
+            {t('reports.winLoss.viewToggleTeamView')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('my')}
+            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+              viewMode === 'my'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            data-testid="view-mode-my"
+          >
+            {t('reports.winLoss.viewToggleMyView')}
+          </button>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-end"
+        data-testid="report-filters"
+      >
+        {/* Date preset */}
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="date-preset"
+            className="text-xs font-medium text-gray-500 uppercase tracking-wide"
+          >
+            {t('reports.winLoss.dateRangeLabel')}
+          </label>
+          <select
+            id="date-preset"
+            data-testid="date-preset-select"
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as DatePreset)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+          >
+            <option value="currentMonth">{t('reports.winLoss.presetCurrentMonth')}</option>
+            <option value="currentQuarter">{t('reports.winLoss.presetCurrentQuarter')}</option>
+            <option value="custom">{t('reports.winLoss.presetCustom')}</option>
+          </select>
         </div>
 
-        {/* My View / Team View toggle — admin only (MINCRM-264) */}
-        {isAdmin && (
-          <div
-            className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"
-            data-testid="view-mode-toggle"
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode('team')}
-              className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
-                viewMode === 'team'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-              data-testid="view-mode-team"
-            >
-              {t('reports.winLoss.viewToggleTeamView')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('my')}
-              className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
-                viewMode === 'my'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-              data-testid="view-mode-my"
-            >
-              {t('reports.winLoss.viewToggleMyView')}
-            </button>
-          </div>
-        )}
-
-        {/* Filters */}
-        <div
-          className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-end"
-          data-testid="report-filters"
-        >
-          {/* Date preset */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="date-preset"
-              className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-            >
-              {t('reports.winLoss.dateRangeLabel')}
-            </label>
-            <select
-              id="date-preset"
-              data-testid="date-preset-select"
-              value={preset}
-              onChange={(e) => setPreset(e.target.value as DatePreset)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
-            >
-              <option value="currentMonth">{t('reports.winLoss.presetCurrentMonth')}</option>
-              <option value="currentQuarter">{t('reports.winLoss.presetCurrentQuarter')}</option>
-              <option value="custom">{t('reports.winLoss.presetCustom')}</option>
-            </select>
-          </div>
-
-          {/* Custom date range — only visible when "custom" is selected */}
-          {preset === 'custom' && (
-            <>
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="custom-start"
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-                >
-                  {t('reports.winLoss.startDateLabel')}
-                </label>
-                <input
-                  id="custom-start"
-                  type="date"
-                  data-testid="custom-start-input"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="custom-end"
-                  className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-                >
-                  {t('reports.winLoss.endDateLabel')}
-                </label>
-                <input
-                  id="custom-end"
-                  type="date"
-                  data-testid="custom-end-input"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Owner filter — admin only */}
-          {isAdmin && (
+        {/* Custom date range — only visible when "custom" is selected */}
+        {preset === 'custom' && (
+          <>
             <div className="flex flex-col gap-1">
               <label
-                htmlFor="owner-filter"
+                htmlFor="custom-start"
                 className="text-xs font-medium text-gray-500 uppercase tracking-wide"
               >
-                {t('reports.winLoss.ownerFilterLabel')}
+                {t('reports.winLoss.startDateLabel')}
               </label>
-              <select
-                id="owner-filter"
-                data-testid="owner-filter-select"
-                value={selectedOwnerId}
-                onChange={(e) => setSelectedOwnerId(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              <input
+                id="custom-start"
+                type="date"
+                data-testid="custom-start-input"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="custom-end"
+                className="text-xs font-medium text-gray-500 uppercase tracking-wide"
               >
-                <option value="">{t('reports.winLoss.ownerFilterAll')}</option>
-                {activeUsersData?.users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
+                {t('reports.winLoss.endDateLabel')}
+              </label>
+              <input
+                id="custom-end"
+                type="date"
+                data-testid="custom-end-input"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+              />
+            </div>
+          </>
+        )}
+
+        {/* Owner filter — admin only */}
+        {isAdmin && (
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="owner-filter"
+              className="text-xs font-medium text-gray-500 uppercase tracking-wide"
+            >
+              {t('reports.winLoss.ownerFilterLabel')}
+            </label>
+            <select
+              id="owner-filter"
+              data-testid="owner-filter-select"
+              value={selectedOwnerId}
+              onChange={(e) => setSelectedOwnerId(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">{t('reports.winLoss.ownerFilterAll')}</option>
+              {activeUsersData?.users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Invalid date range warning */}
+      {preset === 'custom' && start > end && (
+        <p role="alert" className="mb-4 text-sm text-red-600" data-testid="date-range-error">
+          {t('reports.winLoss.dateRangeInvalid')}
+        </p>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <p className="text-sm text-gray-400" data-testid="report-loading">
+          {t('reports.winLoss.loading')}
+        </p>
+      )}
+
+      {/* Error state */}
+      {isError && (
+        <p role="alert" className="text-sm text-red-600" data-testid="report-error">
+          {t('reports.winLoss.errorLoad')}
+        </p>
+      )}
+
+      {/* Report results */}
+      {report && (
+        <>
+          {/* Summary stat cards */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
+            data-testid="report-stat-cards"
+          >
+            {/* Closed Won count */}
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+              data-testid="stat-won-count"
+            >
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {t('reports.winLoss.wonCountLabel')}
+              </p>
+              <p
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600"
+                data-testid="stat-won-count-value"
+              >
+                {report.wonCount}
+              </p>
+            </div>
+
+            {/* Closed Won value */}
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+              data-testid="stat-won-value"
+            >
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {t('reports.winLoss.wonValueLabel')}
+              </p>
+              <p
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
+                data-testid="stat-won-value-value"
+              >
+                {report.mixedCurrencies
+                  ? t('pipeline.mixedCurrency')
+                  : formatCurrency(report.wonValue, i18n.language, report.currency ?? 'USD')}
+              </p>
+            </div>
+
+            {/* Closed Lost count */}
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+              data-testid="stat-lost-count"
+            >
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {t('reports.winLoss.lostCountLabel')}
+              </p>
+              <p
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600"
+                data-testid="stat-lost-count-value"
+              >
+                {report.lostCount}
+              </p>
+            </div>
+
+            {/* Closed Lost value */}
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+              data-testid="stat-lost-value"
+            >
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {t('reports.winLoss.lostValueLabel')}
+              </p>
+              <p
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
+                data-testid="stat-lost-value-value"
+              >
+                {report.mixedCurrencies
+                  ? t('pipeline.mixedCurrency')
+                  : formatCurrency(report.lostValue, i18n.language, report.currency ?? 'USD')}
+              </p>
+            </div>
+
+            {/* Win rate */}
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
+              data-testid="stat-win-rate"
+            >
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {t('reports.winLoss.winRateLabel')}
+              </p>
+              <p
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 whitespace-nowrap"
+                data-testid="stat-win-rate-value"
+              >
+                {formatWinRate(report.winRate)}
+              </p>
+            </div>
+          </div>
+
+          {/* Converted totals in home currency (MINCRM-253) — only shown when rates exist */}
+          {report.hasRates && (
+            <div
+              className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-col gap-2"
+              data-testid="converted-totals-summary"
+            >
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {t('reports.winLoss.wonValueLabel')}
+                    {' ('}
+                    {report.homeCurrency}
+                    {')'}
+                  </p>
+                  <p
+                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
+                    data-testid="stat-converted-won-value"
+                  >
+                    {report.convertedWonValue !== null
+                      ? formatCurrency(
+                          report.convertedWonValue,
+                          i18n.language,
+                          report.homeCurrency ?? 'USD',
+                        )
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {t('reports.winLoss.lostValueLabel')}
+                    {' ('}
+                    {report.homeCurrency}
+                    {')'}
+                  </p>
+                  <p
+                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
+                    data-testid="stat-converted-lost-value"
+                  >
+                    {report.convertedLostValue !== null
+                      ? formatCurrency(
+                          report.convertedLostValue,
+                          i18n.language,
+                          report.homeCurrency ?? 'USD',
+                        )
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+              {/* Rates footnote */}
+              <p className="text-xs text-gray-400" data-testid="converted-totals-footnote">
+                {t('reports.winLoss.convertedFootnote', {
+                  currency: report.homeCurrency ?? '',
+                  date: report.ratesLastUpdated
+                    ? new Date(report.ratesLastUpdated).toLocaleDateString(i18n.language)
+                    : '—',
+                })}
+              </p>
+              {/* Unrated currencies note */}
+              {report.unratedCount > 0 && (
+                <p className="text-xs text-yellow-600" data-testid="converted-totals-unrated-note">
+                  {t('reports.winLoss.unratedNote', { count: report.unratedCount })}
+                </p>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Invalid date range warning */}
-        {preset === 'custom' && start > end && (
-          <p role="alert" className="mb-4 text-sm text-red-600" data-testid="date-range-error">
-            {t('reports.winLoss.dateRangeInvalid')}
-          </p>
-        )}
-
-        {/* Loading state */}
-        {isLoading && (
-          <p className="text-sm text-gray-400" data-testid="report-loading">
-            {t('reports.winLoss.loading')}
-          </p>
-        )}
-
-        {/* Error state */}
-        {isError && (
-          <p role="alert" className="text-sm text-red-600" data-testid="report-error">
-            {t('reports.winLoss.errorLoad')}
-          </p>
-        )}
-
-        {/* Report results */}
-        {report && (
-          <>
-            {/* Summary stat cards */}
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
-              data-testid="report-stat-cards"
-            >
-              {/* Closed Won count */}
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
-                data-testid="stat-won-count"
-              >
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {t('reports.winLoss.wonCountLabel')}
-                </p>
-                <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600"
-                  data-testid="stat-won-count-value"
-                >
-                  {report.wonCount}
-                </p>
-              </div>
-
-              {/* Closed Won value */}
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
-                data-testid="stat-won-value"
-              >
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {t('reports.winLoss.wonValueLabel')}
-                </p>
-                <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
-                  data-testid="stat-won-value-value"
-                >
-                  {report.mixedCurrencies
-                    ? t('pipeline.mixedCurrency')
-                    : formatCurrency(report.wonValue, i18n.language, report.currency ?? 'USD')}
-                </p>
-              </div>
-
-              {/* Closed Lost count */}
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
-                data-testid="stat-lost-count"
-              >
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {t('reports.winLoss.lostCountLabel')}
-                </p>
-                <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600"
-                  data-testid="stat-lost-count-value"
-                >
-                  {report.lostCount}
-                </p>
-              </div>
-
-              {/* Closed Lost value */}
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
-                data-testid="stat-lost-value"
-              >
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {t('reports.winLoss.lostValueLabel')}
-                </p>
-                <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
-                  data-testid="stat-lost-value-value"
-                >
-                  {report.mixedCurrencies
-                    ? t('pipeline.mixedCurrency')
-                    : formatCurrency(report.lostValue, i18n.language, report.currency ?? 'USD')}
-                </p>
-              </div>
-
-              {/* Win rate */}
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col gap-1"
-                data-testid="stat-win-rate"
-              >
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {t('reports.winLoss.winRateLabel')}
-                </p>
-                <p
-                  className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 whitespace-nowrap"
-                  data-testid="stat-win-rate-value"
-                >
-                  {formatWinRate(report.winRate)}
-                </p>
-              </div>
+          {/* Loss reason breakdown */}
+          <div
+            className="bg-white rounded-lg border border-gray-200"
+            data-testid="loss-reason-breakdown"
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900">
+                {t('reports.winLoss.lossReasonHeading')}
+              </h2>
             </div>
 
-            {/* Converted totals in home currency (MINCRM-253) — only shown when rates exist */}
-            {report.hasRates && (
-              <div
-                className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-col gap-2"
-                data-testid="converted-totals-summary"
+            {report.lossReasonBreakdown.length === 0 ? (
+              <p
+                className="px-6 py-8 text-sm text-gray-400 text-center"
+                data-testid="loss-reason-empty"
               >
-                <div className="flex flex-wrap gap-6">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      {t('reports.winLoss.wonValueLabel')}
-                      {' ('}
-                      {report.homeCurrency}
-                      {')'}
-                    </p>
-                    <p
-                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
-                      data-testid="stat-converted-won-value"
+                {t('reports.winLoss.lossReasonEmpty')}
+              </p>
+            ) : (
+              <table
+                className="min-w-full divide-y divide-gray-100"
+                data-testid="loss-reason-table"
+              >
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      {report.convertedWonValue !== null
-                        ? formatCurrency(
-                            report.convertedWonValue,
-                            i18n.language,
-                            report.homeCurrency ?? 'USD',
-                          )
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                      {t('reports.winLoss.lostValueLabel')}
-                      {' ('}
-                      {report.homeCurrency}
-                      {')'}
-                    </p>
-                    <p
-                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
-                      data-testid="stat-converted-lost-value"
+                      {t('reports.winLoss.columnReason')}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      {report.convertedLostValue !== null
-                        ? formatCurrency(
-                            report.convertedLostValue,
-                            i18n.language,
-                            report.homeCurrency ?? 'USD',
-                          )
-                        : '—'}
-                    </p>
-                  </div>
-                </div>
-                {/* Rates footnote */}
-                <p className="text-xs text-gray-400" data-testid="converted-totals-footnote">
-                  {t('reports.winLoss.convertedFootnote', {
-                    currency: report.homeCurrency ?? '',
-                    date: report.ratesLastUpdated
-                      ? new Date(report.ratesLastUpdated).toLocaleDateString(i18n.language)
-                      : '—',
-                  })}
-                </p>
-                {/* Unrated currencies note */}
-                {report.unratedCount > 0 && (
-                  <p
-                    className="text-xs text-yellow-600"
-                    data-testid="converted-totals-unrated-note"
-                  >
-                    {t('reports.winLoss.unratedNote', { count: report.unratedCount })}
-                  </p>
-                )}
-              </div>
+                      {t('reports.winLoss.columnCount')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {report.lossReasonBreakdown.map((row) => (
+                    <tr key={row.reason} data-testid={`loss-reason-row-${row.reason}`}>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.reason}</td>
+                      <td
+                        className="px-6 py-4 text-sm text-gray-600 text-end"
+                        data-testid={`loss-reason-count-${row.reason}`}
+                      >
+                        {row.count}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
+          </div>
 
-            {/* Loss reason breakdown */}
+          {/* Per-rep breakdown — admin Team View only (MINCRM-264) */}
+          {isAdmin && viewMode === 'team' && (
             <div
-              className="bg-white rounded-lg border border-gray-200"
-              data-testid="loss-reason-breakdown"
+              className="bg-white rounded-lg border border-gray-200 mt-6"
+              data-testid="rep-breakdown-table-container"
             >
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-base font-semibold text-gray-900">
-                  {t('reports.winLoss.lossReasonHeading')}
+                  {t('reports.winLoss.repBreakdownHeading')}
                 </h2>
               </div>
-
-              {report.lossReasonBreakdown.length === 0 ? (
+              {report.repRows.length === 0 ? (
                 <p
                   className="px-6 py-8 text-sm text-gray-400 text-center"
-                  data-testid="loss-reason-empty"
+                  data-testid="rep-breakdown-empty"
                 >
-                  {t('reports.winLoss.lossReasonEmpty')}
+                  {t('reports.winLoss.repBreakdownEmpty')}
                 </p>
               ) : (
-                <table
-                  className="min-w-full divide-y divide-gray-100"
-                  data-testid="loss-reason-table"
-                >
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {t('reports.winLoss.columnReason')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {t('reports.winLoss.columnCount')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {report.lossReasonBreakdown.map((row) => (
-                      <tr key={row.reason} data-testid={`loss-reason-row-${row.reason}`}>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {row.reason}
-                        </td>
-                        <td
-                          className="px-6 py-4 text-sm text-gray-600 text-end"
-                          data-testid={`loss-reason-count-${row.reason}`}
+                <div className="overflow-x-auto">
+                  <table
+                    className="min-w-full divide-y divide-gray-100"
+                    data-testid="rep-breakdown-table"
+                  >
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          {row.count}
-                        </td>
+                          {t('reports.winLoss.columnRep')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.winLoss.columnWon')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.winLoss.columnWonValue')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.winLoss.columnLost')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.winLoss.columnLostValue')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.winLoss.columnWinRate')}
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {report.repRows.map((row) => (
+                        <tr key={row.ownerId} data-testid={`rep-breakdown-row-${row.ownerId}`}>
+                          <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                            {row.ownerName}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-sm text-end text-gray-900"
+                            data-testid={`rep-breakdown-won-count-${row.ownerId}`}
+                          >
+                            {row.wonCount}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                            data-testid={`rep-breakdown-won-value-${row.ownerId}`}
+                          >
+                            {formatCurrency(row.wonValue, i18n.language, report.currency ?? 'USD')}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-sm text-end text-gray-900"
+                            data-testid={`rep-breakdown-lost-count-${row.ownerId}`}
+                          >
+                            {row.lostCount}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                            data-testid={`rep-breakdown-lost-value-${row.ownerId}`}
+                          >
+                            {formatCurrency(row.lostValue, i18n.language, report.currency ?? 'USD')}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-sm text-end text-gray-900"
+                            data-testid={`rep-breakdown-win-rate-${row.ownerId}`}
+                          >
+                            {formatWinRate(row.winRate)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-
-            {/* Per-rep breakdown — admin Team View only (MINCRM-264) */}
-            {isAdmin && viewMode === 'team' && (
-              <div
-                className="bg-white rounded-lg border border-gray-200 mt-6"
-                data-testid="rep-breakdown-table-container"
-              >
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-900">
-                    {t('reports.winLoss.repBreakdownHeading')}
-                  </h2>
-                </div>
-                {report.repRows.length === 0 ? (
-                  <p
-                    className="px-6 py-8 text-sm text-gray-400 text-center"
-                    data-testid="rep-breakdown-empty"
-                  >
-                    {t('reports.winLoss.repBreakdownEmpty')}
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table
-                      className="min-w-full divide-y divide-gray-100"
-                      data-testid="rep-breakdown-table"
-                    >
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnRep')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnWon')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnWonValue')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnLost')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnLostValue')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.winLoss.columnWinRate')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {report.repRows.map((row) => (
-                          <tr key={row.ownerId} data-testid={`rep-breakdown-row-${row.ownerId}`}>
-                            <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                              {row.ownerName}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-sm text-end text-gray-900"
-                              data-testid={`rep-breakdown-won-count-${row.ownerId}`}
-                            >
-                              {row.wonCount}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-sm text-end text-gray-900 break-words"
-                              data-testid={`rep-breakdown-won-value-${row.ownerId}`}
-                            >
-                              {formatCurrency(
-                                row.wonValue,
-                                i18n.language,
-                                report.currency ?? 'USD',
-                              )}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-sm text-end text-gray-900"
-                              data-testid={`rep-breakdown-lost-count-${row.ownerId}`}
-                            >
-                              {row.lostCount}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-sm text-end text-gray-900 break-words"
-                              data-testid={`rep-breakdown-lost-value-${row.ownerId}`}
-                            >
-                              {formatCurrency(
-                                row.lostValue,
-                                i18n.language,
-                                report.currency ?? 'USD',
-                              )}
-                            </td>
-                            <td
-                              className="px-4 py-3 text-sm text-end text-gray-900"
-                              data-testid={`rep-breakdown-win-rate-${row.ownerId}`}
-                            >
-                              {formatWinRate(row.winRate)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+          )}
+        </>
+      )}
+    </main>
   );
 }

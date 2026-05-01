@@ -8,6 +8,7 @@
     "pipeline": "Pipeline",
     "myTasks": "Mes tâches",
     "users": "Utilisateurs",
+    "reports": "Rapports",
     "winLossReport": "Rapport victoires/défaites",
     "activityVolumeReport": "Rapport d'activité",
     "stageTrendReport": "Rapport de tendance des étapes",
@@ -804,6 +805,12 @@
     }
   },
   "reports": {
+    "pageTitle": "Rapports",
+    "nav": {
+      "win_loss": "Victoires/Défaites",
+      "activity": "Volume d'activité",
+      "pipeline_stage": "Étape du pipeline"
+    },
     "activityVolume": {
       "pageTitle": "Rapport d'activité",
       "pageTitleMy": "Mon rapport d'activité",
