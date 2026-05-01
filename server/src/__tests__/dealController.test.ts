@@ -23,8 +23,8 @@ const CLOSED_WON = 'Closed Won';
 const makeDealParams = () => ({
   name: `Deal-${uid()}`,
   stage: VALID_STAGE,
-  value: '10000',
-  currency: 'USD',
+  value: 10000,
+  currency: 'USD' as const,
 });
 
 let repId: string;
