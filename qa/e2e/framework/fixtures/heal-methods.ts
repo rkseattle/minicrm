@@ -19,7 +19,7 @@ import type { SafePage } from '../types/safe-page.js';
 import type { SafeLocator } from '../types/safe-locator.js';
 
 // ---------------------------------------------------------------------------
-// Screenshot option types (MINCRM-319)
+// Screenshot option types
 // ---------------------------------------------------------------------------
 
 /**
@@ -206,8 +206,6 @@ export interface HealMethods {
    * NOTE: Baselines must be generated on Linux (the same OS as CI) to avoid
    * cross-platform font rendering differences. Use the Docker E2E environment
    * to generate or update baselines. See the framework README for details.
-   *
-   * MINCRM-319
    */
   checkScreenshot(name: string, options?: PageAssertionsToHaveScreenshotOptions): Promise<void>;
 
@@ -229,8 +227,6 @@ export interface HealMethods {
    * NOTE: Baselines must be generated on Linux (the same OS as CI) to avoid
    * cross-platform font rendering differences. Use the Docker E2E environment
    * to generate or update baselines. See the framework README for details.
-   *
-   * MINCRM-319
    */
   checkLocatorScreenshot(
     locator: SafeLocator,
@@ -251,7 +247,6 @@ export type HealPage = HealMethods;
  * Set to 50 to absorb anti-aliasing and sub-pixel font rendering differences
  * across machines without masking genuine visual regressions. Callers can
  * tighten this per-assertion by passing a lower maxDiffPixels in options.
- * MINCRM-319
  */
 const DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS = 50;
 
@@ -468,7 +463,6 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       return tabFactory(newRawPage, testName);
     },
 
-    // MINCRM-319 — visual regression methods
     async checkScreenshot(
       name: string,
       options?: PageAssertionsToHaveScreenshotOptions,
