@@ -1,8 +1,13 @@
 # Development overrides for docker-compose.yml.
 # Mounts local source into containers for hot-reload and overrides NODE_ENV.
 #
-# Usage:
+# Usage (normal dev):
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Usage (E2E testing — starts MinIO + Mailhog in addition to the dev stack):
+#   docker compose -f docker-compose.dev.yml --profile e2e up -d
+#   npm run e2e:setup
+# (MINCRM-317)
 
 services:
   server:
@@ -26,3 +31,40 @@ services:
       - ./client:/app/client
       - ./shared:/app/shared
       - /app/client/node_modules
+
+  # MINCRM-317: Optional E2E infrastructure — disabled by default.
+  # Enable with: docker compose -f docker-compose.dev.yml --profile e2e up -d
+  # Then run: npm run e2e:setup
+
+  # MinIO — S3-compatible object storage for attachment E2E tests.
+  # Port 9000: S3 API (used by the app server)
+  # Port 9001: web console (useful for debugging uploaded files)
+  # Image and healthcheck match ci.yml exactly so local and CI behaviour are identical.
+  minio:
+    profiles:
+      - e2e
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address :9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Mailhog — SMTP capture server for email delivery E2E tests.
+  # Port 1025: SMTP (the app server sends email here)
+  # Port 8025: HTTP API (E2E tests query this to assert on delivered messages)
+  # Activated by MINCRM-306; stub is present now so the profile is complete.
+  mailhog:
+    profiles:
+      - e2e
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"

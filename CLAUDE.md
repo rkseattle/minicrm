@@ -1,7 +1,5 @@
 # MiniCRM — Claude Code Context
 
-Minimal CRM validating the core sales loop: contact → deal → activity → pipeline.
-
 ---
 
 ## Stack
@@ -33,12 +31,14 @@ client/src/
   test/          → MSW handlers, renderWithProviders, setup.ts
 
 shared/schemas/  → Zod schemas imported by BOTH client and server
+  *.ts sources only — compiled .js outputs are gitignored, never commit them
   contactSchema.ts, accountSchema.ts, dealSchema.ts, leadSchema.ts
   settingsSchema.ts  (SUPPORTED_LOCALES, NAV_LAYOUTS, SUPPORTED_CURRENCIES)
   paginationSchema.ts  (paginationParamsSchema, PaginatedResponse<T>)
   pipelineStageSchema.ts  (PipelineStageResponse, etc.)
 
-db/migrations/   → sequential node-pg-migrate files; run `ls db/migrations/ | tail -1` to find the last migration and increment by one for the next file number
+db/migrations/   → sequential node-pg-migrate files
+  run `ls db/migrations/ | tail -1` to find the last migration; increment by one for the next
 
 qa/e2e/
   framework/     → HealingLocator, fixtures, REST/gRPC clients (ZERO app domain refs)
@@ -52,96 +52,90 @@ qa/e2e/
 
 ## Database Schema
 
+Non-obvious fields, enums, and constraints only. Standard columns (`id`, `created_at`,
+`updated_at`) and self-explanatory fields are omitted.
+
 ```
 users
-  id, email, password_hash, name, role(admin|rep), status(active|invited|inactive),
-  must_change_password, preferred_language,
-  notify_overdue_tasks, notify_assignments, notify_deal_stage_changes,
-  password_reset_token, password_reset_expires
+  role(admin|rep)  status(active|invited|inactive)
+  must_change_password  preferred_language  password_changed_at
+  notify_overdue_tasks  notify_assignments  notify_deal_stage_changes
+  password_reset_token  password_reset_expires
 
 accounts
-  id, name, industry, website, employee_range, revenue_range,
-  account_type(Prospect|Customer|Partner|Vendor|Competitor|Other) nullable,
-  parent_account_id uuid → accounts nullable,
-  owner_id, is_demo, created_at, updated_at
+  account_type(Prospect|Customer|Partner|Vendor|Competitor|Other) nullable
+  parent_account_id uuid → accounts nullable   owner_id   is_demo
 
 contacts
-  id, first_name, last_name, email, phone, title, department,
-  address_line1, address_line2, city, state_region, postal_code, country,
-  linkedin_url, twitter_x_url, other_url,
-  account_id nullable, owner_id, source_lead_id nullable,
-  is_demo, created_at, updated_at
+  account_id nullable   owner_id   source_lead_id nullable   is_demo
+  UNIQUE INDEX on email (migration 034)
 
-contact_addresses                      ← one-to-many; prefer for new address work
-  id, contact_id → contacts ON DELETE CASCADE,
-  label, address_line1, address_line2, city, state_region, postal_code, country,
-  is_default bool, created_at, updated_at
+contact_addresses                    ← one-to-many; prefer for new address work
+  label   is_default bool
   UNIQUE PARTIAL INDEX on (contact_id) WHERE is_default = true
 
 deals
-  id, name, stage text (validated against pipeline_stages table at runtime),
-  value numeric(15,2), currency varchar(3) NOT NULL DEFAULT 'USD',
-  probability integer nullable (0–100 override; NULL = inherit from stage default),
-  close_date, loss_reason, account_id nullable, owner_id,
-  source_lead_id nullable, is_demo, created_at, updated_at
+  stage text — validated against pipeline_stages table at runtime; NOT a Zod enum
+  value numeric(15,2)   currency varchar(3) NOT NULL DEFAULT 'USD'
+  probability integer nullable  (0–100 manual override; NULL = inherit from stage default)
+  loss_reason   account_id nullable   owner_id   source_lead_id nullable   is_demo
 
-deal_contacts  deal_id, contact_id   ← composite PK (deal_id, contact_id) REQUIRED
+deal_contacts  deal_id, contact_id    ← composite PK (deal_id, contact_id) REQUIRED
 
-pipeline_stages                        ← authoritative stage list; admin-configurable
-  id, name varchar(100) UNIQUE (case-insensitive index), sort_order int UNIQUE,
-  probability int (0–100), is_terminal bool, is_fixed bool, created_at, updated_at
+pipeline_stages                       ← admin-configurable; the authoritative stage list
+  name varchar(100) UNIQUE (case-insensitive index)   sort_order int UNIQUE
+  probability int (0–100)   is_terminal bool   is_fixed bool
   Seed rows: Prospecting(10%), Qualification(25%), Proposal(50%),
              Negotiation(75%), Closed Won(100%), Closed Lost(0%)
-  is_fixed=true rows cannot be renamed or deleted.
+  is_fixed=true rows cannot be renamed or deleted
 
 activities
-  id, type(Note|Call|Email|Meeting|Task), subject, notes, due_date,
-  status(open|complete), direction(Inbound|Outbound) nullable, outcome text nullable,
-  contact_id nullable, account_id nullable, deal_id nullable, owner_id, is_demo
-  CHECK: contact_id IS NOT NULL OR account_id IS NOT NULL OR deal_id IS NOT NULL
+  type(Note|Call|Email|Meeting|Task)   status(open|complete)
+  direction(Inbound|Outbound) nullable   outcome text nullable
+  contact_id nullable   account_id nullable   deal_id nullable   owner_id   is_demo
+  CHECK: at least one of contact_id / account_id / deal_id must be non-null
 
 leads
-  id, first_name, last_name nullable, email, phone nullable, company_name nullable,
-  lead_source(Web|Referral|Trade Show|Cold Outreach|Other) nullable,
-  status(New|Contacted|Qualified|Disqualified), disqualification_reason nullable,
-  notes nullable, owner_id,
-  converted_at nullable, converted_contact_id nullable,
-  converted_account_id nullable, converted_deal_id nullable,
-  is_demo, created_at, updated_at
+  last_name nullable   company_name nullable
+  lead_source(Web|Referral|Trade Show|Cold Outreach|Other) nullable
+  status(New|Contacted|Qualified|Disqualified)   disqualification_reason nullable
+  owner_id   converted_at nullable
+  converted_contact_id nullable   converted_account_id nullable   converted_deal_id nullable
+  is_demo
 
 lead_status_history
-  id, lead_id → leads ON DELETE CASCADE, from_status nullable, to_status,
-  changed_by_id nullable, changed_by_name nullable, created_at
+  lead_id → leads ON DELETE CASCADE
+  from_status nullable   to_status   changed_by_id nullable   changed_by_name nullable
 
 attachments
-  id, record_type(contact|account|deal), record_id, filename, original_name,
-  mime_type, size_bytes, storage_key, uploaded_by_id, created_at
+  record_type(contact|account|deal)   record_id
+  filename   original_name   mime_type   size_bytes   storage_key   uploaded_by_id
 
 audit_log                              ← append-only; DB-enforced
-  id, record_type, record_id nullable, record_name nullable, event_type,
-  field_name nullable, old_value nullable, new_value nullable,
-  changed_by_id nullable, changed_by_name nullable, created_at
+  record_type   record_id nullable   record_name nullable   event_type
+  field_name nullable   old_value nullable   new_value nullable
+  changed_by_id nullable   changed_by_name nullable
 
 automation_rules
-  id, name, enabled bool, trigger_type, trigger_config jsonb,
-  action_type, action_config jsonb, created_by, created_at, updated_at
+  enabled bool   trigger_type   trigger_config jsonb   action_type   action_config jsonb
+  created_by
 
 automation_rule_logs
-  id, rule_id → automation_rules ON DELETE CASCADE, triggered_at,
-  triggering_record_type, triggering_record_id, outcome(success|error), error_message nullable
+  rule_id → automation_rules ON DELETE CASCADE   triggered_at
+  triggering_record_type   triggering_record_id   outcome(success|error)   error_message nullable
 
 system_settings  key (PK), value text, updated_at
   Keys: default_language, nav_layout, email_notifications_enabled,
         default_currency, file_storage_endpoint, file_storage_bucket, file_storage_key_id,
-        file_storage_secret (encrypted)
+        file_storage_secret (AES-256-GCM encrypted with NODE_ENCRYPTION_KEY)
 
-overdue_task_notifications  activity_id, notified_date  ← dedup for email digests
+overdue_task_notifications  activity_id, notified_date  ← dedup guard for email digests
 ```
 
-**Migration rule:** Every schema change requires a migration file. Derive the next number
-by running `ls db/migrations/ | tail -1` and incrementing — never hardcode a number here.
-Every migration needs both `up` and `down`. Integrity rules go in DB CHECK constraints
-in addition to Zod.
+**Migration rules:** Never modify an existing migration once it has been applied to any
+environment — write a new corrective migration instead. Every migration needs both `up`
+and `down`; the `down` must genuinely reverse the `up`, not a stub placeholder. Integrity
+rules go in DB CHECK constraints in addition to Zod.
 
 ---
 
@@ -149,17 +143,20 @@ in addition to Zod.
 
 ### 1. Auth middleware (`authenticate`)
 
-Verify on every authenticated request:
+Verifies on every authenticated request: JWT signature + expiry, `user.status === 'active'`,
+and `must_change_password` (→ 403 `PASSWORD_CHANGE_REQUIRED` for all routes except
+`/api/auth/change-password`). `authenticate` is regular middleware — every `await` inside
+must be in a try/catch that calls `next(err)`. `asyncHandler` covers route handlers only.
 
-1. JWT signature + expiry
-2. `user.status === 'active'` — deactivated users must not pass
-3. If `user.must_change_password` → 403 `{ error: { code: 'PASSWORD_CHANGE_REQUIRED' } }`
-   for all routes except `/api/auth/change-password`
+### 2. Startup guards
 
-`authenticate` is regular middleware, not a route handler. Every `await` inside it must be
-in a try/catch that calls `next(err)`. `asyncHandler` covers route handlers only.
+Both guards must run before the server binds to its port:
 
-### 2. Ownership on PATCH / DELETE
+- Reject weak `JWT_SECRET` (empty string, `changeme`, `secret`, `password`, or < 32 chars).
+- Reject absent or malformed `NODE_ENCRYPTION_KEY` (must be a 64-character hex string).
+  Required for file storage and SMTP secret encryption at rest.
+
+### 3. Ownership on PATCH / DELETE
 
 ```ts
 // CORRECT — use req.user.id from middleware, never trust req.body
@@ -169,7 +166,7 @@ WHERE id = $1 AND (owner_id = $2 OR $3 = 'admin')
 
 Never accept `owner_id` from the request body.
 
-### 3. ORDER BY allowlist (SQL injection prevention)
+### 4. ORDER BY allowlist (SQL injection prevention)
 
 ```ts
 const ALLOWED_SORT = ['first_name', 'email', 'created_at'] as const;
@@ -181,7 +178,7 @@ const dir = req.query.dir === 'desc' ? 'DESC' : 'ASC';
 
 For UPDATE field names, use `ReadonlySet<keyof UpdateInput>` — see `dealService.ts`.
 
-### 4. Cookie configuration
+### 5. Cookie configuration
 
 ```ts
 res.cookie('token', jwt, {
@@ -192,14 +189,10 @@ res.cookie('token', jwt, {
 });
 ```
 
-### 5. Rate limiting
+### 6. Rate limiting
 
 `POST /api/auth/login` and `POST /api/auth/forgot-password` use `express-rate-limit`.
 The `E2E=true` env var bypasses the limiter for test runners only.
-
-### 6. Startup guard
-
-Reject weak `JWT_SECRET` (`''`, `'changeme'`, `'secret'`, `'password'`) at process start.
 
 ---
 
@@ -207,19 +200,32 @@ Reject weak `JWT_SECRET` (`''`, `'changeme'`, `'secret'`, `'password'`) at proce
 
 - **Services own all DB access.** `pool.query()` belongs exclusively in `server/src/services/`.
 - **Controllers shape requests/responses only.** No business logic. No `pool.query()`.
-- **Zod validation in controllers, before every service call.** Use `.safeParse()`; return 400
-  on failure: `{ error: { code: 'VALIDATION_ERROR', message: errors[0].message } }`.
+- **Zod validation in controllers, before every service call.** Use `.safeParse()`; return
+  400 on failure: `{ error: { code: 'VALIDATION_ERROR', message: errors[0].message } }`.
 - **All async route handlers** wrapped in `asyncHandler` or explicit try/catch.
-- **Error shape always:** `{ error: { code: string, message: string } }`.
+- **Error shape always:** `{ error: { code: string, message: string } }` — where `code` is a
+  SCREAMING_SNAKE_CASE domain constant (e.g. `CONTACT_EMAIL_DUPLICATE`, `DEAL_STAGE_NOT_FOUND`),
+  never a generic freeform string.
 - **HTTP status codes:** 400 validation, 401 unauthenticated, 403 forbidden, 404 not found,
   409 conflict.
-- **No magic numbers or magic strings.** Use named constants.
+- **Map PostgreSQL error codes explicitly.** Catch `pg` errors by `err.code` in services:
+  - `23505` (unique violation) → throw with a domain-specific code; controller returns 409
+  - `23503` (FK violation) → 400 or 409 depending on context
+  - All other DB errors propagate as 500
+- **No N+1 queries.** List endpoints must join or batch-load associated data — never issue a
+  per-row query inside a loop.
 - **`async/await` only.** Never `.then()` chains.
 - **`no-explicit-any` enforced.** Fix the type; never suppress with `any` or `@ts-ignore`.
+- **Non-null assertion (`!`) and type assertions (`as`)** require an inline comment explaining
+  why the narrowing is safe. Never use them to silence a compiler error.
+- **Service functions must declare explicit return types** — do not rely solely on inference
+  for public service function signatures.
+- **No `console.log` in `server/src/`** outside test files. Use `logger.info/warn/error`.
+- **No magic numbers or magic strings.** Use named constants.
 
 ---
 
-## Required Patterns for All Write Operations
+## Required Patterns for Write Operations
 
 ### Transactions with audit logging
 
@@ -227,7 +233,6 @@ Every CREATE / UPDATE / DELETE on user data **must** write an audit entry in the
 transaction**. A failed audit write rolls back the data change and vice versa.
 
 ```ts
-// contactService.ts / dealService.ts pattern — follow exactly
 const client: PoolClient = await pool.connect();
 try {
   await client.query('BEGIN');
@@ -251,7 +256,6 @@ try {
 
   // Fire-and-forget AFTER commit — never inside the transaction
   void fireAutomationTrigger('contact_created', { ... });
-
   return record;
 } catch (err) {
   await client.query('ROLLBACK');
@@ -283,15 +287,14 @@ Controller extracts the actor from `req.user`:
 
 ```ts
 const actor = { id: req.user.id, name: req.user.name };
-const contact = await createContact(parsed.data, actor);
 ```
 
-### Assignment notifications (after commit, never awaited)
+### Assignment notifications (after commit, fire-and-forget)
 
-When `owner_id` changes on any record, notify the new owner AFTER the commit:
+When `owner_id` changes on any record, notify the new owner AFTER the commit.
+Do NOT `await` it. Do NOT call it inside the transaction.
 
 ```ts
-// In the controller, after the service call returns the updated record:
 if (params.owner_id && params.owner_id !== before.owner_id) {
   const newOwner = await findUserById(params.owner_id);
   if (newOwner) {
@@ -307,10 +310,9 @@ if (params.owner_id && params.owner_id !== before.owner_id) {
 
 `queueAssignmentNotification` is synchronous (returns `void`). Do NOT `await` it.
 
-### Automation triggers (fire-and-forget, always `void`)
+### Automation triggers (always `void`, never `await`)
 
 ```ts
-// ALWAYS void — never await. This is deliberate.
 void fireAutomationTrigger('deal_stage_changed', {
   recordId: deal.id,
   recordType: 'deal',
@@ -326,16 +328,17 @@ own isolated try/catch so a failing rule never aborts the triggering operation.
 
 ## New Endpoint Checklist
 
-- [ ] Route file: `@openapi` JSDoc + `asyncHandler` only — zero logic, zero imports from services
+- [ ] Route file: `@openapi` JSDoc + `asyncHandler` only — zero logic, zero service imports
 - [ ] Controller: Zod `.safeParse()` before service call; no `pool.query()`
 - [ ] Pagination: use `paginationParamsSchema` from `shared/schemas/paginationSchema.ts`
 - [ ] Sort params: allowlist-validated before SQL interpolation
 - [ ] Admin-only routes: `requireRole('admin')` on the route
 - [ ] PATCH/DELETE: ownership enforced in the WHERE clause
 - [ ] Write operations: audit entry in same transaction as data change
-- [ ] Assignment notification fired if owner changed (after commit, not awaited)
-- [ ] Standard error shape on all failure paths
-- [ ] Service-layer unit test for the new function
+- [ ] Assignment notification fired if `owner_id` changed (after commit, not awaited)
+- [ ] DB errors mapped: 23505 → 409 with domain code; 23503 → 400/409; others → 500
+- [ ] Standard error shape `{ error: { code, message } }` on all failure paths
+- [ ] Service-layer unit test covering the new function, including ownership enforcement
 - [ ] Functional E2E spec updated or added for the new behaviour
 - [ ] OpenAPI spec passes `npm run lint:api --workspace=minicrm-server`
 
@@ -346,28 +349,21 @@ own isolated try/catch so a failing rule never aborts the triggering operation.
 Stages live in `pipeline_stages` and are admin-configurable (MINCRM-180).
 `PIPELINE_STAGES` from `dealSchema.ts` is a **bootstrap fallback only**.
 
-Client: fetch via `GET /api/settings/pipeline-stages` at app startup, cache with
+**Client:** fetch via `GET /api/settings/pipeline-stages` at app startup, cache with
 `PIPELINE_STAGES_QUERY_KEY`. Stage selectors must use the live list.
 
-Server: validate `stage` as a non-empty string at Zod level, then verify against the
+**Server:** validate `stage` as a non-empty string at Zod level, then verify against the
 `pipeline_stages` table in the service. Do not re-introduce a Zod `.enum()` on a fixed list.
 
 ---
 
 ## Multi-Currency
 
-`deals.currency` is `varchar(3) NOT NULL DEFAULT 'USD'`. Valid values in `SUPPORTED_CURRENCIES`
-from `shared/schemas/settingsSchema.ts`: `['USD','EUR','GBP','CAD','AUD','JPY','CHF']`.
-
-When creating a deal without an explicit currency:
-
-```ts
-import { getDefaultCurrency } from './settingsService.js';
-const resolvedCurrency = currency ?? (await getDefaultCurrency());
-```
-
-Format currency with `Intl.NumberFormat` using the deal's own `currency` field and the active
-i18n locale. Never hardcode `'USD'` in formatting.
+`deals.currency` is `varchar(3) NOT NULL DEFAULT 'USD'`. Valid values are defined in
+`SUPPORTED_CURRENCIES` from `shared/schemas/settingsSchema.ts`. When creating a deal without
+an explicit currency, resolve the default via `await getDefaultCurrency()` from
+`settingsService`. Format currency with `Intl.NumberFormat` using the deal's own `currency`
+field and the active i18n locale — never hardcode `'USD'` in formatting logic.
 
 ---
 
@@ -376,8 +372,7 @@ i18n locale. Never hardcode `'USD'` in formatting.
 - All user-facing strings use `t('key')` — **no hardcoded English in JSX**
 - Locales: `en`, `zh-Hans`, `es`, `fr`, `de`; `eslint-plugin-i18next` enforces this in CI
 - Pipeline stage display names: use `PIPELINE_STAGE_I18N_KEY` util then `t()`
-- Currency: `Intl.NumberFormat` with active locale + deal's `currency` field
-- **RTL — logical properties required for ALL new layout classes:**
+- **RTL — logical CSS properties required for ALL new layout classes:**
   - `ps-` / `pe-` not `pl-` / `pr-`
   - `ms-` / `me-` not `ml-` / `mr-`
   - `start-` / `end-` not `left-` / `right-`
@@ -389,34 +384,149 @@ i18n locale. Never hardcode `'USD'` in formatting.
 
 ### Server (`server/src/__tests__/`)
 
-- **Framework:** Vitest (not Jest) against real PostgreSQL `minicrm_test` DB
-- **Run:** `npm test --workspace=minicrm-server` → `vitest run`
-- **File naming:** `[domain]Service.test.ts`, `[domain]Controller.test.ts`
-- **Isolation:** `beforeEach` truncates relevant tables; `beforeAll`/`afterAll` manage fixtures
+- **Framework:** Vitest against real PostgreSQL `minicrm_test` DB — no mocking of `pool`
+- **Run:** `npm test --workspace=minicrm-server`
+- **Isolation:** `beforeEach` truncates relevant tables; fixtures in `beforeAll`/`afterAll`
 - **Coverage threshold:** 80% on `server/src/services/` (CI-enforced)
-- **No mocking of `pool` in service tests** — use the real DB
-- **Controller tests:** use `supertest` against `app` with `makeAuthCookie()`
+- **Controller tests:** `supertest` against `app` with `makeAuthCookie()`
 
-Required test files beyond core CRUD:
-
-- `auth-boundaries.test.ts` — rep → admin endpoints → 403; rep A → rep B's records → 403/404
-- `auditService.test.ts` — entries written in transaction; append-only enforced
-- `notificationService.test.ts` — overdue digest dedup; assignment batch window
+Required test files beyond core CRUD: `auth-boundaries.test.ts` (rep → admin endpoints → 403;
+rep A → rep B's records → 403/404), `auditService.test.ts` (entries written in transaction;
+append-only enforced), `notificationService.test.ts` (overdue digest dedup; assignment batch).
 
 ### Client (`client/src/`)
 
 - **Framework:** Vitest + React Testing Library + MSW
 - **Run:** `npm test --workspace=minicrm-client`
-- **MSW setup:** `onUnhandledRequest: 'error'` — any unhandled API call in a test **throws**.
+- **MSW setup:** `onUnhandledRequest: 'error'` — any unhandled API call in a test throws.
   Add a handler before calling the API, or the test fails.
 - **Test helper:** `renderWithProviders()` from `src/test/renderWithProviders.tsx`
 - **File location:** `Component.test.tsx` co-located with `Component.tsx`
-- **Coverage:** 70% threshold; `all: true` in config so untouched files appear in the report
-- Every conditional render branch needs a dedicated test
+- **Coverage thresholds:** 70% lines; 80% branches (CI-enforced)
+- **Every component with async data must test all three states explicitly:**
+  loading (skeleton or spinner visible), error (error message visible), and empty
+  (intentional empty-state UI, not just nothing rendering). A missing state is an
+  incomplete test, not a judgement call.
+- Every conditional render branch needs a dedicated test case.
+
+### Pre-Push Validation
+
+The global CLAUDE.md says to run the CI equivalent before pushing. For MiniCRM that
+means running all four phases in order. Do not push until everything passes.
+
+```bash
+# Phase 1 — typecheck and lint (all workspaces)
+npm run typecheck --workspace=minicrm-client
+npm run typecheck --workspace=minicrm-server
+npm run typecheck --workspace=minicrm-qa
+npm run lint
+
+# Phase 2 — unit tests for the changed workspace(s)
+npm test --workspace=minicrm-server   # if server/ changed
+npm test --workspace=minicrm-client   # if client/ changed
+
+# Phase 3 — E2E functional suite
+# Run from the repo root. The env substitution reads qa/e2e/.env, strips comments
+# and blank lines, and injects the variables into the process so Playwright can
+# reach the local app server and authenticate — no Docker stack required.
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
+```
+
+The E2E suite requires the application to be running locally (server + client dev servers)
+before invoking the command. Start them first if they are not already up.
+
+#### E2E session setup (once per session, not before every push)
+
+Attachment and email-delivery tests depend on MinIO and Mailhog. Start both services once
+per local development session before running the suite, then run the setup script to create
+the MinIO bucket and seed system_settings (MINCRM-317, MINCRM-318):
+
+```bash
+# Start MinIO + Mailhog via the e2e Compose profile (once per session)
+docker compose -f docker-compose.dev.yml --profile e2e up -d
+
+# Initialise the bucket and seed storage config into system_settings (once per session)
+npm run e2e:setup
+```
+
+`npm run e2e:setup` is idempotent — re-running it in the same session is safe. You only
+need to run it again if you restart the Docker services or wipe your database.
+
+### ⛔ E2E Functional Suite — ONE RUN PER CODE CHANGE, NO EXCEPTIONS
+
+> **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED.** Read it in full.
+
+**RULE 1 — Run the functional suite at most once per code change.**
+The pre-push run above is that one run. If it fails, fix the code — that fix is a new
+code change, so running again after the fix is correct. Never re-run the suite on the
+same code to see if a failure goes away. If a run fails and you have not made a code
+change, read the report files and diagnose — do not re-run.
+
+**RULE 2 — Read report files, not console output, for results.**
+
+- `qa/e2e/test-results/results.xml` — JUnit XML; check `tests`, `failures`, `errors`
+- `qa/e2e/test-results/healing-report.json` — heal event counts and detail
+
+**RULE 3 — Delete stale results before each run.**
+Delete `qa/e2e/test-results/` before starting so stale output cannot influence pass/fail.
+
+### E2E Locator Authoring Requirements
+
+Every page object locator must follow all four of these rules without exception.
+
+**Rule 1 — Primary strategy is always `testId`.** Never use CSS class selectors
+(`.btn-primary`) or positional selectors (`nth-child`) as any strategy.
+
+**Rule 2 — Every page object `locate()` call requires at least two strategies.** The
+testId is primary; add a role, label, text, or css-attribute fallback so the healing
+framework has a recovery path when the testId is absent or renamed. Spec-layer inline
+locates for dynamically-scoped IDs (e.g. `deal-card-${id}`) may use a single testId
+strategy only when no stable role-based alternative exists, with a comment explaining why.
+
+**Rule 3 — Every page object `locate()` call requires an `intent` string.** The `intent`
+is a 5–10 word natural-language description of what the locator is finding. It activates
+the AI healing tier when all static strategies are exhausted. Omitting it leaves the
+framework unable to recover from `StrategyExhaustedError`.
+
+```ts
+// CORRECT
+const button = await this.page
+  .locate(
+    [
+      { type: 'testId', value: 'new-contact-button' },
+      { type: 'role', value: 'button', options: { name: /new contact/i } },
+    ],
+    { intent: 'button to open the new contact form' },
+  )
+  .resolve();
+
+// WRONG — single strategy, no intent
+const button = await this.page.locate([{ type: 'testId', value: 'new-contact-button' }]).resolve();
+```
+
+**Rule 4 — Never `page.waitForTimeout()` in page objects.** Fixed delays are fragile
+under CI resource contention. Use DOM-state waits instead: `locator.waitFor({ state })`,
+`page.waitForLoadState()`, or `page.waitForFunction()`. The only acceptable use of
+`waitForTimeout` is in a spec file to simulate a deliberate user-perceived pause.
+
+### E2E Conventions
+
+- **Config:** `qa/e2e/playwright.config.ts`
+- **Dedicated `minicrm_e2e` DB**, managed per-test via TestDataManager
+- **Tags:** every test must be tagged `@functional`; smoke-level tests also `@smoke`
+- **Spec location:** `qa/e2e/tests/apps/minicrm/functional/<domain>/<domain>.spec.ts`
+- **New spec files under `functional/` are picked up by CI automatically** — no CI changes needed
+- **Framework layer must have zero app-domain strings** — enforced by `check-framework-purity.sh`
+- **Every story must include or update a functional E2E spec.** Do not mark a ticket done
+  without E2E coverage for the new behaviour.
+
+---
+
+## React & Frontend Conventions
 
 ### `data-testid` Conventions
 
-Every interactable element needs a `data-testid`. Patterns in use:
+Every interactable element needs a `data-testid`. Patterns:
 
 - Static: `data-testid="new-contact-button"`, `data-testid="pipeline-board"`
 - Row-scoped: `data-testid={\`contact-card-${contact.id}\`}`
@@ -432,101 +542,28 @@ export const CONTACTS_QUERY_KEY = ['contacts'] as const;
 
 Use these constants everywhere — never inline strings in `queryKey`.
 
-`staleTime` rules:
+`staleTime` rules: `GET /api/users/active` → `staleTime: 5 * 60 * 1000` (called frequently);
+dashboard summary → `staleTime: 0` (always fresh). No global `staleTime` on the QueryClient.
 
-- `GET /api/users/active` → `staleTime: 5 * 60 * 1000` (called frequently; set on the query)
-- Dashboard summary → `staleTime: 0` (intentional — always fresh)
-- No global `staleTime` on the QueryClient
+### Intrinsic Responsive Design (MINCRM-208)
 
-### ⛔ E2E Functional Test Suite — ONE RUN PER CODE CHANGE, NO EXCEPTIONS
-
-> **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED.** Read it in full before
-> touching the E2E suite. Violating it wastes significant time and can pollute the
-> `minicrm_e2e` database.
-
-**RULE 1 — Run the functional suite at most once per code change.**
-Never invoke `npx playwright test`, `npm run test`, `cd qa && ... npm run test`,
-or any other form of the E2E test runner more than one time per code change. If the
-first run fails and you have not made a code change to fix, do **not** re-run to verify: read
-the report files instead.
-
-**RULE 2 — Read report files, not console output, for results.**
-After a run completes, determine pass/fail counts by reading the generated report
-files — never from scrolling back through terminal output:
-
-- `qa/e2e/test-results/results.xml` — JUnit XML; `tests`, `failures`, `errors` attributes
-- `qa/e2e/test-results/healing-report.json` — heal event counts and detail
-
-**RULE 3 — Delete stale results before the each run.**
-Per the general testing directive: delete `qa/e2e/test-results/` before starting
-the run so stale output cannot influence pass/fail determination.
-
-### E2E — Conventions
-
-- **Config:** `qa/e2e/playwright.config.ts`
-- **`data-testid` selectors only** — no CSS class or positional selectors
-- **Dedicated `minicrm_e2e` DB**, reset between runs via TestDataManager
-- **Tags:** every test must be tagged `@functional`; smoke-level tests also `@smoke`
-- **Spec location:** `qa/e2e/tests/apps/minicrm/functional/<domain>/<domain>.spec.ts`
-- **New spec files under `functional/` are picked up by CI automatically** — no CI changes needed
-- **Framework layer must have zero app-domain strings** — enforced by `check-framework-purity.sh`
-- **Every story must include or update a functional E2E spec.** Do not mark a ticket done without
-  E2E coverage for the new behaviour.
-
-CI phases:
-
-```
-Phase 1 (parallel): lint-and-typecheck | security-audit | e2e-framework-purity
-Phase 2 (needs Phase 1): server-tests | client-tests
-Phase 3 (needs Phase 2): e2e-functional [desktop × mobile-web] --grep @functional
-```
+For any UI displaying variable-length or numeric content: fluid font sizes on large values
+(`clamp(1.25rem,3vw,2rem)`), `min-w-0` on flex children that contain text, `break-words`
+on all freetext fields. Test at 600px, 900px, and 1100px — not just mobile and full desktop.
+Leave a comment on any non-obvious `min-w-0` or `clamp()` for future maintainers.
 
 ---
 
-## Intrinsic Responsive Design (MINCRM-208)
-
-For any UI displaying variable-length or numeric content:
-
-- Fluid font sizes on large values: `text-[clamp(1.25rem,3vw,2rem)]`
-- `min-w-0` on flex children that contain text (overrides browser `min-width: auto`)
-- `break-words` on all freetext fields (notes, loss reason, address fields, etc.)
-- Test at 600px, 900px, and 1100px — not just mobile and full desktop
-- Leave a comment on any non-obvious `min-w-0` or `clamp()` for future maintainers
-
----
-
-## Known Architectural Constraints (do not worsen)
+## Known Architectural Constraints
 
 - **Automation is fire-and-forget:** always `void fireAutomationTrigger(...)`, never `await`.
-- **Dual contact address storage:** Inline fields on `contacts` (migration 024) and the
+- **Dual contact address storage:** inline fields on `contacts` (migration 024) and the
   `contact_addresses` table (migration 030) coexist. New address work uses `contact_addresses`.
 - **`seed-demo.ts` is a thin CLI wrapper only.** All demo fixture data lives in
-  `server/src/services/demoService.ts`. The CLI script must not contain any fixture data or SQL.
+  `demoService.ts`. The CLI must contain no fixture data or SQL.
 - **`BreakpointContext` is the single source of responsive state (MINCRM-238).** All
-  components read breakpoints via `useBreakpoint()` — never call `window.matchMedia` directly
-  in a component. `BreakpointContext` owns the one `matchMedia` subscription and distributes it
-  to the tree. Direct `matchMedia` calls create duplicate subscriptions and will not work in
-  tests (jsdom stubs matchMedia).
-
----
-
-## Git
-
-- Conventional commits: `feat:`, `fix:`, `chore:`, `test:`, `docs:`
-- Branch name: `feat/MINCRM-{n}-short-description`
-- Never commit to `main` — always a feature branch
-- One logical change per commit
-- Pre-commit hooks (husky + lint-staged) run ESLint + Prettier — must pass
-- Never commit `.env` or `.env.test`
-
----
-
-## Jira Workflow
-
-- Set ticket to **In Progress** when starting work
-- Set ticket to **In Review** once the PR is posted
-- When a PR covers multiple tickets, include all Jira IDs in the PR title
-- Read the full ticket description before writing any code
+  components read breakpoints via `useBreakpoint()` — never call `window.matchMedia`
+  directly in a component (creates duplicate subscriptions that break in jsdom).
 
 ---
 
@@ -534,32 +571,28 @@ For any UI displaying variable-length or numeric content:
 
 Real patterns from past findings on this repo:
 
-- [ ] **Sibling consistency** — pattern applied to one instance applied to all siblings.
+- [ ] **Sibling consistency** — pattern applied to one instance applied to all siblings:
       i18n key added to `en.json` but not all five locale files; fix on ContactsPage but not
       AccountsPage or DealsPage; `data-testid` on one button but missing on its counterpart.
 - [ ] **Dead code removed** — unused i18n keys, unused imports, declared-but-never-read vars.
-- [ ] **Audit entries present** — every CREATE/UPDATE/DELETE has `writeAuditEntry` on the same
-      client in the same transaction.
+- [ ] **Audit entries present** — every CREATE/UPDATE/DELETE has `writeAuditEntry` on the
+      same client in the same transaction.
 - [ ] **Assignment notification fired** — if `owner_id` changed, `queueAssignmentNotification`
       called after commit (not awaited, not inside the transaction).
+- [ ] **DB errors mapped** — unique violations (23505) return 409 with a domain code; FK
+      violations (23503) return 400/409; all other DB errors propagate as 500.
 - [ ] **Pure updater functions** — `setState(updater)` functions have no side effects.
       Side effects in updaters fire twice in StrictMode.
 - [ ] **No-op guard on interactive controls** — active-state control re-click is a no-op.
 - [ ] **Focus management** — modals, inline forms, drawers move focus in on open and restore
       focus to the trigger on close.
 - [ ] **RTL-safe classes** — logical properties used, not physical directional classes.
+- [ ] **Loading / error / empty states** — every component with async data handles all three
+      states explicitly; none are left implicit or missing.
+- [ ] **Screenshots updated** — if the change modifies any user-visible UI, update
+      `docs/screenshots/` via `scripts/screenshot.ts` and check `README.md` for stale
+      descriptions.
 - [ ] **E2E spec present** — story AC covered by at least one `@functional` test.
 - [ ] **OpenAPI spec** — `npm run lint:api` passes after any endpoint change.
-- [ ] **Framework coverage** — if `qa/e2e/framework/` was touched, run `npm run test:framework:coverage --workspace=minicrm-qa` and confirm it exits 0 (80% threshold enforced).
-
----
-
-## General Behaviour
-
-- Read the full Jira ticket before writing any code
-- Ask before deleting or overwriting files
-- No placeholder / "coming soon" code — implement it fully or leave it out
-- Tasks producing >200 lines of new code: pause and confirm approach first
-- Prefer extending existing files over creating new parallel ones
-- Do not install npm packages without confirming first
-- All list endpoints use `paginationParamsSchema` — do not add new unbounded queries
+- [ ] **Framework coverage** — if `qa/e2e/framework/` was touched, run
+      `npm run test:framework:coverage --workspace=minicrm-qa` and confirm 80% threshold.
