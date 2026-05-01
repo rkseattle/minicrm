@@ -5,6 +5,57 @@ the PostgreSQL database.
 
 ---
 
+## Local E2E Infrastructure (developer workflow)
+
+The E2E functional suite includes tests that depend on MinIO (file attachment storage) and
+Mailhog (SMTP capture). Both are defined in `docker-compose.dev.yml` under the `e2e` Compose
+profile so they can be started without affecting the normal development stack. (MINCRM-317)
+
+### Starting the services
+
+Run once per local development session from the repo root:
+
+```bash
+docker compose -f docker-compose.dev.yml --profile e2e up -d
+```
+
+This starts:
+
+| Service | Purpose                        | Port(s)                      |
+| ------- | ------------------------------ | ---------------------------- |
+| MinIO   | S3-compatible attachment store | 9000 (API), 9001 (console)   |
+| Mailhog | SMTP capture for email tests   | 1025 (SMTP), 8025 (HTTP API) |
+
+### Initialising the infrastructure
+
+After starting the services, run the setup script once per session (MINCRM-318):
+
+```bash
+npm run e2e:setup
+```
+
+This script:
+
+1. Waits up to 30 seconds for MinIO to become healthy
+2. Creates the `minicrm-test-bucket` bucket inside the MinIO container (idempotent)
+3. Seeds MinIO storage coordinates into `system_settings` so the app server uses them
+
+The script is idempotent — safe to re-run if you restart the Docker services or wipe
+the database.
+
+### Stopping the services
+
+```bash
+docker compose -f docker-compose.dev.yml --profile e2e down
+```
+
+### Profile isolation
+
+Running the standard dev stack **without** `--profile e2e` does **not** start MinIO or
+Mailhog. The profile flag is required to activate them.
+
+---
+
 ## Required Secrets
 
 Two secrets must be set before production use. Both should be generated with a
