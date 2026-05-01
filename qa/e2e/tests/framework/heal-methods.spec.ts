@@ -6,16 +6,17 @@
  * when the primary strategy fails.
  *
  * Tests for checkScreenshot and checkLocatorScreenshot added in MINCRM-319.
+ * Tests for auditAccessibility added in MINCRM-320.
  *
  * All locator interactions use mock Page objects — no browser required.
  *
- * MINCRM-209, MINCRM-319
+ * MINCRM-209, MINCRM-319, MINCRM-320
  */
 
 import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import { HealingRegistry } from '../../framework/healing/healing-registry.js';
-import { buildHealPage } from '../../framework/fixtures/heal-methods.js';
+import { buildHealPage, applyAxeBuilderOptions } from '../../framework/fixtures/heal-methods.js';
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -633,5 +634,109 @@ test.describe('healPage.checkLocatorScreenshot()', () => {
     const hp = buildHealPage(page, 'checkScreenshot presence');
 
     expect(typeof hp.checkScreenshot).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// auditAccessibility — MINCRM-320
+// ---------------------------------------------------------------------------
+
+test.describe('healPage.auditAccessibility()', () => {
+  test('is present on HealMethods instance', () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'auditAccessibility presence');
+
+    expect(typeof hp.auditAccessibility).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyAxeBuilderOptions — MINCRM-320
+//
+// The option-forwarding logic is extracted into a pure helper so it can be
+// tested without a real browser or an ES-module monkey-patch (which would fail
+// because module namespace objects are read-only in strict ESM).
+// ---------------------------------------------------------------------------
+
+test.describe('applyAxeBuilderOptions()', () => {
+  type MockBuilder = {
+    withTagsArgs: Array<string | string[]>;
+    excludeArgs: Array<string | string[]>;
+    withTags(tags: string | string[]): MockBuilder;
+    exclude(selector: string | string[]): MockBuilder;
+  };
+
+  function makeMockBuilder(): MockBuilder {
+    const builder: MockBuilder = {
+      withTagsArgs: [],
+      excludeArgs: [],
+      withTags(tags: string | string[]) {
+        builder.withTagsArgs.push(tags);
+        return builder;
+      },
+      exclude(selector: string | string[]) {
+        builder.excludeArgs.push(selector);
+        return builder;
+      },
+    };
+    return builder;
+  }
+
+  test('passes tags to builder.withTags()', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, { tags: ['wcag2a', 'wcag2aa', 'wcag21aa'] });
+
+    expect(builder.withTagsArgs).toHaveLength(1);
+    expect(builder.withTagsArgs[0]).toEqual(['wcag2a', 'wcag2aa', 'wcag21aa']);
+  });
+
+  test('passes a single tag string to builder.withTags()', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, { tags: 'wcag2aa' });
+
+    expect(builder.withTagsArgs).toHaveLength(1);
+    expect(builder.withTagsArgs[0]).toBe('wcag2aa');
+  });
+
+  test('passes exclude selector to builder.exclude()', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, { exclude: '#cookie-banner' });
+
+    expect(builder.excludeArgs).toHaveLength(1);
+    expect(builder.excludeArgs[0]).toBe('#cookie-banner');
+  });
+
+  test('passes an array of exclude selectors to builder.exclude()', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, { exclude: ['#cookie-banner', '[data-third-party]'] });
+
+    expect(builder.excludeArgs).toHaveLength(1);
+    expect(builder.excludeArgs[0]).toEqual(['#cookie-banner', '[data-third-party]']);
+  });
+
+  test('calls both withTags and exclude when both options are supplied', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, {
+      tags: ['wcag2a', 'wcag2aa'],
+      exclude: '#widget',
+    });
+
+    expect(builder.withTagsArgs).toHaveLength(1);
+    expect(builder.excludeArgs).toHaveLength(1);
+  });
+
+  test('calls neither withTags nor exclude when options is empty', () => {
+    const builder = makeMockBuilder();
+    applyAxeBuilderOptions(builder, {});
+
+    expect(builder.withTagsArgs).toHaveLength(0);
+    expect(builder.excludeArgs).toHaveLength(0);
+  });
+
+  test('returns the builder (allows chaining)', () => {
+    const builder = makeMockBuilder();
+    const result = applyAxeBuilderOptions(builder, { tags: 'wcag2aa' });
+
+    expect(result).toBe(builder);
   });
 });

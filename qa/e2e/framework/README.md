@@ -247,6 +247,68 @@ changes the UI.
 
 ---
 
+## Accessibility Auditing (`auditAccessibility`) (MINCRM-320)
+
+`PageFacade` exposes an `auditAccessibility()` method backed by
+[`@axe-core/playwright`](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright).
+It runs an axe-core audit against the current page and returns the raw `AxeResults` object.
+The method never throws on violations — all assertion logic belongs in the caller.
+
+### Method
+
+```ts
+auditAccessibility(options?: AccessibilityAuditOptions): Promise<AxeResults>
+```
+
+`AccessibilityAuditOptions`:
+
+| Field     | Type                 | Description                                                                       |
+| --------- | -------------------- | --------------------------------------------------------------------------------- |
+| `exclude` | `string \| string[]` | CSS selectors to exclude from the audit (e.g. third-party widgets)                |
+| `tags`    | `string \| string[]` | axe-core tag names restricting the active rule set (see recommended values below) |
+
+### Recommended WCAG level tags
+
+| Tag        | Coverage                              |
+| ---------- | ------------------------------------- |
+| `wcag2a`   | WCAG 2.0 Level A                      |
+| `wcag2aa`  | WCAG 2.0 Level AA (industry baseline) |
+| `wcag21aa` | WCAG 2.1 Level AA (extends `wcag2aa`) |
+
+Pass all three together for the broadest conformance check:
+
+```ts
+{
+  tags: ['wcag2a', 'wcag2aa', 'wcag21aa'];
+}
+```
+
+### Usage
+
+```ts
+// Basic — full-page audit with default axe rule set
+const results = await page.auditAccessibility();
+expect(
+  results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious'),
+  'No critical or serious WCAG violations',
+).toHaveLength(0);
+
+// With WCAG 2.1 AA tags and a third-party widget excluded
+const results = await page.auditAccessibility({
+  tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
+  exclude: '#third-party-chat-widget',
+});
+expect(results.violations, 'No WCAG 2.1 AA violations').toHaveLength(0);
+```
+
+### Dynamic import
+
+`@axe-core/playwright` is loaded via a dynamic `import()` inside the method body.
+This means the axe bundle is **not** included in the startup cost of test suites
+that never call `auditAccessibility()`.
+
+---
+
 ## SafePage, SafeLocator, SafeContext
 
 These three types enforce the self-healing boundary at the TypeScript type level:

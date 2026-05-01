@@ -182,6 +182,23 @@ Both methods default to `maxDiffPixels: 50` (permissive enough for cross-machine
 
 **Generating / updating baselines:** Run the suite normally for first-run generation. After an intentional UI change, rerun with `--update-snapshots`. Baselines **must** be generated on Linux (the same OS as CI) to avoid macOS/Linux font rendering differences — use the Docker E2E environment. See `qa/e2e/framework/README.md` for the full workflow.
 
+### Accessibility Auditing
+
+`PageFacade` exposes `page.auditAccessibility(options?)` backed by `@axe-core/playwright`. The method runs an axe-core audit against the current page and returns the raw `AxeResults` without throwing — all assertion logic belongs in the test.
+
+```ts
+const results = await page.auditAccessibility({
+  tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
+  exclude: '#third-party-widget',
+});
+expect(
+  results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious'),
+  'No critical or serious WCAG violations',
+).toHaveLength(0);
+```
+
+Recommended WCAG level tags: `wcag2a` (WCAG 2.0 A), `wcag2aa` (WCAG 2.0 AA), `wcag21aa` (WCAG 2.1 AA). See `qa/e2e/framework/README.md` for full documentation.
+
 ### Framework Purity
 
 The `qa/e2e/framework/` directory must contain zero application-domain references (no MiniCRM-specific strings, route paths, or domain terms). A CI step (`check-framework-purity.sh`) enforces this — the framework is designed to be dropped into any project unchanged.
