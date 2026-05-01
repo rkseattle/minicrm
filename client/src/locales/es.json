@@ -8,6 +8,7 @@
     "pipeline": "Canal",
     "myTasks": "Mis tareas",
     "users": "Usuarios",
+    "reports": "Informes",
     "winLossReport": "Informe de victorias/pérdidas",
     "activityVolumeReport": "Informe de actividad",
     "stageTrendReport": "Informe de tendencia de etapas",
@@ -804,6 +805,12 @@
     }
   },
   "reports": {
+    "pageTitle": "Informes",
+    "nav": {
+      "win_loss": "Victorias/Pérdidas",
+      "activity": "Volumen de actividad",
+      "pipeline_stage": "Etapa del pipeline"
+    },
     "activityVolume": {
       "pageTitle": "Informe de actividad",
       "pageTitleMy": "Mi informe de actividad",

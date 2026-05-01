@@ -8,6 +8,7 @@
     "pipeline": "管道看板",
     "myTasks": "我的任务",
     "users": "用户",
+    "reports": "报告",
     "winLossReport": "赢/输报告",
     "activityVolumeReport": "活动报告",
     "stageTrendReport": "阶段趋势报告",
@@ -804,6 +805,12 @@
     }
   },
   "reports": {
+    "pageTitle": "报告",
+    "nav": {
+      "win_loss": "赢/输",
+      "activity": "活动量",
+      "pipeline_stage": "销售阶段"
+    },
     "activityVolume": {
       "pageTitle": "活动报告",
       "pageTitleMy": "我的活动报告",

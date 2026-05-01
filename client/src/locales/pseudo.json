@@ -8,6 +8,7 @@
     "pipeline": "[Pïpëlïñë~~~]",
     "myTasks": "[My Täŝkŝ~~~]",
     "users": "[Üŝërŝ~~]",
+    "reports": "[Rëpörtŝ~~~]",
     "winLossReport": "[Wïñ/Löŝŝ Rëpört~~~~~]",
     "activityVolumeReport": "[Äĉtïvïty Rëpört~~~~~]",
     "stageTrendReport": "[Ŝtägë Trëñd Rëpört~~~~~~]",
@@ -672,6 +673,12 @@
     }
   },
   "reports": {
+    "pageTitle": "[Rëpörtŝ~~~]",
+    "nav": {
+      "win_loss": "[Wïñ/Löŝŝ~~~]",
+      "activity": "[Äĉtïvïty Völümë~~~~~~]",
+      "pipeline_stage": "[Pïpëlïñë Ŝtägë~~~~~~]"
+    },
     "activityVolume": {
       "pageTitle": "[Äĉtïvïty Rëpört~~~~~]",
       "pageTitleMy": "[My Äĉtïvïty Rëpört~~~~~~~]",

@@ -206,10 +206,24 @@ function drawChart(
 // ── Page component ───────────────────────────────────────────────────────────
 
 /**
- * Stage trend report page.
- * Implements MINCRM-284.
+ * Standalone Stage Trend report page — includes NavBar.
+ * When embedded in ReportsPage shell, use StageTrendReportContent instead. (MINCRM-294)
  */
 export default function StageTrendReportPage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <StageTrendReportContent />
+    </div>
+  );
+}
+
+/**
+ * Stage trend report content — no NavBar wrapper.
+ * Consumed by ReportsPage shell. (MINCRM-294)
+ * Implements MINCRM-284.
+ */
+export function StageTrendReportContent() {
   const { t } = useTranslation();
   const [days, setDays] = useState<StageTrendDays>(30);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -258,165 +272,159 @@ export default function StageTrendReportPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900" data-testid="stage-trend-report-heading">
-            {t('reports.stageTrend.pageTitle')}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">{t('reports.stageTrend.subtitle')}</p>
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900" data-testid="stage-trend-report-heading">
+          {t('reports.stageTrend.pageTitle')}
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">{t('reports.stageTrend.subtitle')}</p>
+      </div>
+
+      {/* Date range filter */}
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-end"
+        data-testid="report-filters"
+      >
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="days-select"
+            className="text-xs font-medium text-gray-500 uppercase tracking-wide"
+          >
+            {t('reports.stageTrend.dateRangeLabel')}
+          </label>
+          <select
+            id="days-select"
+            data-testid="days-select"
+            value={days}
+            onChange={(e) => setDays(parseInt(e.target.value, 10) as StageTrendDays)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+          >
+            {DAYS_OPTIONS.map((d) => (
+              <option key={d} value={d}>
+                {t(`reports.stageTrend.preset${d}`)}
+              </option>
+            ))}
+          </select>
         </div>
+      </div>
 
-        {/* Date range filter */}
-        <div
-          className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-end"
-          data-testid="report-filters"
-        >
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="days-select"
-              className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-            >
-              {t('reports.stageTrend.dateRangeLabel')}
-            </label>
-            <select
-              id="days-select"
-              data-testid="days-select"
-              value={days}
-              onChange={(e) => setDays(parseInt(e.target.value, 10) as StageTrendDays)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
-            >
-              {DAYS_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {t(`reports.stageTrend.preset${d}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {/* Loading state */}
+      {isLoading && (
+        <p className="text-sm text-gray-400" data-testid="report-loading">
+          {t('reports.stageTrend.loading')}
+        </p>
+      )}
 
-        {/* Loading state */}
-        {isLoading && (
-          <p className="text-sm text-gray-400" data-testid="report-loading">
-            {t('reports.stageTrend.loading')}
-          </p>
-        )}
+      {/* Error state */}
+      {isError && (
+        <p role="alert" className="text-sm text-red-600" data-testid="report-error">
+          {t('reports.stageTrend.errorLoad')}
+        </p>
+      )}
 
-        {/* Error state */}
-        {isError && (
-          <p role="alert" className="text-sm text-red-600" data-testid="report-error">
-            {t('reports.stageTrend.errorLoad')}
-          </p>
-        )}
-
-        {/* Results */}
-        {report && (
-          <>
-            {report.dataPoints.length === 0 ? (
-              <p
-                className="text-sm text-gray-400 text-center py-12"
-                data-testid="stage-trend-empty"
+      {/* Results */}
+      {report && (
+        <>
+          {report.dataPoints.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-12" data-testid="stage-trend-empty">
+              {t('reports.stageTrend.empty')}
+            </p>
+          ) : (
+            <>
+              {/* Bar chart */}
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
+                data-testid="stage-trend-chart-container"
               >
-                {t('reports.stageTrend.empty')}
-              </p>
-            ) : (
-              <>
-                {/* Bar chart */}
-                <div
-                  className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
-                  data-testid="stage-trend-chart-container"
-                >
-                  <canvas
-                    ref={canvasRef}
-                    data-testid="stage-trend-chart"
-                    className="w-full"
-                    style={{ height: '320px' }}
-                    aria-label={t('reports.stageTrend.pageTitle')}
-                    role="img"
-                  />
-                </div>
+                <canvas
+                  ref={canvasRef}
+                  data-testid="stage-trend-chart"
+                  className="w-full"
+                  style={{ height: '320px' }}
+                  aria-label={t('reports.stageTrend.pageTitle')}
+                  role="img"
+                />
+              </div>
 
-                {/* Summary table */}
-                <div
-                  className="bg-white rounded-lg border border-gray-200"
-                  data-testid="stage-trend-table-container"
-                >
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-base font-semibold text-gray-900">
-                      {t('reports.stageTrend.tableHeading')}
-                    </h2>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table
-                      className="min-w-full divide-y divide-gray-100"
-                      data-testid="stage-trend-table"
-                    >
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.stageTrend.columnStage')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.stageTrend.columnEntered')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.stageTrend.columnConverted')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('reports.stageTrend.columnRate')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {tableData.map(({ stage, totalEntered, totalConverted }) => (
-                          <tr
-                            key={stage}
-                            data-testid={`stage-trend-row-${stage.toLowerCase().replace(/\s+/g, '-')}`}
-                          >
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{stage}</td>
-                            <td
-                              className="px-6 py-4 text-sm text-end text-gray-900"
-                              data-testid={`stage-trend-entered-${stage.toLowerCase().replace(/\s+/g, '-')}`}
-                            >
-                              {totalEntered}
-                            </td>
-                            <td
-                              className="px-6 py-4 text-sm text-end text-gray-900"
-                              data-testid={`stage-trend-converted-${stage.toLowerCase().replace(/\s+/g, '-')}`}
-                            >
-                              {totalConverted}
-                            </td>
-                            <td
-                              className="px-6 py-4 text-sm text-end text-gray-900"
-                              data-testid={`stage-trend-rate-${stage.toLowerCase().replace(/\s+/g, '-')}`}
-                            >
-                              {formatRate(totalEntered, totalConverted)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              {/* Summary table */}
+              <div
+                className="bg-white rounded-lg border border-gray-200"
+                data-testid="stage-trend-table-container"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-base font-semibold text-gray-900">
+                    {t('reports.stageTrend.tableHeading')}
+                  </h2>
                 </div>
-              </>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+                <div className="overflow-x-auto">
+                  <table
+                    className="min-w-full divide-y divide-gray-100"
+                    data-testid="stage-trend-table"
+                  >
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.stageTrend.columnStage')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.stageTrend.columnEntered')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.stageTrend.columnConverted')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('reports.stageTrend.columnRate')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {tableData.map(({ stage, totalEntered, totalConverted }) => (
+                        <tr
+                          key={stage}
+                          data-testid={`stage-trend-row-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{stage}</td>
+                          <td
+                            className="px-6 py-4 text-sm text-end text-gray-900"
+                            data-testid={`stage-trend-entered-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            {totalEntered}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-end text-gray-900"
+                            data-testid={`stage-trend-converted-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            {totalConverted}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-end text-gray-900"
+                            data-testid={`stage-trend-rate-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            {formatRate(totalEntered, totalConverted)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </main>
   );
 }

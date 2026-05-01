@@ -63,7 +63,7 @@ describe('NavLeft', () => {
     });
     expect(screen.getByTestId('nav-left-settings')).toBeInTheDocument();
     expect(screen.getByTestId('nav-left-automation')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-left-win-loss')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-left-reports')).toBeInTheDocument();
   });
 
   it('hides admin links for rep users', async () => {
