@@ -345,7 +345,7 @@ export default function CurrencySettings() {
                     <td className="px-3 py-3">
                       <input
                         type="number"
-                        step="any"
+                        step="0.000001"
                         min="0.000001"
                         aria-label={t('settings.exchangeRates.rateInputLabel')}
                         data-testid={`exchange-rate-input-${row.code}`}
@@ -421,7 +421,7 @@ export default function CurrencySettings() {
                 <input
                   id="add-currency-rate"
                   type="number"
-                  step="any"
+                  step="0.000001"
                   min="0.000001"
                   data-testid="add-currency-rate-input"
                   value={addCurrencyRate}
@@ -462,7 +462,10 @@ export default function CurrencySettings() {
               variant="secondary"
               size="sm"
               data-testid="exchange-rate-add-button"
-              onClick={() => setShowAddCurrency(true)}
+              onClick={() => {
+                setAddCurrencyRate('1');
+                setShowAddCurrency(true);
+              }}
             >
               {t('settings.exchangeRates.addButton')}
             </Button>
