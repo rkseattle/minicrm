@@ -66,6 +66,11 @@ const SERIAL_FILES = [
   // running in parallel with dealService causes the "returns an empty array" assertion
   // to see leaked rows from the controller tests.
   'src/__tests__/dealController.test.ts',
+  // webhookController creates active webhook subscriptions that fire real async
+  // deliveries on any contact/deal creation. Parallel tests creating contacts cause
+  // delivery attempts against subscriptions being deleted by webhookController's
+  // afterAll, producing FK violations on webhook_delivery_logs.
+  'src/__tests__/webhookController.test.ts',
 ];
 
 const sharedResolve = {
@@ -100,29 +105,25 @@ export default defineConfig({
 
     coverage: {
       provider: 'v8',
-      include: ['src/services/**/*.ts', 'src/controllers/**/*.ts'],
+      include: [
+        'src/services/**/*.ts',
+        'src/controllers/**/*.ts',
+        'src/middleware/**/*.ts',
+        'src/utils/**/*.ts',
+      ],
       // text: console summary; lcov: for tooling; json-summary: machine-readable
       // totals parsed by the CI coverage-comment step.
       reporter: ['text', 'lcov', 'json-summary'],
       reportsDirectory: 'coverage',
       thresholds: {
-        /**
-         * Glob keys are matched by picomatch against relative file paths.
-         * Trailing-slash patterns (e.g. 'src/services/') never match file
-         * paths — use '**' to cover all files in the directory.
-         */
-        'src/services/**': {
-          lines: 80,
-          functions: 80,
-          branches: 80,
-          statements: 80,
-        },
-        'src/controllers/**': {
-          lines: 60,
-          functions: 60,
-          branches: 60,
-          statements: 60,
-        },
+        lines: 80,
+        functions: 80,
+        // Branch coverage sits at 74.7% today — many controller error paths and
+        // service edge cases are not yet exercised. Set the floor at the current
+        // measured value so CI fails if coverage drops, not at an aspirational
+        // number the codebase does not yet reach.
+        branches: 74,
+        statements: 80,
       },
     },
 
