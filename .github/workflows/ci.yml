@@ -865,7 +865,9 @@ jobs:
     needs: [server-tests, client-tests, e2e-framework-specs]
     runs-on: ubuntu-latest
     # MINCRM-293: run whenever any test suite ran, regardless of which paths changed.
-    if: (needs.server-tests.result == 'success' || needs.client-tests.result == 'success' || needs.e2e-framework-specs.result == 'success') && github.event_name == 'pull_request'
+    # always() is required: without it GitHub skips this job when e2e-framework-specs is
+    # skipped (qa paths unchanged), before the if condition is even evaluated.
+    if: always() && (needs.server-tests.result == 'success' || needs.client-tests.result == 'success' || needs.e2e-framework-specs.result == 'success') && github.event_name == 'pull_request'
     steps:
       # MINCRM-293: Each download step uses continue-on-error because only the suites
       # that ran for this PR will have uploaded artifacts. Missing artifacts are handled
