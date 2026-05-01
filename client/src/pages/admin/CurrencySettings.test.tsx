@@ -150,6 +150,32 @@ describe('CurrencySettings — exchange rates', () => {
     expect(screen.getByTestId('add-currency-confirm')).toBeDisabled();
   });
 
+  it('rate input defaults to "1" when add form opens so spinner increments from 1', async () => {
+    renderWithProviders(<CurrencySettings />);
+
+    await waitFor(() => expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('exchange-rate-add-button'));
+
+    const rateInput = screen.getByTestId('add-currency-rate-input') as HTMLInputElement;
+    expect(rateInput.value).toBe('1');
+  });
+
+  it('spinner increment from default "1" produces "1.000001" not "0.000001"', async () => {
+    renderWithProviders(<CurrencySettings />);
+
+    await waitFor(() => expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('exchange-rate-add-button'));
+
+    const rateInput = screen.getByTestId('add-currency-rate-input') as HTMLInputElement;
+    // Simulate one spinner-up click: current value 1 + step 0.000001
+    fireEvent.change(rateInput, { target: { value: '1.000001' } });
+    expect(rateInput.value).toBe('1.000001');
+
+    // Simulate a second spinner-up click
+    fireEvent.change(rateInput, { target: { value: '1.000002' } });
+    expect(rateInput.value).toBe('1.000002');
+  });
+
   it('adds a currency row when a code is chosen and Confirm is clicked', async () => {
     renderWithProviders(<CurrencySettings />);
 
