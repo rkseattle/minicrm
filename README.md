@@ -169,6 +169,19 @@ Both are available as Playwright fixtures:
 
 `globalSetup.ts` runs once before all workers. It logs in via the REST API and writes session state (cookies) to `.auth/admin.json`. All tests reuse this cached state, eliminating per-test browser login overhead. Tests that intentionally exercise unauthenticated flows opt out with `test.use({ storageState: undefined })`.
 
+### Visual Regression
+
+`PageFacade` exposes two visual assertion methods backed by Playwright's native `toHaveScreenshot` (no third-party library required):
+
+- `page.checkScreenshot(name, options?)` — full-page pixel comparison against a stored baseline.
+- `page.checkLocatorScreenshot(locator, name, options?)` — element-scoped comparison using a `SafeLocator` from `page.locate().resolve()`.
+
+Both methods default to `maxDiffPixels: 50` (permissive enough for cross-machine anti-aliasing differences). Callers can tighten per-assertion by passing options.
+
+**Snapshot storage:** `qa/e2e/snapshots/` — committed to version control alongside the tests.
+
+**Generating / updating baselines:** Run the suite normally for first-run generation. After an intentional UI change, rerun with `--update-snapshots`. Baselines **must** be generated on Linux (the same OS as CI) to avoid macOS/Linux font rendering differences — use the Docker E2E environment. See `qa/e2e/framework/README.md` for the full workflow.
+
 ### Framework Purity
 
 The `qa/e2e/framework/` directory must contain zero application-domain references (no MiniCRM-specific strings, route paths, or domain terms). A CI step (`check-framework-purity.sh`) enforces this — the framework is designed to be dropped into any project unchanged.

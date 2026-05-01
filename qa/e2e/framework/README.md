@@ -161,6 +161,92 @@ test('example', async ({ page }) => {
 });
 ```
 
+## Visual Regression (`checkScreenshot` / `checkLocatorScreenshot`) (MINCRM-319)
+
+`PageFacade` exposes two visual regression assertion methods backed by Playwright's
+native `toHaveScreenshot`. No third-party library (pixelmatch, resemble.js, etc.) is
+required.
+
+### Methods
+
+```ts
+// Full-page visual assertion
+await page.checkScreenshot('my-page.png');
+await page.checkScreenshot('my-page.png', { fullPage: true, maxDiffPixels: 10 });
+
+// Element-scoped visual assertion — pass a SafeLocator from page.locate().resolve()
+const card = await page
+  .locate(
+    [
+      { type: 'testId', value: 'deal-card' },
+      { type: 'role', value: 'article' },
+    ],
+    { intent: 'deal card component' },
+  )
+  .resolve();
+await page.checkLocatorScreenshot(card, 'deal-card.png');
+await page.checkLocatorScreenshot(card, 'deal-card.png', { maxDiffPixels: 5 });
+```
+
+The `name` argument must include the `.png` extension by convention.
+
+### Default threshold
+
+Both methods default to `maxDiffPixels: 50` — permissive enough to absorb anti-aliasing
+and sub-pixel font rendering differences across machines without masking genuine visual
+regressions. Pass a lower `maxDiffPixels` or a `threshold` value in options to tighten
+the assertion for pixel-perfect components.
+
+### Snapshot storage
+
+Snapshots are stored in `qa/e2e/snapshots/` under a path that mirrors the test file
+structure (`<test-file>/<browser>/`). This directory is committed to version control so
+baselines travel with the tests that own them.
+
+### Generating baselines (first run)
+
+When no baseline exists for a given snapshot name, Playwright writes the file
+automatically on first run — the test still passes. Subsequent runs compare against
+that baseline. To generate all baselines for a suite in one pass:
+
+```bash
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  npm run test -- --grep @functional
+```
+
+### Updating baselines after an intentional UI change
+
+After a deliberate visual change (new layout, colour token update, etc.), regenerate
+the affected snapshots with `--update-snapshots`:
+
+```bash
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  npm run test -- --update-snapshots --grep @functional
+```
+
+Review the diff in `qa/e2e/playwright-report/` before committing the new baselines.
+
+### OS requirement for CI-compatible baselines
+
+**Baselines must be generated on Linux.** Playwright renders fonts differently on macOS
+and Windows, so a baseline created on macOS will produce false pixel-diff failures in CI
+(which runs on Linux). Always generate or update baselines inside the Docker E2E
+environment:
+
+```bash
+# Start the e2e Compose profile (once per session)
+docker compose -f docker-compose.dev.yml --profile e2e up -d
+
+# Run tests with --update-snapshots inside the Linux container
+docker compose -f docker-compose.dev.yml exec e2e \
+  bash -c "cd /app/qa && npm run test -- --update-snapshots --grep @functional"
+```
+
+Commit the updated snapshot files from `qa/e2e/snapshots/` as part of the same PR that
+changes the UI.
+
+---
+
 ## SafePage, SafeLocator, SafeContext
 
 These three types enforce the self-healing boundary at the TypeScript type level:
