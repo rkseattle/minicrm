@@ -52,6 +52,10 @@ const SERIAL_FILES = [
   // smtpSettingsService running in parallel can set smtp_host mid-test which causes
   // the activity query to return 0 results if the write races with the read.
   'src/__tests__/contactController.test.ts',
+  // pipelineStageController creates and deletes pipeline_stages rows; running in
+  // parallel with other tests that read the live stage list (e.g. dealController)
+  // can cause unexpected stage counts or name conflicts.
+  'src/__tests__/pipelineStageController.test.ts',
 ];
 
 const sharedResolve = {
@@ -104,10 +108,10 @@ export default defineConfig({
           statements: 80,
         },
         'src/controllers/**': {
-          lines: 0,
-          functions: 0,
-          branches: 0,
-          statements: 0,
+          lines: 60,
+          functions: 60,
+          branches: 60,
+          statements: 60,
         },
       },
     },
