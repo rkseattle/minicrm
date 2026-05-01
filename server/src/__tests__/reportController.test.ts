@@ -65,7 +65,8 @@ describe('GET /api/reports/win-loss', () => {
     expect(res.status).toBe(200);
     expect(typeof res.body.wonCount).toBe('number');
     expect(typeof res.body.lostCount).toBe('number');
-    expect(typeof res.body.winRate).toBe('number');
+    // winRate is null when no closed deals exist; otherwise a number
+    expect(res.body.winRate === null || typeof res.body.winRate === 'number').toBe(true);
   });
 
   it('returns 400 VALIDATION_ERROR when start is missing', async () => {

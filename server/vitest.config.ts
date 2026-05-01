@@ -56,6 +56,10 @@ const SERIAL_FILES = [
   // parallel with other tests that read the live stage list (e.g. dealController)
   // can cause unexpected stage counts or name conflicts.
   'src/__tests__/pipelineStageController.test.ts',
+  // dealController creates deals that are not owner-scoped in exportDealsForCsv();
+  // running in parallel with dealService causes the "returns an empty array" assertion
+  // to see leaked rows from the controller tests.
+  'src/__tests__/dealController.test.ts',
 ];
 
 const sharedResolve = {
