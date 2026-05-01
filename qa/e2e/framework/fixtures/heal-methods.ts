@@ -6,7 +6,8 @@
  *
  */
 
-import type { Page } from '@playwright/test';
+import type { Page, Locator, PageAssertionsToHaveScreenshotOptions } from '@playwright/test';
+import { expect } from '@playwright/test';
 import {
   HealingLocator,
   buildLocator,
@@ -15,6 +16,35 @@ import {
 } from '../healing/index.js';
 import type { LocatorStrategy } from '../healing/index.js';
 import type { SafePage } from '../types/safe-page.js';
+import type { SafeLocator } from '../types/safe-locator.js';
+
+// ---------------------------------------------------------------------------
+// Screenshot option types (MINCRM-319)
+// ---------------------------------------------------------------------------
+
+/**
+ * Options for full-page visual regression assertions via checkScreenshot().
+ * Re-exported from Playwright for callers that need to type their options objects.
+ */
+export type { PageAssertionsToHaveScreenshotOptions as FullPageScreenshotOptions };
+
+/**
+ * Options for element-scoped visual regression assertions via checkLocatorScreenshot().
+ * Mirrors the inline options type accepted by expect(locator).toHaveScreenshot().
+ */
+export interface LocatorScreenshotOptions {
+  animations?: 'disabled' | 'allow';
+  caret?: 'hide' | 'initial';
+  mask?: Locator[];
+  maskColor?: string;
+  maxDiffPixelRatio?: number;
+  maxDiffPixels?: number;
+  omitBackground?: boolean;
+  scale?: 'css' | 'device';
+  stylePath?: string | string[];
+  threshold?: number;
+  timeout?: number;
+}
 
 // ---------------------------------------------------------------------------
 // LocateOptions
@@ -159,6 +189,54 @@ export interface HealMethods {
    * tab, registered under the same testName.
    */
   newTab(): Promise<PageFacadeShape>;
+
+  /**
+   * Asserts that the full page rendering matches a stored screenshot baseline.
+   * On first run (no baseline exists) the snapshot is written automatically.
+   * To regenerate a baseline after an intentional UI change, re-run with
+   * `--update-snapshots`.
+   *
+   * The name parameter must include the `.png` extension by convention.
+   * Snapshots are stored in `qa/e2e/snapshots/` mirroring the test file path.
+   *
+   * Default threshold: maxDiffPixels 50 — permissive enough to absorb
+   * anti-aliasing and sub-pixel font rendering differences across machines.
+   * Callers may tighten per-call by passing options.
+   *
+   * NOTE: Baselines must be generated on Linux (the same OS as CI) to avoid
+   * cross-platform font rendering differences. Use the Docker E2E environment
+   * to generate or update baselines. See the framework README for details.
+   *
+   * MINCRM-319
+   */
+  checkScreenshot(name: string, options?: PageAssertionsToHaveScreenshotOptions): Promise<void>;
+
+  /**
+   * Asserts that a specific element's rendering matches a stored screenshot
+   * baseline. Accepts a SafeLocator returned by page.locate().resolve().
+   *
+   * On first run (no baseline exists) the snapshot is written automatically.
+   * To regenerate a baseline after an intentional UI change, re-run with
+   * `--update-snapshots`.
+   *
+   * The name parameter must include the `.png` extension by convention.
+   * Snapshots are stored in `qa/e2e/snapshots/` mirroring the test file path.
+   *
+   * Default threshold: maxDiffPixels 50 — permissive enough to absorb
+   * anti-aliasing and sub-pixel font rendering differences across machines.
+   * Callers may tighten per-call by passing options.
+   *
+   * NOTE: Baselines must be generated on Linux (the same OS as CI) to avoid
+   * cross-platform font rendering differences. Use the Docker E2E environment
+   * to generate or update baselines. See the framework README for details.
+   *
+   * MINCRM-319
+   */
+  checkLocatorScreenshot(
+    locator: SafeLocator,
+    name: string,
+    options?: LocatorScreenshotOptions,
+  ): Promise<void>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -167,6 +245,15 @@ export type HealPage = HealMethods;
 // ---------------------------------------------------------------------------
 // buildHealPage factory
 // ---------------------------------------------------------------------------
+
+/**
+ * Default pixel-difference threshold for visual regression assertions.
+ * Set to 50 to absorb anti-aliasing and sub-pixel font rendering differences
+ * across machines without masking genuine visual regressions. Callers can
+ * tighten this per-assertion by passing a lower maxDiffPixels in options.
+ * MINCRM-319
+ */
+const DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS = 50;
 
 /**
  * Builds a HealMethods implementation bound to the given Playwright Page.
@@ -379,6 +466,28 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       // involvement — this is a browser-level operation, not an element lookup).
       const newRawPage = await page.context().newPage();
       return tabFactory(newRawPage, testName);
+    },
+
+    // MINCRM-319 — visual regression methods
+    async checkScreenshot(
+      name: string,
+      options?: PageAssertionsToHaveScreenshotOptions,
+    ): Promise<void> {
+      await expect(page).toHaveScreenshot(name, {
+        maxDiffPixels: DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS,
+        ...options,
+      });
+    },
+
+    async checkLocatorScreenshot(
+      locator: SafeLocator,
+      name: string,
+      options?: LocatorScreenshotOptions,
+    ): Promise<void> {
+      await expect(locator).toHaveScreenshot(name, {
+        maxDiffPixels: DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS,
+        ...options,
+      });
     },
   };
 }

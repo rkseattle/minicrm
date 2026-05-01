@@ -28,6 +28,12 @@ export default defineConfig({
   // Anchor test artifact output (traces, screenshots, videos) to qa/e2e/test-results/
   outputDir: path.join(E2E_DIR, 'test-results'),
 
+  // MINCRM-319: Visual regression snapshot storage.
+  // Snapshots are stored under qa/e2e/snapshots/<test-file>/<browser>/ so they
+  // are versioned alongside the tests that own them and stay separate from
+  // transient test-results/ artifacts.
+  snapshotDir: path.join(E2E_DIR, 'snapshots'),
+
   // Fail fast in CI; allow local runs to continue after failures
   fullyParallel: true,
   forbidOnly: IS_CI,
