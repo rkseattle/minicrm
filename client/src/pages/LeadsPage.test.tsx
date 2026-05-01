@@ -5,7 +5,7 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import LeadsPage from './LeadsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
@@ -142,6 +142,250 @@ describe('LeadsPage', () => {
     await user.click(screen.getByTestId('lead-form-submit'));
     await waitFor(() => {
       expect(screen.getByTestId('duplicate-lead-warning')).toBeInTheDocument();
+    });
+  });
+
+  it('creates the lead anyway when "Create anyway" is clicked after a duplicate warning', async () => {
+    let secondCallBody: Record<string, unknown> = {};
+    server.use(
+      http.post('/api/v1/leads', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        // First call returns duplicate; subsequent calls succeed
+        if (!secondCallBody.first_name) {
+          secondCallBody = body;
+          return HttpResponse.json(
+            {
+              error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate' },
+              duplicate: {
+                id: LEAD_1.id,
+                first_name: LEAD_1.first_name,
+                last_name: LEAD_1.last_name,
+                email: LEAD_1.email,
+              },
+            },
+            { status: 409 },
+          );
+        }
+        return HttpResponse.json(
+          { lead: { ...LEAD_1, id: '00000000-0000-0000-0000-000000000803' } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('new-lead-button')).toBeInTheDocument());
+    await user.click(screen.getByTestId('new-lead-button'));
+    await user.type(screen.getByTestId('lead-first-name'), 'Carol');
+    await user.type(screen.getByTestId('lead-email'), 'carol.white@example.com');
+    await user.click(screen.getByTestId('lead-form-submit'));
+    await waitFor(() => expect(screen.getByTestId('duplicate-lead-warning')).toBeInTheDocument());
+    await user.click(screen.getByTestId('duplicate-create-anyway'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('duplicate-lead-warning')).not.toBeInTheDocument();
+    });
+  });
+});
+
+// ── Filter interactions (MINCRM-295) ──────────────────────────────────────────
+
+describe('filter interactions', () => {
+  it('sends ?owner=me when "Mine" filter is clicked', async () => {
+    let capturedOwner: string | null = null;
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        capturedOwner = url.searchParams.get('owner');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('filter-owner-me')).toBeInTheDocument());
+    await user.click(screen.getByTestId('filter-owner-me'));
+
+    await waitFor(() => {
+      expect(capturedOwner).toBe('me');
+    });
+  });
+
+  it('removes ?owner param when "All" filter is clicked after selecting "Mine"', async () => {
+    let lastOwner: string | null = 'unset';
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        lastOwner = url.searchParams.get('owner');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('filter-owner-me')).toBeInTheDocument());
+    await user.click(screen.getByTestId('filter-owner-me'));
+    await user.click(screen.getByTestId('filter-owner-all'));
+
+    await waitFor(() => {
+      expect(lastOwner).toBeNull();
+    });
+  });
+
+  it('sends ?status=New when New is selected in the status filter', async () => {
+    let capturedStatus: string | null = null;
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        capturedStatus = url.searchParams.get('status');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('filter-status')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('filter-status'), 'New');
+
+    await waitFor(() => {
+      expect(capturedStatus).toBe('New');
+    });
+  });
+
+  it('sends ?lead_source=Web when Web is selected in the source filter', async () => {
+    let capturedSource: string | null = null;
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        capturedSource = url.searchParams.get('lead_source');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('filter-source')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('filter-source'), 'Web');
+
+    await waitFor(() => {
+      expect(capturedSource).toBe('Web');
+    });
+  });
+
+  it('sends includeDisqualified=true when the disqualified checkbox is toggled on', async () => {
+    let capturedIncludeDisqualified: string | null = null;
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        capturedIncludeDisqualified = url.searchParams.get('includeDisqualified');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('toggle-disqualified')).toBeInTheDocument());
+    await user.click(screen.getByTestId('toggle-disqualified'));
+
+    await waitFor(() => {
+      expect(capturedIncludeDisqualified).toBe('true');
+    });
+  });
+
+  it('sends includeConverted=true when the converted checkbox is toggled on', async () => {
+    let capturedIncludeConverted: string | null = null;
+    server.use(
+      http.get('/api/v1/leads', ({ request }) => {
+        const url = new URL(request.url);
+        capturedIncludeConverted = url.searchParams.get('includeConverted');
+        return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId('toggle-converted')).toBeInTheDocument());
+    await user.click(screen.getByTestId('toggle-converted'));
+
+    await waitFor(() => {
+      expect(capturedIncludeConverted).toBe('true');
+    });
+  });
+});
+
+// ── Delete action (MINCRM-295) ────────────────────────────────────────────────
+
+describe('delete lead action', () => {
+  it('calls DELETE after window.confirm and removes the row', async () => {
+    let deleteCalled = false;
+    server.use(
+      http.delete(`/api/v1/leads/${LEAD_1.id}`, () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    // Stub window.confirm to return true
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId(`delete-lead-${LEAD_1.id}`)).toBeInTheDocument());
+    await user.click(screen.getByTestId(`delete-lead-${LEAD_1.id}`));
+
+    await waitFor(() => {
+      expect(deleteCalled).toBe(true);
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('does NOT call DELETE when window.confirm returns false', async () => {
+    let deleteCalled = false;
+    server.use(
+      http.delete(`/api/v1/leads/${LEAD_1.id}`, () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => expect(screen.getByTestId(`delete-lead-${LEAD_1.id}`)).toBeInTheDocument());
+    await user.click(screen.getByTestId(`delete-lead-${LEAD_1.id}`));
+
+    expect(deleteCalled).toBe(false);
+    confirmSpy.mockRestore();
+  });
+});
+
+// ── Inline status update (MINCRM-295) ────────────────────────────────────────
+
+describe('inline status update', () => {
+  it('calls PATCH with the new status when a new value is selected', async () => {
+    let patchedStatus: string | null = null;
+    server.use(
+      http.patch(`/api/v1/leads/${LEAD_1.id}`, async ({ request }) => {
+        const body = (await request.json()) as { status?: string };
+        patchedStatus = body.status ?? null;
+        return HttpResponse.json({ lead: { ...LEAD_1, status: body.status ?? LEAD_1.status } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toBeInTheDocument(),
+    );
+    await user.click(screen.getByTestId(`status-badge-${LEAD_1.id}`));
+    expect(screen.getByTestId(`status-select-${LEAD_1.id}`)).toBeInTheDocument();
+    await user.selectOptions(screen.getByTestId(`status-select-${LEAD_1.id}`), 'Contacted');
+
+    await waitFor(() => {
+      expect(patchedStatus).toBe('Contacted');
     });
   });
 });
