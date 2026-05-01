@@ -160,7 +160,7 @@ Check the full log for the error and follow the rollback procedure below.
 Down migrations are **not** a safe recovery strategy in production. If a migration fails:
 
 1. Run `docker compose down` to stop all containers.
-2. Restore from the backup you took before pulling the new images (see [Restore](#restore-from-backup)).
+2. Restore from the backup you took before pulling the new images (see [Backup and Restore](#backup-and-restore)).
 3. Re-tag or revert to the previous image version in your `docker-compose.yml` or by re-pulling
    the prior tag.
 4. Start the old version: `docker compose up -d`.
