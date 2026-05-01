@@ -31,6 +31,12 @@ const SERIAL_FILES = [
   // ALL enabled rules for the trigger type — parallel runs cause cross-file log
   // entries that break the toHaveLength(1) assertions.
   'src/__tests__/automationService.test.ts',
+  // auth-boundaries deletes deals/contacts/accounts which fires fireAutomationTrigger
+  // globally. When automationService runs in parallel it leaves enabled rules alive
+  // mid-test; the trigger finds them, tries to write automation_rule_logs, then the
+  // rule is deleted by automationService beforeEach — causing an FK violation that
+  // Vitest surfaces as an unhandled error and exits non-zero.
+  'src/__tests__/auth-boundaries.test.ts',
   // notificationService writes email_notifications_enabled to system_settings;
   // parallel tests resetting this key cause the overdue-digest logic to skip
   // sending and fail the dedup-row assertions.
