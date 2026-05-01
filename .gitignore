@@ -23,6 +23,9 @@ client/build/
 
 # ─── Server build output ──────────────────────────────────────────────────────
 server/dist/
+# tsc side-emits compiled shared schemas when building from server/ (MINCRM-288)
+shared/schemas/*.js
+shared/schemas/*.d.ts
 
 # ─── Generated API spec (produced by npm run generate-spec) ───────────────────
 server/openapi.json
