@@ -67,22 +67,33 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+
   const tabList = await page.locate([{ type: 'testId', value: 'reports-tab-list' }]).resolve();
   await expect(tabList).toBeVisible({ timeout: 10_000 });
 
-  const winLossTab = await page
-    .locate([{ type: 'testId', value: 'reports-tab-win-loss' }])
-    .resolve();
-  const activityTab = await page
-    .locate([{ type: 'testId', value: 'reports-tab-activity' }])
-    .resolve();
-  const stageTab = await page
-    .locate([{ type: 'testId', value: 'reports-tab-pipeline-stage' }])
-    .resolve();
+  if (isMobile) {
+    // On mobile SubPageNav renders a <select>; individual tab buttons are not in the DOM.
+    const select = await page
+      .locate([{ type: 'testId', value: 'reports-tab-list-select' }])
+      .resolve();
+    await expect(select).toBeVisible();
+    await expect(select).toHaveValue('win-loss');
+  } else {
+    const winLossTab = await page
+      .locate([{ type: 'testId', value: 'reports-tab-win-loss' }])
+      .resolve();
+    const activityTab = await page
+      .locate([{ type: 'testId', value: 'reports-tab-activity' }])
+      .resolve();
+    const stageTab = await page
+      .locate([{ type: 'testId', value: 'reports-tab-pipeline-stage' }])
+      .resolve();
 
-  await expect(winLossTab).toBeVisible();
-  await expect(activityTab).toBeVisible();
-  await expect(stageTab).toBeVisible();
+    await expect(winLossTab).toBeVisible();
+    await expect(activityTab).toBeVisible();
+    await expect(stageTab).toBeVisible();
+  }
 });
 
 test('reports nav: /reports defaults to Win/Loss report content @functional', async ({ page }) => {
@@ -131,17 +142,26 @@ test('reports nav: switching tabs renders the selected report @functional', asyn
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+
   // Wait for default (win-loss) to load
   const winLossHeading = await page
     .locate([{ type: 'testId', value: 'win-loss-report-heading' }])
     .resolve();
   await expect(winLossHeading).toBeVisible({ timeout: 10_000 });
 
-  // Click Activity tab
-  const activityTab = await page
-    .locate([{ type: 'testId', value: 'reports-tab-activity' }])
-    .resolve();
-  await activityTab.click();
+  if (isMobile) {
+    // On mobile SubPageNav renders a <select> — switch via selectOption.
+    const select = await page
+      .locate([{ type: 'testId', value: 'reports-tab-list-select' }])
+      .resolve();
+    await select.selectOption('activity');
+  } else {
+    const activityTab = await page
+      .locate([{ type: 'testId', value: 'reports-tab-activity' }])
+      .resolve();
+    await activityTab.click();
+  }
 
   const activityHeading = await page
     .locate([{ type: 'testId', value: 'activity-volume-report-heading' }])
