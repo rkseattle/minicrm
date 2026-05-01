@@ -90,9 +90,7 @@ const REP_DESTINATIONS: Record<string, string> = {
   accounts: '/accounts',
   deals: '/deals',
   tasks: '/tasks',
-  'win-loss': '/reports/win-loss',
-  'activity-volume': '/reports/activity-volume',
-  'stage-trend': '/reports/stage-trend',
+  reports: '/reports',
 };
 
 /**
