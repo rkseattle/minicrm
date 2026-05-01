@@ -8,6 +8,7 @@
 
 import type { Page, Locator, PageAssertionsToHaveScreenshotOptions } from '@playwright/test';
 import { expect } from '@playwright/test';
+import type { AxeResults } from 'axe-core';
 import {
   HealingLocator,
   buildLocator,
@@ -17,6 +18,34 @@ import {
 import type { LocatorStrategy } from '../healing/index.js';
 import type { SafePage } from '../types/safe-page.js';
 import type { SafeLocator } from '../types/safe-locator.js';
+
+// ---------------------------------------------------------------------------
+// Accessibility audit option types
+// ---------------------------------------------------------------------------
+
+/**
+ * Options accepted by auditAccessibility().
+ *
+ * Mirrors the subset of AxeBuilder's chainable API that callers most commonly
+ * need. All fields are optional — omitting them runs a full-page audit with
+ * axe-core's default rule set.
+ */
+export interface AccessibilityAuditOptions {
+  /**
+   * CSS selectors to exclude from the audit scope. Useful for suppressing
+   * violations in third-party widgets whose markup cannot be changed.
+   *
+   * @example exclude: ['#cookie-banner', '[data-third-party]']
+   */
+  exclude?: string | string[];
+  /**
+   * axe-core tag names used to restrict the active rule set.
+   * Common values: 'wcag2a', 'wcag2aa', 'wcag21aa'.
+   *
+   * @example tags: ['wcag2a', 'wcag2aa', 'wcag21aa']
+   */
+  tags?: string | string[];
+}
 
 // ---------------------------------------------------------------------------
 // Screenshot option types
@@ -233,6 +262,25 @@ export interface HealMethods {
     name: string,
     options?: LocatorScreenshotOptions,
   ): Promise<void>;
+
+  /**
+   * Runs an axe-core accessibility audit against the current page and returns
+   * the raw AxeResults object. Never throws on violations — all assertion logic
+   * belongs in the caller.
+   *
+   * The method uses a dynamic import so the axe bundle is not loaded on every
+   * test file startup; only suites that call this method pay the import cost.
+   *
+   * @param options - Optional audit scope controls (exclude selectors, WCAG tags).
+   *
+   * @example
+   * const results = await page.auditAccessibility({ tags: ['wcag2a', 'wcag2aa', 'wcag21aa'] });
+   * expect(
+   *   results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious'),
+   *   'No critical or serious WCAG violations',
+   * ).toHaveLength(0);
+   */
+  auditAccessibility(options?: AccessibilityAuditOptions): Promise<AxeResults>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -241,6 +289,19 @@ export type HealPage = HealMethods;
 // ---------------------------------------------------------------------------
 // buildHealPage factory
 // ---------------------------------------------------------------------------
+
+/**
+ * Applies AccessibilityAuditOptions to an AxeBuilder via its chainable API.
+ * Exported so unit tests can exercise option-forwarding without a real browser.
+ */
+export function applyAxeBuilderOptions<
+  T extends { withTags(t: string | string[]): T; exclude(s: string | string[]): T },
+>(builder: T, options: AccessibilityAuditOptions): T {
+  let current = builder;
+  if (options.tags) current = current.withTags(options.tags);
+  if (options.exclude) current = current.exclude(options.exclude);
+  return current;
+}
 
 /**
  * Default pixel-difference threshold for visual regression assertions.
@@ -482,6 +543,14 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
         maxDiffPixels: DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS,
         ...options,
       });
+    },
+
+    async auditAccessibility(options: AccessibilityAuditOptions = {}): Promise<AxeResults> {
+      // Dynamic import keeps the axe bundle out of the startup path for suites
+      // that never call this method.
+      const { AxeBuilder } = await import('@axe-core/playwright');
+      const builder = applyAxeBuilderOptions(new AxeBuilder({ page }), options);
+      return builder.analyze();
     },
   };
 }
