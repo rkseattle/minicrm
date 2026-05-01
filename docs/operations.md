@@ -174,9 +174,84 @@ Down migrations are **not** a safe recovery strategy in production. If a migrati
 ## Backup and Restore
 
 MiniCRM data lives in a named Docker volume (`db_data`) attached to the `db` container.
-Use `pg_dump` inside the running container to create portable backups.
+You can protect it with the built-in automated backup service (recommended) or run
+manual one-off dumps when needed.
 
-### Create a backup
+---
+
+### Automated backups (recommended)
+
+`docker-compose.yml` ships with an optional `db-backup` service that runs `pg_dump`
+on a cron schedule and automatically rotates old backups. It is **disabled by default**
+and activated via a Docker Compose profile so it has no effect on standard deployments.
+
+#### Enable the backup service
+
+1. Add the following lines to your `.env` file (both are optional — the defaults shown
+   are used if omitted):
+
+   ```env
+   BACKUP_SCHEDULE=@daily          # cron expression or @daily / @hourly shorthand
+   BACKUP_RETENTION_DAYS=7         # number of daily backups to keep
+   ```
+
+2. Start (or restart) the stack with the `backup` profile:
+
+   ```bash
+   docker compose --profile backup up -d
+   ```
+
+   The `db-backup` container starts alongside the other services and runs its first
+   backup according to `BACKUP_SCHEDULE`.
+
+3. To stop the backup service without stopping the rest of the stack:
+
+   ```bash
+   docker compose --profile backup stop db-backup
+   ```
+
+#### Where backups are stored
+
+Backups are written to the `db_backups` named Docker volume inside the container path
+`/backups/`. To copy backups out of the volume to your host for off-site storage:
+
+```bash
+# List available backup files.
+docker compose run --rm db-backup ls /backups/
+
+# Copy a specific backup file to the host.
+docker cp minicrm-db-backup:/backups/last/minicrm-backup.dump ./minicrm-backup.dump
+```
+
+#### Restore from an automated backup
+
+> **Warning:** Restoring overwrites all current data in the target database. Confirm you
+> are restoring to the correct host and database before running these commands.
+
+```bash
+# Copy the dump from the backup volume into the db container.
+docker cp minicrm-db-backup:/backups/last/minicrm-backup.dump /tmp/restore.dump
+docker compose cp /tmp/restore.dump db:/tmp/restore.dump
+
+# Restore, dropping and recreating existing objects.
+docker compose exec db pg_restore \
+  -U "${DB_USER}" \
+  -d "${DB_NAME}" \
+  --clean \
+  --if-exists \
+  /tmp/restore.dump
+```
+
+Replace `/backups/last/minicrm-backup.dump` with the path to the specific backup file
+you want to restore (use `ls /backups/` to browse available files).
+
+---
+
+### Manual backups
+
+Use `pg_dump` inside the running `db` container to create a portable one-off dump.
+
+#### Create a manual backup
 
 ```bash
 # Capture the filename in a variable so the same name is used for both commands.
@@ -196,10 +271,10 @@ docker compose cp "db:/tmp/${DUMP_FILE}" ./backups/
 echo "Backup saved to ./backups/${DUMP_FILE}"
 ```
 
-### Restore from backup
+#### Restore from a manual backup
 
-> **Warning:** Restoring overwrites all current data in the target database. Confirm you are
-> restoring to the correct host and database before running these commands.
+> **Warning:** Restoring overwrites all current data in the target database. Confirm you
+> are restoring to the correct host and database before running these commands.
 
 ```bash
 # Copy the dump file into the container.
@@ -214,23 +289,11 @@ docker compose exec db pg_restore \
   /tmp/restore.dump
 ```
 
-Replace `minicrm-backup-YYYYMMDD-HHMMSS.dump` with the actual filename of the backup you
-want to restore.
+Replace `minicrm-backup-YYYYMMDD-HHMMSS.dump` with the actual filename of the backup
+you want to restore.
 
-### Automating daily backups
+---
 
-Add a cron job on the host to run the backup one-liner nightly:
-
-```cron
-0 2 * * * cd /path/to/minicrm && \
-  DUMP="minicrm-backup-$(date +\%Y\%m\%d-\%H\%M\%S).dump" && \
-  docker compose exec db pg_dump -U "${DB_USER}" -d "${DB_NAME}" --format=custom --file="/tmp/${DUMP}" && \
-  mkdir -p ./backups && \
-  docker compose cp "db:/tmp/${DUMP}" ./backups/ && \
-  find ./backups -name "minicrm-backup-*.dump" -mtime +7 -delete
-```
-
-This keeps 7 days of backups and deletes older files automatically.
-
-**Test your restores.** Run the restore procedure against a staging instance at least once
-before you need it in an emergency. A backup that has never been tested is not a backup.
+**Test your restores.** Run the restore procedure against a staging instance at least
+once before you need it in an emergency. A backup that has never been tested is not a
+backup.
