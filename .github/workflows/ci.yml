@@ -1239,6 +1239,11 @@ jobs:
           else
             CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
             git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
+            # Push an empty follow-up commit without [skip ci] so GitHub's required
+            # status checks have a non-skipped HEAD commit to report against.
+            # Without this the [skip ci] baseline commit becomes HEAD and the PR's
+            # required checks stay "Waiting for status to be reported" indefinitely.
+            git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
             git push origin HEAD:${{ github.head_ref }}
             echo "Pushed $CHANGED updated snapshot file(s) to ${{ github.head_ref }}."
           fi
