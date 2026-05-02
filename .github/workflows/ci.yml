@@ -16,11 +16,12 @@ jobs:
     name: Detect changed paths
     runs-on: ubuntu-latest
     outputs:
-      docs: ${{ steps.filter.outputs.docs }}
+      docs:   ${{ steps.filter.outputs.docs }}
       client: ${{ steps.filter.outputs.client }}
       server: ${{ steps.filter.outputs.server }}
-      qa: ${{ steps.filter.outputs.qa }}
+      qa:     ${{ steps.filter.outputs.qa }}
       config: ${{ steps.filter.outputs.config }}
+      visual: ${{ steps.filter.outputs.visual }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,6 +56,9 @@ jobs:
               - '*.yml'
               - 'Dockerfile*'
               - '.github/**'
+            visual:
+              - 'qa/e2e/tests/apps/minicrm/functional/visual/**'
+              - 'qa/e2e/snapshots/**'
 
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
@@ -1048,13 +1052,12 @@ jobs:
   # steps mirror e2e-functional. The .github/actions/e2e-infra composite action
   # exists for future consolidation once it lands on main.
   update-visual-snapshots:
-    name: Update Visual Snapshots
-    needs: [e2e-functional, changes]
+    name: Phase 4 - Update Visual Snapshots
+    needs: [lint-and-typecheck, changes]
     if: |
-      always() &&
-      needs.e2e-functional.result != 'cancelled' &&
-      needs.changes.outputs.qa == 'true' &&
-      github.event_name == 'pull_request'
+      needs.lint-and-typecheck.result == 'success' &&
+      (needs.changes.outputs.client == 'true' ||
+       needs.changes.outputs.visual == 'true')
     runs-on: ubuntu-latest
 
     services:
