@@ -385,7 +385,7 @@ export default function UsersPage() {
         {/* Loading state */}
         {isLoading && (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <p aria-busy="true" className="text-sm text-gray-400">
+            <p aria-busy="true" className="text-sm text-gray-500">
               {t('users.loading')}
             </p>
           </div>
@@ -406,7 +406,7 @@ export default function UsersPage() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
             {users.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-gray-400">{t('users.empty')}</p>
+                <p className="text-sm text-gray-500">{t('users.empty')}</p>
               </div>
             ) : (
               <>

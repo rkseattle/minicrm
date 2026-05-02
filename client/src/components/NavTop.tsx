@@ -143,7 +143,7 @@ export default function NavTop() {
                   aria-hidden="true"
                 >
                   <div className="h-4 w-px bg-gray-300" />
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider pe-1">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider pe-1">
                     {t(link.sectionLabelKey)}
                   </span>
                 </div>
@@ -180,7 +180,7 @@ export default function NavTop() {
                   aria-hidden="true"
                 >
                   <hr className="border-gray-200 mb-2" />
-                  <span className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  <span className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {t(link.sectionLabelKey)}
                   </span>
                 </div>

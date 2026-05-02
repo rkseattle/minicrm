@@ -103,7 +103,7 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
                   >
                     <hr className="border-gray-200 mb-2" />
                     {!collapsed && (
-                      <span className="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      <span className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         {t(link.sectionLabelKey)}
                       </span>
                     )}

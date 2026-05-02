@@ -158,7 +158,7 @@ export default function NavHamburger() {
                     aria-hidden="true"
                   >
                     <hr className="border-gray-200 mb-2" />
-                    <span className="px-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <span className="px-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       {t(link.sectionLabelKey)}
                     </span>
                   </div>

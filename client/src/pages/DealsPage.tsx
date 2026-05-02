@@ -607,7 +607,7 @@ export default function DealsPage() {
 
             {isLoading && (
               <div className="text-center py-12">
-                <p aria-busy="true" className="text-sm text-gray-400">
+                <p aria-busy="true" className="text-sm text-gray-500">
                   {t('pipeline.loading')}
                 </p>
               </div>
@@ -673,7 +673,7 @@ export default function DealsPage() {
                             {`(${(dealsByStage.get(stageNames[mobileStageIndex] ?? '') ?? []).length})`}
                           </span>
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                           {t('pipeline.stageOf', {
                             current: mobileStageIndex + 1,
                             total: stageNames.length,
@@ -803,9 +803,9 @@ export default function DealsPage() {
                     className="flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
                   >
                     <span className="font-semibold">{getStageDisplayName(stage, t)}</span>
-                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">·</span>
                     <span>{count}</span>
-                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">·</span>
                     <span className="text-gray-500">
                       {mixedCurrency
                         ? t('pipeline.mixedCurrency')
@@ -823,7 +823,7 @@ export default function DealsPage() {
 
             {isLoading && (
               <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-                <p aria-busy="true" className="text-sm text-gray-400">
+                <p aria-busy="true" className="text-sm text-gray-500">
                   {t('deals.loading')}
                 </p>
               </div>
@@ -929,7 +929,7 @@ export default function DealsPage() {
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 {sortedDeals.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-sm text-gray-400">{t('deals.empty')}</p>
+                    <p className="text-sm text-gray-500">{t('deals.empty')}</p>
                   </div>
                 ) : (
                   <>
@@ -1139,7 +1139,7 @@ export default function DealsPage() {
                                   {formatDealValue(deal.value, deal.currency, i18n.language)}
                                 </p>
                                 <p
-                                  className="text-xs text-gray-400 mt-1"
+                                  className="text-xs text-gray-500 mt-1"
                                   data-testid={`deal-list-card-owner-${deal.id}`}
                                 >
                                   {t('deals.columnOwner')}:{' '}
