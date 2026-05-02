@@ -34,6 +34,7 @@
 
 import { test } from '@apps/minicrm/fixtures.js';
 import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
+import { StrategyExhaustedError } from '@framework/healing/index.js';
 import {
   createTestAccount,
   createTestActivity,
@@ -66,29 +67,38 @@ const MOBILE_VIEWPORT = { width: 393, height: 851 };
 // — are resolved as SafeLocators (which extend Locator) and passed to the
 // checkScreenshot mask option, so font/time differences don't produce false
 // positive pixel diffs.
+//
+// Each candidate is resolved individually and silently dropped when the
+// selector matches nothing on the current page (StrategyExhaustedError).
+// This keeps the helper safe to call from any page in the suite regardless
+// of which timestamp elements are actually present.
 // ---------------------------------------------------------------------------
 
+async function tryResolve(page: PageFacadeShape, ...args: Parameters<PageFacadeShape['locate']>) {
+  try {
+    return await page.locate(...args).resolve();
+  } catch (err) {
+    if (err instanceof StrategyExhaustedError) return null;
+    throw err;
+  }
+}
+
 async function resolveTimestampMasks(page: PageFacadeShape) {
-  return Promise.all([
+  const candidates = await Promise.all([
     // Dashboard recent-activity relative timestamps ("X minutes ago")
-    page
-      .locate([{ type: 'css', value: '[data-testid^="recent-activity-time-"]' }], {
-        intent: 'dashboard recent activity relative timestamp cells',
-      })
-      .resolve(),
+    tryResolve(page, [{ type: 'css', value: '[data-testid^="recent-activity-time-"]' }], {
+      intent: 'dashboard recent activity relative timestamp cells',
+    }),
     // Contact/activity timeline absolute timestamps (toLocaleString)
-    page
-      .locate([{ type: 'css', value: '[data-testid^="activity-meta-"]' }], {
-        intent: 'activity timeline metadata timestamp cells',
-      })
-      .resolve(),
+    tryResolve(page, [{ type: 'css', value: '[data-testid^="activity-meta-"]' }], {
+      intent: 'activity timeline metadata timestamp cells',
+    }),
     // Contact detail page "Created" field
-    page
-      .locate([{ type: 'testId', value: 'detail-created' }], {
-        intent: 'contact detail created-at timestamp field',
-      })
-      .resolve(),
+    tryResolve(page, [{ type: 'testId', value: 'detail-created' }], {
+      intent: 'contact detail created-at timestamp field',
+    }),
   ]);
+  return candidates.filter((c) => c !== null);
 }
 
 // ---------------------------------------------------------------------------
