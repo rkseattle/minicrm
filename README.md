@@ -199,6 +199,35 @@ expect(
 
 Recommended WCAG level tags: `wcag2a` (WCAG 2.0 A), `wcag2aa` (WCAG 2.0 AA), `wcag21aa` (WCAG 2.1 AA). See `qa/e2e/framework/README.md` for full documentation.
 
+### Network Route Interception
+
+`PageFacade` exposes `page.mockRoute(pattern, handler)`, `page.unmockRoute(pattern)`, and `page.unmockAllRoutes()` for intercepting HTTP requests in tests. All registered mocks are automatically removed at fixture teardown — routes never bleed between tests.
+
+```ts
+// Simulate a server error
+await page.mockRoute('/api/deals', async (route) => {
+  await route.fulfill({
+    status: 500,
+    body: JSON.stringify({ error: { code: 'INTERNAL', message: 'Server error' } }),
+  });
+});
+
+// Simulate a slow response to test loading states
+await page.mockRoute('/api/contacts', async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await route.continue();
+});
+
+// Verify request payload
+await page.mockRoute('/api/contacts', async (route) => {
+  const body = route.request().postDataJSON();
+  expect(body.email).toBe('test@example.com');
+  await route.continue();
+});
+```
+
+Both string and RegExp patterns are supported. See `qa/e2e/framework/README.md` for full documentation.
+
 ### Framework Purity
 
 The `qa/e2e/framework/` directory must contain zero application-domain references (no MiniCRM-specific strings, route paths, or domain terms). A CI step (`check-framework-purity.sh`) enforces this — the framework is designed to be dropped into any project unchanged.

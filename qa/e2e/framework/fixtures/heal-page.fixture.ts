@@ -46,6 +46,7 @@ const withHealPage = base.extend<HealPageOnlyFixtures>({
     try {
       await use(hp);
     } finally {
+      await hp.unmockAllRoutes();
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
     }
@@ -69,6 +70,7 @@ export const test = withHealPage.extend<{ page: PageFacade }>({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (use as (v: any) => Promise<void>)(facade);
     } finally {
+      await facade.unmockAllRoutes();
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
     }

@@ -7,10 +7,11 @@
  *
  * Tests for checkScreenshot and checkLocatorScreenshot added in MINCRM-319.
  * Tests for auditAccessibility added in MINCRM-320.
+ * Tests for mockRoute/unmockRoute/unmockAllRoutes added in MINCRM-321.
  *
  * All locator interactions use mock Page objects — no browser required.
  *
- * MINCRM-209, MINCRM-319, MINCRM-320
+ * MINCRM-209, MINCRM-319, MINCRM-320, MINCRM-321
  */
 
 import { test, expect } from '@playwright/test';
@@ -738,5 +739,143 @@ test.describe('applyAxeBuilderOptions()', () => {
     const result = applyAxeBuilderOptions(builder, { tags: 'wcag2aa' });
 
     expect(result).toBe(builder);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mockRoute / unmockRoute / unmockAllRoutes — MINCRM-321
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a mock Page that records route() and unroute() calls so tests can
+ * assert which patterns were registered and removed without a real browser.
+ */
+type RouteCall = { pattern: string | RegExp };
+
+function mockPageWithRouting(): { page: Page; routeCalls: RouteCall[]; unrouteCalls: RouteCall[] } {
+  const routeCalls: RouteCall[] = [];
+  const unrouteCalls: RouteCall[] = [];
+
+  const page = {
+    getByTestId: () => mockLocator(true),
+    getByRole: () => mockLocator(true),
+    getByLabel: () => mockLocator(true),
+    getByText: () => mockLocator(true),
+    locator: () => mockLocator(true),
+    route: (pattern: string | RegExp, _handler: unknown) => {
+      routeCalls.push({ pattern });
+      return Promise.resolve();
+    },
+    unroute: (pattern: string | RegExp) => {
+      unrouteCalls.push({ pattern });
+      return Promise.resolve();
+    },
+  } as unknown as Page;
+
+  return { page, routeCalls, unrouteCalls };
+}
+
+test.describe('mockRoute / unmockRoute / unmockAllRoutes (MINCRM-321)', () => {
+  test('mockRoute registers the pattern on page.route()', async () => {
+    const { page, routeCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'mockRoute registration');
+
+    await hp.mockRoute('/api/contacts', async (route) => {
+      await route.fulfill({ status: 200 });
+    });
+
+    expect(routeCalls).toHaveLength(1);
+    expect(routeCalls[0]!.pattern).toBe('/api/contacts');
+  });
+
+  test('mockRoute supports RegExp patterns', async () => {
+    const { page, routeCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'mockRoute regexp');
+    const pattern = /\/api\/contacts.*/;
+
+    await hp.mockRoute(pattern, async (route) => {
+      await route.continue();
+    });
+
+    expect(routeCalls).toHaveLength(1);
+    expect(routeCalls[0]!.pattern).toBe(pattern);
+  });
+
+  test('unmockRoute removes a specific pattern', async () => {
+    const { page, unrouteCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'unmockRoute specific');
+
+    await hp.mockRoute('/api/deals', async (route) => {
+      await route.abort();
+    });
+    await hp.unmockRoute('/api/deals');
+
+    expect(unrouteCalls).toHaveLength(1);
+    expect(unrouteCalls[0]!.pattern).toBe('/api/deals');
+  });
+
+  test('unmockAllRoutes removes every registered pattern', async () => {
+    const { page, unrouteCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'unmockAllRoutes removes all');
+
+    await hp.mockRoute('/api/contacts', async (route) => {
+      await route.continue();
+    });
+    await hp.mockRoute('/api/deals', async (route) => {
+      await route.continue();
+    });
+    await hp.mockRoute(/\/api\/leads.*/, async (route) => {
+      await route.continue();
+    });
+
+    await hp.unmockAllRoutes();
+
+    expect(unrouteCalls).toHaveLength(3);
+  });
+
+  test('unmockAllRoutes clears the set — second call is a no-op', async () => {
+    const { page, unrouteCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'unmockAllRoutes idempotent');
+
+    await hp.mockRoute('/api/contacts', async (route) => {
+      await route.continue();
+    });
+
+    await hp.unmockAllRoutes();
+    await hp.unmockAllRoutes(); // second call — set is already empty
+
+    // Only the first unmockAllRoutes issued unroute() calls.
+    expect(unrouteCalls).toHaveLength(1);
+  });
+
+  test('unmockRoute removes pattern from set so unmockAllRoutes skips it', async () => {
+    const { page, unrouteCalls } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'unmockRoute then unmockAll');
+
+    await hp.mockRoute('/api/contacts', async (route) => {
+      await route.continue();
+    });
+    await hp.mockRoute('/api/deals', async (route) => {
+      await route.continue();
+    });
+
+    // Remove one pattern explicitly mid-test.
+    await hp.unmockRoute('/api/contacts');
+    // unmockAllRoutes should only unroute the remaining pattern.
+    await hp.unmockAllRoutes();
+
+    // unrouteCalls: one for unmockRoute('/api/contacts') + one for unmockAllRoutes('/api/deals')
+    expect(unrouteCalls).toHaveLength(2);
+    expect(unrouteCalls[0]!.pattern).toBe('/api/contacts');
+    expect(unrouteCalls[1]!.pattern).toBe('/api/deals');
+  });
+
+  test('mockRoute and unmockAllRoutes are present on HealMethods instance', () => {
+    const { page } = mockPageWithRouting();
+    const hp = buildHealPage(page, 'mockRoute presence');
+
+    expect(typeof hp.mockRoute).toBe('function');
+    expect(typeof hp.unmockRoute).toBe('function');
+    expect(typeof hp.unmockAllRoutes).toBe('function');
   });
 });

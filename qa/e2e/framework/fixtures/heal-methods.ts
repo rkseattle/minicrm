@@ -6,7 +6,13 @@
  *
  */
 
-import type { Page, Locator, PageAssertionsToHaveScreenshotOptions } from '@playwright/test';
+import type {
+  Page,
+  Locator,
+  Route,
+  Request,
+  PageAssertionsToHaveScreenshotOptions,
+} from '@playwright/test';
 import { expect } from '@playwright/test';
 import type { AxeResults } from 'axe-core';
 import {
@@ -74,6 +80,18 @@ export interface LocatorScreenshotOptions {
   threshold?: number;
   timeout?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Network route interception types
+// ---------------------------------------------------------------------------
+
+/**
+ * Handler function passed to mockRoute(). Receives the Playwright Route and
+ * Request objects, enabling route.fulfill(), route.continue(), route.abort(),
+ * and request inspection. No application-domain references — wraps Playwright
+ * built-in types only.
+ */
+export type MockRouteHandler = (route: Route, request: Request) => Promise<void> | void;
 
 // ---------------------------------------------------------------------------
 // LocateOptions
@@ -281,6 +299,55 @@ export interface HealMethods {
    * ).toHaveLength(0);
    */
   auditAccessibility(options?: AccessibilityAuditOptions): Promise<AxeResults>;
+
+  /**
+   * Registers a network route mock for the given URL pattern. The handler is
+   * called for every matching request, allowing route.fulfill(), route.continue(),
+   * route.abort(), and request inspection.
+   *
+   * The pattern is tracked internally. All registered mocks are automatically
+   * removed during fixture teardown via unmockAllRoutes(), so mocks never bleed
+   * into subsequent tests.
+   *
+   * Both string and RegExp patterns are supported.
+   *
+   * @example
+   * // Simulate a server error
+   * await page.mockRoute('/api/resource', async route => {
+   *   await route.fulfill({ status: 500, body: JSON.stringify({ error: { code: 'INTERNAL', message: 'Server error' } }) });
+   * });
+   *
+   * @example
+   * // Simulate a slow response to test loading states
+   * await page.mockRoute('/api/resource', async route => {
+   *   await new Promise(resolve => setTimeout(resolve, 3000));
+   *   await route.continue();
+   * });
+   *
+   * @example
+   * // Verify request payload
+   * await page.mockRoute('/api/resource', async route => {
+   *   const body = route.request().postDataJSON();
+   *   expect(body.email).toBe('test@example.com');
+   *   await route.continue();
+   * });
+   */
+  mockRoute(pattern: string | RegExp, handler: MockRouteHandler): Promise<void>;
+
+  /**
+   * Removes the mock registered for the given pattern before fixture teardown.
+   * Use this for mid-test cleanup when you need to stop intercepting a route
+   * partway through a test. The pattern must match exactly what was passed to
+   * mockRoute() (same string value or same RegExp reference).
+   */
+  unmockRoute(pattern: string | RegExp): Promise<void>;
+
+  /**
+   * Removes all registered route mocks and clears the internal tracking set.
+   * Called automatically in the fixture finally block — no need to call this
+   * manually unless you want to reset mocks mid-test.
+   */
+  unmockAllRoutes(): Promise<void>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -324,6 +391,10 @@ const DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS = 50;
  * @returns A HealMethods instance.
  */
 export function buildHealPage(page: Page, testName: string, tabFactory?: TabFactory): HealMethods {
+  // Tracks all patterns registered via mockRoute() so unmockAllRoutes() can
+  // clean them up automatically at fixture teardown.
+  const registeredPatterns = new Set<string | RegExp>();
+
   function makeHealingLocator(
     strategies: LocatorStrategy[],
     options: LocateOptions,
@@ -551,6 +622,23 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       const { AxeBuilder } = await import('@axe-core/playwright');
       const builder = applyAxeBuilderOptions(new AxeBuilder({ page }), options);
       return builder.analyze();
+    },
+
+    async mockRoute(pattern: string | RegExp, handler: MockRouteHandler): Promise<void> {
+      registeredPatterns.add(pattern);
+      await page.route(pattern, handler);
+    },
+
+    async unmockRoute(pattern: string | RegExp): Promise<void> {
+      registeredPatterns.delete(pattern);
+      await page.unroute(pattern);
+    },
+
+    async unmockAllRoutes(): Promise<void> {
+      for (const pattern of registeredPatterns) {
+        await page.unroute(pattern);
+      }
+      registeredPatterns.clear();
     },
   };
 }
