@@ -123,7 +123,7 @@ test(
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const account = await createTestAccount(testData, restClient, {
-      name: `VR-V1 Account ${Date.now()}`,
+      name: 'VR-V1 Account',
     });
 
     // Seed 3 deals in 3 different stages to produce a representative board
@@ -179,7 +179,7 @@ test(
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const account = await createTestAccount(testData, restClient, {
-      name: `VR-V2 Account ${Date.now()}`,
+      name: 'VR-V2 Account',
     });
 
     await createTestDeal(testData, restClient, {
@@ -239,12 +239,12 @@ test(
 
     // Seed an account, contact, deal, and activity so the dashboard is not empty
     const account = await createTestAccount(testData, restClient, {
-      name: `VR-V3 Account ${Date.now()}`,
+      name: 'VR-V3 Account',
     });
     const contact = await createTestContact(testData, restClient, {
       first_name: 'Visual',
       last_name: 'DashboardUser',
-      email: `vr-v3-${Date.now()}@example.com`,
+      email: 'vr-v3@example.com',
       account_id: account.id,
     });
     await createTestDeal(testData, restClient, {
@@ -291,12 +291,12 @@ test(
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const account = await createTestAccount(testData, restClient, {
-      name: `VR-V4 Account ${Date.now()}`,
+      name: 'VR-V4 Account',
     });
     const contact = await createTestContact(testData, restClient, {
       first_name: 'Visual',
       last_name: 'ContactDetail',
-      email: `vr-v4-${Date.now()}@example.com`,
+      email: 'vr-v4@example.com',
       phone: '+1-555-0100',
       title: 'Senior Engineer',
       department: 'Engineering',
@@ -345,10 +345,11 @@ test(
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const account = await createTestAccount(testData, restClient, {
-      name: `VR-V5 Account ${Date.now()}`,
+      name: 'VR-V5 Account',
     });
 
-    const today = new Date().toISOString().split('T')[0] as string;
+    // Fixed close date keeps the report table stable across CI runs on different days.
+    const closeDate = '2025-01-15';
 
     // Seed 2 won deals and 1 lost deal so the report has data in both columns
     await createTestDeal(testData, restClient, {
@@ -356,7 +357,7 @@ test(
       stage: 'Closed Won',
       value: '30000',
       currency: 'USD',
-      close_date: today,
+      close_date: closeDate,
       account_id: account.id,
     });
     await createTestDeal(testData, restClient, {
@@ -364,7 +365,7 @@ test(
       stage: 'Closed Won',
       value: '18500',
       currency: 'USD',
-      close_date: today,
+      close_date: closeDate,
       account_id: account.id,
     });
     await createTestDeal(testData, restClient, {
@@ -372,7 +373,7 @@ test(
       stage: 'Closed Lost',
       value: '9000',
       currency: 'USD',
-      close_date: today,
+      close_date: closeDate,
       account_id: account.id,
     });
 
