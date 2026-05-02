@@ -738,7 +738,8 @@ export default function ContactsPage() {
                       {contacts.map((contact) => (
                         <li
                           key={contact.id}
-                          className={`px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
+                          data-selected={selectedIds.has(contact.id) || undefined}
+                          className={`group px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
                           data-testid={`contact-card-${contact.id}`}
                         >
                           <input
@@ -757,12 +758,16 @@ export default function ContactsPage() {
                             >
                               {contact.first_name} {contact.last_name}
                             </Link>
-                            <p className="text-sm text-gray-500">{contact.email}</p>
+                            <p className="text-sm text-gray-500 group-data-[selected]:text-gray-600">
+                              {contact.email}
+                            </p>
                             {contact.title && (
-                              <p className="text-sm text-gray-500">{contact.title}</p>
+                              <p className="text-sm text-gray-500 group-data-[selected]:text-gray-600">
+                                {contact.title}
+                              </p>
                             )}
                             <p
-                              className="text-xs text-gray-500 mt-1"
+                              className="text-xs text-gray-500 mt-1 group-data-[selected]:text-gray-600"
                               data-testid={`contact-card-owner-${contact.id}`}
                             >
                               {t('contacts.columnOwner')}:{' '}

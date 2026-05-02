@@ -187,7 +187,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
                   <time
                     dateTime={entry.created_at}
                     title={formatAbsoluteTime(entry.created_at, i18n.language)}
-                    className="text-xs text-gray-400 whitespace-nowrap shrink-0 cursor-default"
+                    className="text-xs text-gray-500 whitespace-nowrap shrink-0 cursor-default"
                     data-testid={`change-history-time-${entry.id}`}
                   >
                     {formatRelativeTime(entry.created_at, i18n.language)}
