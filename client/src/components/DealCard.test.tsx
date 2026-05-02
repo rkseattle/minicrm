@@ -65,7 +65,7 @@ describe('DealCard — probability display (MINCRM-179)', () => {
     );
     const badge = screen.getByTestId(`deal-card-probability-${DEAL_DEFAULT_PROB.id}`);
     // Stage-default badge uses gray italic classes
-    expect(badge.className).toContain('text-gray-500');
+    expect(badge.className).toContain('text-gray-600');
     expect(badge.className).toContain('italic');
   });
 
