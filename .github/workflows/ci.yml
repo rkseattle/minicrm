@@ -1048,7 +1048,7 @@ jobs:
     needs: [e2e-functional, changes]
     if: |
       always() &&
-      (needs.e2e-functional.result == 'success' || needs.e2e-functional.result == 'skipped') &&
+      needs.e2e-functional.result != 'cancelled' &&
       needs.changes.outputs.qa == 'true' &&
       github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -1187,11 +1187,15 @@ jobs:
           done
 
       - name: Generate visual snapshots — desktop
+        # continue-on-error: Playwright exits 1 when it writes a new baseline
+        # ("snapshot doesn't exist, writing actual") — the PNGs are still
+        # created. We must not let that exit code abort the commit step.
+        continue-on-error: true
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=desktop
-          --update-snapshots
+          --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
@@ -1201,11 +1205,12 @@ jobs:
           E2E: true
 
       - name: Generate visual snapshots — mobile-web
+        continue-on-error: true
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=mobile-web
-          --update-snapshots
+          --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
