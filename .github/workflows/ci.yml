@@ -485,6 +485,11 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
+          # MINCRM-322: activate the AI healing tier (requires MINCRM-309 intent strings to produce heals)
+          AI_HEALING: 'true'
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Conservative threshold for initial activation — >20 AI heals signals broad selector drift
+          AI_HEAL_COST_WARNING_THRESHOLD: '20'
 
       - name: Upload shard artifacts
         if: always()

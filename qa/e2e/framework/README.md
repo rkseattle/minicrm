@@ -423,3 +423,160 @@ still work and forbidden methods are still blocked.
 
 To open additional tabs in multi-tab tests use `PageFacade.newTab()`, which wraps the new
 page in `createPageFacade()` so it participates in the same healing guarantees.
+
+---
+
+## AI Healing Tier
+
+The AI healing tier is the final fallback after all static strategies (testId, role, label,
+text, css, xpath) are exhausted. It sends a scoped DOM snapshot and the locator's `intent`
+string to `claude-sonnet-4-20250514`, which returns a new locator candidate with a confidence
+score. The tier is activated only when both conditions are true.
+
+### Activation requirements
+
+**1. `AI_HEALING` environment variable must be set to `'true'`.**
+
+In CI this is set in the `e2e-functional` job's `env` block. Locally, set it
+in `qa/e2e/.env`:
+
+```
+AI_HEALING=true
+```
+
+When `AI_HEALING` is absent or empty the `AiHealer` returns `null` immediately — no API
+call is made and `StrategyExhaustedError` is thrown as usual.
+
+**2. Each `HealingLocator` must have a non-empty `intent` string.**
+
+If `intent` is an empty string (the default when `options.intent` is omitted), the AI tier
+is skipped even when `AI_HEALING=true`. Intent strings are required on every
+`page.locate()` call in page objects.
+
+### `ANTHROPIC_API_KEY`
+
+The key must have permission to call the Messages API. Set it as a GitHub Actions repository
+secret (`Settings → Secrets and variables → Actions`) and in your local `qa/e2e/.env`.
+
+### Token cost model
+
+Each AI heal attempt consumes tokens from your Anthropic quota:
+
+- **Input tokens:** the scoped DOM snapshot (capped at 8 000 chars) + the intent + the list
+  of failed strategies. Typically 500–2 000 input tokens per heal.
+- **Output tokens:** the JSON response (type, value, confidence). Always ≤ 512 tokens.
+
+Token usage is recorded per heal event and summed in `healing-report.json` as
+`estimatedTokenCost`. A run with zero AI heals costs zero tokens.
+
+### `AI_HEAL_COST_WARNING_THRESHOLD`
+
+Controls the CI warning threshold for AI heal count:
+
+```yaml
+AI_HEAL_COST_WARNING_THRESHOLD: '20' # CI default (conservative for initial activation)
+```
+
+When the number of AI heals in a run exceeds this value, a GitHub Actions warning annotation
+is emitted. A high heal count signals broad selector drift — the correct response is to
+apply the patch suggestions from `healing-suggestions.md` rather than raise the threshold.
+
+The default when this variable is unset is 50. CI uses 20 for initial activation so the
+team sees selector drift signals promptly.
+
+### Reading `healing-report.json`
+
+The merged report (produced after all shards complete) contains:
+
+| Field                | Type     | Description                                            |
+| -------------------- | -------- | ------------------------------------------------------ |
+| `totalHeals`         | `number` | Static + AI heals combined                             |
+| `staticHeals`        | `number` | Heals resolved by a static fallback strategy           |
+| `aiHeals`            | `number` | Heals resolved by the AI tier                          |
+| `aiHealCount`        | `number` | Same as `aiHeals` (alias for readability)              |
+| `estimatedTokenCost` | `number` | Sum of `tokenCost` across all AI heal events           |
+| `events`             | `array`  | Per-heal detail: test name, strategies, wasAiHeal flag |
+
+A non-zero `aiHealCount` after a run means at least one locator's static strategies all
+failed and the AI tier successfully identified an alternative. Check `healing-suggestions.md`
+(uploaded as a CI artifact) for actionable patch suggestions.
+
+### `healing-suggestions.md`
+
+The patch suggester generates a markdown file listing each heal event grouped by page object
+and method, with a description of the failed primary strategy and the working fallback. After
+the first activated CI run, review this file to confirm suggestions are actionable and apply
+any fixes to the page objects (which eliminates the heal overhead on subsequent runs).
+
+---
+
+## Healing Internals
+
+### `probeLocator` uses `state: 'attached'`, not `state: 'visible'`
+
+When `HealingLocator.resolve()` tests whether a strategy found the element, it calls:
+
+```ts
+await locator.first().waitFor({ state: 'attached', timeout: timeoutMs });
+```
+
+**Why `attached` and not `visible`:** `attached` resolves as soon as the element is in the
+DOM, regardless of its CSS visibility. This is faster than `visible` and avoids false
+negatives caused by elements that are momentarily hidden during CSS transitions or React
+conditional renders (e.g. a modal whose backdrop fades in before the content is visible).
+
+**Trade-off:** A strategy can probe successful against an element that is present in the DOM
+but not yet visible. If that element is the one returned by `resolve()`, the subsequent
+interaction (`.click()`, `.fill()`, etc.) will fail with a Playwright "not visible" error —
+even though the heal appeared to succeed.
+
+**How to diagnose:** Check `healing-report.json` for the healed strategy's `type` and
+`value`. Inspect whether the element at that locator is actually visible at the time of
+interaction. The correct fix is usually to add a `within` scoping strategy so the locator
+targets the visible copy of the element, or to add an explicit `waitFor` call with
+`state: 'visible'` before interacting.
+
+---
+
+### Two-strategy probe in `isNotVisible` and `doesNotExist`
+
+These two `HealMethods` methods do not go through `HealingLocator.resolve()`. Instead they
+probe strategies directly, and they use a two-strategy pattern for drift resilience.
+
+#### Why two strategies?
+
+A stale primary `testId` (e.g. the data-testid was renamed in the app) matches zero
+elements. Playwright's `waitFor({ state: 'detached' })` (used by `doesNotExist`) and
+`waitFor({ state: 'hidden' })` (used by `isNotVisible`) both resolve immediately when zero
+elements match — producing a **false-positive absence**: the method returns `true` ("element
+is gone") when the element is actually present under a different testId.
+
+The guard: if strategy 0 reports absent/hidden, strategy 1 is probed. If strategy 1 finds
+the element present/visible, the method overrides to `false` (element is present). No heal
+event is recorded — this is a drift guard, not a heal.
+
+```
+Strategy 0 (e.g. testId)  →  "detached" immediately (stale testId, 0 matches)
+Strategy 1 (e.g. role)    →  "attached" within timeout  →  override: return false
+```
+
+#### Timeout budget
+
+Both strategies are probed sequentially and each can run to its full timeout. In the worst
+case (strategy 0 times out genuinely, then strategy 1 times out genuinely) the method takes
+up to **2× `timeoutMs`** before returning `true`. The default `timeoutMs` is 10 000 ms,
+so the worst case is 20 seconds.
+
+Pass an explicit `timeoutMs` to bound the duration in time-sensitive tests:
+
+```ts
+// Worst case: 2 × 3000 ms = 6 s instead of the default 20 s
+const absent = await page.doesNotExist(strategies, 3_000);
+```
+
+#### Two-strategy ceiling
+
+The guard is intentionally limited to strategies 0 and 1. Extending the probe to strategy 2
+and beyond increases the risk of finding a different element that happens to match the
+selector — a false override. If you need more drift resilience, prefer using a more specific
+strategy 1 (e.g. a role + accessible name combination) rather than adding more strategies.
