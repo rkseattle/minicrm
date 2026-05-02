@@ -222,7 +222,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
                 ? t('attachments.uploading')
                 : t('attachments.uploadZoneHint')}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{t('attachments.uploadZoneTypes')}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('attachments.uploadZoneTypes')}</p>
           </div>
 
           <input
@@ -231,6 +231,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
             accept={ACCEPTED_MIME}
             className="sr-only"
             data-testid="attachments-file-input"
+            aria-label={t('attachments.uploadZoneHint')}
             onChange={handleInputChange}
             tabIndex={-1}
           />
@@ -259,7 +260,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
           )}
 
           {!attachmentsLoading && !attachmentsError && attachments.length === 0 && (
-            <p className="text-sm text-gray-400" data-testid="attachments-empty">
+            <p className="text-sm text-gray-500" data-testid="attachments-empty">
               {t('attachments.empty')}
             </p>
           )}
