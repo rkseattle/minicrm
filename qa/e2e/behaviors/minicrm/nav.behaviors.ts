@@ -165,17 +165,23 @@ export async function openHamburgerMenu(
     { type: 'testId', value: 'nav-menu-toggle' },
     { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
   ]);
-  // The hamburger drawer is conditionally rendered — resolve() throws if not
-  // found (no silent catch), and waitFor throws if it never becomes visible.
-  // This guarantees the drawer is fully mounted before the caller proceeds,
-  // eliminating the mount-race that caused F8-HB2 to fail on slow CI runners.
-  const drawer = await context.page
-    .locate([
+  // page.waitFor() re-resolves the element on every internal retry cycle, so it
+  // never holds a stale DOM snapshot from before the React commit. This is
+  // different from resolve()-then-waitFor(), which captures the locator once at
+  // DOM-attached time and then calls waitFor() on that frozen reference — on a
+  // slow runner the element can be in the DOM but not yet CSS-visible when the
+  // snapshot is taken, and the subsequent waitFor() then races the paint cycle
+  // with whatever test-budget remains. Passing an explicit timeout keeps this
+  // wait from consuming the entire remaining test budget on a loaded CI runner.
+  await context.page.waitFor(
+    [
       { type: 'testId', value: 'nav-hamburger-drawer' },
       { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-    ])
-    .resolve();
-  await drawer.waitFor({ state: 'visible' });
+    ],
+    'visible',
+    { fallbackTimeout: 500 },
+    10_000,
+  );
   return { drawerVisible: true };
 }
 
@@ -307,13 +313,17 @@ export async function navigateViaNavLink(
         { type: 'testId', value: 'nav-menu-toggle' },
         { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
       ]);
-      const drawer = await context.page
-        .locate([
+      // Use page.waitFor() (re-resolves each retry) instead of resolve()-then-waitFor()
+      // (stale snapshot) — same fix as openHamburgerMenu above.
+      await context.page.waitFor(
+        [
           { type: 'testId', value: 'nav-hamburger-drawer' },
           { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-        ])
-        .resolve();
-      await drawer.waitFor({ state: 'visible' });
+        ],
+        'visible',
+        { fallbackTimeout: 500 },
+        10_000,
+      );
     }
   }
 
@@ -335,13 +345,25 @@ export async function navigateViaNavLink(
     return { linkClicked: false, finalUrl: context.page.url() };
   }
 
+  // Capture the URL before clicking so we can wait for it to change. This is
+  // necessary because React Router uses history.pushState() for client-side
+  // navigation — there are zero network requests, so waitForLoadState('networkidle')
+  // can fire before pushState has committed the new URL to the browser's location
+  // bar. waitForURL waits for the actual URL string to match, which is the correct
+  // signal for SPA navigation.
+  const urlBefore = context.page.url();
+
   // On hamburger layout, the drawer's focus-on-open effect causes a layout
   // shift that triggers Playwright's stability check. Use force:true to bypass
   // the stability wait — visibility has already been confirmed above.
   await link.click({ force: layout === 'hamburger' });
 
-  // After clicking a hamburger link the drawer closes; wait for navigation to settle.
-  await context.page.waitForLoadState('networkidle').catch(() => null);
+  // Wait for the URL to change from its pre-click value. Falls back to a short
+  // domcontentloaded wait if waitForURL times out (e.g. clicking the already-active
+  // link on dashboard, where the URL stays '/').
+  await context.page
+    .waitForURL((url) => url.href !== urlBefore, { timeout: 10_000 })
+    .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
 
   return { linkClicked: true, finalUrl: context.page.url() };
 }
@@ -503,7 +525,10 @@ export async function navigateViaMobileNavLink(
     return { linkClicked: false, finalUrl: context.page.url() };
   }
 
+  const urlBefore = context.page.url();
   await link.click();
-  await context.page.waitForLoadState('networkidle').catch(() => null);
+  await context.page
+    .waitForURL((url) => url.href !== urlBefore, { timeout: 10_000 })
+    .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
   return { linkClicked: true, finalUrl: context.page.url() };
 }
