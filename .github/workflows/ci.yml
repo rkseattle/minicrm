@@ -471,6 +471,9 @@ jobs:
       # server are safe (no shared filesystem state between shard runners). MINCRM-217
       # Shard total is hardcoded as 4 in --shard=K/4; update matrix.shard list if changing total.
       - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217)
+        # MINCRM-324: Exclude visual-regression spec — it requires an isolated DB to
+        # avoid pixel diffs caused by other shards' seeded data appearing on the board.
+        # Visual tests run exclusively in the update-visual-snapshots job.
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
@@ -478,6 +481,7 @@ jobs:
           --shard=${{ matrix.shard }}/4
           --workers=4
           --grep @functional
+          --grep-invert visual-regression
           qa/e2e/tests/apps/minicrm/functional/
         env:
           SHARD_INDEX: ${{ matrix.shard }}
@@ -1186,10 +1190,14 @@ jobs:
             sleep 2
           done
 
-      - name: Generate visual snapshots — desktop
+      - name: Generate missing visual snapshots — desktop
         # continue-on-error: Playwright exits 1 when it writes a new baseline
         # ("snapshot doesn't exist, writing actual") — the PNGs are still
         # created. We must not let that exit code abort the commit step.
+        # MINCRM-324: --update-snapshots=missing only writes absent files;
+        # existing baselines are compared normally and failures are tolerated
+        # here because the commit step locks in any new baselines before the
+        # verification pass below re-runs and asserts correctness.
         continue-on-error: true
         run: >
           npx playwright test
@@ -1204,7 +1212,7 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
 
-      - name: Generate visual snapshots — mobile-web
+      - name: Generate missing visual snapshots — mobile-web
         continue-on-error: true
         run: >
           npx playwright test
@@ -1232,6 +1240,34 @@ jobs:
             git push origin HEAD:${{ github.head_ref }}
             echo "Pushed $CHANGED updated snapshot file(s) to ${{ github.head_ref }}."
           fi
+
+      - name: Verify visual snapshots — desktop
+        # MINCRM-324: Run without --update-snapshots so any pixel diff fails the job.
+        # This ensures committed baselines actually match the rendered output on Linux.
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=desktop
+          qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E: true
+
+      - name: Verify visual snapshots — mobile-web
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=mobile-web
+          qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E: true
 
   # MINCRM-269: Sentinel job — sole required status check for branch protection.
   # Treats skipped jobs as passing so that path-scoped PRs are not blocked by
