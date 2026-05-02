@@ -309,6 +309,82 @@ that never call `auditAccessibility()`.
 
 ---
 
+---
+
+## Network Route Interception (`mockRoute` / `unmockRoute` / `unmockAllRoutes`) (MINCRM-321)
+
+`PageFacade` exposes three methods for intercepting HTTP requests during tests. All registered
+mocks are automatically removed at fixture teardown — routes can never bleed into subsequent tests.
+
+### Methods
+
+```ts
+// Register a mock — auto-cleaned up at test end
+mockRoute(pattern: string | RegExp, handler: MockRouteHandler): Promise<void>;
+
+// Remove a specific mock mid-test (optional — teardown handles this automatically)
+unmockRoute(pattern: string | RegExp): Promise<void>;
+
+// Remove all registered mocks (called automatically in fixture teardown)
+unmockAllRoutes(): Promise<void>;
+```
+
+`MockRouteHandler` receives Playwright's `Route` and `Request` objects, giving full access to
+`route.fulfill()`, `route.continue()`, `route.abort()`, and `route.request()` inspection.
+
+### Usage
+
+#### Simulate a server error
+
+```ts
+await page.mockRoute('/api/deals', async (route) => {
+  await route.fulfill({
+    status: 500,
+    body: JSON.stringify({ error: { code: 'INTERNAL', message: 'Server error' } }),
+  });
+});
+// Exercise the UI, then assert the error state is rendered correctly.
+```
+
+#### Simulate a slow response to test loading states
+
+```ts
+await page.mockRoute('/api/contacts', async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await route.continue();
+});
+// Assert the loading spinner or skeleton is visible before the response arrives.
+```
+
+#### Verify request payload
+
+```ts
+await page.mockRoute('/api/contacts', async (route) => {
+  const body = route.request().postDataJSON();
+  expect(body.email).toBe('test@example.com');
+  await route.continue();
+});
+// Trigger the form submission, then assert the route handler was called.
+```
+
+### Automatic teardown
+
+`unmockAllRoutes()` is called in the fixture `finally` block for both the `page` (PageFacade)
+and `healPage` fixtures. No explicit cleanup is needed in test bodies. If you need to stop
+intercepting a route before the test ends, call `page.unmockRoute(pattern)` directly.
+
+### Both string and RegExp patterns are supported
+
+```ts
+// String pattern
+await page.mockRoute('/api/contacts', handler);
+
+// RegExp pattern
+await page.mockRoute(/\/api\/contacts.*/, handler);
+```
+
+---
+
 ## SafePage, SafeLocator, SafeContext
 
 These three types enforce the self-healing boundary at the TypeScript type level:
