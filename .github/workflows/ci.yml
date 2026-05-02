@@ -37,7 +37,7 @@ jobs:
             server:
               - 'server/src/**'
             qa:
-              - 'qa/e2e/framework/**/*.ts'
+              - 'qa/e2e/framework/**'
               - 'qa/e2e/behaviors/**/*.ts'
               - 'qa/e2e/pages/**/*.ts'
               - 'qa/e2e/apps/**/*.ts'
