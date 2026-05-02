@@ -1,11 +1,10 @@
 /**
  * MiniCRM app-domain locale extension.
  *
- * Defines translation keys for CRM-specific UI text across all supported
+ * Defines translation keys for all MiniCRM UI text across all supported
  * locales and registers them with the framework's t() function via
- * registerLocaleExtension(). This keeps app-domain strings out of the
- * framework layer while allowing Page Objects to continue importing t()
- * from @framework/i18n/locale.js without modification.
+ * registerLocaleExtension(). This includes both infrastructure strings
+ * (auth, nav, common actions) and CRM-specific strings (contacts, deals, etc.).
  *
  * This module is imported as a side-effect by apps/minicrm/fixtures.ts so
  * the extension is registered before any fixture creates a Page Object.
@@ -19,11 +18,51 @@ import type { LocaleMap } from '@framework/i18n/locale.js';
 // ---------------------------------------------------------------------------
 
 const MINICRM_EN: LocaleMap = {
+  // Navigation — shared infrastructure
+  'nav.dashboard': 'Dashboard',
+  'nav.myTasks': 'My Tasks',
+  'nav.users': 'Users',
+  'nav.logout': 'Log out',
+
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contacts',
   'nav.accounts': 'Accounts',
   'nav.deals': 'Deals',
   'nav.pipeline': 'Pipeline',
+
+  // Auth — login
+  'login.submitButton': 'Sign in',
+  'login.emailLabel': 'Email address',
+  'login.passwordLabel': 'Password',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Current password',
+  'changePassword.newPasswordLabel': 'New password',
+  'changePassword.confirmPasswordLabel': 'Confirm new password',
+  'changePassword.submitButton': 'Change password',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'Email address',
+  'forgotPassword.submitButton': 'Send Reset Link',
+  'forgotPassword.backToLogin': 'Back to sign in',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'New password',
+  'resetPassword.confirmPasswordLabel': 'Confirm password',
+  'resetPassword.submitButton': 'Set new password',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Password',
+  'setPassword.confirmPasswordLabel': 'Confirm password',
+  'setPassword.submitButton': 'Set password',
+
+  // Common actions
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'common.edit': 'Edit',
+  'common.add': 'Add',
+  'common.search': 'Search',
 
   // Contacts
   'contacts.saveChanges': 'Save changes',
@@ -72,11 +111,51 @@ const MINICRM_EN: LocaleMap = {
 // ---------------------------------------------------------------------------
 
 const MINICRM_ES: LocaleMap = {
+  // Navigation — shared infrastructure
+  'nav.dashboard': 'Panel',
+  'nav.myTasks': 'Mis tareas',
+  'nav.users': 'Usuarios',
+  'nav.logout': 'Cerrar sesión',
+
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contactos',
   'nav.accounts': 'Cuentas',
   'nav.deals': 'Negocios',
   'nav.pipeline': 'Canal',
+
+  // Auth — login
+  'login.submitButton': 'Iniciar sesión',
+  'login.emailLabel': 'Correo electrónico',
+  'login.passwordLabel': 'Contraseña',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Contraseña actual',
+  'changePassword.newPasswordLabel': 'Nueva contraseña',
+  'changePassword.confirmPasswordLabel': 'Confirmar nueva contraseña',
+  'changePassword.submitButton': 'Cambiar contraseña',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'Correo electrónico',
+  'forgotPassword.submitButton': 'Enviar enlace de restablecimiento',
+  'forgotPassword.backToLogin': 'Volver a iniciar sesión',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'Nueva contraseña',
+  'resetPassword.confirmPasswordLabel': 'Confirmar contraseña',
+  'resetPassword.submitButton': 'Establecer nueva contraseña',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Contraseña',
+  'setPassword.confirmPasswordLabel': 'Confirmar contraseña',
+  'setPassword.submitButton': 'Establecer contraseña',
+
+  // Common actions
+  'common.save': 'Guardar',
+  'common.cancel': 'Cancelar',
+  'common.delete': 'Eliminar',
+  'common.edit': 'Editar',
+  'common.add': 'Agregar',
+  'common.search': 'Buscar',
 
   // Contacts
   'contacts.saveChanges': 'Guardar cambios',
@@ -125,11 +204,51 @@ const MINICRM_ES: LocaleMap = {
 // ---------------------------------------------------------------------------
 
 const MINICRM_FR: LocaleMap = {
+  // Navigation — shared infrastructure
+  'nav.dashboard': 'Tableau de bord',
+  'nav.myTasks': 'Mes tâches',
+  'nav.users': 'Utilisateurs',
+  'nav.logout': 'Se déconnecter',
+
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contacts',
   'nav.accounts': 'Comptes',
   'nav.deals': 'Opportunités',
   'nav.pipeline': 'Pipeline',
+
+  // Auth — login
+  'login.submitButton': 'Se connecter',
+  'login.emailLabel': 'Adresse e-mail',
+  'login.passwordLabel': 'Mot de passe',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Mot de passe actuel',
+  'changePassword.newPasswordLabel': 'Nouveau mot de passe',
+  'changePassword.confirmPasswordLabel': 'Confirmer le nouveau mot de passe',
+  'changePassword.submitButton': 'Changer le mot de passe',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'Adresse e-mail',
+  'forgotPassword.submitButton': 'Envoyer le lien de réinitialisation',
+  'forgotPassword.backToLogin': 'Retour à la connexion',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'Nouveau mot de passe',
+  'resetPassword.confirmPasswordLabel': 'Confirmer le mot de passe',
+  'resetPassword.submitButton': 'Définir le nouveau mot de passe',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Mot de passe',
+  'setPassword.confirmPasswordLabel': 'Confirmer le mot de passe',
+  'setPassword.submitButton': 'Définir le mot de passe',
+
+  // Common actions
+  'common.save': 'Enregistrer',
+  'common.cancel': 'Annuler',
+  'common.delete': 'Supprimer',
+  'common.edit': 'Modifier',
+  'common.add': 'Ajouter',
+  'common.search': 'Rechercher',
 
   // Contacts
   'contacts.saveChanges': 'Enregistrer les modifications',
@@ -178,11 +297,51 @@ const MINICRM_FR: LocaleMap = {
 // ---------------------------------------------------------------------------
 
 const MINICRM_DE: LocaleMap = {
+  // Navigation — shared infrastructure
+  'nav.dashboard': 'Dashboard',
+  'nav.myTasks': 'Meine Aufgaben',
+  'nav.users': 'Benutzer',
+  'nav.logout': 'Abmelden',
+
   // Navigation — CRM-specific sections
   'nav.contacts': 'Kontakte',
   'nav.accounts': 'Konten',
   'nav.deals': 'Geschäfte',
   'nav.pipeline': 'Pipeline',
+
+  // Auth — login
+  'login.submitButton': 'Anmelden',
+  'login.emailLabel': 'E-Mail-Adresse',
+  'login.passwordLabel': 'Passwort',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': 'Aktuelles Passwort',
+  'changePassword.newPasswordLabel': 'Neues Passwort',
+  'changePassword.confirmPasswordLabel': 'Neues Passwort bestätigen',
+  'changePassword.submitButton': 'Passwort ändern',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': 'E-Mail-Adresse',
+  'forgotPassword.submitButton': 'Link zum Zurücksetzen senden',
+  'forgotPassword.backToLogin': 'Zurück zur Anmeldung',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': 'Neues Passwort',
+  'resetPassword.confirmPasswordLabel': 'Passwort bestätigen',
+  'resetPassword.submitButton': 'Neues Passwort festlegen',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': 'Passwort',
+  'setPassword.confirmPasswordLabel': 'Passwort bestätigen',
+  'setPassword.submitButton': 'Passwort festlegen',
+
+  // Common actions
+  'common.save': 'Speichern',
+  'common.cancel': 'Abbrechen',
+  'common.delete': 'Löschen',
+  'common.edit': 'Bearbeiten',
+  'common.add': 'Hinzufügen',
+  'common.search': 'Suche',
 
   // Contacts
   'contacts.saveChanges': 'Änderungen speichern',
@@ -231,11 +390,51 @@ const MINICRM_DE: LocaleMap = {
 // ---------------------------------------------------------------------------
 
 const MINICRM_ZH_HANS: LocaleMap = {
+  // Navigation — shared infrastructure
+  'nav.dashboard': '仪表板',
+  'nav.myTasks': '我的任务',
+  'nav.users': '用户',
+  'nav.logout': '退出登录',
+
   // Navigation — CRM-specific sections
   'nav.contacts': '联系人',
   'nav.accounts': '客户',
   'nav.deals': '商机',
   'nav.pipeline': '管道看板',
+
+  // Auth — login
+  'login.submitButton': '登录',
+  'login.emailLabel': '电子邮件地址',
+  'login.passwordLabel': '密码',
+
+  // Auth — change password
+  'changePassword.currentPasswordLabel': '当前密码',
+  'changePassword.newPasswordLabel': '新密码',
+  'changePassword.confirmPasswordLabel': '确认新密码',
+  'changePassword.submitButton': '修改密码',
+
+  // Auth — forgot password
+  'forgotPassword.emailLabel': '电子邮件地址',
+  'forgotPassword.submitButton': '发送重置链接',
+  'forgotPassword.backToLogin': '返回登录',
+
+  // Auth — reset password
+  'resetPassword.newPasswordLabel': '新密码',
+  'resetPassword.confirmPasswordLabel': '确认密码',
+  'resetPassword.submitButton': '设置新密码',
+
+  // Auth — set password (invite activation)
+  'setPassword.newPasswordLabel': '密码',
+  'setPassword.confirmPasswordLabel': '确认密码',
+  'setPassword.submitButton': '设置密码',
+
+  // Common actions
+  'common.save': '保存',
+  'common.cancel': '取消',
+  'common.delete': '删除',
+  'common.edit': '编辑',
+  'common.add': '添加',
+  'common.search': '搜索',
 
   // Contacts
   'contacts.saveChanges': '保存更改',

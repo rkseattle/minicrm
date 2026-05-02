@@ -128,15 +128,16 @@ for term in "${FORBIDDEN[@]}"; do
   # All other forbidden terms are plain-string checked across all .ts files.
   if [[ "$term" =~ \\\. ]]; then
     # Dot-anchored i18n prefix — use -E (extended regex) and exclude locale.ts.
-    if grep -rn -E --include="*.ts" \
+    # Scans all file types so README.md and other non-TS files are covered.
+    if grep -rn -E \
         --exclude="locale.ts" \
         "$term" "$FRAMEWORK_DIR" 2>/dev/null; then
       echo "ERROR: CRM i18n namespace prefix '$term' found in framework/ (outside locale.ts)"
       FOUND=1
     fi
   else
-    # Plain-string match across all .ts files in framework/.
-    if grep -rn --include="*.ts" "$term" "$FRAMEWORK_DIR" 2>/dev/null; then
+    # Plain-string match across all file types in framework/.
+    if grep -rn "$term" "$FRAMEWORK_DIR" 2>/dev/null; then
       echo "ERROR: application-domain string '$term' found in framework/"
       FOUND=1
     fi

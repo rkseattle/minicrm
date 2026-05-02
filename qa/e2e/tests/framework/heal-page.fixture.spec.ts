@@ -19,7 +19,7 @@
 import { test, expect } from '@framework/fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { HealingRegistry } from '@framework/healing';
-import { t, activeLocale } from '@framework/i18n';
+import { t, activeLocale, registerLocaleExtension } from '@framework/i18n';
 import { buildHealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 // ---------------------------------------------------------------------------
@@ -273,10 +273,26 @@ test.describe.serial('healPage fixture teardown', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC4 — t() throws on unknown keys
+// AC4 — t() throws on unknown keys (and on unregistered locales)
 // ---------------------------------------------------------------------------
 
 test.describe('t() locale helper', () => {
+  // Register a minimal locale map so the t() tests below have known keys to resolve.
+  // The framework ships no pre-loaded strings; apps must call registerLocaleExtension().
+  test.beforeAll(() => {
+    registerLocaleExtension({
+      en: {
+        'login.submitButton': 'Sign in',
+        'nav.dashboard': 'Dashboard',
+        'nonexistent.sibling': 'exists',
+      },
+      es: {
+        'login.submitButton': 'Iniciar sesión',
+        'nav.dashboard': 'Panel',
+      },
+    });
+  });
+
   test('resolves known key in default locale (en)', () => {
     const original = process.env['E2E_LOCALE'];
     delete process.env['E2E_LOCALE'];
@@ -288,14 +304,19 @@ test.describe('t() locale helper', () => {
     }
   });
 
+  test('throws RangeError on unregistered locale', () => {
+    // 'fr' has no map registered in this describe block — must throw.
+    expect(() => t('login.submitButton', 'fr')).toThrow(RangeError);
+    expect(() => t('login.submitButton', 'fr')).toThrow(/no locale map registered/);
+  });
+
   test('throws RangeError on unknown key', () => {
     expect(() => t('this.key.does.not.exist')).toThrow(RangeError);
     expect(() => t('this.key.does.not.exist')).toThrow(/unknown key/);
   });
 
-  test('all LocaleCode values have registered maps — no valid locale throws', () => {
-    // LocaleCode is narrowed to only 'en' | 'es', both of which have maps.
-    // Calling t() with any LocaleCode value must not throw for a known key.
+  test('registered locale maps resolve without throwing', () => {
+    // Only locales explicitly registered via registerLocaleExtension() are valid.
     expect(() => t('login.submitButton', 'en')).not.toThrow();
     expect(() => t('login.submitButton', 'es')).not.toThrow();
   });
@@ -320,6 +341,14 @@ test.describe('t() locale helper', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('t() multi-locale text strategies', () => {
+  // Ensure both en and es maps are registered for multi-locale assertions.
+  test.beforeAll(() => {
+    registerLocaleExtension({
+      en: { 'nav.dashboard': 'Dashboard' },
+      es: { 'nav.dashboard': 'Panel' },
+    });
+  });
+
   test('text strategy using t() resolves the same key in both en and es', () => {
     const original = process.env['E2E_LOCALE'];
 

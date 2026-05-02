@@ -43,7 +43,7 @@ for await (const msg of grpcClient.serverStream<StreamRequest, StreamResponse>(
 }
 ```
 
-### Client-streaming call (MINCRM-233)
+### Client-streaming call
 
 The caller supplies an async iterable of request messages; the server accumulates
 the full stream and responds with a single message.
@@ -62,7 +62,7 @@ const response = await grpcClient.clientStream<MyRequest, MySummaryResponse>(
 console.log(response.count); // 3
 ```
 
-### Bidirectional-streaming call (MINCRM-233)
+### Bidirectional-streaming call
 
 Both client and server stream messages simultaneously. The caller supplies an
 async iterable of request messages and iterates over the async iterable of
@@ -84,7 +84,7 @@ for await (const resp of grpcClient.bidiStream<MyRequest, MyResponse>(
 
 ## PageFacade (unified fixture)
 
-Since MINCRM-210, all spec files and Page Objects use a single `page: PageFacade` fixture.
+All spec files and Page Objects use a single `page: PageFacade` fixture.
 
 `PageFacade = SafePage & HealMethods` — a Proxy that:
 
@@ -95,8 +95,8 @@ Since MINCRM-210, all spec files and Page Objects use a single `page: PageFacade
 ### Usage in spec files
 
 ```ts
-import { test, expect } from '@apps/minicrm/fixtures.js';
-import { someAction } from '@behaviors/minicrm/some.behaviors.js';
+import { test, expect } from '@apps/myapp/fixtures.js';
+import { someAction } from '@behaviors/myapp/some.behaviors.js';
 
 test('@functional F1-L1: example test', async ({ page, restClient, testData }) => {
   // HealMethods — no testName argument needed
@@ -104,7 +104,7 @@ test('@functional F1-L1: example test', async ({ page, restClient, testData }) =
   const el = await page.locate([{ type: 'testId', value: 'heading' }]).resolve();
 
   // SafePage navigation methods still work directly
-  await page.goto('/contacts');
+  await page.goto('/dashboard');
   const url = page.url();
 
   // Behaviors receive { page } — PageFacade satisfies all context types
@@ -140,7 +140,7 @@ export class MyPage {
 }
 ```
 
-### Migration from pre-MINCRM-210 code
+### Migrating from the legacy three-fixture pattern
 
 If you encounter old code that passes `testName` to `.resolve()` or uses a
 separate `healPage` fixture, update it to the pattern above. The `testName`
@@ -148,7 +148,7 @@ argument to `.resolve()` is no longer accepted — `PageFacade` captures the
 test name at fixture creation time.
 
 ```ts
-// BEFORE (do not use — removed in MINCRM-210):
+// BEFORE (do not use — legacy pattern, now removed):
 // test('example', async ({ page, healPage, testName }) => {
 //   await healPage.click([...]);
 //   const el = await healPage.locate([...]).resolve(testName);
@@ -161,7 +161,7 @@ test('example', async ({ page }) => {
 });
 ```
 
-## Visual Regression (`checkScreenshot` / `checkLocatorScreenshot`) (MINCRM-319)
+## Visual Regression (`checkScreenshot` / `checkLocatorScreenshot`)
 
 `PageFacade` exposes two visual regression assertion methods backed by Playwright's
 native `toHaveScreenshot`. No third-party library (pixelmatch, resemble.js, etc.) is
@@ -247,7 +247,7 @@ changes the UI.
 
 ---
 
-## Accessibility Auditing (`auditAccessibility`) (MINCRM-320)
+## Accessibility Auditing (`auditAccessibility`)
 
 `PageFacade` exposes an `auditAccessibility()` method backed by
 [`@axe-core/playwright`](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright).
@@ -311,7 +311,7 @@ that never call `auditAccessibility()`.
 
 ---
 
-## Network Route Interception (`mockRoute` / `unmockRoute` / `unmockAllRoutes`) (MINCRM-321)
+## Network Route Interception (`mockRoute` / `unmockRoute` / `unmockAllRoutes`)
 
 `PageFacade` exposes three methods for intercepting HTTP requests during tests. All registered
 mocks are automatically removed at fixture teardown — routes can never bleed into subsequent tests.
@@ -337,7 +337,7 @@ unmockAllRoutes(): Promise<void>;
 #### Simulate a server error
 
 ```ts
-await page.mockRoute('/api/deals', async (route) => {
+await page.mockRoute('/api/items', async (route) => {
   await route.fulfill({
     status: 500,
     body: JSON.stringify({ error: { code: 'INTERNAL', message: 'Server error' } }),
@@ -349,7 +349,7 @@ await page.mockRoute('/api/deals', async (route) => {
 #### Simulate a slow response to test loading states
 
 ```ts
-await page.mockRoute('/api/contacts', async (route) => {
+await page.mockRoute('/api/items', async (route) => {
   await new Promise((resolve) => setTimeout(resolve, 3000));
   await route.continue();
 });
@@ -359,7 +359,7 @@ await page.mockRoute('/api/contacts', async (route) => {
 #### Verify request payload
 
 ```ts
-await page.mockRoute('/api/contacts', async (route) => {
+await page.mockRoute('/api/items', async (route) => {
   const body = route.request().postDataJSON();
   expect(body.email).toBe('test@example.com');
   await route.continue();
@@ -377,10 +377,10 @@ intercepting a route before the test ends, call `page.unmockRoute(pattern)` dire
 
 ```ts
 // String pattern
-await page.mockRoute('/api/contacts', handler);
+await page.mockRoute('/api/items', handler);
 
 // RegExp pattern
-await page.mockRoute(/\/api\/contacts.*/, handler);
+await page.mockRoute(/\/api\/items.*/, handler);
 ```
 
 ---
