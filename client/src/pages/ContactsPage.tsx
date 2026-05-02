@@ -470,7 +470,7 @@ export default function ContactsPage() {
         {/* Loading state */}
         {isLoading && (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <p aria-busy="true" className="text-sm text-gray-400">
+            <p aria-busy="true" className="text-sm text-gray-500">
               {t('contacts.loading')}
             </p>
           </div>
@@ -551,7 +551,7 @@ export default function ContactsPage() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {contacts.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-gray-400" data-testid="contacts-empty-state">
+                <p className="text-sm text-gray-500" data-testid="contacts-empty-state">
                   {t('contacts.empty')}
                 </p>
               </div>
@@ -754,10 +754,10 @@ export default function ContactsPage() {
                             </Link>
                             <p className="text-sm text-gray-500">{contact.email}</p>
                             {contact.title && (
-                              <p className="text-sm text-gray-400">{contact.title}</p>
+                              <p className="text-sm text-gray-500">{contact.title}</p>
                             )}
                             <p
-                              className="text-xs text-gray-400 mt-1"
+                              className="text-xs text-gray-500 mt-1"
                               data-testid={`contact-card-owner-${contact.id}`}
                             >
                               {t('contacts.columnOwner')}:{' '}

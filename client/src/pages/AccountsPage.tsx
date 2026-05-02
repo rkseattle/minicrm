@@ -395,7 +395,7 @@ export default function AccountsPage() {
         {/* Loading state */}
         {isLoading && (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <p aria-busy="true" className="text-sm text-gray-400">
+            <p aria-busy="true" className="text-sm text-gray-500">
               {t('accounts.loading')}
             </p>
           </div>
@@ -476,7 +476,7 @@ export default function AccountsPage() {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             {accounts.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-gray-400">{t('accounts.empty')}</p>
+                <p className="text-sm text-gray-500">{t('accounts.empty')}</p>
               </div>
             ) : (
               <>
@@ -580,7 +580,7 @@ export default function AccountsPage() {
                                 {t(`accounts.accountType.${account.account_type}`)}
                               </span>
                             ) : (
-                              <span className="text-gray-400">—</span>
+                              <span className="text-gray-500">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-gray-500">{account.industry ?? '—'}</td>
@@ -655,10 +655,10 @@ export default function AccountsPage() {
                               <p className="text-sm text-gray-500">{account.industry}</p>
                             )}
                             {account.website && (
-                              <p className="text-sm text-gray-400">{account.website}</p>
+                              <p className="text-sm text-gray-500">{account.website}</p>
                             )}
                             <p
-                              className="text-xs text-gray-400 mt-1"
+                              className="text-xs text-gray-500 mt-1"
                               data-testid={`account-card-owner-${account.id}`}
                             >
                               {t('accounts.columnOwner')}:{' '}

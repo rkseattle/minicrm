@@ -271,7 +271,7 @@ export default function ContactDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-          <p aria-busy="true" className="text-sm text-gray-400">
+          <p aria-busy="true" className="text-sm text-gray-500">
             {t('contacts.loading')}
           </p>
         </main>
@@ -425,7 +425,7 @@ export default function ContactDetailPage() {
               </div>
 
               {contactAddresses.length === 0 && !isAddingAddress && (
-                <p className="px-4 py-4 text-sm text-gray-400" data-testid="no-addresses-message">
+                <p className="px-4 py-4 text-sm text-gray-500" data-testid="no-addresses-message">
                   {t('contacts.noAddresses')}
                 </p>
               )}
@@ -726,7 +726,7 @@ export default function ContactDetailPage() {
                 {t('contacts.accountLabel')}
               </span>
               {linkedAccountLoading ? (
-                <span className="text-sm text-gray-400" data-testid="detail-account">
+                <span className="text-sm text-gray-500" data-testid="detail-account">
                   …
                 </span>
               ) : linkedAccount ? (
@@ -1105,7 +1105,7 @@ export default function ContactDetailPage() {
                                       <option value="loser">{t('contacts.mergeKeepLoser')}</option>
                                     </select>
                                   ) : (
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-gray-500">
                                       {t('contacts.mergeSameValue')}
                                     </span>
                                   )}
@@ -1221,7 +1221,7 @@ export default function ContactDetailPage() {
             </h2>
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               {linkedDeals.length === 0 ? (
-                <p className="px-6 py-4 text-sm text-gray-400" data-testid="linked-deals-empty">
+                <p className="px-6 py-4 text-sm text-gray-500" data-testid="linked-deals-empty">
                   {t('contacts.linkedDealsEmpty')}
                 </p>
               ) : (
