@@ -129,6 +129,7 @@ export default function DealCard({
 
       <Select
         id={`deal-stage-select-${deal.id}`}
+        aria-label={t('deals.stageLabel')}
         data-testid={`${testIdPrefix}deal-card-stage-select-${deal.id}`}
         value={deal.stage}
         onChange={(e) => {

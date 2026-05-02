@@ -660,7 +660,8 @@ export default function ContactsPage() {
                       {contacts.map((contact) => (
                         <tr
                           key={contact.id}
-                          className={`hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
+                          data-selected={selectedIds.has(contact.id) || undefined}
+                          className={`group hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
                         >
                           {/* Row checkbox (MINCRM-188) */}
                           <td className="w-10 ps-4 py-3">
@@ -682,18 +683,22 @@ export default function ContactsPage() {
                               {contact.first_name} {contact.last_name}
                             </Link>
                           </td>
-                          <td className="px-4 py-3 text-gray-500">
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
                             <span className="block truncate max-w-[200px]" title={contact.email}>
                               {contact.email}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap group-data-[selected]:text-gray-600">
                             {contact.phone ?? '—'}
                           </td>
-                          <td className="px-4 py-3 text-gray-500">{contact.title ?? '—'}</td>
-                          <td className="px-4 py-3 text-gray-500">{contact.department ?? '—'}</td>
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                            {contact.title ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                            {contact.department ?? '—'}
+                          </td>
                           <td
-                            className="px-4 py-3 text-gray-500"
+                            className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
                             data-testid={`contact-owner-${contact.id}`}
                           >
                             {resolveOwnerName(
