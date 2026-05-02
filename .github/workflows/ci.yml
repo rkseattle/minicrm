@@ -1194,15 +1194,16 @@ jobs:
         # continue-on-error: Playwright exits 1 when it writes a new baseline
         # ("snapshot doesn't exist, writing actual") — the PNGs are still
         # created. We must not let that exit code abort the commit step.
-        # MINCRM-324: --update-snapshots=missing only writes absent files;
-        # existing baselines are compared normally and failures are tolerated
-        # here because the commit step locks in any new baselines before the
-        # verification pass below re-runs and asserts correctness.
+        # MINCRM-324: --workers=1 serialises tests so each test's seeded deals
+        # are fully torn down before the next test runs. Without this, parallel
+        # workers contaminate the pipeline board with each other's deal cards,
+        # producing non-deterministic pixel diffs.
         continue-on-error: true
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=desktop
+          --workers=1
           --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
@@ -1218,6 +1219,7 @@ jobs:
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=mobile-web
+          --workers=1
           --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
@@ -1248,6 +1250,7 @@ jobs:
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=desktop
+          --workers=1
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
@@ -1261,6 +1264,7 @@ jobs:
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=mobile-web
+          --workers=1
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
