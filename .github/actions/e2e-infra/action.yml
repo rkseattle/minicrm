@@ -1,0 +1,145 @@
+# Composite action: e2e-infra
+#
+# Installs deps, caches Playwright browsers, runs DB migrations, seeds test
+# data, starts the app server + frontend dev server, and waits for both to
+# be healthy. Called by e2e-functional and update-visual-snapshots.
+#
+# Callers are responsible for declaring the postgres and minio services at
+# the job level — service containers cannot be defined inside a composite
+# action.
+#
+# MINCRM-324
+
+name: E2E infrastructure setup
+description: >
+  Shared setup for E2E jobs: install, Playwright browsers, DB migrations,
+  seeding, MinIO bucket, app server + frontend server startup.
+
+inputs:
+  e2e-admin-email:
+    description: Admin user email for the E2E database
+    required: true
+  e2e-admin-password:
+    description: Admin user password for the E2E database
+    required: true
+  node-encryption-key:
+    description: 64-char hex NODE_ENCRYPTION_KEY for the app server
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 20
+        cache: npm
+
+    - name: Cache Playwright browser binaries
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+    - name: Install dependencies
+      # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted
+      # from the macOS-generated lockfile. npm install --prefix client forces
+      # fresh resolution of platform-specific optional binaries. (npm workspace
+      # optional-deps bug)
+      shell: bash
+      run: npm ci && npm install --prefix client
+
+    - name: Install Playwright browsers
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install --with-deps chromium
+
+    - name: Run migrations on E2E database
+      shell: bash
+      run: npm run migrate --workspace=minicrm-server
+      env:
+        DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
+        DB_USER: minicrm
+        DB_PASSWORD: password
+        DB_NAME: minicrm_e2e
+        DB_HOST: localhost
+        DB_PORT: 5432
+        JWT_SECRET: ci-functional-secret
+        NODE_ENV: test
+
+    - name: Seed E2E admin user
+      shell: bash
+      run: npm run seed:e2e-admin
+      env:
+        DB_USER: minicrm
+        DB_PASSWORD: password
+        DB_NAME: minicrm_e2e
+        DB_HOST: localhost
+        DB_PORT: 5432
+        E2E_ADMIN_EMAIL: ${{ inputs.e2e-admin-email }}
+        E2E_ADMIN_PASSWORD: ${{ inputs.e2e-admin-password }}
+
+    # MINCRM-278: Create the test bucket using mc inside the running minio/minio
+    # service container — no separate image pull, alias persists across commands.
+    - name: Create MinIO test bucket
+      shell: bash
+      run: |
+        MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+        docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
+        docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+
+    # MINCRM-278: Write MinIO storage config into system_settings so the server
+    # finds a configured backend at startup — no manual admin setup required.
+    - name: Seed E2E storage config
+      shell: bash
+      run: npm run seed:e2e-storage
+      env:
+        DB_USER: minicrm
+        DB_PASSWORD: password
+        DB_NAME: minicrm_e2e
+        DB_HOST: localhost
+        DB_PORT: 5432
+        NODE_ENCRYPTION_KEY: ${{ inputs.node-encryption-key }}
+        E2E_STORAGE_ENDPOINT: http://localhost:9000
+        E2E_STORAGE_BUCKET: minicrm-test-bucket
+        E2E_STORAGE_ACCESS_KEY_ID: minioadmin
+        E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
+
+    - name: Start application server
+      shell: bash
+      run: npm run start --workspace=minicrm-server &
+      env:
+        DB_USER: minicrm
+        DB_PASSWORD: password
+        DB_NAME: minicrm_e2e
+        DB_HOST: localhost
+        DB_PORT: 5432
+        JWT_SECRET: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+        NODE_ENV: development
+        PORT: 3001
+        E2E: true
+        NODE_ENCRYPTION_KEY: ${{ inputs.node-encryption-key }}
+
+    - name: Start frontend dev server
+      shell: bash
+      run: npm run dev --workspace=minicrm-client &
+      env:
+        API_URL: http://localhost:3001
+
+    - name: Wait for servers to be ready
+      shell: bash
+      run: |
+        echo "Waiting for API server..."
+        for i in $(seq 1 30); do
+          curl -sf http://localhost:3001/api/health && break
+          echo "  attempt $i/30 — retrying in 2s"
+          if [ "$i" -eq 30 ]; then echo "API server did not start in time"; exit 1; fi
+          sleep 2
+        done
+        echo "Waiting for frontend dev server..."
+        for i in $(seq 1 30); do
+          curl -sf http://localhost:5173 && break
+          echo "  attempt $i/30 — retrying in 2s"
+          if [ "$i" -eq 30 ]; then echo "Frontend server did not start in time"; exit 1; fi
+          sleep 2
+        done

@@ -593,6 +593,9 @@ Real patterns from past findings on this repo:
       `docs/screenshots/` via `scripts/screenshot.ts` and check `README.md` for stale
       descriptions.
 - [ ] **E2E spec present** — story AC covered by at least one `@functional` test.
+- [ ] **Visual regression** — if the change adds or modifies a visually complex surface
+      (multi-column layout, data-dense table or chart, responsive breakpoint, admin tab),
+      add or update a `checkScreenshot()` assertion in `visual-regression.spec.ts`.
 - [ ] **OpenAPI spec** — `npm run lint:api` passes after any endpoint change.
 - [ ] **Framework coverage** — if `qa/e2e/framework/` was touched, run
       `npm run test:framework:coverage --workspace=minicrm-qa` and confirm 80% threshold.
