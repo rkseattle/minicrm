@@ -232,7 +232,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
             className="sr-only"
             data-testid="attachments-file-input"
             onChange={handleInputChange}
-            aria-hidden="true"
+            tabIndex={-1}
           />
 
           {uploadError && (

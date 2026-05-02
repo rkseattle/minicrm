@@ -205,11 +205,11 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {isLoading && activities.length === 0 ? (
-          <p className="px-6 py-4 text-sm text-gray-400" data-testid="activity-timeline-loading">
+          <p className="px-6 py-4 text-sm text-gray-500" data-testid="activity-timeline-loading">
             {t('activities.loading')}
           </p>
         ) : activities.length === 0 ? (
-          <p className="px-6 py-4 text-sm text-gray-400" data-testid="activity-timeline-empty">
+          <p className="px-6 py-4 text-sm text-gray-500" data-testid="activity-timeline-empty">
             {t('activities.empty')}
           </p>
         ) : (

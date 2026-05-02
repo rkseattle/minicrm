@@ -552,7 +552,8 @@ export default function AccountsPage() {
                       {accounts.map((account) => (
                         <tr
                           key={account.id}
-                          className={`hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-indigo-50' : ''}`}
+                          data-selected={selectedIds.has(account.id) || undefined}
+                          className={`group hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-indigo-50' : ''}`}
                         >
                           {/* Row checkbox (MINCRM-188) */}
                           <td className="w-10 ps-4 py-3">
@@ -580,19 +581,25 @@ export default function AccountsPage() {
                                 {t(`accounts.accountType.${account.account_type}`)}
                               </span>
                             ) : (
-                              <span className="text-gray-500">—</span>
+                              <span className="text-gray-500 group-data-[selected]:text-gray-600">
+                                —
+                              </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-gray-500">{account.industry ?? '—'}</td>
-                          <td className="px-4 py-3 text-gray-500">{account.website ?? '—'}</td>
-                          <td className="px-4 py-3 text-gray-500">
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                            {account.industry ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                            {account.website ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
                             {account.employee_range ?? '—'}
                           </td>
-                          <td className="px-4 py-3 text-gray-500">
+                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
                             {account.revenue_range ?? '—'}
                           </td>
                           <td
-                            className="px-4 py-3 text-gray-500"
+                            className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
                             data-testid={`account-owner-${account.id}`}
                           >
                             {resolveOwnerName(
