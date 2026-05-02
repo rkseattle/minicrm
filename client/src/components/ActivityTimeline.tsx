@@ -267,7 +267,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         <p
                           className={[
                             'text-sm font-medium text-gray-900',
-                            activity.status === 'complete' ? 'line-through text-gray-400' : '',
+                            activity.status === 'complete' ? 'line-through text-gray-500' : '',
                           ].join(' ')}
                           data-testid={`activity-subject-${activity.id}`}
                         >
@@ -291,14 +291,14 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         )}
                         {activity.due_date && (
                           <p
-                            className="mt-1 text-xs text-gray-400 whitespace-nowrap"
+                            className="mt-1 text-xs text-gray-500 whitespace-nowrap"
                             data-testid={`activity-due-date-${activity.id}`}
                           >
                             {t('activities.dueDateLabel')}: {activity.due_date}
                           </p>
                         )}
                         <p
-                          className="mt-1 text-xs text-gray-400"
+                          className="mt-1 text-xs text-gray-500"
                           data-testid={`activity-meta-${activity.id}`}
                         >
                           {t('activities.meta', {
