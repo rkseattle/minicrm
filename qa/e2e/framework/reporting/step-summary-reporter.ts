@@ -10,7 +10,7 @@ import type {
   TestStep,
 } from '@playwright/test/reporter';
 
-// Suite name is injected via MINCRM_SUITE_NAME env var so this file stays domain-agnostic.
+// Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
 const DEFAULT_SUITE_NAME = 'E2E Tests';
 
 enum ReportType {
@@ -73,7 +73,7 @@ export class StepSummaryReporter implements Reporter {
 
   constructor() {
     this.pad = this.isCI() ? '' : '  ';
-    this.suiteName = process.env['MINCRM_SUITE_NAME'] ?? DEFAULT_SUITE_NAME;
+    this.suiteName = process.env['SUITE_NAME'] ?? DEFAULT_SUITE_NAME;
     this.summaryPath =
       process.env['SUMMARY_OUTPUT_PATH'] ?? process.env['GITHUB_STEP_SUMMARY'] ?? null;
     this.stats = { passed: 0, failed: 0, skipped: 0, flaky: 0, interrupted: 0, duration: 0 };
