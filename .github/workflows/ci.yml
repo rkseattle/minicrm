@@ -199,6 +199,16 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 20
+          cache: npm
+
+      - name: Cache client node_modules
+        # MINCRM-331: cache client/node_modules separately from the root cache so
+        # platform-specific optional binaries (@rollup/rollup-linux-x64-gnu) resolved
+        # by the npm install --prefix client step below are persisted across runs.
+        uses: actions/cache@v4
+        with:
+          path: client/node_modules
+          key: client-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
