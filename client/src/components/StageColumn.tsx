@@ -176,8 +176,11 @@ export default function StageColumn({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* Column header */}
-      <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
+      {/* Column header — also serves as a reliable drag-and-drop target (MINCRM-300) */}
+      <div
+        data-testid={`${testIdPrefix}stage-column-header-${slug}`}
+        className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold truncate" title={getStageDisplayName(stage, t)}>
             {getStageDisplayName(stage, t)}
