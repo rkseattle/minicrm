@@ -134,7 +134,7 @@ export default function ContactSelector({
       )}
 
       {selectedContacts.length === 0 && (
-        <p className="text-sm text-gray-400" data-testid={`${id}-none`}>
+        <p className="text-sm text-gray-500" data-testid={`${id}-none`}>
           {t('accounts.contactsNone')}
         </p>
       )}
@@ -162,13 +162,13 @@ export default function ContactSelector({
               aria-label={t('accounts.contactsSearchPlaceholder')}
             >
               {searchLoading && (
-                <li className="px-4 py-3 text-sm text-gray-400" data-testid={`${id}-loading`}>
+                <li className="px-4 py-3 text-sm text-gray-500" data-testid={`${id}-loading`}>
                   {t('contacts.loading')}
                 </li>
               )}
 
               {!searchLoading && searchResults.length === 0 && (
-                <li className="px-4 py-3 text-sm text-gray-400" data-testid={`${id}-no-results`}>
+                <li className="px-4 py-3 text-sm text-gray-500" data-testid={`${id}-no-results`}>
                   {t('contacts.empty')}
                 </li>
               )}

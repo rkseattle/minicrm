@@ -255,7 +255,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
             <p className="text-sm text-gray-600">
               {t('import.dropZoneHint', { entity: entityLabel })}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{t('import.csvOnly')}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('import.csvOnly')}</p>
           </div>
           <input
             ref={fileInputRef}
@@ -526,7 +526,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
           )}
 
           {/* Elapsed time */}
-          <p className="text-xs text-gray-400" data-testid={`${entity}-elapsed`}>
+          <p className="text-xs text-gray-500" data-testid={`${entity}-elapsed`}>
             {t('import.elapsed', { seconds: elapsedSeconds })}
           </p>
         </div>

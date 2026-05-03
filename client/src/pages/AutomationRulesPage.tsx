@@ -228,7 +228,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
             ref={closeButtonRef}
             onClick={handleClose}
             aria-label={t('automation.logsDrawerClose')}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-500 hover:text-gray-600 text-xl leading-none"
             data-testid="logs-drawer-close"
           >
             ×
@@ -237,7 +237,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
 
         <div className="px-6 py-4">
           {isLoading && (
-            <p className="text-sm text-gray-400" data-testid="logs-loading">
+            <p className="text-sm text-gray-500" data-testid="logs-loading">
               {t('automation.logsLoading')}
             </p>
           )}
@@ -249,7 +249,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
           )}
 
           {data && data.logs.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-8" data-testid="logs-empty">
+            <p className="text-sm text-gray-500 text-center py-8" data-testid="logs-empty">
               {t('automation.logsEmpty')}
             </p>
           )}
@@ -271,7 +271,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
                         ? t('automation.logOutcomeSuccess')
                         : t('automation.logOutcomeError')}
                     </span>
-                    <span className="text-xs text-gray-400" data-testid={`log-timestamp-${log.id}`}>
+                    <span className="text-xs text-gray-500" data-testid={`log-timestamp-${log.id}`}>
                       {formatTimestamp(log.triggered_at, i18n.language)}
                     </span>
                   </div>
@@ -750,7 +750,7 @@ export default function AutomationRulesPage() {
 
         {/* Rules list */}
         {isLoading && (
-          <p className="text-sm text-gray-400" data-testid="rules-loading">
+          <p className="text-sm text-gray-500" data-testid="rules-loading">
             {t('automation.loading')}
           </p>
         )}
@@ -762,7 +762,7 @@ export default function AutomationRulesPage() {
         )}
 
         {data && data.rules.length === 0 && !showForm && (
-          <p className="text-sm text-gray-400 text-center py-12" data-testid="rules-empty">
+          <p className="text-sm text-gray-500 text-center py-12" data-testid="rules-empty">
             {t('automation.empty')}
           </p>
         )}
@@ -859,7 +859,7 @@ export default function AutomationRulesPage() {
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmId(rule.id)}
-                      className="text-xs text-gray-400 hover:text-red-600 min-h-[44px] sm:min-h-0 flex items-center"
+                      className="text-xs text-gray-500 hover:text-red-600 min-h-[44px] sm:min-h-0 flex items-center"
                       data-testid={`delete-rule-${rule.id}`}
                     >
                       {t('automation.delete')}

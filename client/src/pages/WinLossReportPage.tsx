@@ -306,7 +306,7 @@ export function WinLossReportContent() {
 
       {/* Loading state */}
       {isLoading && (
-        <p className="text-sm text-gray-400" data-testid="report-loading">
+        <p className="text-sm text-gray-500" data-testid="report-loading">
           {t('reports.winLoss.loading')}
         </p>
       )}
@@ -460,7 +460,7 @@ export function WinLossReportContent() {
                 </div>
               </div>
               {/* Rates footnote */}
-              <p className="text-xs text-gray-400" data-testid="converted-totals-footnote">
+              <p className="text-xs text-gray-500" data-testid="converted-totals-footnote">
                 {t('reports.winLoss.convertedFootnote', {
                   currency: report.homeCurrency ?? '',
                   date: report.ratesLastUpdated
@@ -490,7 +490,7 @@ export function WinLossReportContent() {
 
             {report.lossReasonBreakdown.length === 0 ? (
               <p
-                className="px-6 py-8 text-sm text-gray-400 text-center"
+                className="px-6 py-8 text-sm text-gray-500 text-center"
                 data-testid="loss-reason-empty"
               >
                 {t('reports.winLoss.lossReasonEmpty')}
@@ -546,7 +546,7 @@ export function WinLossReportContent() {
               </div>
               {report.repRows.length === 0 ? (
                 <p
-                  className="px-6 py-8 text-sm text-gray-400 text-center"
+                  className="px-6 py-8 text-sm text-gray-500 text-center"
                   data-testid="rep-breakdown-empty"
                 >
                   {t('reports.winLoss.repBreakdownEmpty')}

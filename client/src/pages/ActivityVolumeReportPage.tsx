@@ -415,7 +415,7 @@ export function ActivityVolumeReportContent() {
 
       {/* Loading state */}
       {isLoading && (
-        <p className="text-sm text-gray-400" data-testid="report-loading">
+        <p className="text-sm text-gray-500" data-testid="report-loading">
           {t('reports.activityVolume.loading')}
         </p>
       )}
@@ -443,7 +443,7 @@ export function ActivityVolumeReportContent() {
           )}
           {report.rows.length === 0 ? (
             <p
-              className="px-6 py-8 text-sm text-gray-400 text-center"
+              className="px-6 py-8 text-sm text-gray-500 text-center"
               data-testid="activity-volume-empty"
             >
               {t('reports.activityVolume.empty')}
@@ -499,7 +499,7 @@ export function ActivityVolumeReportContent() {
                               {row.counts[col]}
                             </Link>
                           ) : (
-                            <span className="text-gray-400">{row.counts[col]}</span>
+                            <span className="text-gray-500">{row.counts[col]}</span>
                           )}
                         </td>
                       ))}

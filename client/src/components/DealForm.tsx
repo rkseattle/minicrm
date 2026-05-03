@@ -297,7 +297,7 @@ export default function DealForm({
               {probabilityError}
             </p>
           ) : (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               {formData.probability !== ''
                 ? t('deals.probabilityOverriddenHint')
                 : t('deals.probabilityDefaultHint', {

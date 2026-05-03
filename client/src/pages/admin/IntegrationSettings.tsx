@@ -107,7 +107,10 @@ export default function IntegrationSettings() {
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="storage-section"
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="storage-section-title">
+        <h2
+          className="text-lg font-semibold text-gray-900 mb-1"
+          data-testid="storage-section-title"
+        >
           {t('settings.storage.sectionTitle')}
         </h2>
         <p className="text-xs text-gray-500 mb-4">{t('settings.storage.sectionHint')}</p>
@@ -173,7 +176,9 @@ export default function IntegrationSettings() {
                 type="text"
                 data-testid="storage-access-key-id-input"
                 value={storageForm.accessKeyId}
-                onChange={(e) => setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))}
+                onChange={(e) =>
+                  setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))
+                }
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -186,7 +191,7 @@ export default function IntegrationSettings() {
                 {t('settings.storage.secretAccessKeyLabel')}
               </label>
               {storageData?.configured && !storageForm.secretAccessKey && (
-                <p className="text-xs text-gray-400 mb-1" data-testid="storage-secret-masked">
+                <p className="text-xs text-gray-500 mb-1" data-testid="storage-secret-masked">
                   {t('settings.storage.secretMasked')}
                 </p>
               )}
@@ -215,7 +220,11 @@ export default function IntegrationSettings() {
             )}
 
             {storageSaveSuccess && (
-              <p role="status" className="text-sm text-green-700" data-testid="storage-save-success">
+              <p
+                role="status"
+                className="text-sm text-green-700"
+                data-testid="storage-save-success"
+              >
                 {t('settings.storage.saveSuccess')}
               </p>
             )}

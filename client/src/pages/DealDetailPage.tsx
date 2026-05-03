@@ -220,7 +220,7 @@ export default function DealDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-          <p aria-busy="true" className="text-sm text-gray-400">
+          <p aria-busy="true" className="text-sm text-gray-500">
             {t('deals.loading')}
           </p>
         </main>
@@ -419,13 +419,7 @@ export default function DealDetailPage() {
               />
             </div>
 
-            {id && (
-              <CustomFieldsSection
-                entityType="deal"
-                recordId={id}
-                isEditing={false}
-              />
-            )}
+            {id && <CustomFieldsSection entityType="deal" recordId={id} isEditing={false} />}
 
             {/* Tags (MINCRM-186) */}
             {id && (
@@ -470,7 +464,7 @@ export default function DealDetailPage() {
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 {linkedContacts.length === 0 ? (
                   <p
-                    className="px-6 py-4 text-sm text-gray-400"
+                    className="px-6 py-4 text-sm text-gray-500"
                     data-testid="linked-contacts-empty"
                   >
                     {t('deals.linkedContactsEmpty')}

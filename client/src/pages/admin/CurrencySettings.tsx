@@ -332,7 +332,7 @@ export default function CurrencySettings() {
                       {t('settings.exchangeRates.homeRowLabel')}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-sm text-gray-400">{'—'}</td>
+                  <td className="px-3 py-3 text-sm text-gray-500">{'—'}</td>
                   <td className="pe-4 ps-3 py-3" />
                 </tr>
 
@@ -361,7 +361,7 @@ export default function CurrencySettings() {
                         }}
                       />
                     </td>
-                    <td className="px-3 py-3 text-sm text-gray-400">
+                    <td className="px-3 py-3 text-sm text-gray-500">
                       {row.updated_at ? new Date(row.updated_at).toLocaleDateString() : '—'}
                     </td>
                     <td className="pe-4 ps-3 py-3">
