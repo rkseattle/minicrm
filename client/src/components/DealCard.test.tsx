@@ -1,10 +1,10 @@
 /**
- * Tests for the DealCard component (MINCRM-179).
- * Covers probability badge display — stage-default vs manually overridden.
+ * Tests for the DealCard component (MINCRM-179, MINCRM-300).
+ * Covers probability badge display and drag-and-drop source behavior.
  */
 
-import { screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import DealCard from './DealCard.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
@@ -36,6 +36,46 @@ const DEAL_OVERRIDDEN_PROB: DealResponse = {
   effective_probability: 75,
   probability_is_overridden: true,
 };
+
+// ── Drag-and-drop source (MINCRM-300) ─────────────────────────────────────────
+
+describe('DealCard — drag-and-drop source (MINCRM-300)', () => {
+  it('renders the card as draggable', () => {
+    renderWithProviders(
+      <DealCard
+        deal={DEAL_DEFAULT_PROB}
+        accountName="—"
+        onStageChange={noop}
+        onCloseRequested={noop}
+        isUpdating={false}
+      />,
+    );
+    const card = screen.getByTestId(`deal-card-${DEAL_DEFAULT_PROB.id}`);
+    expect(card).toHaveAttribute('draggable', 'true');
+  });
+
+  it('sets the deal ID in dataTransfer on dragStart', () => {
+    renderWithProviders(
+      <DealCard
+        deal={DEAL_DEFAULT_PROB}
+        accountName="—"
+        onStageChange={noop}
+        onCloseRequested={noop}
+        isUpdating={false}
+      />,
+    );
+    const card = screen.getByTestId(`deal-card-${DEAL_DEFAULT_PROB.id}`);
+
+    const setDataSpy = vi.fn();
+    fireEvent.dragStart(card, {
+      dataTransfer: { setData: setDataSpy, effectAllowed: '' },
+    });
+
+    expect(setDataSpy).toHaveBeenCalledWith('text/plain', DEAL_DEFAULT_PROB.id);
+  });
+});
+
+// ── Probability display (MINCRM-179) ──────────────────────────────────────────
 
 describe('DealCard — probability display (MINCRM-179)', () => {
   it('renders the probability badge with stage default value', () => {

@@ -149,10 +149,32 @@ export default function StageColumn({
   const { t, i18n } = useTranslation();
   const slug = stageSlug(stage);
 
+  const isTerminal = stage === 'Closed Won' || stage === 'Closed Lost';
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>): void {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
+    e.preventDefault();
+    const dealId = e.dataTransfer.getData('text/plain');
+    if (!dealId) return;
+    // Don't trigger a no-op if the card is already in this column.
+    if (deals.some((d) => d.id === dealId)) return;
+    if (isTerminal) {
+      onCloseRequested(dealId, stage);
+    } else {
+      onStageChange(dealId, stage);
+    }
+  }
+
   return (
     <div
       data-testid={`${testIdPrefix}stage-column-${slug}`}
       className={`${fullWidth ? 'w-full' : 'flex-shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       {/* Column header */}
       <div className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}>
