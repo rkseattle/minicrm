@@ -4,10 +4,10 @@
 # Usage (normal dev):
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
-# Usage (E2E testing — starts MinIO + Mailhog in addition to the dev stack):
+# Usage (E2E testing — starts server-e2e, MinIO + Mailhog in addition to the dev stack):
 #   docker compose -f docker-compose.dev.yml --profile e2e up -d
 #   npm run e2e:setup
-# (MINCRM-317)
+# (MINCRM-317, MINCRM-330)
 
 services:
   server:
@@ -35,6 +35,46 @@ services:
   # MINCRM-317: Optional E2E infrastructure — disabled by default.
   # Enable with: docker compose -f docker-compose.dev.yml --profile e2e up -d
   # Then run: npm run e2e:setup
+
+  # MINCRM-330: Dedicated app server for E2E runs.
+  # Connects to minicrm_e2e so test traffic never touches the main minicrm database.
+  # Listens on port 3002 to avoid colliding with the dev server on 3001.
+  # E2E_API_URL in qa/e2e/.env must be set to http://localhost:3002.
+  server-e2e:
+    profiles:
+      - e2e
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: minicrm_e2e
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
+      E2E: "true"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      APP_URL: ${APP_URL:-http://localhost}
+    # tsx watch for hot-reload — mirrors the dev server command.
+    command: npx tsx watch server/src/server.ts
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      - /app/node_modules
+    ports:
+      - "3002:3002"
+    depends_on:
+      db:
+        condition: service_healthy
 
   # MinIO — S3-compatible object storage for attachment E2E tests.
   # Port 9000: S3 API (used by the app server)

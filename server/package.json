@@ -16,7 +16,8 @@
     "generate-spec": "tsx src/scripts/generateSpec.ts",
     "lint:api": "npm run generate-spec && npx --yes @redocly/cli lint openapi.json",
     "seed:e2e-admin": "tsx src/scripts/seed-e2e-admin.ts",
-    "seed:e2e-storage": "tsx src/scripts/seed-e2e-storage.ts"
+    "seed:e2e-storage": "tsx src/scripts/seed-e2e-storage.ts",
+    "create:e2e-db": "tsx src/scripts/create-e2e-db.ts"
   },
   "dependencies": {
     "@minicrm/shared": "*",
