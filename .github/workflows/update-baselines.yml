@@ -1,0 +1,203 @@
+name: Update Visual Baselines
+
+# Manually triggered to regenerate all visual regression baselines after
+# intentional UI changes (colour tweaks, layout changes, etc.).
+# Run this when the CI visual snapshot job fails due to a legitimate UI change,
+# review the committed PNGs in the PR diff, then re-run CI to confirm green.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to update baselines on'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-baselines:
+    name: Regenerate visual baselines
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: minicrm
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: minicrm_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        command: server /data --console-address :9001
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+      - name: Install dependencies
+        run: npm ci && npm install --prefix client
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations on E2E database
+        run: npm run migrate --workspace=minicrm-server
+        env:
+          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: ci-functional-secret
+          NODE_ENV: test
+
+      - name: Seed E2E admin user
+        run: npm run seed:e2e-admin
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Create MinIO test bucket
+        run: |
+          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+
+      - name: Seed E2E storage config
+        run: npm run seed:e2e-storage
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          E2E_STORAGE_ENDPOINT: http://localhost:9000
+          E2E_STORAGE_BUCKET: minicrm-test-bucket
+          E2E_STORAGE_ACCESS_KEY_ID: minioadmin
+          E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
+
+      - name: Start application server
+        run: npm run start --workspace=minicrm-server &
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+          NODE_ENV: development
+          PORT: 3001
+          E2E: true
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+
+      - name: Start frontend dev server
+        run: npm run dev --workspace=minicrm-client &
+        env:
+          API_URL: http://localhost:3001
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for API server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3001/api/health && break
+            echo "  attempt $i/30 — retrying in 2s"
+            if [ "$i" -eq 30 ]; then echo "API server did not start in time"; exit 1; fi
+            sleep 2
+          done
+          echo "Waiting for frontend dev server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5173 && break
+            echo "  attempt $i/30 — retrying in 2s"
+            if [ "$i" -eq 30 ]; then echo "Frontend server did not start in time"; exit 1; fi
+            sleep 2
+          done
+
+      - name: Regenerate baselines — desktop
+        # --update-snapshots=all overwrites every existing baseline with the
+        # current rendered output. Exits 1 when files are written; continue-on-error
+        # prevents that from aborting the commit step.
+        continue-on-error: true
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=desktop
+          --workers=1
+          --update-snapshots=all
+          qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E: true
+
+      - name: Regenerate baselines — mobile-web
+        continue-on-error: true
+        run: >
+          npx playwright test
+          --config=qa/e2e/playwright.config.ts
+          --project=mobile-web
+          --workers=1
+          --update-snapshots=all
+          qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E: true
+
+      - name: Commit and push updated baselines
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add qa/e2e/snapshots/
+          if git diff --cached --quiet; then
+            echo "No baseline changes — all snapshots already match."
+          else
+            CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
+            git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
+            git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
+            git push origin HEAD:${{ github.event.inputs.branch }}
+            echo "Pushed $CHANGED updated baseline(s) to ${{ github.event.inputs.branch }}."
+          fi
