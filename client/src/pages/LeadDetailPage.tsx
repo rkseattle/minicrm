@@ -105,7 +105,7 @@ export default function LeadDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-          <p aria-busy="true" className="text-sm text-gray-400">
+          <p aria-busy="true" className="text-sm text-gray-500">
             {t('leads.loading')}
           </p>
         </main>

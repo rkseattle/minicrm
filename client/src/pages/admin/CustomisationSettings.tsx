@@ -21,7 +21,10 @@ import {
   CUSTOM_FIELD_DEFINITIONS_QUERY_KEY,
 } from '@/api/customFields.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
-import type { CustomFieldDefinitionResponse, FieldType } from '@shared/schemas/customFieldSchema.js';
+import type {
+  CustomFieldDefinitionResponse,
+  FieldType,
+} from '@shared/schemas/customFieldSchema.js';
 import { Button } from '@/components/ui/Button.js';
 
 type EntityType = 'contact' | 'account' | 'deal';
@@ -396,7 +399,7 @@ export default function CustomisationSettings() {
         )}
 
         {stagesLoading && (
-          <p className="text-sm text-gray-400" data-testid="pipeline-stages-loading">
+          <p className="text-sm text-gray-500" data-testid="pipeline-stages-loading">
             {t('settings.loading')}
           </p>
         )}
@@ -437,7 +440,7 @@ export default function CustomisationSettings() {
                           data-testid={`pipeline-stage-move-up-${stage.id}`}
                           disabled={index === 0 || reorderStageMutation.isPending}
                           onClick={() => handleMoveUp(index)}
-                          className="p-0.5 rounded text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
                         >
                           <svg
                             className="w-3 h-3"
@@ -456,7 +459,7 @@ export default function CustomisationSettings() {
                           data-testid={`pipeline-stage-move-down-${stage.id}`}
                           disabled={index === stages.length - 1 || reorderStageMutation.isPending}
                           onClick={() => handleMoveDown(index)}
-                          className="p-0.5 rounded text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
                         >
                           <svg
                             className="w-3 h-3"
@@ -487,7 +490,7 @@ export default function CustomisationSettings() {
                         <span className="font-medium text-gray-800">
                           {stage.name}
                           {stage.is_fixed && (
-                            <span className="ms-2 text-xs text-gray-400 font-normal">
+                            <span className="ms-2 text-xs text-gray-500 font-normal">
                               {t('settings.pipelineStages.fixedBadge')}
                             </span>
                           )}
@@ -729,7 +732,7 @@ export default function CustomisationSettings() {
         )}
 
         {customFieldsLoading && (
-          <p className="text-sm text-gray-400" data-testid="custom-fields-loading">
+          <p className="text-sm text-gray-500" data-testid="custom-fields-loading">
             {t('settings.loading')}
           </p>
         )}
@@ -791,7 +794,9 @@ export default function CustomisationSettings() {
                         )}
                       </td>
                       <td className="py-2 pe-3 text-gray-600 text-sm">
-                        {t(`settings.customFields.fieldType${field.field_type.charAt(0).toUpperCase()}${field.field_type.slice(1)}`)}
+                        {t(
+                          `settings.customFields.fieldType${field.field_type.charAt(0).toUpperCase()}${field.field_type.slice(1)}`,
+                        )}
                       </td>
                       <td className="py-2 text-end">
                         {editingFieldId === field.id ? (
@@ -849,7 +854,11 @@ export default function CustomisationSettings() {
             )}
 
             {editFieldError && (
-              <p role="alert" data-testid="custom-field-edit-error" className="mb-3 text-sm text-red-600">
+              <p
+                role="alert"
+                data-testid="custom-field-edit-error"
+                className="mb-3 text-sm text-red-600"
+              >
                 {editFieldError}
               </p>
             )}
@@ -921,7 +930,11 @@ export default function CustomisationSettings() {
                   </div>
                 )}
                 {addFieldError && (
-                  <p role="alert" data-testid="add-field-error" className="mb-2 text-sm text-red-600">
+                  <p
+                    role="alert"
+                    data-testid="add-field-error"
+                    className="mb-2 text-sm text-red-600"
+                  >
                     {addFieldError}
                   </p>
                 )}

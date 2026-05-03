@@ -311,7 +311,7 @@ export function StageTrendReportContent() {
 
       {/* Loading state */}
       {isLoading && (
-        <p className="text-sm text-gray-400" data-testid="report-loading">
+        <p className="text-sm text-gray-500" data-testid="report-loading">
           {t('reports.stageTrend.loading')}
         </p>
       )}
@@ -327,7 +327,7 @@ export function StageTrendReportContent() {
       {report && (
         <>
           {report.dataPoints.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-12" data-testid="stage-trend-empty">
+            <p className="text-sm text-gray-500 text-center py-12" data-testid="stage-trend-empty">
               {t('reports.stageTrend.empty')}
             </p>
           ) : (

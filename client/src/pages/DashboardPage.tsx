@@ -157,7 +157,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
 
       {activities.length === 0 ? (
         <p
-          className="px-6 py-8 text-sm text-gray-400 text-center"
+          className="px-6 py-8 text-sm text-gray-500 text-center"
           data-testid="recent-activity-empty"
         >
           {t('dashboard.recentActivityEmpty')}
@@ -208,7 +208,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
 
                 {/* Relative timestamp */}
                 <span
-                  className="text-xs text-gray-400 shrink-0"
+                  className="text-xs text-gray-500 shrink-0"
                   data-testid={`recent-activity-time-${entry.id}`}
                   title={entry.updatedAt}
                 >
@@ -250,7 +250,7 @@ export default function DashboardPage() {
         </div>
 
         {isLoading && (
-          <p className="text-sm text-gray-400" data-testid="dashboard-loading">
+          <p className="text-sm text-gray-500" data-testid="dashboard-loading">
             {t('dashboard.loading')}
           </p>
         )}
@@ -358,7 +358,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {/* Rates footnote */}
-                <p className="text-xs text-gray-400" data-testid="converted-pipeline-footnote">
+                <p className="text-xs text-gray-500" data-testid="converted-pipeline-footnote">
                   {t('dashboard.currencyConvertedFootnote', {
                     currency: data.homeCurrency ?? '',
                     date: data.ratesLastUpdated
@@ -391,7 +391,7 @@ export default function DashboardPage() {
 
               {data.stageBreakdown.length === 0 ? (
                 <p
-                  className="px-6 py-8 text-sm text-gray-400 text-center"
+                  className="px-6 py-8 text-sm text-gray-500 text-center"
                   data-testid="stage-breakdown-empty"
                 >
                   {t('dashboard.noDeals')}

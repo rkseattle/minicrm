@@ -167,11 +167,11 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {isLoading ? (
-          <p className="px-6 py-4 text-sm text-gray-400" data-testid="change-history-loading">
+          <p className="px-6 py-4 text-sm text-gray-500" data-testid="change-history-loading">
             {t('auditLog.loading')}
           </p>
         ) : entries.length === 0 ? (
-          <p className="px-6 py-4 text-sm text-gray-400" data-testid="change-history-empty">
+          <p className="px-6 py-4 text-sm text-gray-500" data-testid="change-history-empty">
             {t('auditLog.noHistory')}
           </p>
         ) : (
@@ -214,7 +214,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
                   : t('auditLog.showAll')}
             </button>
             {showAll && (
-              <span className="ms-2 text-xs text-gray-400" aria-label={String(totalCount)}>
+              <span className="ms-2 text-xs text-gray-500" aria-label={String(totalCount)}>
                 {t('auditLog.totalCount', { count: totalCount })}
               </span>
             )}

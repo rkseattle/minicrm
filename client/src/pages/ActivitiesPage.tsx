@@ -131,7 +131,7 @@ export default function ActivitiesPage() {
 
         {/* Loading */}
         {isLoading && (
-          <p className="text-sm text-gray-400" data-testid="activities-page-loading">
+          <p className="text-sm text-gray-500" data-testid="activities-page-loading">
             {t('activitiesPage.loading')}
           </p>
         )}
@@ -147,7 +147,7 @@ export default function ActivitiesPage() {
         {!isLoading && !isError && (
           <>
             {filteredActivities.length === 0 ? (
-              <p className="text-sm text-gray-400" data-testid="activities-page-empty">
+              <p className="text-sm text-gray-500" data-testid="activities-page-empty">
                 {t('activitiesPage.empty')}
               </p>
             ) : (
@@ -228,7 +228,7 @@ export default function ActivitiesPage() {
                               </Link>
                             ) : (
                               <span
-                                className="text-gray-400"
+                                className="text-gray-500"
                                 data-testid={`activity-record-${activity.id}`}
                               >
                                 —

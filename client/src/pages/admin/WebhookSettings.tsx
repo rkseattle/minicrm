@@ -17,7 +17,11 @@ import {
 } from '@/api/webhooks.js';
 import { Button } from '@/components/ui/Button.js';
 import { WEBHOOK_EVENT_TYPES } from '@shared/schemas/webhookSchema.js';
-import type { WebhookSubscriptionResponse, WebhookDeliveryLogResponse, WebhookEventType } from '@shared/schemas/webhookSchema.js';
+import type {
+  WebhookSubscriptionResponse,
+  WebhookDeliveryLogResponse,
+  WebhookEventType,
+} from '@shared/schemas/webhookSchema.js';
 
 // ── Add-webhook form state ─────────────────────────────────────────────────────
 
@@ -118,7 +122,7 @@ function DeliveryLogsPanel({ subscription, onClose }: DeliveryLogsProps) {
                           {log.status_code}
                         </span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-500">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
@@ -199,11 +203,7 @@ function SecretRevealModal({ secret, onDone }: SecretRevealModalProps) {
             className="flex-1 font-mono text-sm border border-gray-300 rounded px-3 py-2 bg-gray-50 min-w-0"
             data-testid="webhook-secret-value"
           />
-          <Button
-            variant="secondary"
-            onClick={handleCopy}
-            data-testid="webhook-secret-copy-button"
-          >
+          <Button variant="secondary" onClick={handleCopy} data-testid="webhook-secret-copy-button">
             {copied ? '✓' : t('settings.webhooks.secretCopyButton')}
           </Button>
         </div>
@@ -231,11 +231,7 @@ export default function WebhookSettings() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: WEBHOOKS_QUERY_KEY,
     queryFn: listWebhookSubscriptions,
   });
@@ -328,12 +324,18 @@ export default function WebhookSettings() {
 
       {/* Feedback messages */}
       {successMsg && (
-        <p className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2" data-testid="webhook-success-msg">
+        <p
+          className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2"
+          data-testid="webhook-success-msg"
+        >
           {successMsg}
         </p>
       )}
       {errorMsg && (
-        <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2" data-testid="webhook-error-msg">
+        <p
+          className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2"
+          data-testid="webhook-error-msg"
+        >
           {errorMsg}
         </p>
       )}
@@ -361,7 +363,9 @@ export default function WebhookSettings() {
                       {sub.events.join(', ')}
                     </p>
                     {sub.status === 'failed' && (
-                      <p className="text-xs text-red-700 mt-1">{t('settings.webhooks.failedBanner')}</p>
+                      <p className="text-xs text-red-700 mt-1">
+                        {t('settings.webhooks.failedBanner')}
+                      </p>
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
@@ -446,34 +450,20 @@ export default function WebhookSettings() {
           </div>
         </div>
 
-        {formError && (
-          <p className="text-sm text-red-600 mb-2">{formError}</p>
-        )}
+        {formError && <p className="text-sm text-red-600 mb-2">{formError}</p>}
 
-        <Button
-          type="submit"
-          disabled={createMutation.isPending}
-          data-testid="webhook-add-button"
-        >
+        <Button type="submit" disabled={createMutation.isPending} data-testid="webhook-add-button">
           {createMutation.isPending ? t('common.saving') : t('settings.webhooks.addButton')}
         </Button>
       </form>
 
       {/* Secret reveal modal */}
       {revealSecret && (
-        <SecretRevealModal
-          secret={revealSecret}
-          onDone={() => setRevealSecret(null)}
-        />
+        <SecretRevealModal secret={revealSecret} onDone={() => setRevealSecret(null)} />
       )}
 
       {/* Delivery logs panel */}
-      {logsFor && (
-        <DeliveryLogsPanel
-          subscription={logsFor}
-          onClose={() => setLogsFor(null)}
-        />
-      )}
+      {logsFor && <DeliveryLogsPanel subscription={logsFor} onClose={() => setLogsFor(null)} />}
 
       {/* Delete confirmation dialog */}
       {deleteConfirm && (

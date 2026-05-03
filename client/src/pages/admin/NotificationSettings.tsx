@@ -320,7 +320,7 @@ export default function NotificationSettings() {
                 </label>
                 {smtpData?.smtp_pass_set && !smtpChangePassword ? (
                   <div className="flex items-center gap-3">
-                    <p className="text-xs text-gray-400" data-testid="smtp-pass-masked">
+                    <p className="text-xs text-gray-500" data-testid="smtp-pass-masked">
                       {t('settings.smtp.passwordSet')}
                     </p>
                     <Button

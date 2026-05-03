@@ -306,7 +306,7 @@ export default function AuditLogPage() {
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {isLoading ? (
             <p
-              className="px-6 py-8 text-sm text-gray-400 text-center"
+              className="px-6 py-8 text-sm text-gray-500 text-center"
               data-testid="audit-log-loading"
             >
               {t('auditLog.loading')}
@@ -321,7 +321,7 @@ export default function AuditLogPage() {
             </p>
           ) : entries.length === 0 ? (
             <p
-              className="px-6 py-8 text-sm text-gray-400 text-center"
+              className="px-6 py-8 text-sm text-gray-500 text-center"
               data-testid="audit-log-empty"
             >
               {t('auditLog.table.noEntries')}

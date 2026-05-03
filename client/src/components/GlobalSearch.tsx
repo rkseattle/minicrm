@@ -101,7 +101,7 @@ export default function GlobalSearch() {
           {/* Contacts group */}
           {data && data.contacts.length > 0 && (
             <section aria-label={t('nav.contacts')}>
-              <header className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+              <header className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
                 {t('nav.contacts')}
               </header>
               <ul>
@@ -127,7 +127,7 @@ export default function GlobalSearch() {
           {/* Accounts group */}
           {data && data.accounts.length > 0 && (
             <section aria-label={t('nav.accounts')}>
-              <header className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+              <header className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
                 {t('nav.accounts')}
               </header>
               <ul>
@@ -150,7 +150,7 @@ export default function GlobalSearch() {
           {/* Deals group */}
           {data && data.deals.length > 0 && (
             <section aria-label={t('nav.deals')}>
-              <header className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+              <header className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
                 {t('nav.deals')}
               </header>
               <ul>
@@ -176,7 +176,7 @@ export default function GlobalSearch() {
           {/* Leads group */}
           {data && data.leads.length > 0 && (
             <section aria-label={t('nav.leads')}>
-              <header className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+              <header className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
                 {t('nav.leads')}
               </header>
               <ul>

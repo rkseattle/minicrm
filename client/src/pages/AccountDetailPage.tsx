@@ -129,7 +129,7 @@ export default function AccountDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <NavBar />
         <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-          <p aria-busy="true" className="text-sm text-gray-400">
+          <p aria-busy="true" className="text-sm text-gray-500">
             {t('accounts.loading')}
           </p>
         </main>
@@ -316,13 +316,7 @@ export default function AccountDetailPage() {
               />
             </div>
 
-            {id && (
-              <CustomFieldsSection
-                entityType="account"
-                recordId={id}
-                isEditing={false}
-              />
-            )}
+            {id && <CustomFieldsSection entityType="account" recordId={id} isEditing={false} />}
 
             {/* Tags (MINCRM-186) */}
             {id && (
@@ -366,12 +360,12 @@ export default function AccountDetailPage() {
               </h2>
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 {linkedContactsLoading ? (
-                  <p aria-busy="true" className="px-6 py-4 text-sm text-gray-400">
+                  <p aria-busy="true" className="px-6 py-4 text-sm text-gray-500">
                     {t('accounts.loading')}
                   </p>
                 ) : !linkedContactsData || linkedContactsData.data.length === 0 ? (
                   <p
-                    className="px-6 py-4 text-sm text-gray-400"
+                    className="px-6 py-4 text-sm text-gray-500"
                     data-testid="linked-contacts-empty"
                   >
                     {t('accounts.linkedContactsEmpty')}
