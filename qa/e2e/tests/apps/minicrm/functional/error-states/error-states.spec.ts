@@ -292,7 +292,11 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
 
   // Intercept the bulk contacts POST and return 500.
   // The bulk contacts endpoint is /api/v1/contacts/bulk — not /api/v1/bulk.
+  // Track interceptions so the test fails fast if the mock URL is ever wrong
+  // and the real server handles the request instead (MINCRM-326 hardening).
+  let bulkIntercepted = 0;
   await page.mockRoute('**/api/v1/contacts/bulk', async (route) => {
+    bulkIntercepted++;
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
@@ -336,7 +340,16 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   await errorMsg.waitFor({ state: 'attached', timeout: 8_000 });
   await expect(errorMsg).toBeVisible({ timeout: 8_000 });
 
-  // Contact must still be in the list — confirmed via API.
+  // Assert the mock was actually called — a count of 0 means the mock URL was
+  // wrong and the real server handled the request instead (MINCRM-326 hardening).
+  expect(bulkIntercepted, 'contacts/bulk POST must have been intercepted exactly once').toBe(1);
+
+  // Contact row must still be visible in the UI — the list must not have removed
+  // it optimistically after the failed delete.
+  await contactRow.waitFor({ state: 'visible', timeout: 5_000 });
+  await expect(contactRow).toBeVisible();
+
+  // Contact must still exist on the server — confirmed via API.
   const check = await restClient
     .get<{ total: number }>(`/api/v1/contacts/${contact.id}`)
     .catch(() => null);
