@@ -196,7 +196,10 @@ export async function dragDealToStage(
   const targetSlug = targetStage.toLowerCase().replace(/\s+/g, '-');
   const isTerminal = targetStage === 'Closed Won' || targetStage === 'Closed Lost';
 
-  // Resolve the drag source (deal card) and drop target (stage column).
+  // Resolve the drag source (deal card) and drop target.
+  // We target the column HEADER rather than the full column div so that
+  // Playwright's dragTo() lands on a clean surface — the header has no
+  // draggable child elements that would intercept the drop event.
   const sourceCard = await context.page
     .locate(
       [
@@ -207,17 +210,19 @@ export async function dragDealToStage(
     )
     .resolve();
 
-  const targetColumn = await context.page
+  const targetHeader = await context.page
     .locate(
       [
-        { type: 'testId', value: `stage-column-${targetSlug}` },
-        { type: 'css', value: `[data-testid="stage-column-${targetSlug}"]` },
+        { type: 'testId', value: `stage-column-header-${targetSlug}` },
+        { type: 'css', value: `[data-testid="stage-column-header-${targetSlug}"]` },
       ],
-      { intent: `stage column drop target for the ${targetStage} pipeline stage` },
+      {
+        intent: `header of the ${targetStage} stage column, used as the drop target for drag-and-drop`,
+      },
     )
     .resolve();
 
-  await sourceCard.dragTo(targetColumn);
+  await sourceCard.dragTo(targetHeader);
 
   let closeDealModalOpened = false;
 

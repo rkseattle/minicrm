@@ -46,6 +46,11 @@ interface DealSingleResponse {
 
 // ---------------------------------------------------------------------------
 // DnD Stage Transition tests
+//
+// Drag-and-drop is a desktop-only interaction. The mobile-web project renders a
+// single-stage carousel where cards use the `mobile-deal-card-{id}` testId prefix
+// and there are no adjacent columns to drag between. All three tests skip on
+// mobile-web to avoid false failures.
 // ---------------------------------------------------------------------------
 
 test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualification → card moves in DOM and stage persists via API', async ({
@@ -53,6 +58,12 @@ test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualificati
   restClient,
   testData,
 }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  test.skip(
+    isMobile,
+    'F5-DND1: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
+  );
+
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -90,6 +101,12 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
   restClient,
   testData,
 }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  test.skip(
+    isMobile,
+    'F5-DND2: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
+  );
+
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
@@ -124,6 +141,12 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
   restClient,
   testData,
 }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  test.skip(
+    isMobile,
+    'F5-DND3: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
+  );
+
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
   const account = await createTestAccount(testData, restClient, {
