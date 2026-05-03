@@ -13,18 +13,19 @@ import type {
 // Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
 const DEFAULT_SUITE_NAME = 'E2E Tests';
 
-enum ReportType {
-  TEST_SUITE = 'TestSuite',
-  TEST_CASE = 'TestCase',
-  TEST_STEP = 'TestStep',
-  TEST_HOOK = 'TestHook',
-  ERROR = 'Error',
-}
+const ReportType = {
+  TEST_SUITE: 'TestSuite',
+  TEST_CASE: 'TestCase',
+  TEST_STEP: 'TestStep',
+  TEST_HOOK: 'TestHook',
+  ERROR: 'Error',
+} as const;
+type ReportType = (typeof ReportType)[keyof typeof ReportType];
 
-enum CategoryType {
-  HOOK = 'hook',
-  STEP = 'test.step',
-}
+const CategoryType = {
+  HOOK: 'hook',
+  STEP: 'test.step',
+} as const;
 
 interface TestStats {
   passed: number;
@@ -44,6 +45,15 @@ interface FailedTest {
 interface SlowTest {
   title: string;
   duration: number;
+}
+
+interface TestDurationEntry {
+  title: string;
+  duration: number;
+}
+
+function isCI(): boolean {
+  return !!process.env['CI'];
 }
 
 /**
@@ -66,13 +76,13 @@ export class StepSummaryReporter implements Reporter {
   private stats: TestStats;
   private failedTests: FailedTest[];
   private slowTests: SlowTest[];
-  private testDurations: Map<string, number>;
+  private testDurations: Map<string, TestDurationEntry>;
   private flakyTests: string[];
   private interruptedTests: string[];
   private slowThreshold: number;
 
   constructor() {
-    this.pad = this.isCI() ? '' : '  ';
+    this.pad = isCI() ? '' : '  ';
     this.suiteName = process.env['SUITE_NAME'] ?? DEFAULT_SUITE_NAME;
     this.summaryPath =
       process.env['SUMMARY_OUTPUT_PATH'] ?? process.env['GITHUB_STEP_SUMMARY'] ?? null;
@@ -85,12 +95,8 @@ export class StepSummaryReporter implements Reporter {
     this.slowThreshold = 120_000;
   }
 
-  private isCI(): boolean {
-    return !!process.env['CI'];
-  }
-
   private log(text: string, type?: ReportType, lineBreak = true): void {
-    const lb = lineBreak && !this.isCI() ? '\n' : '';
+    const lb = lineBreak && !isCI() ? '\n' : '';
     console.log(`${this.pad}${type ? `[${type}]: ` : ''}${text}${lb}`);
   }
 
@@ -119,59 +125,59 @@ export class StepSummaryReporter implements Reporter {
     return 'Unknown';
   }
 
-  generateSummary(): string {
-    const total =
-      this.stats.passed +
-      this.stats.failed +
-      this.stats.skipped +
-      this.stats.flaky +
-      this.stats.interrupted;
+  private buildStatsTable(): string {
+    const { passed, failed, flaky, skipped, interrupted } = this.stats;
+    const total = passed + failed + skipped + flaky + interrupted;
     const duration = this.formatDuration(this.stats.duration);
-
-    let md =
+    return (
       `## ${this.suiteName}\n\n` +
       `| Status | Count |\n|--------|-------|\n` +
-      `| Passed | ${this.stats.passed} |\n` +
-      `| Failed | ${this.stats.failed} |\n` +
-      `| Flaky | ${this.stats.flaky} |\n` +
-      `| Skipped | ${this.stats.skipped} |\n` +
-      `| Interrupted | ${this.stats.interrupted} |\n` +
+      `| Passed | ${passed} |\n` +
+      `| Failed | ${failed} |\n` +
+      `| Flaky | ${flaky} |\n` +
+      `| Skipped | ${skipped} |\n` +
+      `| Interrupted | ${interrupted} |\n` +
       `| **Total** | **${total}** |\n\n` +
-      `**Duration**: ${duration}\n`;
+      `**Duration**: ${duration}\n`
+    );
+  }
 
-    if (this.failedTests.length > 0) {
-      md += '\n### Failed Tests\n';
-      for (const test of this.failedTests) {
-        md +=
-          `<details>\n<summary>${test.title} — ${test.location}</summary>\n\n` +
-          `\`\`\`\n${test.error}\n\`\`\`\n</details>\n\n`;
-      }
+  private buildFailedSection(): string {
+    if (this.failedTests.length === 0) return '';
+    const lines = ['\n### Failed Tests\n'];
+    for (const test of this.failedTests) {
+      lines.push(
+        `<details>\n<summary>${test.title} — ${test.location}</summary>\n\n` +
+          `\`\`\`\n${test.error}\n\`\`\`\n</details>\n`,
+      );
     }
+    return lines.join('\n');
+  }
 
-    if (this.flakyTests.length > 0) {
-      md += '\n### Flaky Tests\n';
-      for (const title of this.flakyTests) {
-        md += `- ${title}\n`;
-      }
-    }
+  private buildBulletSection(heading: string, items: string[]): string {
+    if (items.length === 0) return '';
+    return `\n### ${heading}\n` + items.map((t) => `- ${t}\n`).join('');
+  }
 
-    if (this.interruptedTests.length > 0) {
-      md += '\n### Interrupted Tests\n';
-      for (const title of this.interruptedTests) {
-        md += `- ${title}\n`;
-      }
-    }
+  private buildSlowTestsSection(): string {
+    if (this.slowTests.length === 0) return '';
+    const thresholdLabel = this.formatDuration(this.slowThreshold);
+    const rows = [...this.slowTests]
+      .sort((a, b) => b.duration - a.duration)
+      .map((t) => `| ${t.title} | ${this.formatDuration(t.duration)} |\n`)
+      .join('');
+    return `\n### Slowest Tests (> ${thresholdLabel})\n| Test | Duration |\n|------|----------|\n${rows}`;
+  }
 
-    if (this.slowTests.length > 0) {
-      const thresholdLabel = this.formatDuration(this.slowThreshold);
-      md += `\n### Slowest Tests (> ${thresholdLabel})\n| Test | Duration |\n|------|----------|\n`;
-      for (const test of [...this.slowTests].sort((a, b) => b.duration - a.duration)) {
-        md += `| ${test.title} | ${this.formatDuration(test.duration)} |\n`;
-      }
-    }
-
-    md += '\n---\n\n';
-    return md;
+  generateSummary(): string {
+    return (
+      this.buildStatsTable() +
+      this.buildFailedSection() +
+      this.buildBulletSection('Flaky Tests', this.flakyTests) +
+      this.buildBulletSection('Interrupted Tests', this.interruptedTests) +
+      this.buildSlowTestsSection() +
+      '\n---\n\n'
+    );
   }
 
   onBegin(config: FullConfig, suite: Suite): void {
@@ -213,8 +219,12 @@ export class StepSummaryReporter implements Reporter {
     }
 
     // Accumulate per-test duration for slow-test detection.
-    const key = `${test.title}||${test.location.file}:${test.location.line}`;
-    this.testDurations.set(key, (this.testDurations.get(key) ?? 0) + result.duration);
+    const key = `${test.location.file}:${test.location.line}`;
+    const existing = this.testDurations.get(key);
+    this.testDurations.set(key, {
+      title: test.title,
+      duration: (existing?.duration ?? 0) + result.duration,
+    });
   }
 
   onStepBegin(_test: TestCase, _result: TestResult, step: TestStep): void {
@@ -226,7 +236,7 @@ export class StepSummaryReporter implements Reporter {
   }
 
   onStdOut(chunk: string | Buffer): void {
-    if (this.isCI()) return;
+    if (isCI()) return;
     this.log(chunk.toString(), undefined, false);
   }
 
@@ -237,9 +247,8 @@ export class StepSummaryReporter implements Reporter {
   onEnd(result: FullResult): void {
     this.stats.duration = result.duration;
 
-    for (const [key, duration] of this.testDurations) {
+    for (const { title, duration } of this.testDurations.values()) {
       if (duration > this.slowThreshold) {
-        const title = key.split('||')[0] ?? key;
         this.slowTests.push({ title, duration });
       }
     }
