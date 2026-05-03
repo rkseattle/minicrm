@@ -80,7 +80,7 @@ export default function BulkActionBar({
         type="button"
         onClick={onClearSelection}
         data-testid="bulk-clear-selection"
-        className="ms-auto text-xs text-gray-500 hover:text-gray-700 underline shrink-0"
+        className="ms-auto text-xs text-gray-600 hover:text-gray-700 underline shrink-0"
         aria-label={t('bulk.clearSelection')}
       >
         {t('bulk.clearSelection')}

@@ -168,23 +168,17 @@ export default function StageColumn({
           </span>
         </div>
         {hasMixedCurrencies(deals) ? (
-          <p
-            data-testid={`${testIdPrefix}stage-column-total-${slug}`}
-            className="text-xs opacity-75 mt-0.5"
-          >
+          <p data-testid={`${testIdPrefix}stage-column-total-${slug}`} className="text-xs mt-0.5">
             {t('pipeline.mixedCurrency')}
           </p>
         ) : (
           <>
-            <p
-              data-testid={`${testIdPrefix}stage-column-total-${slug}`}
-              className="text-xs opacity-75 mt-0.5"
-            >
+            <p data-testid={`${testIdPrefix}stage-column-total-${slug}`} className="text-xs mt-0.5">
               {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
             </p>
             <p
               data-testid={`${testIdPrefix}stage-column-weighted-${slug}`}
-              className="text-xs text-gray-500 mt-0.5"
+              className="text-xs text-gray-600 mt-0.5"
             >
               {t('pipeline.weightedValue', { value: sumWeightedValues(deals, i18n.language) })}
             </p>
@@ -197,7 +191,7 @@ export default function StageColumn({
         {deals.length === 0 ? (
           <p
             data-testid={`${testIdPrefix}stage-column-empty-${slug}`}
-            className="text-xs text-gray-500 text-center py-4"
+            className="text-xs text-gray-600 text-center py-4"
           >
             {t('pipeline.emptyStage')}
           </p>
