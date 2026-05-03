@@ -1194,7 +1194,7 @@ jobs:
             sleep 2
           done
 
-      - name: Generate visual snapshots — desktop
+      - name: Generate missing visual snapshots — desktop
         # continue-on-error: Playwright exits 1 when it writes a new baseline
         # ("snapshot doesn't exist, writing actual") — the PNGs are still
         # created. We must not let that exit code abort the commit step.
@@ -1202,16 +1202,16 @@ jobs:
         # are fully torn down before the next test runs. Without this, parallel
         # workers contaminate the pipeline board with each other's deal cards,
         # producing non-deterministic pixel diffs.
-        # --update-snapshots=all regenerates every baseline so stale committed
-        # PNGs (from UI colour/layout changes) are replaced rather than left to
-        # fail the verify step.
+        # --update-snapshots=missing only writes baselines that do not yet exist.
+        # To regenerate stale baselines after intentional UI changes, trigger
+        # the update-baselines.yml workflow_dispatch manually.
         continue-on-error: true
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=desktop
           --workers=1
-          --update-snapshots=all
+          --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
@@ -1220,14 +1220,14 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
 
-      - name: Generate visual snapshots — mobile-web
+      - name: Generate missing visual snapshots — mobile-web
         continue-on-error: true
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
           --project=mobile-web
           --workers=1
-          --update-snapshots=all
+          --update-snapshots=missing
           qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts
         env:
           E2E_BASE_URL: http://localhost:5173
