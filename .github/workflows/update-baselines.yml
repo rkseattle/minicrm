@@ -53,6 +53,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
+          token: ${{ secrets.WORKFLOW_PAT }}
 
       - uses: actions/setup-node@v6
         with:
@@ -196,8 +197,7 @@ jobs:
             echo "No baseline changes — all snapshots already match."
           else
             CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
-            git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
-            git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
+            git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s))"
             git push origin HEAD:${{ github.event.inputs.branch }}
             echo "Pushed $CHANGED updated baseline(s) to ${{ github.event.inputs.branch }}."
           fi
