@@ -14,6 +14,7 @@ Product-agnostic framework code. **Must contain zero application-domain referenc
 - REST API client
 - gRPC client (unary, server-streaming, client-streaming, bidirectional-streaming)
 - `HealingReporter` — custom Playwright reporter that emits `healing-report.json`
+- `StepSummaryReporter` — custom Playwright reporter that appends a rich markdown job summary to `$GITHUB_STEP_SUMMARY` in CI; no-ops locally when that env var is unset
 
 A CI lint step (`check-framework-purity.sh`) greps this directory for application-domain
 strings and fails the build if any are found.

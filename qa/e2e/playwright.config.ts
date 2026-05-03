@@ -53,6 +53,9 @@ export default defineConfig({
     ...(IS_CI ? [['github'] as const] : []),
     // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
     ['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }],
+    // MINCRM-332: Step summary reporter writes rich pass/fail/skip markdown to
+    // $GITHUB_STEP_SUMMARY in CI; no-ops locally when that env var is unset.
+    ...(IS_CI ? [['./framework/reporting/step-summary-reporter.ts'] as const] : []),
     // MINCRM-217: blob reporter for sharded CI runs only; MINCRM-218 aggregation job
     // uses `playwright merge-reports` to combine blob outputs across all shards.
     ...(process.env['SHARD_INDEX']
