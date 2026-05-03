@@ -148,3 +148,138 @@ export async function closeDealAsWon(
 ): Promise<CloseDealAsWonResult> {
   return advanceDealStage(dealId, 'Closed Won', context);
 }
+
+// ---------------------------------------------------------------------------
+// dragDealToStage()
+// ---------------------------------------------------------------------------
+
+/** Result returned by dragDealToStage. */
+export interface DragDealToStageResult {
+  /** True when the CloseDealModal opened (only set for terminal-stage drags). */
+  closeDealModalOpened: boolean;
+  /** The column slug the deal occupies after the drag (and modal confirm, if applicable). */
+  columnSlug: string | null;
+}
+
+/**
+ * Drags a deal card to a target stage column using HTML5 drag-and-drop on the
+ * desktop pipeline board view. For terminal stages (Closed Won / Closed Lost)
+ * the CloseDealModal is filled with today's date and confirmed.
+ *
+ * The board must be loaded at the desktop viewport (≥ 768 px) before calling
+ * this behavior — drag-and-drop is not supported on the mobile carousel view.
+ *
+ * @param dealId - Deal UUID.
+ * @param targetStage - Stage to drag the card into.
+ * @param context - Playwright fixture context.
+ * @returns DragDealToStageResult describing the outcome.
+ *
+ * @example
+ * ```ts
+ * const result = await dragDealToStage(deal.id, 'Qualification', { page });
+ * expect(result.closeDealModalOpened).toBe(false);
+ * expect(result.columnSlug).toBe('qualification');
+ * ```
+ */
+export async function dragDealToStage(
+  dealId: string,
+  targetStage: PipelineStage,
+  context: DealsBehaviorContext,
+): Promise<DragDealToStageResult> {
+  const boardPage = new PipelineBoardPage(context);
+
+  if (!context.page.url().includes(PipelineBoardPage.PATH)) {
+    await boardPage.navigate();
+    await boardPage.isLoaded();
+  }
+
+  const targetSlug = targetStage.toLowerCase().replace(/\s+/g, '-');
+  const isTerminal = targetStage === 'Closed Won' || targetStage === 'Closed Lost';
+
+  // Resolve the drag source (deal card) and drop target (stage column).
+  const sourceCard = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `deal-card-${dealId}` },
+        { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+      ],
+      { intent: `deal card for deal ${dealId} to drag from its current column` },
+    )
+    .resolve();
+
+  const targetColumn = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `stage-column-${targetSlug}` },
+        { type: 'css', value: `[data-testid="stage-column-${targetSlug}"]` },
+      ],
+      { intent: `stage column drop target for the ${targetStage} pipeline stage` },
+    )
+    .resolve();
+
+  await sourceCard.dragTo(targetColumn);
+
+  let closeDealModalOpened = false;
+
+  if (isTerminal) {
+    // CloseDealModal opens — fill required close_date and confirm.
+    const modal = await context.page
+      .locate(
+        [
+          { type: 'testId', value: 'close-deal-modal' },
+          { type: 'css', value: '[data-testid="close-deal-modal"]' },
+        ],
+        { intent: 'modal dialog that appears when closing a deal as Won or Lost' },
+      )
+      .resolve();
+    await modal.waitFor({ state: 'visible' });
+    closeDealModalOpened = true;
+
+    const dateInput = await context.page
+      .locate(
+        [
+          { type: 'testId', value: 'close-deal-date-input' },
+          { type: 'css', value: '[data-testid="close-deal-date-input"]' },
+        ],
+        { intent: 'date input field inside the close deal confirmation modal' },
+      )
+      .resolve();
+    const today = new Date().toISOString().slice(0, 10);
+    await dateInput.fill(today);
+
+    await context.page.click(
+      [
+        { type: 'testId', value: 'close-deal-confirm' },
+        { type: 'role', value: 'button', options: { name: 'Confirm', exact: false } },
+      ],
+      { intent: 'confirm button in the close deal modal' },
+    );
+
+    await modal.waitFor({ state: 'hidden' });
+  }
+
+  // Wait for the card to appear in the target column before returning.
+  try {
+    const cardInTarget = await context.page
+      .locate(
+        [
+          {
+            type: 'css',
+            value: `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`,
+          },
+          {
+            type: 'xpath',
+            value: `//*[@data-testid="stage-column-${targetSlug}"]//*[@data-testid="deal-card-${dealId}"]`,
+          },
+        ],
+        { intent: `deal card ${dealId} visible inside the ${targetStage} stage column after drag` },
+      )
+      .resolve();
+    await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
+  } catch {
+    // Card not yet in target column — caller asserts via getDealColumnSlug.
+  }
+
+  const columnSlug = await boardPage.getDealColumnSlug(dealId);
+  return { closeDealModalOpened, columnSlug };
+}

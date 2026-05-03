@@ -72,6 +72,11 @@ export default function DealCard({
     <div
       data-testid={`${testIdPrefix}deal-card-${deal.id}`}
       className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', deal.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
     >
       <Link
         to={`/deals/${deal.id}`}

@@ -51,12 +51,13 @@ export type {
   SearchContactsResult,
 } from './contacts.behaviors.js';
 
-export { openDeal, advanceDealStage, closeDealAsWon } from './deals.behaviors.js';
+export { openDeal, advanceDealStage, closeDealAsWon, dragDealToStage } from './deals.behaviors.js';
 export type {
   DealsBehaviorContext,
   OpenDealResult,
   AdvanceDealStageResult,
   CloseDealAsWonResult,
+  DragDealToStageResult,
 } from './deals.behaviors.js';
 
 export { navigateToMyTasks, taskIsVisible, completeTask } from './tasks.behaviors.js';

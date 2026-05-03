@@ -1,9 +1,9 @@
 /**
- * Tests for StageColumn component (MINCRM-116).
+ * Tests for StageColumn component (MINCRM-116, MINCRM-300).
  */
 
-import { screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import StageColumn from './StageColumn.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
@@ -116,6 +116,87 @@ describe('StageColumn', () => {
       />,
     );
     expect(screen.getByTestId('stage-column-count-proposal')).toHaveTextContent('0');
+  });
+
+  // ── Drag-and-drop drop zone (MINCRM-300) ──────────────────────────────────────
+
+  it('calls onStageChange when a deal is dropped onto an open stage column', () => {
+    const onStageChange = vi.fn();
+    renderWithProviders(
+      <StageColumn
+        stage="Qualification"
+        deals={[]}
+        accountNames={accountNames}
+        onStageChange={onStageChange}
+        onCloseRequested={noop}
+        updatingDealIds={new Set()}
+      />,
+    );
+    const column = screen.getByTestId('stage-column-qualification');
+    fireEvent.drop(column, {
+      dataTransfer: { getData: () => DEAL_FIXTURE.id },
+    });
+    expect(onStageChange).toHaveBeenCalledWith(DEAL_FIXTURE.id, 'Qualification');
+  });
+
+  it('calls onCloseRequested when a deal is dropped onto a terminal stage column', () => {
+    const onCloseRequested = vi.fn();
+    renderWithProviders(
+      <StageColumn
+        stage="Closed Won"
+        deals={[]}
+        accountNames={accountNames}
+        onStageChange={noop}
+        onCloseRequested={onCloseRequested}
+        updatingDealIds={new Set()}
+      />,
+    );
+    const column = screen.getByTestId('stage-column-closed-won');
+    fireEvent.drop(column, {
+      dataTransfer: { getData: () => DEAL_FIXTURE.id },
+    });
+    expect(onCloseRequested).toHaveBeenCalledWith(DEAL_FIXTURE.id, 'Closed Won');
+  });
+
+  it('does not call onStageChange when a deal is dropped onto its own column', () => {
+    const onStageChange = vi.fn();
+    renderWithProviders(
+      <StageColumn
+        stage="Prospecting"
+        deals={[DEAL_FIXTURE]}
+        accountNames={accountNames}
+        onStageChange={onStageChange}
+        onCloseRequested={noop}
+        updatingDealIds={new Set()}
+      />,
+    );
+    const column = screen.getByTestId('stage-column-prospecting');
+    // Drop the same deal back onto its own column — should be a no-op.
+    fireEvent.drop(column, {
+      dataTransfer: { getData: () => DEAL_FIXTURE.id },
+    });
+    expect(onStageChange).not.toHaveBeenCalled();
+  });
+
+  it('does not call any handler when dataTransfer carries no deal ID', () => {
+    const onStageChange = vi.fn();
+    const onCloseRequested = vi.fn();
+    renderWithProviders(
+      <StageColumn
+        stage="Qualification"
+        deals={[]}
+        accountNames={accountNames}
+        onStageChange={onStageChange}
+        onCloseRequested={onCloseRequested}
+        updatingDealIds={new Set()}
+      />,
+    );
+    const column = screen.getByTestId('stage-column-qualification');
+    fireEvent.drop(column, {
+      dataTransfer: { getData: () => '' },
+    });
+    expect(onStageChange).not.toHaveBeenCalled();
+    expect(onCloseRequested).not.toHaveBeenCalled();
   });
 
   // ── Weighted pipeline value (MINCRM-179) ──────────────────────────────────────
