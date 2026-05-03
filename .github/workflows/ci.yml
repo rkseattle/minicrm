@@ -856,8 +856,7 @@ jobs:
             fi
           done
 
-          {
-            echo 'body<<COMMENT_EOF'
+          build_summary() {
             echo "## Playwright Test Results — Functional"
             echo ""
             echo "| Project | Status | Tests | Passed | Failed | Skipped |"
@@ -884,14 +883,24 @@ jobs:
               echo ""
               echo "$SUGGESTIONS_BODY"
             fi
+          }
+
+          {
+            echo 'body<<COMMENT_EOF'
+            build_summary
             echo 'COMMENT_EOF'
           } >> $GITHUB_OUTPUT
+
+          # MINCRM-332: Also write to job summary so the merged pass/fail table
+          # is visible in the Actions workflow run summary tab.
+          build_summary >> $GITHUB_STEP_SUMMARY
 
       - name: Post combined summary comment (MINCRM-135)
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
           message: ${{ steps.comment.outputs.body }}
+
 
   unit-test-report:
     name: Phase 2 - Unit Tests — Coverage Report
