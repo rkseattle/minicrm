@@ -133,7 +133,7 @@ export default function MyTasksPage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-gray-400" data-testid="my-tasks-loading">
+          <p className="text-sm text-gray-500" data-testid="my-tasks-loading">
             {t('myTasks.loading')}
           </p>
         ) : (
@@ -146,7 +146,7 @@ export default function MyTasksPage() {
 
             {/* Open tasks table */}
             {visibleTasks.length === 0 && !showCompleted ? (
-              <p className="text-sm text-gray-400" data-testid="my-tasks-empty">
+              <p className="text-sm text-gray-500" data-testid="my-tasks-empty">
                 {t('myTasks.empty')}
               </p>
             ) : visibleTasks.length > 0 ? (
@@ -198,16 +198,12 @@ export default function MyTasksPage() {
                           const recordPath = linkedRecordPath(task);
 
                           return (
-                            <tr
-                              key={task.id}
-                              data-testid={`task-row-${task.id}`}
-                              className={task.status === 'complete' ? 'opacity-60' : ''}
-                            >
+                            <tr key={task.id} data-testid={`task-row-${task.id}`}>
                               <td className="px-6 py-4 text-sm text-gray-900">
                                 <span
                                   data-testid={`task-subject-${task.id}`}
                                   className={
-                                    task.status === 'complete' ? 'line-through text-gray-400' : ''
+                                    task.status === 'complete' ? 'line-through text-gray-500' : ''
                                   }
                                 >
                                   {task.subject}
@@ -239,7 +235,7 @@ export default function MyTasksPage() {
                                   </span>
                                 ) : (
                                   <span
-                                    className="text-gray-400"
+                                    className="text-gray-500"
                                     data-testid={`task-due-date-${task.id}`}
                                   >
                                     {t('myTasks.noDueDate')}
@@ -257,7 +253,7 @@ export default function MyTasksPage() {
                                   </Link>
                                 ) : (
                                   <span
-                                    className="text-gray-400"
+                                    className="text-gray-500"
                                     data-testid={`task-record-link-${task.id}`}
                                   >
                                     {t('myTasks.noRecord')}
@@ -298,15 +294,11 @@ export default function MyTasksPage() {
                       const recordPath = linkedRecordPath(task);
 
                       return (
-                        <li
-                          key={task.id}
-                          className={`px-4 py-3${task.status === 'complete' ? ' opacity-60' : ''}`}
-                          data-testid={`task-row-${task.id}`}
-                        >
+                        <li key={task.id} className="px-4 py-3" data-testid={`task-row-${task.id}`}>
                           {/* min-w-0: prevents flex child overflow for long subject strings */}
                           <div className="min-w-0 flex-1">
                             <p
-                              className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-400' : ' text-gray-900'}`}
+                              className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-500' : ' text-gray-900'}`}
                               data-testid={`task-subject-${task.id}`}
                             >
                               {task.subject}
@@ -335,7 +327,7 @@ export default function MyTasksPage() {
                                 </span>
                               ) : (
                                 <span
-                                  className="text-xs text-gray-400"
+                                  className="text-xs text-gray-500"
                                   data-testid={`task-due-date-${task.id}`}
                                 >
                                   {t('myTasks.noDueDate')}
@@ -354,7 +346,7 @@ export default function MyTasksPage() {
                               </p>
                             ) : (
                               <p
-                                className="text-xs text-gray-400 mt-1"
+                                className="text-xs text-gray-500 mt-1"
                                 data-testid={`task-record-link-${task.id}`}
                               >
                                 {t('myTasks.noRecord')}
@@ -391,7 +383,7 @@ export default function MyTasksPage() {
 
             {/* Completed tasks empty state when toggle is on */}
             {showCompleted && completedTasks.length === 0 && (
-              <p className="mt-4 text-sm text-gray-400" data-testid="completed-tasks-empty">
+              <p className="mt-4 text-sm text-gray-500" data-testid="completed-tasks-empty">
                 {t('myTasks.emptyCompleted')}
               </p>
             )}
