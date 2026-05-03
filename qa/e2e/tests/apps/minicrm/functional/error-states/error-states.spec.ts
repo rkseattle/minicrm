@@ -316,20 +316,23 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     )
     .resolve();
   await confirmBtn.waitFor({ state: 'visible', timeout: 8_000 });
+  // Scroll into view before clicking — on mobile the modal button may be
+  // partially off-screen inside a fixed overlay, causing the click to miss.
+  await confirmBtn.scrollIntoViewIfNeeded();
   await confirmBtn.click();
 
-  await page.waitForLoadState('networkidle');
-
-  // Error message must be visible.
+  // Wait for the error element to attach rather than networkidle — the mock
+  // returns instantly so networkidle settles before React re-renders bulkError.
   const errorMsg = await page
     .locate(
       [
         { type: 'testId', value: 'bulk-error-message' },
-        { type: 'role', value: 'alert' },
+        { type: 'css', value: '[data-testid="bulk-error-message"]' },
       ],
       { intent: 'bulk operation error message shown after a failed bulk delete' },
     )
     .resolve();
+  await errorMsg.waitFor({ state: 'attached', timeout: 8_000 });
   await expect(errorMsg).toBeVisible({ timeout: 8_000 });
 
   // Contact must still be in the list — confirmed via API.
@@ -348,21 +351,15 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
 }) => {
   const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-  await page.goto(`/contacts/${nonExistentId}`, { waitUntil: 'networkidle' });
+  // Use domcontentloaded so we don't block on the in-flight API request.
+  // The not-found state only renders after React transitions from loading →
+  // error, which happens after the 404 response arrives. We wait for the
+  // back-link (only present in the error branch) to confirm the transition
+  // has completed before asserting on the alert paragraph.
+  await page.goto(`/contacts/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // The page must show a not-found message — not a blank screen or JS error.
-  const notFoundMsg = await page
-    .locate(
-      [
-        { type: 'role', value: 'alert' },
-        { type: 'css', value: '[role="alert"]' },
-      ],
-      { intent: 'not-found message on the contact detail page for an invalid id' },
-    )
-    .resolve();
-  await expect(notFoundMsg).toBeVisible({ timeout: 8_000 });
-
-  // The back-to-contacts link must also be present so the user can recover.
+  // The back-to-contacts link is only rendered in the error branch — waiting
+  // for it to attach is the reliable signal that the not-found UI is active.
   const backLink = await page
     .locate(
       [
@@ -372,7 +369,22 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
       { intent: 'back to contacts navigation link on the not-found page' },
     )
     .resolve();
+  await backLink.waitFor({ state: 'visible', timeout: 10_000 });
   await expect(backLink).toBeVisible();
+
+  // The page must show a not-found message — not a blank screen or JS error.
+  // The not-found paragraph is the only role="alert" in this error branch so
+  // the css selector is unambiguous here.
+  const notFoundMsg = await page
+    .locate(
+      [
+        { type: 'css', value: 'p[role="alert"]' },
+        { type: 'role', value: 'alert' },
+      ],
+      { intent: 'not-found message on the contact detail page for an invalid id' },
+    )
+    .resolve();
+  await expect(notFoundMsg).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -384,21 +396,9 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
 }) => {
   const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-  await page.goto(`/deals/${nonExistentId}`, { waitUntil: 'networkidle' });
+  await page.goto(`/deals/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // The page must show a not-found message.
-  const notFoundMsg = await page
-    .locate(
-      [
-        { type: 'role', value: 'alert' },
-        { type: 'css', value: '[role="alert"]' },
-      ],
-      { intent: 'not-found message on the deal detail page for an invalid id' },
-    )
-    .resolve();
-  await expect(notFoundMsg).toBeVisible({ timeout: 8_000 });
-
-  // The back-to-deals link must be present.
+  // Wait for the error branch to render before asserting — same pattern as ES-1-4.
   const backLink = await page
     .locate(
       [
@@ -408,7 +408,20 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
       { intent: 'back to deals navigation link on the not-found page' },
     )
     .resolve();
+  await backLink.waitFor({ state: 'visible', timeout: 10_000 });
   await expect(backLink).toBeVisible();
+
+  // The page must show a not-found message.
+  const notFoundMsg = await page
+    .locate(
+      [
+        { type: 'css', value: 'p[role="alert"]' },
+        { type: 'role', value: 'alert' },
+      ],
+      { intent: 'not-found message on the deal detail page for an invalid id' },
+    )
+    .resolve();
+  await expect(notFoundMsg).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
