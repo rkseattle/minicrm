@@ -196,33 +196,35 @@ export async function dragDealToStage(
   const targetSlug = targetStage.toLowerCase().replace(/\s+/g, '-');
   const isTerminal = targetStage === 'Closed Won' || targetStage === 'Closed Lost';
 
-  // Resolve the drag source (deal card) and drop target.
-  // We target the column HEADER rather than the full column div so that
-  // Playwright's dragTo() lands on a clean surface — the header has no
-  // draggable child elements that would intercept the drop event.
-  const sourceCard = await context.page
-    .locate(
-      [
-        { type: 'testId', value: `deal-card-${dealId}` },
-        { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
-      ],
-      { intent: `deal card for deal ${dealId} to drag from its current column` },
-    )
-    .resolve();
+  // Simulate HTML5 drag-and-drop by injecting synthetic events directly via
+  // page.evaluate(). Playwright's dragTo() fires mouse events that Chromium
+  // does not reliably translate into the HTML5 drag event sequence in headless
+  // mode, especially when the drop target has child elements that intercept the
+  // pointer position. Dispatching events from JS guarantees the correct sequence
+  // (dragstart → dragover+preventDefault → drop) with the right dataTransfer payload.
+  // Strings are used for both calls to avoid DOM lib errors in the Node tsconfig.
+  const cardTestId = `deal-card-${dealId}`;
+  const headerTestId = `stage-column-header-${targetSlug}`;
 
-  const targetHeader = await context.page
-    .locate(
-      [
-        { type: 'testId', value: `stage-column-header-${targetSlug}` },
-        { type: 'css', value: `[data-testid="stage-column-header-${targetSlug}"]` },
-      ],
-      {
-        intent: `header of the ${targetStage} stage column, used as the drop target for drag-and-drop`,
-      },
-    )
-    .resolve();
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="${cardTestId}"]') !== null && ` +
+      `document.querySelector('[data-testid="${headerTestId}"]') !== null`,
+    undefined,
+    { timeout: 10_000 },
+  );
 
-  await sourceCard.dragTo(targetHeader);
+  await context.page.evaluate(`(() => {
+    const source = document.querySelector('[data-testid="${cardTestId}"]');
+    const target = document.querySelector('[data-testid="${headerTestId}"]');
+    if (!source || !target) throw new Error('drag elements not found');
+    const dt = new DataTransfer();
+    dt.setData('text/plain', '${dealId}');
+    source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    target.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    target.dispatchEvent(new DragEvent('dragover',  { bubbles: true, cancelable: true, dataTransfer: dt }));
+    target.dispatchEvent(new DragEvent('drop',      { bubbles: true, cancelable: true, dataTransfer: dt }));
+    source.dispatchEvent(new DragEvent('dragend',   { bubbles: true, cancelable: true, dataTransfer: dt }));
+  })(`);
 
   let closeDealModalOpened = false;
 

@@ -176,17 +176,15 @@ export default function StageColumn({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* Column header — explicit onDragOver/onDrop so dragTo() targeting this
-          element allows a drop without relying solely on parent bubbling (MINCRM-300).
-          pointer-events:none on the inner wrapper ensures Playwright's dragTo() always
-          lands on this div rather than on a child element that has no drag handlers. */}
+      {/* Column header — explicit onDragOver/onDrop so drop events targeting this
+          element are handled directly rather than relying on parent bubbling (MINCRM-300) */}
       <div
         data-testid={`${testIdPrefix}stage-column-header-${slug}`}
         className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        <div className="flex items-center justify-between pointer-events-none">
+        <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold truncate" title={getStageDisplayName(stage, t)}>
             {getStageDisplayName(stage, t)}
           </h3>
