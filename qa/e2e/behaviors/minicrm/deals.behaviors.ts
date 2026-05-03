@@ -261,25 +261,21 @@ export async function dragDealToStage(
     );
 
     await modal.waitFor({ state: 'hidden' });
-    // Wait for the React Query refetch triggered by the stage mutation to settle
-    // before scanning columns — the board data doesn't update until the PATCH's
-    // onSettled fires and the refetch completes.
-    await context.page.waitForLoadState('networkidle');
   }
 
   // Wait for the card to appear in the target column. Use waitForFunction rather
   // than locate().resolve().waitFor() because resolve() throws immediately when
   // the element is absent — it never enters the timed wait for newly-appearing
-  // elements. Pass the selector as a JS expression string so that document
-  // is evaluated in the browser, avoiding a DOM lib requirement in tsconfig.
+  // elements. For terminal stages this also implicitly waits for the React Query
+  // refetch triggered by the mutation's onSettled to complete, since the card
+  // only moves columns once the board data re-fetches. Pass the selector as a
+  // JS expression string so document is evaluated in the browser context.
   const cardSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
   await context.page
     .waitForFunction(
       `document.querySelector(${JSON.stringify(cardSelector)}) !== null`,
       undefined,
-      {
-        timeout: 15_000,
-      },
+      { timeout: 15_000 },
     )
     .catch(() => null);
 
