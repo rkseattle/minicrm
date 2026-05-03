@@ -290,8 +290,9 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     .resolve();
   await bulkBar.waitFor({ state: 'visible', timeout: 8_000 });
 
-  // Intercept the bulk POST and return 500.
-  await page.mockRoute('**/api/v1/bulk', async (route) => {
+  // Intercept the bulk contacts POST and return 500.
+  // The bulk contacts endpoint is /api/v1/contacts/bulk — not /api/v1/bulk.
+  await page.mockRoute('**/api/v1/contacts/bulk', async (route) => {
     await route.fulfill({
       status: 500,
       contentType: 'application/json',
