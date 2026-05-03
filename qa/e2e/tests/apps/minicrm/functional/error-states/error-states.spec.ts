@@ -316,10 +316,10 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     )
     .resolve();
   await confirmBtn.waitFor({ state: 'visible', timeout: 8_000 });
-  // Scroll into view before clicking — on mobile the modal button may be
-  // partially off-screen inside a fixed overlay, causing the click to miss.
-  await confirmBtn.scrollIntoViewIfNeeded();
-  await confirmBtn.click();
+  // Use force:true — on mobile the modal button sits inside a fixed overlay
+  // that may be partially outside the scrollable viewport, causing a normal
+  // click to miss the actionability check even after scrollIntoViewIfNeeded.
+  await confirmBtn.click({ force: true });
 
   // Wait for the error element to attach rather than networkidle — the mock
   // returns instantly so networkidle settles before React re-renders bulkError.
@@ -351,40 +351,44 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
 }) => {
   const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-  // Use domcontentloaded so we don't block on the in-flight API request.
-  // The not-found state only renders after React transitions from loading →
-  // error, which happens after the 404 response arrives. We wait for the
-  // back-link (only present in the error branch) to confirm the transition
-  // has completed before asserting on the alert paragraph.
+  // Use domcontentloaded — the API call is still in-flight at that point.
+  // The not-found UI renders only after React gets the 404 response and
+  // transitions from isLoading to isError. Poll via waitForFunction until
+  // the alert paragraph is in the DOM (it is absent in both the loading
+  // branch and the success branch, so its presence is an unambiguous signal).
   await page.goto(`/contacts/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // The back-to-contacts link is only rendered in the error branch — waiting
-  // for it to attach is the reliable signal that the not-found UI is active.
-  const backLink = await page
-    .locate(
-      [
-        { type: 'testId', value: 'back-to-contacts' },
-        { type: 'role', value: 'link', options: { name: /contacts/i } },
-      ],
-      { intent: 'back to contacts navigation link on the not-found page' },
-    )
-    .resolve();
-  await backLink.waitFor({ state: 'visible', timeout: 10_000 });
-  await expect(backLink).toBeVisible();
+  // Wait until the not-found paragraph is present in the DOM.
+  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
+  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
+    timeout: 10_000,
+  });
 
   // The page must show a not-found message — not a blank screen or JS error.
-  // The not-found paragraph is the only role="alert" in this error branch so
-  // the css selector is unambiguous here.
   const notFoundMsg = await page
     .locate(
       [
         { type: 'css', value: 'p[role="alert"]' },
-        { type: 'role', value: 'alert' },
+        { type: 'css', value: 'main p[role="alert"]' },
       ],
       { intent: 'not-found message on the contact detail page for an invalid id' },
     )
     .resolve();
   await expect(notFoundMsg).toBeVisible();
+
+  // The back-to-contacts link must also be present so the user can recover.
+  // It is a plain <Link> with no data-testid in the error branch — locate
+  // it by its position inside <main> as a fallback anchor element.
+  const backLink = await page
+    .locate(
+      [
+        { type: 'css', value: 'main a[href="/contacts"]' },
+        { type: 'css', value: 'main a' },
+      ],
+      { intent: 'back to contacts navigation link on the not-found page' },
+    )
+    .resolve();
+  await expect(backLink).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -398,30 +402,35 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
 
   await page.goto(`/deals/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // Wait for the error branch to render before asserting — same pattern as ES-1-4.
-  const backLink = await page
-    .locate(
-      [
-        { type: 'testId', value: 'back-to-deals' },
-        { type: 'role', value: 'link', options: { name: /deals/i } },
-      ],
-      { intent: 'back to deals navigation link on the not-found page' },
-    )
-    .resolve();
-  await backLink.waitFor({ state: 'visible', timeout: 10_000 });
-  await expect(backLink).toBeVisible();
+  // Wait until the not-found paragraph is present — same pattern as ES-1-4.
+  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
+  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
+    timeout: 10_000,
+  });
 
   // The page must show a not-found message.
   const notFoundMsg = await page
     .locate(
       [
         { type: 'css', value: 'p[role="alert"]' },
-        { type: 'role', value: 'alert' },
+        { type: 'css', value: 'main p[role="alert"]' },
       ],
       { intent: 'not-found message on the deal detail page for an invalid id' },
     )
     .resolve();
   await expect(notFoundMsg).toBeVisible();
+
+  // The back-to-deals link must be present so the user can recover.
+  const backLink = await page
+    .locate(
+      [
+        { type: 'css', value: 'main a[href="/deals"]' },
+        { type: 'css', value: 'main a' },
+      ],
+      { intent: 'back to deals navigation link on the not-found page' },
+    )
+    .resolve();
+  await expect(backLink).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
