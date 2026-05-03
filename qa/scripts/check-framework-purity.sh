@@ -11,7 +11,9 @@
 # The FORBIDDEN array below lists known-bad strings grouped by contamination
 # category.  Each group has a comment explaining what it catches and why.
 # Currently guarded categories:
-#   1. MiniCRM brand names           — "minicrm", "MiniCRM"
+#   1. MiniCRM brand names (case-insensitive) — any variation of "minicrm":
+#      "minicrm", "MiniCRM", "MINICRM", "MINCRM_SUITE_NAME", etc.
+#      Matched via grep -i so no casing escapes the check.
 #   2. CRM pipeline stage names      — "Prospecting", "Qualification", …
 #   3. MiniCRM API route paths       — /api/contacts, /api/deals, …
 #   4. CRM i18n namespace prefixes   — contacts., accounts., deals., …
@@ -52,13 +54,12 @@ FRAMEWORK_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/framework"
 
 FORBIDDEN=(
   # -------------------------------------------------------------------------
-  # 1. MiniCRM brand names and ticket references — these should never appear
-  #    in product-agnostic code. MINCRM- catches any Jira ticket reference
-  #    (e.g. MINCRM-126, MINCRM-213).
+  # 1. MiniCRM brand name — case-insensitive extended-regex catches every
+  #    variation of both roots: "minicrm", "MiniCRM", "MINICRM", "mincrm",
+  #    "MINCRM_FOO", "MINCRM-123", etc.
+  #    Prefix "CIE:" signals the loop to use grep -E -i for this entry.
   # -------------------------------------------------------------------------
-  "minicrm"
-  "MiniCRM"
-  "MINCRM-"
+  "CIE:mini?crm"
 
   # -------------------------------------------------------------------------
   # 2. CRM pipeline stage names — hardcoded stage strings belong in app helpers
@@ -125,7 +126,7 @@ for term in "${FORBIDDEN[@]}"; do
   # i18n namespace prefixes (group 4) are dot-anchored extended-regex patterns.
   # locale.ts is the locale lookup table and legitimately contains these keys as
   # data — exclude it; all other framework files must not reference them.
-  # All other forbidden terms are plain-string checked across all .ts files.
+  # All other forbidden terms are plain-string checked across all file types.
   if [[ "$term" =~ \\\. ]]; then
     # Dot-anchored i18n prefix — use -E (extended regex) and exclude locale.ts.
     # Scans all file types so README.md and other non-TS files are covered.
@@ -133,6 +134,13 @@ for term in "${FORBIDDEN[@]}"; do
         --exclude="locale.ts" \
         "$term" "$FRAMEWORK_DIR" 2>/dev/null; then
       echo "ERROR: CRM i18n namespace prefix '$term' found in framework/ (outside locale.ts)"
+      FOUND=1
+    fi
+  elif [[ "$term" == CIE:* ]]; then
+    # Case-insensitive extended-regex match — strip the "CIE:" prefix before grepping.
+    pattern="${term#CIE:}"
+    if grep -rn -E -i "$pattern" "$FRAMEWORK_DIR" 2>/dev/null; then
+      echo "ERROR: application-domain string '$pattern' (any case) found in framework/"
       FOUND=1
     fi
   else
