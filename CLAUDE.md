@@ -432,20 +432,23 @@ npm test --workspace=minicrm-client   # if client/ changed
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
 ```
 
-The E2E suite requires the application to be running locally (server + client dev servers)
-before invoking the command. Start them first if they are not already up.
+The E2E suite requires the application to be running locally. The client dev server and the
+dedicated E2E app server (port 3002) must both be up before invoking the command. Start the
+e2e Compose profile and run `npm run e2e:setup` if you have not done so this session.
 
 #### E2E session setup (once per session, not before every push)
 
-Attachment and email-delivery tests depend on MinIO and Mailhog. Start both services once
-per local development session before running the suite, then run the setup script to create
-the MinIO bucket and seed system_settings (MINCRM-317, MINCRM-318):
+The e2e Compose profile starts the dedicated E2E app server (port 3002, `DB_NAME=minicrm_e2e`),
+MinIO, and Mailhog. `E2E_API_URL` in `qa/e2e/.env` must be `http://localhost:3002` so that
+Playwright targets this server and never touches the main `minicrm` database.
+(MINCRM-317, MINCRM-318, MINCRM-330)
 
 ```bash
-# Start MinIO + Mailhog via the e2e Compose profile (once per session)
+# Start server-e2e, MinIO + Mailhog via the e2e Compose profile (once per session)
 docker compose -f docker-compose.dev.yml --profile e2e up -d
 
-# Initialise the bucket and seed storage config into system_settings (once per session)
+# Create minicrm_e2e DB, run migrations, seed admin user, create MinIO bucket,
+# and seed storage config into system_settings (once per session)
 npm run e2e:setup
 ```
 
