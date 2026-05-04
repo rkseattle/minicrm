@@ -302,6 +302,15 @@ export async function dragDealToStage(
     }
     await context.page.reload();
     await boardPage.isLoaded();
+    // isLoaded() only waits for the board container element — deal cards are
+    // populated by a separate React Query fetch that completes after the container
+    // renders. Wait for this deal's card to appear anywhere in the board before
+    // getDealColumnSlug scans the columns, otherwise it returns null. (MINCRM-313)
+    await context.page.waitForFunction(
+      `document.querySelector('[data-testid="deal-card-${dealId}"]') !== null`,
+      undefined,
+      { timeout: 15_000 },
+    );
   } else {
     // Non-terminal drag: DOM settles quickly; waitForFunction is sufficient.
     // Do NOT swallow the timeout — a null result from getDealColumnSlug is a real failure.
