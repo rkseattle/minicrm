@@ -12,7 +12,6 @@
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
 
@@ -23,7 +22,6 @@ import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
 /** Fixtures required by deal behaviors. */
 export interface DealsBehaviorContext {
   page: PageFacade;
-  restClient?: RestClient;
 }
 
 // ---------------------------------------------------------------------------
@@ -280,47 +278,17 @@ export async function dragDealToStage(
     await modal.waitFor({ state: 'hidden', timeout: 8_000 });
   }
 
-  if (isTerminal) {
-    // For terminal stages the board only re-renders once React Query's onSettled
-    // invalidation and re-fetch resolves. Under CI concurrent load that can take
-    // well over 15 s, making DOM polling unreliable. Poll the REST API instead —
-    // the DB write is synchronous with the modal confirm, so the API reflects the
-    // new stage immediately. Reload the page after confirmation so the board DOM
-    // is settled before getDealColumnSlug runs. (MINCRM-313)
-    if (!context.restClient) {
-      throw new Error(
-        'dragDealToStage: restClient is required in DealsBehaviorContext for terminal-stage drags',
-      );
-    }
-    const deadline = Date.now() + 20_000;
-    while (Date.now() < deadline) {
-      const resp = await context.restClient.get<{ deal: { stage: string } }>(
-        `/api/v1/deals/${dealId}`,
-      );
-      if (resp.body.deal.stage === targetStage) break;
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    await context.page.reload();
-    await boardPage.isLoaded();
-    // isLoaded() only waits for the board container element — deal cards are
-    // populated by a separate React Query fetch that completes after the container
-    // renders. Wait for this deal's card to appear anywhere in the board before
-    // getDealColumnSlug scans the columns, otherwise it returns null. (MINCRM-313)
-    await context.page.waitForFunction(
-      `document.querySelector('[data-testid="deal-card-${dealId}"]') !== null`,
-      undefined,
-      { timeout: 15_000 },
-    );
-  } else {
-    // Non-terminal drag: DOM settles quickly; waitForFunction is sufficient.
-    // Do NOT swallow the timeout — a null result from getDealColumnSlug is a real failure.
-    const cardSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
-    await context.page.waitForFunction(
-      `document.querySelector(${JSON.stringify(cardSelector)}) !== null`,
-      undefined,
-      { timeout: 15_000 },
-    );
-  }
+  // Wait for the card to appear in the target column. For terminal stages this
+  // implicitly waits for the React Query refetch triggered by the mutation's
+  // onSettled to complete. 25s gives the refetch room to settle under CI concurrent
+  // load. A reload cycle was tried previously but consumed too much of the 30s test
+  // budget even when every step succeeded. (MINCRM-313)
+  const cardInTargetSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
+  await context.page.waitForFunction(
+    `document.querySelector(${JSON.stringify(cardInTargetSelector)}) !== null`,
+    undefined,
+    { timeout: 25_000 },
+  );
 
   const columnSlug = await boardPage.getDealColumnSlug(dealId);
   return { closeDealModalOpened, columnSlug };
