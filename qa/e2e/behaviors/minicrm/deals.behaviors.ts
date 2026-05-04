@@ -224,7 +224,7 @@ export async function dragDealToStage(
     target.dispatchEvent(new DragEvent('dragover',  { bubbles: true, cancelable: true, dataTransfer: dt }));
     target.dispatchEvent(new DragEvent('drop',      { bubbles: true, cancelable: true, dataTransfer: dt }));
     source.dispatchEvent(new DragEvent('dragend',   { bubbles: true, cancelable: true, dataTransfer: dt }));
-  })(`);
+  })()`);
 
   let closeDealModalOpened = false;
 

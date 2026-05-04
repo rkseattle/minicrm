@@ -184,7 +184,22 @@ export class ContactsPage {
     ]);
     // Wait for React to flush the selection state update. The bulk-action-bar
     // appearing in the DOM is the authoritative signal that toggleRow has run.
-    const bar = await this.page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve();
+    // waitForFunction polls until the element exists before locate().resolve(),
+    // because resolve() throws StrategyExhaustedError immediately when absent.
+    await this.page.waitForFunction(
+      `document.querySelector('[data-testid="bulk-action-bar"]') !== null`,
+      undefined,
+      { timeout: 5_000 },
+    );
+    const bar = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'bulk-action-bar' },
+          { type: 'css', value: '[data-testid="bulk-action-bar"]' },
+        ],
+        { intent: 'floating action bar that appears when contacts are selected' },
+      )
+      .resolve();
     await bar.waitFor({ state: 'visible' });
   }
 
