@@ -348,13 +348,11 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   });
 
   // Wait for the attachment list to show the row.
-  // Prefix-match CSS is used because the testId includes a dynamic attachment ID;
-  // a role fallback is added as the second strategy since the download is an <a> link.
+  // Prefix-match CSS targets a dynamic attachment ID; role: link is too broad
+  // (matches all nav links) so single-strategy is the only safe option here.
+  // eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
   const downloadLink = await page
-    .locate([
-      { type: 'css', value: '[data-testid^="attachment-download-"]' },
-      { type: 'role', value: 'link' },
-    ])
+    .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
     .resolve();
   await expect(downloadLink).toBeVisible({ timeout: 10_000 });
 
