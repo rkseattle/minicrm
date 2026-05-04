@@ -348,14 +348,26 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   let isSortVisible = false;
   try {
     const sortButton = await page
-      .locate([{ type: 'testId', value: 'contacts-sort-name' }])
+      .locate(
+        [
+          { type: 'testId', value: 'contacts-sort-name' },
+          { type: 'role', value: 'columnheader', options: { name: /first name/i } },
+        ],
+        { intent: 'column header button to sort contacts by first name' },
+      )
       .resolve();
     isSortVisible = await sortButton.isVisible();
   } catch {
     // Element absent at this viewport — mobile layout has no sort headers.
   }
   if (isSortVisible) {
-    await page.click([{ type: 'testId', value: 'contacts-sort-name' }]);
+    await page.click(
+      [
+        { type: 'testId', value: 'contacts-sort-name' },
+        { type: 'role', value: 'columnheader', options: { name: /first name/i } },
+      ],
+      { intent: 'column header button to sort contacts by first name' },
+    );
     await page.waitForLoadState('networkidle');
   }
 

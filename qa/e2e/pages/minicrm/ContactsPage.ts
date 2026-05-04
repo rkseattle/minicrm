@@ -200,7 +200,9 @@ export class ContactsPage {
         { intent: 'floating action bar that appears when contacts are selected' },
       )
       .resolve();
-    await bar.waitFor({ state: 'visible' });
+    // 5 s matches the waitForFunction guard above — prevents 30 s default consuming
+    // the full test budget on mobile where the bar may render more slowly. (MINCRM-298)
+    await bar.waitFor({ state: 'visible', timeout: 5_000 });
   }
 
   /**
