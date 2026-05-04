@@ -273,7 +273,9 @@ export async function dragDealToStage(
       { intent: 'confirm button in the close deal modal' },
     );
 
-    await modal.waitFor({ state: 'hidden' });
+    // Explicit timeout matches the appear-guard above — prevents undismissed modal
+    // from silently consuming the full 30s test budget on a slow CI runner. (MINCRM-298)
+    await modal.waitFor({ state: 'hidden', timeout: 8_000 });
   }
 
   // Wait for the card to appear in the target column. Use waitForFunction rather
