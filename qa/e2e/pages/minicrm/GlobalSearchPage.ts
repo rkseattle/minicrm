@@ -73,10 +73,13 @@ export class GlobalSearchPage {
     // isVisible() does not throw on multi-match — it returns true if any match
     // is visible, which is the behaviour we need here.
     const anyInput = await this.page
-      .locate([
-        { type: 'testId', value: 'global-search-input' },
-        { type: 'css', value: '[data-testid="global-search-input"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'global-search-input' },
+          { type: 'css', value: '[data-testid="global-search-input"]' },
+        ],
+        { intent: 'global search input in navigation header' },
+      )
       .resolve();
 
     const isVisible = await anyInput.isVisible().catch(() => false);
@@ -95,39 +98,59 @@ export class GlobalSearchPage {
     // container is not mounted yet, so probeLocator times out and resolves to
     // false, falling through to the toggle-click path below.
     const drawerInputAlreadyVisible = await this.page
-      .locate([
-        { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
-      ])
-      .resolve()
-      .then((el) => el.isVisible().catch(() => false))
-      .catch(() => false);
-
-    if (drawerInputAlreadyVisible) {
-      return this.page
-        .locate([
+      .locate(
+        [
           { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
           {
             type: 'css',
             value: '[data-testid="global-search-input"]',
             within: 'mobile-nav-drawer',
           },
-        ])
+        ],
+        { intent: 'global search input inside mobile nav drawer' },
+      )
+      .resolve()
+      .then((el) => el.isVisible().catch(() => false))
+      .catch(() => false);
+
+    if (drawerInputAlreadyVisible) {
+      return this.page
+        .locate(
+          [
+            { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
+            {
+              type: 'css',
+              value: '[data-testid="global-search-input"]',
+              within: 'mobile-nav-drawer',
+            },
+          ],
+          { intent: 'global search input inside open mobile nav drawer' },
+        )
         .resolve();
     }
 
     // Drawer is not open — click the menu toggle to mount and reveal it,
     // then resolve the input scoped to the drawer via `within`.
-    await this.page.click([
-      { type: 'testId', value: 'nav-menu-toggle' },
-      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'nav-menu-toggle' },
+        { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+      ],
+      { intent: 'mobile nav menu toggle button' },
+    );
 
     return this.page
-      .locate([
-        { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="global-search-input"]', within: 'mobile-nav-drawer' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'global-search-input', within: 'mobile-nav-drawer' },
+          {
+            type: 'css',
+            value: '[data-testid="global-search-input"]',
+            within: 'mobile-nav-drawer',
+          },
+        ],
+        { intent: 'global search input after opening mobile nav drawer' },
+      )
       .resolve();
   }
 
@@ -182,10 +205,13 @@ export class GlobalSearchPage {
     // Wait for the panel to disappear so the next typeQuery starts clean.
     try {
       const panel = await this.page
-        .locate([
-          { type: 'testId', value: 'search-results-panel' },
-          { type: 'css', value: '[data-testid="search-results-panel"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-results-panel' },
+            { type: 'css', value: '[data-testid="search-results-panel"]' },
+          ],
+          { intent: 'global search results dropdown panel' },
+        )
         .resolve();
       await panel.waitFor({ state: 'hidden', timeout });
     } catch {
@@ -200,10 +226,13 @@ export class GlobalSearchPage {
    * @param id - Entity UUID.
    */
   async clickResult(entity: 'contact' | 'account' | 'deal', id: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `search-result-${entity}-${id}` },
-      { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `search-result-${entity}-${id}` },
+        { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
+      ],
+      { intent: `search result link for ${entity} record` },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -218,10 +247,13 @@ export class GlobalSearchPage {
   async panelIsVisible(timeout = 5_000): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'search-results-panel' },
-          { type: 'css', value: '[data-testid="search-results-panel"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-results-panel' },
+            { type: 'css', value: '[data-testid="search-results-panel"]' },
+          ],
+          { intent: 'global search results dropdown panel' },
+        )
         .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
@@ -244,10 +276,13 @@ export class GlobalSearchPage {
   ): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: `search-result-${entity}-${id}` },
-          { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `search-result-${entity}-${id}` },
+            { type: 'css', value: `[data-testid="search-result-${entity}-${id}"]` },
+          ],
+          { intent: `search result entry for ${entity} record` },
+        )
         .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
@@ -264,10 +299,13 @@ export class GlobalSearchPage {
   async emptyStateIsVisible(timeout = 10_000): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'search-empty-state' },
-          { type: 'css', value: '[data-testid="search-empty-state"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-empty-state' },
+            { type: 'css', value: '[data-testid="search-empty-state"]' },
+          ],
+          { intent: 'empty state message in search results panel' },
+        )
         .resolve();
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
@@ -282,10 +320,13 @@ export class GlobalSearchPage {
   async emptyStateText(): Promise<string | null> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'search-empty-state' },
-          { type: 'css', value: '[data-testid="search-empty-state"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-empty-state' },
+            { type: 'css', value: '[data-testid="search-empty-state"]' },
+          ],
+          { intent: 'empty state message in search results panel' },
+        )
         .resolve();
       return resolved.textContent();
     } catch {
@@ -299,10 +340,13 @@ export class GlobalSearchPage {
   async minLengthHintIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'search-min-length-hint' },
-          { type: 'css', value: '[data-testid="search-min-length-hint"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-min-length-hint' },
+            { type: 'css', value: '[data-testid="search-min-length-hint"]' },
+          ],
+          { intent: 'hint shown when search query is too short' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -322,10 +366,13 @@ export class GlobalSearchPage {
   async waitForMinLengthHintHidden(timeout = 5_000): Promise<void> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'search-min-length-hint' },
-          { type: 'css', value: '[data-testid="search-min-length-hint"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'search-min-length-hint' },
+            { type: 'css', value: '[data-testid="search-min-length-hint"]' },
+          ],
+          { intent: 'hint shown when search query is too short' },
+        )
         .resolve();
       await resolved.waitFor({ state: 'hidden', timeout });
     } catch {
@@ -339,10 +386,13 @@ export class GlobalSearchPage {
   async noErrorAlertVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'role', value: 'alert' },
-          { type: 'css', value: '[role="alert"]' },
-        ])
+        .locate(
+          [
+            { type: 'role', value: 'alert' },
+            { type: 'css', value: '[role="alert"]' },
+          ],
+          { intent: 'error alert element on the page' },
+        )
         .resolve();
       return !(await resolved.isVisible().catch(() => false));
     } catch {
@@ -361,13 +411,21 @@ export class GlobalSearchPage {
       // rather than calling .locator() on a resolved SafeLocator (forbidden —
       // child locator factories escape the healing framework). MINCRM-234
       const spinner = await this.page
-        .locate([
-          {
-            type: 'css',
-            value: '[role="progressbar"], [aria-busy="true"]',
-            within: 'search-results-panel',
-          },
-        ])
+        .locate(
+          [
+            {
+              type: 'css',
+              value: '[role="progressbar"], [aria-busy="true"]',
+              within: 'search-results-panel',
+            },
+            {
+              type: 'css',
+              value: '[aria-busy="true"]',
+              within: 'search-results-panel',
+            },
+          ],
+          { intent: 'loading spinner inside search results panel' },
+        )
         .resolve();
       return !(await spinner.isVisible().catch(() => false));
     } catch {

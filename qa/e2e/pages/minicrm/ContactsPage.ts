@@ -65,10 +65,13 @@ export class ContactsPage {
    * Clicks the "New Contact" button to open the contact creation form.
    */
   async clickNewContact(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'new-contact-button' },
-      { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'new-contact-button' },
+        { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
+      ],
+      { intent: 'button to open new contact creation form' },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -85,17 +88,20 @@ export class ContactsPage {
     await this.page.waitForLoadState('networkidle');
     try {
       const resolved = await this.page
-        .locate([
-          {
-            type: 'css',
-            value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
-          },
-          {
-            type: 'xpath',
-            value:
-              '//*[starts-with(@data-testid,"contact-link-") or starts-with(@data-testid,"contact-card-link-")]',
-          },
-        ])
+        .locate(
+          [
+            {
+              type: 'css',
+              value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+            },
+            {
+              type: 'xpath',
+              value:
+                '//*[starts-with(@data-testid,"contact-link-") or starts-with(@data-testid,"contact-card-link-")]',
+            },
+          ],
+          { intent: 'contact row links in the contacts list' },
+        )
         .resolve();
       return resolved.count();
     } catch {
@@ -114,10 +120,13 @@ export class ContactsPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'new-contact-button' },
-          { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'new-contact-button' },
+            { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
+          ],
+          { intent: 'new contact button indicating contacts page is loaded' },
+        )
         .resolve();
       return true;
     } catch {
@@ -141,10 +150,13 @@ export class ContactsPage {
    */
   async waitForContact(id: string): Promise<void> {
     await this.page
-      .locate([
-        { type: 'testId', value: `contact-link-${id}` },
-        { type: 'testId', value: `contact-card-link-${id}` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `contact-link-${id}` },
+          { type: 'testId', value: `contact-card-link-${id}` },
+        ],
+        { intent: 'contact row link for specific contact id' },
+      )
       .resolve();
   }
 
@@ -163,7 +175,7 @@ export class ContactsPage {
           { type: 'testId', value: `bulk-select-${id}` },
           { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
         ],
-        { fallbackTimeout: timeout },
+        { fallbackTimeout: timeout, intent: 'bulk select checkbox for contact row' },
       )
       .resolve();
     await locator.waitFor({ state: 'visible', timeout });
@@ -178,10 +190,13 @@ export class ContactsPage {
    * @param id - The contact UUID whose checkbox to click.
    */
   async clickBulkCheckbox(id: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `bulk-select-${id}` },
-      { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `bulk-select-${id}` },
+        { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+      ],
+      { intent: 'bulk select checkbox for contact row' },
+    );
     // Wait for React to flush the selection state update. The bulk-action-bar
     // appearing in the DOM is the authoritative signal that toggleRow has run.
     // waitForFunction polls until the element exists before locate().resolve(),
@@ -213,10 +228,14 @@ export class ContactsPage {
    * @param term - The string to type into the search input.
    */
   async search(term: string): Promise<void> {
-    await this.page.fill(term, [
-      { type: 'testId', value: 'contacts-search' },
-      { type: 'css', value: '[data-testid="contacts-search"]' },
-    ]);
+    await this.page.fill(
+      term,
+      [
+        { type: 'testId', value: 'contacts-search' },
+        { type: 'css', value: '[data-testid="contacts-search"]' },
+      ],
+      { intent: 'contacts list search input field' },
+    );
     // Wait for the debounce to fire, the request to complete, and React to
     // repopulate the list — matches the pattern used in rowCount().
     await this.page.waitForLoadState('networkidle');

@@ -86,10 +86,13 @@ export class AdminSettingsPage {
   async emailNotificationsSectionIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'email-notifications-section' },
-          { type: 'text', value: t('settings.emailNotifications.sectionTitle') },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'email-notifications-section' },
+            { type: 'text', value: t('settings.emailNotifications.sectionTitle') },
+          ],
+          { intent: 'email notifications section on admin settings page' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -103,10 +106,13 @@ export class AdminSettingsPage {
   async emailNotificationsToggleIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'email-notif-toggle' },
-          { type: 'css', value: '[data-testid="email-notif-toggle"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'email-notif-toggle' },
+            { type: 'css', value: '[data-testid="email-notif-toggle"]' },
+          ],
+          { intent: 'email notifications on/off toggle switch' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -120,10 +126,13 @@ export class AdminSettingsPage {
   async emailNotificationsIsEnabled(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'email-notif-toggle' },
-          { type: 'css', value: '[data-testid="email-notif-toggle"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'email-notif-toggle' },
+            { type: 'css', value: '[data-testid="email-notif-toggle"]' },
+          ],
+          { intent: 'email notifications toggle to read enabled state' },
+        )
         .resolve();
       const ariaChecked = await resolved.getAttribute('aria-checked');
       return ariaChecked === 'true';
@@ -138,10 +147,13 @@ export class AdminSettingsPage {
   async recipientCountIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'email-notif-recipient-count' },
-          { type: 'css', value: '[data-testid="email-notif-recipient-count"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'email-notif-recipient-count' },
+            { type: 'css', value: '[data-testid="email-notif-recipient-count"]' },
+          ],
+          { intent: 'email notification recipient count display' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -155,10 +167,13 @@ export class AdminSettingsPage {
   async successMessageIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'email-notif-success' },
-          { type: 'css', value: '[data-testid="email-notif-success"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'email-notif-success' },
+            { type: 'css', value: '[data-testid="email-notif-success"]' },
+          ],
+          { intent: 'success message after saving email notification setting' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -181,9 +196,12 @@ export class AdminSettingsPage {
    * Clicks the email notifications toggle to switch its state.
    */
   async toggleEmailNotifications(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'email-notif-toggle' },
-      { type: 'css', value: '[data-testid="email-notif-toggle"]' },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'email-notif-toggle' },
+        { type: 'css', value: '[data-testid="email-notif-toggle"]' },
+      ],
+      { intent: 'email notifications on/off toggle switch' },
+    );
   }
 }

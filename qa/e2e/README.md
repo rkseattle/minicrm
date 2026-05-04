@@ -12,6 +12,38 @@ pages/       Page-object models
 tests/       Spec files — mirrors the structure above
 ```
 
+## Page Object Authoring Checklist
+
+Every `page.locate()` call in a page object (`pages/minicrm/*.ts`) must satisfy both rules
+or the ESLint `local/require-locator-intent` and `local/require-locator-fallback` rules will
+fail the lint phase:
+
+1. **Two strategies minimum** — the strategy array must contain at least two entries.
+   Primary is always `testId`; add a `role`, `label`, `text`, or `css` attribute fallback.
+2. **`intent` string required** — the second argument must be `{ intent: 'description' }`
+   (5–10 words describing what the locator is finding). This activates the AI healing tier
+   when all static strategies are exhausted.
+
+```ts
+// CORRECT
+const button = await this.page
+  .locate(
+    [
+      { type: 'testId', value: 'new-contact-button' },
+      { type: 'role', value: 'button', options: { name: /new contact/i } },
+    ],
+    { intent: 'button to open the new contact form' },
+  )
+  .resolve();
+
+// WRONG — single strategy, no intent
+const button = await this.page.locate([{ type: 'testId', value: 'new-contact-button' }]).resolve();
+```
+
+Spec files (`tests/apps/minicrm/**/*.spec.ts`) must also satisfy the two-strategy minimum
+for any `page.locate()` call. Dynamic row-scoped IDs (e.g. `deal-card-${id}`) may use a
+single `testId` strategy when no stable role-based fallback exists — add a comment explaining why.
+
 ## Smoke-Level Coverage
 
 Smoke-level (sanity) E2E coverage is provided by 10 smoke-tagged tests spread across the functional suite (MINCRM-193). These tests cover the critical end-to-end journeys — auth login/logout, contact create/list/edit, deal create/advance/close-Won, task create/complete, and user invite/first-login — and run first in Phase 3 CI. The framework integration test lives at `functional/framework/bvt-framework.spec.ts`.

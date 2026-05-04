@@ -81,11 +81,21 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
 
   await navigateToContact(page, contact.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'test-upload.txt',
     mimeType: 'text/plain',
@@ -94,7 +104,10 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
 
   // Wait for attachment row to appear
   const attachmentList = await page
-    .locate([{ type: 'testId', value: 'attachments-list' }])
+    .locate([
+      { type: 'testId', value: 'attachments-list' },
+      { type: 'css', value: '[data-testid="attachments-list"]' },
+    ])
     .resolve();
   await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
@@ -120,11 +133,21 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
 
   await navigateToAccount(page, account.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'account-doc.txt',
     mimeType: 'text/plain',
@@ -132,7 +155,12 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-list' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-list' },
+        { type: 'css', value: '[data-testid="attachments-list"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible', timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
@@ -153,11 +181,21 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
 
   await navigateToDeal(page, deal.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'deal-proposal.txt',
     mimeType: 'text/plain',
@@ -165,7 +203,12 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-list' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-list' },
+        { type: 'css', value: '[data-testid="attachments-list"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible', timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
@@ -185,11 +228,21 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
 
   await navigateToContact(page, contact.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'malware.exe',
     mimeType: 'application/octet-stream',
@@ -198,7 +251,12 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
 
   // Client-side guard should show an upload error
   await expect(
-    await page.locate([{ type: 'testId', value: 'attachments-upload-error' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-upload-error' },
+        { type: 'css', value: '[data-testid="attachments-upload-error"]' },
+      ])
+      .resolve(),
   ).toBeVisible({
     timeout: 5_000,
   });
@@ -219,14 +277,24 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
 
   await navigateToContact(page, contact.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   // 26 MB — exceeds the 25 MB server limit; client guard fires first
   const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, 'x');
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'huge-file.pdf',
     mimeType: 'application/pdf',
@@ -234,7 +302,12 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   });
 
   await expect(
-    await page.locate([{ type: 'testId', value: 'attachments-upload-error' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-upload-error' },
+        { type: 'css', value: '[data-testid="attachments-upload-error"]' },
+      ])
+      .resolve(),
   ).toBeVisible({
     timeout: 5_000,
   });
@@ -253,20 +326,35 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
 
   await navigateToContact(page, contact.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'download-test.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('downloadable content'),
   });
 
-  // Wait for the attachment list to show the row
+  // Wait for the attachment list to show the row.
+  // Prefix-match CSS is used because the testId includes a dynamic attachment ID;
+  // a role fallback is added as the second strategy since the download is an <a> link.
   const downloadLink = await page
-    .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
+    .locate([
+      { type: 'css', value: '[data-testid^="attachment-download-"]' },
+      { type: 'role', value: 'link' },
+    ])
     .resolve();
   await expect(downloadLink).toBeVisible({ timeout: 10_000 });
 
@@ -300,11 +388,21 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 
   await navigateToContact(page, contact.id);
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-section' },
+        { type: 'css', value: '[data-testid="attachments-section"]' },
+      ])
+      .resolve()
   ).waitFor({ state: 'visible' });
 
   await (
-    await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-file-input' },
+        { type: 'css', value: '[data-testid="attachments-file-input"]' },
+      ])
+      .resolve()
   ).setInputFiles({
     name: 'to-be-deleted.txt',
     mimeType: 'text/plain',
@@ -313,7 +411,12 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 
   // Wait for the upload to complete before querying the API for the attachment ID
   await expect(
-    await page.locate([{ type: 'testId', value: 'attachments-list' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'attachments-list' },
+        { type: 'css', value: '[data-testid="attachments-list"]' },
+      ])
+      .resolve(),
   ).toBeVisible({ timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
@@ -326,7 +429,10 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 
   // Click delete button for this attachment
   const deleteButton = await page
-    .locate([{ type: 'testId', value: `attachment-delete-${attachmentId}` }])
+    .locate([
+      { type: 'testId', value: `attachment-delete-${attachmentId}` },
+      { type: 'css', value: `[data-testid="attachment-delete-${attachmentId}"]` },
+    ])
     .resolve();
   await expect(deleteButton).toBeVisible({ timeout: 10_000 });
   await deleteButton.click();
@@ -370,11 +476,21 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   try {
     await navigateToContact(page, contact.id);
     await (
-      await page.locate([{ type: 'testId', value: 'attachments-section' }]).resolve()
+      await page
+        .locate([
+          { type: 'testId', value: 'attachments-section' },
+          { type: 'css', value: '[data-testid="attachments-section"]' },
+        ])
+        .resolve()
     ).waitFor({ state: 'visible' });
 
     await (
-      await page.locate([{ type: 'testId', value: 'attachments-file-input' }]).resolve()
+      await page
+        .locate([
+          { type: 'testId', value: 'attachments-file-input' },
+          { type: 'css', value: '[data-testid="attachments-file-input"]' },
+        ])
+        .resolve()
     ).setInputFiles({
       name: 'admin-uploaded.txt',
       mimeType: 'text/plain',
@@ -383,7 +499,12 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
 
     // Wait for the upload to complete before querying the API for the attachment ID
     await expect(
-      await page.locate([{ type: 'testId', value: 'attachments-list' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'attachments-list' },
+          { type: 'css', value: '[data-testid="attachments-list"]' },
+        ])
+        .resolve(),
     ).toBeVisible({ timeout: 10_000 });
 
     const listResponse = await restClient.get<AttachmentListResponse>(

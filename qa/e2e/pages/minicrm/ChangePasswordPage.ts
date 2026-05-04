@@ -74,14 +74,18 @@ export class ChangePasswordPage {
    * @param password - The user's current (old) password.
    */
   async fillCurrentPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'change-password-current' },
-      {
-        type: 'label',
-        value: t('changePassword.currentPasswordLabel'),
-        options: { exact: true },
-      },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'change-password-current' },
+        {
+          type: 'label',
+          value: t('changePassword.currentPasswordLabel'),
+          options: { exact: true },
+        },
+      ],
+      { intent: 'current password input on change password form' },
+    );
   }
 
   /**
@@ -90,10 +94,14 @@ export class ChangePasswordPage {
    * @param password - The desired new password.
    */
   async fillNewPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'change-password-new' },
-      { type: 'label', value: t('changePassword.newPasswordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'change-password-new' },
+        { type: 'label', value: t('changePassword.newPasswordLabel'), options: { exact: true } },
+      ],
+      { intent: 'new password input on change password form' },
+    );
   }
 
   /**
@@ -102,28 +110,35 @@ export class ChangePasswordPage {
    * @param password - Must match the value supplied to fillNewPassword().
    */
   async fillConfirmPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'change-password-confirm' },
-      {
-        type: 'label',
-        value: t('changePassword.confirmPasswordLabel'),
-        options: { exact: true },
-      },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'change-password-confirm' },
+        {
+          type: 'label',
+          value: t('changePassword.confirmPasswordLabel'),
+          options: { exact: true },
+        },
+      ],
+      { intent: 'confirm new password input on change password form' },
+    );
   }
 
   /**
    * Clicks the submit button to attempt a password change.
    */
   async submit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'change-password-submit' },
-      {
-        type: 'role',
-        value: 'button',
-        options: { name: t('changePassword.submitButton'), exact: true },
-      },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'change-password-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('changePassword.submitButton'), exact: true },
+        },
+      ],
+      { intent: 'submit button to save changed password' },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -139,10 +154,13 @@ export class ChangePasswordPage {
    * @returns Error message text, or null when no alert is present.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.page.locate([
-      { type: 'role', value: 'alert' },
-      { type: 'css', value: '[role="alert"]' },
-    ]);
+    const locator = this.page.locate(
+      [
+        { type: 'role', value: 'alert' },
+        { type: 'css', value: '[role="alert"]' },
+      ],
+      { intent: 'error alert message on change password form' },
+    );
     try {
       const resolved = await locator.resolve();
       const count = await resolved.count();
@@ -161,10 +179,13 @@ export class ChangePasswordPage {
    */
   async contextBannerVisible(): Promise<boolean> {
     return this.page
-      .locate([
-        { type: 'testId', value: 'change-password-context-banner' },
-        { type: 'css', value: '[data-testid="change-password-context-banner"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'change-password-context-banner' },
+          { type: 'css', value: '[data-testid="change-password-context-banner"]' },
+        ],
+        { intent: 'admin-set-password notice banner on change password page' },
+      )
       .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);

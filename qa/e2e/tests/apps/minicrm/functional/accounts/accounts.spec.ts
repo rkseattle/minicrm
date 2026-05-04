@@ -239,12 +239,18 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   // pattern as contacts.spec.ts searchContacts behavior).
   await Promise.race([
     page
-      .locate([{ type: 'css', value: '[data-testid^="account-link-"]' }])
+      .locate([
+        { type: 'css', value: '[data-testid^="account-link-"]' },
+        { type: 'role', value: 'link' },
+      ])
       .resolve()
       .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
       .catch(() => null),
     page
-      .locate([{ type: 'text', value: t('accounts.empty') }])
+      .locate([
+        { type: 'text', value: t('accounts.empty') },
+        { type: 'css', value: '[data-testid="accounts-empty-state"]' },
+      ])
       .resolve()
       .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
       .catch(() => null),
@@ -258,7 +264,12 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 
   // The empty state paragraph should now be visible.
   await expect(
-    await page.locate([{ type: 'text', value: t('accounts.empty') }]).resolve(),
+    await page
+      .locate([
+        { type: 'text', value: t('accounts.empty') },
+        { type: 'css', value: '[data-testid="accounts-empty-state"]' },
+      ])
+      .resolve(),
     'empty state text should be visible',
   ).toBeVisible();
 });
@@ -433,7 +444,10 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
   // The linked contacts list should contain the contact.
   const linkedContactLocator = await page
-    .locate([{ type: 'testId', value: `linked-contact-${contact.id}` }])
+    .locate([
+      { type: 'testId', value: `linked-contact-${contact.id}` },
+      { type: 'css', value: `[data-testid="linked-contact-${contact.id}"]` },
+    ])
     .resolve();
   await expect(
     linkedContactLocator,
@@ -454,7 +468,10 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
 
   // Empty state should be visible, no error.
   const emptyLocator = await page
-    .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
+    .locate([
+      { type: 'testId', value: 'linked-contacts-empty' },
+      { type: 'css', value: '[data-testid="linked-contacts-empty"]' },
+    ])
     .resolve();
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
@@ -484,7 +501,10 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
 
   // After unlinking, the linked contacts list should be empty.
   const emptyLocator = await page
-    .locate([{ type: 'testId', value: 'linked-contacts-empty' }])
+    .locate([
+      { type: 'testId', value: 'linked-contacts-empty' },
+      { type: 'css', value: '[data-testid="linked-contacts-empty"]' },
+    ])
     .resolve();
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 

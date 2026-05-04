@@ -82,10 +82,13 @@ export class ProfilePage {
   async isLoaded(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'profile-heading' },
-          { type: 'css', value: '[data-testid="profile-heading"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'profile-heading' },
+            { type: 'css', value: '[data-testid="profile-heading"]' },
+          ],
+          { intent: 'profile page heading indicating page is loaded' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -99,10 +102,13 @@ export class ProfilePage {
   async notificationsSectionIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'profile-notifications-section' },
-          { type: 'css', value: '[data-testid="profile-notifications-section"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'profile-notifications-section' },
+            { type: 'css', value: '[data-testid="profile-notifications-section"]' },
+          ],
+          { intent: 'notification preferences section on profile page' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -118,10 +124,13 @@ export class ProfilePage {
   async checkboxIsVisible(key: NotificationPreferenceKey): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: `notif-checkbox-${key}` },
-          { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `notif-checkbox-${key}` },
+            { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
+          ],
+          { intent: `notification preference checkbox for ${key}` },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -137,10 +146,13 @@ export class ProfilePage {
   async checkboxIsChecked(key: NotificationPreferenceKey): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: `notif-checkbox-${key}` },
-          { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `notif-checkbox-${key}` },
+            { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
+          ],
+          { intent: `notification preference checkbox for ${key}` },
+        )
         .resolve();
       return resolved.isChecked();
     } catch {
@@ -154,10 +166,13 @@ export class ProfilePage {
   async successMessageIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'profile-prefs-success' },
-          { type: 'css', value: '[data-testid="profile-prefs-success"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'profile-prefs-success' },
+            { type: 'css', value: '[data-testid="profile-prefs-success"]' },
+          ],
+          { intent: 'success message after saving profile preferences' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -182,10 +197,13 @@ export class ProfilePage {
    * @param key - Notification preference key.
    */
   async togglePreference(key: NotificationPreferenceKey): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `notif-checkbox-${key}` },
-      { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `notif-checkbox-${key}` },
+        { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
+      ],
+      { intent: `notification preference checkbox for ${key}` },
+    );
   }
 
   /**
@@ -196,10 +214,13 @@ export class ProfilePage {
    */
   async uncheckPreference(key: NotificationPreferenceKey): Promise<void> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: `notif-checkbox-${key}` },
-        { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `notif-checkbox-${key}` },
+          { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
+        ],
+        { intent: `notification preference checkbox to uncheck for ${key}` },
+      )
       .resolve();
     await resolved.uncheck();
   }
@@ -212,10 +233,13 @@ export class ProfilePage {
    */
   async checkPreference(key: NotificationPreferenceKey): Promise<void> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: `notif-checkbox-${key}` },
-        { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `notif-checkbox-${key}` },
+          { type: 'css', value: `[data-testid="notif-checkbox-${key}"]` },
+        ],
+        { intent: `notification preference checkbox to check for ${key}` },
+      )
       .resolve();
     await resolved.check();
   }
@@ -224,9 +248,12 @@ export class ProfilePage {
    * Clicks the "Save" button to persist notification preferences.
    */
   async savePreferences(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'profile-prefs-save' },
-      { type: 'role', value: 'button', options: { name: t('profile.save'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'profile-prefs-save' },
+        { type: 'role', value: 'button', options: { name: t('profile.save'), exact: false } },
+      ],
+      { intent: 'save button to persist notification preferences' },
+    );
   }
 }

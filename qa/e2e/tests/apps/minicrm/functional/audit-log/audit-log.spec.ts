@@ -116,18 +116,33 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   // Navigate to audit log
   await page.goto('/admin/audit-log');
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-heading' },
+        { type: 'role', value: 'heading', options: { name: /audit log/i } },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Filter by record type = contact so the list is manageable
   await (
-    await page.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
   ).selectOption('contact');
   await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
   // The audit list should show at least one entry
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-list' },
+        { type: 'css', value: '[data-testid="audit-log-list"]' },
+      ])
+      .resolve(),
   ).toBeVisible({ timeout: 10_000 });
 
   // Verify via API that the entry exists
@@ -157,17 +172,32 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 
   await page.goto('/admin/audit-log');
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-heading' },
+        { type: 'role', value: 'heading', options: { name: /audit log/i } },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Filter to account only
   await (
-    await page.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
   ).selectOption('account');
   await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-list' },
+        { type: 'css', value: '[data-testid="audit-log-list"]' },
+      ])
+      .resolve(),
   ).toBeVisible({ timeout: 10_000 });
 
   // Check via API that the filtered results only contain account entries
@@ -215,18 +245,34 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // Navigate to the audit log page and verify the entry is renderable in the UI
   await page.goto('/admin/audit-log');
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-heading' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-heading' },
+        { type: 'role', value: 'heading', options: { name: /audit log/i } },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   await (
-    await page.locate([{ type: 'testId', value: 'filter-record-type' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
   ).selectOption('contact');
   await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
   await expect(
-    await page.locate([{ type: 'testId', value: 'audit-log-list' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-list' },
+        { type: 'css', value: '[data-testid="audit-log-list"]' },
+      ])
+      .resolve(),
   ).toBeVisible({ timeout: 10_000 });
 
   // If the specific row is on the first page, expand it and verify the detail section
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
   const expandButton = await page
     .locate([{ type: 'testId', value: `audit-log-row-button-${firstNameEntry.id}` }])
     .resolve();
@@ -234,6 +280,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   if (isVisible) {
     await expandButton.click();
     await expect(
+      // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
       await page
         .locate([{ type: 'testId', value: `audit-log-detail-${firstNameEntry.id}` }])
         .resolve(),

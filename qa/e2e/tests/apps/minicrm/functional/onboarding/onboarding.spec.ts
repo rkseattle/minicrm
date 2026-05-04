@@ -64,7 +64,12 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await setOnboardingCompleted(false, restClient);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+    const banner = await page
+      .locate([
+        { type: 'testId', value: 'onboarding-banner' },
+        { type: 'css', value: '[data-testid="onboarding-banner"]' },
+      ])
+      .resolve();
     await expect(banner).toBeVisible({ timeout: 10_000 });
   });
 
@@ -90,7 +95,12 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await setOnboardingCompleted(false, restClient);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    const banner = await page.locate([{ type: 'testId', value: 'onboarding-banner' }]).resolve();
+    const banner = await page
+      .locate([
+        { type: 'testId', value: 'onboarding-banner' },
+        { type: 'css', value: '[data-testid="onboarding-banner"]' },
+      ])
+      .resolve();
     await expect(banner).toBeVisible({ timeout: 10_000 });
 
     await page.click([{ type: 'testId', value: 'onboarding-dismiss-button' }]);
@@ -114,13 +124,23 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     await expect(
-      await page.locate([{ type: 'testId', value: 'onboarding-step-1' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'onboarding-step-1' },
+          { type: 'css', value: '[data-testid="onboarding-step-1"]' },
+        ])
+        .resolve(),
     ).toBeVisible({ timeout: 10_000 });
 
     await page.click([{ type: 'testId', value: 'onboarding-step1-looks-good' }]);
 
     await expect(
-      await page.locate([{ type: 'testId', value: 'onboarding-step-2' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'onboarding-step-2' },
+          { type: 'css', value: '[data-testid="onboarding-step-2"]' },
+        ])
+        .resolve(),
     ).toBeVisible({ timeout: 5_000 });
   });
 }); // end describe.serial

@@ -44,10 +44,17 @@ export class AdminTagsPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'admin-tags-heading' },
-          { type: 'role', value: 'heading', options: { name: t('tags.pageTitle'), exact: false } },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'admin-tags-heading' },
+            {
+              type: 'role',
+              value: 'heading',
+              options: { name: t('tags.pageTitle'), exact: false },
+            },
+          ],
+          { intent: 'admin tags page heading indicating page is loaded' },
+        )
         .resolve();
       return true;
     } catch {
@@ -61,10 +68,13 @@ export class AdminTagsPage {
   async isEmptyStateVisible(): Promise<boolean> {
     try {
       const el = await this.page
-        .locate([
-          { type: 'testId', value: 'admin-tags-empty' },
-          { type: 'text', value: t('tags.empty') },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'admin-tags-empty' },
+            { type: 'text', value: t('tags.empty') },
+          ],
+          { intent: 'empty state message when no tags exist' },
+        )
         .resolve();
       return el.isVisible().catch(() => false);
     } catch {
@@ -78,10 +88,13 @@ export class AdminTagsPage {
   async isTagListVisible(): Promise<boolean> {
     try {
       const el = await this.page
-        .locate([
-          { type: 'testId', value: 'admin-tags-list' },
-          { type: 'css', value: '[data-testid="admin-tags-list"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'admin-tags-list' },
+            { type: 'css', value: '[data-testid="admin-tags-list"]' },
+          ],
+          { intent: 'tag list container on admin tags page' },
+        )
         .resolve();
       return el.isVisible().catch(() => false);
     } catch {
@@ -97,10 +110,13 @@ export class AdminTagsPage {
   async isTagRowVisible(tagId: string): Promise<boolean> {
     try {
       const el = await this.page
-        .locate([
-          { type: 'testId', value: `admin-tag-row-${tagId}` },
-          { type: 'css', value: `[data-testid="admin-tag-row-${tagId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `admin-tag-row-${tagId}` },
+            { type: 'css', value: `[data-testid="admin-tag-row-${tagId}"]` },
+          ],
+          { intent: 'tag row in admin tags list' },
+        )
         .resolve();
       return el.isVisible().catch(() => false);
     } catch {
@@ -114,10 +130,13 @@ export class AdminTagsPage {
    * @param tagId - Tag UUID.
    */
   async clickRename(tagId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `rename-tag-${tagId}` },
-      { type: 'css', value: `[data-testid="rename-tag-${tagId}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `rename-tag-${tagId}` },
+        { type: 'css', value: `[data-testid="rename-tag-${tagId}"]` },
+      ],
+      { intent: 'rename button for tag row' },
+    );
   }
 
   /**
@@ -127,10 +146,14 @@ export class AdminTagsPage {
    * @param newName - Replacement tag name.
    */
   async fillRenameInput(tagId: string, newName: string): Promise<void> {
-    await this.page.fill(newName, [
-      { type: 'testId', value: `rename-input-${tagId}` },
-      { type: 'label', value: t('tags.renameInputLabel'), options: { exact: false } },
-    ]);
+    await this.page.fill(
+      newName,
+      [
+        { type: 'testId', value: `rename-input-${tagId}` },
+        { type: 'label', value: t('tags.renameInputLabel'), options: { exact: false } },
+      ],
+      { intent: 'rename input field for tag row' },
+    );
   }
 
   /**
@@ -139,10 +162,13 @@ export class AdminTagsPage {
    * @param tagId - Tag UUID.
    */
   async clickRenameSave(tagId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `rename-save-${tagId}` },
-      { type: 'role', value: 'button', options: { name: t('tags.save'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `rename-save-${tagId}` },
+        { type: 'role', value: 'button', options: { name: t('tags.save'), exact: false } },
+      ],
+      { intent: 'save button in tag rename form' },
+    );
   }
 
   /**
@@ -151,10 +177,13 @@ export class AdminTagsPage {
    * @param tagId - Tag UUID.
    */
   async clickDelete(tagId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `delete-tag-${tagId}` },
-      { type: 'role', value: 'button', options: { name: t('tags.delete'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `delete-tag-${tagId}` },
+        { type: 'role', value: 'button', options: { name: t('tags.delete'), exact: false } },
+      ],
+      { intent: 'delete button for tag row' },
+    );
   }
 
   /**

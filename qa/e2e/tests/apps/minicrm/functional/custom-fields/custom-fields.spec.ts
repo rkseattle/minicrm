@@ -53,25 +53,41 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await page.locate([{ type: 'testId', value: 'custom-fields-section' }]).resolve();
+  const section = await page
+    .locate([
+      { type: 'testId', value: 'custom-fields-section' },
+      { type: 'css', value: '[data-testid="custom-fields-section"]' },
+    ])
+    .resolve();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Ensure entity selector shows "contact" (default)
   const entitySelect = await page
-    .locate([{ type: 'testId', value: 'custom-fields-entity-select' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-entity-select' },
+      { type: 'css', value: '[data-testid="custom-fields-entity-select"]' },
+    ])
     .resolve();
   await entitySelect.selectOption('contact');
 
   // Click Add Field
   await page.click([{ type: 'testId', value: 'add-field-button' }]);
 
-  const addForm = await page.locate([{ type: 'testId', value: 'add-field-form' }]).resolve();
+  const addForm = await page
+    .locate([
+      { type: 'testId', value: 'add-field-form' },
+      { type: 'css', value: '[data-testid="add-field-form"]' },
+    ])
+    .resolve();
   await expect(addForm).toBeVisible();
 
   // Fill in field name
   const fieldName = `E2E Test Field ${Date.now()}`;
   const nameInput = await page
-    .locate([{ type: 'testId', value: 'add-field-name-input' }])
+    .locate([
+      { type: 'testId', value: 'add-field-name-input' },
+      { type: 'css', value: '[data-testid="add-field-name-input"]' },
+    ])
     .resolve();
   await nameInput.fill(fieldName);
 
@@ -82,7 +98,10 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
 
   // Success feedback appears
   const feedback = await page
-    .locate([{ type: 'testId', value: 'custom-fields-feedback' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-feedback' },
+      { type: 'css', value: '[data-testid="custom-fields-feedback"]' },
+    ])
     .resolve();
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
@@ -140,13 +159,19 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 
   // Wait for custom fields section to appear in edit mode
   const editGrid = await page
-    .locate([{ type: 'testId', value: 'custom-fields-edit-grid' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-edit-grid' },
+      { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+    ])
     .resolve();
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value
   const fieldInput = await page
-    .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
+    .locate([
+      { type: 'testId', value: `custom-field-input-${definitionId}` },
+      { type: 'css', value: `[data-testid="custom-field-input-${definitionId}"]` },
+    ])
     .resolve();
   await fieldInput.fill('Test Value 123');
 
@@ -154,7 +179,12 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
   // Wait for edit mode to close (edit button reappears)
-  const editBtn = await page.locate([{ type: 'testId', value: 'edit-contact-button' }]).resolve();
+  const editBtn = await page
+    .locate([
+      { type: 'testId', value: 'edit-contact-button' },
+      { type: 'css', value: '[data-testid="edit-contact-button"]' },
+    ])
+    .resolve();
   await expect(editBtn).toBeVisible({ timeout: 5_000 });
 
   // Reload the page
@@ -162,13 +192,19 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 
   // Custom fields read section should show the saved value
   const readGrid = await page
-    .locate([{ type: 'testId', value: 'custom-fields-read-grid' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-read-grid' },
+      { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+    ])
     .resolve();
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
   // Confirm the value persisted
   const fieldLabel = await page
-    .locate([{ type: 'testId', value: `custom-field-label-${definitionId}` }])
+    .locate([
+      { type: 'testId', value: `custom-field-label-${definitionId}` },
+      { type: 'css', value: `[data-testid="custom-field-label-${definitionId}"]` },
+    ])
     .resolve();
   await expect(fieldLabel).toBeVisible();
   await expect(readGrid).toContainText('Test Value 123');
@@ -205,7 +241,10 @@ test('admin deletes a custom field definition; it disappears from the contact de
   // Confirm the field appears on the detail page before deletion
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
   const readGrid = await page
-    .locate([{ type: 'testId', value: 'custom-fields-read-grid' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-read-grid' },
+      { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+    ])
     .resolve();
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
   await expect(readGrid).toContainText('Temp Value');
@@ -213,32 +252,49 @@ test('admin deletes a custom field definition; it disappears from the contact de
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await page.locate([{ type: 'testId', value: 'custom-fields-section' }]).resolve();
+  const section = await page
+    .locate([
+      { type: 'testId', value: 'custom-fields-section' },
+      { type: 'css', value: '[data-testid="custom-fields-section"]' },
+    ])
+    .resolve();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Select "contact" entity type
   const entitySelect = await page
-    .locate([{ type: 'testId', value: 'custom-fields-entity-select' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-entity-select' },
+      { type: 'css', value: '[data-testid="custom-fields-entity-select"]' },
+    ])
     .resolve();
   await entitySelect.selectOption('contact');
 
   // Click Delete on the field row
   const deleteBtn = await page
-    .locate([{ type: 'testId', value: `custom-field-delete-${definitionId}` }])
+    .locate([
+      { type: 'testId', value: `custom-field-delete-${definitionId}` },
+      { type: 'css', value: `[data-testid="custom-field-delete-${definitionId}"]` },
+    ])
     .resolve();
   await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
   await deleteBtn.click();
 
   // Confirm the deletion dialog
   const confirmDeleteBtn = await page
-    .locate([{ type: 'testId', value: 'delete-field-confirm' }])
+    .locate([
+      { type: 'testId', value: 'delete-field-confirm' },
+      { type: 'css', value: '[data-testid="delete-field-confirm"]' },
+    ])
     .resolve();
   await expect(confirmDeleteBtn).toBeVisible({ timeout: 3_000 });
   await confirmDeleteBtn.click();
 
   // Success feedback
   const feedback = await page
-    .locate([{ type: 'testId', value: 'custom-fields-feedback' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-feedback' },
+      { type: 'css', value: '[data-testid="custom-fields-feedback"]' },
+    ])
     .resolve();
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
@@ -246,12 +302,20 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Wait for the page to load (edit button should be visible)
-  const editBtn = await page.locate([{ type: 'testId', value: 'edit-contact-button' }]).resolve();
+  const editBtn = await page
+    .locate([
+      { type: 'testId', value: 'edit-contact-button' },
+      { type: 'css', value: '[data-testid="edit-contact-button"]' },
+    ])
+    .resolve();
   await expect(editBtn).toBeVisible({ timeout: 5_000 });
 
   // The custom-fields-section should not be visible (no definitions → component returns null)
   const customFieldsSectionEl = await page
-    .locate([{ type: 'testId', value: 'custom-fields-section' }])
+    .locate([
+      { type: 'testId', value: 'custom-fields-section' },
+      { type: 'css', value: '[data-testid="custom-fields-section"]' },
+    ])
     .resolve();
   const sectionVisible = await customFieldsSectionEl.isVisible();
   expect(

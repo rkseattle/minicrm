@@ -15,6 +15,8 @@ import prettierConfig from 'eslint-config-prettier';
 import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
 import noPageForbiddenMethods from './eslint-plugins/no-page-forbidden-methods.mjs';
 import noPlaywrightImports from './eslint-plugins/no-playwright-imports.mjs';
+import requireLocatorIntent from './eslint-plugins/require-locator-intent.mjs';
+import requireLocatorFallback from './eslint-plugins/require-locator-fallback.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
@@ -181,6 +183,9 @@ const testConfig = {
 // Locator, etc.) from @playwright/test. All element interactions must go through
 // healPage.locate / click / fill. test/expect must come from app fixtures.
 //
+// Also enforces the two-strategy minimum (MINCRM-313) and intent strings
+// (MINCRM-309) on every page.locate() call in spec and behavior files.
+//
 // Framework internals (qa/e2e/framework/**) and framework self-tests
 // (qa/e2e/tests/framework/**) are intentionally excluded — they wrap Playwright
 // directly and need access to its primitives.
@@ -191,12 +196,36 @@ const e2eSpecConfig = {
       rules: {
         'no-page-forbidden-methods': noPageForbiddenMethods,
         'no-playwright-imports': noPlaywrightImports,
+        'require-locator-fallback': requireLocatorFallback,
       },
     },
   },
   rules: {
     'local/no-page-forbidden-methods': 'error',
     'local/no-playwright-imports': 'error',
+    'local/require-locator-fallback': 'error',
+  },
+};
+
+// ── E2E page object files — enforce intent strings and fallback strategies ───
+// Page objects under qa/e2e/pages/ must supply a non-empty `intent` string and
+// at least two strategies on every page.locate() call. (MINCRM-309, MINCRM-313)
+//
+// Framework layer and apps/ helpers are excluded — they are not page objects
+// and have different constraints.
+const e2ePageObjectConfig = {
+  files: ['qa/e2e/pages/**/*.ts'],
+  plugins: {
+    local: {
+      rules: {
+        'require-locator-intent': requireLocatorIntent,
+        'require-locator-fallback': requireLocatorFallback,
+      },
+    },
+  },
+  rules: {
+    'local/require-locator-intent': 'error',
+    'local/require-locator-fallback': 'error',
   },
 };
 
@@ -222,6 +251,7 @@ export default [
   routeJsdocConfig,
   testConfig,
   e2eSpecConfig,
+  e2ePageObjectConfig,
   scriptsConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
   prettierConfig,

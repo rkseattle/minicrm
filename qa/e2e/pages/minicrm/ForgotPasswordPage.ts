@@ -41,24 +41,31 @@ export class ForgotPasswordPage {
    * @param email - Email address to enter.
    */
   async fillEmail(email: string): Promise<void> {
-    await this.page.fill(email, [
-      { type: 'testId', value: 'forgot-password-email' },
-      { type: 'label', value: t('forgotPassword.emailLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      email,
+      [
+        { type: 'testId', value: 'forgot-password-email' },
+        { type: 'label', value: t('forgotPassword.emailLabel'), options: { exact: true } },
+      ],
+      { intent: 'email input on forgot password form' },
+    );
   }
 
   /**
    * Clicks the submit button.
    */
   async submit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'forgot-password-submit' },
-      {
-        type: 'role',
-        value: 'button',
-        options: { name: t('forgotPassword.submitButton'), exact: true },
-      },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'forgot-password-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('forgotPassword.submitButton'), exact: true },
+        },
+      ],
+      { intent: 'submit button to request password reset email' },
+    );
   }
 
   /**
@@ -66,10 +73,13 @@ export class ForgotPasswordPage {
    */
   async successMessageVisible(): Promise<boolean> {
     return this.page
-      .locate([
-        { type: 'testId', value: 'forgot-password-success' },
-        { type: 'css', value: '[data-testid="forgot-password-success"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'forgot-password-success' },
+          { type: 'css', value: '[data-testid="forgot-password-success"]' },
+        ],
+        { intent: 'success message after submitting forgot password form' },
+      )
       .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);

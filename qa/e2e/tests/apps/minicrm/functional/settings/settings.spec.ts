@@ -51,42 +51,70 @@ test('admin can configure exchange rates and reload to confirm persistence @func
 
   // Wait for the exchange rates section to be visible
   const section = await page
-    .locate([{ type: 'testId', value: 'exchange-rates-section' }])
+    .locate([
+      { type: 'testId', value: 'exchange-rates-section' },
+      { type: 'css', value: '[data-testid="exchange-rates-section"]' },
+    ])
     .resolve();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Set home currency to GBP
   const homeSelect = await page
-    .locate([{ type: 'testId', value: 'home-currency-select' }])
+    .locate([
+      { type: 'testId', value: 'home-currency-select' },
+      { type: 'css', value: '[data-testid="home-currency-select"]' },
+    ])
     .resolve();
   await homeSelect.selectOption('GBP');
 
   // Click Add Currency to open the form
   await page.click([{ type: 'testId', value: 'exchange-rate-add-button' }]);
-  const addForm = await page.locate([{ type: 'testId', value: 'add-currency-form' }]).resolve();
+  const addForm = await page
+    .locate([
+      { type: 'testId', value: 'add-currency-form' },
+      { type: 'css', value: '[data-testid="add-currency-form"]' },
+    ])
+    .resolve();
   await expect(addForm).toBeVisible();
 
   // Add USD with rate 1.27
   const codeSelect = await page
-    .locate([{ type: 'testId', value: 'add-currency-code-select' }])
+    .locate([
+      { type: 'testId', value: 'add-currency-code-select' },
+      { type: 'css', value: '[data-testid="add-currency-code-select"]' },
+    ])
     .resolve();
   await codeSelect.selectOption('USD');
   const rateInput = await page
-    .locate([{ type: 'testId', value: 'add-currency-rate-input' }])
+    .locate([
+      { type: 'testId', value: 'add-currency-rate-input' },
+      { type: 'css', value: '[data-testid="add-currency-rate-input"]' },
+    ])
     .resolve();
   await rateInput.fill('1.27');
   await page.click([{ type: 'testId', value: 'add-currency-confirm' }]);
 
   // Add EUR with rate 1.16
   await page.click([{ type: 'testId', value: 'exchange-rate-add-button' }]);
-  const addForm2 = await page.locate([{ type: 'testId', value: 'add-currency-form' }]).resolve();
+  const addForm2 = await page
+    .locate([
+      { type: 'testId', value: 'add-currency-form' },
+      { type: 'css', value: '[data-testid="add-currency-form"]' },
+    ])
+    .resolve();
   await expect(addForm2).toBeVisible();
   const codeSelect2 = await page
-    .locate([{ type: 'testId', value: 'add-currency-code-select' }])
+    .locate([
+      { type: 'testId', value: 'add-currency-code-select' },
+      { type: 'css', value: '[data-testid="add-currency-code-select"]' },
+    ])
     .resolve();
   await codeSelect2.selectOption('EUR');
   const rateInput2 = await page
-    .locate([{ type: 'testId', value: 'add-currency-rate-input' }])
+    .locate([
+      { type: 'testId', value: 'add-currency-rate-input' },
+      { type: 'css', value: '[data-testid="add-currency-rate-input"]' },
+    ])
     .resolve();
   await rateInput2.fill('1.16');
   await page.click([{ type: 'testId', value: 'add-currency-confirm' }]);
@@ -96,27 +124,46 @@ test('admin can configure exchange rates and reload to confirm persistence @func
 
   // Wait for save success
   const saveSuccess = await page
-    .locate([{ type: 'testId', value: 'exchange-rate-save-success' }])
+    .locate([
+      { type: 'testId', value: 'exchange-rate-save-success' },
+      { type: 'css', value: '[data-testid="exchange-rate-save-success"]' },
+    ])
     .resolve();
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
   // Reload and verify persistence — deep-link back to currency tab
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
   const sectionAfterReload = await page
-    .locate([{ type: 'testId', value: 'exchange-rates-section' }])
+    .locate([
+      { type: 'testId', value: 'exchange-rates-section' },
+      { type: 'css', value: '[data-testid="exchange-rates-section"]' },
+    ])
     .resolve();
   await expect(sectionAfterReload).toBeVisible({ timeout: 10_000 });
 
   // Home currency should be GBP
   const homeSelectAfterReload = await page
-    .locate([{ type: 'testId', value: 'home-currency-select' }])
+    .locate([
+      { type: 'testId', value: 'home-currency-select' },
+      { type: 'css', value: '[data-testid="home-currency-select"]' },
+    ])
     .resolve();
   await expect(homeSelectAfterReload).toHaveValue('GBP');
 
   // USD and EUR rate rows should be visible
-  const usdRow = await page.locate([{ type: 'testId', value: 'exchange-rate-row-USD' }]).resolve();
+  const usdRow = await page
+    .locate([
+      { type: 'testId', value: 'exchange-rate-row-USD' },
+      { type: 'css', value: '[data-testid="exchange-rate-row-USD"]' },
+    ])
+    .resolve();
   await expect(usdRow).toBeVisible();
-  const eurRow = await page.locate([{ type: 'testId', value: 'exchange-rate-row-EUR' }]).resolve();
+  const eurRow = await page
+    .locate([
+      { type: 'testId', value: 'exchange-rate-row-EUR' },
+      { type: 'css', value: '[data-testid="exchange-rate-row-EUR"]' },
+    ])
+    .resolve();
   await expect(eurRow).toBeVisible();
 
   // Restore to USD home for other tests

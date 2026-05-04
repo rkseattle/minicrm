@@ -95,20 +95,38 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 
   // Bulk action bar should be visible.
   await expect(
-    await page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'bulk-action-bar' },
+        { type: 'css', value: '[data-testid="bulk-action-bar"]' },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Click "Reassign".
-  await page.click([{ type: 'testId', value: 'bulk-reassign-button' }]);
+  await page.click([
+    { type: 'testId', value: 'bulk-reassign-button' },
+    { type: 'css', value: '[data-testid="bulk-reassign-button"]' },
+  ]);
 
   // Reassign modal should appear.
   await expect(
-    await page.locate([{ type: 'testId', value: 'bulk-reassign-modal' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'bulk-reassign-modal' },
+        { type: 'role', value: 'dialog', options: { name: /reassign/i } },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Select the new owner in the dropdown.
   await (
-    await page.locate([{ type: 'testId', value: 'bulk-reassign-owner-select' }]).resolve()
+    await page
+      .locate([
+        { type: 'testId', value: 'bulk-reassign-owner-select' },
+        { type: 'css', value: '[data-testid="bulk-reassign-owner-select"]' },
+      ])
+      .resolve()
   ).selectOption({ label: newOwner.name });
 
   // Confirm.
@@ -167,19 +185,35 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   await clickBulkCheckbox(c2.id, { page });
 
   await expect(
-    await page.locate([{ type: 'testId', value: 'bulk-action-bar' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'bulk-action-bar' },
+        { type: 'css', value: '[data-testid="bulk-action-bar"]' },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Click "Delete".
-  await page.click([{ type: 'testId', value: 'bulk-delete-button' }]);
+  await page.click([
+    { type: 'testId', value: 'bulk-delete-button' },
+    { type: 'css', value: '[data-testid="bulk-delete-button"]' },
+  ]);
 
   // Confirm delete modal should appear.
   await expect(
-    await page.locate([{ type: 'testId', value: 'confirm-delete-modal' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'confirm-delete-modal' },
+        { type: 'role', value: 'dialog', options: { name: /delete/i } },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Confirm deletion.
-  await page.click([{ type: 'testId', value: 'confirm-delete-confirm' }]);
+  await page.click([
+    { type: 'testId', value: 'confirm-delete-confirm' },
+    { type: 'role', value: 'button', options: { name: /confirm|delete/i } },
+  ]);
 
   // Bulk action bar should disappear.
   expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);

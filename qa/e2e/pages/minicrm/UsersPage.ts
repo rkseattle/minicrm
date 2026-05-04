@@ -42,10 +42,13 @@ export class UsersPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'invite-submit' },
-          { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'invite-submit' },
+            { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
+          ],
+          { intent: 'invite submit button indicating users page is loaded' },
+        )
         .resolve();
       return true;
     } catch {
@@ -61,20 +64,31 @@ export class UsersPage {
    * @param role - 'admin' | 'rep'.
    */
   async fillInviteForm(name: string, email: string, role: 'admin' | 'rep'): Promise<void> {
-    await this.page.fill(name, [
-      { type: 'testId', value: 'invite-name' },
-      { type: 'label', value: 'Name', options: { exact: false } },
-    ]);
-    await this.page.fill(email, [
-      { type: 'testId', value: 'invite-email' },
-      { type: 'label', value: 'Email', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      name,
+      [
+        { type: 'testId', value: 'invite-name' },
+        { type: 'label', value: 'Name', options: { exact: false } },
+      ],
+      { intent: 'name input in user invite form' },
+    );
+    await this.page.fill(
+      email,
+      [
+        { type: 'testId', value: 'invite-email' },
+        { type: 'label', value: 'Email', options: { exact: false } },
+      ],
+      { intent: 'email input in user invite form' },
+    );
     // Role is a <select> — resolve via HealingLocator then call selectOption on the result.
     const roleSelect = await this.page
-      .locate([
-        { type: 'testId', value: 'invite-role' },
-        { type: 'css', value: '[data-testid="invite-role"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'invite-role' },
+          { type: 'css', value: '[data-testid="invite-role"]' },
+        ],
+        { intent: 'role select dropdown in user invite form' },
+      )
       .resolve();
     await roleSelect.selectOption(role);
   }
@@ -83,10 +97,13 @@ export class UsersPage {
    * Submits the invite form.
    */
   async submitInvite(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'invite-submit' },
-      { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'invite-submit' },
+        { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
+      ],
+      { intent: 'submit button to send user invite' },
+    );
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -99,10 +116,13 @@ export class UsersPage {
     await this.page.waitForLoadState('networkidle');
     try {
       const card = await this.page
-        .locate([
-          { type: 'testId', value: `user-card-${userId}` },
-          { type: 'css', value: `[data-testid="user-card-${userId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `user-card-${userId}` },
+            { type: 'css', value: `[data-testid="user-card-${userId}"]` },
+          ],
+          { intent: 'user card in the users management list' },
+        )
         .resolve();
       return (await card.count()) > 0;
     } catch {
