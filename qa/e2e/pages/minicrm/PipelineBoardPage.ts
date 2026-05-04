@@ -96,7 +96,11 @@ export class PipelineBoardPage {
    * @returns The column slug (e.g. 'prospecting', 'closed-won') or null.
    */
   async getDealColumnSlug(dealId: string): Promise<string | null> {
-    await this.page.waitForLoadState('networkidle');
+    // waitForLoadState('networkidle') is avoided here: under concurrent CI load
+    // other workers' API calls prevent the 500ms quiet window from ever settling,
+    // which burns the full test timeout. The board data is already current at this
+    // call site — callers either just navigated (openDeal) or waited for the card
+    // to appear in the target column (dragDealToStage) before calling this.
 
     const mobile = this.isMobileView();
 

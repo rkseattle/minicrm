@@ -217,6 +217,9 @@ export async function dragDealToStage(
     const source = document.querySelector('[data-testid="${cardTestId}"]');
     const target = document.querySelector('[data-testid="${headerTestId}"]');
     if (!source || !target) throw new Error('drag elements not found');
+    // Scroll the drop target into view so Chromium's event routing sees it even
+    // when the column is off the right edge of the overflow-x-auto board container.
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const dt = new DataTransfer();
     dt.setData('text/plain', '${dealId}');
     source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
@@ -230,6 +233,14 @@ export async function dragDealToStage(
 
   if (isTerminal) {
     // CloseDealModal opens — fill required close_date and confirm.
+    // waitForFunction polls until the modal element is in the DOM before
+    // resolve(), because resolve() throws StrategyExhaustedError immediately
+    // when the element is absent rather than waiting for it to appear.
+    await context.page.waitForFunction(
+      `document.querySelector('[data-testid="close-deal-modal"]') !== null`,
+      undefined,
+      { timeout: 8_000 },
+    );
     const modal = await context.page
       .locate(
         [
@@ -239,7 +250,7 @@ export async function dragDealToStage(
         { intent: 'modal dialog that appears when closing a deal as Won or Lost' },
       )
       .resolve();
-    await modal.waitFor({ state: 'visible' });
+    await modal.waitFor({ state: 'visible', timeout: 5_000 });
     closeDealModalOpened = true;
 
     const dateInput = await context.page
