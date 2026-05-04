@@ -119,15 +119,21 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
       .resolve(),
   ).toBeVisible();
 
-  // Select the new owner in the dropdown.
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'bulk-reassign-owner-select' },
-        { type: 'css', value: '[data-testid="bulk-reassign-owner-select"]' },
-      ])
-      .resolve()
-  ).selectOption({ label: newOwner.name });
+  // Wait for the owner dropdown to be populated with the new user's option before
+  // selecting — the options are fetched async and may not be in the DOM yet when
+  // the modal first becomes visible.
+  const ownerSelect = await page
+    .locate([
+      { type: 'testId', value: 'bulk-reassign-owner-select' },
+      { type: 'css', value: '[data-testid="bulk-reassign-owner-select"]' },
+    ])
+    .resolve();
+  await page.waitForFunction(
+    `document.querySelector('[data-testid="bulk-reassign-owner-select"]')?.querySelector('option[value="${newOwner.id}"]') !== null`,
+    undefined,
+    { timeout: 5_000 },
+  );
+  await ownerSelect.selectOption({ label: newOwner.name });
 
   // Confirm.
   await page.click([{ type: 'testId', value: 'bulk-reassign-confirm' }]);
