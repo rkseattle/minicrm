@@ -53,10 +53,13 @@ export class PipelineBoardPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'pipeline-board' },
-          { type: 'css', value: '[data-testid="pipeline-board"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'pipeline-board' },
+            { type: 'css', value: '[data-testid="pipeline-board"]' },
+          ],
+          { intent: 'pipeline kanban board container' },
+        )
         .resolve();
       return true;
     } catch {
@@ -112,16 +115,19 @@ export class PipelineBoardPage {
           // The XPath fallback is semantically identical to the CSS primary, just
           // expressed differently for the heal framework to prefer the CSS form.
           const cardInColumn = await this.page
-            .locate([
-              {
-                type: 'css',
-                value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-              },
-              {
-                type: 'xpath',
-                value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
-              },
-            ])
+            .locate(
+              [
+                {
+                  type: 'css',
+                  value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+                },
+                {
+                  type: 'xpath',
+                  value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
+                },
+              ],
+              { intent: `deal card inside stage column ${slug}` },
+            )
             .resolve();
           if ((await cardInColumn.count()) > 0) return slug;
         } catch {
@@ -139,10 +145,13 @@ export class PipelineBoardPage {
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
       try {
         const prevBtn = await this.page
-          .locate([
-            { type: 'testId', value: 'pipeline-mobile-prev' },
-            { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-prev' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
+            ],
+            { intent: 'mobile pipeline previous stage button' },
+          )
           .resolve();
         if (!(await prevBtn.isEnabled().catch(() => false))) break;
         await prevBtn.click();
@@ -155,10 +164,13 @@ export class PipelineBoardPage {
     for (const slug of PipelineBoardPage.STAGE_SLUGS) {
       try {
         const card = await this.page
-          .locate([
-            { type: 'testId', value: `mobile-deal-card-${dealId}` },
-            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: `mobile-deal-card-${dealId}` },
+              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+            ],
+            { intent: 'deal card in mobile single-column board view' },
+          )
           .resolve();
         if (await card.isVisible().catch(() => false)) return slug;
       } catch {
@@ -166,10 +178,13 @@ export class PipelineBoardPage {
       }
       try {
         const nextBtn = await this.page
-          .locate([
-            { type: 'testId', value: 'pipeline-mobile-next' },
-            { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-next' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+            ],
+            { intent: 'mobile pipeline next stage button' },
+          )
           .resolve();
         if (!(await nextBtn.isEnabled().catch(() => false))) break;
         await nextBtn.click();
@@ -192,10 +207,13 @@ export class PipelineBoardPage {
     for (let i = 0; i < STAGE_COUNT; i++) {
       try {
         const card = await this.page
-          .locate([
-            { type: 'testId', value: `mobile-deal-card-${dealId}` },
-            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: `mobile-deal-card-${dealId}` },
+              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+            ],
+            { intent: 'deal card in mobile single-column board view' },
+          )
           .resolve();
         if (await card.isVisible().catch(() => false)) return;
       } catch {
@@ -203,10 +221,13 @@ export class PipelineBoardPage {
       }
       try {
         const nextBtn = await this.page
-          .locate([
-            { type: 'testId', value: 'pipeline-mobile-next' },
-            { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-next' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+            ],
+            { intent: 'mobile pipeline next stage button' },
+          )
           .resolve();
         if (await nextBtn.isEnabled().catch(() => false)) {
           await nextBtn.click();
@@ -239,10 +260,13 @@ export class PipelineBoardPage {
     const prefix = mobile ? 'mobile-' : '';
     const selectTestId = `${prefix}deal-card-stage-select-${dealId}`;
     const select = await this.page
-      .locate([
-        { type: 'testId', value: selectTestId },
-        { type: 'css', value: `[data-testid="${selectTestId}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: selectTestId },
+          { type: 'css', value: `[data-testid="${selectTestId}"]` },
+        ],
+        { intent: 'stage select dropdown on deal card' },
+      )
       .resolve();
     await select.selectOption(stage);
 
@@ -250,27 +274,36 @@ export class PipelineBoardPage {
     if (isTerminal) {
       // CloseDealModal opens — fill required close_date and confirm.
       const modal = await this.page
-        .locate([
-          { type: 'testId', value: 'close-deal-modal' },
-          { type: 'css', value: '[data-testid="close-deal-modal"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'close-deal-modal' },
+            { type: 'role', value: 'dialog', options: { name: /close deal/i } },
+          ],
+          { intent: 'close deal confirmation modal dialog' },
+        )
         .resolve();
       await modal.waitFor({ state: 'visible' });
 
       const dateInput = await this.page
-        .locate([
-          { type: 'testId', value: 'close-deal-date-input' },
-          { type: 'css', value: '[data-testid="close-deal-date-input"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'close-deal-date-input' },
+            { type: 'label', value: 'Close date', options: { exact: false } },
+          ],
+          { intent: 'close date input field in close deal modal' },
+        )
         .resolve();
       // Default to today's date in YYYY-MM-DD format.
       const today = new Date().toISOString().slice(0, 10);
       await dateInput.fill(today);
 
-      await this.page.click([
-        { type: 'testId', value: 'close-deal-confirm' },
-        { type: 'role', value: 'button', options: { name: 'Confirm', exact: false } },
-      ]);
+      await this.page.click(
+        [
+          { type: 'testId', value: 'close-deal-confirm' },
+          { type: 'role', value: 'button', options: { name: 'Confirm', exact: false } },
+        ],
+        { intent: 'confirm button to close deal at terminal stage' },
+      );
 
       await modal.waitFor({ state: 'hidden' });
     }
@@ -289,10 +322,13 @@ export class PipelineBoardPage {
       for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
         try {
           const prevBtn = await this.page
-            .locate([
-              { type: 'testId', value: 'pipeline-mobile-prev' },
-              { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
-            ])
+            .locate(
+              [
+                { type: 'testId', value: 'pipeline-mobile-prev' },
+                { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
+              ],
+              { intent: 'mobile pipeline previous stage button' },
+            )
             .resolve();
           if (!(await prevBtn.isEnabled().catch(() => false))) break;
           await prevBtn.click();
@@ -304,10 +340,13 @@ export class PipelineBoardPage {
       for (let i = 0; i < targetSlugIndex; i++) {
         try {
           const nextBtn = await this.page
-            .locate([
-              { type: 'testId', value: 'pipeline-mobile-next' },
-              { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
-            ])
+            .locate(
+              [
+                { type: 'testId', value: 'pipeline-mobile-next' },
+                { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+              ],
+              { intent: 'mobile pipeline next stage button' },
+            )
             .resolve();
           if (await nextBtn.isEnabled().catch(() => false)) {
             await nextBtn.click();
@@ -319,10 +358,13 @@ export class PipelineBoardPage {
       }
       try {
         const card = await this.page
-          .locate([
-            { type: 'testId', value: `mobile-deal-card-${dealId}` },
-            { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
-          ])
+          .locate(
+            [
+              { type: 'testId', value: `mobile-deal-card-${dealId}` },
+              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+            ],
+            { intent: 'deal card in mobile single-column board view' },
+          )
           .resolve();
         await card.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
       } catch {
@@ -333,16 +375,19 @@ export class PipelineBoardPage {
         // Both strategies scoped to the target column — avoids matching the card
         // in a stale column while React Query is still updating the board.
         const cardInTarget = await this.page
-          .locate([
-            {
-              type: 'css',
-              value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-            },
-            {
-              type: 'xpath',
-              value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
-            },
-          ])
+          .locate(
+            [
+              {
+                type: 'css',
+                value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+              },
+              {
+                type: 'xpath',
+                value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
+              },
+            ],
+            { intent: `deal card after move into stage column ${slug}` },
+          )
           .resolve();
         await cardInTarget.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => null);
       } catch {

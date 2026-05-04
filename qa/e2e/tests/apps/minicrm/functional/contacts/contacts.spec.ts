@@ -183,7 +183,12 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   // HTML5 validation is synchronous — no network request fires. Use a DOM-based
   // wait so the assertion retries automatically instead of sleeping a fixed amount.
   await expect(
-    await page.locate([{ type: 'testId', value: 'contact-form' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'contact-form' },
+        { type: 'css', value: '[data-testid="contact-form"]' },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Verify no contact was created by searching for the unique email.
@@ -217,7 +222,12 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
   // HTML5 email validation is synchronous — use a DOM-based wait instead of a
   // fixed timeout so the assertion retries automatically.
   await expect(
-    await page.locate([{ type: 'testId', value: 'contact-form' }]).resolve(),
+    await page
+      .locate([
+        { type: 'testId', value: 'contact-form' },
+        { type: 'css', value: '[data-testid="contact-form"]' },
+      ])
+      .resolve(),
   ).toBeVisible();
 
   // Verify no contact was created by searching for the unique last name.
@@ -604,7 +614,12 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await navigateToContact(page, contact.id);
 
   // The detail-account element should show the account name.
-  const accountLocator = await page.locate([{ type: 'testId', value: 'detail-account' }]).resolve();
+  const accountLocator = await page
+    .locate([
+      { type: 'testId', value: 'detail-account' },
+      { type: 'css', value: '[data-testid="detail-account"]' },
+    ])
+    .resolve();
   await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
   const accountText = await accountLocator.textContent();
   expect(accountText, 'detail view should show the linked account name').toContain(
@@ -662,7 +677,12 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   await navigateToContact(page, contact.id);
 
   // Confirm account name is a link pointing to the account's detail page.
-  const accountLink = await page.locate([{ type: 'testId', value: 'detail-account' }]).resolve();
+  const accountLink = await page
+    .locate([
+      { type: 'testId', value: 'detail-account' },
+      { type: 'css', value: '[data-testid="detail-account"]' },
+    ])
+    .resolve();
   await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
   const href = await accountLink.getAttribute('href');
   expect(href, 'account link should point to /accounts/:id').toContain(`/accounts/${account.id}`);
@@ -722,7 +742,10 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   const total = (await restClient.get<ContactListResponse>('/api/v1/contacts')).body.total;
   if (total > 50) {
     const paginationLocator = await page
-      .locate([{ type: 'testId', value: 'pagination' }])
+      .locate([
+        { type: 'testId', value: 'pagination' },
+        { type: 'css', value: '[data-testid="pagination"]' },
+      ])
       .resolve();
     await expect(paginationLocator).toBeVisible();
   }

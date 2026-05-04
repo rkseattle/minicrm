@@ -43,10 +43,14 @@ export class ResetPasswordPage {
    * @param password - The desired new password.
    */
   async fillNewPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'reset-password-new' },
-      { type: 'label', value: t('resetPassword.newPasswordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'reset-password-new' },
+        { type: 'label', value: t('resetPassword.newPasswordLabel'), options: { exact: true } },
+      ],
+      { intent: 'new password input on reset password form' },
+    );
   }
 
   /**
@@ -55,34 +59,44 @@ export class ResetPasswordPage {
    * @param password - Must match the value supplied to fillNewPassword().
    */
   async fillConfirmPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'reset-password-confirm' },
-      { type: 'label', value: t('resetPassword.confirmPasswordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'reset-password-confirm' },
+        { type: 'label', value: t('resetPassword.confirmPasswordLabel'), options: { exact: true } },
+      ],
+      { intent: 'confirm password input on reset password form' },
+    );
   }
 
   /**
    * Clicks the submit button.
    */
   async submit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'reset-password-submit' },
-      {
-        type: 'role',
-        value: 'button',
-        options: { name: t('resetPassword.submitButton'), exact: true },
-      },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'reset-password-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('resetPassword.submitButton'), exact: true },
+        },
+      ],
+      { intent: 'submit button to save new password from reset link' },
+    );
   }
 
   /**
    * Returns the text content of the error alert, or null if no error is shown.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.page.locate([
-      { type: 'testId', value: 'reset-password-error' },
-      { type: 'role', value: 'alert' },
-    ]);
+    const locator = this.page.locate(
+      [
+        { type: 'testId', value: 'reset-password-error' },
+        { type: 'role', value: 'alert' },
+      ],
+      { intent: 'error alert on reset password form' },
+    );
     try {
       const resolved = await locator.resolve();
       const count = await resolved.count();
@@ -98,10 +112,13 @@ export class ResetPasswordPage {
    */
   async invalidTokenVisible(): Promise<boolean> {
     return this.page
-      .locate([
-        { type: 'testId', value: 'reset-password-invalid-token' },
-        { type: 'css', value: '[data-testid="reset-password-invalid-token"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'reset-password-invalid-token' },
+          { type: 'css', value: '[data-testid="reset-password-invalid-token"]' },
+        ],
+        { intent: 'invalid token error message on reset password page' },
+      )
       .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);

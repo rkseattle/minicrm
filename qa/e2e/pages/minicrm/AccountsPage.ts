@@ -65,10 +65,17 @@ export class AccountsPage {
    * Clicks the "New Account" button to open the account creation form.
    */
   async clickNewAccount(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'new-account-button' },
-      { type: 'role', value: 'button', options: { name: t('accounts.newAccount'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'new-account-button' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('accounts.newAccount'), exact: false },
+        },
+      ],
+      { intent: 'button to open new account creation form' },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -83,10 +90,13 @@ export class AccountsPage {
     await this.page.waitForLoadState('networkidle');
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'css', value: '[data-testid^="account-link-"]' },
-          { type: 'xpath', value: '//*[starts-with(@data-testid,"account-link-")]' },
-        ])
+        .locate(
+          [
+            { type: 'css', value: '[data-testid^="account-link-"]' },
+            { type: 'xpath', value: '//*[starts-with(@data-testid,"account-link-")]' },
+          ],
+          { intent: 'account row links in the accounts list' },
+        )
         .resolve();
       return resolved.count();
     } catch {
@@ -102,14 +112,17 @@ export class AccountsPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'new-account-button' },
-          {
-            type: 'role',
-            value: 'button',
-            options: { name: t('accounts.newAccount'), exact: false },
-          },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'new-account-button' },
+            {
+              type: 'role',
+              value: 'button',
+              options: { name: t('accounts.newAccount'), exact: false },
+            },
+          ],
+          { intent: 'new account button indicating accounts page is loaded' },
+        )
         .resolve();
       return true;
     } catch {

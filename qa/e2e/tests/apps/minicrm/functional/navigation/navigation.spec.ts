@@ -204,7 +204,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await navigateViaNavLink('top', 'contacts', { page });
 
         const contactsLink = await page
-          .locate([{ type: 'testId', value: 'nav-top-contacts' }])
+          .locate([
+            { type: 'testId', value: 'nav-top-contacts' },
+            { type: 'css', value: '[data-testid="nav-top-contacts"]' },
+          ])
           .resolve();
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
@@ -214,7 +217,12 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const dealsLink = await page.locate([{ type: 'testId', value: 'nav-top-deals' }]).resolve();
+        const dealsLink = await page
+          .locate([
+            { type: 'testId', value: 'nav-top-deals' },
+            { type: 'css', value: '[data-testid="nav-top-deals"]' },
+          ])
+          .resolve();
         await expect(
           dealsLink,
           'inactive nav-top-deals should not carry the active indigo class',
@@ -269,7 +277,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await navigateViaNavLink('left', 'accounts', { page });
 
         const accountsLink = await page
-          .locate([{ type: 'testId', value: 'nav-left-accounts' }])
+          .locate([
+            { type: 'testId', value: 'nav-left-accounts' },
+            { type: 'css', value: '[data-testid="nav-left-accounts"]' },
+          ])
           .resolve();
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
@@ -280,7 +291,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // A non-active link should not carry the active class.
         const tasksLink = await page
-          .locate([{ type: 'testId', value: 'nav-left-tasks' }])
+          .locate([
+            { type: 'testId', value: 'nav-left-tasks' },
+            { type: 'css', value: '[data-testid="nav-left-tasks"]' },
+          ])
           .resolve();
         await expect(
           tasksLink,
@@ -361,7 +375,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await openHamburgerMenu({ page });
 
         const dealsLink = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-deals' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-deals' },
+            { type: 'css', value: '[data-testid="nav-hamburger-deals"]' },
+          ])
           .resolve();
 
         // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
@@ -374,7 +391,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // A non-active link should not carry the active class.
         const contactsLink = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-contacts' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-contacts' },
+            { type: 'css', value: '[data-testid="nav-hamburger-contacts"]' },
+          ])
           .resolve();
         await expect(
           contactsLink,
@@ -398,7 +418,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         const divider = await page
-          .locate([{ type: 'testId', value: 'nav-left-admin-section-divider' }])
+          .locate([
+            { type: 'testId', value: 'nav-left-admin-section-divider' },
+            { type: 'css', value: '[data-testid="nav-left-admin-section-divider"]' },
+          ])
           .resolve();
         await expect(
           divider,
@@ -421,7 +444,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         const divider = await page
-          .locate([{ type: 'testId', value: 'nav-top-admin-section-divider' }])
+          .locate([
+            { type: 'testId', value: 'nav-top-admin-section-divider' },
+            { type: 'css', value: '[data-testid="nav-top-admin-section-divider"]' },
+          ])
           .resolve();
         await expect(
           divider,
@@ -446,7 +472,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await openHamburgerMenu({ page });
 
         const divider = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-admin-section-divider' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-admin-section-divider' },
+            { type: 'css', value: '[data-testid="nav-hamburger-admin-section-divider"]' },
+          ])
           .resolve();
         await expect(
           divider,
@@ -471,7 +500,10 @@ test.describe.serial('Layout-mutating tests', () => {
       expect(result.drawerVisible, 'mobile nav drawer should open').toBe(true);
 
       const divider = await page
-        .locate([{ type: 'testId', value: 'nav-top-admin-section-divider-mobile' }])
+        .locate([
+          { type: 'testId', value: 'nav-top-admin-section-divider-mobile' },
+          { type: 'css', value: '[data-testid="nav-top-admin-section-divider-mobile"]' },
+        ])
         .resolve();
       await expect(
         divider,
@@ -508,7 +540,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // The sidebar nav links should now be visible without a page reload.
         const leftNavLink = await page
-          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
+          .locate([
+            { type: 'testId', value: 'nav-left-contacts' },
+            { type: 'css', value: '[data-testid="nav-left-contacts"]' },
+          ])
           .resolve();
         await expect(leftNavLink).toBeVisible();
 
@@ -523,7 +558,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // Hamburger toggle should now be visible; top and left nav links should not.
         const hamburgerToggle = await page
-          .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
+          .locate([
+            { type: 'testId', value: 'nav-menu-toggle' },
+            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
+          ])
           .resolve();
         await expect(hamburgerToggle).toBeVisible();
         expect(
@@ -549,7 +587,10 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         // Verify the left sidebar is active.
         const leftNavLink = await page
-          .locate([{ type: 'testId', value: 'nav-left-contacts' }])
+          .locate([
+            { type: 'testId', value: 'nav-left-contacts' },
+            { type: 'css', value: '[data-testid="nav-left-contacts"]' },
+          ])
           .resolve();
         await expect(leftNavLink).toBeVisible();
 
@@ -577,7 +618,10 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         // Hamburger toggle must be visible.
         const hamburgerToggle = await page
-          .locate([{ type: 'testId', value: 'nav-menu-toggle' }])
+          .locate([
+            { type: 'testId', value: 'nav-menu-toggle' },
+            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
+          ])
           .resolve();
         await expect(hamburgerToggle).toBeVisible();
 
@@ -625,7 +669,10 @@ test.describe.serial('Layout-mutating tests', () => {
           true,
         );
         const drawer = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-drawer' },
+            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+          ])
           .resolve();
         await expect(drawer).toBeVisible();
       } finally {
@@ -647,7 +694,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await openHamburgerMenu({ page });
 
         const drawer = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-drawer' },
+            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+          ])
           .resolve();
         await expect(drawer).toBeVisible();
 
@@ -674,7 +724,10 @@ test.describe.serial('Layout-mutating tests', () => {
         await openHamburgerMenu({ page });
 
         const drawer = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-drawer' },
+            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+          ])
           .resolve();
         await expect(drawer).toBeVisible();
 
@@ -704,7 +757,10 @@ test.describe.serial('Layout-mutating tests', () => {
 
         for (const destination of Object.keys(ALL_ADMIN_DESTINATIONS)) {
           const link = await page
-            .locate([{ type: 'testId', value: `nav-hamburger-${destination}` }])
+            .locate([
+              { type: 'testId', value: `nav-hamburger-${destination}` },
+              { type: 'css', value: `[data-testid="nav-hamburger-${destination}"]` },
+            ])
             .resolve();
           await expect(
             link,
@@ -731,13 +787,21 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
-        const toggle = await page.locate([{ type: 'testId', value: 'nav-menu-toggle' }]).resolve();
+        const toggle = await page
+          .locate([
+            { type: 'testId', value: 'nav-menu-toggle' },
+            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
+          ])
+          .resolve();
         await toggle.focus();
         await page.keyboard.press('Enter');
 
         // Drawer should open.
         const drawer = await page
-          .locate([{ type: 'testId', value: 'nav-hamburger-drawer' }])
+          .locate([
+            { type: 'testId', value: 'nav-hamburger-drawer' },
+            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+          ])
           .resolve();
         await expect(drawer).toBeVisible();
 
@@ -782,7 +846,12 @@ test.describe('Mobile nav mechanics', () => {
 
     expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
     await expect(
-      await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'mobile-nav-drawer' },
+          { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+        ])
+        .resolve(),
     ).toBeVisible();
   });
 
@@ -794,7 +863,12 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve();
+    const drawer = await page
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve();
     await expect(drawer).toBeVisible();
 
     const result = await closeMobileNavViaToggle({ page });
@@ -811,7 +885,12 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve();
+    const drawer = await page
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve();
     await expect(drawer).toBeVisible();
 
     await navigateViaMobileNavLink('contacts', { page });
@@ -830,12 +909,20 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve();
+    const drawer = await page
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve();
     await expect(drawer).toBeVisible();
 
     for (const destination of Object.keys(REP_DESTINATIONS)) {
       const link = await page
-        .locate([{ type: 'testId', value: `nav-top-${destination}-mobile` }])
+        .locate([
+          { type: 'testId', value: `nav-top-${destination}-mobile` },
+          { type: 'css', value: `[data-testid="nav-top-${destination}-mobile"]` },
+        ])
         .resolve();
       await expect(
         link,
@@ -856,15 +943,30 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve();
+    const drawer = await page
+      .locate([
+        { type: 'testId', value: 'mobile-nav-drawer' },
+        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      ])
+      .resolve();
     await expect(drawer).toBeVisible();
 
     await expect(
-      await page.locate([{ type: 'testId', value: 'nav-logout-mobile' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'nav-logout-mobile' },
+          { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
+        ])
+        .resolve(),
       'logout button should be present in mobile nav drawer',
     ).toBeVisible();
     await expect(
-      await page.locate([{ type: 'testId', value: 'nav-language-select-mobile' }]).resolve(),
+      await page
+        .locate([
+          { type: 'testId', value: 'nav-language-select-mobile' },
+          { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
+        ])
+        .resolve(),
       'language selector should be present in mobile nav drawer',
     ).toBeVisible();
 
@@ -891,7 +993,12 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   await navigateToContact(page, contact.id);
 
   // The contact name heading is rendered once data loads.
-  const nameHeading = await page.locate([{ type: 'testId', value: 'contact-name' }]).resolve();
+  const nameHeading = await page
+    .locate([
+      { type: 'testId', value: 'contact-name' },
+      { type: 'css', value: '[data-testid="contact-name"]' },
+    ])
+    .resolve();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(contact.first_name);
   await expect(nameHeading).toContainText(contact.last_name);
@@ -920,7 +1027,12 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   await navigateToDeal(page, deal.id);
 
   // The deal name heading is rendered once data loads.
-  const nameHeading = await page.locate([{ type: 'testId', value: 'deal-name' }]).resolve();
+  const nameHeading = await page
+    .locate([
+      { type: 'testId', value: 'deal-name' },
+      { type: 'css', value: '[data-testid="deal-name"]' },
+    ])
+    .resolve();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(deal.name);
 
@@ -942,7 +1054,13 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
 
   // The page must not be blank or show an unhandled 500.
   const alert = await page
-    .locate([{ type: 'role', value: 'alert' }], { fallbackTimeout: 10_000 })
+    .locate(
+      [
+        { type: 'role', value: 'alert' },
+        { type: 'css', value: '[role="alert"]' },
+      ],
+      { fallbackTimeout: 10_000 },
+    )
     .resolve();
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });

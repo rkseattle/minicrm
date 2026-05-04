@@ -50,17 +50,26 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
 }> {
   // Wait for the loading indicator to disappear (it may already be gone)
   const loadingEl = await page
-    .locate([{ type: 'testId', value: 'report-loading' }])
+    .locate([
+      { type: 'testId', value: 'report-loading' },
+      { type: 'css', value: '[data-testid="report-loading"]' },
+    ])
     .resolve()
     .catch(() => null);
   await loadingEl?.waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => null);
 
   const tableEl = await page
-    .locate([{ type: 'testId', value: 'stage-trend-table' }])
+    .locate([
+      { type: 'testId', value: 'stage-trend-table' },
+      { type: 'css', value: '[data-testid="stage-trend-table"]' },
+    ])
     .resolve()
     .catch(() => null);
   const emptyEl = await page
-    .locate([{ type: 'testId', value: 'stage-trend-empty' }])
+    .locate([
+      { type: 'testId', value: 'stage-trend-empty' },
+      { type: 'css', value: '[data-testid="stage-trend-empty"]' },
+    ])
     .resolve()
     .catch(() => null);
 
@@ -99,11 +108,19 @@ test('stage trend report: direct URL /reports?view=pipeline-stage shows heading 
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const heading = await page
-    .locate([{ type: 'testId', value: 'stage-trend-report-heading' }])
+    .locate([
+      { type: 'testId', value: 'stage-trend-report-heading' },
+      { type: 'css', value: '[data-testid="stage-trend-report-heading"]' },
+    ])
     .resolve();
   await expect(heading).toBeVisible({ timeout: 10_000 });
 
-  const daysSelect = await page.locate([{ type: 'testId', value: 'days-select' }]).resolve();
+  const daysSelect = await page
+    .locate([
+      { type: 'testId', value: 'days-select' },
+      { type: 'css', value: '[data-testid="days-select"]' },
+    ])
+    .resolve();
   await expect(daysSelect).toBeVisible();
   await expect(daysSelect).toHaveValue('30');
 });
@@ -141,7 +158,12 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
   await waitForReportLoaded(page);
 
   // Switch to 60-day window
-  const daysSelect = await page.locate([{ type: 'testId', value: 'days-select' }]).resolve();
+  const daysSelect = await page
+    .locate([
+      { type: 'testId', value: 'days-select' },
+      { type: 'css', value: '[data-testid="days-select"]' },
+    ])
+    .resolve();
   await daysSelect.selectOption('60');
   await expect(daysSelect).toHaveValue('60');
 
@@ -159,7 +181,12 @@ test('stage trend report: changing date range to 90 days updates the select @fun
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const daysSelect = await page.locate([{ type: 'testId', value: 'days-select' }]).resolve();
+  const daysSelect = await page
+    .locate([
+      { type: 'testId', value: 'days-select' },
+      { type: 'css', value: '[data-testid="days-select"]' },
+    ])
+    .resolve();
   await daysSelect.selectOption('90');
   await expect(daysSelect).toHaveValue('90');
 });

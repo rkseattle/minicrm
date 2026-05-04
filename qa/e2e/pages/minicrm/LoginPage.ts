@@ -70,10 +70,14 @@ export class LoginPage {
    * @param email - Email address to enter.
    */
   async fillEmail(email: string): Promise<void> {
-    await this.page.fill(email, [
-      { type: 'testId', value: 'login-email' },
-      { type: 'label', value: t('login.emailLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      email,
+      [
+        { type: 'testId', value: 'login-email' },
+        { type: 'label', value: t('login.emailLabel'), options: { exact: true } },
+      ],
+      { intent: 'email input field on login form' },
+    );
   }
 
   /**
@@ -82,20 +86,27 @@ export class LoginPage {
    * @param password - Password to enter.
    */
   async fillPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'login-password' },
-      { type: 'label', value: t('login.passwordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'login-password' },
+        { type: 'label', value: t('login.passwordLabel'), options: { exact: true } },
+      ],
+      { intent: 'password input field on login form' },
+    );
   }
 
   /**
    * Clicks the submit button to attempt login.
    */
   async submit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'login-submit' },
-      { type: 'role', value: 'button', options: { name: t('login.submitButton'), exact: true } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'login-submit' },
+        { type: 'role', value: 'button', options: { name: t('login.submitButton'), exact: true } },
+      ],
+      { intent: 'submit button to attempt login' },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -109,10 +120,13 @@ export class LoginPage {
    * Object contract. The alert element has no testId, so role + css are used.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.page.locate([
-      { type: 'role', value: 'alert' },
-      { type: 'css', value: '[role="alert"]' },
-    ]);
+    const locator = this.page.locate(
+      [
+        { type: 'role', value: 'alert' },
+        { type: 'css', value: '[role="alert"]' },
+      ],
+      { intent: 'error alert message on login form' },
+    );
     try {
       const resolved = await locator.resolve();
       const count = await resolved.count();

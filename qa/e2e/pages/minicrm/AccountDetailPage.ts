@@ -41,10 +41,13 @@ export class AccountDetailPage {
    * Clicks the Edit button to enter edit mode.
    */
   async clickEdit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'edit-account-button' },
-      { type: 'role', value: 'button', options: { name: t('accounts.edit'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'edit-account-button' },
+        { type: 'role', value: 'button', options: { name: t('accounts.edit'), exact: false } },
+      ],
+      { intent: 'edit button to enter account edit mode' },
+    );
   }
 
   /**
@@ -55,20 +58,31 @@ export class AccountDetailPage {
    * @param value - Value to type.
    */
   async fillField(testId: string, label: string, value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: testId },
-      { type: 'label', value: label, options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: testId },
+        { type: 'label', value: label, options: { exact: false } },
+      ],
+      { intent: `account edit form field labeled ${label}` },
+    );
   }
 
   /**
    * Clicks the Save button to submit the edit form.
    */
   async save(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'account-form-submit' },
-      { type: 'role', value: 'button', options: { name: t('accounts.saveChanges'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'account-form-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('accounts.saveChanges'), exact: false },
+        },
+      ],
+      { intent: 'save button to submit account edit form' },
+    );
   }
 
   /**
@@ -77,10 +91,13 @@ export class AccountDetailPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'edit-account-button' },
-          { type: 'role', value: 'button', options: { name: t('accounts.edit'), exact: false } },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'edit-account-button' },
+            { type: 'role', value: 'button', options: { name: t('accounts.edit'), exact: false } },
+          ],
+          { intent: 'edit button indicating account detail page is in read mode' },
+        )
         .resolve();
       return true;
     } catch {

@@ -118,7 +118,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       const contactsLabel = t('nav.contacts');
       const contactsLinkTestId = isMobile ? 'nav-top-contacts-mobile' : 'nav-top-contacts';
       const contactsLink = await page
-        .locate([{ type: 'testId', value: contactsLinkTestId }])
+        .locate([
+          { type: 'testId', value: contactsLinkTestId },
+          { type: 'css', value: `[data-testid="${contactsLinkTestId}"]` },
+        ])
         .resolve();
       await expect(
         contactsLink,
@@ -182,7 +185,12 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       // Helper: open mobile nav if needed, assert the label text, then close.
       const assertFrenchNavLabel = async (contextMsg: string) => {
         if (isMobile) await openMobileNav({ page });
-        const dealsLink = await page.locate([{ type: 'testId', value: dealsLinkTestId }]).resolve();
+        const dealsLink = await page
+          .locate([
+            { type: 'testId', value: dealsLinkTestId },
+            { type: 'css', value: `[data-testid="${dealsLinkTestId}"]` },
+          ])
+          .resolve();
         await expect(
           dealsLink,
           `nav "deals" link (${dealsLinkTestId}) should show "${dealsLabel}" in French ${contextMsg}`,
@@ -257,7 +265,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       const germanContactsLabel = t('nav.contacts'); // "Kontakte"
       const contactsTestIdL3 = isMobileL3 ? 'nav-top-contacts-mobile' : 'nav-top-contacts';
       const contactsLinkL3 = await page
-        .locate([{ type: 'testId', value: contactsTestIdL3 }])
+        .locate([
+          { type: 'testId', value: contactsTestIdL3 },
+          { type: 'css', value: `[data-testid="${contactsTestIdL3}"]` },
+        ])
         .resolve();
       await expect(
         contactsLinkL3,
@@ -312,14 +323,20 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
         // On mobile the language selector is inside the mobile nav drawer.
         await openMobileNav({ page });
         const langSelect = await page
-          .locate([{ type: 'testId', value: 'nav-language-select-mobile' }])
+          .locate([
+            { type: 'testId', value: 'nav-language-select-mobile' },
+            { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
+          ])
           .resolve();
         await langSelect.selectOption('es');
         await closeMobileNavViaToggle({ page });
       } else {
         // On desktop the language selector is in the nav header.
         const langSelect = await page
-          .locate([{ type: 'testId', value: 'nav-language-select' }])
+          .locate([
+            { type: 'testId', value: 'nav-language-select' },
+            { type: 'css', value: '[data-testid="nav-language-select"]' },
+          ])
           .resolve();
         await langSelect.selectOption('es');
       }
@@ -332,7 +349,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       // On mobile, open the drawer to expose the nav links before asserting.
       if (isMobile) await openMobileNav({ page });
       const contactsLinkL4a = await page
-        .locate([{ type: 'testId', value: contactsTestIdL4 }])
+        .locate([
+          { type: 'testId', value: contactsTestIdL4 },
+          { type: 'css', value: `[data-testid="${contactsTestIdL4}"]` },
+        ])
         .resolve();
       await expect(
         contactsLinkL4a,
@@ -345,7 +365,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
       if (isMobile) await openMobileNav({ page });
       const contactsLinkL4b = await page
-        .locate([{ type: 'testId', value: contactsTestIdL4 }])
+        .locate([
+          { type: 'testId', value: contactsTestIdL4 },
+          { type: 'css', value: `[data-testid="${contactsTestIdL4}"]` },
+        ])
         .resolve();
       await expect(
         contactsLinkL4b,
@@ -378,12 +401,20 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       // Open the mobile nav drawer.
       await openMobileNav({ page });
 
-      const drawer = await page.locate([{ type: 'testId', value: 'mobile-nav-drawer' }]).resolve();
+      const drawer = await page
+        .locate([
+          { type: 'testId', value: 'mobile-nav-drawer' },
+          { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+        ])
+        .resolve();
       await expect(drawer).toBeVisible();
 
       // The language selector must be present in the drawer.
       const langSelect = await page
-        .locate([{ type: 'testId', value: 'nav-language-select-mobile' }])
+        .locate([
+          { type: 'testId', value: 'nav-language-select-mobile' },
+          { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
+        ])
         .resolve();
       await expect(
         langSelect,
@@ -402,7 +433,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
       const frenchDashboardLabel = t('nav.dashboard'); // "Tableau de bord"
       const dashboardLinkL5 = await page
-        .locate([{ type: 'testId', value: 'nav-top-dashboard-mobile' }])
+        .locate([
+          { type: 'testId', value: 'nav-top-dashboard-mobile' },
+          { type: 'css', value: '[data-testid="nav-top-dashboard-mobile"]' },
+        ])
         .resolve();
       await expect(
         dashboardLinkL5,

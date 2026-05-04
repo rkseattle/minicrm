@@ -43,10 +43,14 @@ export class SetPasswordPage {
    * @param password - The desired password.
    */
   async fillNewPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'set-password-new' },
-      { type: 'label', value: t('setPassword.newPasswordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'set-password-new' },
+        { type: 'label', value: t('setPassword.newPasswordLabel'), options: { exact: true } },
+      ],
+      { intent: 'new password input on set password form' },
+    );
   }
 
   /**
@@ -55,34 +59,44 @@ export class SetPasswordPage {
    * @param password - Must match the value supplied to fillNewPassword().
    */
   async fillConfirmPassword(password: string): Promise<void> {
-    await this.page.fill(password, [
-      { type: 'testId', value: 'set-password-confirm' },
-      { type: 'label', value: t('setPassword.confirmPasswordLabel'), options: { exact: true } },
-    ]);
+    await this.page.fill(
+      password,
+      [
+        { type: 'testId', value: 'set-password-confirm' },
+        { type: 'label', value: t('setPassword.confirmPasswordLabel'), options: { exact: true } },
+      ],
+      { intent: 'confirm password input on set password form' },
+    );
   }
 
   /**
    * Clicks the submit button.
    */
   async submit(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'set-password-submit' },
-      {
-        type: 'role',
-        value: 'button',
-        options: { name: t('setPassword.submitButton'), exact: true },
-      },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'set-password-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('setPassword.submitButton'), exact: true },
+        },
+      ],
+      { intent: 'submit button to activate account with new password' },
+    );
   }
 
   /**
    * Returns the text content of the error alert, or null if no error is shown.
    */
   async errorMessage(): Promise<string | null> {
-    const locator = this.page.locate([
-      { type: 'testId', value: 'set-password-error' },
-      { type: 'role', value: 'alert' },
-    ]);
+    const locator = this.page.locate(
+      [
+        { type: 'testId', value: 'set-password-error' },
+        { type: 'role', value: 'alert' },
+      ],
+      { intent: 'error alert on set password form' },
+    );
     try {
       const resolved = await locator.resolve();
       const count = await resolved.count();
@@ -98,10 +112,13 @@ export class SetPasswordPage {
    */
   async invalidTokenVisible(): Promise<boolean> {
     return this.page
-      .locate([
-        { type: 'testId', value: 'set-password-invalid-token' },
-        { type: 'css', value: '[data-testid="set-password-invalid-token"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'set-password-invalid-token' },
+          { type: 'css', value: '[data-testid="set-password-invalid-token"]' },
+        ],
+        { intent: 'invalid token error message on set password page' },
+      )
       .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);
@@ -112,10 +129,13 @@ export class SetPasswordPage {
    */
   async alreadyActivatedVisible(): Promise<boolean> {
     return this.page
-      .locate([
-        { type: 'testId', value: 'set-password-already-activated' },
-        { type: 'css', value: '[data-testid="set-password-already-activated"]' },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'set-password-already-activated' },
+          { type: 'css', value: '[data-testid="set-password-already-activated"]' },
+        ],
+        { intent: 'already activated message on set password page' },
+      )
       .resolve()
       .then((el) => el.isVisible().catch(() => false))
       .catch(() => false);

@@ -42,10 +42,13 @@ export class MyTasksPage {
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
-        .locate([
-          { type: 'testId', value: 'my-tasks-heading' },
-          { type: 'role', value: 'heading', options: { level: 1 } },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'my-tasks-heading' },
+            { type: 'role', value: 'heading', options: { level: 1 } },
+          ],
+          { intent: 'my tasks page heading indicating page is loaded' },
+        )
         .resolve();
       return true;
     } catch {
@@ -61,10 +64,13 @@ export class MyTasksPage {
   async taskRowIsVisible(taskId: string): Promise<boolean> {
     try {
       const row = await this.page
-        .locate([
-          { type: 'testId', value: `task-row-${taskId}` },
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `task-row-${taskId}` },
+            { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+          ],
+          { intent: 'task row in the open tasks list' },
+        )
         .resolve();
       await row.waitFor({ state: 'visible', timeout: 10_000 });
       return true;
@@ -85,18 +91,24 @@ export class MyTasksPage {
    */
   async markComplete(taskId: string): Promise<void> {
     const btn = await this.page
-      .locate([
-        { type: 'testId', value: `mark-complete-${taskId}` },
-        { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `mark-complete-${taskId}` },
+          { type: 'css', value: `[data-testid="mark-complete-${taskId}"]` },
+        ],
+        { intent: 'mark complete button for task row' },
+      )
       .resolve();
     await btn.click();
     try {
       const row = await this.page
-        .locate([
-          { type: 'testId', value: `task-row-${taskId}` },
-          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `task-row-${taskId}` },
+            { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+          ],
+          { intent: 'task row to wait for removal after completion' },
+        )
         .resolve();
       await row.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => null);
     } catch {

@@ -69,10 +69,13 @@ export class LeadsPage {
    * Clicks the "New Lead" button to open the lead creation form.
    */
   async clickNew(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'new-lead-button' },
-      { type: 'role', value: 'button', options: { name: t('leads.new'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'new-lead-button' },
+        { type: 'role', value: 'button', options: { name: t('leads.new'), exact: false } },
+      ],
+      { intent: 'button to open new lead creation form' },
+    );
   }
 
   /**
@@ -83,10 +86,13 @@ export class LeadsPage {
   async leadRowIsVisible(leadId: string): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: `lead-row-${leadId}` },
-          { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `lead-row-${leadId}` },
+            { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
+          ],
+          { intent: 'lead row in leads list for specific lead id' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -100,10 +106,13 @@ export class LeadsPage {
    * @param leadId - Lead UUID.
    */
   async clickStatusBadge(leadId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `status-badge-${leadId}` },
-      { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `status-badge-${leadId}` },
+        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+      ],
+      { intent: 'lead status badge to open inline status selector' },
+    );
   }
 
   /**
@@ -114,10 +123,13 @@ export class LeadsPage {
    */
   async selectStatus(leadId: string, status: string): Promise<void> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: `status-select-${leadId}` },
-        { type: 'css', value: `[data-testid="status-select-${leadId}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `status-select-${leadId}` },
+          { type: 'css', value: `[data-testid="status-select-${leadId}"]` },
+        ],
+        { intent: 'inline status select dropdown for lead row' },
+      )
       .resolve();
     await resolved.selectOption(status);
   }
@@ -129,10 +141,13 @@ export class LeadsPage {
    */
   async statusBadgeText(leadId: string): Promise<string> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: `status-badge-${leadId}` },
-        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `status-badge-${leadId}` },
+          { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+        ],
+        { intent: 'lead status badge showing current status text' },
+      )
       .resolve();
     return (await resolved.textContent()) ?? '';
   }
@@ -148,10 +163,13 @@ export class LeadsPage {
    */
   async waitForStatusBadgeText(leadId: string, expected: string, timeout = 5_000): Promise<string> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: `status-badge-${leadId}` },
-        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: `status-badge-${leadId}` },
+          { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+        ],
+        { intent: 'lead status badge to poll until expected text appears' },
+      )
       .resolve();
     // Poll until the text matches — avoids snapshot racing the React re-render.
     await resolved.waitFor({ state: 'visible', timeout });
@@ -169,14 +187,17 @@ export class LeadsPage {
    */
   async showDisqualified(): Promise<void> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: 'toggle-disqualified' },
-        {
-          type: 'role',
-          value: 'checkbox',
-          options: { name: t('leads.showDisqualified'), exact: false },
-        },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'toggle-disqualified' },
+          {
+            type: 'role',
+            value: 'checkbox',
+            options: { name: t('leads.showDisqualified'), exact: false },
+          },
+        ],
+        { intent: 'toggle to show disqualified leads in the list' },
+      )
       .resolve();
     await resolved.check();
   }
@@ -186,14 +207,17 @@ export class LeadsPage {
    */
   async showConverted(): Promise<void> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: 'toggle-converted' },
-        {
-          type: 'role',
-          value: 'checkbox',
-          options: { name: t('leads.showConverted'), exact: false },
-        },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'toggle-converted' },
+          {
+            type: 'role',
+            value: 'checkbox',
+            options: { name: t('leads.showConverted'), exact: false },
+          },
+        ],
+        { intent: 'toggle to show converted leads in the list' },
+      )
       .resolve();
     await resolved.check();
   }
@@ -206,10 +230,13 @@ export class LeadsPage {
   async convertedBadgeIsVisible(leadId: string): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: `badge-converted-${leadId}` },
-          { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `badge-converted-${leadId}` },
+            { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
+          ],
+          { intent: 'converted badge on lead row' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -227,10 +254,14 @@ export class LeadsPage {
    * @param value - First name to enter.
    */
   async fillFirstName(value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: 'lead-first-name' },
-      { type: 'label', value: 'First name', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-first-name' },
+        { type: 'label', value: 'First name', options: { exact: false } },
+      ],
+      { intent: 'lead first name input in create form' },
+    );
   }
 
   /**
@@ -239,10 +270,14 @@ export class LeadsPage {
    * @param value - Last name to enter.
    */
   async fillLastName(value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: 'lead-last-name' },
-      { type: 'label', value: 'Last name', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-last-name' },
+        { type: 'label', value: 'Last name', options: { exact: false } },
+      ],
+      { intent: 'lead last name input in create form' },
+    );
   }
 
   /**
@@ -251,10 +286,14 @@ export class LeadsPage {
    * @param value - Email address to enter.
    */
   async fillEmail(value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: 'lead-email' },
-      { type: 'label', value: 'Email', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-email' },
+        { type: 'label', value: 'Email', options: { exact: false } },
+      ],
+      { intent: 'lead email input in create form' },
+    );
   }
 
   /**
@@ -263,10 +302,14 @@ export class LeadsPage {
    * @param value - Phone number to enter.
    */
   async fillPhone(value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: 'lead-phone' },
-      { type: 'label', value: 'Phone', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-phone' },
+        { type: 'label', value: 'Phone', options: { exact: false } },
+      ],
+      { intent: 'lead phone input in create form' },
+    );
   }
 
   /**
@@ -275,20 +318,27 @@ export class LeadsPage {
    * @param value - Company name to enter.
    */
   async fillCompanyName(value: string): Promise<void> {
-    await this.page.fill(value, [
-      { type: 'testId', value: 'lead-company-name' },
-      { type: 'label', value: 'Company', options: { exact: false } },
-    ]);
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-company-name' },
+        { type: 'label', value: 'Company', options: { exact: false } },
+      ],
+      { intent: 'lead company name input in create form' },
+    );
   }
 
   /**
    * Submits the lead creation form.
    */
   async submitForm(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'lead-form-submit' },
-      { type: 'role', value: 'button', options: { name: t('leads.save'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'lead-form-submit' },
+        { type: 'role', value: 'button', options: { name: t('leads.save'), exact: false } },
+      ],
+      { intent: 'submit button to save new lead' },
+    );
   }
 
   /**
@@ -297,10 +347,13 @@ export class LeadsPage {
   async formIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'lead-form' },
-          { type: 'css', value: '[data-testid="lead-form"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'lead-form' },
+            { type: 'css', value: '[data-testid="lead-form"]' },
+          ],
+          { intent: 'lead creation form container' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -314,10 +367,13 @@ export class LeadsPage {
   async duplicateWarningIsVisible(): Promise<boolean> {
     try {
       const resolved = await this.page
-        .locate([
-          { type: 'testId', value: 'duplicate-lead-warning' },
-          { type: 'css', value: '[data-testid="duplicate-lead-warning"]' },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: 'duplicate-lead-warning' },
+            { type: 'css', value: '[data-testid="duplicate-lead-warning"]' },
+          ],
+          { intent: 'duplicate lead warning message' },
+        )
         .resolve();
       return resolved.isVisible();
     } catch {
@@ -329,10 +385,13 @@ export class LeadsPage {
    * Clicks "Create anyway" to proceed past the duplicate lead warning.
    */
   async clickCreateAnyway(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'duplicate-create-anyway' },
-      { type: 'role', value: 'button', options: { name: t('leads.createAnyway'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'duplicate-create-anyway' },
+        { type: 'role', value: 'button', options: { name: t('leads.createAnyway'), exact: false } },
+      ],
+      { intent: 'create anyway button to bypass duplicate warning' },
+    );
   }
 
   // ---------------------------------------------------------------------------

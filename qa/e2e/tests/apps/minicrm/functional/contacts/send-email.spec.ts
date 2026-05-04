@@ -49,7 +49,10 @@ test(
 
     // Send Email button should be visible for a contact with an email address
     const sendEmailButton = await page
-      .locate([{ type: 'testId', value: 'send-email-button' }])
+      .locate([
+        { type: 'testId', value: 'send-email-button' },
+        { type: 'css', value: '[data-testid="send-email-button"]' },
+      ])
       .resolve();
     await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -57,7 +60,12 @@ test(
     await page.click([{ type: 'testId', value: 'send-email-button' }]);
 
     // Modal should appear
-    const modal = await page.locate([{ type: 'testId', value: 'send-email-modal' }]).resolve();
+    const modal = await page
+      .locate([
+        { type: 'testId', value: 'send-email-modal' },
+        { type: 'role', value: 'dialog' },
+      ])
+      .resolve();
     await modal.waitFor({ state: 'visible', timeout: 5_000 });
 
     // Fill in subject and body
@@ -73,7 +81,10 @@ test(
 
     // Success message should appear (SMTP not configured in test env → "Email logged" message)
     const successMsg = await page
-      .locate([{ type: 'testId', value: 'send-email-success' }])
+      .locate([
+        { type: 'testId', value: 'send-email-success' },
+        { type: 'css', value: '[data-testid="send-email-success"]' },
+      ])
       .resolve();
     await successMsg.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -112,7 +123,12 @@ test(
 
     await navigateToContact(page, contact.id);
 
-    const button = await page.locate([{ type: 'testId', value: 'send-email-button' }]).resolve();
+    const button = await page
+      .locate([
+        { type: 'testId', value: 'send-email-button' },
+        { type: 'css', value: '[data-testid="send-email-button"]' },
+      ])
+      .resolve();
     await button.waitFor({ state: 'visible', timeout: 10_000 });
     expect(await button.isVisible(), 'Send Email button should be visible').toBe(true);
   },

@@ -60,10 +60,13 @@ export class LeadDetailPage {
    * Clicks the "Convert Lead" button to open the conversion modal.
    */
   async clickConvert(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'convert-lead-button' },
-      { type: 'role', value: 'button', options: { name: t('leads.convert'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'convert-lead-button' },
+        { type: 'role', value: 'button', options: { name: t('leads.convert'), exact: false } },
+      ],
+      { intent: 'convert lead button to open conversion modal' },
+    );
   }
 
   /**
@@ -71,10 +74,13 @@ export class LeadDetailPage {
    */
   async conversionContactFirstName(): Promise<string> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: 'convert-contact-first-name' },
-        { type: 'label', value: 'First name', options: { exact: false } },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'convert-contact-first-name' },
+          { type: 'label', value: 'First name', options: { exact: false } },
+        ],
+        { intent: 'contact first name field in lead conversion modal' },
+      )
       .resolve();
     return (await resolved.inputValue()) ?? '';
   }
@@ -84,10 +90,13 @@ export class LeadDetailPage {
    */
   async conversionContactEmail(): Promise<string> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: 'convert-contact-email' },
-        { type: 'label', value: 'Email', options: { exact: false } },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'convert-contact-email' },
+          { type: 'label', value: 'Email', options: { exact: false } },
+        ],
+        { intent: 'contact email field in lead conversion modal' },
+      )
       .resolve();
     return (await resolved.inputValue()) ?? '';
   }
@@ -97,10 +106,13 @@ export class LeadDetailPage {
    */
   async conversionAccountName(): Promise<string> {
     const resolved = await this.page
-      .locate([
-        { type: 'testId', value: 'convert-account-name' },
-        { type: 'label', value: 'Account name', options: { exact: false } },
-      ])
+      .locate(
+        [
+          { type: 'testId', value: 'convert-account-name' },
+          { type: 'label', value: 'Account name', options: { exact: false } },
+        ],
+        { intent: 'account name field in lead conversion modal' },
+      )
       .resolve();
     return (await resolved.inputValue()) ?? '';
   }
@@ -109,10 +121,17 @@ export class LeadDetailPage {
    * Clicks the "Confirm" button to complete the lead conversion.
    */
   async confirmConvert(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'convert-confirm' },
-      { type: 'role', value: 'button', options: { name: t('leads.confirmConvert'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'convert-confirm' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('leads.confirmConvert'), exact: false },
+        },
+      ],
+      { intent: 'confirm button to complete lead conversion' },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -123,10 +142,13 @@ export class LeadDetailPage {
    * Clicks the "Delete" button on the lead detail page to open the confirmation modal.
    */
   async clickDelete(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'delete-lead-button' },
-      { type: 'role', value: 'button', options: { name: t('leads.delete'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'delete-lead-button' },
+        { type: 'role', value: 'button', options: { name: t('leads.delete'), exact: false } },
+      ],
+      { intent: 'delete button on lead detail page' },
+    );
   }
 
   /**
@@ -134,10 +156,13 @@ export class LeadDetailPage {
    * Falls back to a role-based "last Delete button" strategy for the confirm modal.
    */
   async confirmDelete(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'confirm-delete-confirm' },
-      { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'confirm-delete-confirm' },
+        { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
+      ],
+      { intent: 'confirm delete button in deletion confirmation modal' },
+    );
   }
 
   // ---------------------------------------------------------------------------

@@ -43,14 +43,17 @@ export class TagInputWidget {
   async isVisible(): Promise<boolean> {
     try {
       const el = await this.page
-        .locate([
-          { type: 'testId', value: `tag-input-${this.entityId}` },
-          {
-            type: 'role',
-            value: 'combobox',
-            options: { name: t('tags.inputLabel'), exact: false },
-          },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `tag-input-${this.entityId}` },
+            {
+              type: 'role',
+              value: 'combobox',
+              options: { name: t('tags.inputLabel'), exact: false },
+            },
+          ],
+          { intent: 'tag input combobox for adding tags to entity' },
+        )
         .resolve();
       return el.isVisible().catch(() => false);
     } catch {
@@ -64,10 +67,14 @@ export class TagInputWidget {
    * @param tagName - Tag name to type and confirm.
    */
   async typeAndConfirm(tagName: string): Promise<void> {
-    await this.page.fill(tagName, [
-      { type: 'testId', value: `tag-input-${this.entityId}` },
-      { type: 'role', value: 'combobox', options: { name: t('tags.inputLabel'), exact: false } },
-    ]);
+    await this.page.fill(
+      tagName,
+      [
+        { type: 'testId', value: `tag-input-${this.entityId}` },
+        { type: 'role', value: 'combobox', options: { name: t('tags.inputLabel'), exact: false } },
+      ],
+      { intent: 'tag input combobox for typing new tag name' },
+    );
     await this.page.keyboard.press('Enter');
     // Wait for the mutation to settle before the caller reads state.
     await this.page.waitForLoadState('networkidle');
@@ -81,10 +88,13 @@ export class TagInputWidget {
   async isBadgeVisible(tagId: string): Promise<boolean> {
     try {
       const el = await this.page
-        .locate([
-          { type: 'testId', value: `tag-badge-${tagId}` },
-          { type: 'css', value: `[data-testid="tag-badge-${tagId}"]` },
-        ])
+        .locate(
+          [
+            { type: 'testId', value: `tag-badge-${tagId}` },
+            { type: 'css', value: `[data-testid="tag-badge-${tagId}"]` },
+          ],
+          { intent: 'tag badge pill showing applied tag on entity' },
+        )
         .resolve();
       return el.isVisible().catch(() => false);
     } catch {
@@ -98,10 +108,13 @@ export class TagInputWidget {
    * @param tagId - Tag UUID.
    */
   async removeBadge(tagId: string): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: `remove-tag-${tagId}` },
-      { type: 'css', value: `[data-testid="remove-tag-${tagId}"]` },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: `remove-tag-${tagId}` },
+        { type: 'css', value: `[data-testid="remove-tag-${tagId}"]` },
+      ],
+      { intent: 'remove button on tag badge to detach tag from entity' },
+    );
     // Wait for the badge to leave the DOM — more reliable than networkidle for
     // React Query optimistic removals which can re-render before network settles.
     await this.page.doesNotExist(

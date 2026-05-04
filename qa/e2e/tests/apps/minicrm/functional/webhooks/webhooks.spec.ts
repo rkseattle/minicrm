@@ -117,7 +117,10 @@ test('@functional WH-01: admin sees the Webhooks section in Settings → Integra
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const section = await page
-    .locate([{ type: 'testId', value: 'webhook-settings-section' }])
+    .locate([
+      { type: 'testId', value: 'webhook-settings-section' },
+      { type: 'css', value: '[data-testid="webhook-settings-section"]' },
+    ])
     .resolve();
   await expect(section).toBeVisible({ timeout: 10_000 });
 });
@@ -136,7 +139,12 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
 
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const urlInput = await page.locate([{ type: 'testId', value: 'webhook-url-input' }]).resolve();
+  const urlInput = await page
+    .locate([
+      { type: 'testId', value: 'webhook-url-input' },
+      { type: 'role', value: 'textbox' },
+    ])
+    .resolve();
   await urlInput.fill('https://wh02.example.com/hook');
 
   // Select the contact.created event
@@ -145,12 +153,20 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await page.click([{ type: 'testId', value: 'webhook-add-button' }]);
 
   // Secret reveal modal should appear
-  const modal = await page.locate([{ type: 'testId', value: 'webhook-secret-reveal' }]).resolve();
+  const modal = await page
+    .locate([
+      { type: 'testId', value: 'webhook-secret-reveal' },
+      { type: 'css', value: '[data-testid="webhook-secret-reveal"]' },
+    ])
+    .resolve();
   await expect(modal).toBeVisible({ timeout: 8_000 });
 
   // Secret value should be non-empty
   const secretInput = await page
-    .locate([{ type: 'testId', value: 'webhook-secret-value' }])
+    .locate([
+      { type: 'testId', value: 'webhook-secret-value' },
+      { type: 'css', value: '[data-testid="webhook-secret-value"]' },
+    ])
     .resolve();
   const secretValue = await secretInput.inputValue();
   expect(secretValue.length, 'plaintextSecret should be non-empty').toBeGreaterThan(0);
@@ -192,7 +208,12 @@ test('@functional WH-03: created subscription appears in the list with correct d
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const row = await page.locate([{ type: 'testId', value: `webhook-row-${sub.id}` }]).resolve();
+  const row = await page
+    .locate([
+      { type: 'testId', value: `webhook-row-${sub.id}` },
+      { type: 'css', value: `[data-testid="webhook-row-${sub.id}"]` },
+    ])
+    .resolve();
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // URL is displayed in the row
@@ -227,7 +248,12 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const row = await page.locate([{ type: 'testId', value: `webhook-row-${sub.id}` }]).resolve();
+  const row = await page
+    .locate([
+      { type: 'testId', value: `webhook-row-${sub.id}` },
+      { type: 'css', value: `[data-testid="webhook-row-${sub.id}"]` },
+    ])
+    .resolve();
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Disable toggle
@@ -257,14 +283,24 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const row = await page.locate([{ type: 'testId', value: `webhook-row-${sub.id}` }]).resolve();
+  const row = await page
+    .locate([
+      { type: 'testId', value: `webhook-row-${sub.id}` },
+      { type: 'css', value: `[data-testid="webhook-row-${sub.id}"]` },
+    ])
+    .resolve();
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Delete
   await page.click([{ type: 'testId', value: `webhook-delete-button-${sub.id}` }]);
 
   // Confirm dialog appears
-  const dialog = await page.locate([{ type: 'testId', value: 'webhook-delete-confirm' }]).resolve();
+  const dialog = await page
+    .locate([
+      { type: 'testId', value: 'webhook-delete-confirm' },
+      { type: 'role', value: 'dialog' },
+    ])
+    .resolve();
   await expect(dialog).toBeVisible();
 
   // Confirm deletion
