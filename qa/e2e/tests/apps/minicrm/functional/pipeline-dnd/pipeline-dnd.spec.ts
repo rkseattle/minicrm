@@ -101,6 +101,8 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
   restClient,
   testData,
 }) => {
+  // Terminal-drag path includes modal interaction + React Query refetch — needs more than 30s on CI.
+  test.setTimeout(60_000);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   test.skip(
     isMobile,
@@ -121,7 +123,7 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
   await openDeal(deal.id, { page });
 
   // Drag to terminal stage — CloseDealModal must open.
-  const dragResult = await dragDealToStage(deal.id, 'Closed Won', { page, restClient });
+  const dragResult = await dragDealToStage(deal.id, 'Closed Won', { page });
   expect(
     dragResult.closeDealModalOpened,
     'CloseDealModal should open when dragging to Closed Won',
@@ -141,6 +143,8 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
   restClient,
   testData,
 }) => {
+  // Terminal-drag path includes modal interaction + React Query refetch — needs more than 30s on CI.
+  test.setTimeout(60_000);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
   test.skip(
     isMobile,
@@ -161,7 +165,7 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
   await openDeal(deal.id, { page });
 
   // Drag to terminal stage — CloseDealModal must open.
-  const dragResult = await dragDealToStage(deal.id, 'Closed Lost', { page, restClient });
+  const dragResult = await dragDealToStage(deal.id, 'Closed Lost', { page });
   expect(
     dragResult.closeDealModalOpened,
     'CloseDealModal should open when dragging to Closed Lost',
