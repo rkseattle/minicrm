@@ -285,14 +285,15 @@ export async function dragDealToStage(
   // refetch triggered by the mutation's onSettled to complete, since the card
   // only moves columns once the board data re-fetches. Pass the selector as a
   // JS expression string so document is evaluated in the browser context.
+  // Do NOT swallow the timeout — if the card doesn't appear we want getDealColumnSlug
+  // to return null (a real failure) rather than racing against the refetch and
+  // returning null because the board hadn't settled yet. (MINCRM-313)
   const cardSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
-  await context.page
-    .waitForFunction(
-      `document.querySelector(${JSON.stringify(cardSelector)}) !== null`,
-      undefined,
-      { timeout: 15_000 },
-    )
-    .catch(() => null);
+  await context.page.waitForFunction(
+    `document.querySelector(${JSON.stringify(cardSelector)}) !== null`,
+    undefined,
+    { timeout: 15_000 },
+  );
 
   const columnSlug = await boardPage.getDealColumnSlug(dealId);
   return { closeDealModalOpened, columnSlug };
