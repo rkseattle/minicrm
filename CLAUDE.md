@@ -432,15 +432,18 @@ npm test --workspace=minicrm-client   # if client/ changed
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
 ```
 
-The E2E suite requires the application to be running locally. The client dev server and the
-dedicated E2E app server (port 3002) must both be up before invoking the command. Start the
-e2e Compose profile and run `npm run e2e:setup` if you have not done so this session.
+The E2E suite requires the application to be running locally. The Vite dev server (port 5173),
+the dedicated E2E app server (port 3002), and the supporting services (MinIO, Mailhog) must
+all be up before invoking the command. Start the e2e Compose profile, start the Vite dev
+server with the E2E API target, and run `npm run e2e:setup` if you have not done so this
+session.
 
 #### E2E session setup (once per session, not before every push)
 
 The e2e Compose profile starts the dedicated E2E app server (port 3002, `DB_NAME=minicrm_e2e`),
 MinIO, and Mailhog. `E2E_API_URL` in `qa/e2e/.env` must be `http://localhost:3002` so that
 Playwright targets this server and never touches the main `minicrm` database.
+`E2E_BASE_URL` must be `http://localhost:5173` (the Vite dev server, which proxies to port 3002).
 (MINCRM-317, MINCRM-318, MINCRM-330)
 
 ```bash
@@ -450,6 +453,12 @@ docker compose -f docker-compose.dev.yml --profile e2e up -d
 # Create minicrm_e2e DB, run migrations, seed admin user, create MinIO bucket,
 # and seed storage config into system_settings (once per session)
 npm run e2e:setup
+
+# Start the Vite dev server proxying to the E2E app server (once per session,
+# in a separate terminal). The E2E_BASE_URL=http://localhost:5173 in qa/e2e/.env
+# requires this; using http://localhost:80 (nginx) routes API calls to the main
+# server and minicrm DB, not the E2E server and minicrm_e2e DB.
+API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client
 ```
 
 `npm run e2e:setup` is idempotent — re-running it in the same session is safe. You only
