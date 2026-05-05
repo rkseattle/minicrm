@@ -20,6 +20,7 @@ import type { JwtTokenPayload } from '../types/express.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { countActiveNotificationRecipients } from '../services/userService.js';
+import { sendInviteEmail } from '../services/emailService.js';
 
 /** Invite token expiry — 72 hours */
 const INVITE_TOKEN_EXPIRY = '72h';
@@ -66,15 +67,19 @@ export async function inviteUser(req: Request, res: Response): Promise<void> {
   );
 
   // Generate a short-lived invite token so the invited user can set their password.
-  // In a real deployment this token would be embedded in the invite email link.
   const inviteToken = jwt.sign({ id: user.id, purpose: 'invite' }, process.env.JWT_SECRET ?? '', {
     expiresIn: INVITE_TOKEN_EXPIRY,
   });
 
+  const appUrl = process.env.APP_URL ?? 'http://localhost:5173';
+  const setPasswordUrl = `${appUrl}/set-password?token=${inviteToken}`;
+
+  // Fire-and-forget — email failure must not block the invite response.
+  void sendInviteEmail(user.email, user.name, setPasswordUrl);
+
   res.status(201).json({
     user: sanitizeUser(user),
     inviteToken,
-    // Informational: the frontend would construct /set-password?token=<inviteToken>
     setPasswordPath: `/set-password?token=${inviteToken}`,
   });
 }

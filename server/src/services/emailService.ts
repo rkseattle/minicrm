@@ -121,29 +121,65 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 /**
  * Sends a password reset email to the user.
  *
- * In dev/test: logs the reset URL to the console so developers can copy it
- * directly without needing an SMTP server.
+ * When no SMTP transport is configured, logs the reset URL to the console so
+ * developers can copy it directly without needing an SMTP server.
  *
  * @param email - Recipient email address.
  * @param resetUrl - The full reset URL containing the plaintext token.
  */
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
-  if (process.env.NODE_ENV !== 'production') {
-    logger.info(
-      { email, resetUrl },
-      '[DEV] Password reset requested. Copy the link below to proceed:',
-    );
-    console.log(`\n[DEV] Password reset link for ${email}:\n  ${resetUrl}\n`);
-    return;
-  }
-
   const html = `
     <p>You requested a password reset for your MiniCRM account.</p>
-    <p><a href="${resetUrl}">Click here to reset your password</a></p>
+    <p><a href="${escapeHtml(resetUrl)}">Click here to reset your password</a></p>
     <p>This link expires in 60 minutes. If you did not request this, you can ignore this email.</p>
   `;
 
+  const transport = await resolveTransport();
+  if (!transport) {
+    logger.info(
+      { email, resetUrl },
+      '[NO-SMTP] Password reset requested. Copy the link below to proceed:',
+    );
+    console.log(`\n[NO-SMTP] Password reset link for ${email}:\n  ${resetUrl}\n`);
+    return;
+  }
+
   await sendEmail(email, 'Reset your MiniCRM password', html);
+}
+
+/**
+ * Sends a user invitation email containing the set-password link.
+ *
+ * When no SMTP transport is configured, logs the invite URL to the console so
+ * developers can copy it directly without needing an SMTP server.
+ *
+ * @param email - Recipient email address.
+ * @param name - Recipient's display name.
+ * @param setPasswordUrl - The full set-password URL containing the invite token.
+ */
+export async function sendInviteEmail(
+  email: string,
+  name: string,
+  setPasswordUrl: string,
+): Promise<void> {
+  const html = `
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>You have been invited to MiniCRM. Click the link below to set your password and activate your account.</p>
+    <p><a href="${escapeHtml(setPasswordUrl)}">Accept invitation and set password</a></p>
+    <p>This invitation link expires in 72 hours.</p>
+  `;
+
+  const transport = await resolveTransport();
+  if (!transport) {
+    logger.info(
+      { email, setPasswordUrl },
+      '[NO-SMTP] User invited. Copy the link below to proceed:',
+    );
+    console.log(`\n[NO-SMTP] Invite link for ${email}:\n  ${setPasswordUrl}\n`);
+    return;
+  }
+
+  await sendEmail(email, 'You have been invited to MiniCRM', html);
 }
 
 /** A single overdue task item included in the digest email */

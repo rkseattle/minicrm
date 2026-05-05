@@ -178,25 +178,32 @@ function seedStorageConfig(): void {
   console.log('[e2e:setup] Storage config seeded.');
 }
 
-// ── Step 6 [STUB]: Seed Mailhog SMTP config into system_settings ──────────────
-//
-// Activate this block when MINCRM-306 ships. At that point:
-//   - Uncomment the seedSmtpConfig() call in main()
-//   - Implement the upsert queries for smtp_host, smtp_port, email_notifications_enabled
-//   - Remove this comment block
-//
-// function seedSmtpConfig(): void {
-//   console.log('[e2e:setup] Seeding Mailhog SMTP config into system_settings...');
-//
-//   // Upsert smtp_host = 'localhost', smtp_port = '1025',
-//   // email_notifications_enabled = 'true' into system_settings.
-//   //
-//   // Use the same upsert pattern as seed-e2e-storage.ts:
-//   //   INSERT INTO system_settings (key, value, updated_at) VALUES (...)
-//   //   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
-//
-//   console.log('[e2e:setup] SMTP config seeded.');
-// }
+// ── Step 6: Seed Mailhog SMTP config into system_settings ─────────────────────
+// MINCRM-306: Configures the E2E server to send transactional email to Mailhog
+// on port 1025. E2E tests can then assert on delivery via the Mailhog HTTP API.
+
+function seedSmtpConfig(): void {
+  console.log('[e2e:setup] Seeding Mailhog SMTP config into system_settings...');
+
+  const dbUser = process.env.DB_USER ?? 'minicrm';
+  const dbPassword = process.env.DB_PASSWORD ?? 'password';
+  const dbHost = process.env.DB_HOST ?? 'localhost';
+  const dbPort = process.env.DB_PORT ?? '5432';
+
+  execSync('npm run seed:e2e-smtp', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DB_USER: dbUser,
+      DB_PASSWORD: dbPassword,
+      DB_NAME: E2E_DB_NAME,
+      DB_HOST: dbHost,
+      DB_PORT: dbPort,
+    },
+  });
+
+  console.log('[e2e:setup] SMTP config seeded.');
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -206,7 +213,7 @@ async function main(): Promise<void> {
   await waitForMinio();
   createMinioBucket();
   seedStorageConfig();
-  // seedSmtpConfig();  // MINCRM-306: uncomment when Mailhog SMTP support ships
+  seedSmtpConfig(); // MINCRM-306: seed Mailhog SMTP config
 
   console.log('[e2e:setup] Done. Local E2E infrastructure is ready.');
 }
