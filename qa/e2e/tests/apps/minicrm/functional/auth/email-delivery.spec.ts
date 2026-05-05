@@ -78,11 +78,7 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
   // Wait for the fire-and-forget invite email to arrive, then clear so only
   // the reset email counts. Poll until the invite email lands before clearing
   // to avoid a race where the invite email arrives after our clear.
-  let inviteMessages = await mailhog.getMessagesTo(testEmail);
-  for (let attempt = 0; attempt < 15 && inviteMessages.length === 0; attempt++) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 200));
-    inviteMessages = await mailhog.getMessagesTo(testEmail);
-  }
+  await mailhog.waitForMessagesTo(testEmail, { maxAttempts: 15, intervalMs: 200 });
   await mailhog.clearMessages();
 
   try {
@@ -96,11 +92,7 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
     await restClient.post('/api/v1/auth/forgot-password', { email: testEmail });
 
     // Poll Mailhog briefly — the server sends the email asynchronously after responding.
-    let messages = await mailhog.getMessagesTo(testEmail);
-    for (let attempt = 0; attempt < 10 && messages.length === 0; attempt++) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 300));
-      messages = await mailhog.getMessagesTo(testEmail);
-    }
+    const messages = await mailhog.waitForMessagesTo(testEmail);
 
     expect(messages.length, 'exactly one reset email should be delivered').toBe(1);
 
@@ -140,11 +132,7 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
 
   try {
     // Poll Mailhog briefly — the server fires the invite email after responding.
-    let messages = await mailhog.getMessagesTo(invitedEmail);
-    for (let attempt = 0; attempt < 10 && messages.length === 0; attempt++) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 300));
-      messages = await mailhog.getMessagesTo(invitedEmail);
-    }
+    const messages = await mailhog.waitForMessagesTo(invitedEmail);
 
     expect(messages.length, 'exactly one invite email should be delivered').toBe(1);
 
