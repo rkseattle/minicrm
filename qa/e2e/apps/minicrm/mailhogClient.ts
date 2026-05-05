@@ -119,4 +119,25 @@ export class MailhogClient {
       ),
     );
   }
+
+  /**
+   * Polls Mailhog until at least one message addressed to `email` arrives,
+   * or the attempt budget is exhausted.
+   *
+   * @param email - The recipient address to wait for.
+   * @param maxAttempts - Maximum number of poll attempts (default 10).
+   * @param intervalMs - Milliseconds between attempts (default 300).
+   * @returns The messages found (may be empty if the budget was exhausted).
+   */
+  async waitForMessagesTo(
+    email: string,
+    { maxAttempts = 10, intervalMs = 300 }: { maxAttempts?: number; intervalMs?: number } = {},
+  ): Promise<MailhogMessage[]> {
+    let messages = await this.getMessagesTo(email);
+    for (let attempt = 0; attempt < maxAttempts && messages.length === 0; attempt++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
+      messages = await this.getMessagesTo(email);
+    }
+    return messages;
+  }
 }

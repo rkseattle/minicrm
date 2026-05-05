@@ -14,6 +14,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
 import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,8 @@ import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[SENDEMAIL] E2E_ADMIN_PASSWORD is not set');
+
+const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -40,6 +43,8 @@ test(
   'Send Email button opens modal, user fills fields, submits, success message appears, and Email activity is logged',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
+    const mailhog = new MailhogClient(MAILHOG_URL);
+
     const contact = await createTestContact(testData, restClient, {
       first_name: 'EmailTest',
       last_name: 'User',
@@ -55,6 +60,9 @@ test(
       ])
       .resolve();
     await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
+
+    // Clear inbox before sending to prevent cross-test contamination
+    await mailhog.clearMessages();
 
     // Open the compose modal
     await page.click([{ type: 'testId', value: 'send-email-button' }]);
@@ -79,7 +87,7 @@ test(
     // Click Send
     await page.click([{ type: 'testId', value: 'send-email-submit' }]);
 
-    // Success message should appear (SMTP not configured in test env → "Email logged" message)
+    // Success message appears; Mailhog confirms actual SMTP delivery below.
     const successMsg = await page
       .locate([
         { type: 'testId', value: 'send-email-success' },
@@ -90,6 +98,15 @@ test(
 
     // Modal should auto-close
     await modal.waitFor({ state: 'detached', timeout: 5_000 });
+
+    // Poll Mailhog — the server sends email asynchronously after responding
+    const messages = await mailhog.waitForMessagesTo(contact.email);
+
+    expect(messages.length, 'exactly one email should be delivered via SMTP').toBe(1);
+    expect(
+      messages[0].Content.Headers['Subject']?.[0],
+      'delivered email subject should match the composed subject',
+    ).toBe('Test email subject from E2E');
 
     // Verify the Email activity was logged via the API
     const activitiesRes = await restClient.get<{
