@@ -911,7 +911,9 @@
     "next": "[Ñëxt~~]",
     "pageOf": "[Pägë {{page}} öf {{total}}~~~~~~~~]",
     "showing": "[Ŝhöwïñg {{from}}–{{to}} öf {{total}}~~~~~~~~~~~]",
-    "loadMore": "[Löäd mörë~~~]"
+    "loadMore": "[Löäd mörë~~~]",
+    "rowsPerPage": "[Röws për pägë~~~~~]",
+    "rowsPerPageOption": "[{{n}} për pägë~~~]"
   },
   "auditLog": {
     "heading": "[Äüdït Lög~~~]",

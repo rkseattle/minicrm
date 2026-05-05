@@ -73,4 +73,71 @@ describe('Pagination', () => {
     expect(screen.getByTestId('pagination-prev')).toBeDisabled();
     expect(screen.getByTestId('pagination-next')).toBeDisabled();
   });
+
+  describe('page-size selector (onLimitChange)', () => {
+    it('renders pagination-limit-select when onLimitChange is provided', () => {
+      render(
+        <Pagination
+          page={1}
+          limit={25}
+          total={100}
+          onPageChange={vi.fn()}
+          onLimitChange={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId('pagination-limit-select')).toBeInTheDocument();
+    });
+
+    it('does not render pagination-limit-select when onLimitChange is omitted', () => {
+      render(<Pagination page={1} limit={25} total={100} onPageChange={vi.fn()} />);
+      expect(screen.queryByTestId('pagination-limit-select')).not.toBeInTheDocument();
+    });
+
+    it('renders all four page-size options (10, 25, 50, 100)', () => {
+      render(
+        <Pagination
+          page={1}
+          limit={25}
+          total={100}
+          onPageChange={vi.fn()}
+          onLimitChange={vi.fn()}
+        />,
+      );
+      const select = screen.getByTestId('pagination-limit-select');
+      const options = Array.from(select.querySelectorAll('option')).map((o) =>
+        Number((o as HTMLOptionElement).value),
+      );
+      expect(options).toEqual([10, 25, 50, 100]);
+    });
+
+    it('calls onLimitChange with the selected number when a new value is chosen', async () => {
+      const user = userEvent.setup();
+      const onLimitChange = vi.fn();
+      render(
+        <Pagination
+          page={1}
+          limit={25}
+          total={100}
+          onPageChange={vi.fn()}
+          onLimitChange={onLimitChange}
+        />,
+      );
+      await user.selectOptions(screen.getByTestId('pagination-limit-select'), '50');
+      expect(onLimitChange).toHaveBeenCalledWith(50);
+    });
+
+    it('reflects the current limit as the selected option', () => {
+      render(
+        <Pagination
+          page={1}
+          limit={50}
+          total={200}
+          onPageChange={vi.fn()}
+          onLimitChange={vi.fn()}
+        />,
+      );
+      const select = screen.getByTestId('pagination-limit-select') as HTMLSelectElement;
+      expect(select.value).toBe('50');
+    });
+  });
 });

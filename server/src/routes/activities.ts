@@ -110,16 +110,31 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
  *   get:
  *     tags: [Activities]
  *     operationId: listMyTasks
- *     summary: List the authenticated user's open tasks
+ *     summary: List the authenticated user's tasks (paginated)
  *     description: >
- *       Returns all open activities of type 'Task' owned by the authenticated user,
- *       sorted by due date ascending. Overdue tasks are highlighted by comparing
- *       due_date to the current date client-side.
+ *       Returns a paginated list of activities of type 'Task' owned by the authenticated user,
+ *       sorted by due date ascending. Accepts optional `page` and `limit` query params.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 1-based page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 25
+ *         description: Records per page
  *     responses:
  *       200:
- *         description: Array of open tasks for the current user
+ *         description: Paginated list of tasks for the current user
  *         content:
  *           application/json:
  *             schema:
@@ -129,20 +144,22 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Activity'
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
  *             example:
  *               tasks:
  *                 - id: ac1b2c3d-0000-0000-0000-000000000001
  *                   type: Task
  *                   subject: Send revised proposal to Acme
- *                   notes: null
- *                   due_date: '2025-04-01'
  *                   status: open
- *                   contact_id: c1d2e3f4-0000-0000-0000-000000000001
- *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                   deal_id: d1e2f3a4-0000-0000-0000-000000000001
- *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
- *                   created_at: '2025-03-15T09:00:00.000Z'
- *                   updated_at: '2025-03-15T09:00:00.000Z'
+ *                   due_date: '2025-04-01'
+ *               total: 1
+ *               page: 1
+ *               limit: 25
  *       401:
  *         description: Not authenticated
  *         content:

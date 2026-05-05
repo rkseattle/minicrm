@@ -9,7 +9,7 @@ import { z } from 'zod';
 export const PAGINATION_MAX_LIMIT = 100;
 
 /** Default number of records returned when no limit is specified */
-export const PAGINATION_DEFAULT_LIMIT = 50;
+export const PAGINATION_DEFAULT_LIMIT = 25;
 
 /**
  * Zod schema for pagination query parameters.

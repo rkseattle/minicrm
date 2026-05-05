@@ -27,10 +27,8 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
 import TagBadge from '@/components/TagBadge.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import {
-  PAGINATION_DEFAULT_LIMIT,
-  PAGINATION_MAX_LIMIT,
-} from '@shared/schemas/paginationSchema.js';
+import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
+import { usePagination } from '@/hooks/usePagination.js';
 
 /** Max records fetched for the board view — fetches all by capping at the server max */
 const PAGINATION_MAX_BOARD_LIMIT = PAGINATION_MAX_LIMIT;
@@ -126,7 +124,12 @@ export default function DealsPage() {
   }
 
   // ── List view state ────────────────────────────────────────────────────────
-  const [listPage, setListPage] = useState(1);
+  const {
+    page: listPage,
+    limit: listLimit,
+    setPage: setListPage,
+    handleLimitChange,
+  } = usePagination();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   type SortColumn = 'name' | 'close_date';
@@ -171,6 +174,7 @@ export default function DealsPage() {
       dir: sortDir,
       tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       page: listPage,
+      limit: listLimit,
     },
   ] as const;
 
@@ -202,7 +206,7 @@ export default function DealsPage() {
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         page: listPage,
-        limit: PAGINATION_DEFAULT_LIMIT,
+        limit: listLimit,
       }),
     enabled: viewMode === 'list',
   });
@@ -426,7 +430,7 @@ export default function DealsPage() {
   const selectedTagKey = selectedTagIds.join(',');
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [ownerFilter, showClosed, sortCol, sortDir, listPage, selectedTagKey, viewMode]);
+  }, [ownerFilter, showClosed, sortCol, sortDir, listPage, listLimit, selectedTagKey, viewMode]);
 
   const allVisibleDealIds = sortedDeals.map((d) => d.id);
   const allVisibleSelected =
@@ -1167,12 +1171,13 @@ export default function DealsPage() {
                     )}
                   </>
                 )}
-                {listData && listData.total > listData.limit && (
+                {listData && (
                   <Pagination
                     page={listData.page}
                     limit={listData.limit}
                     total={listData.total}
                     onPageChange={setListPage}
+                    onLimitChange={handleLimitChange}
                   />
                 )}
               </div>

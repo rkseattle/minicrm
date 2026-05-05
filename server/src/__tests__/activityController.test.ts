@@ -164,3 +164,61 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 });
+
+// ── GET /api/activities/my-tasks — pagination envelope ─────────────────────────
+
+describe('GET /api/activities/my-tasks — pagination', () => {
+  it('returns the paginated envelope with tasks, total, page, and limit', async () => {
+    await createActivity({
+      type: 'Task',
+      subject: 'My paginated task',
+      contact_id: contactId,
+      owner_id: repId,
+    });
+
+    const res = await request(app)
+      .get('/api/v1/activities/my-tasks?page=1&limit=25')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      tasks: expect.any(Array),
+      total: expect.any(Number),
+      page: 1,
+      limit: 25,
+    });
+    expect(res.body.tasks[0].subject).toBe('My paginated task');
+    expect(res.body.total).toBe(1);
+  });
+
+  it('returns only tasks on the requested page', async () => {
+    for (let i = 1; i <= 3; i++) {
+      await createActivity({
+        type: 'Task',
+        subject: `Paged task ${i}`,
+        due_date: `2026-0${i}-01`,
+        contact_id: contactId,
+        owner_id: repId,
+      });
+    }
+
+    const res = await request(app)
+      .get('/api/v1/activities/my-tasks?page=2&limit=2')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.total).toBe(3);
+    expect(res.body.page).toBe(2);
+    expect(res.body.limit).toBe(2);
+    expect(res.body.tasks[0].subject).toBe('Paged task 3');
+  });
+
+  it('uses pagination defaults when no query params are supplied', async () => {
+    const res = await request(app).get('/api/v1/activities/my-tasks').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.page).toBe(1);
+    expect(res.body.limit).toBe(25);
+  });
+});

@@ -24,7 +24,11 @@ describe('MyTasksPage', () => {
   });
 
   it('shows the empty state when there are no open tasks', async () => {
-    server.use(http.get('/api/v1/activities/my-tasks', () => HttpResponse.json({ tasks: [] })));
+    server.use(
+      http.get('/api/v1/activities/my-tasks', () =>
+        HttpResponse.json({ tasks: [], total: 0, page: 1, limit: 25 }),
+      ),
+    );
 
     renderWithProviders(<MyTasksPage />);
 
@@ -91,7 +95,7 @@ describe('MyTasksPage', () => {
   it('hides completed tasks by default', async () => {
     server.use(
       http.get('/api/v1/activities/my-tasks', () =>
-        HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE] }),
+        HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE], total: 2, page: 1, limit: 25 }),
       ),
     );
 
@@ -107,7 +111,7 @@ describe('MyTasksPage', () => {
   it('shows completed tasks when the "Show completed" toggle is clicked', async () => {
     server.use(
       http.get('/api/v1/activities/my-tasks', () =>
-        HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE] }),
+        HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_COMPLETE], total: 2, page: 1, limit: 25 }),
       ),
     );
 
@@ -127,7 +131,7 @@ describe('MyTasksPage', () => {
   it('applies line-through styling to completed task subjects', async () => {
     server.use(
       http.get('/api/v1/activities/my-tasks', () =>
-        HttpResponse.json({ tasks: [MY_TASK_COMPLETE] }),
+        HttpResponse.json({ tasks: [MY_TASK_COMPLETE], total: 1, page: 1, limit: 25 }),
       ),
     );
 
@@ -148,7 +152,7 @@ describe('MyTasksPage', () => {
   it('does not show "Mark complete" for already completed tasks', async () => {
     server.use(
       http.get('/api/v1/activities/my-tasks', () =>
-        HttpResponse.json({ tasks: [MY_TASK_COMPLETE] }),
+        HttpResponse.json({ tasks: [MY_TASK_COMPLETE], total: 1, page: 1, limit: 25 }),
       ),
     );
 
@@ -214,7 +218,9 @@ describe('MyTasksPage', () => {
 
     it('shows the empty state when filter=overdue but no tasks are overdue', async () => {
       server.use(
-        http.get('/api/v1/activities/my-tasks', () => HttpResponse.json({ tasks: [MY_TASK_1] })),
+        http.get('/api/v1/activities/my-tasks', () =>
+          HttpResponse.json({ tasks: [MY_TASK_1], total: 1, page: 1, limit: 25 }),
+        ),
       );
 
       renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
@@ -272,6 +278,38 @@ describe('MyTasksPage', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('toggle-completed-button')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('pagination', () => {
+    it('renders the Pagination component after tasks load', async () => {
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination')).toBeInTheDocument();
+      });
+    });
+
+    it('renders the page-size selector', async () => {
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination-limit-select')).toBeInTheDocument();
+      });
+    });
+
+    it('renders Pagination even when total <= limit (always visible)', async () => {
+      server.use(
+        http.get('/api/v1/activities/my-tasks', () =>
+          HttpResponse.json({ tasks: [MY_TASK_1], total: 1, page: 1, limit: 25 }),
+        ),
+      );
+
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination')).toBeInTheDocument();
       });
     });
   });

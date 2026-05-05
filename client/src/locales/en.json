@@ -1012,7 +1012,9 @@
     "next": "Next",
     "pageOf": "Page {{page}} of {{total}}",
     "showing": "Showing {{from}}–{{to}} of {{total}}",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "rowsPerPage": "Rows per page",
+    "rowsPerPageOption": "{{n}} per page"
   },
   "auditLog": {
     "heading": "Audit Log",

@@ -422,7 +422,10 @@ describe('listActivities', () => {
   });
 
   it('filters by ownerId when provided', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-owner@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-other-owner@example.com`,
+    });
 
     await createActivity({
       type: 'Note',
@@ -518,14 +521,18 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks, total } = await listMyTasks(ownerId, 1, 25);
     expect(tasks).toHaveLength(1);
+    expect(total).toBe(1);
     expect(tasks[0].subject).toBe('My task');
     expect(tasks[0].type).toBe('Task');
   });
 
   it('excludes tasks owned by other users', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-tasks@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-other-tasks@example.com`,
+    });
     await createActivity({
       type: 'Task',
       subject: 'Their task',
@@ -539,8 +546,9 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks, total } = await listMyTasks(ownerId, 1, 25);
     expect(tasks).toHaveLength(1);
+    expect(total).toBe(1);
     expect(tasks[0].subject).toBe('My task');
   });
 
@@ -559,8 +567,9 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks, total } = await listMyTasks(ownerId, 1, 25);
     expect(tasks).toHaveLength(2);
+    expect(total).toBe(2);
     const statuses = tasks.map((t) => t.status);
     expect(statuses).toContain('open');
     expect(statuses).toContain('complete');
@@ -588,7 +597,7 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks } = await listMyTasks(ownerId, 1, 25);
     expect(tasks[0].subject).toBe('Earlier');
     expect(tasks[1].subject).toBe('Later');
     expect(tasks[2].subject).toBe('No date');
@@ -602,7 +611,7 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks } = await listMyTasks(ownerId, 1, 25);
     expect(tasks[0].linked_record_type).toBe('contact');
     expect(tasks[0].linked_record_name).toBe('Test Contact');
   });
@@ -615,7 +624,7 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks } = await listMyTasks(ownerId, 1, 25);
     expect(tasks[0].linked_record_type).toBe('account');
     expect(tasks[0].linked_record_name).toBe('Test Account');
   });
@@ -628,14 +637,52 @@ describe('listMyTasks', () => {
       owner_id: ownerId,
     });
 
-    const tasks = await listMyTasks(ownerId);
+    const { tasks } = await listMyTasks(ownerId, 1, 25);
     expect(tasks[0].linked_record_type).toBe('deal');
     expect(tasks[0].linked_record_name).toBe('Test Deal');
   });
 
-  it('returns an empty array when the owner has no tasks', async () => {
-    const tasks = await listMyTasks(ownerId);
+  it('returns an empty result when the owner has no tasks', async () => {
+    const { tasks, total } = await listMyTasks(ownerId, 1, 25);
     expect(tasks).toEqual([]);
+    expect(total).toBe(0);
+  });
+
+  it('returns the correct page of results using LIMIT and OFFSET', async () => {
+    for (let i = 1; i <= 3; i++) {
+      await createActivity({
+        type: 'Task',
+        subject: `Task ${i}`,
+        due_date: `2026-0${i}-01`,
+        contact_id: contactId,
+        owner_id: ownerId,
+      });
+    }
+
+    const page1 = await listMyTasks(ownerId, 1, 2);
+    expect(page1.tasks).toHaveLength(2);
+    expect(page1.total).toBe(3);
+    expect(page1.tasks[0].subject).toBe('Task 1');
+    expect(page1.tasks[1].subject).toBe('Task 2');
+
+    const page2 = await listMyTasks(ownerId, 2, 2);
+    expect(page2.tasks).toHaveLength(1);
+    expect(page2.total).toBe(3);
+    expect(page2.tasks[0].subject).toBe('Task 3');
+  });
+
+  it('total reflects all matching tasks regardless of the requested page', async () => {
+    for (let i = 1; i <= 5; i++) {
+      await createActivity({
+        type: 'Task',
+        subject: `Task ${i}`,
+        contact_id: contactId,
+        owner_id: ownerId,
+      });
+    }
+
+    const { total } = await listMyTasks(ownerId, 2, 2);
+    expect(total).toBe(5);
   });
 });
 
