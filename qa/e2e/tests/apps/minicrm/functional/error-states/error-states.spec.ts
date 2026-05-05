@@ -253,6 +253,19 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     { type: 'css', value: '[data-testid="contacts-search"]' },
   ]);
   await page.waitForLoadState('networkidle');
+  // The debounce fires 300ms after the fill; wait for the loading state to
+  // appear and fully clear so the contacts list reflects the search results
+  // before we try to interact with the page.
+  const loadingIndicator = await page
+    .locate(
+      [
+        { type: 'testId', value: 'contacts-loading' },
+        { type: 'css', value: '[data-testid="contacts-loading"]' },
+      ],
+      { intent: 'contacts loading indicator that hides when search results are ready' },
+    )
+    .resolve();
+  await loadingIndicator.waitFor({ state: 'hidden', timeout: 10_000 });
 
   // Wait for contact row and checkbox.
   const contactRow = await page
