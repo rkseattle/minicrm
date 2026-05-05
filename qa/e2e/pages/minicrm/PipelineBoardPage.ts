@@ -9,7 +9,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-110
+ * MINCRM-110, MINCRM-310, MINCRM-315
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -89,6 +89,23 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Waits until the mobile stage heading text changes away from `prevHeading`.
+   * Used after clicking the prev/next navigation buttons — the heading element
+   * (`pipeline-mobile-stage-name`) updates synchronously with React state, so
+   * a text change is the most reliable signal that the column has advanced.
+   * The predicate is passed as a string so the TypeScript compiler (which has
+   * no DOM lib) does not flag `document` as an unknown name; the string is
+   * evaluated inside the browser context by Playwright at runtime. MINCRM-310
+   */
+  private async waitForMobileStageChange(prevHeading: string): Promise<void> {
+    const predicate = `(() => {
+      const el = document.querySelector('[data-testid="pipeline-mobile-stage-name"]');
+      return el !== null && el.textContent !== ${JSON.stringify(prevHeading)};
+    })()`;
+    await this.page.waitForFunction(predicate, undefined, { timeout: 5_000 });
+  }
+
+  /**
    * Returns the stage slug (column testid slug) that currently contains the
    * given deal card.
    *
@@ -138,9 +155,9 @@ export class PipelineBoardPage {
     }
 
     // Mobile: navigate through each stage and check the single visible column.
-    // Stage navigation is pure React state — no network calls. Use a short
-    // waitForTimeout instead of waitForLoadState('networkidle') to avoid
-    // burning the 30s test timeout across 12+ button clicks.
+    // Stage navigation is pure React state — no network calls. Wait for the
+    // pipeline-mobile-stage-name heading text to change after each button click
+    // rather than using a fixed timeout. MINCRM-310
     // First, rewind to stage 0 (Prospecting) by clicking prev until disabled.
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
       try {
@@ -154,8 +171,18 @@ export class PipelineBoardPage {
           )
           .resolve();
         if (!(await prevBtn.isEnabled().catch(() => false))) break;
+        const headingEl = await this.page
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-stage-name' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+            ],
+            { intent: 'mobile pipeline active stage heading' },
+          )
+          .resolve();
+        const prevHeading = (await headingEl.textContent()) ?? '';
         await prevBtn.click();
-        await this.page.waitForTimeout(200);
+        await this.waitForMobileStageChange(prevHeading).catch(() => null);
       } catch {
         break;
       }
@@ -187,8 +214,18 @@ export class PipelineBoardPage {
           )
           .resolve();
         if (!(await nextBtn.isEnabled().catch(() => false))) break;
+        const headingEl = await this.page
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-stage-name' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+            ],
+            { intent: 'mobile pipeline active stage heading' },
+          )
+          .resolve();
+        const prevHeading = (await headingEl.textContent()) ?? '';
         await nextBtn.click();
-        await this.page.waitForTimeout(200);
+        await this.waitForMobileStageChange(prevHeading).catch(() => null);
       } catch {
         break;
       }
@@ -230,8 +267,18 @@ export class PipelineBoardPage {
           )
           .resolve();
         if (await nextBtn.isEnabled().catch(() => false)) {
+          const headingEl = await this.page
+            .locate(
+              [
+                { type: 'testId', value: 'pipeline-mobile-stage-name' },
+                { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+              ],
+              { intent: 'mobile pipeline active stage heading' },
+            )
+            .resolve();
+          const prevHeading = (await headingEl.textContent()) ?? '';
           await nextBtn.click();
-          await this.page.waitForTimeout(200);
+          await this.waitForMobileStageChange(prevHeading).catch(() => null);
         }
       } catch {
         break;
@@ -331,8 +378,18 @@ export class PipelineBoardPage {
             )
             .resolve();
           if (!(await prevBtn.isEnabled().catch(() => false))) break;
+          const headingEl = await this.page
+            .locate(
+              [
+                { type: 'testId', value: 'pipeline-mobile-stage-name' },
+                { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+              ],
+              { intent: 'mobile pipeline active stage heading' },
+            )
+            .resolve();
+          const prevHeading = (await headingEl.textContent()) ?? '';
           await prevBtn.click();
-          await this.page.waitForTimeout(200);
+          await this.waitForMobileStageChange(prevHeading).catch(() => null);
         } catch {
           break;
         }
@@ -349,8 +406,18 @@ export class PipelineBoardPage {
             )
             .resolve();
           if (await nextBtn.isEnabled().catch(() => false)) {
+            const headingEl = await this.page
+              .locate(
+                [
+                  { type: 'testId', value: 'pipeline-mobile-stage-name' },
+                  { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+                ],
+                { intent: 'mobile pipeline active stage heading' },
+              )
+              .resolve();
+            const prevHeading = (await headingEl.textContent()) ?? '';
             await nextBtn.click();
-            await this.page.waitForTimeout(200);
+            await this.waitForMobileStageChange(prevHeading).catch(() => null);
           }
         } catch {
           break;
