@@ -27,7 +27,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
+import { MailhogClient, decodeQuotedPrintable } from '@apps/minicrm/mailhogClient.js';
 
 // F1-EM tests exercise unauthenticated flows. Use an empty storageState to
 // prevent the project-level admin session from loading.
@@ -75,7 +75,14 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
   });
   const userId = inviteRes.body.user.id;
 
-  // Clear messages accumulated during invite (which also sends an invite email).
+  // Wait for the fire-and-forget invite email to arrive, then clear so only
+  // the reset email counts. Poll until the invite email lands before clearing
+  // to avoid a race where the invite email arrives after our clear.
+  let inviteMessages = await mailhog.getMessagesTo(testEmail);
+  for (let attempt = 0; attempt < 15 && inviteMessages.length === 0; attempt++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 200));
+    inviteMessages = await mailhog.getMessagesTo(testEmail);
+  }
   await mailhog.clearMessages();
 
   try {
@@ -97,8 +104,9 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
 
     expect(messages.length, 'exactly one reset email should be delivered').toBe(1);
 
-    const msg = messages[0];
-    expect(msg.Content.Body, 'reset email body should contain a reset-password link').toContain(
+    // Decode quoted-printable — Content.Body and Raw.Data use QP encoding.
+    const body = decodeQuotedPrintable(messages[0].Raw.Data);
+    expect(body, 'reset email should contain a reset-password link').toContain(
       '/reset-password?token=',
     );
   } finally {
@@ -140,8 +148,9 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
 
     expect(messages.length, 'exactly one invite email should be delivered').toBe(1);
 
-    const msg = messages[0];
-    expect(msg.Content.Body, 'invite email body should contain a set-password link').toContain(
+    // Decode quoted-printable — Content.Body and Raw.Data use QP encoding.
+    const body = decodeQuotedPrintable(messages[0].Raw.Data);
+    expect(body, 'invite email should contain a set-password link').toContain(
       '/set-password?token=',
     );
   } finally {

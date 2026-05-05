@@ -51,6 +51,22 @@ interface MessagesResponse {
   items: MailhogMessage[];
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Decodes a quoted-printable encoded string.
+ * Removes soft line breaks (=\r\n and =\n) and decodes =XX hex sequences.
+ *
+ * @param input - The QP-encoded string (e.g. from Content.Body or Raw.Data).
+ * @returns The decoded plain text.
+ */
+export function decodeQuotedPrintable(input: string): string {
+  return input
+    .replace(/=\r\n/g, '')
+    .replace(/=\n/g, '')
+    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 // ── MailhogClient ─────────────────────────────────────────────────────────────
 
 export class MailhogClient {
