@@ -9,15 +9,14 @@ COPY server/package*.json ./server/
 COPY shared/package*.json ./shared/
 COPY client/package*.json ./client/
 
-# Skip prepare scripts during install — shared schemas aren't copied yet.
-# We build shared explicitly after the source copy below.
-RUN npm ci --ignore-scripts
+# Full install so tsc (root devDependency) and all server deps are available
+RUN npm ci
 
 # Copy source needed for compilation
 COPY server/ ./server/
 COPY shared/ ./shared/
 
-RUN npm run build --workspace=@minicrm/shared && npm run build --workspace=minicrm-server
+RUN npm run build --workspace=minicrm-server
 
 # Runtime stage: node only, no TypeScript source or tsx (MINCRM-288)
 FROM node:20-alpine
