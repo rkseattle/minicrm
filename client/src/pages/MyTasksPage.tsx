@@ -105,9 +105,9 @@ export default function MyTasksPage() {
   const visibleTasks = overdueFilter ? overdueTasks : showCompleted ? allTasks : openTasks;
 
   return (
-    <>
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-semibold text-gray-900" data-testid="my-tasks-heading">
             {t('myTasks.pageTitle')}
@@ -153,15 +153,15 @@ export default function MyTasksPage() {
                 {t('myTasks.empty')}
               </p>
             ) : visibleTasks.length > 0 ? (
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
                 {isDesktop ? (
                   /* Desktop table */
-                  <div className="overflow-x-auto">
+                  <div className="flex-1 overflow-auto min-h-0">
                     <table
                       className="min-w-full divide-y divide-gray-200"
                       data-testid="my-tasks-table"
                     >
-                      <thead className="bg-gray-50">
+                      <thead className="sticky top-0 z-10 bg-gray-50">
                         <tr>
                           <th
                             scope="col"
@@ -381,6 +381,15 @@ export default function MyTasksPage() {
                     })}
                   </ul>
                 )}
+                {data && (
+                  <Pagination
+                    page={data.page}
+                    limit={data.limit}
+                    total={data.total}
+                    onPageChange={setPage}
+                    onLimitChange={handleLimitChange}
+                  />
+                )}
               </div>
             ) : null}
 
@@ -390,19 +399,9 @@ export default function MyTasksPage() {
                 {t('myTasks.emptyCompleted')}
               </p>
             )}
-
-            {data && (
-              <Pagination
-                page={data.page}
-                limit={data.limit}
-                total={data.total}
-                onPageChange={setPage}
-                onLimitChange={handleLimitChange}
-              />
-            )}
           </>
         )}
       </main>
-    </>
+    </div>
   );
 }
