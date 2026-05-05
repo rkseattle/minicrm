@@ -474,11 +474,17 @@ export default function DealsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className={
+        viewMode === 'list' ? 'h-screen flex flex-col bg-gray-50' : 'min-h-screen bg-gray-50'
+      }
+    >
       <NavBar />
       <main
         className={
-          viewMode === 'board' ? 'px-4 sm:px-6 py-8' : 'max-w-7xl mx-auto px-4 sm:px-6 py-8'
+          viewMode === 'board'
+            ? 'px-4 sm:px-6 py-8'
+            : 'flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8'
         }
       >
         {/* Page header */}
@@ -930,17 +936,17 @@ export default function DealsPage() {
             />
 
             {!isLoading && !isError && (
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
                 {sortedDeals.length === 0 ? (
                   <div className="p-12 text-center">
                     <p className="text-sm text-gray-500">{t('deals.empty')}</p>
                   </div>
                 ) : (
-                  <>
+                  <div className="flex-1 overflow-auto min-h-0">
                     {isDesktop ? (
                       /* Desktop table */
                       <table className="w-full text-sm">
-                        <thead>
+                        <thead className="sticky top-0 z-10">
                           <tr className="border-b border-gray-200 bg-gray-50">
                             {/* Bulk select-all checkbox (MINCRM-188) */}
                             <th className="w-10 ps-4 py-3">
@@ -1169,7 +1175,7 @@ export default function DealsPage() {
                         </ul>
                       </>
                     )}
-                  </>
+                  </div>
                 )}
                 {listData && (
                   <Pagination

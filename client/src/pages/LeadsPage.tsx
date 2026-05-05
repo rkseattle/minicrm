@@ -172,9 +172,9 @@ export default function LeadsPage() {
   }
 
   return (
-    <div>
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden mx-auto max-w-7xl w-full px-4 sm:px-6 pt-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('leads.pageTitle')}</h1>
@@ -348,142 +348,147 @@ export default function LeadsPage() {
           </p>
         )}
         {!isLoading && !isError && (
-          <>
+          <div className="flex-1 flex flex-col min-h-0 mb-8">
             {leads.length === 0 ? (
               <p className="text-gray-500" data-testid="leads-empty">
                 {t('leads.empty')}
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnName')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnCompany')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnSource')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnStatus')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnOwner')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnCreated')}
-                      </th>
-                      <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                        {t('leads.columnActions')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {leads.map((lead) => {
-                      const isConverted = Boolean(lead.converted_at);
-                      return (
-                        <tr
-                          key={lead.id}
-                          className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
-                          data-testid={`lead-row-${lead.id}`}
-                        >
-                          <td className="px-4 py-3 text-sm font-medium text-indigo-600">
-                            <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
-                              {lead.first_name}
-                              {lead.last_name ? ` ${lead.last_name}` : ''}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            {lead.company_name ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            {lead.lead_source
-                              ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
-                              : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {isConverted ? (
-                              <span
-                                className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
-                                data-testid={`badge-converted-${lead.id}`}
-                              >
-                                {t('leads.statusConverted')}
-                              </span>
-                            ) : editingStatusId === lead.id ? (
-                              <select
-                                ref={(el) => {
-                                  el?.focus();
-                                }}
-                                defaultValue={lead.status}
-                                onChange={(e) => {
-                                  updateStatusMutation.mutate({
-                                    id: lead.id,
-                                    status: e.target.value,
-                                  });
-                                }}
-                                onBlur={() => setEditingStatusId(null)}
-                                className="rounded border border-gray-300 py-0.5 text-xs"
-                                data-testid={`status-select-${lead.id}`}
-                              >
-                                {LEAD_STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {t(`leads.status${s}`)}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="flex-1 overflow-auto min-h-0">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="sticky top-0 z-10 bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnName')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnCompany')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnSource')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnStatus')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnOwner')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnCreated')}
+                        </th>
+                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                          {t('leads.columnActions')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {leads.map((lead) => {
+                        const isConverted = Boolean(lead.converted_at);
+                        return (
+                          <tr
+                            key={lead.id}
+                            className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
+                            data-testid={`lead-row-${lead.id}`}
+                          >
+                            <td className="px-4 py-3 text-sm font-medium text-indigo-600">
+                              <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
+                                {lead.first_name}
+                                {lead.last_name ? ` ${lead.last_name}` : ''}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {lead.company_name ?? '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {lead.lead_source
+                                ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
+                                : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {isConverted ? (
+                                <span
+                                  className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
+                                  data-testid={`badge-converted-${lead.id}`}
+                                >
+                                  {t('leads.statusConverted')}
+                                </span>
+                              ) : editingStatusId === lead.id ? (
+                                <select
+                                  ref={(el) => {
+                                    el?.focus();
+                                  }}
+                                  defaultValue={lead.status}
+                                  onChange={(e) => {
+                                    updateStatusMutation.mutate({
+                                      id: lead.id,
+                                      status: e.target.value,
+                                    });
+                                  }}
+                                  onBlur={() => setEditingStatusId(null)}
+                                  className="rounded border border-gray-300 py-0.5 text-xs"
+                                  data-testid={`status-select-${lead.id}`}
+                                >
+                                  {LEAD_STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {t(`leads.status${s}`)}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingStatusId(lead.id)}
+                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                                  data-testid={`status-badge-${lead.id}`}
+                                  title={t('leads.clickToUpdateStatus')}
+                                >
+                                  {t(`leads.status${lead.status}`)}
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {resolveOwnerName(
+                                lead.owner_id,
+                                activeUsers,
+                                t('leads.ownerUnknown'),
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">
+                              {new Date(lead.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
                               <button
                                 type="button"
-                                onClick={() => setEditingStatusId(lead.id)}
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
-                                data-testid={`status-badge-${lead.id}`}
-                                title={t('leads.clickToUpdateStatus')}
+                                onClick={() => {
+                                  if (window.confirm(t('leads.confirmDelete'))) {
+                                    deleteMutation.mutate(lead.id);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                disabled={deleteMutation.isPending}
+                                data-testid={`delete-lead-${lead.id}`}
+                                aria-label={t('leads.delete')}
                               >
-                                {t(`leads.status${lead.status}`)}
+                                {t('leads.delete')}
                               </button>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
-                            {new Date(lead.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(t('leads.confirmDelete'))) {
-                                  deleteMutation.mutate(lead.id);
-                                }
-                              }}
-                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                              disabled={deleteMutation.isPending}
-                              data-testid={`delete-lead-${lead.id}`}
-                              aria-label={t('leads.delete')}
-                            >
-                              {t('leads.delete')}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={page}
+                  limit={limit}
+                  total={total}
+                  onPageChange={setPage}
+                  onLimitChange={handleLimitChange}
+                />
               </div>
             )}
-
-            <Pagination
-              page={page}
-              limit={limit}
-              total={total}
-              onPageChange={setPage}
-              onLimitChange={handleLimitChange}
-            />
-          </>
+          </div>
         )}
       </main>
     </div>
