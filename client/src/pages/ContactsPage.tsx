@@ -470,7 +470,10 @@ export default function ContactsPage() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+          <div
+            data-testid="contacts-loading"
+            className="bg-white border border-gray-200 rounded-lg p-12 text-center"
+          >
             <p aria-busy="true" className="text-sm text-gray-500">
               {t('contacts.loading')}
             </p>
