@@ -1047,7 +1047,9 @@
     "next": "Siguiente",
     "pageOf": "Página {{page}} de {{total}}",
     "showing": "Mostrando {{from}}–{{to}} de {{total}}",
-    "loadMore": "Cargar más"
+    "loadMore": "Cargar más",
+    "rowsPerPage": "Filas por página",
+    "rowsPerPageOption": "{{n}} por página"
   },
   "auditLog": {
     "heading": "Registro de auditoría",

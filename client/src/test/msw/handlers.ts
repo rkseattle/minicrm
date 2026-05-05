@@ -476,7 +476,7 @@ export const handlers = [
   /** Users: GET /api/users */
   http.get('/api/v1/users', () => {
     const users = [ADMIN_USER, REP_USER, INVITED_USER];
-    return HttpResponse.json({ data: users, total: users.length, page: 1, limit: 50 });
+    return HttpResponse.json({ data: users, total: users.length, page: 1, limit: 25 });
   }),
 
   /** Users: GET /api/users/active — returns only active users with id+name */
@@ -564,7 +564,7 @@ export const handlers = [
     let contacts = [CONTACT_1, CONTACT_2];
     if (accountId) contacts = contacts.filter((c) => c.account_id === accountId);
     if (owner === 'me') contacts = contacts.filter((c) => c.owner_id === ADMIN_USER.id);
-    return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 50 });
+    return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 25 });
   }),
 
   /** Contacts: POST /api/contacts */
@@ -623,7 +623,7 @@ export const handlers = [
 
   /** Accounts: GET /api/accounts */
   http.get('/api/v1/accounts', () => {
-    return HttpResponse.json({ data: [ACCOUNT_1], total: 1, page: 1, limit: 50 });
+    return HttpResponse.json({ data: [ACCOUNT_1], total: 1, page: 1, limit: 25 });
   }),
 
   /** Accounts: POST /api/accounts */
@@ -736,7 +736,7 @@ export const handlers = [
     const owner = url.searchParams.get('owner');
     let deals = [DEAL_1];
     if (owner === 'me') deals = deals.filter((d) => d.owner_id === ADMIN_USER.id);
-    return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 50 });
+    return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 25 });
   }),
 
   /** Deals: POST /api/deals */
@@ -820,9 +820,10 @@ export const handlers = [
     return HttpResponse.json(STAGE_TREND_REPORT);
   }),
 
-  /** Activities: GET /api/activities/my-tasks — returns task rows with linked record info */
+  /** Activities: GET /api/activities/my-tasks — returns paginated task rows with linked record info */
   http.get('/api/v1/activities/my-tasks', () => {
-    return HttpResponse.json({ tasks: [MY_TASK_1, MY_TASK_OVERDUE] });
+    const tasks = [MY_TASK_1, MY_TASK_OVERDUE];
+    return HttpResponse.json({ tasks, total: tasks.length, page: 1, limit: 25 });
   }),
 
   /** Activities: GET /api/activities — supports ?contact, ?account, ?deal, ?owner=me filters */
@@ -1301,7 +1302,7 @@ export const handlers = [
 
   /** Leads: GET /api/leads — returns LEAD_1 by default (MINCRM-173) */
   http.get('/api/v1/leads', () => {
-    return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 50 });
+    return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 25 });
   }),
 
   /** Leads: POST /api/leads */
@@ -1374,7 +1375,7 @@ export const handlers = [
 
   /** Audit log: GET /api/audit-log — returns empty paginated list by default */
   http.get('/api/v1/audit-log', () => {
-    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
 
   /** Audit log: GET /api/audit-log/actors — returns empty list by default */

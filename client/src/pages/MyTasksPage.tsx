@@ -20,6 +20,8 @@ import { listMyTasks, updateActivity, MY_TASKS_QUERY_KEY } from '@/api/activitie
 import type { MyTaskResponse } from '@/api/activities.js';
 import { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { Pagination } from '@/components/ui/Pagination.js';
+import { usePagination } from '@/hooks/usePagination.js';
 import type { ActivityType } from '@shared/schemas/activitySchema.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 
@@ -76,10 +78,11 @@ export default function MyTasksPage() {
   const overdueFilter = searchParams.get('filter') === 'overdue';
   const [showCompleted, setShowCompleted] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+  const { page, limit, setPage, handleLimitChange } = usePagination();
 
   const { data, isLoading } = useQuery({
-    queryKey: MY_TASKS_QUERY_KEY,
-    queryFn: listMyTasks,
+    queryKey: [...MY_TASKS_QUERY_KEY, page, limit],
+    queryFn: () => listMyTasks(page, limit),
   });
 
   const completeMutation = useMutation({
@@ -386,6 +389,16 @@ export default function MyTasksPage() {
               <p className="mt-4 text-sm text-gray-500" data-testid="completed-tasks-empty">
                 {t('myTasks.emptyCompleted')}
               </p>
+            )}
+
+            {data && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+                onLimitChange={handleLimitChange}
+              />
             )}
           </>
         )}

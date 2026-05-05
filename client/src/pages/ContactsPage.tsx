@@ -33,7 +33,7 @@ import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
-import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import { usePagination } from '@/hooks/usePagination.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
@@ -64,7 +64,7 @@ export default function ContactsPage() {
   const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
-  const [page, setPage] = useState(1);
+  const { page, limit, setPage, handleLimitChange } = usePagination();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   /**
@@ -128,6 +128,7 @@ export default function ContactsPage() {
       sort: sortCol,
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
       page,
+      limit,
       tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
     },
   ] as const;
@@ -142,7 +143,7 @@ export default function ContactsPage() {
         sort: sortCol,
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         page,
-        limit: PAGINATION_DEFAULT_LIMIT,
+        limit,
         tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       }),
   });
@@ -795,12 +796,13 @@ export default function ContactsPage() {
                 )}
               </>
             )}
-            {data && data.total > data.limit && (
+            {data && (
               <Pagination
                 page={data.page}
                 limit={data.limit}
                 total={data.total}
                 onPageChange={setPage}
+                onLimitChange={handleLimitChange}
               />
             )}
           </div>

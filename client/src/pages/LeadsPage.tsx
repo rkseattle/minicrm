@@ -20,7 +20,7 @@ import type { ActiveUser } from '@/api/users.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
 import { LEAD_STATUSES, LEAD_SOURCES } from '@shared/schemas/leadSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
-import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import { usePagination } from '@/hooks/usePagination.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
 
 /** React Query cache key for the leads list */
@@ -51,7 +51,7 @@ export default function LeadsPage() {
   const forceNextSubmit = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [page, setPage] = useState(1);
+  const { page, limit, setPage, handleLimitChange } = usePagination();
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'me'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sourceFilter, setSourceFilter] = useState<string>('');
@@ -68,7 +68,7 @@ export default function LeadsPage() {
     includeDisqualified,
     includeConverted,
     page,
-    limit: PAGINATION_DEFAULT_LIMIT,
+    limit,
   };
 
   const { data, isLoading, isError } = useQuery({
@@ -478,9 +478,10 @@ export default function LeadsPage() {
 
             <Pagination
               page={page}
-              limit={PAGINATION_DEFAULT_LIMIT}
+              limit={limit}
               total={total}
               onPageChange={setPage}
+              onLimitChange={handleLimitChange}
             />
           </>
         )}

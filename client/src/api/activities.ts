@@ -10,6 +10,7 @@ import type {
   UpdateActivityInput,
 } from '@shared/schemas/activitySchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the activities list */
 export const ACTIVITIES_QUERY_KEY = ['activities'] as const;
@@ -29,8 +30,11 @@ export interface MyTaskResponse extends ActivityResponse {
   linked_record_type: 'contact' | 'account' | 'deal' | null;
 }
 
-interface MyTasksResponse {
+export interface MyTasksResponse {
   tasks: MyTaskResponse[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 /** Filters and pagination options for the activities list endpoint */
@@ -119,10 +123,17 @@ export async function deleteActivity(id: string): Promise<void> {
 }
 
 /**
- * Returns all Task-type activities owned by the current user, sorted by due date ascending.
- * Each task includes the linked record name and type for display.
+ * Returns a paginated list of Task-type activities owned by the current user, sorted by
+ * due date ascending. Each task includes the linked record name and type for display.
+ *
+ * @param page - 1-based page number (default 1)
+ * @param limit - Records per page (default PAGINATION_DEFAULT_LIMIT)
  */
-export async function listMyTasks(): Promise<MyTasksResponse> {
-  const response = await apiClient.get<MyTasksResponse>('/activities/my-tasks');
+export async function listMyTasks(
+  page = 1,
+  limit = PAGINATION_DEFAULT_LIMIT,
+): Promise<MyTasksResponse> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const response = await apiClient.get<MyTasksResponse>(`/activities/my-tasks?${params}`);
   return response.data;
 }

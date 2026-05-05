@@ -32,7 +32,7 @@ import { ACCOUNT_TYPE_VALUES } from '@shared/schemas/accountSchema.js';
 import { Select } from '@/components/ui/Select.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
-import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import { usePagination } from '@/hooks/usePagination.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -57,7 +57,7 @@ export default function AccountsPage() {
   const [industryInput, setIndustryInput] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | ''>('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [page, setPage] = useState(1);
+  const { page, limit, setPage, handleLimitChange } = usePagination();
 
   /**
    * Updates the ?owner query param and resets to page 1. (MINCRM-55)
@@ -111,6 +111,7 @@ export default function AccountsPage() {
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
       tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       page,
+      limit,
     },
   ] as const;
 
@@ -126,7 +127,7 @@ export default function AccountsPage() {
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         page,
-        limit: PAGINATION_DEFAULT_LIMIT,
+        limit,
       }),
   });
 
@@ -693,12 +694,13 @@ export default function AccountsPage() {
                 )}
               </>
             )}
-            {data && data.total > data.limit && (
+            {data && (
               <Pagination
                 page={data.page}
                 limit={data.limit}
                 total={data.total}
                 onPageChange={setPage}
+                onLimitChange={handleLimitChange}
               />
             )}
           </div>

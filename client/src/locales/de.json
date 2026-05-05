@@ -1047,7 +1047,9 @@
     "next": "Weiter",
     "pageOf": "Seite {{page}} von {{total}}",
     "showing": "{{from}}–{{to}} von {{total}} angezeigt",
-    "loadMore": "Mehr laden"
+    "loadMore": "Mehr laden",
+    "rowsPerPage": "Zeilen pro Seite",
+    "rowsPerPageOption": "{{n}} pro Seite"
   },
   "auditLog": {
     "heading": "Änderungsprotokoll",

@@ -235,15 +235,22 @@ export interface MyTaskRow extends ActivityRow {
 }
 
 /**
- * Returns all open and completed Task-type activities owned by the given user,
+ * Returns a paginated list of Task-type activities owned by the given user,
  * sorted by due_date ascending (nulls last), enriched with the linked record name.
  *
  * @param ownerId - UUID of the authenticated user
- * @returns Array of task rows ordered by due_date ASC NULLS LAST
+ * @param page - 1-based page number
+ * @param limit - Records per page
+ * @returns Paginated task rows and total count
  */
-export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
-  const result = await pool.query<MyTaskRow>(
-    `SELECT
+export async function listMyTasks(
+  ownerId: string,
+  page: number,
+  limit: number,
+): Promise<{ tasks: MyTaskRow[]; total: number }> {
+  const offset = (page - 1) * limit;
+
+  const DATA_SQL = `SELECT
        a.id,
        a.type,
        a.subject,
@@ -276,11 +283,23 @@ export async function listMyTasks(ownerId: string): Promise<MyTaskRow[]> {
      LEFT JOIN deals d     ON d.id  = a.deal_id
      WHERE a.owner_id = $1
        AND a.type = 'Task'
-     ORDER BY a.due_date ASC NULLS LAST, a.created_at ASC`,
-    [ownerId],
-  );
+     ORDER BY a.due_date ASC NULLS LAST, a.created_at ASC
+     LIMIT $2 OFFSET $3`;
 
-  return result.rows;
+  const COUNT_SQL = `SELECT COUNT(*) AS count
+     FROM activities
+     WHERE owner_id = $1
+       AND type = 'Task'`;
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query<MyTaskRow>(DATA_SQL, [ownerId, limit, offset]),
+    pool.query<{ count: string }>(COUNT_SQL, [ownerId]),
+  ]);
+
+  return {
+    tasks: dataResult.rows,
+    total: Number(countResult.rows[0]?.count ?? 0),
+  };
 }
 
 /**

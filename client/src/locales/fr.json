@@ -1047,7 +1047,9 @@
     "next": "Suivant",
     "pageOf": "Page {{page}} sur {{total}}",
     "showing": "Affichage de {{from}}–{{to}} sur {{total}}",
-    "loadMore": "Charger plus"
+    "loadMore": "Charger plus",
+    "rowsPerPage": "Lignes par page",
+    "rowsPerPageOption": "{{n}} par page"
   },
   "auditLog": {
     "heading": "Journal d'audit",

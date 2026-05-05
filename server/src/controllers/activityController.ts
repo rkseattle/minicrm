@@ -44,12 +44,13 @@ export async function createActivityHandler(req: Request, res: Response): Promis
 
 /**
  * GET /api/activities/my-tasks
- * Returns all Task-type activities owned by the authenticated user, sorted by due date ascending.
+ * Returns a paginated list of Task-type activities owned by the authenticated user.
  * Includes the linked record name and type for display.
  */
 export async function listMyTasksHandler(req: Request, res: Response): Promise<void> {
-  const tasks = await listMyTasks(req.user!.id);
-  res.status(200).json({ tasks });
+  const { page, limit } = paginationParamsSchema.parse(req.query);
+  const { tasks, total } = await listMyTasks(req.user!.id, page, limit);
+  res.status(200).json({ tasks, total, page, limit });
 }
 
 /**
