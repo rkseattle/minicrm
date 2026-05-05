@@ -37,9 +37,19 @@ export function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch);
 }
 
-/** The From address used in all outbound emails */
+/** The From address used in all outbound emails (display-name format for the header). */
 function getFromAddress(): string {
-  return process.env.SMTP_FROM ?? 'MiniCRM <noreply@minicrm.local>';
+  return process.env.SMTP_FROM || 'MiniCRM <noreply@minicrm.local>';
+}
+
+/**
+ * Extracts the bare email address from a From string that may include a display name.
+ * Used for the SMTP envelope MAIL FROM command, which requires a plain address.
+ * e.g. "MiniCRM <noreply@minicrm.local>" → "noreply@minicrm.local"
+ */
+function extractEmail(address: string): string {
+  const match = address.match(/<([^>]+)>/);
+  return match ? match[1] : address;
 }
 
 /**
@@ -110,8 +120,17 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     return;
   }
 
+  const from = getFromAddress();
   try {
-    await transport.sendMail({ from: getFromAddress(), to, subject, html });
+    await transport.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      // Explicit envelope ensures the SMTP MAIL FROM command uses a bare address,
+      // which strict SMTP servers (including Mailhog) require.
+      envelope: { from: extractEmail(from), to },
+    });
   } catch (err) {
     logger.error({ err, to, subject }, 'emailService: failed to send email');
     throw err;
