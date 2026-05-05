@@ -5,6 +5,10 @@
   "exports": {
     "./schemas/*": "./schemas/*"
   },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build"
+  },
   "dependencies": {
     "zod": "^3.23.8"
   },

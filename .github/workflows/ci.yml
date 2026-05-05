@@ -371,6 +371,14 @@ jobs:
           --health-retries 10
         command: server /data --console-address :9001
 
+      # MINCRM-306: Mailhog captures transactional emails sent by the app server.
+      # SMTP port 1025 receives messages; HTTP port 8025 exposes the assertion API.
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+
     steps:
       - uses: actions/checkout@v4
 
@@ -444,6 +452,19 @@ jobs:
           E2E_STORAGE_ACCESS_KEY_ID: minioadmin
           E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
 
+      # MINCRM-306: Write Mailhog SMTP config into system_settings so the server
+      # routes transactional email to Mailhog instead of a real SMTP server.
+      - name: Seed E2E SMTP config
+        run: npm run seed:e2e-smtp
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          E2E_SMTP_HOST: localhost
+          E2E_SMTP_PORT: '1025'
+
       - name: Start application server
         run: npm run start --workspace=minicrm-server &
         env:
@@ -458,6 +479,8 @@ jobs:
           E2E: true
           # MINCRM-278: Required to decrypt the storage secret stored in system_settings.
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          # MINCRM-306: Used to construct invite and reset-password URLs in emails.
+          APP_URL: http://localhost:5173
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
@@ -505,6 +528,8 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
+          # MINCRM-306: Mailhog HTTP API base URL for email delivery assertions.
+          MAILHOG_URL: http://localhost:8025
           # MINCRM-322: activate the AI healing tier (requires MINCRM-309 intent strings to produce heals)
           AI_HEALING: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
