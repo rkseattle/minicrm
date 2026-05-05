@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@anthropic-ai/sdk": "^0.94.0",
     "@axe-core/playwright": "^4.11.3",
     "@grpc/grpc-js": "^1.12.6",
     "@playwright/test": "^1.51.1",
