@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY server/package*.json ./server/
 COPY shared/package*.json ./shared/
+COPY shared/tsconfig.build.json ./shared/
 COPY client/package*.json ./client/
 
 # Full install so tsc (root devDependency) and all server deps are available
