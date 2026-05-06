@@ -61,8 +61,6 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
 }) => {
   const mailhog = new MailhogClient(MAILHOG_URL);
 
-  await mailhog.clearMessages();
-
   // Log in as admin to create a test user.
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -75,11 +73,9 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
   });
   const userId = inviteRes.body.user.id;
 
-  // Wait for the fire-and-forget invite email to arrive, then clear so only
-  // the reset email counts. Poll until the invite email lands before clearing
-  // to avoid a race where the invite email arrives after our clear.
+  // Wait for the invite email to arrive before triggering the reset flow —
+  // ensures the invite email has landed so the reset email arrives as a second message.
   await mailhog.waitForMessagesTo(testEmail, { maxAttempts: 15, intervalMs: 200 });
-  await mailhog.clearMessages();
 
   try {
     // Activate the user so they can request a password reset.
@@ -91,13 +87,23 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
     // Trigger the forgot-password flow.
     await restClient.post('/api/v1/auth/forgot-password', { email: testEmail });
 
-    // Poll Mailhog briefly — the server sends the email asynchronously after responding.
-    const messages = await mailhog.waitForMessagesTo(testEmail);
+    // Poll until 2 messages arrive (invite + reset). Each test uses a unique
+    // address so no clearMessages() is needed — won't collide with parallel tests.
+    const messages = await mailhog.waitForMessagesCountTo(testEmail, 2);
 
-    expect(messages.length, 'exactly one reset email should be delivered').toBe(1);
+    expect(messages.length, 'invite + reset emails should be delivered').toBe(2);
 
+    // The second message is the reset email (first is the invite).
     // Decode quoted-printable — Content.Body and Raw.Data use QP encoding.
-    const body = decodeQuotedPrintable(messages[0].Raw.Data);
+    const resetMsg = messages.find((m) => {
+      const raw = decodeQuotedPrintable(m.Raw.Data);
+      return raw.includes('/reset-password?token=');
+    });
+    expect(
+      resetMsg,
+      'a reset email containing a reset-password link should be delivered',
+    ).toBeTruthy();
+    const body = decodeQuotedPrintable(resetMsg!.Raw.Data);
     expect(body, 'reset email should contain a reset-password link').toContain(
       '/reset-password?token=',
     );
@@ -115,8 +121,6 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
   restClient,
 }) => {
   const mailhog = new MailhogClient(MAILHOG_URL);
-
-  await mailhog.clearMessages();
 
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 

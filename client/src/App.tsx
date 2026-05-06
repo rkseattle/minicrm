@@ -17,6 +17,7 @@ import AdminRoute from '@/components/AdminRoute.js';
 import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.js';
 import NavLeft from '@/components/NavLeft.js';
 import OnboardingBanner from '@/components/OnboardingBanner.js';
+import { useIsMobile } from '@/hooks/useIsMobile.js';
 
 // Page-level lazy imports — each becomes its own Vite chunk (MINCRM-281)
 const LoginPage = lazy(() => import('@/pages/LoginPage.js'));
@@ -44,14 +45,17 @@ const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
 const AdminTagsPage = lazy(() => import('@/pages/AdminTagsPage.js'));
 
 /**
- * Wraps the outlet in NavLeft when the left layout is active.
+ * Wraps the outlet in NavLeft when the left layout is active on desktop.
  * For top and hamburger layouts, each page renders its own NavBar inline,
  * so no wrapper is needed here.
- * For left layout, OnboardingBanner renders above page content inside NavLeft. (MINCRM-256)
+ * On mobile (< 1024px) NavBar always renders NavTop regardless of layout setting,
+ * so LayoutShell must not inject NavLeft or OnboardingBanner — NavBar already
+ * renders the banner in that path. (MINCRM-256)
  */
 function LayoutShell() {
   const { layout } = useNavLayout();
-  if (layout === 'left') {
+  const isMobile = useIsMobile();
+  if (layout === 'left' && !isMobile) {
     return (
       <NavLeft>
         <OnboardingBanner />

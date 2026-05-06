@@ -86,10 +86,14 @@ test('stage trend report: nav link navigates to /reports @functional', async ({
   page,
   restClient,
 }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  test.skip(isMobile, 'left nav not rendered on mobile — mobile always uses NavTop');
+
   // Use left layout so links are always visible regardless of viewport width
   await setNavLayoutViaAPI('left', restClient);
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.waitForLoadState('networkidle');
 
     // Nav now has a single "Reports" link (MINCRM-294)
     const result = await navigateViaNavLink('left', 'reports', { page });

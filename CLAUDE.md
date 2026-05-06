@@ -409,28 +409,35 @@ append-only enforced), `notificationService.test.ts` (overdue digest dedup; assi
   incomplete test, not a judgement call.
 - Every conditional render branch needs a dedicated test case.
 
-### Pre-Push Validation
+### ⛔ Definition of Done — Required Before ANY `git commit`
 
-The global CLAUDE.md says to run the CI equivalent before pushing. For MiniCRM that
-means running all four phases in order. Do not push until everything passes.
+> **"Before pushing" means "before committing." Do not commit until all four steps are green.**
+> There are no scope exceptions. "Only QA files changed" is not an exception — it makes E2E _more_ critical, not less.
+
+Complete these steps in order. Stop at the first failure and fix it before continuing.
 
 ```bash
-# Phase 1 — typecheck and lint (all workspaces)
+# Step 1 — typecheck (all workspaces)
 npm run typecheck --workspace=minicrm-client
 npm run typecheck --workspace=minicrm-server
 npm run typecheck --workspace=minicrm-qa
+cd qa && npx tsc --noEmit   # qa/ is excluded from root typecheck
+
+# Step 2 — lint
 npm run lint
 
-# Phase 2 — unit tests for the changed workspace(s)
+# Step 3 — unit tests (changed workspaces only)
 npm test --workspace=minicrm-server   # if server/ changed
 npm test --workspace=minicrm-client   # if client/ changed
 
-# Phase 3 — E2E functional suite
-# Run from the repo root. The env substitution reads qa/e2e/.env, strips comments
-# and blank lines, and injects the variables into the process so Playwright can
-# reach the local app server and authenticate — no Docker stack required.
+# Step 4 — E2E functional suite (ALWAYS — no scope exceptions)
+# Delete stale results first, then run once, then read results.xml.
+rm -rf qa/e2e/test-results/
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
 ```
+
+**All four green → `git commit` → `git push`.  
+Any step red → fix the code, then restart from Step 1.**
 
 The E2E suite requires the application to be running locally. The Vite dev server (port 5173),
 the dedicated E2E app server (port 3002), and the supporting services (MinIO, Mailhog) must
@@ -464,15 +471,12 @@ API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client
 `npm run e2e:setup` is idempotent — re-running it in the same session is safe. You only
 need to run it again if you restart the Docker services or wipe your database.
 
-### ⛔ E2E Functional Suite — ONE RUN PER CODE CHANGE, NO EXCEPTIONS
+### E2E Functional Suite — Execution Rules
 
-> **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED.** Read it in full.
+> **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED REPEATEDLY.** Read it in full.
 
-**RULE 1 — Run the functional suite at most once per code change.**
-The pre-push run above is that one run. If it fails, fix the code — that fix is a new
-code change, so running again after the fix is correct. Never re-run the suite on the
-same code to see if a failure goes away. If a run fails and you have not made a code
-change, read the report files and diagnose — do not re-run.
+**RULE 1 — One run per code change, no re-runs to paper over failures.**
+If it fails, fix the code — that fix is a new code change, so running again after the fix is correct. Never re-run the suite on the same code to see if a failure goes away. If a run fails and you have not made a code change, read the report files and diagnose — do not re-run.
 
 **RULE 2 — Read report files, not console output, for results.**
 
