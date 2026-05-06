@@ -1082,6 +1082,7 @@
       "all": "Alle"
     },
     "filters": {
+      "title": "Filter",
       "from": "Von",
       "to": "Bis",
       "user": "Benutzer",

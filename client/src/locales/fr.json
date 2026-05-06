@@ -1082,6 +1082,7 @@
       "all": "Tous"
     },
     "filters": {
+      "title": "Filtres",
       "from": "Du",
       "to": "Au",
       "user": "Utilisateur",

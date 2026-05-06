@@ -80,6 +80,34 @@ test(
 );
 
 // ---------------------------------------------------------------------------
+// F8-TG1b — Pagination controls always visible on admin tags page (MINCRM-345)
+// ---------------------------------------------------------------------------
+
+test(
+  'F8-TG1b: admin tags page — pagination controls always visible',
+  { tag: ['@functional'] },
+  async ({ page, testData, restClient }) => {
+    void testData;
+
+    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+
+    await navigateToAdminTags({ page });
+
+    await expect(
+      await page
+        .locate(
+          [
+            { type: 'testId', value: 'pagination' },
+            { type: 'css', value: '[data-testid="pagination"]' },
+          ],
+          { intent: 'pagination bar showing record count and page controls' },
+        )
+        .resolve(),
+    ).toBeVisible({ timeout: 10_000 });
+  },
+);
+
+// ---------------------------------------------------------------------------
 // F8-TG2 — Admin can rename a tag and the new name is persisted
 // ---------------------------------------------------------------------------
 

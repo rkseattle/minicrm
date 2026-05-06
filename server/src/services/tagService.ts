@@ -9,6 +9,7 @@ import type {
   UpdateTagInput,
   AttachTagInput,
 } from '@minicrm/shared/schemas/tagSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Shape of a tag row returned from the database */
 export interface TagRow {
@@ -29,15 +30,27 @@ const ENTITY_TABLE: Record<TaggableEntity, { table: string; fkCol: string }> = {
 };
 
 /**
- * Returns all tags, ordered by name.
+ * Returns a paginated list of tags ordered by name.
  *
- * @returns Array of tag rows
+ * @param page - 1-based page number (default 1)
+ * @param limit - Records per page (default 25)
+ * @returns Paginated response with tag rows and total count
  */
-export async function listTags(): Promise<TagRow[]> {
-  const result = await pool.query<TagRow>(
-    `SELECT id, name, created_at, updated_at FROM tags ORDER BY name ASC`,
-  );
-  return result.rows;
+export async function listTags(page = 1, limit = 25): Promise<PaginatedResponse<TagRow>> {
+  const offset = (page - 1) * limit;
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM tags`),
+    pool.query<TagRow>(
+      `SELECT id, name, created_at, updated_at FROM tags ORDER BY name ASC LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    ),
+  ]);
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

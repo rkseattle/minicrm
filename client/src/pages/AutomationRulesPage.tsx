@@ -15,6 +15,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import { Pagination } from '@/components/ui/Pagination.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 import {
   AUTOMATION_RULES_QUERY_KEY,
   listAutomationRules,
@@ -307,10 +309,14 @@ export default function AutomationRulesPage() {
   const queryClient = useQueryClient();
   const { stageNames } = usePipelineStages();
 
+  const [page, setPage] = useState(1);
+
   // ── Data fetching ──────────────────────────────────────────────────────────
+  const rulesQueryKey = [...AUTOMATION_RULES_QUERY_KEY, { page }] as const;
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: AUTOMATION_RULES_QUERY_KEY,
-    queryFn: listAutomationRules,
+    queryKey: rulesQueryKey,
+    queryFn: () => listAutomationRules(page, PAGINATION_DEFAULT_LIMIT),
   });
 
   const { data: activeUsersData } = useQuery({
@@ -445,9 +451,9 @@ export default function AutomationRulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-5xl w-full mx-auto px-4 sm:px-6 pt-8">
         {/* Page header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -761,113 +767,123 @@ export default function AutomationRulesPage() {
           </p>
         )}
 
-        {data && data.rules.length === 0 && !showForm && (
+        {data && data.data.length === 0 && !showForm && (
           <p className="text-sm text-gray-500 text-center py-12" data-testid="rules-empty">
             {t('automation.empty')}
           </p>
         )}
 
-        {data && data.rules.length > 0 && (
-          <div
-            className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100"
-            data-testid="rules-list"
-          >
-            {data.rules.map((rule: AutomationRuleResponse) => (
+        {data && (
+          <div className="flex-1 flex flex-col min-h-0 mb-8">
+            {data.data.length > 0 && (
               <div
-                key={rule.id}
-                className="px-6 py-4 flex items-start gap-4"
-                data-testid={`rule-row-${rule.id}`}
+                className="flex-1 overflow-auto min-h-0 bg-white rounded-t-lg border border-gray-200 divide-y divide-gray-100"
+                data-testid="rules-list"
               >
-                {/* Enable/disable toggle */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={rule.enabled}
-                  aria-label={
-                    rule.enabled
-                      ? t('automation.disableRule', { name: rule.name })
-                      : t('automation.enableRule', { name: rule.name })
-                  }
-                  onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
-                  disabled={toggleMutation.isPending}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-0.5 ${
-                    rule.enabled ? 'bg-indigo-600' : 'bg-gray-200'
-                  }`}
-                  data-testid={`rule-toggle-${rule.id}`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                      rule.enabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-
-                {/* Rule info */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-sm font-medium text-gray-900"
-                    data-testid={`rule-name-${rule.id}`}
+                {data.data.map((rule: AutomationRuleResponse) => (
+                  <div
+                    key={rule.id}
+                    className="px-6 py-4 flex items-start gap-4"
+                    data-testid={`rule-row-${rule.id}`}
                   >
-                    {rule.name}
-                  </p>
-                  <p
-                    className="text-xs text-gray-500 mt-0.5"
-                    data-testid={`rule-trigger-${rule.id}`}
-                  >
-                    {t('automation.when')} {formatTrigger(rule)}
-                  </p>
-                  <p className="text-xs text-gray-500" data-testid={`rule-action-${rule.id}`}>
-                    {t('automation.then')} {formatAction(rule)}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      logsButtonRef.current = e.currentTarget;
-                      setSelectedLogsRule(rule);
-                    }}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
-                    data-testid={`view-logs-${rule.id}`}
-                  >
-                    {t('automation.viewLogs')}
-                  </button>
-
-                  {deleteConfirmId === rule.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => deleteMutation.mutate(rule.id)}
-                        disabled={deleteMutation.isPending}
-                        className="text-xs text-red-600 hover:text-red-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
-                        data-testid={`confirm-delete-${rule.id}`}
-                      >
-                        {t('automation.confirmDelete')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmId(null)}
-                        className="text-xs text-gray-500 hover:text-gray-700 min-h-[44px] sm:min-h-0 flex items-center"
-                        data-testid={`cancel-delete-${rule.id}`}
-                      >
-                        {t('automation.cancel')}
-                      </button>
-                    </>
-                  ) : (
+                    {/* Enable/disable toggle */}
                     <button
                       type="button"
-                      onClick={() => setDeleteConfirmId(rule.id)}
-                      className="text-xs text-gray-500 hover:text-red-600 min-h-[44px] sm:min-h-0 flex items-center"
-                      data-testid={`delete-rule-${rule.id}`}
+                      role="switch"
+                      aria-checked={rule.enabled}
+                      aria-label={
+                        rule.enabled
+                          ? t('automation.disableRule', { name: rule.name })
+                          : t('automation.enableRule', { name: rule.name })
+                      }
+                      onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
+                      disabled={toggleMutation.isPending}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-0.5 ${
+                        rule.enabled ? 'bg-indigo-600' : 'bg-gray-200'
+                      }`}
+                      data-testid={`rule-toggle-${rule.id}`}
                     >
-                      {t('automation.delete')}
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                          rule.enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
                     </button>
-                  )}
-                </div>
+
+                    {/* Rule info */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm font-medium text-gray-900"
+                        data-testid={`rule-name-${rule.id}`}
+                      >
+                        {rule.name}
+                      </p>
+                      <p
+                        className="text-xs text-gray-500 mt-0.5"
+                        data-testid={`rule-trigger-${rule.id}`}
+                      >
+                        {t('automation.when')} {formatTrigger(rule)}
+                      </p>
+                      <p className="text-xs text-gray-500" data-testid={`rule-action-${rule.id}`}>
+                        {t('automation.then')} {formatAction(rule)}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          logsButtonRef.current = e.currentTarget;
+                          setSelectedLogsRule(rule);
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
+                        data-testid={`view-logs-${rule.id}`}
+                      >
+                        {t('automation.viewLogs')}
+                      </button>
+
+                      {deleteConfirmId === rule.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => deleteMutation.mutate(rule.id)}
+                            disabled={deleteMutation.isPending}
+                            className="text-xs text-red-600 hover:text-red-800 font-medium min-h-[44px] sm:min-h-0 flex items-center"
+                            data-testid={`confirm-delete-${rule.id}`}
+                          >
+                            {t('automation.confirmDelete')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="text-xs text-gray-500 hover:text-gray-700 min-h-[44px] sm:min-h-0 flex items-center"
+                            data-testid={`cancel-delete-${rule.id}`}
+                          >
+                            {t('automation.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmId(rule.id)}
+                          className="text-xs text-gray-500 hover:text-red-600 min-h-[44px] sm:min-h-0 flex items-center"
+                          data-testid={`delete-rule-${rule.id}`}
+                        >
+                          {t('automation.delete')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            <Pagination
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </main>

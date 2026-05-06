@@ -24,7 +24,7 @@ import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
 import BulkChangeStageModal from '@/components/BulkChangeStageModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
-import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
+import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
 import TagBadge from '@/components/TagBadge.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
@@ -212,8 +212,8 @@ export default function DealsPage() {
   });
 
   const { data: tagsData } = useQuery({
-    queryKey: TAGS_QUERY_KEY,
-    queryFn: listTags,
+    queryKey: ALL_TAGS_QUERY_KEY,
+    queryFn: listAllTags,
     staleTime: 60_000,
   });
 
@@ -474,21 +474,11 @@ export default function DealsPage() {
   });
 
   return (
-    <div
-      className={
-        viewMode === 'list' ? 'h-screen flex flex-col bg-gray-50' : 'min-h-screen bg-gray-50'
-      }
-    >
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main
-        className={
-          viewMode === 'board'
-            ? 'px-4 sm:px-6 py-8'
-            : 'flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8'
-        }
-      >
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
+      <main className="flex-1 flex flex-col min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
+        {/* Page header — sticky so title and controls stay visible while board scrolls (MINCRM-346) */}
+        <div className="flex items-center justify-between mb-6 sticky top-0 z-20 bg-gray-50 py-4 -mt-4">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
           <div className="flex items-center gap-2">
             {/* Export filtered view */}
@@ -586,8 +576,8 @@ export default function DealsPage() {
         {/* ── Board view ──────────────────────────────────────────────────── */}
         {viewMode === 'board' && (
           <>
-            {/* Board toolbar — filter controls (MINCRM-176) */}
-            <div className="flex items-center gap-3 mb-4">
+            {/* Board toolbar — sticky below the page header so filters stay visible while board scrolls (MINCRM-346) */}
+            <div className="flex items-center gap-3 mb-4 sticky top-[72px] z-10 bg-gray-50 py-2">
               <OwnerToggle
                 value={ownerFilter}
                 onChange={setOwnerFilter}
@@ -633,10 +623,10 @@ export default function DealsPage() {
             )}
 
             {!isLoading && !isError && (
-              <div data-testid="pipeline-board">
+              <div data-testid="pipeline-board" className="flex-1 flex flex-col min-h-0">
                 {isDesktop ? (
-                  /* Desktop multi-column Kanban */
-                  <div className="flex gap-4 overflow-x-auto pb-4">
+                  /* Desktop multi-column Kanban — flex-1 + overflow-auto so columns scroll within the remaining viewport height (MINCRM-346) */
+                  <div className="flex gap-4 overflow-auto flex-1 min-h-0 pb-4">
                     {stageNames.map((stage) => (
                       <StageColumn
                         key={stage}
@@ -650,9 +640,10 @@ export default function DealsPage() {
                     ))}
                   </div>
                 ) : (
-                  /* Mobile single-stage view */
-                  <div>
-                    <div className="flex items-center justify-between mb-3 gap-2">
+                  /* Mobile single-stage view — flex col so nav bar can be sticky and card list scrolls below (MINCRM-346) */
+                  <div className="flex flex-col flex-1 min-h-0">
+                    {/* Stage navigation — sticky so prev/next/stage-name stay pinned while cards scroll */}
+                    <div className="flex items-center justify-between mb-3 gap-2 sticky top-[120px] z-10 bg-gray-50 py-2">
                       <button
                         type="button"
                         aria-label={t('pipeline.prevStage')}

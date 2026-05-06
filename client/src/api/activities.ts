@@ -51,6 +51,12 @@ export interface ListActivitiesFilters {
    * current user if requester is a rep).
    */
   owner?: 'me' | string;
+  /** Filter by activity type (e.g. 'Call', 'Task') */
+  type?: string;
+  /** Return only activities updated on or after this date (YYYY-MM-DD) */
+  start?: string;
+  /** Return only activities updated on or before this date (YYYY-MM-DD) */
+  end?: string;
   /** 1-based page number */
   page?: number;
   /** Records per page */
@@ -70,6 +76,9 @@ export async function listActivities(
   if (filters.accountId) params['account'] = filters.accountId;
   if (filters.dealId) params['deal'] = filters.dealId;
   if (filters.owner) params['owner'] = filters.owner;
+  if (filters.type) params['type'] = filters.type;
+  if (filters.start) params['start'] = filters.start;
+  if (filters.end) params['end'] = filters.end;
   if (filters.page !== undefined) params['page'] = String(filters.page);
   if (filters.limit !== undefined) params['limit'] = String(filters.limit);
 

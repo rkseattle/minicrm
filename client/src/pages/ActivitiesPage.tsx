@@ -3,26 +3,28 @@
  * Displays a paginated list of activities, optionally pre-filtered by URL params.
  * URL params accepted:
  *   ?owner=<uuid|me>   — filter by owner (admin UUID or 'me')
- *   ?type=<Note|Call|Email|Meeting|Task> — filter by activity type
- *   ?start=YYYY-MM-DD  — show activities updated on or after this date
- *   ?end=YYYY-MM-DD    — show activities updated on or before this date
+ *   ?type=<Note|Call|Email|Meeting|Task> — filter by activity type (server-side)
+ *   ?start=YYYY-MM-DD  — show activities updated on or after this date (server-side)
+ *   ?end=YYYY-MM-DD    — show activities updated on or before this date (server-side)
  *
  * Reps always see only their own activities regardless of the owner param.
  * Admins see the requested owner's activities, or all activities if no owner param.
  *
- * Implements MINCRM-181, MINCRM-185.
+ * Implements MINCRM-181, MINCRM-185, MINCRM-345.
  */
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import { Pagination } from '@/components/ui/Pagination.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActivities, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import type { ListActivitiesFilters } from '@/api/activities.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** Maps activity type to a badge color class. Reuses the same palette as DashboardPage. */
 function activityTypeBadge(type: string): { className: string } {
@@ -61,6 +63,7 @@ export default function ActivitiesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [searchParams] = useSearchParams();
+  const [page, setPage] = useState(1);
 
   /** Parse URL params */
   const ownerParam = searchParams.get('owner') ?? undefined;
@@ -79,29 +82,23 @@ export default function ActivitiesPage() {
 
   const queryKey = [
     ...ACTIVITIES_QUERY_KEY,
-    { owner: ownerFilter, type: typeParam, start: startParam, end: endParam },
+    { owner: ownerFilter, type: typeParam, start: startParam, end: endParam, page },
   ];
 
   const { data, isLoading, isError } = useQuery({
     queryKey,
-    queryFn: () => listActivities({ owner: ownerFilter, limit: 100 }),
+    queryFn: () =>
+      listActivities({
+        owner: ownerFilter,
+        type: typeParam,
+        start: startParam,
+        end: endParam,
+        page,
+        limit: PAGINATION_DEFAULT_LIMIT,
+      }),
   });
 
-  /**
-   * Apply client-side type and date filters.
-   * The server supports owner/contact/account/deal filters but not type or date range.
-   * These two extra filters are applied in-memory on the response.
-   */
-  const filteredActivities = useMemo(() => {
-    const rows = data?.data ?? [];
-    return rows.filter((a) => {
-      if (typeParam && a.type !== typeParam) return false;
-      const updatedDate = String(a.updated_at).slice(0, 10);
-      if (startParam && updatedDate < startParam) return false;
-      if (endParam && updatedDate > endParam) return false;
-      return true;
-    });
-  }, [data, typeParam, startParam, endParam]);
+  const activities = data?.data ?? [];
 
   /** Build a human-readable description of active filters to show as a sub-heading. */
   const filterSummary = useMemo(() => {
@@ -114,9 +111,9 @@ export default function ActivitiesPage() {
   }, [typeParam, startParam, endParam, t]);
 
   return (
-    <>
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-900" data-testid="activities-page-heading">
@@ -145,21 +142,23 @@ export default function ActivitiesPage() {
 
         {/* Table */}
         {!isLoading && !isError && (
-          <>
-            {filteredActivities.length === 0 ? (
-              <p className="text-sm text-gray-500" data-testid="activities-page-empty">
-                {t('activitiesPage.empty')}
-              </p>
+          <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
+            {activities.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-500" data-testid="activities-page-empty">
+                  {t('activitiesPage.empty')}
+                </p>
+              </div>
             ) : (
               <div
-                className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+                className="flex-1 overflow-auto min-h-0"
                 data-testid="activities-page-table-wrapper"
               >
                 <table
                   className="min-w-full divide-y divide-gray-200"
                   data-testid="activities-page-table"
                 >
-                  <thead className="bg-gray-50">
+                  <thead className="sticky top-0 z-10 bg-gray-50">
                     <tr>
                       <th
                         scope="col"
@@ -188,7 +187,7 @@ export default function ActivitiesPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
-                    {filteredActivities.map((activity) => {
+                    {activities.map((activity) => {
                       const badge = activityTypeBadge(activity.type);
                       const recordPath = linkedRecordPath(activity);
 
@@ -253,9 +252,17 @@ export default function ActivitiesPage() {
                 </table>
               </div>
             )}
-          </>
+            {data && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+              />
+            )}
+          </div>
         )}
       </main>
-    </>
+    </div>
   );
 }

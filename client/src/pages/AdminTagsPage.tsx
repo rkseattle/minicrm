@@ -10,7 +10,9 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
+import { Pagination } from '@/components/ui/Pagination.js';
 import { listTags, updateTag, deleteTag, TAGS_QUERY_KEY } from '@/api/tags.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 import {
   getTagsRestrictCreation,
   setTagsRestrictCreation,
@@ -24,13 +26,16 @@ import type { TagResponse } from '@shared/schemas/tagSchema.js';
 export default function AdminTagsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+
+  const tagsQueryKey = [...TAGS_QUERY_KEY, { page }] as const;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: TAGS_QUERY_KEY,
-    queryFn: listTags,
+    queryKey: tagsQueryKey,
+    queryFn: () => listTags(page, PAGINATION_DEFAULT_LIMIT),
   });
 
-  const tags = data?.tags ?? [];
+  const tags = data?.data ?? [];
 
   // ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
 
@@ -125,9 +130,9 @@ export default function AdminTagsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-3xl w-full mx-auto px-4 sm:px-6 pt-8">
         <h1 className="text-2xl font-semibold text-gray-900 mb-1" data-testid="admin-tags-heading">
           {t('tags.pageTitle')}
         </h1>
@@ -213,88 +218,98 @@ export default function AdminTagsPage() {
           </p>
         )}
 
-        {!isLoading && !isError && tags.length > 0 && (
-          <ul
-            className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white"
-            data-testid="admin-tags-list"
-          >
-            {tags.map((tag) => (
-              <li
-                key={tag.id}
-                className="flex items-center gap-3 px-4 py-3"
-                data-testid={`admin-tag-row-${tag.id}`}
-              >
-                {editingId === tag.id ? (
-                  <form
-                    className="flex flex-1 items-center gap-2"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleRenameSubmit(tag.id);
-                    }}
-                    data-testid={`rename-form-${tag.id}`}
-                  >
-                    <Input
-                      // eslint-disable-next-line jsx-a11y/no-autofocus
-                      autoFocus
-                      ref={editInputRef}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      aria-label={t('tags.renameInputLabel')}
-                      data-testid={`rename-input-${tag.id}`}
-                    />
-                    {renameError && (
-                      <span className="text-xs text-red-600" role="alert">
-                        {renameError}
+        {!isLoading && !isError && (
+          <div className="flex-1 flex flex-col min-h-0 mb-8">
+            <ul
+              className="flex-1 overflow-auto min-h-0 divide-y divide-gray-200 rounded-t-lg border border-gray-200 bg-white"
+              data-testid="admin-tags-list"
+            >
+              {tags.map((tag) => (
+                <li
+                  key={tag.id}
+                  className="flex items-center gap-3 px-4 py-3"
+                  data-testid={`admin-tag-row-${tag.id}`}
+                >
+                  {editingId === tag.id ? (
+                    <form
+                      className="flex flex-1 items-center gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleRenameSubmit(tag.id);
+                      }}
+                      data-testid={`rename-form-${tag.id}`}
+                    >
+                      <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
+                        autoFocus
+                        ref={editInputRef}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        aria-label={t('tags.renameInputLabel')}
+                        data-testid={`rename-input-${tag.id}`}
+                      />
+                      {renameError && (
+                        <span className="text-xs text-red-600" role="alert">
+                          {renameError}
+                        </span>
+                      )}
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={renameMutation.isPending}
+                        data-testid={`rename-save-${tag.id}`}
+                      >
+                        {renameMutation.isPending ? t('tags.saving') : t('tags.save')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={cancelEdit}
+                        data-testid={`rename-cancel-${tag.id}`}
+                      >
+                        {t('tags.cancel')}
+                      </Button>
+                    </form>
+                  ) : (
+                    <>
+                      <span
+                        className="flex-1 text-sm font-medium text-gray-900"
+                        data-testid={`tag-name-${tag.id}`}
+                      >
+                        {tag.name}
                       </span>
-                    )}
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={renameMutation.isPending}
-                      data-testid={`rename-save-${tag.id}`}
-                    >
-                      {renameMutation.isPending ? t('tags.saving') : t('tags.save')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={cancelEdit}
-                      data-testid={`rename-cancel-${tag.id}`}
-                    >
-                      {t('tags.cancel')}
-                    </Button>
-                  </form>
-                ) : (
-                  <>
-                    <span
-                      className="flex-1 text-sm font-medium text-gray-900"
-                      data-testid={`tag-name-${tag.id}`}
-                    >
-                      {tag.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => startEdit(tag)}
-                      data-testid={`rename-tag-${tag.id}`}
-                    >
-                      {t('tags.rename')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      disabled={deletingId === tag.id}
-                      onClick={() => handleDelete(tag.id)}
-                      data-testid={`delete-tag-${tag.id}`}
-                    >
-                      {deletingId === tag.id ? t('tags.deleting') : t('tags.delete')}
-                    </Button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => startEdit(tag)}
+                        data-testid={`rename-tag-${tag.id}`}
+                      >
+                        {t('tags.rename')}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={deletingId === tag.id}
+                        onClick={() => handleDelete(tag.id)}
+                        data-testid={`delete-tag-${tag.id}`}
+                      >
+                        {deletingId === tag.id ? t('tags.deleting') : t('tags.delete')}
+                      </Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {data && (
+              <Pagination
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={setPage}
+              />
+            )}
+          </div>
         )}
       </main>
     </div>

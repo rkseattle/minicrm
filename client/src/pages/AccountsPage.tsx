@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.js';
 import { bulkAccounts } from '@/api/bulk.js';
-import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
+import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import TagBadge from '@/components/TagBadge.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
@@ -132,8 +132,8 @@ export default function AccountsPage() {
   });
 
   const { data: tagsData } = useQuery({
-    queryKey: TAGS_QUERY_KEY,
-    queryFn: listTags,
+    queryKey: ALL_TAGS_QUERY_KEY,
+    queryFn: listAllTags,
     staleTime: 60_000,
   });
 

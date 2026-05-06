@@ -51,6 +51,12 @@ interface ListActivitiesOptions {
   dealId?: string;
   /** When provided, only activities owned by this user are returned */
   ownerId?: string;
+  /** When provided, only activities of this type are returned (e.g. 'Call', 'Task') */
+  type?: string;
+  /** When provided, only activities updated on or after this date (YYYY-MM-DD) are returned */
+  start?: string;
+  /** When provided, only activities updated on or before this date (YYYY-MM-DD) are returned */
+  end?: string;
   /** 1-based page number; defaults to 1 */
   page?: number;
   /** Records per page; defaults to 50 */
@@ -157,6 +163,21 @@ export async function listActivities(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`a.owner_id = $${values.length}`);
+  }
+
+  if (options.type) {
+    values.push(options.type);
+    conditions.push(`a.type = $${values.length}`);
+  }
+
+  if (options.start) {
+    values.push(options.start);
+    conditions.push(`a.updated_at::date >= $${values.length}::date`);
+  }
+
+  if (options.end) {
+    values.push(options.end);
+    conditions.push(`a.updated_at::date <= $${values.length}::date`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

@@ -504,6 +504,42 @@ describe('listActivities — pagination', () => {
   });
 });
 
+// ── listActivities — type/start/end filters ──────────────────────────────────────
+
+describe('listActivities — type filter', () => {
+  it('returns only activities matching the requested type', async () => {
+    await createActivity({
+      type: 'Note',
+      subject: 'A note',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Call',
+      subject: 'A call',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+
+    const result = await listActivities({ ownerId, type: 'Call' });
+    const mine = result.data.filter((a) => a.owner_id === ownerId);
+    expect(mine.every((a) => a.type === 'Call')).toBe(true);
+    expect(mine.some((a) => a.subject === 'A call')).toBe(true);
+  });
+
+  it('returns no results when type matches nothing', async () => {
+    await createActivity({
+      type: 'Note',
+      subject: 'Only note',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    const result = await listActivities({ ownerId, type: 'Meeting' });
+    const mine = result.data.filter((a) => a.owner_id === ownerId);
+    expect(mine).toHaveLength(0);
+  });
+});
+
 // ── listMyTasks ─────────────────────────────────────────────────────────────────
 
 describe('listMyTasks', () => {

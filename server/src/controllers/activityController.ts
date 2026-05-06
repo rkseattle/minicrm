@@ -114,11 +114,37 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
     return;
   }
 
+  const rawType = typeof req.query.type === 'string' ? req.query.type : undefined;
+  const rawStart = typeof req.query.start === 'string' ? req.query.start : undefined;
+  const rawEnd = typeof req.query.end === 'string' ? req.query.end : undefined;
+
+  // Validate date format (YYYY-MM-DD) to prevent malformed SQL comparisons
+  const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (rawStart && !isoDatePattern.test(rawStart)) {
+    res
+      .status(400)
+      .json({
+        error: { code: 'VALIDATION_ERROR', message: 'start must be a date in YYYY-MM-DD format' },
+      });
+    return;
+  }
+  if (rawEnd && !isoDatePattern.test(rawEnd)) {
+    res
+      .status(400)
+      .json({
+        error: { code: 'VALIDATION_ERROR', message: 'end must be a date in YYYY-MM-DD format' },
+      });
+    return;
+  }
+
   const result = await listActivities({
     contactId: rawContact,
     accountId: rawAccount,
     dealId: rawDeal,
     ownerId,
+    type: rawType,
+    start: rawStart,
+    end: rawEnd,
     ...paginationParsed.data,
   });
   res.status(200).json(result);

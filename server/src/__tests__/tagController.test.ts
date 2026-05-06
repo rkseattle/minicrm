@@ -72,11 +72,14 @@ afterAll(async () => {
 // ── GET /api/tags ─────────────────────────────────────────────────────────────
 
 describe('GET /api/tags', () => {
-  it('returns 200 with a tags array', async () => {
+  it('returns 200 with a paginated tags response', async () => {
     const res = await request(app).get('/api/v1/tags').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.tags)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('page');
+    expect(res.body).toHaveProperty('limit');
   });
 
   it('returns 401 when unauthenticated', async () => {

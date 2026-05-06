@@ -21,6 +21,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -96,6 +97,42 @@ interface LeadSingleResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Expands the audit log filter panel if it is currently collapsed.
+ * On mobile the panel starts collapsed; on desktop it starts expanded.
+ * Calling this before any filter interaction makes tests viewport-agnostic.
+ */
+async function expandAuditFilters(page: PageFacade): Promise<void> {
+  const toggle = await page
+    .locate(
+      [
+        { type: 'testId', value: 'filters-toggle' },
+        { type: 'css', value: '[data-testid="filters-toggle"]' },
+      ],
+      { intent: 'button to expand or collapse the audit log filter panel' },
+    )
+    .resolve();
+  const expanded = await toggle.getAttribute('aria-expanded');
+  if (expanded !== 'true') {
+    await toggle.click();
+    // Wait for filter fields to become visible before returning
+    const filterField = await page
+      .locate(
+        [
+          { type: 'testId', value: 'filter-record-type' },
+          { type: 'css', value: '[data-testid="filter-record-type"]' },
+        ],
+        { intent: 'record type filter select after expanding filter panel' },
+      )
+      .resolve();
+    await filterField.waitFor({ state: 'visible' });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Audit Log — F12-AL
 // ---------------------------------------------------------------------------
 
@@ -123,6 +160,9 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
       ])
       .resolve(),
   ).toBeVisible();
+
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
 
   // Filter by record type = contact so the list is manageable
   await (
@@ -179,6 +219,9 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
       ])
       .resolve(),
   ).toBeVisible();
+
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
 
   // Filter to account only
   await (
@@ -253,6 +296,9 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
       .resolve(),
   ).toBeVisible();
 
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
+
   await (
     await page
       .locate([
@@ -288,7 +334,51 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   }
 });
 
-test('@functional F12-AL4: Rep navigating to audit log is blocked', async ({ restClient }) => {
+test('@functional F12-AL4: Audit log — pagination controls always visible (MINCRM-345)', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const contact = await createTestContact(testData, restClient, { first_name: 'F12AL4Pag' });
+  void contact;
+
+  await page.goto('/admin/audit-log');
+  await expect(
+    await page
+      .locate([
+        { type: 'testId', value: 'audit-log-heading' },
+        { type: 'role', value: 'heading', options: { name: /audit log/i } },
+      ])
+      .resolve(),
+  ).toBeVisible();
+
+  // Pagination bar should always be visible once data loads
+  await expect(
+    await page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination' },
+          { type: 'css', value: '[data-testid="pagination"]' },
+        ],
+        { intent: 'pagination bar showing record count and page controls' },
+      )
+      .resolve(),
+  ).toBeVisible({ timeout: 10_000 });
+
+  // Prev is disabled on first page
+  const prevButton = await page
+    .locate(
+      [
+        { type: 'testId', value: 'pagination-prev' },
+        { type: 'role', value: 'button', options: { name: /previous/i } },
+      ],
+      { intent: 'pagination previous page button' },
+    )
+    .resolve();
+  await expect(prevButton).toBeDisabled();
+});
+
+test('@functional F12-AL5: Rep navigating to audit log is blocked', async ({ restClient }) => {
   // Create a rep dynamically so this test does not depend on E2E_REP_PASSWORD being set
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 

@@ -6,10 +6,11 @@
 
 import apiClient from './axiosInstance.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
-
-interface TagListResponse {
-  tags: TagResponse[];
-}
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  PAGINATION_MAX_LIMIT,
+} from '@shared/schemas/paginationSchema.js';
 
 interface TagSingleResponse {
   tag: TagResponse;
@@ -18,12 +19,37 @@ interface TagSingleResponse {
 /** React Query cache key for the global tags list */
 export const TAGS_QUERY_KEY = ['tags'] as const;
 
+/** React Query cache key for the full (unpaginated) tags list used by filter dropdowns */
+export const ALL_TAGS_QUERY_KEY = ['tags', 'all'] as const;
+
+/** Shape returned by entity-scoped tag endpoints and the all-tags helper */
+export interface TagListResponse {
+  tags: TagResponse[];
+}
+
 /**
- * Returns all tags ordered by name.
+ * Returns a paginated list of tags ordered by name. Used by AdminTagsPage.
+ *
+ * @param page - 1-based page number (default 1)
+ * @param limit - Records per page (default PAGINATION_DEFAULT_LIMIT)
  */
-export async function listTags(): Promise<TagListResponse> {
-  const response = await apiClient.get<TagListResponse>('/tags');
+export async function listTags(
+  page = 1,
+  limit = PAGINATION_DEFAULT_LIMIT,
+): Promise<PaginatedResponse<TagResponse>> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const response = await apiClient.get<PaginatedResponse<TagResponse>>(`/tags?${params}`);
   return response.data;
+}
+
+/**
+ * Returns all tags (unpaginated) ordered by name. Used by filter dropdowns and TagInput.
+ * Fetches with a high limit; the tag count is expected to remain small in practice.
+ */
+export async function listAllTags(): Promise<TagListResponse> {
+  const params = new URLSearchParams({ page: '1', limit: String(PAGINATION_MAX_LIMIT) });
+  const response = await apiClient.get<PaginatedResponse<TagResponse>>(`/tags?${params}`);
+  return { tags: response.data.data ?? [] };
 }
 
 /**

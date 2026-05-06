@@ -185,8 +185,8 @@ describe('GET /api/automation/rules', () => {
     const res = await request(app).get('/api/v1/automation/rules').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.rules)).toBe(true);
-    const mine = (res.body.rules as { created_by: string }[]).filter(
+    expect(Array.isArray(res.body.data)).toBe(true);
+    const mine = (res.body.data as { created_by: string }[]).filter(
       (r) => r.created_by === adminId,
     );
     expect(mine).toHaveLength(0);
@@ -202,7 +202,11 @@ describe('GET /api/automation/rules', () => {
     const res = await request(app).get('/api/v1/automation/rules').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
-    const mine = (res.body.rules as { created_by: string }[]).filter(
+    expect(res.body).toHaveProperty('data');
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('page');
+    expect(res.body).toHaveProperty('limit');
+    const mine = (res.body.data as { created_by: string }[]).filter(
       (r) => r.created_by === adminId,
     );
     expect(mine).toHaveLength(2);

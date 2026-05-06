@@ -301,3 +301,39 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
     'rule should not fire when deal moves to a non-matching stage',
   ).toBeUndefined();
 });
+
+// ---------------------------------------------------------------------------
+// Pagination always visible (MINCRM-345)
+// ---------------------------------------------------------------------------
+
+test('@functional F13-PAG1: Automation rules page — pagination controls always visible', async ({
+  page,
+  restClient,
+}) => {
+  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+
+  await page.goto('/admin/automation');
+  await expect(
+    await page
+      .locate(
+        [
+          { type: 'testId', value: 'automation-rules-heading' },
+          { type: 'role', value: 'heading', options: { name: /automation/i } },
+        ],
+        { intent: 'automation rules page heading' },
+      )
+      .resolve(),
+  ).toBeVisible();
+
+  await expect(
+    await page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination' },
+          { type: 'css', value: '[data-testid="pagination"]' },
+        ],
+        { intent: 'pagination bar showing record count and page controls' },
+      )
+      .resolve(),
+  ).toBeVisible({ timeout: 10_000 });
+});

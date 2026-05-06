@@ -93,8 +93,15 @@ describe('AuditLogPage', () => {
     });
   });
 
-  it('renders the filter bar with all inputs', async () => {
+  it('renders the filter toggle button', () => {
     renderWithProviders(<AuditLogPage />);
+    // jsdom starts with isDesktop=false, so filters are collapsed; toggle is always visible
+    expect(screen.getByTestId('filters-toggle')).toBeInTheDocument();
+  });
+
+  it('renders filter inputs after opening the filter panel', async () => {
+    renderWithProviders(<AuditLogPage />);
+    fireEvent.click(screen.getByTestId('filters-toggle'));
     expect(screen.getByTestId('filter-from')).toBeInTheDocument();
     expect(screen.getByTestId('filter-to')).toBeInTheDocument();
     expect(screen.getByTestId('filter-user')).toBeInTheDocument();
@@ -116,6 +123,7 @@ describe('AuditLogPage', () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));
 
+    fireEvent.click(screen.getByTestId('filters-toggle'));
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
     fireEvent.click(screen.getByTestId('apply-filters-button'));
 
@@ -128,13 +136,14 @@ describe('AuditLogPage', () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));
 
+    fireEvent.click(screen.getByTestId('filters-toggle'));
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
     fireEvent.click(screen.getByTestId('clear-filters-button'));
 
     expect((screen.getByTestId('filter-record-type') as HTMLSelectElement).value).toBe('');
   });
 
-  it('shows pagination when there are multiple pages', async () => {
+  it('shows pagination controls with next enabled when there are multiple pages (MINCRM-345)', async () => {
     const entries = Array.from({ length: 2 }, (_, i) =>
       makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i + 1).padStart(2, '0')}` }),
     );
@@ -146,13 +155,13 @@ describe('AuditLogPage', () => {
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId('audit-log-prev')).toBeInTheDocument();
-      expect(screen.getByTestId('audit-log-next')).toBeInTheDocument();
-      expect(screen.getByTestId('audit-log-page-label')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-prev')).toBeDisabled();
+      expect(screen.getByTestId('pagination-next')).not.toBeDisabled();
     });
   });
 
-  it('does not show pagination when all entries fit on one page', async () => {
+  it('shows pagination controls even when all entries fit on one page (MINCRM-345)', async () => {
     const entry = makeEntry();
     server.use(
       http.get('/api/v1/audit-log', () =>
@@ -162,7 +171,9 @@ describe('AuditLogPage', () => {
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId(`audit-log-row-${entry.id}`));
-    expect(screen.queryByTestId('audit-log-prev')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    expect(screen.getByTestId('pagination-prev')).toBeDisabled();
+    expect(screen.getByTestId('pagination-next')).toBeDisabled();
   });
 
   it('expands a row with field detail when the row button is clicked', async () => {

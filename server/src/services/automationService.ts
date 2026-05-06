@@ -5,6 +5,7 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
   CreateAutomationRuleInput,
   UpdateAutomationRuleInput,
@@ -115,17 +116,33 @@ export async function findAutomationRuleById(id: string): Promise<AutomationRule
 }
 
 /**
- * Returns all automation rules ordered by creation date descending.
+ * Returns a paginated list of automation rules ordered by creation date descending.
  *
- * @returns Array of rule rows
+ * @param page - 1-based page number (default 1)
+ * @param limit - Records per page (default 25)
+ * @returns Paginated response with rule rows and total count
  */
-export async function listAutomationRules(): Promise<AutomationRuleRow[]> {
-  const result = await pool.query<AutomationRuleRow>(
-    `SELECT id, name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, created_at, updated_at
-     FROM automation_rules
-     ORDER BY created_at DESC`,
-  );
-  return result.rows;
+export async function listAutomationRules(
+  page = 1,
+  limit = 25,
+): Promise<PaginatedResponse<AutomationRuleRow>> {
+  const offset = (page - 1) * limit;
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM automation_rules`),
+    pool.query<AutomationRuleRow>(
+      `SELECT id, name, enabled, trigger_type, trigger_config, action_type, action_config, created_by, created_at, updated_at
+       FROM automation_rules
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    ),
+  ]);
+  return {
+    data: dataResult.rows,
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**

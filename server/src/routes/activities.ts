@@ -55,6 +55,39 @@ const router = Router();
  *           type: string
  *           format: uuid
  *         description: Filter by deal ID
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [Note, Call, Email, Meeting, Task]
+ *         description: Filter by activity type
+ *       - in: query
+ *         name: start
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Return only activities updated on or after this date (YYYY-MM-DD)
+ *       - in: query
+ *         name: end
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Return only activities updated on or before this date (YYYY-MM-DD)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 1-based page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 25
+ *         description: Records per page
  *     responses:
  *       200:
  *         description: Array of activities

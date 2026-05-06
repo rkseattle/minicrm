@@ -1082,6 +1082,7 @@
       "all": "Todos"
     },
     "filters": {
+      "title": "Filtros",
       "from": "Desde",
       "to": "Hasta",
       "user": "Usuario",

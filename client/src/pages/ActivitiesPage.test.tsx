@@ -126,10 +126,18 @@ describe('ActivitiesPage', () => {
     });
   });
 
-  it('filters by type client-side when ?type param is set', async () => {
+  it('passes type param to server when ?type param is set', async () => {
+    server.use(
+      http.get('/api/v1/activities', ({ request }) => {
+        const url = new URL(request.url);
+        const type = url.searchParams.get('type');
+        // Server filters by type — return only matching activities
+        const data = type === 'Task' ? [ACTIVITY_1] : [ACTIVITY_1, ACTIVITY_2];
+        return HttpResponse.json({ data, total: data.length, page: 1, limit: 25 });
+      }),
+    );
     renderWithProviders(<ActivitiesPage />, { initialEntries: ['/activities?type=Task'] });
     await waitFor(() => {
-      // ACTIVITY_1 is Task → shown; ACTIVITY_2 is Note → hidden
       expect(screen.getByTestId(`activity-row-${ACTIVITY_1.id}`)).toBeInTheDocument();
       expect(screen.queryByTestId(`activity-row-${ACTIVITY_2.id}`)).not.toBeInTheDocument();
     });
@@ -153,8 +161,18 @@ describe('ActivitiesPage', () => {
     });
   });
 
-  it('filters by date range client-side using updated_at', async () => {
-    // ACTIVITY_1 updated_at: 2025-01-01; ACTIVITY_2 updated_at: 2025-01-02
+  it('passes start/end params to server for date range filtering', async () => {
+    server.use(
+      http.get('/api/v1/activities', ({ request }) => {
+        const url = new URL(request.url);
+        const start = url.searchParams.get('start');
+        const end = url.searchParams.get('end');
+        // Server filters by date — simulate returning only ACTIVITY_2 for this date range
+        const data =
+          start === '2025-01-02' && end === '2025-01-02' ? [ACTIVITY_2] : [ACTIVITY_1, ACTIVITY_2];
+        return HttpResponse.json({ data, total: data.length, page: 1, limit: 25 });
+      }),
+    );
     renderWithProviders(<ActivitiesPage />, {
       initialEntries: ['/activities?start=2025-01-02&end=2025-01-02'],
     });

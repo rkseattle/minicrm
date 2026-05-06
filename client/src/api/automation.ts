@@ -10,13 +10,11 @@ import type {
   CreateAutomationRuleInput,
   UpdateAutomationRuleInput,
 } from '@shared/schemas/automationSchema.js';
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the automation rules list */
 export const AUTOMATION_RULES_QUERY_KEY = ['automation-rules'] as const;
-
-interface AutomationRulesResponse {
-  rules: AutomationRuleResponse[];
-}
 
 interface AutomationRuleSingleResponse {
   rule: AutomationRuleResponse;
@@ -27,10 +25,19 @@ interface AutomationRuleLogsResponse {
 }
 
 /**
- * Returns all automation rules.
+ * Returns a paginated list of automation rules.
+ *
+ * @param page - 1-based page number (default 1)
+ * @param limit - Records per page (default PAGINATION_DEFAULT_LIMIT)
  */
-export async function listAutomationRules(): Promise<AutomationRulesResponse> {
-  const response = await apiClient.get<AutomationRulesResponse>('/automation/rules');
+export async function listAutomationRules(
+  page = 1,
+  limit = PAGINATION_DEFAULT_LIMIT,
+): Promise<PaginatedResponse<AutomationRuleResponse>> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const response = await apiClient.get<PaginatedResponse<AutomationRuleResponse>>(
+    `/automation/rules?${params}`,
+  );
   return response.data;
 }
 

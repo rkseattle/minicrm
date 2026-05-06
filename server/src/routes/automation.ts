@@ -24,21 +24,43 @@ const router = Router();
  *     tags: [Automation]
  *     operationId: listAutomationRules
  *     summary: List automation rules
- *     description: Returns all automation rules. Admin only.
+ *     description: Returns a paginated list of automation rules. Admin only.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 1-based page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 25
+ *         description: Records per page
  *     responses:
  *       200:
- *         description: Array of automation rules
+ *         description: Paginated list of automation rules
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 rules:
+ *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/AutomationRule'
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:

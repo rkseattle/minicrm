@@ -222,8 +222,8 @@ describe('findAutomationRuleById', () => {
 
 describe('listAutomationRules', () => {
   it('returns an empty array when no rules exist', async () => {
-    const rules = await listAutomationRules();
-    const mine = rules.filter((r) => r.created_by === adminId);
+    const result = await listAutomationRules();
+    const mine = result.data.filter((r) => r.created_by === adminId);
     expect(mine).toEqual([]);
   });
 
@@ -231,12 +231,32 @@ describe('listAutomationRules', () => {
     await createAutomationRule({ ...BASE_RULE, name: 'Alpha Rule', created_by: adminId });
     await createAutomationRule({ ...BASE_RULE, name: 'Beta Rule', created_by: adminId });
 
-    const rules = await listAutomationRules();
-    const mine = rules.filter((r) => r.created_by === adminId);
+    const result = await listAutomationRules();
+    const mine = result.data.filter((r) => r.created_by === adminId);
     expect(mine).toHaveLength(2);
     // Most recently created rule should be first
     expect(mine[0].name).toBe('Beta Rule');
     expect(mine[1].name).toBe('Alpha Rule');
+  });
+
+  it('returns pagination metadata', async () => {
+    const result = await listAutomationRules(1, 25);
+    expect(result).toHaveProperty('data');
+    expect(result).toHaveProperty('total');
+    expect(result).toHaveProperty('page', 1);
+    expect(result).toHaveProperty('limit', 25);
+    expect(Array.isArray(result.data)).toBe(true);
+  });
+
+  it('respects page and limit parameters', async () => {
+    for (let i = 0; i < 3; i++) {
+      await createAutomationRule({ ...BASE_RULE, name: `Paginate Rule ${i}`, created_by: adminId });
+    }
+    const page1 = await listAutomationRules(1, 2);
+    expect(page1.data.length).toBeLessThanOrEqual(2);
+    expect(page1.page).toBe(1);
+    expect(page1.limit).toBe(2);
+    expect(page1.total).toBeGreaterThanOrEqual(3);
   });
 });
 
