@@ -95,10 +95,10 @@ test(
       email: `cd1-contact-${Date.now()}@example.com`,
     });
 
-    // Create two activities linked to this contact
+    // Create two activities linked to this contact (Task/Note do not require direction)
     const activityA = await createTestActivity(testData, restClient, {
-      type: 'Call',
-      subject: `CD1-Call-A ${test.info().title}`,
+      type: 'Task',
+      subject: `CD1-Task-A ${test.info().title}`,
       contact_id: contact.id,
     });
     const activityB = await createTestActivity(testData, restClient, {

@@ -157,19 +157,23 @@ test(
       .resolve();
     await submitBtn.click();
 
-    // Wait for the board to show the new deal card — look it up via API first
-    // to get the ID, then assert the card by testId
+    // Wait for the form to close (submit button detaches from DOM) before querying
+    // the API — networkidle alone can resolve before the mutation response lands and
+    // the React state update closes the form.
+    await submitBtn.waitFor({ state: 'detached', timeout: 15_000 });
     await page.waitForLoadState('networkidle');
 
-    // The deal should now exist — find it by name via API
-    const listResponse = await restClient.get<{ deals: DealSingleResponse['deal'][] }>(
-      '/api/v1/deals',
+    const listResponse = await restClient.get<{ data: DealSingleResponse['deal'][] }>(
+      '/api/v1/deals?sort=created_at&dir=desc&limit=100',
     );
-    const createdDeal = listResponse.body.deals.find((d) => d.name === dealName);
-    expect(createdDeal, `Deal "${dealName}" must appear in the API list`).toBeDefined();
+    const createdDeal = listResponse.body.data.find((d) => d.name === dealName);
+    expect(
+      createdDeal,
+      `Deal "${dealName}" must appear in the API list sorted newest-first`,
+    ).toBeDefined();
 
     if (createdDeal) {
-      // Register for teardown (was created via UI, not via helper)
+      // Register for teardown (deal was created via UI, not via helper)
       testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
       // Assert the deal card appears on the board in the Prospecting column
