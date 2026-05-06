@@ -44,9 +44,13 @@ test('reports nav: clicking Reports nav link lands on /reports @functional', asy
   page,
   restClient,
 }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  test.skip(isMobile, 'left nav not rendered on mobile — mobile always uses NavTop');
+
   await setNavLayoutViaAPI('left', restClient);
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.waitForLoadState('networkidle');
     const result = await navigateViaNavLink('left', 'reports', { page });
     expect(result.linkClicked).toBe(true);
     expect(new URL(result.finalUrl).pathname).toBe('/reports');

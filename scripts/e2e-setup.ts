@@ -19,6 +19,28 @@
  */
 
 import { execSync } from 'child_process';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
+// to child scripts (e.g. seed:e2e-storage needs NODE_ENCRYPTION_KEY to encrypt secrets).
+try {
+  const rootEnv = readFileSync(resolve(__dirname, '..', '.env'), 'utf8');
+  for (const line of rootEnv.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx < 0) continue;
+    const key = trimmed.slice(0, eqIdx);
+    const value = trimmed.slice(eqIdx + 1);
+    if (!(key in process.env)) process.env[key] = value;
+  }
+} catch {
+  // Root .env is optional — CI supplies vars via the environment directly
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -28,9 +50,18 @@ const MINIO_HEALTH_URL = 'http://localhost:9000/minio/health/live';
 const MINIO_IMAGE = 'minio/minio:latest';
 const MINIO_BUCKET = 'minicrm-test-bucket';
 const MINIO_ALIAS = 'local';
+// Host-side endpoint (used by mc for bucket creation and health checks)
 const MINIO_ENDPOINT = 'http://localhost:9000';
+// Docker-internal endpoint written into system_settings so the server-e2e
+// container can reach MinIO via the Docker service name rather than localhost.
+const MINIO_SERVER_ENDPOINT = 'http://minio:9000';
 const MINIO_ROOT_USER = 'minioadmin';
 const MINIO_ROOT_PASSWORD = 'minioadmin';
+
+// Docker-internal SMTP host written into system_settings so the server-e2e
+// container can reach Mailhog via the Docker service name rather than localhost.
+const MAILHOG_SERVER_HOST = 'mailhog';
+const MAILHOG_SMTP_PORT = '1025';
 
 const READINESS_TIMEOUT_MS = 30_000;
 const READINESS_POLL_INTERVAL_MS = 1_000;
@@ -164,11 +195,21 @@ function createMinioBucket(): void {
 function seedStorageConfig(): void {
   console.log('[e2e:setup] Seeding MinIO storage config into system_settings...');
 
+  const dbUser = process.env.DB_USER ?? 'minicrm';
+  const dbPassword = process.env.DB_PASSWORD ?? 'password';
+  const dbHost = process.env.DB_HOST ?? 'localhost';
+  const dbPort = process.env.DB_PORT ?? '5432';
+
   execSync('npm run seed:e2e-storage', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      E2E_STORAGE_ENDPOINT: MINIO_ENDPOINT,
+      DB_USER: dbUser,
+      DB_PASSWORD: dbPassword,
+      DB_NAME: E2E_DB_NAME,
+      DB_HOST: dbHost,
+      DB_PORT: dbPort,
+      E2E_STORAGE_ENDPOINT: MINIO_SERVER_ENDPOINT,
       E2E_STORAGE_BUCKET: MINIO_BUCKET,
       E2E_STORAGE_ACCESS_KEY_ID: MINIO_ROOT_USER,
       E2E_STORAGE_SECRET_ACCESS_KEY: MINIO_ROOT_PASSWORD,
@@ -199,6 +240,8 @@ function seedSmtpConfig(): void {
       DB_NAME: E2E_DB_NAME,
       DB_HOST: dbHost,
       DB_PORT: dbPort,
+      E2E_SMTP_HOST: MAILHOG_SERVER_HOST,
+      E2E_SMTP_PORT: MAILHOG_SMTP_PORT,
     },
   });
 

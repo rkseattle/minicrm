@@ -240,6 +240,9 @@ test.describe.serial('Layout-mutating tests', () => {
       page,
       restClient,
     }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-LN1: NavLeft is not rendered on mobile — mobile always uses NavTop');
+
       await setNavLayoutViaAPI('left', restClient);
       await navigateToDashboard(page);
 
@@ -269,6 +272,9 @@ test.describe.serial('Layout-mutating tests', () => {
       page,
       restClient,
     }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-LN2: NavLeft is not rendered on mobile — mobile always uses NavTop');
+
       await setNavLayoutViaAPI('left', restClient);
       await navigateToDashboard(page);
 
@@ -371,6 +377,12 @@ test.describe.serial('Layout-mutating tests', () => {
         // URL guarantees NavLink sees the correct active location on first render.
         await page.waitForURL('**/deals', { timeout: 10_000 });
 
+        // Wait for the page to fully settle after navigation. NavHamburger
+        // remounts on route change and resets menuOpen to false. Without this
+        // wait, openHamburgerMenu can click the toggle on the unmounting instance
+        // before the new instance has wired up its state.
+        await page.waitForLoadState('networkidle');
+
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
@@ -413,6 +425,9 @@ test.describe.serial('Layout-mutating tests', () => {
       page,
       restClient,
     }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-AD1: NavLeft is not rendered on mobile — mobile always uses NavTop');
+
       await setNavLayoutViaAPI('left', restClient);
       await navigateToDashboard(page);
 

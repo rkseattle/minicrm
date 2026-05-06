@@ -173,7 +173,7 @@ export default function OnboardingBanner() {
               aria-hidden="true"
             />
           ))}
-          <span className="text-xs text-indigo-500 ms-1">
+          <span className="text-xs text-indigo-700 ms-1">
             {t('onboarding.stepOf', { current: step, total: TOTAL_STEPS })}
           </span>
         </div>

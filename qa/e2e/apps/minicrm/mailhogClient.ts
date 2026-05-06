@@ -131,10 +131,32 @@ export class MailhogClient {
    */
   async waitForMessagesTo(
     email: string,
-    { maxAttempts = 10, intervalMs = 300 }: { maxAttempts?: number; intervalMs?: number } = {},
+    { maxAttempts = 20, intervalMs = 500 }: { maxAttempts?: number; intervalMs?: number } = {},
   ): Promise<MailhogMessage[]> {
     let messages = await this.getMessagesTo(email);
     for (let attempt = 0; attempt < maxAttempts && messages.length === 0; attempt++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
+      messages = await this.getMessagesTo(email);
+    }
+    return messages;
+  }
+
+  /**
+   * Polls Mailhog until at least `count` messages addressed to `email` have
+   * arrived, or the attempt budget is exhausted.
+   *
+   * Use this when a test triggers multiple emails to the same address (e.g.
+   * invite + password-reset) and needs to wait for all of them without
+   * calling clearMessages() between sends, which would interfere with
+   * concurrently running tests.
+   */
+  async waitForMessagesCountTo(
+    email: string,
+    count: number,
+    { maxAttempts = 20, intervalMs = 500 }: { maxAttempts?: number; intervalMs?: number } = {},
+  ): Promise<MailhogMessage[]> {
+    let messages = await this.getMessagesTo(email);
+    for (let attempt = 0; attempt < maxAttempts && messages.length < count; attempt++) {
       await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
       messages = await this.getMessagesTo(email);
     }

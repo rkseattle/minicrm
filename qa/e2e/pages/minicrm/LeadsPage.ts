@@ -106,13 +106,18 @@ export class LeadsPage {
    * @param leadId - Lead UUID.
    */
   async clickStatusBadge(leadId: string): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: `status-badge-${leadId}` },
-        { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
-      ],
-      { intent: 'lead status badge to open inline status selector' },
-    );
+    // Resolve then click with force:true — the badge is inside a nested overflow-auto
+    // container on mobile, causing Playwright's scroll-into-view loop to never settle.
+    const badge = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `status-badge-${leadId}` },
+          { type: 'css', value: `[data-testid="status-badge-${leadId}"]` },
+        ],
+        { intent: 'lead status badge to open inline status selector' },
+      )
+      .resolve();
+    await badge.click({ force: true });
   }
 
   /**

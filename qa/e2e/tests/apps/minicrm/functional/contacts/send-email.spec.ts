@@ -61,9 +61,6 @@ test(
       .resolve();
     await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
 
-    // Clear inbox before sending to prevent cross-test contamination
-    await mailhog.clearMessages();
-
     // Open the compose modal
     await page.click([{ type: 'testId', value: 'send-email-button' }]);
 
@@ -87,7 +84,7 @@ test(
     // Click Send
     await page.click([{ type: 'testId', value: 'send-email-submit' }]);
 
-    // Success message appears; Mailhog confirms actual SMTP delivery below.
+    // Success message appears; must say "sent to" not "logged" — confirms SMTP delivered.
     const successMsg = await page
       .locate([
         { type: 'testId', value: 'send-email-success' },
@@ -95,6 +92,10 @@ test(
       ])
       .resolve();
     await successMsg.waitFor({ state: 'visible', timeout: 10_000 });
+    const successText = (await successMsg.textContent()) ?? '';
+    expect(successText, 'success message should confirm SMTP delivery, not log fallback').toContain(
+      'Email sent to',
+    );
 
     // Modal should auto-close
     await modal.waitFor({ state: 'detached', timeout: 5_000 });
