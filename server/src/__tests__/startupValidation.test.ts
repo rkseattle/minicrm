@@ -39,56 +39,84 @@ function spawnServer(env: Record<string, string>): number | null {
 
 // ── NODE_ENCRYPTION_KEY validation ────────────────────────────────────────────
 
+// spawnSync timeout is 8 s; Vitest default is 5 s — give each test 12 s so the
+// child process has time to boot tsx and exit before Vitest kills the test.
+const SPAWN_TEST_TIMEOUT = 12_000;
+
 describe('MINCRM-301 — NODE_ENCRYPTION_KEY startup validation', () => {
-  it('exits non-zero when NODE_ENCRYPTION_KEY is absent', () => {
-    const status = spawnServer({
-      JWT_SECRET: VALID_JWT_SECRET,
-      NODE_ENCRYPTION_KEY: '',
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when NODE_ENCRYPTION_KEY is absent',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: '',
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 
-  it('exits non-zero when NODE_ENCRYPTION_KEY is too short', () => {
-    const status = spawnServer({
-      JWT_SECRET: VALID_JWT_SECRET,
-      NODE_ENCRYPTION_KEY: 'abc123',
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when NODE_ENCRYPTION_KEY is too short',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: 'abc123',
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 
-  it('exits non-zero when NODE_ENCRYPTION_KEY contains non-hex characters', () => {
-    const status = spawnServer({
-      JWT_SECRET: VALID_JWT_SECRET,
-      NODE_ENCRYPTION_KEY: 'z'.repeat(64),
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when NODE_ENCRYPTION_KEY contains non-hex characters',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: 'z'.repeat(64),
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 
-  it('exits non-zero when NODE_ENCRYPTION_KEY is exactly 63 chars (one short)', () => {
-    const status = spawnServer({
-      JWT_SECRET: VALID_JWT_SECRET,
-      NODE_ENCRYPTION_KEY: 'a'.repeat(63),
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when NODE_ENCRYPTION_KEY is exactly 63 chars (one short)',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: 'a'.repeat(63),
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 });
 
 // ── JWT_SECRET validation still works alongside the new check ─────────────────
 
 describe('MINCRM-301 — JWT_SECRET validation still enforced', () => {
-  it('exits non-zero when JWT_SECRET is absent', () => {
-    const status = spawnServer({
-      JWT_SECRET: '',
-      NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when JWT_SECRET is absent',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: '',
+        NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 
-  it('exits non-zero when JWT_SECRET is a known-weak value', () => {
-    const status = spawnServer({
-      JWT_SECRET: 'changeme',
-      NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
-    });
-    expect(status).not.toBe(0);
-  });
+  it(
+    'exits non-zero when JWT_SECRET is a known-weak value',
+    () => {
+      const status = spawnServer({
+        JWT_SECRET: 'changeme',
+        NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
+      });
+      expect(status).not.toBe(0);
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
 });
