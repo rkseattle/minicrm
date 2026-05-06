@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listContacts, createContact, exportContactsCsv } from '@/api/contacts.js';
 import { bulkContacts } from '@/api/bulk.js';
-import { listTags, TAGS_QUERY_KEY } from '@/api/tags.js';
+import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
 import TagBadge from '@/components/TagBadge.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
@@ -149,8 +149,8 @@ export default function ContactsPage() {
   });
 
   const { data: tagsData } = useQuery({
-    queryKey: TAGS_QUERY_KEY,
-    queryFn: listTags,
+    queryKey: ALL_TAGS_QUERY_KEY,
+    queryFn: listAllTags,
     staleTime: 60_000,
   });
 

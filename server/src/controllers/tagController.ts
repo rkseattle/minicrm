@@ -9,6 +9,7 @@ import {
   updateTagSchema,
   attachTagSchema,
 } from '@minicrm/shared/schemas/tagSchema.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import {
   listTags,
   findTagById,
@@ -25,11 +26,18 @@ import { getTagsRestrictCreation } from '../services/settingsService.js';
 
 /**
  * GET /api/tags
- * Returns all tags ordered by name.
+ * Returns a paginated list of tags ordered by name.
  */
 export async function listTagsHandler(req: Request, res: Response): Promise<void> {
-  const tags = await listTags();
-  res.json({ tags });
+  const parsed = paginationParamsSchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+  const result = await listTags(parsed.data.page, parsed.data.limit);
+  res.json(result);
 }
 
 /**

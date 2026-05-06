@@ -5,6 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import {
   createAutomationRuleSchema,
   updateAutomationRuleSchema,
@@ -98,11 +99,18 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
 
 /**
  * GET /api/automation/rules
- * Lists all automation rules. Admin only.
+ * Lists automation rules with pagination. Admin only.
  */
-export async function listAutomationRulesHandler(_req: Request, res: Response): Promise<void> {
-  const rules = await listAutomationRules();
-  res.status(200).json({ rules });
+export async function listAutomationRulesHandler(req: Request, res: Response): Promise<void> {
+  const parsed = paginationParamsSchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+  const result = await listAutomationRules(parsed.data.page, parsed.data.limit);
+  res.status(200).json(result);
 }
 
 /**

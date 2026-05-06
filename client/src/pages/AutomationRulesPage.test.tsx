@@ -64,10 +64,26 @@ describe('AutomationRulesPage', () => {
 
   describe('empty state', () => {
     it('shows an empty state when there are no rules', async () => {
-      server.use(http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [] })));
+      server.use(
+        http.get('/api/v1/automation/rules', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        ),
+      );
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
         expect(screen.getByTestId('rules-empty')).toBeInTheDocument();
+      });
+    });
+
+    it('shows pagination controls even when there are no rules (MINCRM-345)', async () => {
+      server.use(
+        http.get('/api/v1/automation/rules', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        ),
+      );
+      renderWithProviders(<AutomationRulesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('pagination')).toBeInTheDocument();
       });
     });
   });
@@ -121,7 +137,9 @@ describe('AutomationRulesPage', () => {
     it('toggle switch is unchecked when rule is disabled', async () => {
       const disabledRule = { ...AUTOMATION_RULE_1, enabled: false };
       server.use(
-        http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [disabledRule] })),
+        http.get('/api/v1/automation/rules', () =>
+          HttpResponse.json({ data: [disabledRule], total: 1, page: 1, limit: 25 }),
+        ),
       );
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
@@ -213,7 +231,9 @@ describe('AutomationRulesPage', () => {
           }
           return new HttpResponse(null, { status: 204 });
         }),
-        http.get('/api/v1/automation/rules', () => HttpResponse.json({ rules: [] })),
+        http.get('/api/v1/automation/rules', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        ),
       );
 
       await user.click(screen.getByTestId(`delete-rule-${AUTOMATION_RULE_1.id}`));

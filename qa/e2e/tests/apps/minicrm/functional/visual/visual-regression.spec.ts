@@ -14,8 +14,8 @@
  *   See MINCRM-319 for full OS requirement documentation.
  *
  * Pages covered:
- *   V1 — Pipeline board, desktop viewport
- *   V2 — Pipeline board, mobile viewport (Pixel 5)
+ *   V1 — Pipeline board, desktop viewport (sticky header + toolbar — MINCRM-346)
+ *   V2 — Pipeline board, mobile viewport (Pixel 5) (sticky stage nav — MINCRM-346)
  *   V3 — Dashboard with seeded deals and activities
  *   V4 — Contact detail with activity timeline
  *   V5 — Win/Loss report with seeded won/lost deals

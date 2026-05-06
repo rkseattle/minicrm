@@ -30,18 +30,40 @@ const router = Router();
  *     summary: List all tags
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 1-based page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 25
+ *         description: Records per page
  *     responses:
  *       200:
- *         description: Array of tags
+ *         description: Paginated list of tags
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 tags:
+ *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Tag'
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
  *       401:
  *         description: Not authenticated
  */

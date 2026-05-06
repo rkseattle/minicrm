@@ -99,23 +99,26 @@ describe('UsersPage', () => {
   });
 
   describe('invite form', () => {
-    it('renders invite form fields', async () => {
+    // jsdom starts with isDesktop=false so the form panel is collapsed by default.
+    // Each test opens it via the toggle before interacting with fields.
+    async function openInvitePanel(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByTestId('invite-form-toggle'));
+    }
+
+    it('renders invite form fields when panel is open', async () => {
+      const user = userEvent.setup();
       renderWithProviders(<UsersPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('invite-name')).toBeInTheDocument();
-        expect(screen.getByTestId('invite-email')).toBeInTheDocument();
-        expect(screen.getByTestId('invite-role')).toBeInTheDocument();
-        expect(screen.getByTestId('invite-submit')).toBeInTheDocument();
-      });
+      await openInvitePanel(user);
+      expect(screen.getByTestId('invite-name')).toBeInTheDocument();
+      expect(screen.getByTestId('invite-email')).toBeInTheDocument();
+      expect(screen.getByTestId('invite-role')).toBeInTheDocument();
+      expect(screen.getByTestId('invite-submit')).toBeInTheDocument();
     });
 
     it('shows success message and set-password link after a successful invite', async () => {
       const user = userEvent.setup();
       renderWithProviders(<UsersPage />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('invite-name')).toBeInTheDocument();
-      });
+      await openInvitePanel(user);
 
       await user.type(screen.getByTestId('invite-name'), 'New User');
       await user.type(screen.getByTestId('invite-email'), 'new@example.com');
@@ -132,10 +135,7 @@ describe('UsersPage', () => {
     it('clears the form after a successful invite', async () => {
       const user = userEvent.setup();
       renderWithProviders(<UsersPage />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('invite-name')).toBeInTheDocument();
-      });
+      await openInvitePanel(user);
 
       await user.type(screen.getByTestId('invite-name'), 'New User');
       await user.type(screen.getByTestId('invite-email'), 'new@example.com');

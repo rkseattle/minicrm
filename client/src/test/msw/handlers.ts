@@ -1013,9 +1013,9 @@ export const handlers = [
     return HttpResponse.json({ language: body.language });
   }),
 
-  /** Automation: GET /api/automation/rules */
+  /** Automation: GET /api/automation/rules — returns paginated list */
   http.get('/api/v1/automation/rules', () => {
-    return HttpResponse.json({ rules: [AUTOMATION_RULE_1] });
+    return HttpResponse.json({ data: [AUTOMATION_RULE_1], total: 1, page: 1, limit: 25 });
   }),
 
   /** Automation: POST /api/automation/rules */
@@ -1439,9 +1439,9 @@ export const handlers = [
 
   // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
 
-  /** Tags: GET /api/tags — returns empty list by default */
+  /** Tags: GET /api/tags — returns paginated empty list by default */
   http.get('/api/v1/tags', () => {
-    return HttpResponse.json({ tags: [] });
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
 
   /** Tags: POST /api/tags */

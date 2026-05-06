@@ -176,11 +176,12 @@ export default function StageColumn({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* Column header — explicit onDragOver/onDrop so drop events targeting this
-          element are handled directly rather than relying on parent bubbling (MINCRM-300) */}
+      {/* Column header — sticky so stage name/count stay visible as cards scroll within the column (MINCRM-346).
+          Explicit onDragOver/onDrop so drop events targeting this element are handled directly
+          rather than relying on parent bubbling (MINCRM-300). */}
       <div
         data-testid={`${testIdPrefix}stage-column-header-${slug}`}
-        className={`px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}
+        className={`sticky top-0 z-10 px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >

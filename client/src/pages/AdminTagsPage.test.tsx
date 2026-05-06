@@ -37,7 +37,7 @@ describe('AdminTagsPage', () => {
     server.use(
       http.get('/api/v1/tags', async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
-        return HttpResponse.json({ tags: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
       }),
     );
     renderWithProviders(<AdminTagsPage />);
@@ -45,7 +45,9 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows empty state when no tags exist', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [] })));
+    server.use(
+      http.get('/api/v1/tags', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 })),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId('admin-tags-empty')).toBeInTheDocument();
@@ -65,7 +67,11 @@ describe('AdminTagsPage', () => {
   });
 
   it('renders tag rows when tags are returned', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1, TAG_2] })));
+    server.use(
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1, TAG_2], total: 2, page: 1, limit: 25 }),
+      ),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`admin-tag-row-${TAG_1.id}`)).toBeInTheDocument();
@@ -76,7 +82,11 @@ describe('AdminTagsPage', () => {
   });
 
   it('renders rename and delete buttons for each tag', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -85,7 +95,11 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows rename form when rename button is clicked', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -97,7 +111,9 @@ describe('AdminTagsPage', () => {
 
   it('submits the rename form and closes on success', async () => {
     server.use(
-      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
       http.patch('/api/v1/tags/:id', async ({ params, request }) => {
         const body = (await request.json()) as { name: string };
         return HttpResponse.json({
@@ -120,7 +136,11 @@ describe('AdminTagsPage', () => {
   });
 
   it('shows validation error when rename input is empty', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -134,7 +154,11 @@ describe('AdminTagsPage', () => {
   });
 
   it('cancels rename and restores tag display', async () => {
-    server.use(http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })));
+    server.use(
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
+    );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
       expect(screen.getByTestId(`rename-tag-${TAG_1.id}`)).toBeInTheDocument();
@@ -149,7 +173,13 @@ describe('AdminTagsPage', () => {
   it('calls delete API and removes tag from list on success', async () => {
     let deleted = false;
     server.use(
-      http.get('/api/v1/tags', () => HttpResponse.json({ tags: deleted ? [] : [TAG_1] })),
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json(
+          deleted
+            ? { data: [], total: 0, page: 1, limit: 25 }
+            : { data: [TAG_1], total: 1, page: 1, limit: 25 },
+        ),
+      ),
       http.delete('/api/v1/tags/:id', () => {
         deleted = true;
         return new HttpResponse(null, { status: 204 });
@@ -167,7 +197,9 @@ describe('AdminTagsPage', () => {
 
   it('shows delete error alert when delete API fails', async () => {
     server.use(
-      http.get('/api/v1/tags', () => HttpResponse.json({ tags: [TAG_1] })),
+      http.get('/api/v1/tags', () =>
+        HttpResponse.json({ data: [TAG_1], total: 1, page: 1, limit: 25 }),
+      ),
       http.delete('/api/v1/tags/:id', () =>
         HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
       ),

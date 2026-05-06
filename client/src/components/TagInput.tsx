@@ -10,7 +10,7 @@ import { useState, useRef, useEffect, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import TagBadge from './TagBadge.js';
-import { TAGS_QUERY_KEY } from '@/api/tags.js';
+import { ALL_TAGS_QUERY_KEY, TAGS_QUERY_KEY } from '@/api/tags.js';
 import { getTagsRestrictCreation, TAGS_RESTRICT_CREATION_QUERY_KEY } from '@/api/settings.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
@@ -70,10 +70,10 @@ export default function TagInput({
   const creationBlocked = (restrictData?.restricted ?? false) && user?.role === 'rep';
 
   const { data: allTagsData } = useQuery({
-    queryKey: TAGS_QUERY_KEY,
+    queryKey: ALL_TAGS_QUERY_KEY,
     queryFn: async () => {
-      const { listTags } = await import('@/api/tags.js');
-      return listTags();
+      const { listAllTags } = await import('@/api/tags.js');
+      return listAllTags();
     },
     staleTime: 60_000,
   });
@@ -276,6 +276,7 @@ export function ConnectedTagInput({
       void queryClient.invalidateQueries({ queryKey: tagsQueryKey });
       void queryClient.invalidateQueries({ queryKey: entityQueryKey });
       void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ALL_TAGS_QUERY_KEY });
     },
   });
 

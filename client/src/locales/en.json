@@ -1047,6 +1047,7 @@
       "all": "All"
     },
     "filters": {
+      "title": "Filters",
       "from": "From",
       "to": "To",
       "user": "User",

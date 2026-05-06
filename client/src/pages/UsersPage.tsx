@@ -53,6 +53,7 @@ interface InviteFormState {
 function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { isDesktop } = useBreakpoint();
 
   const [formData, setFormData] = useState<InviteFormState>({
     email: '',
@@ -62,6 +63,8 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   const [lastInviteResult, setLastInviteResult] = useState<{
     setPasswordPath: string;
   } | null>(null);
+  // Collapsed by default on mobile so the form doesn't consume most of the screen
+  const [isOpen, setIsOpen] = useState(isDesktop);
 
   const inviteMutation = useMutation({
     mutationFn: () => inviteUser(formData),
@@ -84,95 +87,123 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   };
 
   return (
-    <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-      <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('users.inviteTitle')}</h2>
-
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
-        <div className="w-full sm:min-w-40 sm:w-auto">
-          <Input
-            id="invite-name"
-            data-testid="invite-name"
-            name="name"
-            type="text"
-            required
-            label={t('users.nameLabel')}
-            value={formData.name}
-            onChange={handleChange}
-            placeholder={t('users.namePlaceholder')}
-          />
-        </div>
-
-        <div className="w-full sm:min-w-48 sm:w-auto">
-          <Input
-            id="invite-email"
-            data-testid="invite-email"
-            name="email"
-            type="email"
-            required
-            label={t('users.emailLabel')}
-            value={formData.email}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="w-full sm:min-w-32 sm:w-auto">
-          <Select
-            id="invite-role"
-            data-testid="invite-role"
-            name="role"
-            label={t('users.roleLabel')}
-            value={formData.role}
-            onChange={handleChange}
-          >
-            <option value="rep">{t('users.roleRep')}</option>
-            <option value="admin">{t('users.roleAdmin')}</option>
-          </Select>
-        </div>
-
-        <Button
-          type="submit"
-          data-testid="invite-submit"
-          disabled={inviteMutation.isPending}
-          className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
+    <section className="bg-white border border-gray-200 rounded-lg mb-8">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-6 py-4 text-start"
+        aria-expanded={isOpen}
+        data-testid="invite-form-toggle"
+        onClick={() => setIsOpen((o) => !o)}
+      >
+        <h2 className="text-sm font-semibold text-gray-900">{t('users.inviteTitle')}</h2>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
         >
-          {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
-        </Button>
-      </form>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
-      {inviteMutation.isSuccess && lastInviteResult && (
-        <div role="status" className="mt-4 rounded-md bg-emerald-50 border border-emerald-200 p-4">
-          <p className="text-sm font-medium text-emerald-800 mb-2">{t('users.inviteSuccess')}</p>
-          <p className="text-xs text-emerald-700 mb-2">
-            <strong>{t('users.inviteTokenLabel')}:</strong>
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-white border border-emerald-200 px-3 py-1.5 text-xs text-gray-700 break-all">
-              {window.location.origin}
-              {lastInviteResult.setPasswordPath}
-            </code>
+      {isOpen && (
+        <div className="px-6 pb-6">
+          <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
+            <div className="w-full sm:min-w-40 sm:w-auto">
+              <Input
+                id="invite-name"
+                data-testid="invite-name"
+                name="name"
+                type="text"
+                required
+                label={t('users.nameLabel')}
+                value={formData.name}
+                onChange={handleChange}
+                placeholder={t('users.namePlaceholder')}
+              />
+            </div>
+
+            <div className="w-full sm:min-w-48 sm:w-auto">
+              <Input
+                id="invite-email"
+                data-testid="invite-email"
+                name="email"
+                type="email"
+                required
+                label={t('users.emailLabel')}
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="w-full sm:min-w-32 sm:w-auto">
+              <Select
+                id="invite-role"
+                data-testid="invite-role"
+                name="role"
+                label={t('users.roleLabel')}
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value="rep">{t('users.roleRep')}</option>
+                <option value="admin">{t('users.roleAdmin')}</option>
+              </Select>
+            </div>
+
             <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                navigator.clipboard.writeText(
-                  `${window.location.origin}${lastInviteResult.setPasswordPath}`,
-                )
-              }
+              type="submit"
+              data-testid="invite-submit"
+              disabled={inviteMutation.isPending}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
             >
-              {t('users.copyLink')}
+              {inviteMutation.isPending ? t('users.submitting') : t('users.submitInvite')}
             </Button>
-          </div>
-        </div>
-      )}
+          </form>
 
-      {inviteMutation.isError && (
-        <div
-          role="alert"
-          className="mt-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
-        >
-          {(inviteMutation.error as { response?: { data?: { error?: { message?: string } } } })
-            ?.response?.data?.error?.message ?? t('errors.generic')}
+          {inviteMutation.isSuccess && lastInviteResult && (
+            <div
+              role="status"
+              className="mt-4 rounded-md bg-emerald-50 border border-emerald-200 p-4"
+            >
+              <p className="text-sm font-medium text-emerald-800 mb-2">
+                {t('users.inviteSuccess')}
+              </p>
+              <p className="text-xs text-emerald-700 mb-2">
+                <strong>{t('users.inviteTokenLabel')}:</strong>
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-white border border-emerald-200 px-3 py-1.5 text-xs text-gray-700 break-all">
+                  {window.location.origin}
+                  {lastInviteResult.setPasswordPath}
+                </code>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}${lastInviteResult.setPasswordPath}`,
+                    )
+                  }
+                >
+                  {t('users.copyLink')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {inviteMutation.isError && (
+            <div
+              role="alert"
+              className="mt-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+            >
+              {(inviteMutation.error as { response?: { data?: { error?: { message?: string } } } })
+                ?.response?.data?.error?.message ?? t('errors.generic')}
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -375,9 +406,9 @@ export default function UsersPage() {
   const users: UserResponse[] = data?.data ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('users.pageTitle')}</h1>
 
         <InviteUserForm />
@@ -403,7 +434,7 @@ export default function UsersPage() {
 
         {/* Users table */}
         {!isLoading && !isError && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-visible">
+          <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
             {users.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="text-sm text-gray-500">{t('users.empty')}</p>
@@ -412,83 +443,85 @@ export default function UsersPage() {
               <>
                 {isDesktop ? (
                   /* Desktop table */
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
-                          {t('users.columnName')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('users.columnEmail')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('users.columnRole')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {t('users.columnStatus')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
-                          {t('users.columnActions')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {users.map((user) => (
-                        <Fragment key={user.id}>
-                          <tr
-                            className="hover:bg-gray-50 transition-colors"
-                            data-testid={`user-card-${user.id}`}
-                          >
-                            <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                            <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                            <td className="px-4 py-3 text-gray-700">
-                              {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                                {user.status === 'active'
-                                  ? t('users.statusActive')
-                                  : user.status === 'invited'
-                                    ? t('users.statusInvited')
-                                    : t('users.statusInactive')}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                              <UserActionsMenu
-                                user={user}
-                                isPending={
-                                  roleMutation.isPending ||
-                                  deactivateMutation.isPending ||
-                                  reactivateMutation.isPending
-                                }
-                                isOpen={openMenuUserId === user.id}
-                                onToggle={handleMenuToggle}
-                                onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
-                                onSetPassword={(id) =>
-                                  setSetPasswordUserId(setPasswordUserId === id ? null : id)
-                                }
-                                onDeactivate={(id) => deactivateMutation.mutate(id)}
-                                onReactivate={(id) => reactivateMutation.mutate(id)}
-                              />
-                            </td>
-                          </tr>
-                          {setPasswordUserId === user.id && (
-                            <tr>
-                              <td colSpan={5} className="px-4 pb-4">
-                                <SetPasswordForm
-                                  userId={user.id}
-                                  onClose={() => setSetPasswordUserId(null)}
+                  <div className="flex-1 overflow-auto min-h-0">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-gray-200 bg-gray-50">
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
+                            {t('users.columnName')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('users.columnEmail')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('users.columnRole')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {t('users.columnStatus')}
+                          </th>
+                          <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-se-lg">
+                            {t('users.columnActions')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {users.map((user) => (
+                          <Fragment key={user.id}>
+                            <tr
+                              className="hover:bg-gray-50 transition-colors"
+                              data-testid={`user-card-${user.id}`}
+                            >
+                              <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
+                              <td className="px-4 py-3 text-gray-500">{user.email}</td>
+                              <td className="px-4 py-3 text-gray-700">
+                                {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
+                                  {user.status === 'active'
+                                    ? t('users.statusActive')
+                                    : user.status === 'invited'
+                                      ? t('users.statusInvited')
+                                      : t('users.statusInactive')}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3">
+                                <UserActionsMenu
+                                  user={user}
+                                  isPending={
+                                    roleMutation.isPending ||
+                                    deactivateMutation.isPending ||
+                                    reactivateMutation.isPending
+                                  }
+                                  isOpen={openMenuUserId === user.id}
+                                  onToggle={handleMenuToggle}
+                                  onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
+                                  onSetPassword={(id) =>
+                                    setSetPasswordUserId(setPasswordUserId === id ? null : id)
+                                  }
+                                  onDeactivate={(id) => deactivateMutation.mutate(id)}
+                                  onReactivate={(id) => reactivateMutation.mutate(id)}
                                 />
                               </td>
                             </tr>
-                          )}
-                        </Fragment>
-                      ))}
-                    </tbody>
-                  </table>
+                            {setPasswordUserId === user.id && (
+                              <tr>
+                                <td colSpan={5} className="px-4 pb-4">
+                                  <SetPasswordForm
+                                    userId={user.id}
+                                    onClose={() => setSetPasswordUserId(null)}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   /* Mobile card view */
-                  <ul className="divide-y divide-gray-100">
+                  <ul className="flex-1 overflow-auto min-h-0 divide-y divide-gray-100">
                     {users.map((user) => (
                       <Fragment key={user.id}>
                         <li className="px-4 py-3" data-testid={`user-card-${user.id}`}>
@@ -548,7 +581,7 @@ export default function UsersPage() {
                 )}
               </>
             )}
-            {data && data.total > data.limit && (
+            {data && (
               <Pagination
                 page={data.page}
                 limit={data.limit}
