@@ -596,6 +596,9 @@ test.describe.serial('Layout-mutating tests', () => {
       page,
       restClient,
     }) => {
+      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+      test.skip(isMobile, 'F8-LS2: NavLeft is not rendered on mobile — mobile always uses NavTop');
+
       await setNavLayoutViaAPI('left', restClient);
       await navigateToDashboard(page);
 

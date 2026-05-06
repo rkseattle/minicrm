@@ -305,10 +305,19 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   });
 
   // Click the bulk-delete button.
-  await page.click([
-    { type: 'testId', value: 'bulk-delete-button' },
-    { type: 'role', value: 'button', options: { name: /delete/i } },
-  ]);
+  // force:true — button sits inside the full-viewport list container on desktop;
+  // Playwright's scroll-into-view loop never settles against nested overflow-auto.
+  const bulkDeleteBtn = await page
+    .locate(
+      [
+        { type: 'testId', value: 'bulk-delete-button' },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'bulk delete button in the bulk action bar' },
+    )
+    .resolve();
+  await bulkDeleteBtn.waitFor({ state: 'visible', timeout: 8_000 });
+  await bulkDeleteBtn.click({ force: true });
 
   // Confirm the delete-confirmation modal.
   const confirmBtn = await page
