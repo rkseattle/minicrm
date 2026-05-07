@@ -250,7 +250,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettingsWH04 = new AdminSettingsPage({ page });
+  const adminSettings = new AdminSettingsPage({ page });
 
   const row = await page
     .locate([
@@ -261,7 +261,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Disable toggle
-  await adminSettingsWH04.toggleWebhook(sub.id);
+  await adminSettings.toggleWebhook(sub.id);
 
   // Status badge should now show Disabled
   await expect(row).toContainText('Disabled', { timeout: 6_000 });
@@ -287,7 +287,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettingsWH05 = new AdminSettingsPage({ page });
+  const adminSettings = new AdminSettingsPage({ page });
 
   const row = await page
     .locate([
@@ -298,7 +298,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Delete
-  await adminSettingsWH05.clickDeleteWebhook(sub.id);
+  await adminSettings.clickDeleteWebhook(sub.id);
 
   // Confirm dialog appears
   const dialog = await page
@@ -310,7 +310,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await expect(dialog).toBeVisible();
 
   // Confirm deletion
-  await adminSettingsWH05.confirmDeleteWebhook();
+  await adminSettings.confirmDeleteWebhook();
 
   // Row should disappear
   await expect(row).not.toBeVisible({ timeout: 6_000 });
