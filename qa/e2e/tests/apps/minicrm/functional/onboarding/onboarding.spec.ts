@@ -23,6 +23,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // Tests navigate to the UI login page, so they must not inherit the pre-auth
@@ -103,7 +104,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
       .resolve();
     await expect(banner).toBeVisible({ timeout: 10_000 });
 
-    await page.click([{ type: 'testId', value: 'onboarding-dismiss-button' }]);
+    const onboardingPage = new OnboardingPage({ page });
+    await onboardingPage.dismiss();
 
     // Banner should disappear after dismiss.
     expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
@@ -132,7 +134,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
         .resolve(),
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.click([{ type: 'testId', value: 'onboarding-step1-looks-good' }]);
+    const onboardingPage2 = new OnboardingPage({ page });
+    await onboardingPage2.clickLooksGood();
 
     await expect(
       await page

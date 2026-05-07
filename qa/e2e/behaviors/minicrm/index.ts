@@ -37,6 +37,14 @@ export {
   cancelDeleteContact,
   cancelContactEdit,
   searchContacts,
+  contactRowIsVisible,
+  openContactCreateForm,
+  fillContactCreateForm,
+  submitContactCreateFormAndWaitForValidation,
+  submitContactCreateForm,
+  sortContactsByName,
+  bulkReassignContacts,
+  bulkDeleteContacts,
 } from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
@@ -49,7 +57,33 @@ export type {
   CancelDeleteContactResult,
   CancelContactEditResult,
   SearchContactsResult,
+  ContactRowIsVisibleResult,
+  PartialContactUIFields,
+  SubmitContactFormValidationResult,
+  SortContactsByNameResult,
 } from './contacts.behaviors.js';
+
+export {
+  navigateToAccounts,
+  editAccount,
+  createAccountViaUI,
+  deleteAccountViaUI,
+  cancelDeleteAccount,
+  cancelAccountEdit,
+  searchAccounts,
+} from './accounts.behaviors.js';
+export type {
+  AccountsBehaviorContext,
+  NavigateToAccountsResult,
+  AccountChanges,
+  EditAccountResult,
+  CreateAccountUIFields,
+  CreateAccountViaUIResult,
+  DeleteAccountViaUIResult,
+  CancelDeleteAccountResult,
+  CancelAccountEditResult,
+  SearchAccountsResult,
+} from './accounts.behaviors.js';
 
 export { openDeal, advanceDealStage, closeDealAsWon, dragDealToStage } from './deals.behaviors.js';
 export type {
@@ -60,7 +94,12 @@ export type {
   DragDealToStageResult,
 } from './deals.behaviors.js';
 
-export { navigateToMyTasks, taskIsVisible, completeTask } from './tasks.behaviors.js';
+export {
+  navigateToMyTasks,
+  taskIsVisible,
+  completeTask,
+  showCompletedTasks,
+} from './tasks.behaviors.js';
 export type {
   TasksBehaviorContext,
   NavigateToMyTasksResult,
@@ -138,6 +177,9 @@ export type {
   AttachTagViaUIResult,
   DetachTagViaUIResult,
 } from './tags.behaviors.js';
+
+export { filterAuditLog } from './audit-log.behaviors.js';
+export type { AuditLogBehaviorContext, FilterAuditLogResult } from './audit-log.behaviors.js';
 
 export {
   navigateToProfile,
