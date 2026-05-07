@@ -165,8 +165,8 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   void contact;
   void account;
 
-  const auditLogPage2 = new AuditLogPage({ page });
-  await auditLogPage2.navigate();
+  const auditLogPage = new AuditLogPage({ page });
+  await auditLogPage.navigate();
   await expect(
     await page
       .locate([
@@ -231,8 +231,8 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   );
 
   // Navigate to the audit log page and verify the entry is renderable in the UI
-  const auditLogPage3 = new AuditLogPage({ page });
-  await auditLogPage3.navigate();
+  const auditLogPage = new AuditLogPage({ page });
+  await auditLogPage.navigate();
   await expect(
     await page
       .locate([
@@ -256,7 +256,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // If the specific row is on the first page, expand it and verify the detail section.
   // Collapse the filter panel first — on mobile its open body overlaps the data rows
   // and intercepts pointer events, causing the row-button click to time out.
-  await auditLogPage3.collapseFilters();
+  await auditLogPage.collapseFilters();
 
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
   const expandButton = await page

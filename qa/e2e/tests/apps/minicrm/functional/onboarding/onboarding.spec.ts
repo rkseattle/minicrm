@@ -134,8 +134,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
         .resolve(),
     ).toBeVisible({ timeout: 10_000 });
 
-    const onboardingPage2 = new OnboardingPage({ page });
-    await onboardingPage2.clickLooksGood();
+    const onboardingPage = new OnboardingPage({ page });
+    await onboardingPage.clickLooksGood();
 
     await expect(
       await page
