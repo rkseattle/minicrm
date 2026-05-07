@@ -51,7 +51,7 @@ export class AuditLogPage {
       .locate(
         [
           { type: 'testId', value: 'filters-toggle' },
-          { type: 'css', value: '[data-testid="filters-toggle"]' },
+          { type: 'role', value: 'button', options: { name: /filter/i } },
         ],
         { intent: 'button to expand or collapse the audit log filter panel' },
       )
@@ -83,7 +83,7 @@ export class AuditLogPage {
       .locate(
         [
           { type: 'testId', value: 'filters-toggle' },
-          { type: 'css', value: '[data-testid="filters-toggle"]' },
+          { type: 'role', value: 'button', options: { name: /filter/i } },
         ],
         { intent: 'button to expand or collapse the audit log filter panel' },
       )
@@ -101,7 +101,7 @@ export class AuditLogPage {
             { type: 'css', value: '[data-testid="filter-record-type"]' },
           ],
           'hidden',
-          { intent: 'record type filter disappears after collapsing filter panel' },
+          { intent: 'record type filter dropdown hidden after collapse' },
         )
         .catch(() => null);
     }
@@ -117,7 +117,7 @@ export class AuditLogPage {
       .locate(
         [
           { type: 'testId', value: 'filter-record-type' },
-          { type: 'css', value: '[data-testid="filter-record-type"]' },
+          { type: 'role', value: 'combobox', options: { name: /record type/i } },
         ],
         { intent: 'record type filter dropdown in audit log filter panel' },
       )
