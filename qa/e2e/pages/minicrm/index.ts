@@ -58,3 +58,12 @@ export type { AdminTagsPageContext } from './AdminTagsPage.js';
 
 export { TagInputWidget } from './TagInputWidget.js';
 export type { TagInputWidgetContext } from './TagInputWidget.js';
+
+export { NavPage } from './NavPage.js';
+export type { NavPageContext } from './NavPage.js';
+
+export { AuditLogPage } from './AuditLogPage.js';
+export type { AuditLogPageContext } from './AuditLogPage.js';
+
+export { OnboardingPage } from './OnboardingPage.js';
+export type { OnboardingPageContext } from './OnboardingPage.js';

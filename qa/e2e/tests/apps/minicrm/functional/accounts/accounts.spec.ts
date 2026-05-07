@@ -37,10 +37,10 @@ import {
   deleteAccountViaUI,
   cancelDeleteAccount,
   cancelAccountEdit,
+  searchAccounts,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { createTestAccount, createTestContact, navigateToAccount } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -226,52 +226,15 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
 }) => {
   const sentinel = 'F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL';
 
-  await navigateToAccounts({ page });
-
-  // Type a sentinel into the search box — AccountsPage uses controlled useState
-  // for search (not URL params), so this is the correct way to trigger filtering.
-  await page.fill(sentinel, [
-    { type: 'testId', value: 'accounts-search' },
-    { type: 'label', value: 'Search', options: { exact: false } },
-  ]);
-
-  // Wait for either an account row or the empty-state text to appear (same
-  // pattern as contacts.spec.ts searchContacts behavior).
-  await Promise.race([
-    page
-      .locate([
-        { type: 'css', value: '[data-testid^="account-link-"]' },
-        { type: 'role', value: 'link' },
-      ])
-      .resolve()
-      .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
-      .catch(() => null),
-    page
-      .locate([
-        { type: 'text', value: t('accounts.empty') },
-        { type: 'css', value: '[data-testid="accounts-empty-state"]' },
-      ])
-      .resolve()
-      .then((loc) => loc.waitFor({ state: 'visible', timeout: 10_000 }))
-      .catch(() => null),
-  ]);
+  const searchResult = await searchAccounts(sentinel, { page });
 
   // Verify via API that the search returns zero results.
   const result = await restClient.get<AccountListResponse>(
     `/api/v1/accounts?search=${encodeURIComponent(sentinel)}`,
   );
   expect(result.body.total, 'search should return 0 results').toBe(0);
-
-  // The empty state paragraph should now be visible.
-  await expect(
-    await page
-      .locate([
-        { type: 'text', value: t('accounts.empty') },
-        { type: 'css', value: '[data-testid="accounts-empty-state"]' },
-      ])
-      .resolve(),
-    'empty state text should be visible',
-  ).toBeVisible();
+  expect(searchResult.rowCount, 'no account rows should be visible').toBe(0);
+  expect(searchResult.emptyStateVisible, 'empty state text should be visible').toBe(true);
 });
 
 // ---------------------------------------------------------------------------

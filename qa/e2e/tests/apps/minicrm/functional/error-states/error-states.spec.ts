@@ -24,7 +24,19 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import { createContactViaUI } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  createContactViaUI,
+  navigateToContacts,
+  openContactCreateForm,
+  fillContactCreateForm,
+  submitContactCreateForm,
+  filterContactsByTerm,
+  waitForContactInList,
+  waitForBulkCheckbox,
+  clickBulkCheckbox,
+  bulkDeleteContacts,
+  contactRowIsVisible,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -61,31 +73,14 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
-
-  // Open the new-contact form.
-  await page.click([
-    { type: 'testId', value: 'new-contact-button' },
-    { type: 'role', value: 'button', options: { name: /new contact/i } },
-  ]);
-
-  // Fill in valid data before the mock is active so the form has real content.
+  // Open the new-contact form and fill in valid data before the mock is active
+  // so the form has real content when the 500 fires.
   const firstName = 'ES1';
   const lastName = `Error500-${uniqueSuffix}`;
   const email = `es1-500-${uniqueSuffix}@example.com`;
 
-  await page.fill(firstName, [
-    { type: 'testId', value: 'contact-first-name' },
-    { type: 'label', value: 'First name', options: { exact: false } },
-  ]);
-  await page.fill(lastName, [
-    { type: 'testId', value: 'contact-last-name' },
-    { type: 'label', value: 'Last name', options: { exact: false } },
-  ]);
-  await page.fill(email, [
-    { type: 'testId', value: 'contact-email' },
-    { type: 'label', value: 'Email', options: { exact: false } },
-  ]);
+  await openContactCreateForm({ page });
+  await fillContactCreateForm({ first_name: firstName, last_name: lastName, email }, { page });
 
   // Intercept the POST and force a 500.
   await page.mockRoute('**/api/v1/contacts', async (route) => {
@@ -100,11 +95,8 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
     }
   });
 
-  // Submit.
-  await page.click([
-    { type: 'testId', value: 'contact-form-submit' },
-    { type: 'role', value: 'button', options: { name: /save/i } },
-  ]);
+  // Submit — the mock intercepts the POST and returns 500.
+  await submitContactCreateForm({ page });
 
   await page.waitForLoadState('networkidle');
 
@@ -245,38 +237,14 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     email: `es3-bulk-${uniqueSuffix}@example.com`,
   });
 
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
+  // Navigate to contacts, then filter so only this contact is visible on page 1.
+  await navigateToContacts({ page });
+  await filterContactsByTerm(uniqueSuffix, { page });
+  await waitForContactInList(contact.id, { page });
 
-  // Search so only this contact is visible and the checkbox is on page 1.
-  await page.fill(uniqueSuffix, [
-    { type: 'testId', value: 'contacts-search' },
-    { type: 'css', value: '[data-testid="contacts-search"]' },
-  ]);
-  await page.waitForLoadState('networkidle');
-
-  // Wait for contact row and checkbox.
-  const contactRow = await page
-    .locate(
-      [
-        { type: 'testId', value: `contact-link-${contact.id}` },
-        { type: 'testId', value: `contact-card-link-${contact.id}` },
-      ],
-      { intent: 'contact row in the contacts list' },
-    )
-    .resolve();
-  await contactRow.waitFor({ state: 'visible', timeout: 10_000 });
-
-  const checkbox = await page
-    .locate(
-      [
-        { type: 'testId', value: `bulk-select-${contact.id}` },
-        { type: 'css', value: `[data-testid="bulk-select-${contact.id}"]` },
-      ],
-      { intent: 'bulk select checkbox for the contact row' },
-    )
-    .resolve();
-  await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
-  await checkbox.click();
+  // Select the contact via its bulk-select checkbox.
+  await waitForBulkCheckbox(contact.id, { page });
+  await clickBulkCheckbox(contact.id, { page });
 
   // Wait for the bulk-action-bar to confirm selection registered.
   const bulkBar = await page
@@ -304,36 +272,10 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
     });
   });
 
-  // Click the bulk-delete button.
-  // force:true — button sits inside the full-viewport list container on desktop;
-  // Playwright's scroll-into-view loop never settles against nested overflow-auto.
-  const bulkDeleteBtn = await page
-    .locate(
-      [
-        { type: 'testId', value: 'bulk-delete-button' },
-        { type: 'role', value: 'button', options: { name: /delete/i } },
-      ],
-      { intent: 'bulk delete button in the bulk action bar' },
-    )
-    .resolve();
-  await bulkDeleteBtn.waitFor({ state: 'visible', timeout: 8_000 });
-  await bulkDeleteBtn.click({ force: true });
-
-  // Confirm the delete-confirmation modal.
-  const confirmBtn = await page
-    .locate(
-      [
-        { type: 'testId', value: 'confirm-delete-confirm' },
-        { type: 'role', value: 'button', options: { name: /delete/i } },
-      ],
-      { intent: 'confirm button in the bulk delete confirmation modal' },
-    )
-    .resolve();
-  await confirmBtn.waitFor({ state: 'visible', timeout: 8_000 });
-  // Use force:true — on mobile the modal button sits inside a fixed overlay
-  // that may be partially outside the scrollable viewport, causing a normal
-  // click to miss the actionability check even after scrollIntoViewIfNeeded.
-  await confirmBtn.click({ force: true });
+  // Click delete and confirm with force:true — the button sits inside a
+  // full-viewport overflow-auto container on desktop and a fixed overlay on
+  // mobile; force bypasses Playwright's actionability check in both cases.
+  await bulkDeleteContacts({ page }, true);
 
   // Wait for the error element to attach rather than networkidle — the mock
   // returns instantly so networkidle settles before React re-renders bulkError.
@@ -355,8 +297,8 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
 
   // Contact row must still be visible in the UI — the list must not have removed
   // it optimistically after the failed delete.
-  await contactRow.waitFor({ state: 'visible', timeout: 5_000 });
-  await expect(contactRow).toBeVisible();
+  const rowCheck = await contactRowIsVisible(contact.id, { page });
+  expect(rowCheck.visible, 'contact row must still be visible after failed bulk delete').toBe(true);
 
   // Contact must still exist on the server — confirmed via API.
   const check = await restClient

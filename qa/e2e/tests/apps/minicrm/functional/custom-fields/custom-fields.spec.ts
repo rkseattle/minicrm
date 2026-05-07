@@ -19,6 +19,8 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestContact } from '@apps/minicrm/helpers.js';
+import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -50,6 +52,8 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
+  const adminSettings = new AdminSettingsPage({ page });
+
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
@@ -71,7 +75,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   await entitySelect.selectOption('contact');
 
   // Click Add Field
-  await page.click([{ type: 'testId', value: 'add-field-button' }]);
+  await adminSettings.clickAddField();
 
   const addForm = await page
     .locate([
@@ -94,7 +98,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   // field_type defaults to text — no change needed
 
   // Submit
-  await page.click([{ type: 'testId', value: 'add-field-submit' }]);
+  await adminSettings.submitAddField();
 
   // Success feedback appears
   const feedback = await page
@@ -135,6 +139,8 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
+  const contactDetailPage = new ContactDetailPage({ page });
+
   // Create a text custom field definition via REST
   const fieldName = `Persist Test Field ${Date.now()}`;
   const defResp = await restClient.post<{ id: string; name: string }>(
@@ -155,7 +161,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Click Edit
-  await page.click([{ type: 'testId', value: 'edit-contact-button' }]);
+  await contactDetailPage.clickEdit();
 
   // Wait for custom fields section to appear in edit mode
   const editGrid = await page
@@ -176,7 +182,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await fieldInput.fill('Test Value 123');
 
   // Save the contact
-  await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
+  await contactDetailPage.save();
 
   // Wait for edit mode to close (edit button reappears)
   const editBtn = await page

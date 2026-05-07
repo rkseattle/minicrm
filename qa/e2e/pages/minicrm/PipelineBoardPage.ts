@@ -506,6 +506,35 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Clicks the Confirm button in the close deal modal. Use after triggering a
+   * terminal stage change via drag-and-drop (which opens the modal but does not
+   * automatically confirm it, unlike selectDealStage which handles this internally).
+   */
+  async confirmCloseDeal(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'close-deal-confirm' },
+        { type: 'role', value: 'button', options: { name: 'Confirm', exact: false } },
+      ],
+      { intent: 'confirm button in the close deal modal' },
+    );
+  }
+
+  /**
+   * Clicks the Cancel button in the close deal modal to dismiss it without
+   * confirming the stage change.
+   */
+  async cancelCloseDeal(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'close-deal-cancel' },
+        { type: 'role', value: 'button', options: { name: 'Cancel', exact: false } },
+      ],
+      { intent: 'cancel button in the close deal modal' },
+    );
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

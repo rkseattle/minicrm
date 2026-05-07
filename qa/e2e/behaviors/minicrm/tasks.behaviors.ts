@@ -94,6 +94,25 @@ export async function taskIsVisible(
 // completeTask()
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// showCompletedTasks()
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the "Show completed" toggle on the My Tasks page so completed task
+ * rows become visible. Assumes the caller is already on the My Tasks page.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function showCompletedTasks(context: TasksBehaviorContext): Promise<void> {
+  const tasksPage = new MyTasksPage(context);
+  await tasksPage.clickToggleCompleted();
+}
+
+// ---------------------------------------------------------------------------
+// completeTask()
+// ---------------------------------------------------------------------------
+
 /** Result returned by completeTask. */
 export interface CompleteTaskResult {
   /**

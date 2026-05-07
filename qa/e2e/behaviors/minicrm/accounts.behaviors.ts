@@ -12,7 +12,6 @@
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
-import { t } from '@framework/i18n/locale.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 
@@ -181,42 +180,24 @@ export async function createAccountViaUI(
   await accountsPage.clickNewAccount();
 
   // Fill required name field.
-  await context.page.fill(fields.name, [
-    { type: 'testId', value: 'account-name-input' },
-    { type: 'label', value: 'Company name', options: { exact: false } },
-  ]);
+  await accountsPage.fillName(fields.name);
 
   // Fill optional fields when provided.
   if (fields.industry !== undefined) {
-    await context.page.fill(fields.industry, [
-      { type: 'testId', value: 'account-industry' },
-      { type: 'label', value: 'Industry', options: { exact: false } },
-    ]);
+    await accountsPage.fillIndustry(fields.industry);
   }
   if (fields.website !== undefined) {
-    await context.page.fill(fields.website, [
-      { type: 'testId', value: 'account-website' },
-      { type: 'label', value: 'Website', options: { exact: false } },
-    ]);
+    await accountsPage.fillWebsite(fields.website);
   }
   if (fields.employee_range !== undefined) {
-    await context.page.fill(fields.employee_range, [
-      { type: 'testId', value: 'account-employee-range' },
-      { type: 'label', value: 'Employee count', options: { exact: false } },
-    ]);
+    await accountsPage.fillEmployeeRange(fields.employee_range);
   }
   if (fields.revenue_range !== undefined) {
-    await context.page.fill(fields.revenue_range, [
-      { type: 'testId', value: 'account-revenue-range' },
-      { type: 'label', value: 'Revenue range', options: { exact: false } },
-    ]);
+    await accountsPage.fillRevenueRange(fields.revenue_range);
   }
 
   // Submit the form.
-  await context.page.click([
-    { type: 'testId', value: 'account-form-submit' },
-    { type: 'role', value: 'button', options: { name: t('accounts.save'), exact: false } },
-  ]);
+  await accountsPage.submitCreateForm();
 
   // Wait for the outcome to settle.
   //
@@ -234,16 +215,7 @@ export async function createAccountViaUI(
   // even 100ms networkidle can fire while a POST is still in-flight, causing
   // the race to resolve before React re-renders the button and yielding a false
   // `created: false` result (MINCRM-139).
-  // The New Account button being visible is the canonical success signal.
-  // If it is not visible, the form is still open (validation error or server error).
-  const buttonVisible = await context.page
-    .locate([
-      { type: 'testId', value: 'new-account-button' },
-      { type: 'css', value: '[data-testid="new-account-button"]' },
-    ])
-    .resolve()
-    .then((el) => el.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true))
-    .catch(() => false);
+  const buttonVisible = await accountsPage.waitForNewAccountButton();
 
   const finalUrl = context.page.url();
   const created = buttonVisible;
@@ -281,17 +253,8 @@ export async function deleteAccountViaUI(
   const detailPage = new AccountDetailPage(context);
   await detailPage.navigate(id);
 
-  // Click the Delete button to open the confirmation modal.
-  await context.page.click([
-    { type: 'testId', value: 'delete-account-button' },
-    { type: 'role', value: 'button', options: { name: t('accounts.delete'), exact: false } },
-  ]);
-
-  // Confirm deletion in the modal.
-  await context.page.click([
-    { type: 'testId', value: 'confirm-delete-confirm' },
-    { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
-  ]);
+  await detailPage.clickDelete();
+  await detailPage.confirmDelete();
 
   // Wait for navigation back to /accounts.
   await context.page.waitForURL('**/accounts', { timeout: 10_000 }).catch(() => null);
@@ -330,17 +293,8 @@ export async function cancelDeleteAccount(
   const detailPage = new AccountDetailPage(context);
   await detailPage.navigate(id);
 
-  // Click the Delete button.
-  await context.page.click([
-    { type: 'testId', value: 'delete-account-button' },
-    { type: 'role', value: 'button', options: { name: t('accounts.delete'), exact: false } },
-  ]);
-
-  // Click Cancel in the confirmation modal.
-  await context.page.click([
-    { type: 'testId', value: 'confirm-delete-cancel' },
-    { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
-  ]);
+  await detailPage.clickDelete();
+  await detailPage.cancelDelete();
 
   // Wait briefly for the modal close animation.
   await context.page.waitForTimeout(200);
@@ -373,6 +327,48 @@ export interface CancelAccountEditResult {
  * @param context - Playwright fixture context.
  * @returns CancelAccountEditResult.
  */
+// ---------------------------------------------------------------------------
+// searchAccounts()
+// ---------------------------------------------------------------------------
+
+/** Result returned by searchAccounts. */
+export interface SearchAccountsResult {
+  /** Number of account rows visible after the search settled. */
+  rowCount: number;
+  /** True when the empty-state placeholder is visible. */
+  emptyStateVisible: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Navigates to /accounts, types a search term, and waits for results to settle.
+ *
+ * @param searchTerm - Text to type into the search input.
+ * @param context - Playwright fixture context.
+ * @returns SearchAccountsResult.
+ */
+export async function searchAccounts(
+  searchTerm: string,
+  context: AccountsBehaviorContext,
+): Promise<SearchAccountsResult> {
+  const accountsPage = new AccountsPage(context);
+  await accountsPage.navigate();
+
+  await accountsPage.search(searchTerm);
+
+  const rowCount = await accountsPage.rowCount();
+  const emptyStateVisible = await accountsPage.emptyStateIsVisible();
+
+  const finalUrl = accountsPage.url();
+
+  return { rowCount, emptyStateVisible, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// cancelAccountEdit()
+// ---------------------------------------------------------------------------
+
 export async function cancelAccountEdit(
   id: string,
   fieldValue: string,
@@ -385,11 +381,7 @@ export async function cancelAccountEdit(
   // Type something to make the cancel meaningful.
   await detailPage.fillField('account-name-input', 'Company name', fieldValue);
 
-  // Click Cancel.
-  await context.page.click([
-    { type: 'testId', value: 'account-form-cancel' },
-    { type: 'role', value: 'button', options: { name: t('accounts.cancel'), exact: false } },
-  ]);
+  await detailPage.cancelEdit();
 
   await context.page.waitForLoadState('networkidle');
 
