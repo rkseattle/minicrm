@@ -14,6 +14,7 @@
 import type { PageFacade } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
+import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
 /** Navigation layout modes supported by MiniCRM (MINCRM-133). */
 export type NavLayout = 'top' | 'left' | 'hamburger';
@@ -91,43 +92,14 @@ export async function setNavLayoutViaUI(
   layout: NavLayout,
   context: NavBehaviorContext,
 ): Promise<SetNavLayoutViaUIResult> {
-  let button;
+  const adminSettings = new AdminSettingsPage(context);
   try {
-    button = await context.page
-      .locate([
-        { type: 'testId', value: `nav-layout-option-${layout}` },
-        { type: 'css', value: `[data-testid="nav-layout-option-${layout}"]` },
-      ])
-      .resolve();
+    await adminSettings.selectNavLayoutOption(layout);
   } catch {
     return { clicked: false, successFeedbackVisible: false };
   }
 
-  await button.scrollIntoViewIfNeeded();
-  await button.click();
-
-  // Poll until aria-checked="true" on the selected button, which confirms the
-  // PATCH has completed and the context has updated. Avoids fixed waitForTimeout.
-  await button.waitFor({ state: 'visible' });
-  let successFeedbackVisible = false;
-  // Use the resolved button locator with an and() filter for aria-checked.
-  // The CSS strategy resolves the same element with the attribute constraint.
-  const checkedButton = await context.page
-    .locate([
-      { type: 'css', value: `[data-testid="nav-layout-option-${layout}"][aria-checked="true"]` },
-      { type: 'testId', value: `nav-layout-option-${layout}` },
-    ])
-    .resolve()
-    .catch(() => null);
-  if (checkedButton) {
-    await checkedButton
-      .waitFor({ state: 'visible' })
-      .then(() => {
-        successFeedbackVisible = true;
-      })
-      .catch(() => null);
-  }
-
+  const successFeedbackVisible = await adminSettings.navLayoutOptionIsChecked(layout);
   return { clicked: true, successFeedbackVisible };
 }
 
@@ -175,7 +147,7 @@ export async function openHamburgerMenu(
   await context.page.waitFor(
     [
       { type: 'testId', value: 'nav-hamburger-drawer' },
-      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ],
     'visible',
     { fallbackTimeout: 500 },
@@ -214,7 +186,7 @@ export async function closeHamburgerMenuViaBackdrop(
   const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
-      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ])
     .resolve()
     .catch(() => null);
@@ -252,7 +224,7 @@ export async function closeHamburgerMenuViaCloseButton(
   const drawer = await context.page
     .locate([
       { type: 'testId', value: 'nav-hamburger-drawer' },
-      { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ])
     .resolve()
     .catch(() => null);
@@ -298,7 +270,7 @@ export async function navigateViaNavLink(
       .locate(
         [
           { type: 'testId', value: 'nav-hamburger-drawer' },
-          { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
+          { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
         ],
         { fallbackTimeout: 200 },
       )
@@ -306,19 +278,7 @@ export async function navigateViaNavLink(
       .catch(() => null);
     const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
-      const navPage = new NavPage(context);
-      await navPage.clickMenuToggle();
-      // Use page.waitFor() (re-resolves each retry) instead of resolve()-then-waitFor()
-      // (stale snapshot) — same fix as openHamburgerMenu above.
-      await context.page.waitFor(
-        [
-          { type: 'testId', value: 'nav-hamburger-drawer' },
-          { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-        ],
-        'visible',
-        { fallbackTimeout: 500 },
-        10_000,
-      );
+      await openHamburgerMenu(context);
     }
   }
 
@@ -328,7 +288,7 @@ export async function navigateViaNavLink(
     link = await context.page
       .locate([
         { type: 'testId', value: testId },
-        { type: 'css', value: `[data-testid="${testId}"]` },
+        { type: 'role', value: 'link', options: { name: new RegExp(destination, 'i') } },
       ])
       .resolve();
   } catch {
@@ -406,7 +366,7 @@ export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMo
   const drawer = await context.page
     .locate([
       { type: 'testId', value: 'mobile-nav-drawer' },
-      { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ])
     .resolve()
     .catch(() => null);
@@ -447,7 +407,7 @@ export async function closeMobileNavViaToggle(
   const drawer = await context.page
     .locate([
       { type: 'testId', value: 'mobile-nav-drawer' },
-      { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
+      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ])
     .resolve()
     .catch(() => null);
@@ -511,7 +471,7 @@ export async function navigateViaMobileNavLink(
     link = await context.page
       .locate([
         { type: 'testId', value: testId },
-        { type: 'css', value: `[data-testid="${testId}"]` },
+        { type: 'role', value: 'link', options: { name: new RegExp(destination, 'i') } },
       ])
       .resolve();
   } catch {

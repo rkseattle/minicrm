@@ -173,7 +173,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: `bulk-select-${id}` },
-          { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+          { type: 'role', value: 'checkbox' },
         ],
         { fallbackTimeout: timeout, intent: 'bulk select checkbox for contact row' },
       )
@@ -193,7 +193,7 @@ export class ContactsPage {
     await this.page.click(
       [
         { type: 'testId', value: `bulk-select-${id}` },
-        { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+        { type: 'role', value: 'checkbox' },
       ],
       { intent: 'bulk select checkbox for contact row' },
     );
@@ -210,7 +210,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: 'bulk-action-bar' },
-          { type: 'css', value: '[data-testid="bulk-action-bar"]' },
+          { type: 'role', value: 'toolbar' },
         ],
         { intent: 'floating action bar that appears when contacts are selected' },
       )
@@ -232,7 +232,7 @@ export class ContactsPage {
       term,
       [
         { type: 'testId', value: 'contacts-search' },
-        { type: 'css', value: '[data-testid="contacts-search"]' },
+        { type: 'role', value: 'searchbox' },
       ],
       { intent: 'contacts list search input field' },
     );
@@ -359,7 +359,7 @@ export class ContactsPage {
         .locate(
           [
             { type: 'testId', value: 'duplicate-contact-warning' },
-            { type: 'css', value: '[data-testid="duplicate-contact-warning"]' },
+            { type: 'role', value: 'alert' },
           ],
           { intent: 'duplicate contact warning on creation form' },
         )
@@ -380,7 +380,7 @@ export class ContactsPage {
         .locate(
           [
             { type: 'testId', value: 'contact-form' },
-            { type: 'css', value: '[data-testid="contact-form"]' },
+            { type: 'role', value: 'form' },
           ],
           { intent: 'contact creation form container' },
         )
@@ -413,29 +413,13 @@ export class ContactsPage {
   }
 
   /**
-   * Fills the contacts list search box.
-   *
-   * @param term - Search term to type.
-   */
-  async fillSearch(term: string): Promise<void> {
-    await this.page.fill(
-      term,
-      [
-        { type: 'testId', value: 'contacts-search' },
-        { type: 'label', value: 'Search', options: { exact: false } },
-      ],
-      { intent: 'contacts list search input field' },
-    );
-  }
-
-  /**
    * Clicks the "Reassign" button in the bulk action bar.
    */
   async clickBulkReassign(): Promise<void> {
     await this.page.click(
       [
         { type: 'testId', value: 'bulk-reassign-button' },
-        { type: 'css', value: '[data-testid="bulk-reassign-button"]' },
+        { type: 'role', value: 'button', options: { name: /reassign/i } },
       ],
       { intent: 'reassign button in the bulk action bar' },
     );
@@ -484,7 +468,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: 'bulk-reassign-owner-select' },
-          { type: 'css', value: '[data-testid="bulk-reassign-owner-select"]' },
+          { type: 'role', value: 'combobox', options: { name: /owner/i } },
         ],
         { intent: 'owner dropdown in the bulk reassign modal' },
       )

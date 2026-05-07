@@ -109,7 +109,7 @@ export class AdminSettingsPage {
         .locate(
           [
             { type: 'testId', value: 'email-notif-toggle' },
-            { type: 'css', value: '[data-testid="email-notif-toggle"]' },
+            { type: 'role', value: 'switch', options: { name: /email notifications/i } },
           ],
           { intent: 'email notifications on/off toggle switch' },
         )
@@ -129,7 +129,7 @@ export class AdminSettingsPage {
         .locate(
           [
             { type: 'testId', value: 'email-notif-toggle' },
-            { type: 'css', value: '[data-testid="email-notif-toggle"]' },
+            { type: 'role', value: 'switch', options: { name: /email notifications/i } },
           ],
           { intent: 'email notifications toggle to read enabled state' },
         )
@@ -150,7 +150,7 @@ export class AdminSettingsPage {
         .locate(
           [
             { type: 'testId', value: 'email-notif-recipient-count' },
-            { type: 'css', value: '[data-testid="email-notif-recipient-count"]' },
+            { type: 'role', value: 'status' },
           ],
           { intent: 'email notification recipient count display' },
         )
@@ -170,7 +170,7 @@ export class AdminSettingsPage {
         .locate(
           [
             { type: 'testId', value: 'email-notif-success' },
-            { type: 'css', value: '[data-testid="email-notif-success"]' },
+            { type: 'role', value: 'status' },
           ],
           { intent: 'success message after saving email notification setting' },
         )
@@ -203,6 +203,58 @@ export class AdminSettingsPage {
       ],
       { intent: 'email notifications on/off toggle switch' },
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Nav layout interactions
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Clicks the radio button for a navigation layout option on the settings page.
+   *
+   * @param layout - The layout to select: 'top', 'left', or 'hamburger'.
+   */
+  async selectNavLayoutOption(layout: string): Promise<void> {
+    const button = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `nav-layout-option-${layout}` },
+          { type: 'role', value: 'radio', options: { name: new RegExp(layout, 'i') } },
+        ],
+        { intent: 'nav layout radio button on admin settings page' },
+      )
+      .resolve();
+    await button.scrollIntoViewIfNeeded();
+    await button.click();
+  }
+
+  /**
+   * Returns true when the nav layout option for the given layout has
+   * aria-checked="true", confirming the PATCH has round-tripped.
+   *
+   * @param layout - The layout to check: 'top', 'left', or 'hamburger'.
+   */
+  async navLayoutOptionIsChecked(layout: string): Promise<boolean> {
+    try {
+      const checked = await this.page
+        .locate(
+          [
+            {
+              type: 'css',
+              value: `[data-testid="nav-layout-option-${layout}"][aria-checked="true"]`,
+            },
+            { type: 'testId', value: `nav-layout-option-${layout}` },
+          ],
+          { intent: 'selected nav layout option with aria-checked true' },
+        )
+        .resolve()
+        .catch(() => null);
+      if (!checked) return false;
+      await checked.waitFor({ state: 'visible' }).catch(() => null);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -291,7 +343,7 @@ export class AdminSettingsPage {
     await this.page.click(
       [
         { type: 'testId', value: `webhook-event-${eventName}` },
-        { type: 'css', value: `[data-testid="webhook-event-${eventName}"]` },
+        { type: 'role', value: 'checkbox', options: { name: eventName } },
       ],
       { intent: `checkbox for the ${eventName} webhook event` },
     );
@@ -332,7 +384,7 @@ export class AdminSettingsPage {
     await this.page.click(
       [
         { type: 'testId', value: `webhook-toggle-button-${subscriptionId}` },
-        { type: 'css', value: `[data-testid="webhook-toggle-button-${subscriptionId}"]` },
+        { type: 'role', value: 'button', options: { name: /enable|disable|toggle/i } },
       ],
       { intent: 'toggle button to enable or disable a webhook subscription' },
     );
@@ -347,7 +399,7 @@ export class AdminSettingsPage {
     await this.page.click(
       [
         { type: 'testId', value: `webhook-delete-button-${subscriptionId}` },
-        { type: 'css', value: `[data-testid="webhook-delete-button-${subscriptionId}"]` },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
       ],
       { intent: 'delete button for a specific webhook subscription row' },
     );
