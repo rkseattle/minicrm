@@ -9,7 +9,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-110, MINCRM-310, MINCRM-315
+ * MINCRM-110, MINCRM-310, MINCRM-311, MINCRM-315
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -106,59 +106,69 @@ export class PipelineBoardPage {
   }
 
   /**
-   * Returns the stage slug (column testid slug) that currently contains the
-   * given deal card.
-   *
-   * On desktop, checks each stage column in order. On mobile, navigates through
-   * all stages one at a time (only one column is rendered at a time).
-   *
-   * @param dealId - Deal UUID to locate.
-   * @returns The column slug (e.g. 'prospecting', 'closed-won') or null.
+   * Polls `scan` up to `timeoutMs` at `intervalMs` cadence, returning the first
+   * non-null result immediately. Returns null only when the window elapses without
+   * a hit. This is the zero-overhead retry path for MINCRM-311: on the happy path
+   * `scan` resolves on the first call and the loop never sleeps.
    */
-  async getDealColumnSlug(dealId: string): Promise<string | null> {
-    // waitForLoadState('networkidle') is avoided here: under concurrent CI load
-    // other workers' API calls prevent the 500ms quiet window from ever settling,
-    // which burns the full test timeout. The board data is already current at this
-    // call site — callers either just navigated (openDeal) or waited for the card
-    // to appear in the target column (dragDealToStage) before calling this.
-
-    const mobile = this.isMobileView();
-
-    if (!mobile) {
-      for (const slug of PipelineBoardPage.STAGE_SLUGS) {
-        try {
-          // Both strategies are scoped to this specific column so a failed
-          // resolve means "card is not in this column" — never matches globally.
-          // The XPath fallback is semantically identical to the CSS primary, just
-          // expressed differently for the heal framework to prefer the CSS form.
-          const cardInColumn = await this.page
-            .locate(
-              [
-                {
-                  type: 'css',
-                  value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
-                },
-                {
-                  type: 'xpath',
-                  value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
-                },
-              ],
-              { intent: `deal card inside stage column ${slug}` },
-            )
-            .resolve();
-          if ((await cardInColumn.count()) > 0) return slug;
-        } catch {
-          // Card not in this column — continue.
-        }
-      }
-      return null;
+  private async pollUntilFound(
+    scan: () => Promise<string | null>,
+    intervalMs = 250,
+    timeoutMs = 5_000,
+  ): Promise<string | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (true) {
+      const result = await scan();
+      if (result !== null) return result;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return null;
+      await new Promise<void>((resolve) => setTimeout(resolve, Math.min(intervalMs, remaining)));
     }
+  }
 
-    // Mobile: navigate through each stage and check the single visible column.
+  /**
+   * Single-pass desktop scan: checks each stage column once for the deal card.
+   * Returns the slug of the first column that contains the card, or null.
+   */
+  private async scanDesktopColumnSlug(dealId: string): Promise<string | null> {
+    for (const slug of PipelineBoardPage.STAGE_SLUGS) {
+      try {
+        // Both strategies are scoped to this specific column so a failed
+        // resolve means "card is not in this column" — never matches globally.
+        // The XPath fallback is semantically identical to the CSS primary, just
+        // expressed differently for the heal framework to prefer the CSS form.
+        const cardInColumn = await this.page
+          .locate(
+            [
+              {
+                type: 'css',
+                value: `[data-testid="stage-column-${slug}"] [data-testid="deal-card-${dealId}"]`,
+              },
+              {
+                type: 'xpath',
+                value: `//*[@data-testid="stage-column-${slug}"]//*[@data-testid="deal-card-${dealId}"]`,
+              },
+            ],
+            { intent: `deal card inside stage column ${slug}` },
+          )
+          .resolve();
+        if ((await cardInColumn.count()) > 0) return slug;
+      } catch {
+        // Card not in this column — continue.
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Single-pass mobile scan: rewinds to stage 0 then walks forward through each
+   * stage column looking for the deal card in the single visible column.
+   * Returns the slug of the matching column, or null.
+   */
+  private async scanMobileColumnSlug(dealId: string): Promise<string | null> {
+    // Rewind to stage 0 (Prospecting) by clicking prev until disabled.
     // Stage navigation is pure React state — no network calls. Wait for the
-    // pipeline-mobile-stage-name heading text to change after each button click
-    // rather than using a fixed timeout. MINCRM-310
-    // First, rewind to stage 0 (Prospecting) by clicking prev until disabled.
+    // pipeline-mobile-stage-name heading text to change. MINCRM-310
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
       try {
         const prevBtn = await this.page
@@ -231,6 +241,38 @@ export class PipelineBoardPage {
       }
     }
     return null;
+  }
+
+  /**
+   * Returns the stage slug (column testid slug) that currently contains the
+   * given deal card.
+   *
+   * On desktop, checks each stage column in order. On mobile, navigates through
+   * all stages one at a time (only one column is rendered at a time).
+   *
+   * Retries the scan for up to 5 seconds (250 ms intervals) so that a deal card
+   * briefly unmounted during a React Query cache invalidation/re-render does not
+   * produce a spurious null. Returns immediately on the first successful scan;
+   * returns null only after the 5-second window elapses without a hit.
+   * MINCRM-311
+   *
+   * @param dealId - Deal UUID to locate.
+   * @returns The column slug (e.g. 'prospecting', 'closed-won') or null.
+   */
+  async getDealColumnSlug(dealId: string): Promise<string | null> {
+    // waitForLoadState('networkidle') is avoided here: under concurrent CI load
+    // other workers' API calls prevent the 500ms quiet window from ever settling,
+    // which burns the full test timeout. The board data is already current at this
+    // call site — callers either just navigated (openDeal) or waited for the card
+    // to appear in the target column (dragDealToStage) before calling this.
+
+    const mobile = this.isMobileView();
+
+    if (!mobile) {
+      return this.pollUntilFound(() => this.scanDesktopColumnSlug(dealId));
+    }
+
+    return this.pollUntilFound(() => this.scanMobileColumnSlug(dealId));
   }
 
   /**
