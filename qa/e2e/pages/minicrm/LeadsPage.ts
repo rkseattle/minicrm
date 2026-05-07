@@ -106,8 +106,6 @@ export class LeadsPage {
    * @param leadId - Lead UUID.
    */
   async clickStatusBadge(leadId: string): Promise<void> {
-    // Resolve then click with force:true — the badge is inside a nested overflow-auto
-    // container on mobile, causing Playwright's scroll-into-view loop to never settle.
     const badge = await this.page
       .locate(
         [
@@ -117,6 +115,11 @@ export class LeadsPage {
         { intent: 'lead status badge to open inline status selector' },
       )
       .resolve();
+    // scrollIntoViewIfNeeded first so the element is in the viewport before the
+    // forced click — force:true bypasses Playwright's own scroll-into-view, which
+    // loops forever inside nested overflow-auto containers on mobile. Without the
+    // explicit scroll the click fires on an off-screen element and React ignores it.
+    await badge.scrollIntoViewIfNeeded();
     await badge.click({ force: true });
   }
 
@@ -127,11 +130,22 @@ export class LeadsPage {
    * @param status - Status value to select (e.g. 'Contacted').
    */
   async selectStatus(leadId: string, status: string): Promise<void> {
+    // The <select> is conditionally rendered only after the status badge is clicked.
+    // locate().resolve() throws StrategyExhaustedError when the element is absent,
+    // so use waitForFunction to poll the DOM until it appears before resolving.
+    const testId = `status-select-${leadId}`;
+    // waitForFunction body runs in the browser; pass the testId as part of the
+    // expression string so node-side TypeScript never sees `document` directly.
+    await this.page.waitForFunction(
+      `document.querySelector('[data-testid="${testId}"]') !== null`,
+      undefined,
+      { timeout: 10_000 },
+    );
     const resolved = await this.page
       .locate(
         [
-          { type: 'testId', value: `status-select-${leadId}` },
-          { type: 'css', value: `[data-testid="status-select-${leadId}"]` },
+          { type: 'testId', value: testId },
+          { type: 'css', value: `[data-testid="${testId}"]` },
         ],
         { intent: 'inline status select dropdown for lead row' },
       )
