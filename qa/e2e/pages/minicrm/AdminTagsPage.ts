@@ -187,6 +187,46 @@ export class AdminTagsPage {
   }
 
   /**
+   * Returns a resolved locator for the pagination container on the tags page.
+   * Returns null if pagination is not present (e.g. only one page of results).
+   */
+  async paginationLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination' },
+          { type: 'role', value: 'navigation', options: { name: /page/i } },
+        ],
+        { intent: 'pagination navigation on admin tags page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns true when the rename save button for a given tag is visible.
+   * Used to determine whether the rename form is still open after saving.
+   *
+   * @param tagId - Tag UUID.
+   */
+  async renameSaveButtonIsVisible(tagId: string): Promise<boolean> {
+    try {
+      const el = await this.page
+        .locate(
+          [
+            { type: 'testId', value: `rename-save-${tagId}` },
+            { type: 'css', value: `[data-testid="rename-save-${tagId}"]` },
+          ],
+          { intent: 'save button in tag rename form' },
+        )
+        .resolve();
+      return el.isVisible().catch(() => false);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

@@ -32,6 +32,7 @@ import {
   attachTagViaUI,
   detachTagViaUI,
 } from '@behaviors/minicrm/index.js';
+import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -93,17 +94,9 @@ test(
 
     await navigateToAdminTags({ page });
 
-    await expect(
-      await page
-        .locate(
-          [
-            { type: 'testId', value: 'pagination' },
-            { type: 'css', value: '[data-testid="pagination"]' },
-          ],
-          { intent: 'pagination bar showing record count and page controls' },
-        )
-        .resolve(),
-    ).toBeVisible({ timeout: 10_000 });
+    const adminTagsPage = new AdminTagsPage({ page });
+    const pagination = await adminTagsPage.paginationLocator();
+    await expect(pagination!).toBeVisible({ timeout: 10_000 });
   },
 );
 

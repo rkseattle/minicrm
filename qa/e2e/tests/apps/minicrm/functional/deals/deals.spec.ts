@@ -28,6 +28,8 @@ import {
   createTestActivity,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
+import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
+import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -71,90 +73,41 @@ test(
       name: `D1-Acct ${test.info().title}`,
     });
 
-    await page.goto('/deals', { waitUntil: 'networkidle' });
+    const boardPage = new PipelineBoardPage({ page });
+    await boardPage.navigate();
 
-    // Open the new deal form
-    const newDealBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'new-deal-button' },
-          { type: 'css', value: '[data-testid="new-deal-button"]' },
-        ],
-        { intent: 'button that opens the new deal creation form' },
-      )
-      .resolve();
-    await newDealBtn.click();
+    // Open the new deal form using the board's new-deal button
+    await page.click(
+      [
+        { type: 'testId', value: 'new-deal-button' },
+        { type: 'role', value: 'button', options: { name: /new deal/i } },
+      ],
+      { intent: 'button that opens the new deal creation form' },
+    );
 
-    // Fill in the deal form
-    const dealNameInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-name-input' },
-          { type: 'css', value: '[data-testid="deal-name-input"]' },
-        ],
-        { intent: 'deal name text input field' },
-      )
-      .resolve();
+    // Fill in the deal form via DealDetailPage locators
+    const dealFormPage = new DealDetailPage({ page });
+    const dealNameInput = await dealFormPage.nameInputLocator();
     const dealName = `D1-Deal ${Date.now()}`;
     await dealNameInput.fill(dealName);
 
-    const stageSelect = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-stage-select' },
-          { type: 'css', value: '[data-testid="deal-stage-select"]' },
-        ],
-        { intent: 'deal pipeline stage selector' },
-      )
-      .resolve();
+    const stageSelect = await dealFormPage.stageSelectLocator();
     await stageSelect.selectOption('Prospecting');
 
-    const valueInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-value-input' },
-          { type: 'css', value: '[data-testid="deal-value-input"]' },
-        ],
-        { intent: 'deal monetary value input field' },
-      )
-      .resolve();
+    const valueInput = await dealFormPage.valueInputLocator();
     await valueInput.fill('15000');
 
-    const closeDateInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-close-date-input' },
-          { type: 'css', value: '[data-testid="deal-close-date-input"]' },
-        ],
-        { intent: 'deal expected close date input' },
-      )
-      .resolve();
+    const closeDateInput = await dealFormPage.closeDateInputLocator();
     const closeDate = new Date();
     closeDate.setMonth(closeDate.getMonth() + 1);
     const closeDateStr = closeDate.toISOString().split('T')[0]!;
     await closeDateInput.fill(closeDateStr);
 
-    const accountSelect = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-account-select' },
-          { type: 'css', value: '[data-testid="deal-account-select"]' },
-        ],
-        { intent: 'account selector on the deal form' },
-      )
-      .resolve();
+    const accountSelect = await dealFormPage.accountSelectLocator();
     await accountSelect.selectOption(account.id);
 
     // Submit the form
-    const submitBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-form-submit' },
-          { type: 'css', value: '[data-testid="deal-form-submit"]' },
-        ],
-        { intent: 'submit button on the new deal form' },
-      )
-      .resolve();
+    const submitBtn = await dealFormPage.submitLocator();
     await submitBtn.click();
 
     // Wait for the form to close (submit button detaches from DOM) before querying
@@ -177,6 +130,7 @@ test(
       testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
       // Assert the deal card appears on the board in the Prospecting column
+      // Dynamic deal ID encoded in CSS selector — valid second strategy for healing
       const dealCard = await page
         .locate(
           [
@@ -220,65 +174,25 @@ test(
 
     await navigateToDeal(page, deal.id);
 
+    const dealDetailPage = new DealDetailPage({ page });
+
     // Open edit form
-    const editBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'edit-deal-button' },
-          { type: 'css', value: '[data-testid="edit-deal-button"]' },
-        ],
-        { intent: 'button to open the deal edit form' },
-      )
-      .resolve();
-    await editBtn.click();
+    await dealDetailPage.clickEdit();
 
     // Change name and value
-    const nameInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-name-input' },
-          { type: 'css', value: '[data-testid="deal-name-input"]' },
-        ],
-        { intent: 'deal name input field in the edit form' },
-      )
-      .resolve();
+    const nameInput = await dealDetailPage.nameInputLocator();
     const updatedName = `D2-Deal-Updated ${test.info().title}`;
     await nameInput.fill(updatedName);
 
-    const valueInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-value-input' },
-          { type: 'css', value: '[data-testid="deal-value-input"]' },
-        ],
-        { intent: 'deal value input field in the edit form' },
-      )
-      .resolve();
+    const valueInput = await dealDetailPage.valueInputLocator();
     await valueInput.fill('9999');
 
-    const submitBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-form-submit' },
-          { type: 'css', value: '[data-testid="deal-form-submit"]' },
-        ],
-        { intent: 'save button on the deal edit form' },
-      )
-      .resolve();
-    await submitBtn.click();
+    await dealDetailPage.submitForm();
 
     await page.waitForLoadState('networkidle');
 
     // UI assertion — deal name heading shows updated value
-    const dealNameEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'deal-name' },
-          { type: 'css', value: '[data-testid="deal-name"]' },
-        ],
-        { intent: 'deal name heading on the deal detail page' },
-      )
-      .resolve();
+    const dealNameEl = await dealDetailPage.dealNameLocator();
     await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
 
     // API assertion — GET returns updated fields
@@ -317,29 +231,11 @@ test(
 
     await navigateToDeal(page, deal.id);
 
-    // Trigger delete flow
-    const deleteBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'delete-deal-button' },
-          { type: 'css', value: '[data-testid="delete-deal-button"]' },
-        ],
-        { intent: 'button to initiate deal deletion' },
-      )
-      .resolve();
-    await deleteBtn.click();
+    const dealDetailPage = new DealDetailPage({ page });
 
-    // Confirm in the modal
-    const confirmBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'confirm-delete-confirm' },
-          { type: 'css', value: '[data-testid="confirm-delete-confirm"]' },
-        ],
-        { intent: 'confirm button in the delete confirmation modal' },
-      )
-      .resolve();
-    await confirmBtn.click();
+    // Trigger delete flow and confirm in the modal
+    await dealDetailPage.clickDelete();
+    await dealDetailPage.confirmDelete();
 
     // Should redirect to /deals after deletion
     await page.waitForURL('/deals', { timeout: 10_000 });
@@ -398,75 +294,29 @@ test(
 
     await navigateToDeal(page, deal.id);
 
+    const dealDetailPage = new DealDetailPage({ page });
+
     // Wait for linked contacts section to be visible
-    const contactsHeading = await page
-      .locate(
-        [
-          { type: 'testId', value: 'linked-contacts-heading' },
-          { type: 'css', value: '[data-testid="linked-contacts-heading"]' },
-        ],
-        { intent: 'linked contacts section heading on deal detail page' },
-      )
-      .resolve();
+    const contactsHeading = await dealDetailPage.linkedContactsHeadingLocator();
     await expect(contactsHeading).toBeVisible({ timeout: 10_000 });
 
     // Select contact from the link form dropdown
-    const linkSelect = await page
-      .locate(
-        [
-          { type: 'testId', value: 'link-contact-select' },
-          { type: 'css', value: '[data-testid="link-contact-select"]' },
-        ],
-        { intent: 'dropdown to select a contact to link to the deal' },
-      )
-      .resolve();
+    const linkSelect = await dealDetailPage.linkContactSelectLocator();
     await linkSelect.selectOption(contact.id);
 
-    const linkBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: 'link-contact-button' },
-          { type: 'css', value: '[data-testid="link-contact-button"]' },
-        ],
-        { intent: 'button to confirm linking the selected contact to the deal' },
-      )
-      .resolve();
+    const linkBtn = await dealDetailPage.linkContactButtonLocator();
     await linkBtn.click();
 
     // Assert contact appears in the linked contacts list
-    const linkedContactEl = await page
-      .locate(
-        [
-          { type: 'testId', value: `linked-contact-${contact.id}` },
-          { type: 'css', value: `[data-testid="linked-contact-${contact.id}"]` },
-        ],
-        { intent: `linked contact entry for contact ${contact.id}` },
-      )
-      .resolve();
+    const linkedContactEl = await dealDetailPage.linkedContactLocator(contact.id);
     await expect(linkedContactEl).toBeVisible({ timeout: 10_000 });
 
     // Unlink the contact
-    const unlinkBtn = await page
-      .locate(
-        [
-          { type: 'testId', value: `unlink-contact-${contact.id}` },
-          { type: 'css', value: `[data-testid="unlink-contact-${contact.id}"]` },
-        ],
-        { intent: `button to remove the linked contact ${contact.id} from the deal` },
-      )
-      .resolve();
+    const unlinkBtn = await dealDetailPage.unlinkContactLocator(contact.id);
     await unlinkBtn.click();
 
     // After unlinking, the empty state should appear
-    const emptyState = await page
-      .locate(
-        [
-          { type: 'testId', value: 'linked-contacts-empty' },
-          { type: 'css', value: '[data-testid="linked-contacts-empty"]' },
-        ],
-        { intent: 'empty state message when no contacts are linked to the deal' },
-      )
-      .resolve();
+    const emptyState = await dealDetailPage.linkedContactsEmptyLocator();
     await expect(emptyState).toBeVisible({ timeout: 10_000 });
   },
 );

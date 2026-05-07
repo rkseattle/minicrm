@@ -15,7 +15,7 @@
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
- *   - No raw locators in this file — UI interaction via healPage.locate / click / fill only
+ *   - No raw locators in this file — UI interaction via page objects only
  *
  * MINCRM-199, MINCRM-278
  */
@@ -31,6 +31,8 @@ import {
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
+import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
+import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -81,36 +83,20 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const contactPage = new ContactDetailPage({ page });
+  const section = await contactPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await contactPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'test-upload.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('hello world'),
   });
 
   // Wait for attachment row to appear
-  const attachmentList = await page
-    .locate([
-      { type: 'testId', value: 'attachments-list' },
-      { type: 'css', value: '[data-testid="attachments-list"]' },
-    ])
-    .resolve();
-  await expect(attachmentList).toBeVisible({ timeout: 10_000 });
+  const attachmentList = await contactPage.attachmentsListLocator();
+  await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
   // Verify API reflects the upload
   const listResponse = await restClient.get<AttachmentListResponse>(
@@ -133,36 +119,19 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   const account = await createTestAccount(testData, restClient);
 
   await navigateToAccount(page, account.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const accountPage = new AccountDetailPage({ page });
+  const section = await accountPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await accountPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'account-doc.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('account document'),
   });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-list' },
-        { type: 'css', value: '[data-testid="attachments-list"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible', timeout: 10_000 });
+  const attachmentList = await accountPage.attachmentsListLocator();
+  await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
     `/api/v1/attachments?recordType=account&recordId=${account.id}`,
@@ -181,36 +150,19 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
 
   await navigateToDeal(page, deal.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const dealPage = new DealDetailPage({ page });
+  const section = await dealPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await dealPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'deal-proposal.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('deal proposal content'),
   });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-list' },
-        { type: 'css', value: '[data-testid="attachments-list"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible', timeout: 10_000 });
+  const attachmentList = await dealPage.attachmentsListLocator();
+  await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
     `/api/v1/attachments?recordType=deal&recordId=${deal.id}`,
@@ -228,39 +180,20 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const contactPage = new ContactDetailPage({ page });
+  const section = await contactPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await contactPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'malware.exe',
     mimeType: 'application/octet-stream',
     buffer: Buffer.from('MZ'),
   });
 
   // Client-side guard should show an upload error
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-upload-error' },
-        { type: 'css', value: '[data-testid="attachments-upload-error"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({
-    timeout: 5_000,
-  });
+  const uploadError = await contactPage.attachmentsUploadErrorLocator();
+  await expect(uploadError!).toBeVisible({ timeout: 5_000 });
 
   // No attachment should have been created
   const listResponse = await restClient.get<AttachmentListResponse>(
@@ -277,41 +210,22 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const contactPage = new ContactDetailPage({ page });
+  const section = await contactPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
   // 26 MB — exceeds the 25 MB server limit; client guard fires first
   const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, 'x');
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await contactPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'huge-file.pdf',
     mimeType: 'application/pdf',
     buffer: oversizedBuffer,
   });
 
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-upload-error' },
-        { type: 'css', value: '[data-testid="attachments-upload-error"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({
-    timeout: 5_000,
-  });
+  const uploadError = await contactPage.attachmentsUploadErrorLocator();
+  await expect(uploadError!).toBeVisible({ timeout: 5_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -326,23 +240,12 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const contactPage = new ContactDetailPage({ page });
+  const section = await contactPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await contactPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'download-test.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('downloadable content'),
@@ -386,37 +289,20 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-section' },
-        { type: 'css', value: '[data-testid="attachments-section"]' },
-      ])
-      .resolve()
-  ).waitFor({ state: 'visible' });
+  const contactPage = new ContactDetailPage({ page });
+  const section = await contactPage.attachmentsSectionLocator();
+  await section?.waitFor({ state: 'visible' });
 
-  await (
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-file-input' },
-        { type: 'css', value: '[data-testid="attachments-file-input"]' },
-      ])
-      .resolve()
-  ).setInputFiles({
+  const fileInput = await contactPage.attachmentsFileInputLocator();
+  await fileInput.setInputFiles({
     name: 'to-be-deleted.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('delete me'),
   });
 
   // Wait for the upload to complete before querying the API for the attachment ID
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'attachments-list' },
-        { type: 'css', value: '[data-testid="attachments-list"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  const attachmentList = await contactPage.attachmentsListLocator();
+  await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
   const listResponse = await restClient.get<AttachmentListResponse>(
     `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
@@ -427,18 +313,12 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   const attachmentId = listResponse.body.attachments[0]!.id;
 
   // Click delete button for this attachment
-  const deleteButton = await page
-    .locate([
-      { type: 'testId', value: `attachment-delete-${attachmentId}` },
-      { type: 'css', value: `[data-testid="attachment-delete-${attachmentId}"]` },
-    ])
-    .resolve();
+  const deleteButton = await contactPage.attachmentDeleteLocator(attachmentId);
   await expect(deleteButton).toBeVisible({ timeout: 10_000 });
   await deleteButton.click();
 
   // Confirm deletion in dialog
-  const contactDetailPage = new ContactDetailPage({ page });
-  await contactDetailPage.confirmAttachmentDelete();
+  await contactPage.confirmAttachmentDelete();
 
   // Row should be gone (isNotVisible — safe when element is removed from DOM).
   await expect
@@ -475,37 +355,20 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
 
   try {
     await navigateToContact(page, contact.id);
-    await (
-      await page
-        .locate([
-          { type: 'testId', value: 'attachments-section' },
-          { type: 'css', value: '[data-testid="attachments-section"]' },
-        ])
-        .resolve()
-    ).waitFor({ state: 'visible' });
+    const contactPage = new ContactDetailPage({ page });
+    const section = await contactPage.attachmentsSectionLocator();
+    await section?.waitFor({ state: 'visible' });
 
-    await (
-      await page
-        .locate([
-          { type: 'testId', value: 'attachments-file-input' },
-          { type: 'css', value: '[data-testid="attachments-file-input"]' },
-        ])
-        .resolve()
-    ).setInputFiles({
+    const fileInput = await contactPage.attachmentsFileInputLocator();
+    await fileInput.setInputFiles({
       name: 'admin-uploaded.txt',
       mimeType: 'text/plain',
       buffer: Buffer.from('admin content'),
     });
 
     // Wait for the upload to complete before querying the API for the attachment ID
-    await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'attachments-list' },
-          { type: 'css', value: '[data-testid="attachments-list"]' },
-        ])
-        .resolve(),
-    ).toBeVisible({ timeout: 10_000 });
+    const attachmentList = await contactPage.attachmentsListLocator();
+    await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
     const listResponse = await restClient.get<AttachmentListResponse>(
       `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,

@@ -1,0 +1,357 @@
+/**
+ * ReportsPage — Page Object for the MiniCRM reports screen.
+ *
+ * Covers the reports shell at `/reports` with win-loss, activity-volume,
+ * and stage-trend sub-views. Every element uses a HealingLocator with at
+ * least 2 strategies.
+ *
+ * Page Objects interact with UI only — no business logic, no API calls,
+ * no assertions.
+ *
+ * MINCRM-284, MINCRM-294, MINCRM-312
+ */
+
+import type { PageFacade } from '@framework/fixtures/index.js';
+
+/** Subset of Playwright fixtures required by ReportsPage. */
+export interface ReportsPageContext {
+  page: PageFacade;
+}
+
+/**
+ * Page Object for the MiniCRM reports screen.
+ */
+export class ReportsPage {
+  private readonly page: PageFacade;
+
+  static readonly PATH = '/reports';
+
+  constructor(context: ReportsPageContext) {
+    this.page = context.page;
+  }
+
+  /**
+   * Navigates to the reports page, optionally with a view query param.
+   *
+   * @param view - Optional view name (e.g. 'win-loss', 'activity', 'pipeline-stage').
+   */
+  async navigate(view?: string): Promise<void> {
+    const path = view ? `${ReportsPage.PATH}?view=${view}` : ReportsPage.PATH;
+    await this.page.goto(path);
+  }
+
+  /**
+   * Returns a resolved locator for the reports page heading.
+   */
+  async headingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-page-heading' },
+          { type: 'role', value: 'heading', options: { name: /report/i } },
+        ],
+        { intent: 'main heading on the reports page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the tab list / sub-navigation container.
+   */
+  async tabListLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-tab-list' },
+          { type: 'role', value: 'tablist' },
+        ],
+        { intent: 'tab list or sub-navigation on the reports page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the mobile tab select dropdown.
+   * Returns null if not in the DOM (desktop layout).
+   */
+  async tabListSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-tab-list-select' },
+          { type: 'role', value: 'combobox', options: { name: /view|report/i } },
+        ],
+        { intent: 'mobile sub-navigation dropdown for selecting report view' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the Win/Loss tab button (desktop only).
+   */
+  async winLossTabLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-tab-win-loss' },
+          { type: 'role', value: 'tab', options: { name: /win.loss/i } },
+        ],
+        { intent: 'Win/Loss report tab button in reports navigation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Activity Volume tab button (desktop only).
+   */
+  async activityTabLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-tab-activity' },
+          { type: 'role', value: 'tab', options: { name: /activity/i } },
+        ],
+        { intent: 'Activity Volume report tab button in reports navigation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Pipeline Stage tab button (desktop only).
+   */
+  async stageTrendTabLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reports-tab-pipeline-stage' },
+          { type: 'role', value: 'tab', options: { name: /pipeline|stage/i } },
+        ],
+        { intent: 'Pipeline Stage report tab button in reports navigation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Win/Loss report heading.
+   */
+  async winLossHeadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'win-loss-report-heading' },
+          { type: 'role', value: 'heading', options: { name: /win.loss/i } },
+        ],
+        { intent: 'Win/Loss report section heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Activity Volume report heading.
+   */
+  async activityVolumeHeadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'activity-volume-report-heading' },
+          { type: 'role', value: 'heading', options: { name: /activity/i } },
+        ],
+        { intent: 'Activity Volume report section heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Stage Trend report heading.
+   */
+  async stageTrendHeadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stage-trend-report-heading' },
+          { type: 'role', value: 'heading', options: { name: /stage/i } },
+        ],
+        { intent: 'Pipeline Stage Trend report section heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the loading indicator.
+   * Returns null if not in the DOM (report already loaded).
+   */
+  async loadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'report-loading' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'loading indicator while report data is being fetched' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the stage trend data table.
+   * Returns null if not present (empty state).
+   */
+  async stageTrendTableLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stage-trend-table' },
+          { type: 'role', value: 'table' },
+        ],
+        { intent: 'stage trend data table on pipeline stage report' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the stage trend empty state.
+   * Returns null if not present (table is shown).
+   */
+  async stageTrendEmptyLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stage-trend-empty' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'empty state on pipeline stage report when no data exists' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the days-range select on the stage trend report.
+   */
+  async daysSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'days-select' },
+          { type: 'role', value: 'combobox', options: { name: /days|range/i } },
+        ],
+        { intent: 'date range selector on stage trend report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the date preset select on the win-loss report.
+   */
+  async datePresetSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'date-preset-select' },
+          { type: 'role', value: 'combobox', options: { name: /preset|date/i } },
+        ],
+        { intent: 'date range preset selector dropdown on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom date range start input.
+   */
+  async customStartInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-start-input' },
+          { type: 'label', value: 'Start', options: { exact: false } },
+        ],
+        { intent: 'custom date range start date input on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom date range end input.
+   */
+  async customEndInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-end-input' },
+          { type: 'label', value: 'End', options: { exact: false } },
+        ],
+        { intent: 'custom date range end date input on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the stat cards container.
+   */
+  async statCardsLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'report-stat-cards' },
+          { type: 'role', value: 'region' },
+        ],
+        { intent: 'container holding the Won/Lost stat card metrics' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the won count stat value.
+   */
+  async wonCountValueLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stat-won-count-value' },
+          { type: 'css', value: '[data-testid="stat-won-count-value"]' },
+        ],
+        { intent: 'displayed count of Closed Won deals on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the lost count stat value.
+   */
+  async lostCountValueLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stat-lost-count-value' },
+          { type: 'css', value: '[data-testid="stat-lost-count-value"]' },
+        ],
+        { intent: 'displayed count of Closed Lost deals on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the win rate stat value.
+   */
+  async winRateValueLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stat-win-rate-value' },
+          { type: 'css', value: '[data-testid="stat-win-rate-value"]' },
+        ],
+        { intent: 'displayed win rate percentage on win/loss report' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns the current page URL.
+   */
+  url(): string {
+    return this.page.url();
+  }
+}

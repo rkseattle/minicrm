@@ -41,6 +41,7 @@ import {
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { createTestAccount, createTestContact, navigateToAccount } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -406,14 +407,10 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   await navigateToAccount(page, account.id);
 
   // The linked contacts list should contain the contact.
-  const linkedContactLocator = await page
-    .locate([
-      { type: 'testId', value: `linked-contact-${contact.id}` },
-      { type: 'css', value: `[data-testid="linked-contact-${contact.id}"]` },
-    ])
-    .resolve();
+  const accountDetailPage = new AccountDetailPage({ page });
+  const linkedContactLocator = await accountDetailPage.linkedContactLocator(contact.id);
   await expect(
-    linkedContactLocator,
+    linkedContactLocator!,
     'linked contact should be visible on account detail',
   ).toBeVisible();
 });
@@ -430,13 +427,9 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   await navigateToAccount(page, account.id);
 
   // Empty state should be visible, no error.
-  const emptyLocator = await page
-    .locate([
-      { type: 'testId', value: 'linked-contacts-empty' },
-      { type: 'css', value: '[data-testid="linked-contacts-empty"]' },
-    ])
-    .resolve();
-  await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
+  const accountDetailPage2 = new AccountDetailPage({ page });
+  const emptyLocator = await accountDetailPage2.linkedContactsEmptyLocator();
+  await expect(emptyLocator!, 'empty contacts message should be visible').toBeVisible();
 
   // No error alert should be present (doesNotExist — safe when element is absent).
   expect(
@@ -463,13 +456,12 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   await navigateToAccount(page, account.id);
 
   // After unlinking, the linked contacts list should be empty.
-  const emptyLocator = await page
-    .locate([
-      { type: 'testId', value: 'linked-contacts-empty' },
-      { type: 'css', value: '[data-testid="linked-contacts-empty"]' },
-    ])
-    .resolve();
-  await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
+  const accountDetailPage3 = new AccountDetailPage({ page });
+  const emptyLocator = await accountDetailPage3.linkedContactsEmptyLocator();
+  await expect(
+    emptyLocator!,
+    'empty contacts message should be visible after unlink',
+  ).toBeVisible();
 
   // The previously linked contact should not appear in the list.
   expect(

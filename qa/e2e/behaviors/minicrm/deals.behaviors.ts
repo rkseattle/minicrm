@@ -234,34 +234,18 @@ export async function dragDealToStage(
   if (isTerminal) {
     // CloseDealModal opens — fill required close_date and confirm.
     // waitForFunction polls until the modal element is in the DOM before
-    // resolve(), because resolve() throws StrategyExhaustedError immediately
-    // when the element is absent rather than waiting for it to appear.
+    // closeDealModalLocator(), because locate().resolve() throws StrategyExhaustedError
+    // immediately when the element is absent rather than waiting for it to appear.
     await context.page.waitForFunction(
       `document.querySelector('[data-testid="close-deal-modal"]') !== null`,
       undefined,
       { timeout: 8_000 },
     );
-    const modal = await context.page
-      .locate(
-        [
-          { type: 'testId', value: 'close-deal-modal' },
-          { type: 'css', value: '[data-testid="close-deal-modal"]' },
-        ],
-        { intent: 'modal dialog that appears when closing a deal as Won or Lost' },
-      )
-      .resolve();
-    await modal.waitFor({ state: 'visible', timeout: 5_000 });
+    const modal = await boardPage.closeDealModalLocator();
+    await modal?.waitFor({ state: 'visible', timeout: 5_000 });
     closeDealModalOpened = true;
 
-    const dateInput = await context.page
-      .locate(
-        [
-          { type: 'testId', value: 'close-deal-date-input' },
-          { type: 'css', value: '[data-testid="close-deal-date-input"]' },
-        ],
-        { intent: 'date input field inside the close deal confirmation modal' },
-      )
-      .resolve();
+    const dateInput = await boardPage.closeDealDateInputLocator();
     const today = new Date().toISOString().slice(0, 10);
     await dateInput.fill(today);
 
@@ -269,7 +253,7 @@ export async function dragDealToStage(
 
     // Explicit timeout matches the appear-guard above — prevents undismissed modal
     // from silently consuming the full 30s test budget on a slow CI runner. (MINCRM-298)
-    await modal.waitFor({ state: 'hidden', timeout: 8_000 });
+    await modal?.waitFor({ state: 'hidden', timeout: 8_000 });
   }
 
   // Wait for the card to appear in the target column. For terminal stages this

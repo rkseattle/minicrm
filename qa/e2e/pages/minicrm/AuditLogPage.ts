@@ -126,6 +126,68 @@ export class AuditLogPage {
   }
 
   /**
+   * Returns a resolved locator for the audit log page heading.
+   */
+  async headingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'audit-log-heading' },
+          { type: 'role', value: 'heading', options: { name: /audit log/i } },
+        ],
+        { intent: 'audit log page heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the audit log entry list.
+   */
+  async listLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'audit-log-list' },
+          { type: 'role', value: 'list' },
+        ],
+        { intent: 'audit log entry list container' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the pagination navigation.
+   * Returns null if pagination is not present.
+   */
+  async paginationLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination' },
+          { type: 'role', value: 'navigation', options: { name: /page/i } },
+        ],
+        { intent: 'pagination navigation on audit log page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the "previous page" pagination button.
+   */
+  async paginationPrevLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination-prev' },
+          { type: 'role', value: 'button', options: { name: /prev|previous/i } },
+        ],
+        { intent: 'previous page button in audit log pagination' },
+      )
+      .resolve();
+  }
+
+  /**
    * Clicks the Apply Filters button to submit the current filter values.
    */
   async applyFilters(): Promise<void> {

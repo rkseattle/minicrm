@@ -506,6 +506,38 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Returns a resolved locator for the close deal modal dialog.
+   * Returns null if the modal is not in the DOM.
+   */
+  async closeDealModalLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'close-deal-modal' },
+          { type: 'role', value: 'dialog', options: { name: /close deal/i } },
+        ],
+        { intent: 'modal dialog that appears when closing a deal as Won or Lost' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the close date input inside the close deal modal.
+   */
+  async closeDealDateInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'close-deal-date-input' },
+          { type: 'label', value: 'Close date', options: { exact: false } },
+        ],
+        { intent: 'date input field inside the close deal confirmation modal' },
+      )
+      .resolve();
+  }
+
+  /**
    * Clicks the Confirm button in the close deal modal. Use after triggering a
    * terminal stage change via drag-and-drop (which opens the modal but does not
    * automatically confirm it, unlike selectDealStage which handles this internally).

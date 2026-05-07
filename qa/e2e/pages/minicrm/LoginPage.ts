@@ -137,4 +137,21 @@ export class LoginPage {
       return null;
     }
   }
+
+  /**
+   * Returns a resolved locator for the login error alert, or null if absent.
+   * Used by behaviors to wait for the alert in a Promise.race with navigation.
+   */
+  async alertLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'role', value: 'alert' },
+          { type: 'css', value: '[role="alert"]' },
+        ],
+        { intent: 'error alert message on login form' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
 }

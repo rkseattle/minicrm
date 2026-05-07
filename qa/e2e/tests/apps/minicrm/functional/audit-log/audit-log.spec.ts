@@ -118,27 +118,13 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   // Navigate to audit log
   const auditLogPage = new AuditLogPage({ page });
   await auditLogPage.navigate();
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-heading' },
-        { type: 'role', value: 'heading', options: { name: /audit log/i } },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  await expect(await auditLogPage.headingLocator()).toBeVisible();
 
   // Filter by record type = contact so the list is manageable
   await filterAuditLog('contact', { page });
 
   // The audit list should show at least one entry
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-list' },
-        { type: 'css', value: '[data-testid="audit-log-list"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(await auditLogPage.listLocator()).toBeVisible({ timeout: 10_000 });
 
   // Verify via API that the entry exists
   const auditResponse = await restClient.get<AuditLogListResponse>(
@@ -167,26 +153,12 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 
   const auditLogPage = new AuditLogPage({ page });
   await auditLogPage.navigate();
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-heading' },
-        { type: 'role', value: 'heading', options: { name: /audit log/i } },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  await expect(await auditLogPage.headingLocator()).toBeVisible();
 
   // Filter to account only
   await filterAuditLog('account', { page });
 
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-list' },
-        { type: 'css', value: '[data-testid="audit-log-list"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(await auditLogPage.listLocator()).toBeVisible({ timeout: 10_000 });
 
   // Check via API that the filtered results only contain account entries
   const auditResponse = await restClient.get<AuditLogListResponse>(
@@ -233,25 +205,11 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // Navigate to the audit log page and verify the entry is renderable in the UI
   const auditLogPage = new AuditLogPage({ page });
   await auditLogPage.navigate();
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-heading' },
-        { type: 'role', value: 'heading', options: { name: /audit log/i } },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  await expect(await auditLogPage.headingLocator()).toBeVisible();
 
   // Filter by contact and apply
   await filterAuditLog('contact', { page });
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-list' },
-        { type: 'css', value: '[data-testid="audit-log-list"]' },
-      ])
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(await auditLogPage.listLocator()).toBeVisible({ timeout: 10_000 });
 
   // If the specific row is on the first page, expand it and verify the detail section.
   // Collapse the filter panel first — on mobile its open body overlaps the data rows
@@ -282,39 +240,16 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
   const contact = await createTestContact(testData, restClient, { first_name: 'F12AL4Pag' });
   void contact;
 
-  await page.goto('/admin/audit-log');
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'audit-log-heading' },
-        { type: 'role', value: 'heading', options: { name: /audit log/i } },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  const auditLogPage2 = new AuditLogPage({ page });
+  await auditLogPage2.navigate();
+  await expect(await auditLogPage2.headingLocator()).toBeVisible();
 
   // Pagination bar should always be visible once data loads
-  await expect(
-    await page
-      .locate(
-        [
-          { type: 'testId', value: 'pagination' },
-          { type: 'css', value: '[data-testid="pagination"]' },
-        ],
-        { intent: 'pagination bar showing record count and page controls' },
-      )
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  const pagination = await auditLogPage2.paginationLocator();
+  await expect(pagination!).toBeVisible({ timeout: 10_000 });
 
   // Prev is disabled on first page
-  const prevButton = await page
-    .locate(
-      [
-        { type: 'testId', value: 'pagination-prev' },
-        { type: 'role', value: 'button', options: { name: /previous/i } },
-      ],
-      { intent: 'pagination previous page button' },
-    )
-    .resolve();
+  const prevButton = await auditLogPage2.paginationPrevLocator();
   await expect(prevButton).toBeDisabled();
 });
 

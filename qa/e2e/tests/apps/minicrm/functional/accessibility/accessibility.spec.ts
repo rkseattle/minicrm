@@ -208,13 +208,8 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   ]);
 
   // Wait for the modal to become visible before auditing.
-  const modalLocator = await page
-    .locate([
-      { type: 'testId', value: 'close-deal-modal' },
-      { type: 'css', value: '[data-testid="close-deal-modal"]' },
-    ])
-    .resolve();
-  await modalLocator.waitFor({ state: 'visible' });
+  const modalLocator = await boardPage.closeDealModalLocator();
+  await modalLocator?.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 
@@ -245,10 +240,13 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
 
   // Wait for the modal to be visible before auditing.
   const modalLocator = await page
-    .locate([
-      { type: 'testId', value: 'confirm-delete-modal' },
-      { type: 'css', value: '[data-testid="confirm-delete-modal"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'confirm-delete-modal' },
+        { type: 'role', value: 'dialog', options: { name: /delete/i } },
+      ],
+      { intent: 'confirm delete modal dialog' },
+    )
     .resolve();
   await modalLocator.waitFor({ state: 'visible' });
 
@@ -277,10 +275,13 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 
   // Wait for the modal to be visible before auditing.
   const modalLocator = await page
-    .locate([
-      { type: 'testId', value: 'bulk-reassign-modal' },
-      { type: 'css', value: '[data-testid="bulk-reassign-modal"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'bulk-reassign-modal' },
+        { type: 'role', value: 'dialog', options: { name: /reassign/i } },
+      ],
+      { intent: 'bulk reassign modal dialog' },
+    )
     .resolve();
   await modalLocator.waitFor({ state: 'visible' });
 

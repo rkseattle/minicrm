@@ -182,6 +182,26 @@ export class AdminSettingsPage {
   }
 
   /**
+   * Waits for the email notifications success message to become visible.
+   * Used by behaviors that need to await the save confirmation before reading state.
+   *
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForEmailNotifSuccessVisible(timeout = 5_000): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'email-notif-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message after saving email notification setting' },
+      )
+      .resolve()
+      .then((el) => el.waitFor({ state: 'visible', timeout }))
+      .catch(() => null);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

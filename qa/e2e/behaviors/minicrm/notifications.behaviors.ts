@@ -141,15 +141,7 @@ export async function uncheckAndSavePreference(
   await profilePage.uncheckPreference(key);
   await profilePage.savePreferences();
 
-  // Wait for success message to appear.
-  await context.page
-    .locate([
-      { type: 'testId', value: 'profile-prefs-success' },
-      { type: 'css', value: '[data-testid="profile-prefs-success"]' },
-    ])
-    .resolve()
-    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
-    .catch(() => null);
+  await profilePage.waitForSuccessVisible();
 
   const saved = await profilePage.successMessageIsVisible();
   const isNowUnchecked = !(await profilePage.checkboxIsChecked(key));
@@ -191,14 +183,7 @@ export async function uncheckAllAndSave(
 
   await profilePage.savePreferences();
 
-  await context.page
-    .locate([
-      { type: 'testId', value: 'profile-prefs-success' },
-      { type: 'css', value: '[data-testid="profile-prefs-success"]' },
-    ])
-    .resolve()
-    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
-    .catch(() => null);
+  await profilePage.waitForSuccessVisible();
 
   const saved = await profilePage.successMessageIsVisible();
   const preferences: ProfilePreferences = {
@@ -303,14 +288,7 @@ export async function toggleAdminEmailNotifications(
 
   await adminSettings.toggleEmailNotifications();
 
-  await context.page
-    .locate([
-      { type: 'testId', value: 'email-notif-success' },
-      { type: 'css', value: '[data-testid="email-notif-success"]' },
-    ])
-    .resolve()
-    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
-    .catch(() => null);
+  await adminSettings.waitForEmailNotifSuccessVisible();
 
   const saved = await adminSettings.successMessageIsVisible();
   const isEnabled = await adminSettings.emailNotificationsIsEnabled();

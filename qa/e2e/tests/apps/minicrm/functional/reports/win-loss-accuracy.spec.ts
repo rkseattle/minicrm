@@ -11,7 +11,7 @@
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
- *   - No raw locators — all through page.locate() healing locators
+ *   - No raw locators — all through page objects
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *
  * MINCRM-312
@@ -19,7 +19,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import type { PageFacade } from '@framework/fixtures/index.js';
+import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -74,28 +74,11 @@ function previousMonthFirstDay(): string {
  * Waits for the Win/Loss report loading indicator to disappear and for the
  * stat cards container to become visible.
  */
-async function waitForReportLoaded(page: PageFacade): Promise<void> {
-  const loadingEl = await page
-    .locate(
-      [
-        { type: 'testId', value: 'report-loading' },
-        { type: 'css', value: '[data-testid="report-loading"]' },
-      ],
-      { intent: 'loading indicator while report data is being fetched' },
-    )
-    .resolve()
-    .catch(() => null);
+async function waitForReportLoaded(reportsPage: ReportsPage): Promise<void> {
+  const loadingEl = await reportsPage.loadingLocator();
   await loadingEl?.waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => null);
 
-  const statCards = await page
-    .locate(
-      [
-        { type: 'testId', value: 'report-stat-cards' },
-        { type: 'css', value: '[data-testid="report-stat-cards"]' },
-      ],
-      { intent: 'container holding the Won/Lost stat card metrics' },
-    )
-    .resolve();
+  const statCards = await reportsPage.statCardsLocator();
   await expect(statCards).toBeVisible({ timeout: 10_000 });
 }
 
@@ -103,38 +86,18 @@ async function waitForReportLoaded(page: PageFacade): Promise<void> {
  * Applies a custom date range filter on the Win/Loss report page by selecting
  * the "custom" preset and filling in the start/end date inputs.
  */
-async function applyCustomDateFilter(page: PageFacade, start: string, end: string): Promise<void> {
-  const presetSelect = await page
-    .locate(
-      [
-        { type: 'testId', value: 'date-preset-select' },
-        { type: 'css', value: '[data-testid="date-preset-select"]' },
-      ],
-      { intent: 'date range preset selector dropdown' },
-    )
-    .resolve();
+async function applyCustomDateFilter(
+  reportsPage: ReportsPage,
+  start: string,
+  end: string,
+): Promise<void> {
+  const presetSelect = await reportsPage.datePresetSelectLocator();
   await presetSelect.selectOption('custom');
 
-  const startInput = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-start-input' },
-        { type: 'css', value: '[data-testid="custom-start-input"]' },
-      ],
-      { intent: 'custom date range start date input' },
-    )
-    .resolve();
+  const startInput = await reportsPage.customStartInputLocator();
   await startInput.fill(start);
 
-  const endInput = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-end-input' },
-        { type: 'css', value: '[data-testid="custom-end-input"]' },
-      ],
-      { intent: 'custom date range end date input' },
-    )
-    .resolve();
+  const endInput = await reportsPage.customEndInputLocator();
   await endInput.fill(end);
 }
 
@@ -176,47 +139,16 @@ test(
 
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
-    const heading = await page
-      .locate(
-        [
-          { type: 'testId', value: 'win-loss-report-heading' },
-          { type: 'css', value: '[data-testid="win-loss-report-heading"]' },
-        ],
-        { intent: 'Win/Loss report page heading' },
-      )
-      .resolve();
+    const reportsPage = new ReportsPage({ page });
+    const heading = await reportsPage.winLossHeadingLocator();
     await expect(heading).toBeVisible({ timeout: 10_000 });
 
-    await applyCustomDateFilter(page, start, end);
-    await waitForReportLoaded(page);
+    await applyCustomDateFilter(reportsPage, start, end);
+    await waitForReportLoaded(reportsPage);
 
-    const wonCountEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-won-count-value' },
-          { type: 'css', value: '[data-testid="stat-won-count-value"]' },
-        ],
-        { intent: 'displayed count of Closed Won deals' },
-      )
-      .resolve();
-    const lostCountEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-lost-count-value' },
-          { type: 'css', value: '[data-testid="stat-lost-count-value"]' },
-        ],
-        { intent: 'displayed count of Closed Lost deals' },
-      )
-      .resolve();
-    const winRateEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-win-rate-value' },
-          { type: 'css', value: '[data-testid="stat-win-rate-value"]' },
-        ],
-        { intent: 'displayed win rate percentage' },
-      )
-      .resolve();
+    const wonCountEl = await reportsPage.wonCountValueLocator();
+    const lostCountEl = await reportsPage.lostCountValueLocator();
+    const winRateEl = await reportsPage.winRateValueLocator();
 
     const wonCountText = await wonCountEl.textContent();
     const lostCountText = await lostCountEl.textContent();
@@ -267,19 +199,17 @@ test(
 
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
-    await applyCustomDateFilter(page, monthStart, monthEnd);
-    await waitForReportLoaded(page);
+    const reportsPage = new ReportsPage({ page });
+    await applyCustomDateFilter(reportsPage, monthStart, monthEnd);
+    await waitForReportLoaded(reportsPage);
 
     // Verify via API that the current-month filter does not include the previous-month deal.
-    // The endpoint returns WinLossApiResponse directly (no { report: } wrapper).
     const apiResponse = await restClient.get<WinLossApiResponse>(
       `/api/v1/reports/win-loss?start=${monthStart}&end=${monthEnd}`,
     );
     const report = apiResponse.body;
 
     // The previous-month deal should not be in the won count for this month
-    // We cannot assert an exact number (other tests may have seeded data),
-    // so we verify the API exclusion by checking the previous month directly
     const prevStart = prevMonthDate;
     const prevEnd = prevMonthDate; // single-day range containing only the prev-month deal
     const prevApiResponse = await restClient.get<WinLossApiResponse>(
@@ -294,15 +224,7 @@ test(
     expect(report.wonCount).toBeGreaterThanOrEqual(1);
 
     // The UI reflects the current-month filter result
-    const wonCountEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-won-count-value' },
-          { type: 'css', value: '[data-testid="stat-won-count-value"]' },
-        ],
-        { intent: 'displayed count of Closed Won deals' },
-      )
-      .resolve();
+    const wonCountEl = await reportsPage.wonCountValueLocator();
     const wonCountText = await wonCountEl.textContent();
     expect(parseInt(wonCountText ?? '0', 10)).toBeGreaterThanOrEqual(1);
   },
@@ -352,24 +274,17 @@ test(
 
     // UI assertion first — navigate and apply the same date filter
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
-    await applyCustomDateFilter(page, start, end);
-    await waitForReportLoaded(page);
+    const reportsPage = new ReportsPage({ page });
+    await applyCustomDateFilter(reportsPage, start, end);
+    await waitForReportLoaded(reportsPage);
 
-    const wonCountEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-won-count-value' },
-          { type: 'css', value: '[data-testid="stat-won-count-value"]' },
-        ],
-        { intent: 'displayed count of Closed Won deals' },
-      )
-      .resolve();
+    const wonCountEl = await reportsPage.wonCountValueLocator();
     const uiWonCount = parseInt((await wonCountEl.textContent()) ?? '0', 10);
 
     // UI must include at minimum our 3 seeded won deals (other tests may add more)
     expect(uiWonCount).toBeGreaterThanOrEqual(3);
 
-    // Secondary API assertion — the endpoint returns WinLossApiResponse directly.
+    // Secondary API assertion
     const apiResponse = await restClient.get<WinLossApiResponse>(
       `/api/v1/reports/win-loss?start=${start}&end=${end}`,
     );
@@ -412,49 +327,24 @@ test(
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+    const reportsPage = new ReportsPage({ page });
 
     if (isMobile) {
       // On mobile the SubPageNav renders a <select> — the report content is
-      // already shown (win-loss is the default view) so just apply the filter.
-      const select = await page
-        .locate(
-          [
-            { type: 'testId', value: 'reports-tab-list-select' },
-            { type: 'css', value: '[data-testid="reports-tab-list-select"]' },
-          ],
-          { intent: 'mobile sub-navigation dropdown for report views' },
-        )
-        .resolve()
-        .catch(() => null);
-      // Already on win-loss (default); ensure the select shows win-loss if present
+      // already shown (win-loss is the default view) so just check the select value.
+      const select = await reportsPage.tabListSelectLocator();
       if (select) {
         await expect(select).toHaveValue('win-loss');
       }
     }
 
-    await applyCustomDateFilter(page, start, end);
-    await waitForReportLoaded(page);
+    await applyCustomDateFilter(reportsPage, start, end);
+    await waitForReportLoaded(reportsPage);
 
-    const statCards = await page
-      .locate(
-        [
-          { type: 'testId', value: 'report-stat-cards' },
-          { type: 'css', value: '[data-testid="report-stat-cards"]' },
-        ],
-        { intent: 'stat cards container showing won/lost metrics' },
-      )
-      .resolve();
+    const statCards = await reportsPage.statCardsLocator();
     await expect(statCards).toBeVisible();
 
-    const winRateEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-win-rate-value' },
-          { type: 'css', value: '[data-testid="stat-win-rate-value"]' },
-        ],
-        { intent: 'win rate percentage value' },
-      )
-      .resolve();
+    const winRateEl = await reportsPage.winRateValueLocator();
     await expect(winRateEl).toBeVisible();
     const winRateText = await winRateEl.textContent();
     expect(winRateText).toMatch(/\d+%/);

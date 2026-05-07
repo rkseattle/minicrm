@@ -207,14 +207,7 @@ export async function getMinLengthHint(
   await searchPage.typeQueryRaw(query);
 
   // Wait briefly for the panel to appear (it renders immediately for any non-empty query).
-  await context.page
-    .locate([
-      { type: 'testId', value: 'search-results-panel' },
-      { type: 'css', value: '[data-testid="search-results-panel"]' },
-    ])
-    .resolve()
-    .then((el) => el.waitFor({ state: 'visible', timeout: 5_000 }))
-    .catch(() => null);
+  await searchPage.panelIsVisible(5_000);
 
   const panelVisible = await searchPage.panelIsVisible(5_000);
   const hintVisible = await searchPage.minLengthHintIsVisible();

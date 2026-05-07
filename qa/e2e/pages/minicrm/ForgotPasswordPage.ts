@@ -86,6 +86,26 @@ export class ForgotPasswordPage {
   }
 
   /**
+   * Waits for the success message to become visible.
+   * Used by behaviors that need to await the confirmation before reading state.
+   *
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForSuccessVisible(timeout = 10_000): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'forgot-password-success' },
+          { type: 'css', value: '[data-testid="forgot-password-success"]' },
+        ],
+        { intent: 'success message after submitting forgot password form' },
+      )
+      .resolve()
+      .then((el) => el.waitFor({ state: 'visible', timeout }))
+      .catch(() => null);
+  }
+
+  /**
    * Returns the current URL.
    */
   url(): string {
