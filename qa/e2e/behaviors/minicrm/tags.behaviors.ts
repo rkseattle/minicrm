@@ -94,14 +94,7 @@ export async function renameTagViaUI(
   await context.page.waitForLoadState('networkidle');
 
   // The rename form's save button disappears on success.
-  const renameFormGone = !(await context.page
-    .locate([
-      { type: 'testId', value: `rename-save-${tagId}` },
-      { type: 'css', value: `[data-testid="rename-save-${tagId}"]` },
-    ])
-    .resolve()
-    .then((el) => el.isVisible().catch(() => false))
-    .catch(() => false));
+  const renameFormGone = !(await adminTagsPage.renameSaveButtonIsVisible(tagId));
 
   const finalUrl = adminTagsPage.url();
   return { saved: renameFormGone, finalUrl };

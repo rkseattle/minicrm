@@ -182,14 +182,9 @@ export async function closeHamburgerMenuViaBackdrop(
   await context.page.mouse.click(viewportWidth - 10, 10);
 
   // Drawer is conditionally rendered — resolve after the click that closed it.
-  // If it's already gone, resolve() will fail and we treat it as closed.
-  const drawer = await context.page
-    .locate([
-      { type: 'testId', value: 'nav-hamburger-drawer' },
-      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
-    ])
-    .resolve()
-    .catch(() => null);
+  // If it's already gone, hamburgerDrawerLocator() returns null and we treat it as closed.
+  const navPage = new NavPage(context);
+  const drawer = await navPage.hamburgerDrawerLocator();
   // Wait for the drawer to disappear rather than using a fixed timeout.
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
@@ -220,14 +215,8 @@ export async function closeHamburgerMenuViaCloseButton(
   await navPage.clickHamburgerClose();
 
   // Drawer is conditionally rendered — after clicking close it may already be
-  // unmounted. Resolve with a catch so a missing drawer counts as closed.
-  const drawer = await context.page
-    .locate([
-      { type: 'testId', value: 'nav-hamburger-drawer' },
-      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
-    ])
-    .resolve()
-    .catch(() => null);
+  // unmounted. hamburgerDrawerLocator() returns null if gone (counts as closed).
+  const drawer = await navPage.hamburgerDrawerLocator();
   // Wait for the drawer to disappear rather than using a fixed timeout.
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
@@ -262,36 +251,25 @@ export async function navigateViaNavLink(
   destination: string,
   context: NavBehaviorContext,
 ): Promise<NavigateViaNavLinkResult> {
+  const navPage = new NavPage(context);
+
   if (layout === 'hamburger') {
-    // Check whether the drawer is already open using a short-timeout probe —
-    // the drawer either exists in the DOM right now or it doesn't. A 200 ms
-    // fallbackTimeout fails fast when closed without burning the test budget.
-    const drawerLocator = await context.page
-      .locate(
-        [
-          { type: 'testId', value: 'nav-hamburger-drawer' },
-          { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
-        ],
-        { fallbackTimeout: 200 },
-      )
-      .resolve()
-      .catch(() => null);
+    // Check whether the drawer is already open — hamburgerDrawerLocator() returns
+    // null if absent, which we treat as closed and open before navigating.
+    const drawerLocator = await navPage.hamburgerDrawerLocator();
     const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
       await openHamburgerMenu(context);
     }
   }
 
-  const testId = `nav-${layout}-${destination}`;
   let link;
   try {
-    link = await context.page
-      .locate([
-        { type: 'testId', value: testId },
-        { type: 'role', value: 'link', options: { name: new RegExp(destination, 'i') } },
-      ])
-      .resolve();
+    link = await navPage.navLinkLocator(layout, destination);
   } catch {
+    return { linkClicked: false, finalUrl: context.page.url() };
+  }
+  if (!link) {
     return { linkClicked: false, finalUrl: context.page.url() };
   }
 
@@ -352,24 +330,11 @@ export interface OpenMobileNavResult {
  */
 export async function openMobileNav(context: NavBehaviorContext): Promise<OpenMobileNavResult> {
   // On mobile the global-search-input can overlap the toggle button.
-  // force:true bypasses Playwright's pointer-intercept check — visibility
-  // of the toggle itself has already been confirmed by the caller navigating
-  // to the page before calling this behavior.
-  const toggle = await context.page
-    .locate([
-      { type: 'testId', value: 'nav-menu-toggle' },
-      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
-    ])
-    .resolve();
-  await toggle.click({ force: true });
+  // clickMenuToggleForce() bypasses the pointer-intercept check.
+  const navPage = new NavPage(context);
+  await navPage.clickMenuToggleForce();
   // The drawer is conditionally rendered — resolve after the click that mounts it.
-  const drawer = await context.page
-    .locate([
-      { type: 'testId', value: 'mobile-nav-drawer' },
-      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
-    ])
-    .resolve()
-    .catch(() => null);
+  const drawer = await navPage.mobileNavDrawerLocator();
   await drawer?.waitFor({ state: 'visible' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
   return { drawerVisible };
@@ -396,21 +361,10 @@ export async function closeMobileNavViaToggle(
   context: NavBehaviorContext,
 ): Promise<CloseMobileNavViaToggleResult> {
   // Same intercept issue as openMobileNav — global-search-input overlaps the
-  // toggle on mobile viewports. force:true bypasses the pointer-intercept check.
-  const toggle = await context.page
-    .locate([
-      { type: 'testId', value: 'nav-menu-toggle' },
-      { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
-    ])
-    .resolve();
-  await toggle.click({ force: true });
-  const drawer = await context.page
-    .locate([
-      { type: 'testId', value: 'mobile-nav-drawer' },
-      { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
-    ])
-    .resolve()
-    .catch(() => null);
+  // toggle on mobile viewports. clickMenuCloseForce() bypasses the intercept check.
+  const navPage = new NavPage(context);
+  await navPage.clickMenuCloseForce();
+  const drawer = await navPage.mobileNavDrawerLocator();
   await drawer?.waitFor({ state: 'hidden' }).catch(() => null);
   const drawerVisible = (await drawer?.isVisible().catch(() => false)) ?? false;
   return { drawerClosed: !drawerVisible };
@@ -440,41 +394,24 @@ export async function navigateViaMobileNavLink(
   destination: string,
   context: NavBehaviorContext,
 ): Promise<NavigateViaMobileNavLinkResult> {
-  // Open the drawer if it is not already visible (short probe — it's either
-  // mounted right now or it isn't).
-  const drawerLocator = await context.page
-    .locate(
-      [
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ],
-      { fallbackTimeout: 200 },
-    )
-    .resolve()
-    .catch(() => null);
+  const navPage = new NavPage(context);
+
+  // Open the drawer if it is not already visible.
+  const drawerLocator = await navPage.mobileNavDrawerLocator();
   const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
   if (!drawerVisible) {
-    const navPage = new NavPage(context);
-    await navPage.clickMenuToggle();
-    const drawer = await context.page
-      .locate([
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ])
-      .resolve();
-    await drawer.waitFor({ state: 'visible' });
+    await navPage.clickMenuToggleForce();
+    const drawer = await navPage.mobileNavDrawerLocator();
+    await drawer?.waitFor({ state: 'visible' });
   }
 
-  const testId = `nav-top-${destination}-mobile`;
   let link;
   try {
-    link = await context.page
-      .locate([
-        { type: 'testId', value: testId },
-        { type: 'role', value: 'link', options: { name: new RegExp(destination, 'i') } },
-      ])
-      .resolve();
+    link = await navPage.mobileNavLinkLocator(destination);
   } catch {
+    return { linkClicked: false, finalUrl: context.page.url() };
+  }
+  if (!link) {
     return { linkClicked: false, finalUrl: context.page.url() };
   }
 

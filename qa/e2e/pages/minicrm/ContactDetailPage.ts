@@ -233,6 +233,157 @@ export class ContactDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the send email button.
+   * Returns null if not present.
+   */
+  async sendEmailButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'send-email-button' },
+          { type: 'role', value: 'button', options: { name: /send email/i } },
+        ],
+        { intent: 'send email button on contact detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the send email compose modal.
+   * Returns null if not present.
+   */
+  async sendEmailModalLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'send-email-modal' },
+          { type: 'role', value: 'dialog', options: { name: /send email/i } },
+        ],
+        { intent: 'send email compose modal dialog' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the send email success message.
+   * Returns null if not present.
+   */
+  async sendEmailSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'send-email-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message after sending email from contact detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the account link on the contact detail page.
+   * Returns null if not present.
+   */
+  async accountLinkLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'detail-account' },
+          { type: 'role', value: 'link', options: { name: /account/i } },
+        ],
+        { intent: 'account link on contact detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the attachments section container.
+   * Returns null if not present.
+   */
+  async attachmentsSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-section' },
+          { type: 'role', value: 'region', options: { name: /attachment/i } },
+        ],
+        { intent: 'attachments section container on detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the attachments file input.
+   */
+  async attachmentsFileInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-file-input' },
+          { type: 'css', value: 'input[type="file"]' },
+        ],
+        { intent: 'file input for uploading attachments' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the attachments list container.
+   * Returns null if not present (no attachments uploaded yet).
+   */
+  async attachmentsListLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-list' },
+          { type: 'role', value: 'list' },
+        ],
+        { intent: 'list of uploaded attachments' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the attachments upload error message.
+   * Returns null if not present.
+   */
+  async attachmentsUploadErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-upload-error' },
+          { type: 'role', value: 'alert' },
+        ],
+        { intent: 'upload error message when attachment is rejected' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the delete button for a specific attachment.
+   *
+   * @param attachmentId - Attachment UUID.
+   */
+  async attachmentDeleteLocator(attachmentId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `attachment-delete-${attachmentId}` },
+          { type: 'css', value: `[data-testid="attachment-delete-${attachmentId}"]` },
+        ],
+        { intent: 'delete button for a specific attachment row' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

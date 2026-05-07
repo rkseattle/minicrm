@@ -117,6 +117,44 @@ export class MyTasksPage {
   }
 
   /**
+   * Returns a resolved locator for the task row for the given task ID.
+   * Returns null if the row is not in the DOM.
+   *
+   * @param taskId - Activity UUID.
+   */
+  async taskRowLocator(taskId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `task-row-${taskId}` },
+          { type: 'css', value: `[data-testid="task-row-${taskId}"]` },
+        ],
+        { intent: 'task row in the open tasks list' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the overdue badge on a task row.
+   * Returns null if the badge is not in the DOM.
+   *
+   * @param taskId - Activity UUID.
+   */
+  async overdueTaskBadgeLocator(taskId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `task-overdue-badge-${taskId}` },
+          { type: 'css', value: `[data-testid="task-overdue-badge-${taskId}"]` },
+        ],
+        { intent: 'overdue badge on a task row' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
    * Clicks the toggle to show completed tasks in the list.
    */
   async clickToggleCompleted(): Promise<void> {

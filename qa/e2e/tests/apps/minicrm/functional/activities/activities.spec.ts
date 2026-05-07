@@ -46,6 +46,7 @@ import {
   createTestUser,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
+import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -514,13 +515,9 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  const overdueBadge = await page
-    .locate([
-      { type: 'testId', value: `task-overdue-badge-${activity.id}` },
-      { type: 'css', value: `[data-testid="task-overdue-badge-${activity.id}"]` },
-    ])
-    .resolve();
-  await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
+  const myTasksPage = new MyTasksPage({ page });
+  const overdueBadge = await myTasksPage.overdueTaskBadgeLocator(activity.id);
+  await expect(overdueBadge!, 'past-due task should show overdue badge').toBeVisible();
 });
 
 test('@functional F5-DS3: task with no due date → no overdue state in UI or API', async ({
@@ -584,13 +581,9 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
 
   // Toggle is required — completed tasks are hidden by default.
   await showCompletedTasks({ page });
-  const taskRow = await page
-    .locate([
-      { type: 'testId', value: `task-row-${activity.id}` },
-      { type: 'css', value: `[data-testid="task-row-${activity.id}"]` },
-    ])
-    .resolve();
-  await taskRow.waitFor({ state: 'visible', timeout: 10_000 });
+  const myTasksPage2 = new MyTasksPage({ page });
+  const taskRow = await myTasksPage2.taskRowLocator(activity.id);
+  await taskRow?.waitFor({ state: 'visible', timeout: 10_000 });
 
   expect(
     await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),

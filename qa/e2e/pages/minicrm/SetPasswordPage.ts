@@ -142,6 +142,26 @@ export class SetPasswordPage {
   }
 
   /**
+   * Waits for the error alert to become visible.
+   * Used by behaviors that need to await the error before reading state.
+   *
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForErrorVisible(timeout = 10_000): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'set-password-error' },
+          { type: 'role', value: 'alert' },
+        ],
+        { intent: 'error alert on set password form' },
+      )
+      .resolve()
+      .then((el) => el.waitFor({ state: 'visible', timeout }))
+      .catch(() => null);
+  }
+
+  /**
    * Returns the current URL.
    */
   url(): string {

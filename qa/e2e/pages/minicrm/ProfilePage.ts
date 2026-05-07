@@ -181,6 +181,26 @@ export class ProfilePage {
   }
 
   /**
+   * Waits for the success message to become visible, then resolves.
+   * Used by behaviors that need to await the save confirmation before reading state.
+   *
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForSuccessVisible(timeout = 5_000): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'profile-prefs-success' },
+          { type: 'css', value: '[data-testid="profile-prefs-success"]' },
+        ],
+        { intent: 'success message after saving profile preferences' },
+      )
+      .resolve()
+      .then((el) => el.waitFor({ state: 'visible', timeout }))
+      .catch(() => null);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

@@ -65,13 +65,9 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await setOnboardingCompleted(false, restClient);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    const banner = await page
-      .locate([
-        { type: 'testId', value: 'onboarding-banner' },
-        { type: 'css', value: '[data-testid="onboarding-banner"]' },
-      ])
-      .resolve();
-    await expect(banner).toBeVisible({ timeout: 10_000 });
+    const onboardingPage = new OnboardingPage({ page });
+    const banner = await onboardingPage.bannerLocator();
+    await expect(banner!).toBeVisible({ timeout: 10_000 });
   });
 
   test('@functional F-OB2: banner is NOT visible when is_first_run is false', async ({
@@ -96,15 +92,10 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await setOnboardingCompleted(false, restClient);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    const banner = await page
-      .locate([
-        { type: 'testId', value: 'onboarding-banner' },
-        { type: 'css', value: '[data-testid="onboarding-banner"]' },
-      ])
-      .resolve();
-    await expect(banner).toBeVisible({ timeout: 10_000 });
-
     const onboardingPage = new OnboardingPage({ page });
+    const banner = await onboardingPage.bannerLocator();
+    await expect(banner!).toBeVisible({ timeout: 10_000 });
+
     await onboardingPage.dismiss();
 
     // Banner should disappear after dismiss.
@@ -125,25 +116,13 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await setOnboardingCompleted(false, restClient);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'onboarding-step-1' },
-          { type: 'css', value: '[data-testid="onboarding-step-1"]' },
-        ])
-        .resolve(),
-    ).toBeVisible({ timeout: 10_000 });
-
     const onboardingPage = new OnboardingPage({ page });
+    const step1 = await onboardingPage.step1Locator();
+    await expect(step1!).toBeVisible({ timeout: 10_000 });
+
     await onboardingPage.clickLooksGood();
 
-    await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'onboarding-step-2' },
-          { type: 'css', value: '[data-testid="onboarding-step-2"]' },
-        ])
-        .resolve(),
-    ).toBeVisible({ timeout: 5_000 });
+    const step2 = await onboardingPage.step2Locator();
+    await expect(step2!).toBeVisible({ timeout: 5_000 });
   });
 }); // end describe.serial

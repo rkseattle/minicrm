@@ -522,18 +522,9 @@ export async function contactRowIsVisible(
   context: ContactsBehaviorContext,
 ): Promise<ContactRowIsVisibleResult> {
   try {
-    const el = await context.page
-      .locate(
-        [
-          { type: 'testId', value: `contact-link-${id}` },
-          { type: 'testId', value: `contact-card-link-${id}` },
-        ],
-        { intent: 'contact row link in the contacts list' },
-      )
-      .resolve();
-    await el.waitFor({ state: 'visible', timeout: 5_000 });
-    const visible = await el.isVisible().catch(() => false);
-    return { visible };
+    const contactsPage = new ContactsPage(context);
+    await contactsPage.waitForContact(id);
+    return { visible: true };
   } catch {
     return { visible: false };
   }

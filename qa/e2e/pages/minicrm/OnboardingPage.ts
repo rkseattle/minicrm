@@ -29,6 +29,61 @@ export class OnboardingPage {
   }
 
   // ---------------------------------------------------------------------------
+  // State queries
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the onboarding banner container.
+   * Returns null if the banner is not in the DOM.
+   */
+  async bannerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'onboarding-banner' },
+          { type: 'role', value: 'region', options: { name: /onboarding/i } },
+        ],
+        { intent: 'onboarding banner container element' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for onboarding step 1 content.
+   * Returns null if not in the DOM.
+   */
+  async step1Locator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'onboarding-step-1' },
+          { type: 'css', value: '[data-testid="onboarding-step-1"]' },
+        ],
+        { intent: 'onboarding step 1 content panel' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for onboarding step 2 content.
+   * Returns null if not in the DOM.
+   */
+  async step2Locator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'onboarding-step-2' },
+          { type: 'css', value: '[data-testid="onboarding-step-2"]' },
+        ],
+        { intent: 'onboarding step 2 content panel' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  // ---------------------------------------------------------------------------
   // Interactions
   // ---------------------------------------------------------------------------
 

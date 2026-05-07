@@ -158,6 +158,90 @@ export class AccountDetailPage {
   }
 
   /**
+   * Returns a resolved locator for a linked contact row by contact ID.
+   * Returns null if the contact is not linked.
+   *
+   * @param id - Contact UUID.
+   */
+  async linkedContactLocator(id: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `linked-contact-${id}` },
+          { type: 'css', value: `[data-testid="linked-contact-${id}"]` },
+        ],
+        { intent: 'linked contact row on account detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the empty state when no contacts are linked.
+   */
+  async linkedContactsEmptyLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'linked-contacts-empty' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'empty state message when no contacts are linked to account' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the attachments section container.
+   * Returns null if not present.
+   */
+  async attachmentsSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-section' },
+          { type: 'role', value: 'region', options: { name: /attachment/i } },
+        ],
+        { intent: 'attachments section container on account detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the attachments file input.
+   */
+  async attachmentsFileInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-file-input' },
+          { type: 'css', value: 'input[type="file"]' },
+        ],
+        { intent: 'file input for uploading attachments on account detail page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the attachments list container.
+   * Returns null if not present.
+   */
+  async attachmentsListLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'attachments-list' },
+          { type: 'role', value: 'list' },
+        ],
+        { intent: 'list of uploaded attachments on account detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {
