@@ -486,8 +486,9 @@ export async function searchContacts(
   const contactsPage = new ContactsPage(context);
   await contactsPage.navigate();
 
-  // search() fills the input and calls waitForLoadState('networkidle'), which
-  // covers the debounce + network round-trip before the caller reads rowCount.
+  // fillSearch fills the input; search() also calls waitForLoadState('networkidle')
+  // which covers the debounce + network round-trip. Use search() for the full
+  // settled wait rather than fillSearch() alone.
   await contactsPage.search(searchTerm);
 
   const rowCount = await contactsPage.rowCount();
