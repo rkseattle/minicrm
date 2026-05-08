@@ -199,13 +199,9 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
 
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
-  const isMobile = page.viewportSize() !== null && (page.viewportSize()?.width ?? 1280) < 768;
-  const prefix = isMobile ? 'mobile-' : '';
   // Select a terminal stage to open CloseDealModal — audit while modal is open.
-  await page.selectOption('Closed Won', [
-    { type: 'testId', value: `${prefix}deal-card-stage-select-${deal.id}` },
-    { type: 'css', value: `[data-testid="${prefix}deal-card-stage-select-${deal.id}"]` },
-  ]);
+  const stageSelect = await boardPage.dealStageSelectLocator(deal.id);
+  await stageSelect.selectOption('Closed Won');
 
   // Wait for the modal to become visible before auditing.
   const modalLocator = await boardPage.closeDealModalLocator();

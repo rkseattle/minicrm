@@ -650,6 +650,20 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Clicks the New Deal button to open the deal creation form.
+   * Desktop-only — the button is not rendered on mobile viewports.
+   */
+  async clickNewDeal(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'new-deal-button' },
+        { type: 'role', value: 'button', options: { name: /new deal/i } },
+      ],
+      { intent: 'button that opens the new deal creation form' },
+    );
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

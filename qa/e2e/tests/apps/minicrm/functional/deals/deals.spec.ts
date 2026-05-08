@@ -77,13 +77,7 @@ test(
     await boardPage.navigate();
 
     // Open the new deal form using the board's new-deal button
-    await page.click(
-      [
-        { type: 'testId', value: 'new-deal-button' },
-        { type: 'role', value: 'button', options: { name: /new deal/i } },
-      ],
-      { intent: 'button that opens the new deal creation form' },
-    );
+    await boardPage.clickNewDeal();
 
     // Fill in the deal form via DealDetailPage locators
     const dealFormPage = new DealDetailPage({ page });
