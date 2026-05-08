@@ -55,6 +55,7 @@ import {
   closeMobileNavViaToggle,
   navigateViaMobileNavLink,
 } from '@behaviors/minicrm/nav.behaviors.js';
+import { NavPage } from '@pages/minicrm/NavPage.js';
 import {
   createTestContact,
   createTestDeal,
@@ -203,12 +204,8 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Contacts and verify the Contacts link carries the active class.
         await navigateViaNavLink('top', 'contacts', { page });
 
-        const contactsLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-top-contacts' },
-            { type: 'css', value: '[data-testid="nav-top-contacts"]' },
-          ])
-          .resolve();
+        const navPage = new NavPage({ page });
+        const contactsLink = await navPage.navLinkLocator('top', 'contacts');
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -217,12 +214,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const dealsLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-top-deals' },
-            { type: 'css', value: '[data-testid="nav-top-deals"]' },
-          ])
-          .resolve();
+        const dealsLink = await navPage.navLinkLocator('top', 'deals');
         await expect(
           dealsLink,
           'inactive nav-top-deals should not carry the active indigo class',
@@ -282,12 +274,8 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Accounts and verify the Accounts link carries the active class.
         await navigateViaNavLink('left', 'accounts', { page });
 
-        const accountsLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-left-accounts' },
-            { type: 'css', value: '[data-testid="nav-left-accounts"]' },
-          ])
-          .resolve();
+        const navPage = new NavPage({ page });
+        const accountsLink = await navPage.navLinkLocator('left', 'accounts');
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -296,12 +284,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const tasksLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-left-tasks' },
-            { type: 'css', value: '[data-testid="nav-left-tasks"]' },
-          ])
-          .resolve();
+        const tasksLink = await navPage.navLinkLocator('left', 'tasks');
         await expect(
           tasksLink,
           'inactive nav-left-tasks should not carry the active indigo class',
@@ -386,12 +369,8 @@ test.describe.serial('Layout-mutating tests', () => {
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
-        const dealsLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-deals' },
-            { type: 'css', value: '[data-testid="nav-hamburger-deals"]' },
-          ])
-          .resolve();
+        const navPage = new NavPage({ page });
+        const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
 
         // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
         // toHaveClass retries until the assertion passes (up to default timeout), avoiding the
@@ -402,12 +381,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-indigo-700/);
 
         // A non-active link should not carry the active class.
-        const contactsLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-contacts' },
-            { type: 'css', value: '[data-testid="nav-hamburger-contacts"]' },
-          ])
-          .resolve();
+        const contactsLink = await navPage.navLinkLocator('hamburger', 'contacts');
         await expect(
           contactsLink,
           'inactive nav-hamburger-contacts should not carry the active indigo class',
@@ -432,12 +406,7 @@ test.describe.serial('Layout-mutating tests', () => {
       await navigateToDashboard(page);
 
       try {
-        const divider = await page
-          .locate([
-            { type: 'testId', value: 'nav-left-admin-section-divider' },
-            { type: 'css', value: '[data-testid="nav-left-admin-section-divider"]' },
-          ])
-          .resolve();
+        const divider = await new NavPage({ page }).adminSectionDividerLocator('left');
         await expect(
           divider,
           'Administration divider should be visible in left nav for admin',
@@ -458,12 +427,7 @@ test.describe.serial('Layout-mutating tests', () => {
       await navigateToDashboard(page);
 
       try {
-        const divider = await page
-          .locate([
-            { type: 'testId', value: 'nav-top-admin-section-divider' },
-            { type: 'css', value: '[data-testid="nav-top-admin-section-divider"]' },
-          ])
-          .resolve();
+        const divider = await new NavPage({ page }).adminSectionDividerLocator('top');
         await expect(
           divider,
           'Administration divider should be visible in top nav for admin',
@@ -486,12 +450,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const divider = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-admin-section-divider' },
-            { type: 'css', value: '[data-testid="nav-hamburger-admin-section-divider"]' },
-          ])
-          .resolve();
+        const divider = await new NavPage({ page }).adminSectionDividerLocator('hamburger');
         await expect(
           divider,
           'Administration divider should be visible in hamburger drawer for admin',
@@ -514,12 +473,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const result = await openMobileNav({ page });
       expect(result.drawerVisible, 'mobile nav drawer should open').toBe(true);
 
-      const divider = await page
-        .locate([
-          { type: 'testId', value: 'nav-top-admin-section-divider-mobile' },
-          { type: 'css', value: '[data-testid="nav-top-admin-section-divider-mobile"]' },
-        ])
-        .resolve();
+      const divider = await new NavPage({ page }).adminSectionDividerLocator('top-mobile');
       await expect(
         divider,
         'Administration divider should be visible in mobile drawer for admin',
@@ -554,12 +508,8 @@ test.describe.serial('Layout-mutating tests', () => {
         await setNavLayoutViaUI('left', { page });
 
         // The sidebar nav links should now be visible without a page reload.
-        const leftNavLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-left-contacts' },
-            { type: 'css', value: '[data-testid="nav-left-contacts"]' },
-          ])
-          .resolve();
+        const navPage = new NavPage({ page });
+        const leftNavLink = await navPage.navLinkLocator('left', 'contacts');
         await expect(leftNavLink).toBeVisible();
 
         // Top nav links should no longer be present.
@@ -572,12 +522,7 @@ test.describe.serial('Layout-mutating tests', () => {
         await setNavLayoutViaUI('hamburger', { page });
 
         // Hamburger toggle should now be visible; top and left nav links should not.
-        const hamburgerToggle = await page
-          .locate([
-            { type: 'testId', value: 'nav-menu-toggle' },
-            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
-          ])
-          .resolve();
+        const hamburgerToggle = await navPage.menuToggleLocator();
         await expect(hamburgerToggle).toBeVisible();
         expect(
           await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
@@ -604,12 +549,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Verify the left sidebar is active.
-        const leftNavLink = await page
-          .locate([
-            { type: 'testId', value: 'nav-left-contacts' },
-            { type: 'css', value: '[data-testid="nav-left-contacts"]' },
-          ])
-          .resolve();
+        const leftNavLink = await new NavPage({ page }).navLinkLocator('left', 'contacts');
         await expect(leftNavLink).toBeVisible();
 
         // Full page reload.
@@ -635,12 +575,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Hamburger toggle must be visible.
-        const hamburgerToggle = await page
-          .locate([
-            { type: 'testId', value: 'nav-menu-toggle' },
-            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
-          ])
-          .resolve();
+        const hamburgerToggle = await new NavPage({ page }).menuToggleLocator();
         await expect(hamburgerToggle).toBeVisible();
 
         // Full page reload.
@@ -686,12 +621,9 @@ test.describe.serial('Layout-mutating tests', () => {
         expect(result.drawerVisible, 'hamburger drawer should be visible after toggle tap').toBe(
           true,
         );
-        const drawer = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-drawer' },
-            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-          ])
-          .resolve();
+        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
+          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
+        >;
         await expect(drawer).toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM1');
@@ -711,12 +643,9 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-drawer' },
-            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-          ])
-          .resolve();
+        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
+          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
+        >;
         await expect(drawer).toBeVisible();
 
         const result = await closeHamburgerMenuViaBackdrop({ page });
@@ -741,12 +670,9 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-drawer' },
-            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-          ])
-          .resolve();
+        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
+          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
+        >;
         await expect(drawer).toBeVisible();
 
         // Click a link — the NavLink onClick calls closeMenu().
@@ -773,13 +699,9 @@ test.describe.serial('Layout-mutating tests', () => {
         // Open the hamburger menu and verify all admin destinations are visible.
         await openHamburgerMenu({ page });
 
+        const navPage = new NavPage({ page });
         for (const destination of Object.keys(ALL_ADMIN_DESTINATIONS)) {
-          const link = await page
-            .locate([
-              { type: 'testId', value: `nav-hamburger-${destination}` },
-              { type: 'css', value: `[data-testid="nav-hamburger-${destination}"]` },
-            ])
-            .resolve();
+          const link = await navPage.navLinkLocator('hamburger', destination);
           await expect(
             link,
             `nav-hamburger-${destination} should be visible inside the open menu`,
@@ -805,23 +727,15 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
-        const toggle = await page
-          .locate([
-            { type: 'testId', value: 'nav-menu-toggle' },
-            { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
-          ])
-          .resolve();
-        await toggle.focus();
+        const navPage = new NavPage({ page });
+        const toggle = await navPage.menuToggleLocator();
+        await toggle!.focus();
         await page.keyboard.press('Enter');
 
         // Drawer should open.
-        const drawer = await page
-          .locate([
-            { type: 'testId', value: 'nav-hamburger-drawer' },
-            { type: 'css', value: '[data-testid="nav-hamburger-drawer"]' },
-          ])
-          .resolve();
-        await expect(drawer).toBeVisible();
+        const drawer = await navPage.hamburgerDrawerLocator();
+        // hamburgerDrawerLocator returns null when absent; here it just opened so it must exist
+        await expect(drawer!).toBeVisible();
 
         // Focus should move into the drawer on open (NavHamburger.tsx focuses first link).
         // Tab once to reach the first nav link (past the close button), then Enter.
@@ -830,7 +744,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // After pressing Enter on a nav link the menu closes and navigation occurs.
         await page.waitForLoadState('networkidle').catch(() => null);
-        await expect(drawer).not.toBeVisible();
+        await expect(drawer!).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM5');
       }
@@ -863,14 +777,9 @@ test.describe('Mobile nav mechanics', () => {
     const result = await openMobileNav({ page });
 
     expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
-    await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'mobile-nav-drawer' },
-          { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-        ])
-        .resolve(),
-    ).toBeVisible();
+    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
+    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
+    await expect(drawer!).toBeVisible();
   });
 
   test('@functional F8-MN3: mobile nav drawer closes on toggle tap when open', async ({ page }) => {
@@ -881,18 +790,14 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page
-      .locate([
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ])
-      .resolve();
-    await expect(drawer).toBeVisible();
+    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
+    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
+    await expect(drawer!).toBeVisible();
 
     const result = await closeMobileNavViaToggle({ page });
 
     expect(result.drawerClosed, 'mobile nav drawer should close on toggle tap').toBe(true);
-    await expect(drawer).not.toBeVisible();
+    await expect(drawer!).not.toBeVisible();
   });
 
   test('@functional F8-MN4: mobile nav drawer closes on navigation', async ({ page }) => {
@@ -903,18 +808,14 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page
-      .locate([
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ])
-      .resolve();
-    await expect(drawer).toBeVisible();
+    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
+    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
+    await expect(drawer!).toBeVisible();
 
     await navigateViaMobileNavLink('contacts', { page });
 
     // NavTop's NavLink onClick calls closeMobileMenu() — drawer should be gone.
-    await expect(drawer).not.toBeVisible();
+    await expect(drawer!).not.toBeVisible();
   });
 
   test('@functional F8-MN5: mobile nav drawer — all rep destinations accessible', async ({
@@ -927,21 +828,13 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page
-      .locate([
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ])
-      .resolve();
-    await expect(drawer).toBeVisible();
+    const navPage = new NavPage({ page });
+    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
+    const drawer = await navPage.mobileNavDrawerLocator();
+    await expect(drawer!).toBeVisible();
 
     for (const destination of Object.keys(REP_DESTINATIONS)) {
-      const link = await page
-        .locate([
-          { type: 'testId', value: `nav-top-${destination}-mobile` },
-          { type: 'css', value: `[data-testid="nav-top-${destination}-mobile"]` },
-        ])
-        .resolve();
+      const link = await navPage.mobileNavLinkLocator(destination);
       await expect(
         link,
         `nav-top-${destination}-mobile should be visible in the open mobile drawer`,
@@ -961,30 +854,17 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await page
-      .locate([
-        { type: 'testId', value: 'mobile-nav-drawer' },
-        { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-      ])
-      .resolve();
-    await expect(drawer).toBeVisible();
+    const navPage = new NavPage({ page });
+    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
+    const drawer = await navPage.mobileNavDrawerLocator();
+    await expect(drawer!).toBeVisible();
 
     await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'nav-logout-mobile' },
-          { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
-        ])
-        .resolve(),
+      await navPage.mobileLogoutButtonLocator(),
       'logout button should be present in mobile nav drawer',
     ).toBeVisible();
     await expect(
-      await page
-        .locate([
-          { type: 'testId', value: 'nav-language-select-mobile' },
-          { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
-        ])
-        .resolve(),
+      await navPage.mobileLanguageSelectLocator(),
       'language selector should be present in mobile nav drawer',
     ).toBeVisible();
 
@@ -1011,11 +891,15 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   await navigateToContact(page, contact.id);
 
   // The contact name heading is rendered once data loads.
+
   const nameHeading = await page
-    .locate([
-      { type: 'testId', value: 'contact-name' },
-      { type: 'css', value: '[data-testid="contact-name"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'contact-name' },
+        { type: 'css', value: '[data-testid="contact-name"]' },
+      ],
+      { intent: 'contact name heading on the contact detail page' },
+    )
     .resolve();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(contact.first_name);
@@ -1045,11 +929,15 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   await navigateToDeal(page, deal.id);
 
   // The deal name heading is rendered once data loads.
+
   const nameHeading = await page
-    .locate([
-      { type: 'testId', value: 'deal-name' },
-      { type: 'css', value: '[data-testid="deal-name"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'deal-name' },
+        { type: 'css', value: '[data-testid="deal-name"]' },
+      ],
+      { intent: 'deal name heading on the deal detail page' },
+    )
     .resolve();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(deal.name);
@@ -1071,13 +959,14 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await page.waitForLoadState('networkidle');
 
   // The page must not be blank or show an unhandled 500.
+
   const alert = await page
     .locate(
       [
         { type: 'role', value: 'alert' },
         { type: 'css', value: '[role="alert"]' },
       ],
-      { fallbackTimeout: 10_000 },
+      { fallbackTimeout: 10_000, intent: 'not-found alert on the contact deep-link page' },
     )
     .resolve();
   await expect(alert).toBeVisible({ timeout: 15_000 });

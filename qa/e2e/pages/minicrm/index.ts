@@ -76,3 +76,6 @@ export type { DealDetailPageContext } from './DealDetailPage.js';
 
 export { ReportsPage } from './ReportsPage.js';
 export type { ReportsPageContext } from './ReportsPage.js';
+
+export { AutomationPage } from './AutomationPage.js';
+export type { AutomationPageContext } from './AutomationPage.js';

@@ -201,7 +201,7 @@ export class NavPage {
 
   /**
    * Returns a resolved locator for a nav link by layout and destination.
-   * Returns null if the link is not found.
+   * Throws StrategyExhaustedError if the link is not found.
    */
   async navLinkLocator(layout: string, destination: string) {
     const testId = `nav-${layout}-${destination}`;
@@ -213,13 +213,50 @@ export class NavPage {
         ],
         { intent: `${layout} nav link for ${destination}` },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the hamburger menu toggle button.
+   * Throws StrategyExhaustedError if the toggle is not in the DOM.
+   */
+  async menuToggleLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nav-menu-toggle' },
+          { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+        ],
+        { intent: 'hamburger or mobile menu toggle button in navigation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the admin section divider in a given layout.
+   * Throws StrategyExhaustedError if the divider is not in the DOM.
+   *
+   * @param layout - 'left', 'top', 'hamburger', or 'top-mobile'.
+   */
+  async adminSectionDividerLocator(layout: 'left' | 'top' | 'hamburger' | 'top-mobile') {
+    const testId =
+      layout === 'top-mobile'
+        ? 'nav-top-admin-section-divider-mobile'
+        : `nav-${layout}-admin-section-divider`;
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: testId },
+          { type: 'css', value: `[data-testid="${testId}"]` },
+        ],
+        { intent: `administration section divider in the ${layout} nav layout` },
+      )
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for a mobile nav link (nav-top-{destination}-mobile).
-   * Returns null if the link is not found.
+   * Throws StrategyExhaustedError if the link is not found.
    */
   async mobileNavLinkLocator(destination: string) {
     const testId = `nav-top-${destination}-mobile`;
@@ -231,8 +268,7 @@ export class NavPage {
         ],
         { intent: `mobile nav link for ${destination}` },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
