@@ -126,6 +126,7 @@ export default function DealForm({
   const { data: defaultCurrencyData } = useQuery({
     queryKey: DEFAULT_CURRENCY_QUERY_KEY,
     queryFn: getDefaultCurrency,
+    // Override global staleTime: 0 — currency default is stable during form completion. (MINCRM-348)
     staleTime: 5 * 60 * 1000,
   });
   const defaultCurrency = defaultCurrencyData?.currency ?? 'USD';

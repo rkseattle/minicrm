@@ -63,6 +63,7 @@ export default function TagInput({
   const { data: restrictData } = useQuery({
     queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,
     queryFn: getTagsRestrictCreation,
+    // Override global staleTime: 0 — restriction setting is stable while a form is being completed. (MINCRM-348)
     staleTime: 60_000,
   });
 
@@ -75,6 +76,7 @@ export default function TagInput({
       const { listAllTags } = await import('@/api/tags.js');
       return listAllTags();
     },
+    // Override global staleTime: 0 — tag suggestions are stable while a form is being completed. (MINCRM-348)
     staleTime: 60_000,
   });
 

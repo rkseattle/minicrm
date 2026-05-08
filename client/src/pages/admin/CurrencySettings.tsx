@@ -44,7 +44,6 @@ export default function CurrencySettings() {
   } = useQuery({
     queryKey: DEFAULT_CURRENCY_QUERY_KEY,
     queryFn: getDefaultCurrency,
-    staleTime: 5 * 60 * 1000,
   });
 
   const [pendingCurrency, setPendingCurrency] = useState<SupportedCurrency | null>(null);

@@ -119,7 +119,6 @@ export default function AuditLogPage() {
   const { data: actorsData } = useQuery({
     queryKey: AUDIT_LOG_ACTORS_QUERY_KEY,
     queryFn: listAuditLogActors,
-    staleTime: 5 * 60 * 1000,
   });
 
   const actors = actorsData?.actors ?? [];

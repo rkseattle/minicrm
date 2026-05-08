@@ -62,7 +62,6 @@ export default function LeadDetailPage() {
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
-    staleTime: 5 * 60 * 1000,
   });
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 

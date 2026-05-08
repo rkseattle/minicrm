@@ -53,7 +53,8 @@ export function usePipelineStages(): UsePipelineStagesResult {
   const { data, isLoading, isError } = useQuery({
     queryKey: PIPELINE_STAGES_QUERY_KEY,
     queryFn: listPipelineStages,
-    staleTime: 5 * 60 * 1000, // Pipeline stages rarely change; cache for 5 min
+    // Override global staleTime: 0 — pipeline stage definitions change rarely (admin-only). (MINCRM-348)
+    staleTime: 5 * 60 * 1000,
   });
 
   const stages = data?.stages ?? SEED_STAGES;

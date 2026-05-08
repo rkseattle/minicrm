@@ -56,7 +56,9 @@ export default function DataSettings() {
   const seedMutation = useMutation({
     mutationFn: seedDemoData,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: DEMO_STATUS_QUERY_KEY });
+      // Seeding creates contacts, accounts, deals, leads, activities, and a rep user.
+      // Invalidate the entire cache so every list page reflects the new data. (MINCRM-347)
+      void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.seedSuccess' });
     },
     onError: () => {
@@ -67,7 +69,8 @@ export default function DataSettings() {
   const resetMutation = useMutation({
     mutationFn: resetDemoData,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: DEMO_STATUS_QUERY_KEY });
+      // Reset replaces all demo data across every entity type — invalidate the full cache. (MINCRM-347)
+      void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.resetSuccess' });
     },
     onError: () => {
@@ -78,7 +81,8 @@ export default function DataSettings() {
   const removeMutation = useMutation({
     mutationFn: removeDemoData,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: DEMO_STATUS_QUERY_KEY });
+      // Removing deletes demo records across every entity type — invalidate the full cache. (MINCRM-347)
+      void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.removeSuccess' });
     },
     onError: () => {

@@ -14,7 +14,8 @@
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
@@ -233,6 +234,67 @@ describe('DataSettings — demo data', () => {
       const feedback = screen.getByTestId('demo-feedback');
       expect(feedback).toBeInTheDocument();
       expect(feedback).toHaveAttribute('role', 'alert');
+    });
+  });
+
+  it('invalidates the entire query cache after seed succeeds (MINCRM-347)', async () => {
+    server.use(http.post('/api/v1/admin/demo/seed', () => HttpResponse.json({ success: true })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderWithProviders(<DataSettings />, { queryClient });
+
+    await waitFor(() => expect(screen.getByTestId('demo-seed-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('demo-seed-button'));
+    fireEvent.click(screen.getByTestId('demo-confirm-ok'));
+
+    await waitFor(() => {
+      // Called with no filter — full-cache invalidation
+      expect(invalidateSpy).toHaveBeenCalledWith();
+    });
+  });
+
+  it('invalidates the entire query cache after reset succeeds (MINCRM-347)', async () => {
+    server.use(http.post('/api/v1/admin/demo/reset', () => HttpResponse.json({ success: true })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderWithProviders(<DataSettings />, { queryClient });
+
+    await waitFor(() => expect(screen.getByTestId('demo-reset-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('demo-reset-button'));
+    fireEvent.click(screen.getByTestId('demo-confirm-ok'));
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith();
+    });
+  });
+
+  it('invalidates the entire query cache after remove succeeds (MINCRM-347)', async () => {
+    server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
+    server.use(http.delete('/api/v1/admin/demo', () => HttpResponse.json({ success: true })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderWithProviders(<DataSettings />, { queryClient });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByTestId('demo-remove-button'));
+    fireEvent.click(screen.getByTestId('demo-confirm-ok'));
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith();
     });
   });
 });
