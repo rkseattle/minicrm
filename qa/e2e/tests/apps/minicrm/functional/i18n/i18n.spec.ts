@@ -35,6 +35,7 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { openMobileNav, closeMobileNavViaToggle } from '@behaviors/minicrm/nav.behaviors.js';
 import { createTestUser, navigateToDashboard } from '@apps/minicrm/helpers.js';
+import { NavPage } from '@pages/minicrm/NavPage.js';
 import { setLocale, t } from '@framework/i18n/locale.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -114,18 +115,14 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       }
 
       // The Contacts nav link must read "Contactos" in Spanish.
-      // Use the correct testid variant for the active viewport.
       const contactsLabel = t('nav.contacts');
-      const contactsLinkTestId = isMobile ? 'nav-top-contacts-mobile' : 'nav-top-contacts';
-      const contactsLink = await page
-        .locate([
-          { type: 'testId', value: contactsLinkTestId },
-          { type: 'css', value: `[data-testid="${contactsLinkTestId}"]` },
-        ])
-        .resolve();
+      const navPage = new NavPage({ page });
+      const contactsLink = isMobile
+        ? await navPage.mobileNavLinkLocator('contacts')
+        : await navPage.navLinkLocator('top', 'contacts');
       await expect(
         contactsLink,
-        `nav "contacts" link (${contactsLinkTestId}) should show "${contactsLabel}" in Spanish`,
+        `nav "contacts" link should show "${contactsLabel}" in Spanish`,
       ).toHaveText(contactsLabel);
 
       if (isMobile) {
@@ -180,20 +177,17 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       // "Opportunités" differs from English "Deals" — high-confidence French assertion.
       const dealsLabel = t('nav.deals'); // "Opportunités" in French
-      const dealsLinkTestId = isMobile ? 'nav-top-deals-mobile' : 'nav-top-deals';
+      const navPage = new NavPage({ page });
 
       // Helper: open mobile nav if needed, assert the label text, then close.
       const assertFrenchNavLabel = async (contextMsg: string) => {
         if (isMobile) await openMobileNav({ page });
-        const dealsLink = await page
-          .locate([
-            { type: 'testId', value: dealsLinkTestId },
-            { type: 'css', value: `[data-testid="${dealsLinkTestId}"]` },
-          ])
-          .resolve();
+        const dealsLink = isMobile
+          ? await navPage.mobileNavLinkLocator('deals')
+          : await navPage.navLinkLocator('top', 'deals');
         await expect(
           dealsLink,
-          `nav "deals" link (${dealsLinkTestId}) should show "${dealsLabel}" in French ${contextMsg}`,
+          `nav "deals" link should show "${dealsLabel}" in French ${contextMsg}`,
         ).toHaveText(dealsLabel);
         if (isMobile) await closeMobileNavViaToggle({ page });
       };
@@ -263,20 +257,16 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
       // The Contacts nav link must read "Kontakte" in German.
       const germanContactsLabel = t('nav.contacts'); // "Kontakte"
-      const contactsTestIdL3 = isMobileL3 ? 'nav-top-contacts-mobile' : 'nav-top-contacts';
-      const contactsLinkL3 = await page
-        .locate([
-          { type: 'testId', value: contactsTestIdL3 },
-          { type: 'css', value: `[data-testid="${contactsTestIdL3}"]` },
-        ])
-        .resolve();
+      const navPageL3 = new NavPage({ page });
+      const contactsLinkL3 = isMobileL3
+        ? await navPageL3.mobileNavLinkLocator('contacts')
+        : await navPageL3.navLinkLocator('top', 'contacts');
       await expect(
         contactsLinkL3,
-        `nav "contacts" link (${contactsTestIdL3}) should show "${germanContactsLabel}" in German`,
+        `nav "contacts" link should show "${germanContactsLabel}" in German`,
       ).toHaveText(germanContactsLabel);
 
       // The English equivalent text must not appear anywhere that's visible.
-      // Since the drawer is open on mobile, this checks the visible nav links only.
       setLocale('en');
       const englishContactsLabel = t('nav.contacts'); // "Contacts"
 
@@ -319,44 +309,32 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     try {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
+      const navPageL4 = new NavPage({ page });
+
       if (isMobile) {
         // On mobile the language selector is inside the mobile nav drawer.
         await openMobileNav({ page });
-        const langSelect = await page
-          .locate([
-            { type: 'testId', value: 'nav-language-select-mobile' },
-            { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
-          ])
-          .resolve();
+        const langSelect = await navPageL4.mobileLanguageSelectLocator();
         await langSelect.selectOption('es');
         await closeMobileNavViaToggle({ page });
       } else {
         // On desktop the language selector is in the nav header.
-        const langSelect = await page
-          .locate([
-            { type: 'testId', value: 'nav-language-select' },
-            { type: 'css', value: '[data-testid="nav-language-select"]' },
-          ])
-          .resolve();
+        const langSelect = await navPageL4.desktopLanguageSelectLocator();
         await langSelect.selectOption('es');
       }
 
       // Language change should take effect without a page reload.
       setLocale('es');
       const spanishContactsLabel = t('nav.contacts'); // "Contactos"
-      const contactsTestIdL4 = isMobile ? 'nav-top-contacts-mobile' : 'nav-top-contacts';
 
       // On mobile, open the drawer to expose the nav links before asserting.
       if (isMobile) await openMobileNav({ page });
-      const contactsLinkL4a = await page
-        .locate([
-          { type: 'testId', value: contactsTestIdL4 },
-          { type: 'css', value: `[data-testid="${contactsTestIdL4}"]` },
-        ])
-        .resolve();
+      const contactsLinkAfterChange = isMobile
+        ? await navPageL4.mobileNavLinkLocator('contacts')
+        : await navPageL4.navLinkLocator('top', 'contacts');
       await expect(
-        contactsLinkL4a,
-        `nav "contacts" link (${contactsTestIdL4}) should switch to "${spanishContactsLabel}" in Spanish immediately`,
+        contactsLinkAfterChange,
+        `nav "contacts" link should switch to "${spanishContactsLabel}" in Spanish immediately`,
       ).toHaveText(spanishContactsLabel);
       if (isMobile) await closeMobileNavViaToggle({ page });
 
@@ -364,15 +342,12 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await page.reload({ waitUntil: 'networkidle' });
 
       if (isMobile) await openMobileNav({ page });
-      const contactsLinkL4b = await page
-        .locate([
-          { type: 'testId', value: contactsTestIdL4 },
-          { type: 'css', value: `[data-testid="${contactsTestIdL4}"]` },
-        ])
-        .resolve();
+      const contactsLinkAfterReload = isMobile
+        ? await navPageL4.mobileNavLinkLocator('contacts')
+        : await navPageL4.navLinkLocator('top', 'contacts');
       await expect(
-        contactsLinkL4b,
-        `nav "contacts" link (${contactsTestIdL4}) should remain "${spanishContactsLabel}" in Spanish after reload`,
+        contactsLinkAfterReload,
+        `nav "contacts" link should remain "${spanishContactsLabel}" in Spanish after reload`,
       ).toHaveText(spanishContactsLabel);
       if (isMobile) await closeMobileNavViaToggle({ page });
     } finally {
@@ -401,21 +376,16 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       // Open the mobile nav drawer.
       await openMobileNav({ page });
 
-      const drawer = await page
-        .locate([
-          { type: 'testId', value: 'mobile-nav-drawer' },
-          { type: 'css', value: '[data-testid="mobile-nav-drawer"]' },
-        ])
-        .resolve();
-      await expect(drawer).toBeVisible();
+      const navPageL5 = new NavPage({ page });
+
+      const drawerOrNull = await navPageL5.mobileNavDrawerLocator();
+      // mobileNavDrawerLocator returns null when not in the DOM; it must be present here
+      // since we just called openMobileNav — a null result means the drawer failed to open.
+      if (!drawerOrNull) throw new Error('[F9-L5] mobile nav drawer not found after openMobileNav');
+      await expect(drawerOrNull).toBeVisible();
 
       // The language selector must be present in the drawer.
-      const langSelect = await page
-        .locate([
-          { type: 'testId', value: 'nav-language-select-mobile' },
-          { type: 'css', value: '[data-testid="nav-language-select-mobile"]' },
-        ])
-        .resolve();
+      const langSelect = await navPageL5.mobileLanguageSelectLocator();
       await expect(
         langSelect,
         'language selector must be present in mobile nav drawer',
@@ -432,12 +402,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await openMobileNav({ page });
 
       const frenchDashboardLabel = t('nav.dashboard'); // "Tableau de bord"
-      const dashboardLinkL5 = await page
-        .locate([
-          { type: 'testId', value: 'nav-top-dashboard-mobile' },
-          { type: 'css', value: '[data-testid="nav-top-dashboard-mobile"]' },
-        ])
-        .resolve();
+      const dashboardLinkL5 = await navPageL5.mobileNavLinkLocator('dashboard');
       await expect(
         dashboardLinkL5,
         `nav "dashboard" mobile link should read "${frenchDashboardLabel}" in French`,

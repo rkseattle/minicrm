@@ -600,6 +600,113 @@ export class ContactsPage {
   }
 
   /**
+   * Returns a resolved locator for the contacts list loading indicator.
+   * The indicator is an aria-busy paragraph shown while the list request is in-flight.
+   */
+  async loadingIndicatorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'css', value: '[aria-busy="true"]' },
+          { type: 'css', value: 'p[aria-busy]' },
+        ],
+        { intent: 'loading indicator visible while the contacts list request is in-flight' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the contact creation form container.
+   */
+  async createFormLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-form' },
+          { type: 'role', value: 'form' },
+        ],
+        { intent: 'contact creation form that should remain open after a server error' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the first name input on the create form.
+   */
+  async firstNameInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-first-name' },
+          { type: 'label', value: 'First name', options: { exact: false } },
+        ],
+        { intent: 'first name input on the contact creation form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the bulk operation error message.
+   */
+  async bulkErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'bulk-error-message' },
+          { type: 'role', value: 'alert' },
+        ],
+        { intent: 'error message shown after a failed bulk operation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for a contact row link by ID.
+   * Checks both the desktop (`contact-link-{id}`) and mobile (`contact-card-link-{id}`) variants.
+   */
+  async contactLinkLocator(contactId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `contact-link-${contactId}` },
+          { type: 'testId', value: `contact-card-link-${contactId}` },
+        ],
+        { intent: 'contact row link confirming the contact is visible in the list' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the confirm-delete modal.
+   */
+  async confirmDeleteModalLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'confirm-delete-modal' },
+          { type: 'role', value: 'dialog', options: { name: /delete/i } },
+        ],
+        { intent: 'confirm delete modal dialog' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the bulk reassign modal.
+   */
+  async bulkReassignModalLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'bulk-reassign-modal' },
+          { type: 'role', value: 'dialog', options: { name: /reassign/i } },
+        ],
+        { intent: 'bulk reassign modal dialog' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

@@ -129,17 +129,8 @@ test(
       // Register for teardown (deal was created via UI, not via helper)
       testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
-      // Assert the deal card appears on the board in the Prospecting column
-      // Dynamic deal ID encoded in CSS selector — valid second strategy for healing
-      const dealCard = await page
-        .locate(
-          [
-            { type: 'testId', value: `deal-card-${createdDeal.id}` },
-            { type: 'css', value: `[data-testid="deal-card-${createdDeal.id}"]` },
-          ],
-          { intent: `deal card for the newly created deal ${createdDeal.id}` },
-        )
-        .resolve();
+      // Assert the deal card appears on the board in the Prospecting column.
+      const dealCard = await new PipelineBoardPage({ page }).dealCardLocator(createdDeal.id);
       await expect(dealCard).toBeVisible({ timeout: 10_000 });
 
       // Verify via API

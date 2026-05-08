@@ -56,6 +56,8 @@ import {
   navigateViaMobileNavLink,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
+import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
+import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 import {
   createTestContact,
   createTestDeal,
@@ -891,16 +893,7 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   await navigateToContact(page, contact.id);
 
   // The contact name heading is rendered once data loads.
-
-  const nameHeading = await page
-    .locate(
-      [
-        { type: 'testId', value: 'contact-name' },
-        { type: 'css', value: '[data-testid="contact-name"]' },
-      ],
-      { intent: 'contact name heading on the contact detail page' },
-    )
-    .resolve();
+  const nameHeading = await new ContactDetailPage({ page }).contactNameLocator();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(contact.first_name);
   await expect(nameHeading).toContainText(contact.last_name);
@@ -929,16 +922,7 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   await navigateToDeal(page, deal.id);
 
   // The deal name heading is rendered once data loads.
-
-  const nameHeading = await page
-    .locate(
-      [
-        { type: 'testId', value: 'deal-name' },
-        { type: 'css', value: '[data-testid="deal-name"]' },
-      ],
-      { intent: 'deal name heading on the deal detail page' },
-    )
-    .resolve();
+  const nameHeading = await new DealDetailPage({ page }).dealNameLocator();
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(deal.name);
 
@@ -959,16 +943,7 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await page.waitForLoadState('networkidle');
 
   // The page must not be blank or show an unhandled 500.
-
-  const alert = await page
-    .locate(
-      [
-        { type: 'role', value: 'alert' },
-        { type: 'css', value: '[role="alert"]' },
-      ],
-      { fallbackTimeout: 10_000, intent: 'not-found alert on the contact deep-link page' },
-    )
-    .resolve();
+  const alert = await new ContactDetailPage({ page }).notFoundAlertLocator();
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });
 

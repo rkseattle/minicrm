@@ -139,17 +139,8 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   // Click Edit
   await contactDetailPage.clickEdit();
 
-  // Wait for custom fields section to appear in edit mode
-
-  const editGrid = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-fields-edit-grid' },
-        { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
-      ],
-      { intent: 'custom fields edit grid container in contact edit form' },
-    )
-    .resolve();
+  // Wait for custom fields section to appear in edit mode.
+  const editGrid = await contactDetailPage.customFieldsEditGridLocator();
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value
@@ -171,17 +162,9 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   // Reload the page
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
-  // Custom fields read section should show the saved value
-
-  const readGrid = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-fields-read-grid' },
-        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
-      ],
-      { intent: 'custom fields read grid container on contact detail page' },
-    )
-    .resolve();
+  // Custom fields read section should show the saved value.
+  const readGrid = await contactDetailPage.customFieldsReadGridLocator();
+  if (!readGrid) throw new Error('custom-fields-read-grid not found after save');
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
   // Confirm the value persisted
@@ -223,20 +206,13 @@ test('admin deletes a custom field definition; it disappears from the contact de
     { definition_id: definitionId, value: 'Temp Value' },
   ]);
 
-  // Confirm the field appears on the detail page before deletion
+  // Confirm the field appears on the detail page before deletion.
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
-
-  const readGrid = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-fields-read-grid' },
-        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
-      ],
-      { intent: 'custom fields read grid container on contact detail page' },
-    )
-    .resolve();
-  await expect(readGrid).toBeVisible({ timeout: 5_000 });
-  await expect(readGrid).toContainText('Temp Value');
+  const contactDetailPageForDelete = new ContactDetailPage({ page });
+  const readGridBefore = await contactDetailPageForDelete.customFieldsReadGridLocator();
+  if (!readGridBefore) throw new Error('custom-fields-read-grid not found before deletion');
+  await expect(readGridBefore).toBeVisible({ timeout: 5_000 });
+  await expect(readGridBefore).toContainText('Temp Value');
 
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
@@ -256,17 +232,8 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
   await deleteBtn.click();
 
-  // Confirm the deletion dialog
-
-  const confirmDeleteBtn = await page
-    .locate(
-      [
-        { type: 'testId', value: 'delete-field-confirm' },
-        { type: 'css', value: '[data-testid="delete-field-confirm"]' },
-      ],
-      { intent: 'confirm button in the custom field delete confirmation dialog' },
-    )
-    .resolve();
+  // Confirm the deletion dialog.
+  const confirmDeleteBtn = await adminSettings.deleteFieldConfirmLocator();
   await expect(confirmDeleteBtn).toBeVisible({ timeout: 3_000 });
   await confirmDeleteBtn.click();
 
@@ -281,18 +248,8 @@ test('admin deletes a custom field definition; it disappears from the contact de
   const contactDetailPage = new ContactDetailPage({ page });
   await expect(await contactDetailPage.isLoaded()).toBe(true);
 
-  // The custom-fields-section should not be visible (no definitions → component returns null)
-
-  const customFieldsSectionEl = await page
-    .locate(
-      [
-        { type: 'testId', value: 'custom-fields-read-grid' },
-        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
-      ],
-      { intent: 'custom fields read grid that should be absent after definition deleted' },
-    )
-    .resolve()
-    .catch(() => null);
+  // The custom-fields-section should not be visible (no definitions → component returns null).
+  const customFieldsSectionEl = await contactDetailPageForDelete.customFieldsReadGridLocator();
   const sectionVisible = customFieldsSectionEl ? await customFieldsSectionEl.isVisible() : false;
   expect(
     sectionVisible,
