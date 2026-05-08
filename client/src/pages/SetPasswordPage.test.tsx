@@ -151,4 +151,23 @@ describe('SetPasswordPage — with token', () => {
 
     expect(screen.getByTestId('set-password-submit')).toBeDisabled();
   });
+
+  it('shows the generic error message when the server returns no structured error body', async () => {
+    server.use(
+      http.post('/api/v1/users/set-password', () => {
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderSetPasswordPage('valid-token');
+
+    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
+    await user.type(screen.getByTestId('set-password-confirm'), 'NewPass1');
+    await user.click(screen.getByTestId('set-password-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('set-password-error')).toBeInTheDocument();
+    });
+  });
 });

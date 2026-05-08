@@ -141,4 +141,25 @@ describe('ChangePasswordPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Current password is incorrect.');
     });
   });
+
+  it('shows the generic error message when the server returns no structured error body', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.post('/api/v1/auth/change-password', () => {
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+
+    renderChangePasswordPage();
+
+    await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'NewPass1');
+    await user.type(screen.getByTestId('change-password-confirm'), 'NewPass1');
+    await user.click(screen.getByTestId('change-password-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+  });
 });

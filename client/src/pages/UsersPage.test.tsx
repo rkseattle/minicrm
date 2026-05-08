@@ -1,7 +1,8 @@
 /**
  * Tests for the UsersPage component.
  * Covers: loading state, user list rendering, empty state, invite form,
- * and UserActionsMenu open/close and action behaviour.
+ * UserActionsMenu open/close and action behaviour, SetPasswordForm validation,
+ * and invite/set-password error states. (MINCRM-303)
  */
 
 import { screen, waitFor, within } from '@testing-library/react';
@@ -341,6 +342,154 @@ describe('UsersPage', () => {
 
       await user.click(screen.getByTestId(`deactivate-${ADMIN_USER.id}`));
       expect(screen.queryByTestId(`deactivate-${ADMIN_USER.id}`)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('user status badges', () => {
+    it('shows the Inactive badge for inactive users', async () => {
+      const INACTIVE_USER = { ...ADMIN_USER, id: 'inactive-id', status: 'inactive' as const };
+      server.use(
+        http.get('/api/v1/users', () =>
+          HttpResponse.json({ data: [INACTIVE_USER], total: 1, page: 1, limit: 50 }),
+        ),
+      );
+      renderWithProviders(<UsersPage />);
+      await waitFor(() => {
+        expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('invite form — error state', () => {
+    async function openInvitePanel(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByTestId('invite-form-toggle'));
+    }
+
+    it('shows an error alert when the invite API call fails', async () => {
+      server.use(
+        http.post('/api/v1/users/invite', () =>
+          HttpResponse.json(
+            { error: { code: 'VALIDATION_ERROR', message: 'Email already in use' } },
+            { status: 409 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openInvitePanel(user);
+
+      await user.type(screen.getByTestId('invite-name'), 'New User');
+      await user.type(screen.getByTestId('invite-email'), 'existing@example.com');
+      await user.click(screen.getByTestId('invite-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('SetPasswordForm — validation branches', () => {
+    async function openSetPasswordForm(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${ADMIN_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`user-actions-${ADMIN_USER.id}`));
+      await user.click(screen.getByTestId(`set-password-toggle-${ADMIN_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId(`set-password-form-${ADMIN_USER.id}`)).toBeInTheDocument();
+      });
+    }
+
+    it('shows a mismatch error when passwords do not match', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'Password1');
+      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), 'Different1');
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
+    it('shows a complexity error for a password that is too short', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'Abc1');
+      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), 'Abc1');
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
+    it('shows a complexity error when the password has no digit', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'PasswordNoDigit');
+      await user.type(
+        screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`),
+        'PasswordNoDigit',
+      );
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
+    it('shows a complexity error when the password has no letter', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), '1234567890');
+      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), '1234567890');
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
+    it('submits successfully with a valid password and shows the success banner', async () => {
+      server.use(
+        http.post(`/api/v1/users/${ADMIN_USER.id}/admin-set-password`, () =>
+          HttpResponse.json({ user: ADMIN_USER }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'ValidPass1');
+      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), 'ValidPass1');
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toBeInTheDocument();
+      });
+    });
+
+    it('closes the set-password form when cancel is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.click(screen.getByTestId(`set-password-cancel-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId(`set-password-form-${ADMIN_USER.id}`)).not.toBeInTheDocument();
+      });
     });
   });
 });

@@ -6,7 +6,7 @@ import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import TagInput from './TagInput.js';
+import TagInput, { ConnectedTagInput } from './TagInput.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
@@ -242,5 +242,245 @@ describe('TagInput — admin with restriction enabled', () => {
       expect(screen.getByTestId(`tag-input-${ENTITY_ID}`)).toHaveValue('brandnewtag');
     });
     expect(screen.queryByTestId(`tag-creation-blocked-${ENTITY_ID}`)).not.toBeInTheDocument();
+  });
+});
+
+// ── ConnectedTagInput — entity type routing ────────────────────────────────────
+
+const CONNECTED_ID = '00000000-0000-0000-0000-000000000099';
+const ENTITY_QUERY_KEY = ['contact', CONNECTED_ID] as const;
+
+const EXISTING_TAG: TagResponse = {
+  id: 'tag-uuid-existing',
+  name: 'vip',
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+describe('ConnectedTagInput — contact entity type', () => {
+  it('renders the tag input for a contact', async () => {
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument();
+    });
+  });
+
+  it('loads and displays tags from the contacts endpoint', async () => {
+    server.use(
+      http.get(`/api/v1/contacts/${CONNECTED_ID}/tags`, () =>
+        HttpResponse.json({ tags: [EXISTING_TAG] }),
+      ),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-badge-${EXISTING_TAG.id}`)).toBeInTheDocument();
+    });
+  });
+
+  it('attaches a tag via the contact attach endpoint', async () => {
+    let attachCalled = false;
+    server.use(
+      http.post(`/api/v1/contacts/${CONNECTED_ID}/tags`, () => {
+        attachCalled = true;
+        return HttpResponse.json({ tag: EXISTING_TAG });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument(),
+    );
+    const input = screen.getByTestId(`tag-input-${CONNECTED_ID}`);
+    await userEvent.type(input, 'newtag');
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(attachCalled).toBe(true));
+  });
+
+  it('detaches a tag via the contact detach endpoint', async () => {
+    let detachCalled = false;
+    server.use(
+      http.get(`/api/v1/contacts/${CONNECTED_ID}/tags`, () =>
+        HttpResponse.json({ tags: [EXISTING_TAG] }),
+      ),
+      http.delete(`/api/v1/contacts/${CONNECTED_ID}/tags/${EXISTING_TAG.id}`, () => {
+        detachCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`)).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`));
+    await waitFor(() => expect(detachCalled).toBe(true));
+  });
+});
+
+describe('ConnectedTagInput — account entity type', () => {
+  it('renders the tag input for an account', async () => {
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="account"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument();
+    });
+  });
+
+  it('attaches a tag via the account attach endpoint', async () => {
+    let attachCalled = false;
+    server.use(
+      http.post(`/api/v1/accounts/${CONNECTED_ID}/tags`, () => {
+        attachCalled = true;
+        return HttpResponse.json({ tag: EXISTING_TAG });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="account"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument(),
+    );
+    const input = screen.getByTestId(`tag-input-${CONNECTED_ID}`);
+    await userEvent.type(input, 'accounttag');
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(attachCalled).toBe(true));
+  });
+
+  it('detaches a tag via the account detach endpoint', async () => {
+    let detachCalled = false;
+    server.use(
+      http.get(`/api/v1/accounts/${CONNECTED_ID}/tags`, () =>
+        HttpResponse.json({ tags: [EXISTING_TAG] }),
+      ),
+      http.delete(`/api/v1/accounts/${CONNECTED_ID}/tags/${EXISTING_TAG.id}`, () => {
+        detachCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="account"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`)).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`));
+    await waitFor(() => expect(detachCalled).toBe(true));
+  });
+});
+
+describe('ConnectedTagInput — deal entity type', () => {
+  it('renders the tag input for a deal', async () => {
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="deal"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument();
+    });
+  });
+
+  it('attaches a tag via the deal attach endpoint', async () => {
+    let attachCalled = false;
+    server.use(
+      http.post(`/api/v1/deals/${CONNECTED_ID}/tags`, () => {
+        attachCalled = true;
+        return HttpResponse.json({ tag: EXISTING_TAG });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="deal"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument(),
+    );
+    const input = screen.getByTestId(`tag-input-${CONNECTED_ID}`);
+    await userEvent.type(input, 'dealtag');
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(attachCalled).toBe(true));
+  });
+
+  it('detaches a tag via the deal detach endpoint', async () => {
+    let detachCalled = false;
+    server.use(
+      http.get(`/api/v1/deals/${CONNECTED_ID}/tags`, () =>
+        HttpResponse.json({ tags: [EXISTING_TAG] }),
+      ),
+      http.delete(`/api/v1/deals/${CONNECTED_ID}/tags/${EXISTING_TAG.id}`, () => {
+        detachCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="deal"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`)).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByTestId(`remove-tag-${EXISTING_TAG.id}`));
+    await waitFor(() => expect(detachCalled).toBe(true));
+  });
+});
+
+describe('ConnectedTagInput — loads tags by entity type', () => {
+  it('shows an empty tag list for a deal entity on initial load', async () => {
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="deal"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+    await waitFor(() => {
+      // With empty tags, the tag list div should be empty
+      expect(screen.getByTestId(`tag-list-${CONNECTED_ID}`)).toBeInTheDocument();
+    });
+    // No tag badges since the deal has no tags
+    expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
   });
 });

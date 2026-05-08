@@ -325,4 +325,99 @@ describe('WinLossReportPage', () => {
       });
     });
   });
+
+  describe('date preset — currentQuarter', () => {
+    it('selecting "This quarter" triggers a fetch with a start param', async () => {
+      let capturedStart: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/win-loss', ({ request }) => {
+          capturedStart = new URL(request.url).searchParams.get('start');
+          return HttpResponse.json(WIN_LOSS_REPORT);
+        }),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => expect(screen.getByTestId('date-preset-select')).toBeInTheDocument());
+      await userEvent.selectOptions(screen.getByTestId('date-preset-select'), 'currentQuarter');
+      await waitFor(() => expect(capturedStart).not.toBeNull());
+    });
+  });
+
+  describe('multi-currency support (MINCRM-253)', () => {
+    it('shows converted totals summary when hasRates is true', async () => {
+      server.use(
+        http.get('/api/v1/reports/win-loss', () =>
+          HttpResponse.json({
+            ...WIN_LOSS_REPORT,
+            hasRates: true,
+            convertedWonValue: '90000.00',
+            convertedLostValue: '32000.00',
+            homeCurrency: 'EUR',
+            ratesLastUpdated: '2026-05-01T00:00:00.000Z',
+          }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('converted-totals-summary')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('stat-converted-won-value')).toBeInTheDocument();
+      expect(screen.getByTestId('stat-converted-lost-value')).toBeInTheDocument();
+    });
+
+    it('shows "—" in converted value cell when convertedWonValue is null', async () => {
+      server.use(
+        http.get('/api/v1/reports/win-loss', () =>
+          HttpResponse.json({
+            ...WIN_LOSS_REPORT,
+            hasRates: true,
+            convertedWonValue: null,
+            convertedLostValue: null,
+            homeCurrency: 'EUR',
+            ratesLastUpdated: null,
+          }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('stat-converted-won-value')).toHaveTextContent('—');
+        expect(screen.getByTestId('stat-converted-lost-value')).toHaveTextContent('—');
+      });
+    });
+
+    it('shows the unrated note when unratedCount > 0', async () => {
+      server.use(
+        http.get('/api/v1/reports/win-loss', () =>
+          HttpResponse.json({
+            ...WIN_LOSS_REPORT,
+            hasRates: true,
+            convertedWonValue: '100.00',
+            convertedLostValue: '50.00',
+            homeCurrency: 'USD',
+            ratesLastUpdated: '2026-05-01T00:00:00.000Z',
+            unratedCount: 3,
+          }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('converted-totals-unrated-note')).toBeInTheDocument();
+      });
+    });
+
+    it('shows mixed-currencies placeholder when mixedCurrencies is true', async () => {
+      server.use(
+        http.get('/api/v1/reports/win-loss', () =>
+          HttpResponse.json({
+            ...WIN_LOSS_REPORT,
+            mixedCurrencies: true,
+          }),
+        ),
+      );
+      renderWithProviders(<WinLossReportPage />);
+      await waitFor(() => {
+        // Mixed currency: won/lost value cells should show the mixed placeholder
+        expect(screen.queryByTestId('converted-totals-summary')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -313,4 +313,128 @@ describe('MyTasksPage', () => {
       });
     });
   });
+
+  describe('linked record path branches', () => {
+    it('links to the account page for account-linked tasks', async () => {
+      // MY_TASK_COMPLETE is linked to an account
+      server.use(
+        http.get('/api/v1/activities/my-tasks', () =>
+          HttpResponse.json({ tasks: [MY_TASK_COMPLETE], total: 1, page: 1, limit: 25 }),
+        ),
+      );
+
+      renderWithProviders(<MyTasksPage />);
+
+      // Show completed tasks so we can see the row
+      await waitFor(() => {
+        expect(screen.getByTestId('toggle-completed-button')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByTestId('toggle-completed-button'));
+
+      await waitFor(() => {
+        const link = screen.getByTestId(`task-record-link-${MY_TASK_COMPLETE.id}`);
+        expect(link).toHaveAttribute('href', `/accounts/${MY_TASK_COMPLETE.account_id}`);
+      });
+    });
+
+    it('links to the contact page for contact-linked tasks', async () => {
+      // MY_TASK_OVERDUE is linked to a contact
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        const link = screen.getByTestId(`task-record-link-${MY_TASK_OVERDUE.id}`);
+        expect(link).toHaveAttribute('href', `/contacts/${MY_TASK_OVERDUE.contact_id}`);
+      });
+    });
+
+    it('shows "No record" when a task has no linked record', async () => {
+      const unlinkedTask = {
+        ...MY_TASK_1,
+        id: '00000000-0000-0000-0000-000000000601',
+        contact_id: null,
+        account_id: null,
+        deal_id: null,
+        linked_record_name: null,
+        linked_record_type: null,
+      };
+      server.use(
+        http.get('/api/v1/activities/my-tasks', () =>
+          HttpResponse.json({ tasks: [unlinkedTask], total: 1, page: 1, limit: 25 }),
+        ),
+      );
+
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        const cell = screen.getByTestId(`task-record-link-${unlinkedTask.id}`);
+        // i18n key myTasks.noRecord is "—" in the English locale
+        expect(cell).toHaveTextContent('—');
+      });
+    });
+  });
+
+  describe('due date branches', () => {
+    it('shows "No due date" when a task has no due date set', async () => {
+      const noDueDateTask = {
+        ...MY_TASK_1,
+        id: '00000000-0000-0000-0000-000000000602',
+        due_date: null,
+      };
+      server.use(
+        http.get('/api/v1/activities/my-tasks', () =>
+          HttpResponse.json({ tasks: [noDueDateTask], total: 1, page: 1, limit: 25 }),
+        ),
+      );
+
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`task-due-date-${noDueDateTask.id}`)).toHaveTextContent(
+          'No due date',
+        );
+      });
+    });
+  });
+
+  describe('complete mutation error', () => {
+    it('shows an error alert when marking complete fails', async () => {
+      server.use(
+        http.patch('/api/v1/activities/:id', () =>
+          HttpResponse.json(
+            { error: { code: 'SERVER_ERROR', message: 'Failed to complete task' } },
+            { status: 500 },
+          ),
+        ),
+      );
+
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`mark-complete-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId(`mark-complete-${MY_TASK_1.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('complete-error')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('completed tasks empty state', () => {
+    it('shows the "No completed tasks" message when show-completed is on but there are none', async () => {
+      // Default handler returns MY_TASK_1 and MY_TASK_OVERDUE (both open, no completed tasks)
+      renderWithProviders(<MyTasksPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('toggle-completed-button')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('toggle-completed-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('completed-tasks-empty')).toBeInTheDocument();
+      });
+    });
+  });
 });

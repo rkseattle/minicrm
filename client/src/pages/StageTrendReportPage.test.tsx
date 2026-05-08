@@ -174,5 +174,73 @@ describe('StageTrendReportPage', () => {
         expect(screen.getByTestId('stage-trend-rate-prospecting')).toHaveTextContent('75%');
       });
     });
+
+    it('sums totals correctly across multiple periods for a stage', async () => {
+      server.use(
+        http.get('/api/v1/reports/stage-trend', () =>
+          HttpResponse.json({
+            stages: ['Prospecting'],
+            dataPoints: [
+              { stage: 'Prospecting', period: '2026-03-01', entered: 3, converted: 1 },
+              { stage: 'Prospecting', period: '2026-04-01', entered: 7, converted: 2 },
+            ],
+            windowStart: '2026-03-01',
+            windowEnd: '2026-04-30',
+          }),
+        ),
+      );
+      renderWithProviders(<StageTrendReportPage />);
+      await waitFor(() => {
+        // 3 + 7 = 10 entered
+        expect(screen.getByTestId('stage-trend-entered-prospecting')).toHaveTextContent('10');
+        // 1 + 2 = 3 converted
+        expect(screen.getByTestId('stage-trend-converted-prospecting')).toHaveTextContent('3');
+        // 3/10 = 30%
+        expect(screen.getByTestId('stage-trend-rate-prospecting')).toHaveTextContent('30%');
+      });
+    });
+
+    it('renders rows for multiple stages', async () => {
+      server.use(
+        http.get('/api/v1/reports/stage-trend', () =>
+          HttpResponse.json({
+            stages: ['Prospecting', 'Qualification'],
+            dataPoints: [
+              { stage: 'Prospecting', period: '2026-04-01', entered: 2, converted: 1 },
+              { stage: 'Qualification', period: '2026-04-01', entered: 4, converted: 3 },
+            ],
+            windowStart: '2026-04-01',
+            windowEnd: '2026-04-30',
+          }),
+        ),
+      );
+      renderWithProviders(<StageTrendReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('stage-trend-row-prospecting')).toBeInTheDocument();
+        expect(screen.getByTestId('stage-trend-row-qualification')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('days filter options', () => {
+    it('changing days to 90 triggers a re-fetch for 90 days', async () => {
+      let capturedDays: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/stage-trend', ({ request }) => {
+          const url = new URL(request.url);
+          capturedDays = url.searchParams.get('days');
+          return HttpResponse.json(STAGE_TREND_REPORT);
+        }),
+      );
+
+      renderWithProviders(<StageTrendReportPage />);
+      await waitFor(() => expect(screen.getByTestId('days-select')).toBeInTheDocument());
+
+      await userEvent.selectOptions(screen.getByTestId('days-select'), '90');
+
+      await waitFor(() => {
+        expect(capturedDays).toBe('90');
+      });
+    });
   });
 });

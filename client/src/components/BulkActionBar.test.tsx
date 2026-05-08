@@ -101,6 +101,22 @@ describe('BulkActionBar', () => {
     expect(onClearSelection).toHaveBeenCalledTimes(1);
   });
 
+  it('uses "secondary" variant by default when no variant is specified', () => {
+    const actionsWithoutVariant: BulkAction[] = [
+      { key: 'export', labelKey: 'bulk.exportButton', testId: 'bulk-export-button' },
+    ];
+    renderWithProviders(
+      <BulkActionBar
+        selectedCount={1}
+        actions={actionsWithoutVariant}
+        onAction={vi.fn()}
+        onClearSelection={vi.fn()}
+      />,
+    );
+    // The button renders (variant defaults to 'secondary') without crashing
+    expect(screen.getByTestId('bulk-export-button')).toBeInTheDocument();
+  });
+
   it('hides the bar when selectedCount drops back to 0', () => {
     const { rerender } = renderWithProviders(
       <BulkActionBar

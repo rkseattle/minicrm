@@ -274,4 +274,98 @@ describe('CustomFieldsSection — edit mode', () => {
       expect(screen.getByTestId(`custom-field-input-${DEF_ID_2}`)).toBeInTheDocument();
     });
   });
+
+  it('toggles a boolean checkbox from false to true', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Premium', field_type: 'boolean', options: null, sort_order: 0 },
+    ]);
+    mockValues([]);
+
+    const onValuesChange = vi.fn();
+    renderWithProviders(
+      <CustomFieldsSection
+        entityType="contact"
+        recordId={RECORD_ID}
+        isEditing={true}
+        onValuesChange={onValuesChange}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId(`custom-field-input-${DEF_ID}`));
+
+    await waitFor(() => {
+      const lastCall = onValuesChange.mock.calls.at(-1)?.[0] as Array<{
+        definition_id: string;
+        value: string | null;
+      }>;
+      expect(lastCall?.find((v) => v.definition_id === DEF_ID)?.value).toBe('true');
+    });
+  });
+
+  it('seeds a boolean field from a server "true" value', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Active', field_type: 'boolean', options: null, sort_order: 0 },
+    ]);
+    mockValues([
+      {
+        definition_id: DEF_ID,
+        value: 'true',
+        definition: { id: DEF_ID, name: 'Active', field_type: 'boolean' },
+      },
+    ]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
+    );
+
+    await waitFor(() => {
+      const checkbox = screen.getByTestId(`custom-field-input-${DEF_ID}`) as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+    });
+  });
+
+  it('filters out empty-string values in read mode', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Notes', field_type: 'text', options: null, sort_order: 0 },
+    ]);
+    mockValues([
+      {
+        definition_id: DEF_ID,
+        value: '',
+        definition: { id: DEF_ID, name: 'Notes', field_type: 'text' },
+      },
+    ]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={false} />,
+    );
+
+    await waitFor(() => {
+      // empty-string value is filtered out, section should be hidden
+      expect(screen.getByTestId('custom-fields-section')).not.toBeVisible();
+    });
+  });
+
+  it('renders a select with no options when options is null', async () => {
+    mockDefinitions([
+      { id: DEF_ID, name: 'Category', field_type: 'select', options: null, sort_order: 0 },
+    ]);
+    mockValues([]);
+
+    renderWithProviders(
+      <CustomFieldsSection entityType="contact" recordId={RECORD_ID} isEditing={true} />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-input-${DEF_ID}`)).toBeInTheDocument(),
+    );
+    // Only the blank "—" option present when options is null
+    const select = screen.getByTestId(`custom-field-input-${DEF_ID}`) as HTMLSelectElement;
+    expect(select.tagName).toBe('SELECT');
+    expect(select.options.length).toBe(1);
+  });
 });

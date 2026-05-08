@@ -104,4 +104,23 @@ describe('ForgotPasswordPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Must be a valid email address');
     });
   });
+
+  it('shows the generic error message when the server returns no structured error body', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.post('/api/v1/auth/forgot-password', () => {
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+
+    renderForgotPasswordPage();
+
+    await user.type(screen.getByTestId('forgot-password-email'), 'user@example.com');
+    await user.click(screen.getByTestId('forgot-password-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+  });
 });
