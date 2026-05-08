@@ -151,7 +151,6 @@ export default function ContactsPage() {
   const { data: tagsData } = useQuery({
     queryKey: ALL_TAGS_QUERY_KEY,
     queryFn: listAllTags,
-    staleTime: 60_000,
   });
 
   const { data: accountsData } = useQuery({

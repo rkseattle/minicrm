@@ -234,7 +234,6 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: DASHBOARD_QUERY_KEY,
     queryFn: getDashboardSummary,
-    // staleTime defaults to 0 — always fresh on page load, satisfying the "no stale cache" requirement
   });
 
   return (

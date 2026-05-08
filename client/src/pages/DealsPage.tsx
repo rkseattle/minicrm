@@ -214,7 +214,6 @@ export default function DealsPage() {
   const { data: tagsData } = useQuery({
     queryKey: ALL_TAGS_QUERY_KEY,
     queryFn: listAllTags,
-    staleTime: 60_000,
   });
 
   // Unified aliases used by shared code below

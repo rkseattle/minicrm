@@ -33,8 +33,8 @@ const NavLayoutContext = createContext<NavLayoutContextValue | null>(null);
 export function NavLayoutProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  // Nav layout changes only via the admin settings page — no need to refetch on
-  // every window-focus event. 5 min staleTime matches the app-wide default. (MINCRM-133)
+  // Nav layout is admin-only and changes rarely — override the global staleTime: 0
+  // to avoid refetching on every window-focus event. (MINCRM-133, MINCRM-348)
   const { data } = useQuery({
     queryKey: NAV_LAYOUT_QUERY_KEY,
     queryFn: getNavLayout,

@@ -40,7 +40,6 @@ export default function CustomisationSettings() {
   } = useQuery({
     queryKey: PIPELINE_STAGES_QUERY_KEY,
     queryFn: listPipelineStages,
-    staleTime: 5 * 60 * 1000,
   });
 
   const stages: PipelineStageResponse[] = stagesData?.stages ?? [];

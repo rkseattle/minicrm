@@ -210,7 +210,6 @@ export function ActivityVolumeReportContent() {
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
     enabled: isAdmin,
-    staleTime: 5 * 60 * 1000,
   });
 
   // ── Report query ───────────────────────────────────────────────────────────

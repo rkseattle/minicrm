@@ -32,6 +32,7 @@ export default function GlobalSearch() {
     queryKey: ['global-search', debouncedQuery],
     queryFn: () => globalSearch(debouncedQuery.trim()),
     enabled: isQueryLong,
+    // Override global staleTime: 0 — brief cache avoids hammering the server on rapid typing. (MINCRM-348)
     staleTime: 30_000,
   });
 

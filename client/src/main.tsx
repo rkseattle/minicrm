@@ -17,12 +17,28 @@ import { initSentry } from './sentry.js';
 
 initSentry();
 
-/** Shared React Query client instance */
+/**
+ * Shared React Query client instance.
+ *
+ * Cache policy (MINCRM-348):
+ *   staleTime: 0   — every cached response is immediately stale; React Query
+ *                    refetches in the background on mount and window focus so
+ *                    teammates' changes are visible without a manual refresh.
+ *                    The cached value is served first (no loading flash).
+ *   refetchOnWindowFocus: true — explicit policy; ensures tab-switching
+ *                    triggers a background refresh of all active queries.
+ *
+ * Per-query overrides (intentionally long-lived):
+ *   NavLayoutContext  5 min — layout changes are rare and admin-only
+ *   GlobalSearch      30 s  — avoids hammering the server on rapid typing
+ *   ContactSelector   60 s  — picker results stable during form completion
+ *   usePipelineStages 5 min — stage definitions change rarely
+ */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Do not refetch in the background by default — explicit invalidation is used
-      staleTime: 1000 * 60 * 5,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
     },
   },
 });
