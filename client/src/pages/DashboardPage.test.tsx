@@ -331,4 +331,196 @@ describe('DashboardPage', () => {
       });
     });
   });
+
+  describe('recent activity type badges', () => {
+    function makeActivity(type: string) {
+      return {
+        ...RECENT_ACTIVITY_1,
+        id: `recent-${type.toLowerCase()}`,
+        type,
+        linkedRecordPath: null,
+        linkedRecordName: null,
+      };
+    }
+
+    it('renders a Call badge for Call activities', async () => {
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [makeActivity('Call')] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-type-recent-call')).toHaveTextContent('Call');
+      });
+    });
+
+    it('renders an Email badge for Email activities', async () => {
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [makeActivity('Email')] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-type-recent-email')).toHaveTextContent('Email');
+      });
+    });
+
+    it('renders a Meeting badge for Meeting activities', async () => {
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [makeActivity('Meeting')] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-type-recent-meeting')).toHaveTextContent(
+          'Meeting',
+        );
+      });
+    });
+
+    it('renders a Task badge for Task activities', async () => {
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [makeActivity('Task')] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-type-recent-task')).toHaveTextContent('Task');
+      });
+    });
+
+    it('renders a Note badge for Note (default) activities', async () => {
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [makeActivity('Note')] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('recent-activity-type-recent-note')).toHaveTextContent('Note');
+      });
+    });
+  });
+
+  describe('relative time label variants', () => {
+    // DashboardPage uses entry.updatedAt (not created_at) for relativeTime()
+    function makeTimedActivity(id: string, msAgo: number) {
+      return {
+        ...RECENT_ACTIVITY_1,
+        id,
+        updatedAt: new Date(Date.now() - msAgo).toISOString(),
+        linkedRecordPath: null,
+        linkedRecordName: null,
+      };
+    }
+
+    it('shows a minutes-ago label for activities updated ~3 minutes ago', async () => {
+      const activity = makeTimedActivity('recent-3min', 3 * 60_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /minute/,
+        );
+      });
+    });
+
+    it('shows a singular minute label for exactly 1 minute ago', async () => {
+      const activity = makeTimedActivity('recent-1min', 65_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /1 minute ago/,
+        );
+      });
+    });
+
+    it('shows an hours-ago label for activities updated ~3 hours ago', async () => {
+      const activity = makeTimedActivity('recent-3hr', 3 * 60 * 60_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /hour/,
+        );
+      });
+    });
+
+    it('shows a singular hour label for exactly 1 hour ago', async () => {
+      const activity = makeTimedActivity('recent-1hr', 61 * 60_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /1 hour ago/,
+        );
+      });
+    });
+
+    it('shows a days-ago label for activities updated ~2 days ago', async () => {
+      const activity = makeTimedActivity('recent-2day', 2 * 24 * 60 * 60_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /day/,
+        );
+      });
+    });
+
+    it('shows a singular day label for exactly 1 day ago', async () => {
+      const activity = makeTimedActivity('recent-1day', 25 * 60 * 60_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /1 day ago/,
+        );
+      });
+    });
+
+    it('shows "just now" for very recent activities (< 60 seconds)', async () => {
+      const activity = makeTimedActivity('recent-justnow', 5_000);
+      server.use(
+        http.get('/api/v1/dashboard/summary', () =>
+          HttpResponse.json({ ...DASHBOARD_SUMMARY, recentActivities: [activity] }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`recent-activity-time-${activity.id}`).textContent).toMatch(
+          /just now/,
+        );
+      });
+    });
+  });
 });

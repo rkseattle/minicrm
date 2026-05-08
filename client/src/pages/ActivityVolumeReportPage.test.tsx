@@ -7,7 +7,7 @@
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ActivityVolumeReportPage from './ActivityVolumeReportPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
@@ -263,6 +263,157 @@ describe('ActivityVolumeReportPage', () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => screen.getByTestId('activity-volume-empty'));
       expect(screen.queryByTestId('export-csv-button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('CSV export — download trigger', () => {
+    it('clicking export CSV triggers a download (createObjectURL called)', async () => {
+      // Mock URL.createObjectURL so we can verify the download flow runs
+      const createObjectURL = vi.fn().mockReturnValue('blob:fake');
+      const revokeObjectURL = vi.fn();
+      Object.defineProperty(window.URL, 'createObjectURL', {
+        value: createObjectURL,
+        writable: true,
+      });
+      Object.defineProperty(window.URL, 'revokeObjectURL', {
+        value: revokeObjectURL,
+        writable: true,
+      });
+
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => expect(screen.getByTestId('export-csv-button')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId('export-csv-button'));
+
+      expect(createObjectURL).toHaveBeenCalled();
+      expect(revokeObjectURL).toHaveBeenCalled();
+    });
+  });
+
+  describe('owner filter — selection', () => {
+    it('owner filter select updates its value when a user is selected', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+
+      // Wait for active users to load so the select has option elements in the DOM
+      await waitFor(() => {
+        const select = screen.getByTestId('owner-filter-select') as HTMLSelectElement;
+        // The select should have at least 2 options: "All" + at least one user
+        expect(select.options.length).toBeGreaterThanOrEqual(2);
+      });
+
+      const ownerId = ACTIVITY_VOLUME_REPORT.rows[0].ownerId;
+      await userEvent.selectOptions(screen.getByTestId('owner-filter-select'), ownerId);
+
+      expect(screen.getByTestId('owner-filter-select')).toHaveValue(ownerId);
+    });
+  });
+
+  describe('non-zero cell links', () => {
+    it('cell link navigates to activities page with correct query params', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        const adminRow = ACTIVITY_VOLUME_REPORT.rows[0];
+        const callCell = screen.getByTestId(`cell-${adminRow.ownerId}-Call`);
+        const link = callCell.querySelector('a');
+        expect(link).not.toBeNull();
+        expect(link?.getAttribute('href')).toContain('/activities');
+        expect(link?.getAttribute('href')).toContain(`owner=${adminRow.ownerId}`);
+        expect(link?.getAttribute('href')).toContain('type=Call');
+      });
+    });
+  });
+
+  describe('team view heading section', () => {
+    it('shows the rep breakdown heading in team view with data', async () => {
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('rep-breakdown-heading')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('date preset filters — full coverage (MINCRM-303)', () => {
+    it('selects the "This week" preset and triggers a fetch', async () => {
+      let capturedStart: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/activity-volume', ({ request }) => {
+          capturedStart = new URL(request.url).searchParams.get('start');
+          return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
+        }),
+      );
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => screen.getByTestId('date-preset-select'));
+      fireEvent.change(screen.getByTestId('date-preset-select'), {
+        target: { value: 'currentWeek' },
+      });
+      await waitFor(() => {
+        // startOfCurrentWeek() returns a Monday date; just verify it was called
+        expect(capturedStart).not.toBeNull();
+      });
+    });
+
+    it('selects the "This quarter" preset and triggers a fetch', async () => {
+      let capturedStart: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/activity-volume', ({ request }) => {
+          capturedStart = new URL(request.url).searchParams.get('start');
+          return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
+        }),
+      );
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => screen.getByTestId('date-preset-select'));
+      fireEvent.change(screen.getByTestId('date-preset-select'), {
+        target: { value: 'currentQuarter' },
+      });
+      await waitFor(() => {
+        expect(capturedStart).not.toBeNull();
+      });
+    });
+
+    it('selects the "Today" preset and triggers a fetch', async () => {
+      let capturedStart: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/activity-volume', ({ request }) => {
+          capturedStart = new URL(request.url).searchParams.get('start');
+          return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
+        }),
+      );
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => screen.getByTestId('date-preset-select'));
+      fireEvent.change(screen.getByTestId('date-preset-select'), {
+        target: { value: 'today' },
+      });
+      await waitFor(() => {
+        expect(capturedStart).not.toBeNull();
+      });
+    });
+
+    it('custom range: changing start date triggers a fetch with the new start', async () => {
+      let capturedStart: string | null = null;
+      server.use(
+        http.get('/api/v1/reports/activity-volume', ({ request }) => {
+          capturedStart = new URL(request.url).searchParams.get('start');
+          return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
+        }),
+      );
+      renderWithProviders(<ActivityVolumeReportPage />);
+      await waitFor(() => screen.getByTestId('date-preset-select'));
+
+      fireEvent.change(screen.getByTestId('date-preset-select'), {
+        target: { value: 'custom' },
+      });
+      await waitFor(() => screen.getByTestId('custom-start-input'));
+
+      fireEvent.change(screen.getByTestId('custom-start-input'), {
+        target: { value: '2026-01-01' },
+      });
+      fireEvent.change(screen.getByTestId('custom-end-input'), {
+        target: { value: '2026-03-31' },
+      });
+
+      await waitFor(() => {
+        expect(capturedStart).toBe('2026-01-01');
+      });
     });
   });
 });

@@ -166,4 +166,24 @@ describe('ResetPasswordPage — with token', () => {
 
     expect(submitButton).toBeDisabled();
   });
+
+  it('shows the generic error message when the server returns no structured error body', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.post('/api/v1/auth/reset-password', () => {
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+
+    renderResetPasswordPage('valid-token');
+
+    await user.type(screen.getByTestId('reset-password-new'), 'NewPass1');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewPass1');
+    await user.click(screen.getByTestId('reset-password-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('reset-password-error')).toBeInTheDocument();
+    });
+  });
 });

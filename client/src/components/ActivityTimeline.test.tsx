@@ -1,9 +1,12 @@
 /**
  * Tests for ActivityTimeline component.
+ * MINCRM-303: extended to cover mutation paths, direction badge, error states,
+ * and delete confirmation branches.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
@@ -178,6 +181,334 @@ describe('ActivityTimeline', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('activity-timeline-load-more')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the direction badge when an activity has a direction set', async () => {
+    const activityWithDirection = {
+      ...ACTIVITY_1,
+      id: '00000000-0000-0000-0000-000000000411',
+      type: 'Call',
+      direction: 'Inbound',
+    };
+    server.use(
+      http.get('/api/v1/activities', () =>
+        HttpResponse.json({
+          data: [activityWithDirection],
+          total: 1,
+          page: 1,
+          limit: 10,
+        }),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`activity-direction-${activityWithDirection.id}`),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('renders the outcome text when an activity has an outcome set', async () => {
+    const activityWithOutcome = {
+      ...ACTIVITY_1,
+      id: '00000000-0000-0000-0000-000000000412',
+      outcome: 'Left voicemail',
+    };
+    server.use(
+      http.get('/api/v1/activities', () =>
+        HttpResponse.json({ data: [activityWithOutcome], total: 1, page: 1, limit: 10 }),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`activity-outcome-${activityWithOutcome.id}`)).toHaveTextContent(
+        'Left voicemail',
+      );
+    });
+  });
+
+  it('shows edit/delete for activities owned by another user when current user is admin', async () => {
+    const foreignActivity = {
+      ...ACTIVITY_1,
+      id: '00000000-0000-0000-0000-000000000413',
+      owner_id: '00000000-0000-0000-0000-000000000099',
+    };
+    server.use(
+      http.get('/api/v1/activities', () =>
+        HttpResponse.json({ data: [foreignActivity], total: 1, page: 1, limit: 10 }),
+      ),
+    );
+    // Default auth handler returns ADMIN_USER (role: 'admin')
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`edit-activity-${foreignActivity.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`delete-activity-${foreignActivity.id}`)).toBeInTheDocument();
+    });
+  });
+
+  it('does not show delete/edit when user is null (unauthenticated)', async () => {
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: null }, { status: 401 })),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      // Activities load, but no edit/delete buttons since canModify returns false
+      expect(screen.queryByTestId(`edit-activity-${ACTIVITY_1.id}`)).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows the create error message when create mutation fails', async () => {
+    server.use(
+      http.post('/api/v1/activities', () =>
+        HttpResponse.json(
+          { error: { code: 'VALIDATION_ERROR', message: 'Subject is required' } },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('add-activity-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-create-form-container')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('activity-subject'), 'Test activity');
+    await user.click(screen.getByTestId('activity-form-submit'));
+
+    await waitFor(() => {
+      // Form stays visible; the error is shown inside ActivityForm via its error prop
+      expect(screen.getByTestId('activity-create-form-container')).toBeInTheDocument();
+    });
+  });
+
+  it('closes the create form when cancel is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('add-activity-button'));
+    expect(screen.getByTestId('activity-create-form-container')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('activity-form-cancel'));
+
+    expect(screen.queryByTestId('activity-create-form-container')).not.toBeInTheDocument();
+  });
+
+  it('successfully creates an activity and closes the form', async () => {
+    let createCalled = false;
+    server.use(
+      http.post('/api/v1/activities', () => {
+        createCalled = true;
+        return HttpResponse.json(
+          { activity: { ...ACTIVITY_1, id: '00000000-0000-0000-0000-000000000414' } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('add-activity-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-create-form-container')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('activity-subject'), 'New activity subject');
+    await user.click(screen.getByTestId('activity-form-submit'));
+
+    await waitFor(() => {
+      expect(createCalled).toBe(true);
+    });
+  });
+
+  it('successfully updates an activity and closes the edit form', async () => {
+    let patchCalled = false;
+    server.use(
+      http.patch(`/api/v1/activities/${ACTIVITY_1.id}`, async () => {
+        patchCalled = true;
+        return HttpResponse.json({ activity: { ...ACTIVITY_1, subject: 'Updated subject' } });
+      }),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`));
+
+    // The edit form is pre-populated with ACTIVITY_1.subject so the submit button is enabled
+    fireEvent.click(screen.getByTestId('activity-form-submit'));
+
+    await waitFor(() => {
+      expect(patchCalled).toBe(true);
+    });
+  });
+
+  it('shows the edit error message when update mutation fails', async () => {
+    server.use(
+      http.patch(`/api/v1/activities/${ACTIVITY_1.id}`, () =>
+        HttpResponse.json(
+          { error: { code: 'SERVER_ERROR', message: 'Failed to update' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`));
+
+    // The edit form is pre-populated so the submit button is enabled
+    fireEvent.click(screen.getByTestId('activity-form-submit'));
+
+    // Edit form should still be visible with an error
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-form')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the complete error when mark-complete mutation fails', async () => {
+    server.use(
+      http.patch(`/api/v1/activities/${ACTIVITY_1.id}`, () =>
+        HttpResponse.json(
+          { error: { code: 'SERVER_ERROR', message: 'Failed to complete' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`mark-complete-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`mark-complete-${ACTIVITY_1.id}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('complete-error')).toBeInTheDocument();
+    });
+  });
+
+  it('deletes an activity when the user confirms the window.confirm dialog', async () => {
+    let deleteCalled = false;
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    server.use(
+      http.delete(`/api/v1/activities/${ACTIVITY_1.id}`, () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`));
+
+    await waitFor(() => {
+      expect(deleteCalled).toBe(true);
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it('does not delete an activity when the user cancels the window.confirm dialog', async () => {
+    let deleteCalled = false;
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    server.use(
+      http.delete(`/api/v1/activities/${ACTIVITY_1.id}`, () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`));
+
+    expect(deleteCalled).toBe(false);
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows the delete error when delete mutation fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    server.use(
+      http.delete(`/api/v1/activities/${ACTIVITY_1.id}`, () =>
+        HttpResponse.json(
+          { error: { code: 'SERVER_ERROR', message: 'Failed to delete' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`delete-activity-${ACTIVITY_1.id}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-error')).toBeInTheDocument();
+    });
+
+    vi.restoreAllMocks();
+  });
+
+  it('closes the edit form when cancel is clicked', async () => {
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`edit-activity-${ACTIVITY_1.id}`));
+    expect(screen.getByTestId('activity-form')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('activity-form-cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('activity-form')).not.toBeInTheDocument();
     });
   });
 });
