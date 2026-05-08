@@ -190,13 +190,21 @@ export class ContactsPage {
    * @param id - The contact UUID whose checkbox to click.
    */
   async clickBulkCheckbox(id: string): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: `bulk-select-${id}` },
-        { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
-      ],
-      { intent: 'bulk select checkbox for contact row' },
-    );
+    // Resolve first so we can scrollIntoViewIfNeeded before clicking.
+    // On mobile viewports the sticky pagination bar can overlay lower rows and
+    // block Playwright's pointer-intercept check — scrolling centers the checkbox
+    // in the viewport to avoid the overlap. (MINCRM-344)
+    const checkbox = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `bulk-select-${id}` },
+          { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+        ],
+        { intent: 'bulk select checkbox for contact row' },
+      )
+      .resolve();
+    await checkbox.scrollIntoViewIfNeeded();
+    await checkbox.click();
     // Wait for React to flush the selection state update. The bulk-action-bar
     // appearing in the DOM is the authoritative signal that toggleRow has run.
     // waitForFunction polls until the element exists before locate().resolve(),
@@ -556,6 +564,39 @@ export class ContactsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Returns a resolved locator for the bulk action bar that appears when
+   * one or more contacts are selected.
+   */
+  async bulkActionBarLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'bulk-action-bar' },
+          { type: 'css', value: '[data-testid="bulk-action-bar"]' },
+        ],
+        { intent: 'bulk action bar that appears when contacts are selected' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the pagination controls bar.
+   * Returns null if pagination is not present (fewer records than page size).
+   */
+  async paginationLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination' },
+          { type: 'css', value: '[data-testid="pagination"]' },
+        ],
+        { intent: 'pagination bar showing record count and page controls' },
+      )
+      .resolve()
+      .catch(() => null);
   }
 
   /**

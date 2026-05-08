@@ -9,7 +9,8 @@
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
- *   - data-testid selectors only — no CSS class or positional selectors
+ *   - No raw locators — all through page objects (dynamic UUID-keyed elements use
+ *     single-strategy testId locates with eslint-disable per CLAUDE.md exception rule)
  *   - Test data created via restClient + TestDataManager (auto teardown)
  *   - Tests share a single admin login session via beforeAll
  *
@@ -57,42 +58,22 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-section' },
-      { type: 'css', value: '[data-testid="custom-fields-section"]' },
-    ])
-    .resolve();
+  const section = await adminSettings.customFieldsSectionLocator();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Ensure entity selector shows "contact" (default)
-  const entitySelect = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-entity-select' },
-      { type: 'css', value: '[data-testid="custom-fields-entity-select"]' },
-    ])
-    .resolve();
+  const entitySelect = await adminSettings.customFieldsEntitySelectLocator();
   await entitySelect.selectOption('contact');
 
   // Click Add Field
   await adminSettings.clickAddField();
 
-  const addForm = await page
-    .locate([
-      { type: 'testId', value: 'add-field-form' },
-      { type: 'css', value: '[data-testid="add-field-form"]' },
-    ])
-    .resolve();
+  const addForm = await adminSettings.addFieldFormLocator();
   await expect(addForm).toBeVisible();
 
   // Fill in field name
   const fieldName = `E2E Test Field ${Date.now()}`;
-  const nameInput = await page
-    .locate([
-      { type: 'testId', value: 'add-field-name-input' },
-      { type: 'css', value: '[data-testid="add-field-name-input"]' },
-    ])
-    .resolve();
+  const nameInput = await adminSettings.addFieldNameInputLocator();
   await nameInput.fill(fieldName);
 
   // field_type defaults to text — no change needed
@@ -101,12 +82,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   await adminSettings.submitAddField();
 
   // Success feedback appears
-  const feedback = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-feedback' },
-      { type: 'css', value: '[data-testid="custom-fields-feedback"]' },
-    ])
-    .resolve();
+  const feedback = await adminSettings.customFieldsFeedbackLocator();
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
   // The field appears in the table
@@ -164,20 +140,22 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await contactDetailPage.clickEdit();
 
   // Wait for custom fields section to appear in edit mode
+
   const editGrid = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-edit-grid' },
-      { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'custom-fields-edit-grid' },
+        { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+      ],
+      { intent: 'custom fields edit grid container in contact edit form' },
+    )
     .resolve();
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
   const fieldInput = await page
-    .locate([
-      { type: 'testId', value: `custom-field-input-${definitionId}` },
-      { type: 'css', value: `[data-testid="custom-field-input-${definitionId}"]` },
-    ])
+    .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
     .resolve();
   await fieldInput.fill('Test Value 123');
 
@@ -185,32 +163,31 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await contactDetailPage.save();
 
   // Wait for edit mode to close (edit button reappears)
-  const editBtn = await page
-    .locate([
-      { type: 'testId', value: 'edit-contact-button' },
-      { type: 'css', value: '[data-testid="edit-contact-button"]' },
-    ])
-    .resolve();
-  await expect(editBtn).toBeVisible({ timeout: 5_000 });
+  expect(
+    await contactDetailPage.isLoaded(),
+    'contact detail should return to read mode after save',
+  ).toBe(true);
 
   // Reload the page
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Custom fields read section should show the saved value
+
   const readGrid = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-read-grid' },
-      { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'custom-fields-read-grid' },
+        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+      ],
+      { intent: 'custom fields read grid container on contact detail page' },
+    )
     .resolve();
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
   // Confirm the value persisted
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed label has no stable role fallback
   const fieldLabel = await page
-    .locate([
-      { type: 'testId', value: `custom-field-label-${definitionId}` },
-      { type: 'css', value: `[data-testid="custom-field-label-${definitionId}"]` },
-    ])
+    .locate([{ type: 'testId', value: `custom-field-label-${definitionId}` }])
     .resolve();
   await expect(fieldLabel).toBeVisible();
   await expect(readGrid).toContainText('Test Value 123');
@@ -226,6 +203,8 @@ test('admin deletes a custom field definition; it disappears from the contact de
   testData,
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+  const adminSettings = new AdminSettingsPage({ page });
 
   // Create a text custom field definition via REST
   const fieldName = `Delete Test Field ${Date.now()}`;
@@ -246,11 +225,15 @@ test('admin deletes a custom field definition; it disappears from the contact de
 
   // Confirm the field appears on the detail page before deletion
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+
   const readGrid = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-read-grid' },
-      { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'custom-fields-read-grid' },
+        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+      ],
+      { intent: 'custom fields read grid container on contact detail page' },
+    )
     .resolve();
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
   await expect(readGrid).toContainText('Temp Value');
@@ -258,72 +241,59 @@ test('admin deletes a custom field definition; it disappears from the contact de
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-section' },
-      { type: 'css', value: '[data-testid="custom-fields-section"]' },
-    ])
-    .resolve();
+  const section = await adminSettings.customFieldsSectionLocator();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Select "contact" entity type
-  const entitySelect = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-entity-select' },
-      { type: 'css', value: '[data-testid="custom-fields-entity-select"]' },
-    ])
-    .resolve();
+  const entitySelect = await adminSettings.customFieldsEntitySelectLocator();
   await entitySelect.selectOption('contact');
 
   // Click Delete on the field row
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback without scoping
   const deleteBtn = await page
-    .locate([
-      { type: 'testId', value: `custom-field-delete-${definitionId}` },
-      { type: 'css', value: `[data-testid="custom-field-delete-${definitionId}"]` },
-    ])
+    .locate([{ type: 'testId', value: `custom-field-delete-${definitionId}` }])
     .resolve();
   await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
   await deleteBtn.click();
 
   // Confirm the deletion dialog
+
   const confirmDeleteBtn = await page
-    .locate([
-      { type: 'testId', value: 'delete-field-confirm' },
-      { type: 'css', value: '[data-testid="delete-field-confirm"]' },
-    ])
+    .locate(
+      [
+        { type: 'testId', value: 'delete-field-confirm' },
+        { type: 'css', value: '[data-testid="delete-field-confirm"]' },
+      ],
+      { intent: 'confirm button in the custom field delete confirmation dialog' },
+    )
     .resolve();
   await expect(confirmDeleteBtn).toBeVisible({ timeout: 3_000 });
   await confirmDeleteBtn.click();
 
   // Success feedback
-  const feedback = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-feedback' },
-      { type: 'css', value: '[data-testid="custom-fields-feedback"]' },
-    ])
-    .resolve();
+  const feedback = await adminSettings.customFieldsFeedbackLocator();
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
   // Navigate back to the contact — custom fields section should not appear
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Wait for the page to load (edit button should be visible)
-  const editBtn = await page
-    .locate([
-      { type: 'testId', value: 'edit-contact-button' },
-      { type: 'css', value: '[data-testid="edit-contact-button"]' },
-    ])
-    .resolve();
-  await expect(editBtn).toBeVisible({ timeout: 5_000 });
+  const contactDetailPage = new ContactDetailPage({ page });
+  await expect(await contactDetailPage.isLoaded()).toBe(true);
 
   // The custom-fields-section should not be visible (no definitions → component returns null)
+
   const customFieldsSectionEl = await page
-    .locate([
-      { type: 'testId', value: 'custom-fields-section' },
-      { type: 'css', value: '[data-testid="custom-fields-section"]' },
-    ])
-    .resolve();
-  const sectionVisible = await customFieldsSectionEl.isVisible();
+    .locate(
+      [
+        { type: 'testId', value: 'custom-fields-read-grid' },
+        { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+      ],
+      { intent: 'custom fields read grid that should be absent after definition deleted' },
+    )
+    .resolve()
+    .catch(() => null);
+  const sectionVisible = customFieldsSectionEl ? await customFieldsSectionEl.isVisible() : false;
   expect(
     sectionVisible,
     'custom fields section should not be visible after definition is deleted',

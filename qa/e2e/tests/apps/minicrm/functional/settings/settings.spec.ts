@@ -6,7 +6,7 @@
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
- *   - No raw locators or Page Object calls in spec — use page.locate / page.click / page.goto
+ *   - No raw locators — all through page objects
  *   - Test data cleaned up via restClient after each scenario
  */
 
@@ -53,72 +53,32 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
   // Wait for the exchange rates section to be visible
-  const section = await page
-    .locate([
-      { type: 'testId', value: 'exchange-rates-section' },
-      { type: 'css', value: '[data-testid="exchange-rates-section"]' },
-    ])
-    .resolve();
+  const section = await adminSettings.exchangeRatesSectionLocator();
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Set home currency to GBP
-  const homeSelect = await page
-    .locate([
-      { type: 'testId', value: 'home-currency-select' },
-      { type: 'css', value: '[data-testid="home-currency-select"]' },
-    ])
-    .resolve();
+  const homeSelect = await adminSettings.homeCurrencySelectLocator();
   await homeSelect.selectOption('GBP');
 
   // Click Add Currency to open the form
   await adminSettings.clickAddCurrency();
-  const addForm = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-form' },
-      { type: 'css', value: '[data-testid="add-currency-form"]' },
-    ])
-    .resolve();
+  const addForm = await adminSettings.addCurrencyFormLocator();
   await expect(addForm).toBeVisible();
 
   // Add USD with rate 1.27
-  const codeSelect = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-code-select' },
-      { type: 'css', value: '[data-testid="add-currency-code-select"]' },
-    ])
-    .resolve();
+  const codeSelect = await adminSettings.addCurrencyCodeSelectLocator();
   await codeSelect.selectOption('USD');
-  const rateInput = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-rate-input' },
-      { type: 'css', value: '[data-testid="add-currency-rate-input"]' },
-    ])
-    .resolve();
+  const rateInput = await adminSettings.addCurrencyRateInputLocator();
   await rateInput.fill('1.27');
   await adminSettings.confirmAddCurrency();
 
   // Add EUR with rate 1.16
   await adminSettings.clickAddCurrency();
-  const addForm2 = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-form' },
-      { type: 'css', value: '[data-testid="add-currency-form"]' },
-    ])
-    .resolve();
+  const addForm2 = await adminSettings.addCurrencyFormLocator();
   await expect(addForm2).toBeVisible();
-  const codeSelect2 = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-code-select' },
-      { type: 'css', value: '[data-testid="add-currency-code-select"]' },
-    ])
-    .resolve();
+  const codeSelect2 = await adminSettings.addCurrencyCodeSelectLocator();
   await codeSelect2.selectOption('EUR');
-  const rateInput2 = await page
-    .locate([
-      { type: 'testId', value: 'add-currency-rate-input' },
-      { type: 'css', value: '[data-testid="add-currency-rate-input"]' },
-    ])
-    .resolve();
+  const rateInput2 = await adminSettings.addCurrencyRateInputLocator();
   await rateInput2.fill('1.16');
   await adminSettings.confirmAddCurrency();
 
@@ -126,47 +86,22 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await adminSettings.saveExchangeRates();
 
   // Wait for save success
-  const saveSuccess = await page
-    .locate([
-      { type: 'testId', value: 'exchange-rate-save-success' },
-      { type: 'css', value: '[data-testid="exchange-rate-save-success"]' },
-    ])
-    .resolve();
+  const saveSuccess = await adminSettings.exchangeRateSaveSuccessLocator();
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
   // Reload and verify persistence — deep-link back to currency tab
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
-  const sectionAfterReload = await page
-    .locate([
-      { type: 'testId', value: 'exchange-rates-section' },
-      { type: 'css', value: '[data-testid="exchange-rates-section"]' },
-    ])
-    .resolve();
+  const sectionAfterReload = await adminSettings.exchangeRatesSectionLocator();
   await expect(sectionAfterReload).toBeVisible({ timeout: 10_000 });
 
   // Home currency should be GBP
-  const homeSelectAfterReload = await page
-    .locate([
-      { type: 'testId', value: 'home-currency-select' },
-      { type: 'css', value: '[data-testid="home-currency-select"]' },
-    ])
-    .resolve();
+  const homeSelectAfterReload = await adminSettings.homeCurrencySelectLocator();
   await expect(homeSelectAfterReload).toHaveValue('GBP');
 
   // USD and EUR rate rows should be visible
-  const usdRow = await page
-    .locate([
-      { type: 'testId', value: 'exchange-rate-row-USD' },
-      { type: 'css', value: '[data-testid="exchange-rate-row-USD"]' },
-    ])
-    .resolve();
+  const usdRow = await adminSettings.exchangeRateRowLocator('USD');
   await expect(usdRow).toBeVisible();
-  const eurRow = await page
-    .locate([
-      { type: 'testId', value: 'exchange-rate-row-EUR' },
-      { type: 'css', value: '[data-testid="exchange-rate-row-EUR"]' },
-    ])
-    .resolve();
+  const eurRow = await adminSettings.exchangeRateRowLocator('EUR');
   await expect(eurRow).toBeVisible();
 
   // Restore to USD home for other tests

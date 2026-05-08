@@ -278,6 +278,196 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
+  // Exchange rate state queries
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the exchange rates section container.
+   */
+  async exchangeRatesSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'exchange-rates-section' },
+          { type: 'role', value: 'region', options: { name: /exchange rate/i } },
+        ],
+        { intent: 'exchange rates configuration section on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the home currency select dropdown.
+   */
+  async homeCurrencySelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'home-currency-select' },
+          { type: 'role', value: 'combobox', options: { name: /home currency/i } },
+        ],
+        { intent: 'home currency select dropdown on exchange rates section' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the add currency form.
+   */
+  async addCurrencyFormLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'add-currency-form' },
+          { type: 'css', value: '[data-testid="add-currency-form"]' },
+        ],
+        { intent: 'inline form for adding a new exchange rate currency row' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the currency code select in the add-currency form.
+   */
+  async addCurrencyCodeSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'add-currency-code-select' },
+          { type: 'role', value: 'combobox', options: { name: /currency/i } },
+        ],
+        { intent: 'currency code dropdown in the add-currency inline form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the exchange rate input in the add-currency form.
+   */
+  async addCurrencyRateInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'add-currency-rate-input' },
+          { type: 'role', value: 'spinbutton', options: { name: /rate/i } },
+        ],
+        { intent: 'exchange rate numeric input in the add-currency inline form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the save-exchange-rates success message.
+   */
+  async exchangeRateSaveSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'exchange-rate-save-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message after saving exchange rate configuration' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for an exchange rate row by currency code.
+   *
+   * @param currencyCode - ISO 4217 code (e.g. 'USD', 'EUR').
+   */
+  async exchangeRateRowLocator(currencyCode: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `exchange-rate-row-${currencyCode}` },
+          { type: 'css', value: `[data-testid="exchange-rate-row-${currencyCode}"]` },
+        ],
+        { intent: `exchange rate row for ${currencyCode} on admin settings page` },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Custom fields state queries
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the custom fields section container.
+   */
+  async customFieldsSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-section' },
+          { type: 'role', value: 'region', options: { name: /custom field/i } },
+        ],
+        { intent: 'custom fields configuration section on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom fields entity select dropdown.
+   */
+  async customFieldsEntitySelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-entity-select' },
+          { type: 'role', value: 'combobox', options: { name: /entity/i } },
+        ],
+        { intent: 'entity type selector for custom fields on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the add-field inline form.
+   */
+  async addFieldFormLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'add-field-form' },
+          { type: 'css', value: '[data-testid="add-field-form"]' },
+        ],
+        { intent: 'inline form for adding a new custom field definition' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the field name input in the add-field form.
+   */
+  async addFieldNameInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'add-field-name-input' },
+          { type: 'label', value: 'name', options: { exact: false } },
+        ],
+        { intent: 'field name text input in the add-custom-field inline form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom fields feedback / success message.
+   */
+  async customFieldsFeedbackLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-feedback' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'feedback message after adding or removing a custom field' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
   // Exchange rate interactions
   // ---------------------------------------------------------------------------
 

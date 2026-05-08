@@ -26,6 +26,7 @@ import {
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -96,14 +97,8 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   await clickBulkCheckbox(c2.id, { page });
 
   // Bulk action bar should be visible.
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'bulk-action-bar' },
-        { type: 'css', value: '[data-testid="bulk-action-bar"]' },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  const contactsPage = new ContactsPage({ page });
+  await expect(await contactsPage.bulkActionBarLocator()).toBeVisible();
 
   await bulkReassignContacts(newOwner.id, newOwner.name, { page });
 
@@ -159,14 +154,8 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   await waitForBulkCheckbox(c2.id, { page });
   await clickBulkCheckbox(c2.id, { page });
 
-  await expect(
-    await page
-      .locate([
-        { type: 'testId', value: 'bulk-action-bar' },
-        { type: 'css', value: '[data-testid="bulk-action-bar"]' },
-      ])
-      .resolve(),
-  ).toBeVisible();
+  const contactsPage = new ContactsPage({ page });
+  await expect(await contactsPage.bulkActionBarLocator()).toBeVisible();
 
   await bulkDeleteContacts({ page });
 

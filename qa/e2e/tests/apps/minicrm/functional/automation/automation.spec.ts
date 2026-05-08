@@ -27,6 +27,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -312,28 +313,11 @@ test('@functional F13-PAG1: Automation rules page — pagination controls always
 }) => {
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 
-  await page.goto('/admin/automation');
-  await expect(
-    await page
-      .locate(
-        [
-          { type: 'testId', value: 'automation-rules-heading' },
-          { type: 'role', value: 'heading', options: { name: /automation/i } },
-        ],
-        { intent: 'automation rules page heading' },
-      )
-      .resolve(),
-  ).toBeVisible();
+  const automationPage = new AutomationPage({ page });
+  await automationPage.navigate();
 
-  await expect(
-    await page
-      .locate(
-        [
-          { type: 'testId', value: 'pagination' },
-          { type: 'css', value: '[data-testid="pagination"]' },
-        ],
-        { intent: 'pagination bar showing record count and page controls' },
-      )
-      .resolve(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(await automationPage.headingLocator()).toBeVisible();
+  // paginationLocator returns null when absent; on a seeded instance it should always be present
+  const automationPagination = await automationPage.paginationLocator();
+  await expect(automationPagination!).toBeVisible({ timeout: 10_000 });
 });

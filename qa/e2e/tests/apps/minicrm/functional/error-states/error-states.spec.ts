@@ -37,6 +37,7 @@ import {
   bulkDeleteContacts,
   contactRowIsVisible,
 } from '@behaviors/minicrm/contacts.behaviors.js';
+import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -101,6 +102,7 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
   await page.waitForLoadState('networkidle');
 
   // Form must still be visible — user was not navigated away.
+
   const form = await page
     .locate(
       [
@@ -188,6 +190,7 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
   });
 
   // Change stage via the dropdown — triggers the PATCH.
+
   const stageSelect = await page
     .locate(
       [
@@ -247,15 +250,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   await clickBulkCheckbox(contact.id, { page });
 
   // Wait for the bulk-action-bar to confirm selection registered.
-  const bulkBar = await page
-    .locate(
-      [
-        { type: 'testId', value: 'bulk-action-bar' },
-        { type: 'css', value: '[data-testid="bulk-action-bar"]' },
-      ],
-      { intent: 'bulk action bar that appears after selecting contacts' },
-    )
-    .resolve();
+  const bulkBar = await new ContactsPage({ page }).bulkActionBarLocator();
   await bulkBar.waitFor({ state: 'visible', timeout: 8_000 });
 
   // Intercept the bulk contacts POST and return 500.
@@ -279,6 +274,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
 
   // Wait for the error element to attach rather than networkidle — the mock
   // returns instantly so networkidle settles before React re-renders bulkError.
+
   const errorMsg = await page
     .locate(
       [
@@ -330,6 +326,7 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
   });
 
   // The page must show a not-found message — not a blank screen or JS error.
+
   const notFoundMsg = await page
     .locate(
       [
@@ -344,6 +341,7 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
   // The back-to-contacts link must also be present so the user can recover.
   // It is a plain <Link> with no data-testid in the error branch — locate
   // it by its position inside <main> as a fallback anchor element.
+
   const backLink = await page
     .locate(
       [
@@ -374,6 +372,7 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
   });
 
   // The page must show a not-found message.
+
   const notFoundMsg = await page
     .locate(
       [
@@ -386,6 +385,7 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
   await expect(notFoundMsg).toBeVisible();
 
   // The back-to-deals link must be present so the user can recover.
+
   const backLink = await page
     .locate(
       [
@@ -432,6 +432,7 @@ test('@functional ES-1-6: create contact with duplicate email → 409 → duplic
   expect(result.created, 'contact must not have been created').toBe(false);
 
   // Confirm the inline warning element is visible (not just any error element).
+
   const warningEl = await page
     .locate(
       [
@@ -469,6 +470,7 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
 
   // The loading indicator must appear while the request is in-flight.
   // It renders as an aria-busy paragraph with the contacts.loading i18n text.
+
   const loadingEl = await page
     .locate(
       [
@@ -517,6 +519,7 @@ test('@functional ES-1-8: isolation check — contacts list loads normally witho
   await page.goto('/contacts', { waitUntil: 'networkidle' });
 
   // The contacts list should load promptly (well under 3 s) and show the seeded contact.
+
   const contactRow = await page
     .locate(
       [
