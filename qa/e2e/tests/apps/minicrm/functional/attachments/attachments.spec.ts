@@ -30,7 +30,6 @@ import {
   navigateToAccount,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -437,8 +436,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   await deleteButton.click();
 
   // Confirm deletion in dialog
-  const contactDetailPage = new ContactDetailPage({ page });
-  await contactDetailPage.confirmAttachmentDelete();
+  await page.click([{ type: 'testId', value: 'attachment-delete-confirm' }]);
 
   // Row should be gone (isNotVisible — safe when element is removed from DOM).
   await expect

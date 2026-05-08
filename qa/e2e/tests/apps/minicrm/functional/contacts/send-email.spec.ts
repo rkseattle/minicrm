@@ -16,7 +16,6 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
 import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -53,8 +52,6 @@ test(
 
     await navigateToContact(page, contact.id);
 
-    const detailPage = new ContactDetailPage({ page });
-
     // Send Email button should be visible for a contact with an email address
     const sendEmailButton = await page
       .locate([
@@ -65,7 +62,7 @@ test(
     await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
 
     // Open the compose modal
-    await detailPage.clickSendEmail();
+    await page.click([{ type: 'testId', value: 'send-email-button' }]);
 
     // Modal should appear
     const modal = await page
@@ -77,11 +74,15 @@ test(
     await modal.waitFor({ state: 'visible', timeout: 5_000 });
 
     // Fill in subject and body
-    await detailPage.fillSendEmailSubject('Test email subject from E2E');
-    await detailPage.fillSendEmailBody('This is the email body written by the E2E test.');
+    await page.fill('Test email subject from E2E', [
+      { type: 'testId', value: 'send-email-subject' },
+    ]);
+    await page.fill('This is the email body written by the E2E test.', [
+      { type: 'testId', value: 'send-email-body' },
+    ]);
 
     // Click Send
-    await detailPage.submitSendEmail();
+    await page.click([{ type: 'testId', value: 'send-email-submit' }]);
 
     // Success message appears; must say "sent to" not "logged" — confirms SMTP delivered.
     const successMsg = await page

@@ -265,7 +265,13 @@ export async function dragDealToStage(
     const today = new Date().toISOString().slice(0, 10);
     await dateInput.fill(today);
 
-    await boardPage.confirmCloseDeal();
+    await context.page.click(
+      [
+        { type: 'testId', value: 'close-deal-confirm' },
+        { type: 'role', value: 'button', options: { name: 'Confirm', exact: false } },
+      ],
+      { intent: 'confirm button in the close deal modal' },
+    );
 
     // Explicit timeout matches the appear-guard above — prevents undismissed modal
     // from silently consuming the full 30s test budget on a slow CI runner. (MINCRM-298)

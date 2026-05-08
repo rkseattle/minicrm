@@ -20,9 +20,8 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestUser } from '@apps/minicrm/helpers.js';
-import { filterAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
-import { AuditLogPage } from '@pages/minicrm/AuditLogPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -98,6 +97,76 @@ interface LeadSingleResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Expands the audit log filter panel if it is currently collapsed.
+ * On mobile the panel starts collapsed; on desktop it starts expanded.
+ * Calling this before any filter interaction makes tests viewport-agnostic.
+ */
+async function expandAuditFilters(page: PageFacade): Promise<void> {
+  const toggle = await page
+    .locate(
+      [
+        { type: 'testId', value: 'filters-toggle' },
+        { type: 'css', value: '[data-testid="filters-toggle"]' },
+      ],
+      { intent: 'button to expand or collapse the audit log filter panel' },
+    )
+    .resolve();
+  const expanded = await toggle.getAttribute('aria-expanded');
+  if (expanded !== 'true') {
+    await toggle.click();
+    // Wait for filter fields to become visible before returning
+    const filterField = await page
+      .locate(
+        [
+          { type: 'testId', value: 'filter-record-type' },
+          { type: 'css', value: '[data-testid="filter-record-type"]' },
+        ],
+        { intent: 'record type filter select after expanding filter panel' },
+      )
+      .resolve();
+    await filterField.waitFor({ state: 'visible' });
+  }
+}
+
+/**
+ * Collapses the audit log filter panel if it is currently expanded.
+ * Call this before clicking data rows on mobile — the expanded filter body
+ * overlaps the row area and intercepts pointer events.
+ */
+async function collapseAuditFilters(page: PageFacade): Promise<void> {
+  const toggle = await page
+    .locate(
+      [
+        { type: 'testId', value: 'filters-toggle' },
+        { type: 'css', value: '[data-testid="filters-toggle"]' },
+      ],
+      { intent: 'button to expand or collapse the audit log filter panel' },
+    )
+    .resolve();
+  const expanded = await toggle.getAttribute('aria-expanded');
+  if (expanded === 'true') {
+    await toggle.click();
+    // page.waitFor('hidden') calls resolveLocator first, which throws
+    // StrategyExhaustedError when the element is absent — but absent IS hidden,
+    // so we treat that error as success.
+    await page
+      .waitFor(
+        [
+          { type: 'testId', value: 'filter-record-type' },
+          { type: 'css', value: '[data-testid="filter-record-type"]' },
+        ],
+        'hidden',
+        { intent: 'record type filter disappears after collapsing filter panel' },
+      )
+      .catch(() => null);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Audit Log — F12-AL
 // ---------------------------------------------------------------------------
 
@@ -116,8 +185,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   await restClient.patch(`/api/v1/contacts/${contact.id}`, { first_name: 'F12AL1Updated' });
 
   // Navigate to audit log
-  const auditLogPage = new AuditLogPage({ page });
-  await auditLogPage.navigate();
+  await page.goto('/admin/audit-log');
   await expect(
     await page
       .locate([
@@ -127,8 +195,19 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
       .resolve(),
   ).toBeVisible();
 
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
+
   // Filter by record type = contact so the list is manageable
-  await filterAuditLog('contact', { page });
+  await (
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
+  ).selectOption('contact');
+  await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
   // The audit list should show at least one entry
   await expect(
@@ -165,8 +244,7 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   void contact;
   void account;
 
-  const auditLogPage2 = new AuditLogPage({ page });
-  await auditLogPage2.navigate();
+  await page.goto('/admin/audit-log');
   await expect(
     await page
       .locate([
@@ -176,8 +254,19 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
       .resolve(),
   ).toBeVisible();
 
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
+
   // Filter to account only
-  await filterAuditLog('account', { page });
+  await (
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
+  ).selectOption('account');
+  await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
 
   await expect(
     await page
@@ -231,8 +320,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   );
 
   // Navigate to the audit log page and verify the entry is renderable in the UI
-  const auditLogPage3 = new AuditLogPage({ page });
-  await auditLogPage3.navigate();
+  await page.goto('/admin/audit-log');
   await expect(
     await page
       .locate([
@@ -242,8 +330,18 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
       .resolve(),
   ).toBeVisible();
 
-  // Filter by contact and apply
-  await filterAuditLog('contact', { page });
+  // Expand the filter panel if collapsed (starts collapsed on mobile)
+  await expandAuditFilters(page);
+
+  await (
+    await page
+      .locate([
+        { type: 'testId', value: 'filter-record-type' },
+        { type: 'css', value: '[data-testid="filter-record-type"]' },
+      ])
+      .resolve()
+  ).selectOption('contact');
+  await page.click([{ type: 'testId', value: 'apply-filters-button' }]);
   await expect(
     await page
       .locate([
@@ -256,7 +354,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // If the specific row is on the first page, expand it and verify the detail section.
   // Collapse the filter panel first — on mobile its open body overlaps the data rows
   // and intercepts pointer events, causing the row-button click to time out.
-  await auditLogPage3.collapseFilters();
+  await collapseAuditFilters(page);
 
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
   const expandButton = await page

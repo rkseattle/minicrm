@@ -40,12 +40,13 @@ import {
   cancelDeleteContact,
   cancelContactEdit,
   searchContacts,
-  openContactCreateForm,
-  fillContactCreateForm,
-  submitContactCreateFormAndWaitForValidation,
-  sortContactsByName,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { createTestContact, createTestAccount, navigateToContact } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  navigateToContact,
+  navigateToContacts as navigateToContactsPage,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -170,17 +171,25 @@ test('@functional F2-C3: missing required field → inline validation, contact n
   // Use a unique email so we can precisely verify whether this contact was created.
   const uniqueEmail = `f2c3-missing-${uniqueSuffix}@example.com`;
 
-  // Submit with empty last_name — browser HTML5 required-field validation fires
-  // synchronously and no network request is sent.
-  await openContactCreateForm({ page });
-  await fillContactCreateForm({ first_name: 'F2C3Only', email: uniqueEmail }, { page });
-  // Intentionally omit last_name. Submit to trigger HTML5 required validation.
-  const validationResult = await submitContactCreateFormAndWaitForValidation({ page });
+  // Submit with empty last_name by typing a space then clearing — browser HTML5
+  // validation catches the empty required field client-side.
+  await navigateToContactsPage(page);
+  await page.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await page.fill('F2C3Only', [{ type: 'testId', value: 'contact-first-name' }]);
+  await page.fill(uniqueEmail, [{ type: 'testId', value: 'contact-email' }]);
+  // Intentionally leave last_name empty. Submit to trigger HTML5 required validation.
+  await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
-  // Form must still be visible — HTML5 validation prevented submission.
-  expect(validationResult.formStillVisible, 'form should stay open on validation failure').toBe(
-    true,
-  );
+  // HTML5 validation is synchronous — no network request fires. Use a DOM-based
+  // wait so the assertion retries automatically instead of sleeping a fixed amount.
+  await expect(
+    await page
+      .locate([
+        { type: 'testId', value: 'contact-form' },
+        { type: 'css', value: '[data-testid="contact-form"]' },
+      ])
+      .resolve(),
+  ).toBeVisible();
 
   // Verify no contact was created by searching for the unique email.
   const check = await restClient.get<ContactListResponse>(
@@ -201,17 +210,25 @@ test('@functional F2-C4: invalid email format → inline validation, contact not
   // Use a unique last name to precisely identify whether this contact was created.
   const uniqueLastName = `InvalidEmailTest-${uniqueSuffix}`;
 
-  // HTML5 email validation fires synchronously; no network request is sent so
-  // networkidle would never settle — use the validation-aware behavior instead.
-  await openContactCreateForm({ page });
-  await fillContactCreateForm(
-    { first_name: 'F2C4', last_name: uniqueLastName, email: 'not-an-email' },
-    { page },
-  );
-  const validationResult = await submitContactCreateFormAndWaitForValidation({ page });
+  // Use healPage interactions since createContactViaUI waits for networkidle which
+  // may never settle on a validation error (no network request is made).
+  await navigateToContactsPage(page);
+  await page.click([{ type: 'testId', value: 'new-contact-button' }]);
+  await page.fill('F2C4', [{ type: 'testId', value: 'contact-first-name' }]);
+  await page.fill(uniqueLastName, [{ type: 'testId', value: 'contact-last-name' }]);
+  await page.fill('not-an-email', [{ type: 'testId', value: 'contact-email' }]);
+  await page.click([{ type: 'testId', value: 'contact-form-submit' }]);
 
-  // HTML5 email validation is synchronous — form stays open.
-  expect(validationResult.formStillVisible, 'form should stay open on invalid email').toBe(true);
+  // HTML5 email validation is synchronous — use a DOM-based wait instead of a
+  // fixed timeout so the assertion retries automatically.
+  await expect(
+    await page
+      .locate([
+        { type: 'testId', value: 'contact-form' },
+        { type: 'css', value: '[data-testid="contact-form"]' },
+      ])
+      .resolve(),
+  ).toBeVisible();
 
   // Verify no contact was created by searching for the unique last name.
   const check = await restClient.get<ContactListResponse>(
@@ -335,8 +352,34 @@ test('@functional F2-R2: sort by first name ascending returns alphabetical order
   // Also confirm the sort button is clickable via UI (desktop table only).
   const navResult = await navigateToContacts({ page });
   expect(navResult.loaded).toBe(true);
-  // sortContactsByName returns false on mobile where the sort header is absent.
-  await sortContactsByName({ page });
+  // The sort button only exists on desktop — the mobile card view has no sort headers.
+  // resolve() throws StrategyExhaustedError when the element is absent (mobile), so
+  // catch and treat as not visible.
+  let isSortVisible = false;
+  try {
+    const sortButton = await page
+      .locate(
+        [
+          { type: 'testId', value: 'contacts-sort-name' },
+          { type: 'role', value: 'columnheader', options: { name: /first name/i } },
+        ],
+        { intent: 'column header button to sort contacts by first name' },
+      )
+      .resolve();
+    isSortVisible = await sortButton.isVisible();
+  } catch {
+    // Element absent at this viewport — mobile layout has no sort headers.
+  }
+  if (isSortVisible) {
+    await page.click(
+      [
+        { type: 'testId', value: 'contacts-sort-name' },
+        { type: 'role', value: 'columnheader', options: { name: /first name/i } },
+      ],
+      { intent: 'column header button to sort contacts by first name' },
+    );
+    await page.waitForLoadState('networkidle');
+  }
 
   void testData;
 });

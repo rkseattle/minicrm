@@ -13,7 +13,6 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { NavPage } from '@pages/minicrm/NavPage.js';
 
 /** Navigation layout modes supported by MiniCRM (MINCRM-133). */
 export type NavLayout = 'top' | 'left' | 'hamburger';
@@ -162,8 +161,10 @@ export async function openHamburgerMenu(
     ],
     'visible',
   );
-  const navPage = new NavPage(context);
-  await navPage.clickMenuToggle();
+  await context.page.click([
+    { type: 'testId', value: 'nav-menu-toggle' },
+    { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+  ]);
   // page.waitFor() re-resolves the element on every internal retry cycle, so it
   // never holds a stale DOM snapshot from before the React commit. This is
   // different from resolve()-then-waitFor(), which captures the locator once at
@@ -244,8 +245,10 @@ export interface CloseHamburgerMenuViaCloseButtonResult {
 export async function closeHamburgerMenuViaCloseButton(
   context: NavBehaviorContext,
 ): Promise<CloseHamburgerMenuViaCloseButtonResult> {
-  const navPage = new NavPage(context);
-  await navPage.clickHamburgerClose();
+  await context.page.click([
+    { type: 'testId', value: 'nav-hamburger-close' },
+    { type: 'css', value: '[data-testid="nav-hamburger-close"]' },
+  ]);
 
   // Drawer is conditionally rendered — after clicking close it may already be
   // unmounted. Resolve with a catch so a missing drawer counts as closed.
@@ -306,8 +309,10 @@ export async function navigateViaNavLink(
       .catch(() => null);
     const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
     if (!drawerVisible) {
-      const navPage = new NavPage(context);
-      await navPage.clickMenuToggle();
+      await context.page.click([
+        { type: 'testId', value: 'nav-menu-toggle' },
+        { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+      ]);
       // Use page.waitFor() (re-resolves each retry) instead of resolve()-then-waitFor()
       // (stale snapshot) — same fix as openHamburgerMenu above.
       await context.page.waitFor(
@@ -494,8 +499,10 @@ export async function navigateViaMobileNavLink(
     .catch(() => null);
   const drawerVisible = (await drawerLocator?.isVisible().catch(() => false)) ?? false;
   if (!drawerVisible) {
-    const navPage = new NavPage(context);
-    await navPage.clickMenuToggle();
+    await context.page.click([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ]);
     const drawer = await context.page
       .locate([
         { type: 'testId', value: 'mobile-nav-drawer' },

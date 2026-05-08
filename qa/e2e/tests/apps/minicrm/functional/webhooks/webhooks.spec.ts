@@ -18,7 +18,6 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -138,7 +137,6 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const urlInput = await page
@@ -150,9 +148,9 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await urlInput.fill('https://wh02.example.com/hook');
 
   // Select the contact.created event
-  await adminSettings.clickWebhookEvent('contact.created');
+  await page.click([{ type: 'testId', value: 'webhook-event-contact.created' }]);
 
-  await adminSettings.clickAddWebhook();
+  await page.click([{ type: 'testId', value: 'webhook-add-button' }]);
 
   // Secret reveal modal should appear
   const modal = await page
@@ -174,7 +172,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   expect(secretValue.length, 'plaintextSecret should be non-empty').toBeGreaterThan(0);
 
   // Close the modal
-  await adminSettings.closeWebhookSecretModal();
+  await page.click([{ type: 'testId', value: 'webhook-secret-done-button' }]);
 
   // Find and register the newly created subscription for teardown
   const listResp = await restClient.get<WebhookSubscriptionsResponse>('/api/v1/admin/webhooks');
@@ -250,8 +248,6 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettingsWH04 = new AdminSettingsPage({ page });
-
   const row = await page
     .locate([
       { type: 'testId', value: `webhook-row-${sub.id}` },
@@ -261,7 +257,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Disable toggle
-  await adminSettingsWH04.toggleWebhook(sub.id);
+  await page.click([{ type: 'testId', value: `webhook-toggle-button-${sub.id}` }]);
 
   // Status badge should now show Disabled
   await expect(row).toContainText('Disabled', { timeout: 6_000 });
@@ -287,8 +283,6 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettingsWH05 = new AdminSettingsPage({ page });
-
   const row = await page
     .locate([
       { type: 'testId', value: `webhook-row-${sub.id}` },
@@ -298,7 +292,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Delete
-  await adminSettingsWH05.clickDeleteWebhook(sub.id);
+  await page.click([{ type: 'testId', value: `webhook-delete-button-${sub.id}` }]);
 
   // Confirm dialog appears
   const dialog = await page
@@ -310,7 +304,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await expect(dialog).toBeVisible();
 
   // Confirm deletion
-  await adminSettingsWH05.confirmDeleteWebhook();
+  await page.click([{ type: 'testId', value: 'webhook-delete-confirm-button' }]);
 
   // Row should disappear
   await expect(row).not.toBeVisible({ timeout: 6_000 });

@@ -12,7 +12,6 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -47,8 +46,6 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   // Log in via the UI
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
   // Navigate to Admin Settings — currency tab required for exchange-rates-section
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
@@ -71,7 +68,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await homeSelect.selectOption('GBP');
 
   // Click Add Currency to open the form
-  await adminSettings.clickAddCurrency();
+  await page.click([{ type: 'testId', value: 'exchange-rate-add-button' }]);
   const addForm = await page
     .locate([
       { type: 'testId', value: 'add-currency-form' },
@@ -95,10 +92,10 @@ test('admin can configure exchange rates and reload to confirm persistence @func
     ])
     .resolve();
   await rateInput.fill('1.27');
-  await adminSettings.confirmAddCurrency();
+  await page.click([{ type: 'testId', value: 'add-currency-confirm' }]);
 
   // Add EUR with rate 1.16
-  await adminSettings.clickAddCurrency();
+  await page.click([{ type: 'testId', value: 'exchange-rate-add-button' }]);
   const addForm2 = await page
     .locate([
       { type: 'testId', value: 'add-currency-form' },
@@ -120,10 +117,10 @@ test('admin can configure exchange rates and reload to confirm persistence @func
     ])
     .resolve();
   await rateInput2.fill('1.16');
-  await adminSettings.confirmAddCurrency();
+  await page.click([{ type: 'testId', value: 'add-currency-confirm' }]);
 
   // Save rates
-  await adminSettings.saveExchangeRates();
+  await page.click([{ type: 'testId', value: 'exchange-rate-save-button' }]);
 
   // Wait for save success
   const saveSuccess = await page

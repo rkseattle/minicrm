@@ -21,8 +21,6 @@ import {
   waitForBulkCheckbox,
   clickBulkCheckbox,
   filterContactsByTerm,
-  bulkReassignContacts,
-  bulkDeleteContacts,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
@@ -105,7 +103,40 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
       .resolve(),
   ).toBeVisible();
 
-  await bulkReassignContacts(newOwner.id, newOwner.name, { page });
+  // Click "Reassign".
+  await page.click([
+    { type: 'testId', value: 'bulk-reassign-button' },
+    { type: 'css', value: '[data-testid="bulk-reassign-button"]' },
+  ]);
+
+  // Reassign modal should appear.
+  await expect(
+    await page
+      .locate([
+        { type: 'testId', value: 'bulk-reassign-modal' },
+        { type: 'role', value: 'dialog', options: { name: /reassign/i } },
+      ])
+      .resolve(),
+  ).toBeVisible();
+
+  // Wait for the owner dropdown to be populated with the new user's option before
+  // selecting — the options are fetched async and may not be in the DOM yet when
+  // the modal first becomes visible.
+  const ownerSelect = await page
+    .locate([
+      { type: 'testId', value: 'bulk-reassign-owner-select' },
+      { type: 'css', value: '[data-testid="bulk-reassign-owner-select"]' },
+    ])
+    .resolve();
+  await page.waitForFunction(
+    `document.querySelector('[data-testid="bulk-reassign-owner-select"]')?.querySelector('option[value="${newOwner.id}"]') !== null`,
+    undefined,
+    { timeout: 5_000 },
+  );
+  await ownerSelect.selectOption({ label: newOwner.name });
+
+  // Confirm.
+  await page.click([{ type: 'testId', value: 'bulk-reassign-confirm' }]);
 
   // Bulk action bar should disappear after success.
   // page.isNotVisible() is used here because resolve() throws
@@ -168,7 +199,27 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
       .resolve(),
   ).toBeVisible();
 
-  await bulkDeleteContacts({ page });
+  // Click "Delete".
+  await page.click([
+    { type: 'testId', value: 'bulk-delete-button' },
+    { type: 'css', value: '[data-testid="bulk-delete-button"]' },
+  ]);
+
+  // Confirm delete modal should appear.
+  await expect(
+    await page
+      .locate([
+        { type: 'testId', value: 'confirm-delete-modal' },
+        { type: 'role', value: 'dialog', options: { name: /delete/i } },
+      ])
+      .resolve(),
+  ).toBeVisible();
+
+  // Confirm deletion.
+  await page.click([
+    { type: 'testId', value: 'confirm-delete-confirm' },
+    { type: 'role', value: 'button', options: { name: /confirm|delete/i } },
+  ]);
 
   // Bulk action bar should disappear.
   expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);

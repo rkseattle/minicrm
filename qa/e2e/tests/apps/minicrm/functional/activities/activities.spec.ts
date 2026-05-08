@@ -37,7 +37,6 @@ import {
   navigateToMyTasks,
   taskIsVisible,
   completeTask,
-  showCompletedTasks,
 } from '@behaviors/minicrm/tasks.behaviors.js';
 import {
   createTestContact,
@@ -583,7 +582,7 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   expect(navResult.loaded).toBe(true);
 
   // Toggle is required — completed tasks are hidden by default.
-  await showCompletedTasks({ page });
+  await page.click([{ type: 'testId', value: 'toggle-completed-button' }]);
   const taskRow = await page
     .locate([
       { type: 'testId', value: `task-row-${activity.id}` },

@@ -17,7 +17,6 @@ import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
 import { ResetPasswordPage } from '@pages/minicrm/ResetPasswordPage.js';
 import { SetPasswordPage } from '@pages/minicrm/SetPasswordPage.js';
-import { NavPage } from '@pages/minicrm/NavPage.js';
 import { t } from '@framework/i18n/locale.js';
 
 // ---------------------------------------------------------------------------
@@ -159,22 +158,21 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
   // For NavTop on mobile (hidden lg:inline-flex) it is not visible — in that
   // case open the hamburger drawer and click nav-logout-mobile instead.
   // For NavLeft and NavHamburger, nav-logout is always visible.
-  const navPage = new NavPage(context);
   const desktopLogout = await context.page
-    .locate(
-      [
-        { type: 'testId', value: 'nav-logout' },
-        { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
-      ],
-      { intent: 'desktop logout button in navigation chrome' },
-    )
+    .locate([
+      { type: 'testId', value: 'nav-logout' },
+      { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+    ])
     .resolve();
   const isDesktopVisible = await desktopLogout.isVisible().catch(() => false);
 
   if (!isDesktopVisible) {
     // NavTop mobile: click the menu toggle to mount the drawer, wait for the
     // drawer to be visible, then click the mobile logout button inside it.
-    await navPage.clickMenuToggle();
+    await context.page.click([
+      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+    ]);
     const drawer = await context.page
       .locate([
         { type: 'testId', value: 'mobile-nav-drawer' },
@@ -182,9 +180,18 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
       ])
       .resolve();
     await drawer.waitFor({ state: 'visible', timeout: 5_000 });
-    await navPage.clickMobileLogout();
+    const mobileLogout = await context.page
+      .locate([
+        { type: 'testId', value: 'nav-logout-mobile' },
+        { type: 'css', value: '[data-testid="nav-logout-mobile"]' },
+      ])
+      .resolve();
+    await mobileLogout.click();
   } else {
-    await navPage.clickDesktopLogout();
+    await context.page.click([
+      { type: 'testId', value: 'nav-logout' },
+      { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+    ]);
   }
 
   await context.page

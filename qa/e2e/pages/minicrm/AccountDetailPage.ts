@@ -106,58 +106,6 @@ export class AccountDetailPage {
   }
 
   /**
-   * Clicks the Delete button to open the confirmation modal.
-   */
-  async clickDelete(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'delete-account-button' },
-        { type: 'role', value: 'button', options: { name: t('accounts.delete'), exact: false } },
-      ],
-      { intent: 'delete button to open account delete confirmation modal' },
-    );
-  }
-
-  /**
-   * Clicks the Confirm button in the delete confirmation modal.
-   */
-  async confirmDelete(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'confirm-delete-confirm' },
-        { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
-      ],
-      { intent: 'confirm button in account delete confirmation modal' },
-    );
-  }
-
-  /**
-   * Clicks the Cancel button in the delete confirmation modal.
-   */
-  async cancelDelete(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'confirm-delete-cancel' },
-        { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
-      ],
-      { intent: 'cancel button in account delete confirmation modal' },
-    );
-  }
-
-  /**
-   * Clicks the Cancel button in the account edit form.
-   */
-  async cancelEdit(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'account-form-cancel' },
-        { type: 'role', value: 'button', options: { name: t('accounts.cancel'), exact: false } },
-      ],
-      { intent: 'cancel button in account edit form' },
-    );
-  }
-
-  /**
    * Returns the current page URL.
    */
   url(): string {

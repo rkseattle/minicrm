@@ -12,6 +12,7 @@
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
+import { t } from '@framework/i18n/locale.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
@@ -295,32 +296,70 @@ export async function createContactViaUI(
   await contactsPage.navigate();
   await contactsPage.clickNewContact();
 
-  // Fill required fields via page object methods.
-  await contactsPage.fillFirstName(fields.first_name);
-  await contactsPage.fillLastName(fields.last_name);
-  await contactsPage.fillEmail(fields.email);
+  // Fill required fields.
+  await context.page.fill(fields.first_name, [
+    { type: 'testId', value: 'contact-first-name' },
+    { type: 'label', value: 'First name', options: { exact: false } },
+  ]);
+  await context.page.fill(fields.last_name, [
+    { type: 'testId', value: 'contact-last-name' },
+    { type: 'label', value: 'Last name', options: { exact: false } },
+  ]);
+  await context.page.fill(fields.email, [
+    { type: 'testId', value: 'contact-email' },
+    { type: 'label', value: 'Email', options: { exact: false } },
+  ]);
 
   // Fill optional fields when provided.
   if (fields.phone !== undefined) {
-    await contactsPage.fillPhone(fields.phone);
+    await context.page.fill(fields.phone, [
+      { type: 'testId', value: 'contact-phone' },
+      { type: 'label', value: 'Phone', options: { exact: false } },
+    ]);
   }
   if (fields.title !== undefined) {
-    await contactsPage.fillTitle(fields.title);
+    await context.page.fill(fields.title, [
+      { type: 'testId', value: 'contact-title' },
+      { type: 'label', value: 'Title', options: { exact: false } },
+    ]);
   }
   if (fields.department !== undefined) {
-    await contactsPage.fillDepartment(fields.department);
+    await context.page.fill(fields.department, [
+      { type: 'testId', value: 'contact-department' },
+      { type: 'label', value: 'Department', options: { exact: false } },
+    ]);
   }
 
   // Submit the form.
-  await contactsPage.submitCreateForm();
+  await context.page.click([
+    { type: 'testId', value: 'contact-form-submit' },
+    { type: 'role', value: 'button', options: { name: t('contacts.save'), exact: false } },
+  ]);
 
   // Short wait for network/React state to settle.
   await context.page.waitForLoadState('networkidle');
 
   const finalUrl = context.page.url();
 
-  const duplicateWarning = await contactsPage.duplicateWarningIsVisible();
-  const formStillVisible = await contactsPage.createFormIsVisible();
+  // Check for duplicate warning (form stays open with duplicate-contact-warning).
+  const duplicateWarning = await context.page
+    .locate([
+      { type: 'testId', value: 'duplicate-contact-warning' },
+      { type: 'css', value: '[data-testid="duplicate-contact-warning"]' },
+    ])
+    .resolve()
+    .then((el) => el.isVisible().catch(() => false))
+    .catch(() => false);
+
+  // Check form still visible (either validation error or duplicate warning).
+  const formStillVisible = await context.page
+    .locate([
+      { type: 'testId', value: 'contact-form' },
+      { type: 'css', value: '[data-testid="contact-form"]' },
+    ])
+    .resolve()
+    .then((el) => el.isVisible().catch(() => false))
+    .catch(() => false);
 
   // Created when form is gone and no duplicate warning.
   const created = !formStillVisible && !duplicateWarning;
@@ -360,8 +399,17 @@ export async function deleteContactViaUI(
   const detailPage = new ContactDetailPage(context);
   await detailPage.navigate(id);
 
-  await detailPage.clickDelete();
-  await detailPage.confirmDelete();
+  // Click the Delete button to open the confirmation modal.
+  await context.page.click([
+    { type: 'testId', value: 'delete-contact-button' },
+    { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
+  ]);
+
+  // Confirm deletion in the modal.
+  await context.page.click([
+    { type: 'testId', value: 'confirm-delete-confirm' },
+    { type: 'role', value: 'button', options: { name: t('common.delete'), exact: false } },
+  ]);
 
   // Wait for navigation back to /contacts.
   await context.page.waitForURL('**/contacts', { timeout: 10_000 }).catch(() => null);
@@ -400,8 +448,17 @@ export async function cancelDeleteContact(
   const detailPage = new ContactDetailPage(context);
   await detailPage.navigate(id);
 
-  await detailPage.clickDelete();
-  await detailPage.cancelDelete();
+  // Click the Delete button.
+  await context.page.click([
+    { type: 'testId', value: 'delete-contact-button' },
+    { type: 'role', value: 'button', options: { name: t('contacts.delete'), exact: false } },
+  ]);
+
+  // Click Cancel in the confirmation modal.
+  await context.page.click([
+    { type: 'testId', value: 'confirm-delete-cancel' },
+    { type: 'role', value: 'button', options: { name: t('common.cancel'), exact: false } },
+  ]);
 
   // Wait briefly for the modal close animation before checking state.
   await context.page.waitForTimeout(200);
@@ -448,7 +505,11 @@ export async function cancelContactEdit(
   // Type something to make the cancel meaningful.
   await detailPage.fillField('contact-first-name', 'First name', fieldValue);
 
-  await detailPage.cancelEdit();
+  // Click Cancel.
+  await context.page.click([
+    { type: 'testId', value: 'contact-form-cancel' },
+    { type: 'role', value: 'button', options: { name: t('contacts.cancel'), exact: false } },
+  ]);
 
   await context.page.waitForLoadState('networkidle');
 
@@ -486,223 +547,46 @@ export async function searchContacts(
   const contactsPage = new ContactsPage(context);
   await contactsPage.navigate();
 
-  // fillSearch fills the input; search() also calls waitForLoadState('networkidle')
-  // which covers the debounce + network round-trip. Use search() for the full
-  // settled wait rather than fillSearch() alone.
-  await contactsPage.search(searchTerm);
+  await context.page.fill(searchTerm, [
+    { type: 'testId', value: 'contacts-search' },
+    { type: 'label', value: 'Search', options: { exact: false } },
+  ]);
+
+  // Wait for the search to settle using a DOM signal rather than a fixed sleep.
+  // The contacts list re-renders after the debounce + network round-trip. We
+  // wait until either a contact row OR the empty-state placeholder is attached
+  // to the DOM — whichever appears first. This is more deterministic than a
+  // hardcoded timeout and avoids double-networkidle races on slow CI machines.
+  const contactRowEl = await context.page
+    .locate([
+      { type: 'css', value: '[data-testid^="contact-link-"]' },
+      { type: 'css', value: '[data-testid="contacts-list"]' },
+    ])
+    .resolve()
+    .catch(() => null);
+  const emptyStateEl = await context.page
+    .locate([
+      { type: 'testId', value: 'contacts-empty-state' },
+      { type: 'text', value: t('contacts.empty') },
+    ])
+    .resolve()
+    .catch(() => null);
+  await Promise.race([
+    contactRowEl
+      ? contactRowEl.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => null)
+      : Promise.resolve(),
+    emptyStateEl
+      ? emptyStateEl.waitFor({ state: 'attached', timeout: 10_000 }).catch(() => null)
+      : Promise.resolve(),
+  ]);
 
   const rowCount = await contactsPage.rowCount();
-  const emptyStateVisible = await contactsPage.emptyStateIsVisible();
+
+  // The empty state is a <p> with the contacts.empty i18n text.
+  const emptyStateVisible =
+    rowCount === 0 && ((await emptyStateEl?.isVisible().catch(() => false)) ?? false);
 
   const finalUrl = contactsPage.url();
 
   return { rowCount, emptyStateVisible, finalUrl };
-}
-
-// ---------------------------------------------------------------------------
-// contactRowIsVisible()
-// ---------------------------------------------------------------------------
-
-/** Result returned by contactRowIsVisible. */
-export interface ContactRowIsVisibleResult {
-  /** True when the contact row link is visible in the contacts list. */
-  visible: boolean;
-}
-
-/**
- * Returns whether a contact row is currently visible in the contacts list.
- * Matches both desktop table links (contact-link-{id}) and mobile card links
- * (contact-card-link-{id}).
- *
- * @param id - Contact UUID.
- * @param context - Playwright fixture context.
- * @returns ContactRowIsVisibleResult.
- */
-export async function contactRowIsVisible(
-  id: string,
-  context: ContactsBehaviorContext,
-): Promise<ContactRowIsVisibleResult> {
-  try {
-    const el = await context.page
-      .locate(
-        [
-          { type: 'testId', value: `contact-link-${id}` },
-          { type: 'testId', value: `contact-card-link-${id}` },
-        ],
-        { intent: 'contact row link in the contacts list' },
-      )
-      .resolve();
-    await el.waitFor({ state: 'visible', timeout: 5_000 });
-    const visible = await el.isVisible().catch(() => false);
-    return { visible };
-  } catch {
-    return { visible: false };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// openContactCreateForm()
-// ---------------------------------------------------------------------------
-
-/**
- * Navigates to /contacts and opens the inline contact creation form.
- * Use this before filling fields in tests that need to control form interaction
- * at a granular level (e.g. triggering HTML5 validation without waiting for
- * a network round-trip).
- *
- * @param context - Playwright fixture context.
- */
-export async function openContactCreateForm(context: ContactsBehaviorContext): Promise<void> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.navigate();
-  await contactsPage.clickNewContact();
-}
-
-// ---------------------------------------------------------------------------
-// fillContactCreateForm()
-// ---------------------------------------------------------------------------
-
-/** Partial fields accepted by fillContactCreateForm. All fields optional. */
-export interface PartialContactUIFields {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone?: string;
-  title?: string;
-  department?: string;
-}
-
-/**
- * Fills any subset of the contact creation form fields.
- * The form must already be open (call openContactCreateForm first).
- * Does NOT submit the form.
- *
- * @param fields - Fields to fill; omitted fields are left unchanged.
- * @param context - Playwright fixture context.
- */
-export async function fillContactCreateForm(
-  fields: PartialContactUIFields,
-  context: ContactsBehaviorContext,
-): Promise<void> {
-  const contactsPage = new ContactsPage(context);
-  if (fields.first_name !== undefined) await contactsPage.fillFirstName(fields.first_name);
-  if (fields.last_name !== undefined) await contactsPage.fillLastName(fields.last_name);
-  if (fields.email !== undefined) await contactsPage.fillEmail(fields.email);
-  if (fields.phone !== undefined) await contactsPage.fillPhone(fields.phone);
-  if (fields.title !== undefined) await contactsPage.fillTitle(fields.title);
-  if (fields.department !== undefined) await contactsPage.fillDepartment(fields.department);
-}
-
-// ---------------------------------------------------------------------------
-// submitContactCreateFormAndWaitForValidation()
-// ---------------------------------------------------------------------------
-
-/** Result returned by submitContactCreateFormAndWaitForValidation. */
-export interface SubmitContactFormValidationResult {
-  /** True when the form is still visible (HTML5 validation prevented submission). */
-  formStillVisible: boolean;
-}
-
-/**
- * Submits the contact creation form without waiting for networkidle.
- * Use this when testing HTML5 validation flows where no network request is
- * sent and networkidle would never fire (e.g. missing required field, invalid
- * email format). The form must already be open and filled.
- *
- * @param context - Playwright fixture context.
- * @returns SubmitContactFormValidationResult.
- */
-export async function submitContactCreateFormAndWaitForValidation(
-  context: ContactsBehaviorContext,
-): Promise<SubmitContactFormValidationResult> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.submitCreateForm();
-  const formStillVisible = await contactsPage.createFormIsVisible();
-  return { formStillVisible };
-}
-
-/**
- * Clicks the submit button on the contact creation form.
- * Does NOT wait for a network round-trip or page state change — the caller is
- * responsible for any subsequent wait (e.g. `page.waitForLoadState('networkidle')`).
- *
- * Use this in error-state tests where a mock route is active and the caller
- * needs to verify behavior after the network response.
- *
- * @param context - Playwright fixture context.
- */
-export async function submitContactCreateForm(context: ContactsBehaviorContext): Promise<void> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.submitCreateForm();
-}
-
-// ---------------------------------------------------------------------------
-// sortContactsByName()
-// ---------------------------------------------------------------------------
-
-/** Result returned by sortContactsByName. */
-export interface SortContactsByNameResult {
-  /** True when the sort button was found and clicked (desktop only). */
-  sortClicked: boolean;
-}
-
-/**
- * Clicks the "First name" column sort header on the contacts list (desktop only).
- * On mobile viewports where the header is absent, returns sortClicked: false.
- *
- * @param context - Playwright fixture context.
- * @returns SortContactsByNameResult.
- */
-export async function sortContactsByName(
-  context: ContactsBehaviorContext,
-): Promise<SortContactsByNameResult> {
-  const contactsPage = new ContactsPage(context);
-  const sortClicked = await contactsPage.clickSortByName();
-  return { sortClicked };
-}
-
-// ---------------------------------------------------------------------------
-// bulkReassignContacts()
-// ---------------------------------------------------------------------------
-
-/**
- * Opens the bulk-reassign modal from the contacts bulk action bar, selects the
- * given owner, and confirms. Assumes at least one contact is already selected
- * (bulk action bar is visible).
- *
- * @param ownerId - UUID of the owner to assign.
- * @param ownerLabel - Display label of the owner option (shown in the dropdown).
- * @param context - Playwright fixture context.
- */
-export async function bulkReassignContacts(
-  ownerId: string,
-  ownerLabel: string,
-  context: ContactsBehaviorContext,
-): Promise<void> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.clickBulkReassign();
-  await contactsPage.selectBulkReassignOwner(ownerId, ownerLabel);
-  await contactsPage.confirmBulkReassign();
-}
-
-// ---------------------------------------------------------------------------
-// bulkDeleteContacts()
-// ---------------------------------------------------------------------------
-
-/**
- * Opens the bulk-delete confirmation modal from the contacts bulk action bar
- * and confirms deletion. Assumes at least one contact is already selected
- * (bulk action bar is visible).
- *
- * @param context - Playwright fixture context.
- * @param force - When true, uses force:true on the delete and confirm clicks.
- *   Pass true in error-state tests where mock routes cause overlay/scroll issues.
- */
-export async function bulkDeleteContacts(
-  context: ContactsBehaviorContext,
-  force = false,
-): Promise<void> {
-  const contactsPage = new ContactsPage(context);
-  await contactsPage.clickBulkDelete(force);
-  await contactsPage.confirmBulkDelete(force);
 }

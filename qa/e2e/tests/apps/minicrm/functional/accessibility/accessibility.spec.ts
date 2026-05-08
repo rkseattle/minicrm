@@ -153,7 +153,10 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
   await contactsPage.clickNewContact();
 
   // Submit without filling any fields to trigger required-field validation errors.
-  await contactsPage.submitCreateForm();
+  await page.click([
+    { type: 'testId', value: 'contact-form-submit' },
+    { type: 'role', value: 'button', options: { name: 'Save', exact: false } },
+  ]);
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
@@ -219,7 +222,10 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   await assertNoBlockingViolations(page);
 
   // Dismiss the modal to leave the page in a clean state for teardown.
-  await boardPage.cancelCloseDeal();
+  await page.click([
+    { type: 'testId', value: 'close-deal-cancel' },
+    { type: 'role', value: 'button', options: { name: 'Cancel', exact: false } },
+  ]);
 });
 
 // ---------------------------------------------------------------------------
@@ -241,7 +247,10 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   await contactsPage.clickBulkCheckbox(contact.id);
 
   // Click the bulk-delete button to open ConfirmDeleteModal.
-  await contactsPage.clickBulkDelete();
+  await page.click([
+    { type: 'testId', value: 'bulk-delete-button' },
+    { type: 'role', value: 'button', options: { name: /delete/i } },
+  ]);
 
   // Wait for the modal to be visible before auditing.
   const modalLocator = await page
@@ -255,7 +264,10 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   await assertNoBlockingViolations(page);
 
   // Dismiss without deleting so testData teardown can clean up.
-  await contactsPage.cancelBulkDelete();
+  await page.click([
+    { type: 'testId', value: 'confirm-delete-cancel' },
+    { type: 'role', value: 'button', options: { name: 'Cancel', exact: false } },
+  ]);
 });
 
 test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
@@ -273,7 +285,10 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   await contactsPage.clickBulkCheckbox(contact.id);
 
   // Click the bulk-reassign button to open BulkReassignModal.
-  await contactsPage.clickBulkReassign();
+  await page.click([
+    { type: 'testId', value: 'bulk-reassign-button' },
+    { type: 'role', value: 'button', options: { name: /reassign/i } },
+  ]);
 
   // Wait for the modal to be visible before auditing.
   const modalLocator = await page
@@ -287,7 +302,10 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   await assertNoBlockingViolations(page);
 
   // Dismiss the modal so testData teardown can clean up.
-  await contactsPage.cancelBulkReassign();
+  await page.click([
+    { type: 'testId', value: 'bulk-reassign-cancel' },
+    { type: 'role', value: 'button', options: { name: 'Cancel', exact: false } },
+  ]);
 });
 
 // ---------------------------------------------------------------------------

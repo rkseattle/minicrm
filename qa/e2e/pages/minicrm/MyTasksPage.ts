@@ -117,19 +117,6 @@ export class MyTasksPage {
   }
 
   /**
-   * Clicks the toggle to show completed tasks in the list.
-   */
-  async clickToggleCompleted(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'toggle-completed-button' },
-        { type: 'role', value: 'button', options: { name: /completed/i } },
-      ],
-      { intent: 'toggle button to show completed tasks in the list' },
-    );
-  }
-
-  /**
    * Returns the current page URL.
    */
   url(): string {
