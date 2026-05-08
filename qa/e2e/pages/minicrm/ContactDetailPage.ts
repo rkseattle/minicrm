@@ -436,15 +436,21 @@ export class ContactDetailPage {
   /**
    * Returns a resolved locator for the not-found alert paragraph shown when
    * navigating to a contact ID that does not exist.
+   *
+   * @param timeout - Probe timeout in ms. Default 2 000; pass a longer value
+   *   when React Query's error state may arrive after networkidle (e.g. 10 000).
    */
-  async notFoundAlertLocator() {
+  async notFoundAlertLocator(timeout?: number) {
     return this.page
       .locate(
         [
-          { type: 'css', value: 'p[role="alert"]' },
-          { type: 'css', value: 'main p[role="alert"]' },
+          { type: 'role', value: 'alert' },
+          { type: 'css', value: '[role="alert"]' },
         ],
-        { intent: 'not-found message on the contact detail page for an invalid id' },
+        {
+          fallbackTimeout: timeout,
+          intent: 'not-found message on the contact detail page for an invalid id',
+        },
       )
       .resolve();
   }
