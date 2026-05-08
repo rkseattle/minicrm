@@ -354,6 +354,37 @@ export class DealDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the not-found alert paragraph shown when
+   * navigating to a deal ID that does not exist.
+   */
+  async notFoundAlertLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'css', value: 'p[role="alert"]' },
+          { type: 'css', value: 'main p[role="alert"]' },
+        ],
+        { intent: 'not-found message on the deal detail page for an invalid id' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the back-to-deals link on the not-found page.
+   */
+  async notFoundBackLinkLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'css', value: 'main a[href="/deals"]' },
+          { type: 'css', value: 'main a' },
+        ],
+        { intent: 'back to deals navigation link on the not-found page' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

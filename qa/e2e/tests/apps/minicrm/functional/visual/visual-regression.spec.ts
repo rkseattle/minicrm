@@ -43,6 +43,10 @@ import {
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
+import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
+import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
+import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -152,15 +156,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/deals', { waitUntil: 'networkidle' });
 
-    const board = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-board' },
-          { type: 'role', value: 'main' },
-        ],
-        { intent: 'main pipeline kanban board container' },
-      )
-      .resolve();
+    const board = await new PipelineBoardPage({ page }).boardLocator();
     await board.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -208,15 +204,7 @@ test(
     await page.goto('/deals', { waitUntil: 'networkidle' });
 
     // Mobile board shows single column with prev/next navigation — wait for it
-    const mobileStage = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-mobile-stage-name' },
-          { type: 'role', value: 'heading' },
-        ],
-        { intent: 'mobile single-column stage name heading' },
-      )
-      .resolve();
+    const mobileStage = await new PipelineBoardPage({ page }).mobileStageNameLocator();
     await mobileStage.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -263,7 +251,9 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await navigateToDashboard(page);
 
-    // Wait for the stat cards container before snapshotting
+    // Wait for the stat cards container before snapshotting.
+    // dashboard-stat-cards is not in a domain page object — locate inline since
+    // this is a screenshot ready-check, not a domain interaction.
     const statCards = await page
       .locate(
         [
@@ -318,15 +308,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
-    const editButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'edit-contact-button' },
-          { type: 'role', value: 'button', options: { name: /edit/i } },
-        ],
-        { intent: 'edit contact button confirming detail page is fully loaded' },
-      )
-      .resolve();
+    const editButton = await new ContactDetailPage({ page }).editButtonLocator();
     await editButton.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -380,27 +362,12 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/reports', { waitUntil: 'networkidle' });
 
-    const reportHeading = await page
-      .locate(
-        [
-          { type: 'testId', value: 'win-loss-report-heading' },
-          { type: 'role', value: 'heading', options: { name: /win.*loss/i } },
-        ],
-        { intent: 'win/loss report page heading confirming report loaded' },
-      )
-      .resolve();
+    const reportsPage = new ReportsPage({ page });
+    const reportHeading = await reportsPage.winLossHeadingLocator();
     await reportHeading.waitFor({ state: 'visible' });
 
-    // Confirm stat cards are rendered before snapshotting
-    const statCards = await page
-      .locate(
-        [
-          { type: 'testId', value: 'report-stat-cards' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'win/loss report summary stat cards container' },
-      )
-      .resolve();
+    // Confirm stat cards are rendered before snapshotting.
+    const statCards = await reportsPage.statCardsLocator();
     await statCards.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -421,27 +388,12 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
 
-    const settingsHeading = await page
-      .locate(
-        [
-          { type: 'testId', value: 'settings-heading' },
-          { type: 'role', value: 'heading' },
-        ],
-        { intent: 'admin settings page heading' },
-      )
-      .resolve();
+    const adminSettingsPage = new AdminSettingsPage({ page });
+    const settingsHeading = await adminSettingsPage.settingsHeadingLocator();
     await settingsHeading.waitFor({ state: 'visible' });
 
-    // Wait for the general tab panel content to finish loading
-    const saveButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'settings-save' },
-          { type: 'role', value: 'button', options: { name: /save/i } },
-        ],
-        { intent: 'save button on admin settings general tab' },
-      )
-      .resolve();
+    // Wait for the general tab panel content to finish loading.
+    const saveButton = await adminSettingsPage.settingsSaveLocator();
     await saveButton.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -462,15 +414,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
-    const currencySection = await page
-      .locate(
-        [
-          { type: 'testId', value: 'currency-section' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'default currency settings section on admin settings page' },
-      )
-      .resolve();
+    const currencySection = await new AdminSettingsPage({ page }).currencySectionLocator();
     await currencySection.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -491,15 +435,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=notifications', { waitUntil: 'networkidle' });
 
-    const notifSection = await page
-      .locate(
-        [
-          { type: 'testId', value: 'email-notifications-section' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'email notifications section on admin settings page' },
-      )
-      .resolve();
+    const notifSection = await new AdminSettingsPage({ page }).emailNotificationsSectionLocator();
     await notifSection.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);

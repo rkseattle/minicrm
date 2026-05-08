@@ -170,6 +170,21 @@ export class NavPage {
   }
 
   /**
+   * Returns a resolved locator for the desktop language select in the nav header.
+   */
+  async desktopLanguageSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nav-language-select' },
+          { type: 'role', value: 'combobox', options: { name: /language/i } },
+        ],
+        { intent: 'language selector in the desktop nav header' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns a resolved locator for the mobile language select in the nav drawer.
    */
   async mobileLanguageSelectLocator() {

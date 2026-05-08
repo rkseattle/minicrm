@@ -239,16 +239,8 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   await contactsPage.clickBulkDelete();
 
   // Wait for the modal to be visible before auditing.
-  const modalLocator = await page
-    .locate(
-      [
-        { type: 'testId', value: 'confirm-delete-modal' },
-        { type: 'role', value: 'dialog', options: { name: /delete/i } },
-      ],
-      { intent: 'confirm delete modal dialog' },
-    )
-    .resolve();
-  await modalLocator.waitFor({ state: 'visible' });
+  const deleteModal = await contactsPage.confirmDeleteModalLocator();
+  await deleteModal.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 
@@ -274,16 +266,8 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   await contactsPage.clickBulkReassign();
 
   // Wait for the modal to be visible before auditing.
-  const modalLocator = await page
-    .locate(
-      [
-        { type: 'testId', value: 'bulk-reassign-modal' },
-        { type: 'role', value: 'dialog', options: { name: /reassign/i } },
-      ],
-      { intent: 'bulk reassign modal dialog' },
-    )
-    .resolve();
-  await modalLocator.waitFor({ state: 'visible' });
+  const reassignModal = await contactsPage.bulkReassignModalLocator();
+  await reassignModal.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 

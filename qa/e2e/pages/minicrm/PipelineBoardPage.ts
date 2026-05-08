@@ -567,6 +567,89 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Returns a resolved locator for the pipeline kanban board container.
+   */
+  async boardLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pipeline-board' },
+          { type: 'role', value: 'main' },
+        ],
+        { intent: 'main pipeline kanban board container' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the mobile single-column stage name heading.
+   */
+  async mobileStageNameLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pipeline-mobile-stage-name' },
+          { type: 'role', value: 'heading' },
+        ],
+        { intent: 'mobile single-column stage name heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the stage-update error banner.
+   * Shown when a deal stage PATCH fails.
+   */
+  async stageUpdateErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stage-update-error' },
+          { type: 'role', value: 'alert' },
+        ],
+        { intent: 'error banner shown when a stage update fails' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for a specific deal card by ID.
+   * Handles both desktop (`deal-card-{id}`) and mobile (`mobile-deal-card-{id}`)
+   * testId variants based on the current viewport width.
+   */
+  async dealCardLocator(dealId: string) {
+    const prefix = this.isMobileView() ? 'mobile-' : '';
+    const testId = `${prefix}deal-card-${dealId}`;
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: testId },
+          { type: 'css', value: `[data-testid="${testId}"]` },
+        ],
+        { intent: `deal card for deal ${dealId} on the pipeline board` },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the stage select dropdown on a specific deal card.
+   * Handles both desktop and mobile testId variants.
+   */
+  async dealStageSelectLocator(dealId: string) {
+    const prefix = this.isMobileView() ? 'mobile-' : '';
+    const testId = `${prefix}deal-card-stage-select-${dealId}`;
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: testId },
+          { type: 'css', value: `[data-testid="${testId}"]` },
+        ],
+        { intent: `stage dropdown on deal card ${dealId}` },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

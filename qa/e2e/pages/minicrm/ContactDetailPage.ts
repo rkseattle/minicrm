@@ -38,6 +38,22 @@ export class ContactDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the Edit button (visible in read mode only).
+   * Use to confirm the detail page has finished loading before snapshotting.
+   */
+  async editButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'edit-contact-button' },
+          { type: 'role', value: 'button', options: { name: t('common.edit'), exact: false } },
+        ],
+        { intent: 'edit button confirming contact detail page is fully loaded' },
+      )
+      .resolve();
+  }
+
+  /**
    * Clicks the Edit button to enter edit mode.
    */
   async clickEdit(): Promise<void> {
@@ -379,6 +395,86 @@ export class ContactDetailPage {
           { type: 'css', value: `[data-testid="attachment-delete-${attachmentId}"]` },
         ],
         { intent: 'delete button for a specific attachment row' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom fields edit grid container.
+   * Visible when the contact is in edit mode.
+   */
+  async customFieldsEditGridLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-edit-grid' },
+          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+        ],
+        { intent: 'custom fields edit grid container in contact edit form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the custom fields read grid container.
+   * Visible when the contact is in read mode and has at least one custom field value.
+   * Returns null when the grid is not present (e.g. after all definitions are deleted).
+   */
+  async customFieldsReadGridLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-read-grid' },
+          { type: 'css', value: '[data-testid="custom-fields-read-grid"]' },
+        ],
+        { intent: 'custom fields read grid container on contact detail page' },
+      )
+      .resolve()
+      .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the not-found alert paragraph shown when
+   * navigating to a contact ID that does not exist.
+   */
+  async notFoundAlertLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'css', value: 'p[role="alert"]' },
+          { type: 'css', value: 'main p[role="alert"]' },
+        ],
+        { intent: 'not-found message on the contact detail page for an invalid id' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the back-to-contacts link on the not-found page.
+   */
+  async notFoundBackLinkLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'css', value: 'main a[href="/contacts"]' },
+          { type: 'css', value: 'main a' },
+        ],
+        { intent: 'back to contacts navigation link on the not-found page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the contact name heading.
+   */
+  async contactNameLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-name' },
+          { type: 'role', value: 'heading' },
+        ],
+        { intent: 'contact name heading on the contact detail page' },
       )
       .resolve();
   }

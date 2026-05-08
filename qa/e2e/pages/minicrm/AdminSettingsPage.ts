@@ -81,6 +81,158 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /**
+   * Returns a resolved locator for the admin settings page heading.
+   */
+  async settingsHeadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'settings-heading' },
+          { type: 'role', value: 'heading' },
+        ],
+        { intent: 'admin settings page heading' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the settings save button (general tab).
+   */
+  async settingsSaveLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'settings-save' },
+          { type: 'role', value: 'button', options: { name: /save/i } },
+        ],
+        { intent: 'save button on admin settings general tab' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the default currency settings section.
+   */
+  async currencySectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'currency-section' },
+          { type: 'role', value: 'region' },
+        ],
+        { intent: 'default currency settings section on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the email notifications section container.
+   */
+  async emailNotificationsSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'email-notifications-section' },
+          { type: 'role', value: 'region' },
+        ],
+        { intent: 'email notifications section on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the webhook settings section container.
+   */
+  async webhookSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'webhook-settings-section' },
+          { type: 'css', value: '[data-testid="webhook-settings-section"]' },
+        ],
+        { intent: 'webhook subscriptions section on admin settings integrations tab' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the webhook URL input field.
+   */
+  async webhookUrlInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'webhook-url-input' },
+          { type: 'role', value: 'textbox' },
+        ],
+        { intent: 'URL input field in the add webhook subscription form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the webhook secret reveal modal.
+   */
+  async webhookSecretRevealLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'webhook-secret-reveal' },
+          { type: 'css', value: '[data-testid="webhook-secret-reveal"]' },
+        ],
+        { intent: 'modal that reveals the webhook signing secret after creation' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the webhook secret value input.
+   */
+  async webhookSecretValueLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'webhook-secret-value' },
+          { type: 'css', value: '[data-testid="webhook-secret-value"]' },
+        ],
+        { intent: 'read-only input displaying the webhook signing secret' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for a webhook subscription row by ID.
+   *
+   * @param subscriptionId - The webhook subscription UUID.
+   */
+  async webhookRowLocator(subscriptionId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `webhook-row-${subscriptionId}` },
+          { type: 'css', value: `[data-testid="webhook-row-${subscriptionId}"]` },
+        ],
+        { intent: `webhook subscription row for ${subscriptionId}` },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the webhook delete confirmation dialog.
+   */
+  async webhookDeleteConfirmLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'webhook-delete-confirm' },
+          { type: 'role', value: 'dialog' },
+        ],
+        { intent: 'confirmation dialog shown before deleting a webhook subscription' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns true when the email notifications section is visible.
    */
   async emailNotificationsSectionIsVisible(): Promise<boolean> {
@@ -513,6 +665,21 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
   // Custom fields interactions
   // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the confirm button in the delete-field dialog.
+   */
+  async deleteFieldConfirmLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'delete-field-confirm' },
+          { type: 'role', value: 'button', options: { name: /confirm|delete/i } },
+        ],
+        { intent: 'confirm button in the custom field delete confirmation dialog' },
+      )
+      .resolve();
+  }
 
   /**
    * Clicks the "Add Field" button to open the add custom field form.
