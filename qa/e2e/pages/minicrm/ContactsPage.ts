@@ -173,7 +173,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: `bulk-select-${id}` },
-          { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+          { type: 'role', value: 'checkbox' },
         ],
         { fallbackTimeout: timeout, intent: 'bulk select checkbox for contact row' },
       )
@@ -193,7 +193,7 @@ export class ContactsPage {
     await this.page.click(
       [
         { type: 'testId', value: `bulk-select-${id}` },
-        { type: 'css', value: `[data-testid="bulk-select-${id}"]` },
+        { type: 'role', value: 'checkbox' },
       ],
       { intent: 'bulk select checkbox for contact row' },
     );
