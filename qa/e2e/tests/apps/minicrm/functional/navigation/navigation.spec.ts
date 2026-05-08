@@ -943,7 +943,9 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await page.waitForLoadState('networkidle');
 
   // The page must not be blank or show an unhandled 500.
-  const alert = await new ContactDetailPage({ page }).notFoundAlertLocator();
+  // Pass 10 000 ms fallbackTimeout — React Query's error state can arrive after
+  // networkidle under CI load, so the probe window must match the original behaviour.
+  const alert = await new ContactDetailPage({ page }).notFoundAlertLocator(10_000);
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });
 
