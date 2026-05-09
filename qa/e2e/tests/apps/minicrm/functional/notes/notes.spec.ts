@@ -362,9 +362,9 @@ test('@functional F14-A1: Create and update a note — audit entries recorded', 
     title: 'Audit note — updated',
   });
 
-  // Check audit log for this contact
+  // Check audit log for this contact via the per-record endpoint
   const auditResponse = await restClient.get<AuditLogResponse>(
-    `/api/v1/audit-log?recordType=contact&recordId=${contact.id}&limit=50`,
+    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
   );
 
   const entries = auditResponse.body.entries;
@@ -398,7 +398,7 @@ test('@functional F14-A2: Delete a note — note_deleted audit entry recorded', 
   await restClient.delete(`/api/v1/contact/${contact.id}/notes/${noteId}`);
 
   const auditResponse = await restClient.get<AuditLogResponse>(
-    `/api/v1/audit-log?recordType=contact&recordId=${contact.id}&limit=50`,
+    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
   );
 
   const deletedEntry = auditResponse.body.entries.find((e) => e.event_type === 'note_deleted');
