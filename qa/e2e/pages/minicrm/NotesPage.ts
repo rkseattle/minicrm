@@ -325,35 +325,24 @@ export class NotesPage {
 
   /**
    * Waits for the note composer to be removed from the DOM after save.
-   * Use this after clickSave() to confirm the save succeeded.
+   * Uses waitForFunction because the composer unmounts entirely on save (detached,
+   * not just hidden), so resolve() — which probes for attached — would time out.
    */
   async waitForComposerClosed(timeout = 8_000): Promise<void> {
-    const composer = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'notes-composer' },
-          { type: 'css', value: '[data-testid="notes-composer"]' },
-        ],
-        { intent: 'note composer form container' },
-      )
-      .resolve();
-    await composer.waitFor({ state: 'hidden', timeout });
+    // Pass as string so TypeScript doesn't type-check browser globals (no dom lib in tsconfig).
+    await this.page.waitForFunction('!document.querySelector(\'[data-testid="notes-composer"]\')', {
+      timeout,
+    });
   }
 
   /**
    * Waits for the delete confirmation modal to be removed from the DOM after confirm.
-   * Use this after confirmDelete() to confirm the action was processed.
+   * Uses waitForFunction for the same reason as waitForComposerClosed.
    */
   async waitForDeleteModalClosed(timeout = 8_000): Promise<void> {
-    const modal = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'confirm-delete-modal' },
-          { type: 'css', value: '[data-testid="confirm-delete-modal"]' },
-        ],
-        { intent: 'delete confirmation modal' },
-      )
-      .resolve();
-    await modal.waitFor({ state: 'hidden', timeout });
+    await this.page.waitForFunction(
+      '!document.querySelector(\'[data-testid="confirm-delete-modal"]\')',
+      { timeout },
+    );
   }
 }
