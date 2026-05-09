@@ -36,6 +36,7 @@ import {
   $createParagraphNode,
   $insertNodes,
   FORMAT_TEXT_COMMAND,
+  COMMAND_PRIORITY_EDITOR,
   DecoratorNode,
   type EditorState,
   type LexicalEditor,
@@ -63,6 +64,7 @@ import {
 } from '@lexical/list';
 import { $getNearestNodeOfType } from '@lexical/utils';
 import { $generateHtmlFromNodes } from '@lexical/html';
+import DOMPurify from 'dompurify';
 import { listNotes, createNote, updateNote, deleteNote, notesQueryKey } from '@/api/notes.js';
 import { uploadAttachment } from '@/api/attachments.js';
 import axios from 'axios';
@@ -176,7 +178,7 @@ function loadEditorState(editor: LexicalEditor, json: string | null | undefined)
   }
 }
 
-/** Render stored JSON to HTML for read-only display */
+/** Render stored JSON to sanitized HTML for read-only display */
 function renderNoteHtml(editor: LexicalEditor, json: string | null | undefined): string {
   if (!json) return '';
   try {
@@ -185,7 +187,7 @@ function renderNoteHtml(editor: LexicalEditor, json: string | null | undefined):
     state.read(() => {
       html = $generateHtmlFromNodes(editor);
     });
-    return html;
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
   } catch {
     return '';
   }
@@ -387,7 +389,7 @@ function ImagePlugin(): null {
         $insertNodes([node]);
         return true;
       },
-      1, // COMMAND_PRIORITY_EDITOR
+      COMMAND_PRIORITY_EDITOR,
     );
   }, [editor]);
   return null;
@@ -463,9 +465,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
 
   const handleImageUpload = useCallback(
     async (file: File): Promise<string> => {
-      const attachmentRecordType =
-        entityType === 'lead' ? 'contact' : (entityType as 'contact' | 'account' | 'deal');
-      const attachment = await uploadAttachment(attachmentRecordType, entityId, file);
+      const attachment = await uploadAttachment(entityType, entityId, file);
       return `/api/v1/attachments/${attachment.id}/download`;
     },
     [entityType, entityId],
@@ -731,7 +731,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
 
   const renderedHtml = note.body
     ? renderNoteHtml(getRenderEditor(), note.body)
-    : (note.body_text ?? '');
+    : DOMPurify.sanitize(note.body_text ?? '', { USE_PROFILES: { html: true } });
 
   return (
     <div className="px-4 py-4" data-testid={`note-card-${note.id}`}>

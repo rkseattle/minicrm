@@ -13,14 +13,8 @@ import type {
 } from '@minicrm/shared/schemas/leadSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './auditService.js';
 
-/** Actor info required to write audit entries on write operations */
-export interface AuditActor {
-  id: string;
-  name: string;
-}
-
-/** Fallback actor used when no user context is available (e.g. tests, system operations) */
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Columns that may be updated via updateLead — guards against SQL injection */

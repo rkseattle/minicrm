@@ -11,6 +11,21 @@ import logger from '../logger.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Identity of the user performing a write operation.
+ * Shared across all write services — import from auditService, not from individual services.
+ */
+export interface AuditActor {
+  id: string;
+  name: string;
+}
+
+/** System actor used as default for seeding, migrations, and automation triggers. */
+export const SYSTEM_ACTOR: AuditActor = {
+  id: '00000000-0000-0000-0000-000000000000',
+  name: 'System',
+};
+
 /** Record types that can appear in the audit log */
 export type AuditRecordType = 'contact' | 'account' | 'deal' | 'user' | 'system_settings' | 'lead';
 

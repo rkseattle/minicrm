@@ -100,7 +100,7 @@ router.get('/', authenticate, asyncHandler(listNotesHandler));
  *                 maxLength: 255
  *               body:
  *                 type: string
- *                 description: Serialised Tiptap/ProseMirror JSON
+ *                 description: Serialised Lexical editor state JSON
  *               visibility:
  *                 type: string
  *                 enum: [private, team, public]

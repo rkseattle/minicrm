@@ -1071,12 +1071,18 @@
       "role_changed": "Rôle modifié",
       "deactivated": "Désactivé",
       "reactivated": "Réactivé",
-      "ownership_reassigned": "Propriété réattribuée"
+      "ownership_reassigned": "Propriété réattribuée",
+      "merged": "Fusionné",
+      "note_created": "Note créée",
+      "note_updated": "Note mise à jour",
+      "note_deleted": "Note supprimée",
+      "note_visibility_changed": "Visibilité de la note modifiée"
     },
     "recordTypes": {
       "contact": "Contact",
       "account": "Compte",
       "deal": "Affaire",
+      "lead": "Lead",
       "user": "Utilisateur",
       "system_settings": "Paramètres système",
       "all": "Tous"

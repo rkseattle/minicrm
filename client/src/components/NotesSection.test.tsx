@@ -536,6 +536,28 @@ describe('NotesSection — delete note', () => {
   });
 });
 
+// ── XSS sanitization ──────────────────────────────────────────────────────────
+
+describe('NotesSection — XSS sanitization', () => {
+  it('strips script tags from body_text when body is null', async () => {
+    const xssNote: NoteResponse = {
+      ...NOTE_2,
+      body: null,
+      body_text: '<script>window.__xss=1</script>Safe text',
+    };
+    withNotes([xssNote]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`note-card-${NOTE_ID_2}`)).toBeInTheDocument();
+    });
+
+    const noteBody = screen.getByTestId(`note-body-${NOTE_ID_2}`);
+    expect(noteBody.innerHTML).not.toContain('<script>');
+    expect((window as unknown as Record<string, unknown>).__xss).toBeUndefined();
+  });
+});
+
 // ── Image upload errors ────────────────────────────────────────────────────────
 
 describe('NotesSection — image upload errors', () => {

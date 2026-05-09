@@ -10,6 +10,7 @@ export const AUDIT_RECORD_TYPES = [
   'contact',
   'account',
   'deal',
+  'lead',
   'user',
   'system_settings',
 ] as const;
@@ -26,6 +27,11 @@ export const AUDIT_EVENT_TYPES = [
   'deactivated',
   'reactivated',
   'ownership_reassigned',
+  'merged',
+  'note_created',
+  'note_updated',
+  'note_deleted',
+  'note_visibility_changed',
 ] as const;
 
 /** A single audit log entry as returned by the API */

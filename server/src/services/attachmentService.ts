@@ -30,7 +30,7 @@ export const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 /** Valid record types for attachments. */
-export type RecordType = 'contact' | 'account' | 'deal';
+export type RecordType = 'contact' | 'account' | 'deal' | 'lead';
 
 // ── Row types ─────────────────────────────────────────────────────────────────
 
