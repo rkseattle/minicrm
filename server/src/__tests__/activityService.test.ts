@@ -566,6 +566,7 @@ describe('listMyTasks', () => {
     expect(total).toBe(1);
     expect(tasks[0].subject).toBe('My task');
     expect(tasks[0].type).toBe('Task');
+    expect(tasks[0].version).toBe(1);
   });
 
   it('excludes tasks owned by other users', async () => {
