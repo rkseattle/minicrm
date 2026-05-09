@@ -328,6 +328,7 @@ export async function listMyTasks(
        u.name AS owner_name,
        a.created_at,
        a.updated_at,
+       a.version,
        CASE
          WHEN a.contact_id IS NOT NULL THEN (c.first_name || ' ' || c.last_name)
          WHEN a.account_id IS NOT NULL THEN ac.name
