@@ -52,7 +52,14 @@ export async function listNotesHandler(req: Request, res: Response): Promise<voi
     return;
   }
 
-  const { page, limit } = paginationParamsSchema.parse(req.query);
+  const pagination = paginationParamsSchema.safeParse(req.query);
+  if (!pagination.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: pagination.error.errors[0]!.message },
+    });
+    return;
+  }
+  const { page, limit } = pagination.data;
   const notes = await listNotes(entityType, entityId, req.user!.id, page, limit);
   res.status(200).json(notes);
 }
@@ -125,11 +132,9 @@ export async function getNoteHandler(req: Request, res: Response): Promise<void>
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res
-      .status(400)
-      .json({
-        error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-      });
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
+    });
     return;
   }
 
@@ -160,11 +165,9 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res
-      .status(400)
-      .json({
-        error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-      });
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
+    });
     return;
   }
 
@@ -223,11 +226,9 @@ export async function deleteNoteHandler(req: Request, res: Response): Promise<vo
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res
-      .status(400)
-      .json({
-        error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-      });
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
+    });
     return;
   }
 

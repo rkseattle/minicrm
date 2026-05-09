@@ -160,6 +160,24 @@ describe('GET /api/attachments', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.message).toContain('lead');
+  });
+
+  it('accepts lead as a valid recordType for GET', async () => {
+    const leadResult = await pool.query<{ id: string }>(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES ('Lead', 'attach-ctrl-lead@example.com', 'New', $1) RETURNING id`,
+      [uploaderId],
+    );
+    const leadId = leadResult.rows[0]!.id;
+    const res = await request(app)
+      .get(`/api/v1/attachments?recordType=lead&recordId=${leadId}`)
+      .set('Cookie', uploaderCookie);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.attachments)).toBe(true);
+
+    await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
   });
 
   it('returns 400 when recordId is missing', async () => {

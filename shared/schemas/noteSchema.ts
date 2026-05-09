@@ -15,7 +15,7 @@ export type NoteVisibility = (typeof NOTE_VISIBILITIES)[number];
 
 export const createNoteSchema = z.object({
   title: z.string().max(255).optional(),
-  /** Serialised Tiptap/ProseMirror JSON */
+  /** Serialised Lexical editor state JSON */
   body: z.string().min(1, 'Note body is required'),
   visibility: z.enum(NOTE_VISIBILITIES).default('team'),
   tags: z.array(z.string()).default([]),

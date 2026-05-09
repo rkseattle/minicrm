@@ -12,7 +12,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import { writeAuditEntry } from './auditService.js';
-import type { AuditActor } from './contactService.js';
+import type { AuditActor } from './auditService.js';
 import type {
   CreateNoteInput,
   UpdateNoteInput,
@@ -65,7 +65,7 @@ interface NoteRow {
 }
 
 /**
- * Extracts plain text from a Tiptap/ProseMirror JSON document.
+ * Extracts plain text from a Lexical editor state JSON document.
  * Walks the node tree and concatenates all text-node values.
  * Returns empty string on parse failure or non-object input.
  */

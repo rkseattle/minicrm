@@ -12,15 +12,9 @@ import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 
-/** Actor info required to write audit entries on write operations */
-export interface AuditActor {
-  id: string;
-  name: string;
-}
-
-/** Fallback actor used when no user context is available (e.g. tests, system operations) */
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Number of bcrypt salt rounds for password hashing */

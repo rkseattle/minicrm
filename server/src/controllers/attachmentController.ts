@@ -18,7 +18,7 @@ import {
   testStorageConnection,
 } from '../services/storageService.js';
 
-const VALID_RECORD_TYPES = new Set<RecordType>(['contact', 'account', 'deal']);
+const VALID_RECORD_TYPES = new Set<RecordType>(['contact', 'account', 'deal', 'lead']);
 
 // ── Attachment CRUD ───────────────────────────────────────────────────────────
 
@@ -34,7 +34,10 @@ export async function listAttachmentsHandler(req: Request, res: Response): Promi
 
   if (typeof recordType !== 'string' || !VALID_RECORD_TYPES.has(recordType as RecordType)) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'recordType must be contact, account, or deal' },
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'recordType must be contact, account, deal, or lead',
+      },
     });
     return;
   }
@@ -67,7 +70,10 @@ export async function uploadAttachmentHandler(req: Request, res: Response): Prom
 
   if (typeof recordType !== 'string' || !VALID_RECORD_TYPES.has(recordType as RecordType)) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'recordType must be contact, account, or deal' },
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'recordType must be contact, account, deal, or lead',
+      },
     });
     return;
   }

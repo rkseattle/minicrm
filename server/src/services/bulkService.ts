@@ -13,7 +13,7 @@ import { fireAutomationTrigger } from './automationService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { findDealById } from './dealService.js';
 import { getStageNames } from './pipelineStageService.js';
-import type { AuditActor } from './contactService.js';
+import type { AuditActor } from './auditService.js';
 
 /** Valid bulk actions for contacts and accounts */
 const CONTACT_ACCOUNT_ACTIONS: ReadonlySet<string> = new Set(['reassign', 'delete']);
@@ -436,14 +436,18 @@ export async function bulkDeals(
             const deal = await findDealById(id);
             if (!deal) return;
             const dealData = deal as unknown as Record<string, unknown>;
-            void dispatchWebhookEvent('deal.stage_changed', dealData, { stage: previousStageMap?.get(id) });
+            void dispatchWebhookEvent('deal.stage_changed', dealData, {
+              stage: previousStageMap?.get(id),
+            });
             if (deal.stage === 'Closed Won') {
               void dispatchWebhookEvent('deal.won', dealData);
             }
             if (deal.stage === 'Closed Lost') {
               void dispatchWebhookEvent('deal.lost', dealData);
             }
-          })().catch(() => {/* errors swallowed — webhook dispatch must not affect bulk result */});
+          })().catch(() => {
+            /* errors swallowed — webhook dispatch must not affect bulk result */
+          });
         }
       });
     }

@@ -1071,12 +1071,18 @@
       "role_changed": "角色已更改",
       "deactivated": "已停用",
       "reactivated": "已重新激活",
-      "ownership_reassigned": "所有权已转让"
+      "ownership_reassigned": "所有权已转让",
+      "merged": "已合并",
+      "note_created": "已创建备注",
+      "note_updated": "已更新备注",
+      "note_deleted": "已删除备注",
+      "note_visibility_changed": "备注可见性已更改"
     },
     "recordTypes": {
       "contact": "联系人",
       "account": "客户",
       "deal": "商机",
+      "lead": "潜在客户",
       "user": "用户",
       "system_settings": "系统设置",
       "all": "全部"

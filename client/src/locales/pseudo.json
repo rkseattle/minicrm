@@ -935,12 +935,18 @@
       "role_changed": "[Rölë ĉhäñgëd~~~~]",
       "deactivated": "[Dëäĉtïvätëd~~~~]",
       "reactivated": "[Rëäĉtïvätëd~~~~]",
-      "ownership_reassigned": "[Öwñërŝhïp rëäŝŝïgñëd~~~~~~]"
+      "ownership_reassigned": "[Öwñërŝhïp rëäŝŝïgñëd~~~~~~]",
+      "merged": "[Mërgëd~~~]",
+      "note_created": "[Ñötë ĉrëätëd~~~~~]",
+      "note_updated": "[Ñötë üpdätëd~~~~~]",
+      "note_deleted": "[Ñötë dëlëtëd~~~~~]",
+      "note_visibility_changed": "[Ñötë vïŝïbïlïty ĉhäñgëd~~~~~~~~]"
     },
     "recordTypes": {
       "contact": "[Ĉöñtäĉt~~~]",
       "account": "[Äĉĉöüñt~~~]",
       "deal": "[Dëäl~~]",
+      "lead": "[Lëäd~~]",
       "user": "[Üŝër~~]",
       "system_settings": "[Ŝyŝtëm Ŝëttïñgŝ~~~~~]",
       "all": "[Äll~]"

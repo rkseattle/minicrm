@@ -7,7 +7,7 @@ import apiClient from './axiosInstance.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type RecordType = 'contact' | 'account' | 'deal';
+export type RecordType = 'contact' | 'account' | 'deal' | 'lead';
 
 /** An attachment record as returned by the API. */
 export interface Attachment {

@@ -12,16 +12,9 @@ import type {
 import type { AccountType } from '@minicrm/shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
-import type { AuditEntryInput } from './auditService.js';
+import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 
-/** Actor info required to write audit entries on write operations */
-export interface AuditActor {
-  id: string;
-  name: string;
-}
-
-/** Fallback actor used when no user context is available (e.g. tests, system operations) */
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Columns that may be updated via updateAccount — guards against SQL injection from dynamic field names */

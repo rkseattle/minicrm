@@ -1071,12 +1071,18 @@
       "role_changed": "Rolle geändert",
       "deactivated": "Deaktiviert",
       "reactivated": "Reaktiviert",
-      "ownership_reassigned": "Eigentümerschaft übertragen"
+      "ownership_reassigned": "Eigentümerschaft übertragen",
+      "merged": "Zusammengeführt",
+      "note_created": "Notiz erstellt",
+      "note_updated": "Notiz aktualisiert",
+      "note_deleted": "Notiz gelöscht",
+      "note_visibility_changed": "Notiz-Sichtbarkeit geändert"
     },
     "recordTypes": {
       "contact": "Kontakt",
       "account": "Unternehmen",
       "deal": "Geschäft",
+      "lead": "Lead",
       "user": "Benutzer",
       "system_settings": "Systemeinstellungen",
       "all": "Alle"

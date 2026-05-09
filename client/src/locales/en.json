@@ -1036,12 +1036,18 @@
       "role_changed": "Role changed",
       "deactivated": "Deactivated",
       "reactivated": "Reactivated",
-      "ownership_reassigned": "Ownership reassigned"
+      "ownership_reassigned": "Ownership reassigned",
+      "merged": "Merged",
+      "note_created": "Note created",
+      "note_updated": "Note updated",
+      "note_deleted": "Note deleted",
+      "note_visibility_changed": "Note visibility changed"
     },
     "recordTypes": {
       "contact": "Contact",
       "account": "Account",
       "deal": "Deal",
+      "lead": "Lead",
       "user": "User",
       "system_settings": "System Settings",
       "all": "All"

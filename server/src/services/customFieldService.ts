@@ -10,19 +10,9 @@ import type {
   UpdateCustomFieldDefinitionInput,
   CustomFieldValueInput,
 } from '@minicrm/shared/schemas/customFieldSchema.js';
-import {
-  writeAuditEntry,
-  writeAuditEntryBestEffort,
-} from './auditService.js';
-import type { AuditRecordType } from './auditService.js';
+import { writeAuditEntry, writeAuditEntryBestEffort } from './auditService.js';
+import type { AuditActor, AuditRecordType } from './auditService.js';
 
-/** Actor info required to write audit entries on write operations */
-export interface AuditActor {
-  id: string;
-  name: string;
-}
-
-/** Fallback actor used when no user context is available */
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Shape of a custom_field_definitions row as stored in the database */
@@ -90,7 +80,13 @@ export async function createDefinition(
       `INSERT INTO custom_field_definitions (entity_type, name, field_type, options, sort_order)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING ${DEFINITION_SELECT}`,
-      [entity_type, name, field_type, options != null ? JSON.stringify(options) : null, sort_order ?? 0],
+      [
+        entity_type,
+        name,
+        field_type,
+        options != null ? JSON.stringify(options) : null,
+        sort_order ?? 0,
+      ],
     );
     return result.rows[0];
   } catch (err) {
@@ -145,7 +141,9 @@ export async function updateDefinition(
     return result.rows[0] ?? null;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === '23505') {
-      const e = new Error(`A custom field named "${input.name}" already exists for this entity type`);
+      const e = new Error(
+        `A custom field named "${input.name}" already exists for this entity type`,
+      );
       (e as NodeJS.ErrnoException).code = 'CUSTOM_FIELD_NAME_CONFLICT';
       throw e;
     }
@@ -160,9 +158,7 @@ export async function updateDefinition(
  * @param id - Definition UUID
  * @returns The deleted definition row, or null if not found
  */
-export async function deleteDefinition(
-  id: string,
-): Promise<CustomFieldDefinitionRow | null> {
+export async function deleteDefinition(id: string): Promise<CustomFieldDefinitionRow | null> {
   const result = await pool.query<CustomFieldDefinitionRow>(
     `DELETE FROM custom_field_definitions WHERE id = $1 RETURNING ${DEFINITION_SELECT}`,
     [id],
@@ -312,6 +308,7 @@ export function toDefinitionResponse(row: CustomFieldDefinitionRow): {
     field_type: row.field_type,
     options: row.options,
     sort_order: row.sort_order,
-    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    created_at:
+      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }

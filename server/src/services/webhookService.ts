@@ -17,6 +17,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { encrypt, decrypt } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './auditService.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
   WebhookEventType,
@@ -28,10 +29,10 @@ import type {
 
 /** Exponential backoff delays in ms for retry attempts 2–5 */
 const RETRY_DELAYS_MS = [
-  5 * 60_000,       // attempt 2: 5 min
-  30 * 60_000,      // attempt 3: 30 min
-  2 * 60 * 60_000,  // attempt 4: 2 h
-  6 * 60 * 60_000,  // attempt 5: 6 h
+  5 * 60_000, // attempt 2: 5 min
+  30 * 60_000, // attempt 3: 30 min
+  2 * 60 * 60_000, // attempt 4: 2 h
+  6 * 60 * 60_000, // attempt 5: 6 h
 ] as const;
 
 /** Maximum number of delivery attempts before marking a subscription failed */
@@ -48,12 +49,6 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateWebhookSubscriptionInput> =
 ]);
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-
-/** AuditActor is shared across all write services */
-export interface AuditActor {
-  id: string;
-  name: string;
-}
 
 const SYSTEM_ACTOR: AuditActor = {
   id: '00000000-0000-0000-0000-000000000000',
@@ -124,11 +119,7 @@ async function writeDeliveryLog(params: {
  * Performs a single HTTP delivery attempt.
  * Returns the HTTP status code on success; throws on network/timeout error.
  */
-async function attemptDelivery(
-  url: string,
-  rawBody: string,
-  signature: string,
-): Promise<number> {
+async function attemptDelivery(url: string, rawBody: string, signature: string): Promise<number> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
@@ -194,7 +185,10 @@ async function deliverWithRetry(params: DeliverParams): Promise<void> {
     const responseMs = Date.now() - start;
     error = err instanceof Error ? err.message : String(err);
 
-    logger.warn({ subscriptionId, eventType, attempt, err }, 'webhookService: delivery attempt failed');
+    logger.warn(
+      { subscriptionId, eventType, attempt, err },
+      'webhookService: delivery attempt failed',
+    );
 
     try {
       await writeDeliveryLog({
@@ -214,18 +208,26 @@ async function deliverWithRetry(params: DeliverParams): Promise<void> {
   // Schedule retry or mark failed
   const nextAttempt = attempt + 1;
   if (nextAttempt > MAX_ATTEMPTS) {
-    logger.warn({ subscriptionId, url }, 'webhookService: subscription exhausted all retries, marking failed');
+    logger.warn(
+      { subscriptionId, url },
+      'webhookService: subscription exhausted all retries, marking failed',
+    );
     try {
-      await pool.query(
-        `UPDATE webhook_subscriptions SET status = 'failed' WHERE id = $1`,
-        [subscriptionId],
-      );
+      await pool.query(`UPDATE webhook_subscriptions SET status = 'failed' WHERE id = $1`, [
+        subscriptionId,
+      ]);
     } catch (updateErr) {
-      logger.error({ subscriptionId, updateErr }, 'webhookService: failed to mark subscription as failed');
+      logger.error(
+        { subscriptionId, updateErr },
+        'webhookService: failed to mark subscription as failed',
+      );
     }
     // Notify admins — best-effort, no await
     void notifyWebhookFailed(subscriptionId, url).catch((notifyErr) => {
-      logger.warn({ subscriptionId, notifyErr }, 'webhookService: admin notification for failed webhook failed');
+      logger.warn(
+        { subscriptionId, notifyErr },
+        'webhookService: admin notification for failed webhook failed',
+      );
     });
     return;
   }
@@ -233,7 +235,10 @@ async function deliverWithRetry(params: DeliverParams): Promise<void> {
   const delayMs = RETRY_DELAYS_MS[nextAttempt - 2];
   setTimeout(() => {
     void deliverWithRetry({ ...params, attempt: nextAttempt }).catch((err) => {
-      logger.error({ subscriptionId, eventType, attempt: nextAttempt, err }, 'webhookService: unhandled error in retry');
+      logger.error(
+        { subscriptionId, eventType, attempt: nextAttempt, err },
+        'webhookService: unhandled error in retry',
+      );
     });
   }, delayMs);
 }
@@ -481,7 +486,10 @@ export function dispatchWebhookEvent(
         );
         subscriptions = result.rows;
       } catch (err) {
-        logger.error({ eventType, err }, 'webhookService: failed to fetch subscriptions for dispatch');
+        logger.error(
+          { eventType, err },
+          'webhookService: failed to fetch subscriptions for dispatch',
+        );
         return;
       }
 
@@ -495,7 +503,10 @@ export function dispatchWebhookEvent(
           eventType,
           attempt: 1,
         }).catch((err) => {
-          logger.error({ subscriptionId: sub.id, eventType, err }, 'webhookService: unhandled error in deliverWithRetry');
+          logger.error(
+            { subscriptionId: sub.id, eventType, err },
+            'webhookService: unhandled error in deliverWithRetry',
+          );
         });
       }
     })();
