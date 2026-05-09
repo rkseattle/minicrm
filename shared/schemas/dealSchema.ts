@@ -97,7 +97,11 @@ export const updateDealSchema = createDealSchema
       .nullable()
       .optional(),
   })
-  .refine((data) => Object.keys(data).length > 0, {
+  .extend({
+    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    version: z.number().int().positive('Version must be a positive integer'),
+  })
+  .refine((data) => Object.keys(data).filter((k) => k !== 'version').length > 0, {
     message: 'At least one field must be provided',
   })
   .refine(
@@ -144,6 +148,8 @@ export const dealResponseSchema = z.object({
   probability_is_overridden: z.boolean(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
+  /** Optimistic lock version (MINCRM-349) */
+  version: z.number().int(),
   /** Tags attached to this deal — only present in list responses (MINCRM-186) */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });

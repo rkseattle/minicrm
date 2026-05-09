@@ -1034,7 +1034,10 @@
     "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
     "RESET_TOKEN_INVALID": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
-    "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu."
+    "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
+    "optimisticLockConflict": "Dieser Datensatz wurde von einem anderen Benutzer bearbeitet, während Sie ihn bearbeiteten. Ihre nicht gespeicherten Änderungen werden angezeigt — bitte überprüfen und erneut speichern oder verwerfen.",
+    "optimisticLockResave": "Meine Änderungen erneut speichern",
+    "optimisticLockDiscard": "Meine Änderungen verwerfen"
   },
   "search": {
     "inputLabel": "Suche",

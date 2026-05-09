@@ -24,6 +24,7 @@ const DEAL_FIXTURE: DealResponse = {
   probability_is_overridden: false,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 const accountNames = new Map([['00000000-0000-0000-0000-000000000101', 'Acme Corp']]);

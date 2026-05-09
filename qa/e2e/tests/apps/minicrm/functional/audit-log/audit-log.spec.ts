@@ -113,7 +113,11 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   });
 
   // Update a field so an 'updated' entry is written
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, { first_name: 'F12AL1Updated' });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+    first_name: 'F12AL1Updated',
+    version: contact.version,
+  });
 
   // Navigate to audit log
   const auditLogPage = new AuditLogPage({ page });
@@ -181,7 +185,11 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   });
 
   // Update to generate change entries (one row per changed field in the audit log)
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, { first_name: 'F12AL3Updated' });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+    first_name: 'F12AL3Updated',
+    version: contact.version,
+  });
 
   // Use the record-scoped endpoint to avoid pagination gaps in the system-wide list.
   const auditResponse = await restClient.get<{ entries: AuditLogEntry[] }>(

@@ -46,9 +46,14 @@ export const updateLeadSchema = createLeadSchema
     status: z.enum(LEAD_STATUSES).optional(),
     disqualification_reason: z.string().trim().nullable().optional(),
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
+    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    version: z.number().int().positive('Version must be a positive integer'),
   })
   .partial()
-  .refine((data) => Object.keys(data).length > 0, {
+  .extend({
+    version: z.number().int().positive('Version must be a positive integer'),
+  })
+  .refine((data) => Object.keys(data).filter((k) => k !== 'version').length > 0, {
     message: 'At least one field must be provided',
   });
 
@@ -101,6 +106,8 @@ export const leadResponseSchema = z.object({
   converted_deal_id: z.string().uuid().nullable(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
+  /** Optimistic lock version (MINCRM-349) */
+  version: z.number().int(),
 });
 
 /** Status history entry shape */

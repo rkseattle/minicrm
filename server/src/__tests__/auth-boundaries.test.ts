@@ -143,7 +143,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repBCookie)
-      .send({ name: 'Hijacked Deal' });
+      .send({ name: 'Hijacked Deal', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -172,7 +172,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', adminCookie)
-      .send({ name: 'Admin Updated Deal' });
+      .send({ name: 'Admin Updated Deal', version: deal.version });
 
     expect(res.status).toBe(200);
     expect(res.body.deal.name).toBe('Admin Updated Deal');
@@ -205,7 +205,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', repBCookie)
-      .send({ subject: 'Hijacked Task' });
+      .send({ subject: 'Hijacked Task', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -238,7 +238,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', adminCookie)
-      .send({ subject: 'Admin Updated Task' });
+      .send({ subject: 'Admin Updated Task', version: activity.version });
 
     expect(res.status).toBe(200);
     expect(res.body.activity.subject).toBe('Admin Updated Task');
@@ -334,7 +334,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     const res = await request(app)
       .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', repBCookie)
-      .send({ first_name: 'Hacked' });
+      .send({ first_name: 'Hacked', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -367,7 +367,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     const res = await request(app)
       .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', adminCookie)
-      .send({ first_name: 'Admin Updated' });
+      .send({ first_name: 'Admin Updated', version: contact.version });
 
     expect(res.status).toBe(200);
     expect(res.body.contact.first_name).toBe('Admin Updated');
@@ -399,7 +399,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     const res = await request(app)
       .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', repBCookie)
-      .send({ name: 'Hacked Account' });
+      .send({ name: 'Hacked Account', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -428,7 +428,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     const res = await request(app)
       .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', adminCookie)
-      .send({ name: 'Admin Updated Account' });
+      .send({ name: 'Admin Updated Account', version: account.version });
 
     expect(res.status).toBe(200);
     expect(res.body.account.name).toBe('Admin Updated Account');
@@ -538,7 +538,7 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repBCookie)
-      .send({ name: 'Hijacked', owner_id: repAId });
+      .send({ name: 'Hijacked', owner_id: repAId, version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -556,7 +556,7 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
     const res = await request(app)
       .patch(`/api/v1/activities/${activity.id}`)
       .set('Cookie', repBCookie)
-      .send({ subject: 'Hijacked Task', owner_id: repAId });
+      .send({ subject: 'Hijacked Task', owner_id: repAId, version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');

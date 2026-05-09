@@ -121,19 +121,15 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
   // Validate date format (YYYY-MM-DD) to prevent malformed SQL comparisons
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   if (rawStart && !isoDatePattern.test(rawStart)) {
-    res
-      .status(400)
-      .json({
-        error: { code: 'VALIDATION_ERROR', message: 'start must be a date in YYYY-MM-DD format' },
-      });
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'start must be a date in YYYY-MM-DD format' },
+    });
     return;
   }
   if (rawEnd && !isoDatePattern.test(rawEnd)) {
-    res
-      .status(400)
-      .json({
-        error: { code: 'VALIDATION_ERROR', message: 'end must be a date in YYYY-MM-DD format' },
-      });
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'end must be a date in YYYY-MM-DD format' },
+    });
     return;
   }
 
@@ -209,7 +205,17 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const activity = await updateActivity(id, parsed.data);
+  let activity;
+  try {
+    activity = await updateActivity(id, parsed.data);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
   if (!activity) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Activity not found' } });
     return;

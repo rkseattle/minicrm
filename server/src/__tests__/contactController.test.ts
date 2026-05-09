@@ -99,7 +99,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', repCookie)
-      .send({ first_name: 'Updated' });
+      .send({ first_name: 'Updated', version: contact.version });
 
     expect(res.status).toBe(200);
     expect(res.body.contact.first_name).toBe('Updated');
@@ -111,7 +111,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', otherRepCookie)
-      .send({ first_name: 'Hijacked' });
+      .send({ first_name: 'Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -123,7 +123,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', adminCookie)
-      .send({ first_name: 'AdminUpdated' });
+      .send({ first_name: 'AdminUpdated', version: contact.version });
 
     expect(res.status).toBe(200);
     expect(res.body.contact.first_name).toBe('AdminUpdated');
@@ -133,7 +133,7 @@ describe('PATCH /api/contacts/:id — ownership', () => {
     const res = await request(app)
       .patch('/api/v1/contacts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
-      .send({ first_name: 'Ghost' });
+      .send({ first_name: 'Ghost', version: 1 });
 
     expect(res.status).toBe(404);
   });

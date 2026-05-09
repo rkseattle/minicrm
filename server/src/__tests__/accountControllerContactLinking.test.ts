@@ -148,11 +148,12 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
     const accountId: string = createRes.body.account.id;
 
     const contactId = await insertContact('patch-link@example.com');
+    const version: number = createRes.body.account.version;
 
     const res = await request(app)
       .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
-      .send({ contact_ids: [contactId] });
+      .send({ contact_ids: [contactId], version });
 
     expect(res.status).toBe(200);
     expect(await getContactAccountId(contactId)).toBe(accountId);
@@ -167,12 +168,13 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
       .set('Cookie', repCookie)
       .send({ name: 'Unlink Corp', contact_ids: [contactA, contactB] });
     const accountId: string = createRes.body.account.id;
+    const version: number = createRes.body.account.version;
 
     // Update to keep only contactA
     const res = await request(app)
       .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
-      .send({ contact_ids: [contactA] });
+      .send({ contact_ids: [contactA], version });
 
     expect(res.status).toBe(200);
     expect(await getContactAccountId(contactA)).toBe(accountId);
@@ -187,11 +189,12 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
       .set('Cookie', repCookie)
       .send({ name: 'Combined Corp' });
     const accountId: string = createRes.body.account.id;
+    const version: number = createRes.body.account.version;
 
     const res = await request(app)
       .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
-      .send({ name: 'Renamed Corp', contact_ids: [contactId] });
+      .send({ name: 'Renamed Corp', contact_ids: [contactId], version });
 
     expect(res.status).toBe(200);
     expect(res.body.account.name).toBe('Renamed Corp');
@@ -206,12 +209,13 @@ describe('PATCH /api/accounts/:id — contact_ids', () => {
       .set('Cookie', repCookie)
       .send({ name: 'Preserve Corp', contact_ids: [contactId] });
     const accountId: string = createRes.body.account.id;
+    const version: number = createRes.body.account.version;
 
     // Update name only — contact link must be preserved
     const res = await request(app)
       .patch(`/api/v1/accounts/${accountId}`)
       .set('Cookie', repCookie)
-      .send({ name: 'Still Linked Corp' });
+      .send({ name: 'Still Linked Corp', version });
 
     expect(res.status).toBe(200);
     expect(await getContactAccountId(contactId)).toBe(accountId);

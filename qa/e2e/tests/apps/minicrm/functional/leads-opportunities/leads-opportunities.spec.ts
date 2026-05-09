@@ -470,18 +470,23 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
   const uniquePrefix = `F4OV3-${Date.now()}`;
 
   // Create a deal and immediately close it as Won via API.
-  const created = await restClient.post<{ deal: { id: string } }>('/api/v1/deals', {
-    name: `${uniquePrefix}-Deal`,
-    stage: 'Prospecting',
-    account_id: account.id,
-    value: 75000,
-  });
-  const deal = { id: created.body.deal.id };
+  // MINCRM-349: capture version from the create response for optimistic locking.
+  const created = await restClient.post<{ deal: { id: string; version: number } }>(
+    '/api/v1/deals',
+    {
+      name: `${uniquePrefix}-Deal`,
+      stage: 'Prospecting',
+      account_id: account.id,
+      value: 75000,
+    },
+  );
+  const deal = { id: created.body.deal.id, version: created.body.deal.version };
   testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
 
   await restClient.patch(`/api/v1/deals/${deal.id}`, {
     stage: 'Closed Won',
     close_date: new Date().toISOString().slice(0, 10),
+    version: deal.version,
   });
 
   // Fetch deals scoped to the test account, then filter client-side to open
@@ -511,18 +516,23 @@ test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list v
 
   const uniquePrefix = `F4OV4-${Date.now()}`;
 
-  const created = await restClient.post<{ deal: { id: string } }>('/api/v1/deals', {
-    name: `${uniquePrefix}-Deal`,
-    stage: 'Prospecting',
-    account_id: account.id,
-    value: 30000,
-  });
-  const deal = { id: created.body.deal.id };
+  // MINCRM-349: capture version from the create response for optimistic locking.
+  const created = await restClient.post<{ deal: { id: string; version: number } }>(
+    '/api/v1/deals',
+    {
+      name: `${uniquePrefix}-Deal`,
+      stage: 'Prospecting',
+      account_id: account.id,
+      value: 30000,
+    },
+  );
+  const deal = { id: created.body.deal.id, version: created.body.deal.version };
   testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
 
   await restClient.patch(`/api/v1/deals/${deal.id}`, {
     stage: 'Closed Lost',
     close_date: new Date().toISOString().slice(0, 10),
+    version: deal.version,
   });
 
   // Fetch deals scoped to the test account, then filter client-side to open

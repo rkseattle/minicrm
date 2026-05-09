@@ -26,6 +26,7 @@ const DEAL_DEFAULT_PROB: DealResponse = {
   probability_is_overridden: false,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Deal fixture where probability is manually overridden */

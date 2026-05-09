@@ -286,23 +286,27 @@ describe('createActivitySchema — direction validation', () => {
 
 describe('updateActivitySchema — direction validation', () => {
   it('rejects a type change to Call without direction', () => {
-    const result = updateActivitySchema.safeParse({ type: 'Call' });
+    const result = updateActivitySchema.safeParse({ type: 'Call', version: 1 });
     expect(result.success).toBe(false);
     expect(result.error?.errors[0].message).toMatch(/direction is required/i);
   });
 
   it('rejects a type change to Email without direction', () => {
-    const result = updateActivitySchema.safeParse({ type: 'Email' });
+    const result = updateActivitySchema.safeParse({ type: 'Email', version: 1 });
     expect(result.success).toBe(false);
   });
 
   it('accepts a type change to Call with direction provided', () => {
-    const result = updateActivitySchema.safeParse({ type: 'Call', direction: 'Inbound' });
+    const result = updateActivitySchema.safeParse({
+      type: 'Call',
+      direction: 'Inbound',
+      version: 1,
+    });
     expect(result.success).toBe(true);
   });
 
   it('accepts a subject-only patch (type not changing)', () => {
-    const result = updateActivitySchema.safeParse({ subject: 'Updated' });
+    const result = updateActivitySchema.safeParse({ subject: 'Updated', version: 1 });
     expect(result.success).toBe(true);
   });
 });
@@ -595,7 +599,7 @@ describe('listMyTasks', () => {
       contact_id: contactId,
       owner_id: ownerId,
     });
-    await updateActivity(openTask.id, { status: 'complete' });
+    await updateActivity(openTask.id, { status: 'complete', version: openTask.version });
     await createActivity({
       type: 'Task',
       subject: 'Another open task',
@@ -733,7 +737,11 @@ describe('updateActivity', () => {
       owner_id: ownerId,
     });
 
-    const updated = await updateActivity(activity.id, { subject: 'Updated subject', type: 'Call' });
+    const updated = await updateActivity(activity.id, {
+      subject: 'Updated subject',
+      type: 'Call',
+      version: activity.version,
+    });
     expect(updated!.subject).toBe('Updated subject');
     expect(updated!.type).toBe('Call');
     // Unchanged fields remain intact
@@ -750,7 +758,10 @@ describe('updateActivity', () => {
 
     expect(activity.status).toBe('open');
 
-    const updated = await updateActivity(activity.id, { status: 'complete' });
+    const updated = await updateActivity(activity.id, {
+      status: 'complete',
+      version: activity.version,
+    });
     expect(updated!.status).toBe('complete');
   });
 
@@ -762,13 +773,17 @@ describe('updateActivity', () => {
       owner_id: ownerId,
     });
 
-    const updated = await updateActivity(activity.id, { notes: 'Added notes' });
+    const updated = await updateActivity(activity.id, {
+      notes: 'Added notes',
+      version: activity.version,
+    });
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(activity.updated_at.getTime());
   });
 
   it('returns null for a non-existent activity', async () => {
     const result = await updateActivity('00000000-0000-0000-0000-000000000000', {
       subject: 'Ghost',
+      version: 1,
     });
     expect(result).toBeNull();
   });
@@ -788,10 +803,58 @@ describe('updateActivity', () => {
     const updated = await updateActivity(activity.id, {
       direction: 'Inbound',
       outcome: 'Agreed to demo',
+      version: activity.version,
     });
 
     expect(updated!.direction).toBe('Inbound');
     expect(updated!.outcome).toBe('Agreed to demo');
+  });
+
+  it('increments the version after each update', async () => {
+    const activity = await createActivity({
+      type: 'Note',
+      subject: 'Version test',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    expect(activity.version).toBe(1);
+
+    const updated = await updateActivity(activity.id, {
+      subject: 'Version 2',
+      version: activity.version,
+    });
+    expect(updated!.version).toBe(2);
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when the version is stale', async () => {
+    const activity = await createActivity({
+      type: 'Note',
+      subject: 'Conflict test',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await updateActivity(activity.id, { subject: 'Concurrent update', version: activity.version });
+
+    await expect(
+      updateActivity(activity.id, { subject: 'Stale update', version: activity.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+  });
+
+  it('does not apply changes when the version is stale', async () => {
+    const activity = await createActivity({
+      type: 'Note',
+      subject: 'Conflict data test',
+      contact_id: contactId,
+      owner_id: ownerId,
+    });
+    await updateActivity(activity.id, { subject: 'Winner', version: activity.version });
+
+    await expect(
+      updateActivity(activity.id, { subject: 'Loser', version: activity.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+
+    const found = await findActivityById(activity.id);
+    expect(found!.subject).toBe('Winner');
   });
 });
 

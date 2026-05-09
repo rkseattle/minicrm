@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -72,6 +73,8 @@ export default function DealDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  // Optimistic lock conflict state (MINCRM-349)
+  const [conflictPendingValues, setConflictPendingValues] = useState<DealFormValues | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -125,6 +128,9 @@ export default function DealDetailPage() {
         owner_id: values.owner_id || undefined,
         // null clears the override; undefined leaves it unchanged
         probability: values.probability !== '' ? parseInt(values.probability, 10) : null,
+        // Read version from the current query cache at call time (MINCRM-349)
+        version:
+          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ?? 1,
       }),
     onSuccess: async () => {
       if (customFieldValues.length > 0) {
@@ -136,8 +142,18 @@ export default function DealDetailPage() {
       queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
+      setConflictPendingValues(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        setConflictPendingValues(variables);
+        void queryClient.invalidateQueries({ queryKey: dealQueryKey });
+        return;
+      }
       setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
@@ -198,6 +214,9 @@ export default function DealDetailPage() {
         account_id: formValues.account_id || null,
         owner_id: formValues.owner_id || undefined,
         probability: formValues.probability !== '' ? parseInt(formValues.probability, 10) : null,
+        // Read version from the current query cache at call time (MINCRM-349)
+        version:
+          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ?? 1,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
@@ -206,8 +225,19 @@ export default function DealDetailPage() {
       setPendingClose(null);
       setCloseError(null);
       setIsEditing(false);
+      setConflictPendingValues(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        setConflictPendingValues(variables.formValues);
+        setPendingClose(null);
+        void queryClient.invalidateQueries({ queryKey: dealQueryKey });
+        return;
+      }
       setCloseError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
@@ -352,11 +382,25 @@ export default function DealDetailPage() {
                 onCancel={() => {
                   setIsEditing(false);
                   setUpdateError(null);
+                  setConflictPendingValues(null);
                 }}
                 isSubmitting={updateMutation.isPending}
                 submitLabel={t('deals.saveChanges')}
                 error={updateError ?? undefined}
               />
+              {conflictPendingValues && (
+                <div className="mt-4">
+                  <OptimisticLockConflictBanner
+                    onResave={() => {
+                      updateMutation.mutate(conflictPendingValues);
+                    }}
+                    onDiscard={() => {
+                      setConflictPendingValues(null);
+                      setIsEditing(false);
+                    }}
+                  />
+                </div>
+              )}
             </div>
             {id && (
               <CustomFieldsSection

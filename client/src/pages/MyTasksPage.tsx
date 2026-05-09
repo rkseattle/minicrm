@@ -86,7 +86,8 @@ export default function MyTasksPage() {
   });
 
   const completeMutation = useMutation({
-    mutationFn: (id: string) => updateActivity(id, { status: 'complete' }),
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      updateActivity(id, { status: 'complete', version }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
       setCompleteError(null);
@@ -270,14 +271,19 @@ export default function MyTasksPage() {
                                     variant="secondary"
                                     size="sm"
                                     data-testid={`mark-complete-${task.id}`}
-                                    onClick={() => completeMutation.mutate(task.id)}
+                                    onClick={() =>
+                                      completeMutation.mutate({
+                                        id: task.id,
+                                        version: task.version,
+                                      })
+                                    }
                                     disabled={
                                       completeMutation.isPending &&
-                                      completeMutation.variables === task.id
+                                      completeMutation.variables?.id === task.id
                                     }
                                   >
                                     {completeMutation.isPending &&
-                                    completeMutation.variables === task.id
+                                    completeMutation.variables?.id === task.id
                                       ? t('myTasks.markingComplete')
                                       : t('myTasks.markComplete')}
                                   </Button>
@@ -362,14 +368,16 @@ export default function MyTasksPage() {
                                   variant="secondary"
                                   size="sm"
                                   data-testid={`mark-complete-${task.id}`}
-                                  onClick={() => completeMutation.mutate(task.id)}
+                                  onClick={() =>
+                                    completeMutation.mutate({ id: task.id, version: task.version })
+                                  }
                                   disabled={
                                     completeMutation.isPending &&
-                                    completeMutation.variables === task.id
+                                    completeMutation.variables?.id === task.id
                                   }
                                 >
                                   {completeMutation.isPending &&
-                                  completeMutation.variables === task.id
+                                  completeMutation.variables?.id === task.id
                                     ? t('myTasks.markingComplete')
                                     : t('myTasks.markComplete')}
                                 </Button>

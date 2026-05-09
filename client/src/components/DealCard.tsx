@@ -18,12 +18,12 @@ interface DealCardProps {
   /** Resolved account display name, or '—' when no account is linked */
   accountName: string;
   /** Called when the user selects a non-terminal stage */
-  onStageChange: (dealId: string, stage: string) => void;
+  onStageChange: (dealId: string, stage: string, version: number) => void;
   /**
    * Called when the user selects a terminal stage.
    * The parent is responsible for opening the close deal modal.
    */
-  onCloseRequested: (dealId: string, stage: string) => void;
+  onCloseRequested: (dealId: string, stage: string, version: number) => void;
   /** When true, the stage selector is disabled */
   isUpdating: boolean;
   /**
@@ -140,9 +140,9 @@ export default function DealCard({
         onChange={(e) => {
           const selected = e.target.value;
           if (terminalStageNames.includes(selected)) {
-            onCloseRequested(deal.id, selected);
+            onCloseRequested(deal.id, selected, deal.version);
           } else {
-            onStageChange(deal.id, selected);
+            onStageChange(deal.id, selected, deal.version);
           }
         }}
         disabled={isUpdating}

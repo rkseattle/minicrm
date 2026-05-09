@@ -451,7 +451,11 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   });
 
   // Unlink the contact by patching account_id to null via REST.
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: null });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+    account_id: null,
+    version: contact.version,
+  });
 
   await navigateToAccount(page, account.id);
 

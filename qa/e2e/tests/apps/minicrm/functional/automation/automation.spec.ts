@@ -240,8 +240,9 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
     stage: 'Prospecting',
   });
 
-  // Advance to Proposal — this fires the trigger
-  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Proposal' });
+  // Advance to Proposal — this fires the trigger.
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Proposal', version: deal.version });
 
   // Poll until the task appears
   const task = await pollForTask(restClient, taskSubject, deal.id);
@@ -287,8 +288,12 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
     stage: 'Prospecting',
   });
 
-  // Move to Qualification — not the trigger stage
-  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Qualification' });
+  // Move to Qualification — not the trigger stage.
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/deals/${deal.id}`, {
+    stage: 'Qualification',
+    version: deal.version,
+  });
 
   // Wait briefly and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));

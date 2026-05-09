@@ -184,12 +184,17 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     }
   }
 
-  const deal = await updateDeal(
-    id,
-    parsed.data,
-    { id: req.user!.id, name: req.user!.name },
-    existing,
-  );
+  let deal;
+  try {
+    deal = await updateDeal(id, parsed.data, { id: req.user!.id, name: req.user!.name }, existing);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
   if (!deal) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
     return;

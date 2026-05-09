@@ -50,6 +50,8 @@ export interface LeadRow {
   converted_deal_id: string | null;
   created_at: Date;
   updated_at: Date;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /** Shape of a lead status history row */
@@ -274,9 +276,10 @@ export async function updateLead(
   params: UpdateLeadInput,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<LeadRow | null> {
-  const normalized: UpdateLeadInput = {
-    ...params,
-    ...(params.email !== undefined ? { email: params.email.toLowerCase() } : {}),
+  const { version, ...rest } = params;
+  const normalized: Omit<UpdateLeadInput, 'version'> = {
+    ...rest,
+    ...(rest.email !== undefined ? { email: rest.email.toLowerCase() } : {}),
   };
 
   const fields = (Object.keys(normalized) as string[]).filter((field) =>
@@ -289,16 +292,37 @@ export async function updateLead(
   const before = await findLeadById(id);
   if (!before) return null;
 
+  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+  const versionParam = fields.length + 2;
 
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query<LeadRow>(
-      `UPDATE leads SET ${setClauses}, updated_at = now() WHERE id = $1 RETURNING *`,
-      [id, ...fields.map((f) => (normalized as Record<string, unknown>)[f])],
+      `UPDATE leads SET ${setClauses}, updated_at = now(), version = version + 1 WHERE id = $1 AND version = $${versionParam} RETURNING *`,
+      [id, ...fields.map((f) => (normalized as Record<string, unknown>)[f]), version],
     );
+
+    if (result.rowCount === 0) {
+      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      const check = await client.query<{ id: string }>('SELECT id FROM leads WHERE id = $1', [id]);
+      if (check.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      throw Object.assign(
+        new Error(
+          'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+        ),
+        {
+          code: 'OPTIMISTIC_LOCK_CONFLICT',
+          entity: 'lead',
+          recordId: id,
+        },
+      );
+    }
 
     const lead = result.rows[0] ?? null;
 

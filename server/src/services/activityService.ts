@@ -4,6 +4,7 @@
  */
 
 import pool from '../db.js';
+import type { PoolClient } from 'pg';
 import type {
   CreateActivityInput,
   UpdateActivityInput,
@@ -39,6 +40,8 @@ export interface ActivityRow {
   owner_name: string;
   created_at: Date;
   updated_at: Date;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /** Options for filtering and paginating the activities list */
@@ -65,7 +68,7 @@ interface ListActivitiesOptions {
 
 /** Columns selected when JOINing users for owner_name */
 const SELECT_COLS_WITH_OWNER =
-  'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.direction, a.outcome, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at';
+  'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.direction, a.outcome, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at, a.version';
 
 /**
  * Creates a new activity record.
@@ -218,8 +221,9 @@ export async function updateActivity(
   id: string,
   params: UpdateActivityInput,
 ): Promise<ActivityRow | null> {
-  const fields = (Object.keys(params) as (keyof UpdateActivityInput)[]).filter((field) =>
-    ALLOWED_UPDATE_FIELDS.has(field),
+  const { version, ...rest } = params;
+  const fields = (Object.keys(rest) as (keyof typeof rest)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateActivityInput),
   );
 
   // Guard against empty field list — would produce invalid SQL
@@ -227,24 +231,61 @@ export async function updateActivity(
     return findActivityById(id);
   }
 
+  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+  const versionParam = fields.length + 2;
 
-  const updateResult = await pool.query<{ id: string }>(
-    `UPDATE activities
-     SET ${setClauses}, updated_at = now()
-     WHERE id = $1
-     RETURNING id`,
-    [id, ...fields.map((f) => params[f])],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (!updateResult.rows[0]) return null;
-  const activity = await findActivityById(updateResult.rows[0].id);
+    const updateResult = await client.query<{ id: string }>(
+      `UPDATE activities
+       SET ${setClauses}, updated_at = now(), version = version + 1
+       WHERE id = $1 AND version = $${versionParam}
+       RETURNING id`,
+      [id, ...fields.map((f) => rest[f as keyof typeof rest]), version],
+    );
 
-  if (activity && params.status === 'complete') {
-    void dispatchWebhookEvent('activity.completed', activity as unknown as Record<string, unknown>);
+    if (updateResult.rowCount === 0) {
+      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      const check = await client.query<{ id: string }>('SELECT id FROM activities WHERE id = $1', [
+        id,
+      ]);
+      if (check.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      throw Object.assign(
+        new Error(
+          'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+        ),
+        {
+          code: 'OPTIMISTIC_LOCK_CONFLICT',
+          entity: 'activity',
+          recordId: id,
+        },
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const activity = await findActivityById(updateResult.rows[0]!.id);
+
+    if (activity && params.status === 'complete') {
+      void dispatchWebhookEvent(
+        'activity.completed',
+        activity as unknown as Record<string, unknown>,
+      );
+    }
+
+    return activity;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return activity;
 }
 
 /** Shape of a task row enriched with the linked record name and type */

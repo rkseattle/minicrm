@@ -172,7 +172,11 @@ describe('listLeads', () => {
     const mainLead = await createLead({ ...makeLead(), owner_id: ownerId });
     const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
 
-    await updateLead(disqLead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      disqLead.id,
+      { status: 'Disqualified', version: disqLead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     const result = await listLeads({ ownerId });
     expect(result.total).toBe(1);
@@ -182,7 +186,11 @@ describe('listLeads', () => {
   it('includes Disqualified leads when includeDisqualified=true', async () => {
     const mainLead = await createLead({ ...makeLead(), owner_id: ownerId });
     const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
-    await updateLead(disqLead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      disqLead.id,
+      { status: 'Disqualified', version: disqLead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     const result = await listLeads({ ownerId, includeDisqualified: true });
     expect(result.total).toBe(2);
@@ -195,7 +203,11 @@ describe('listLeads', () => {
   it('filters by status', async () => {
     await createLead({ ...makeLead(), owner_id: ownerId });
     const contactedLead = await createLead({ ...makeLead(), owner_id: ownerId });
-    await updateLead(contactedLead.id, { status: 'Contacted' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      contactedLead.id,
+      { status: 'Contacted', version: contactedLead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     const result = await listLeads({ ownerId, status: 'Contacted' });
     expect(result.data.every((l) => l.status === 'Contacted')).toBe(true);
@@ -208,7 +220,11 @@ describe('listLeads', () => {
 describe('updateLead — status lifecycle', () => {
   it('writes a status history entry when status changes', async () => {
     const lead = await createLead({ ...makeLead(), owner_id: ownerId });
-    await updateLead(lead.id, { status: 'Contacted' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      lead.id,
+      { status: 'Contacted', version: lead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     const history = await getLeadStatusHistory(lead.id);
     expect(history).toHaveLength(2);
@@ -218,7 +234,11 @@ describe('updateLead — status lifecycle', () => {
 
   it('does not write a history entry when status is unchanged', async () => {
     const lead = await createLead({ ...makeLead(), owner_id: ownerId });
-    await updateLead(lead.id, { first_name: 'Updated' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      lead.id,
+      { first_name: 'Updated', version: lead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     const history = await getLeadStatusHistory(lead.id);
     expect(history).toHaveLength(1); // only the initial New entry
@@ -228,10 +248,40 @@ describe('updateLead — status lifecycle', () => {
     const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const updated = await updateLead(
       lead.id,
-      { status: 'Disqualified', disqualification_reason: 'Not a fit' },
+      { status: 'Disqualified', disqualification_reason: 'Not a fit', version: lead.version },
       { id: ownerId, name: 'Tester' },
     );
     expect(updated!.disqualification_reason).toBe('Not a fit');
+  });
+
+  it('increments version on successful update', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
+    expect(lead.version).toBe(1);
+
+    const updated = await updateLead(
+      lead.id,
+      { first_name: 'Versioned', version: lead.version },
+      { id: ownerId, name: 'Tester' },
+    );
+    expect(updated!.version).toBe(2);
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when version is stale', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: ownerId });
+
+    await updateLead(
+      lead.id,
+      { first_name: 'First Writer', version: lead.version },
+      { id: ownerId, name: 'Tester' },
+    );
+
+    await expect(
+      updateLead(
+        lead.id,
+        { first_name: 'Second Writer', version: lead.version },
+        { id: ownerId, name: 'Tester' },
+      ),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
   });
 });
 
@@ -308,7 +358,11 @@ describe('convertLead', () => {
 
   it('throws DISQUALIFIED when lead status is Disqualified', async () => {
     const lead = await createLead({ ...makeLead(), owner_id: ownerId });
-    await updateLead(lead.id, { status: 'Disqualified' }, { id: ownerId, name: 'Tester' });
+    await updateLead(
+      lead.id,
+      { status: 'Disqualified', version: lead.version },
+      { id: ownerId, name: 'Tester' },
+    );
 
     await expect(
       convertLead(

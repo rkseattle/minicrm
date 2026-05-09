@@ -44,6 +44,8 @@ export interface AccountRow {
   parent_account_id: string | null;
   created_at: Date;
   updated_at: Date;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
   /** Tags attached to this account — only populated in list responses (MINCRM-186) */
   tags?: Array<{ id: string; name: string }>;
 }
@@ -346,7 +348,7 @@ export async function updateAccount(
   actor: AuditActor = SYSTEM_ACTOR,
   before?: AccountRow,
 ): Promise<AccountRow | null> {
-  const { contact_ids, ...accountParams } = params;
+  const { contact_ids, version, ...accountParams } = params;
 
   const fields = (Object.keys(accountParams) as (keyof typeof accountParams)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof Omit<UpdateAccountInput, 'contact_ids'>),
@@ -373,25 +375,64 @@ export async function updateAccount(
     let account: AccountRow | null = null;
 
     if (fields.length > 0) {
-      // Build dynamic SET clause: name = $2, industry = $3, ...
+      // Build dynamic SET clause: name = $2, industry = $3, ..., version = version + 1
+      // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
       const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+      const versionParam = fields.length + 2;
 
       const result = await client.query<AccountRow>(
         `UPDATE accounts
-         SET ${setClauses}, updated_at = now()
-         WHERE id = $1
+         SET ${setClauses}, updated_at = now(), version = version + 1
+         WHERE id = $1 AND version = $${versionParam}
          RETURNING *`,
-        [id, ...fields.map((f) => accountParams[f as keyof typeof accountParams])],
+        [id, ...fields.map((f) => accountParams[f as keyof typeof accountParams]), version],
       );
+
+      if (result.rowCount === 0) {
+        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        const check = await client.query<{ id: string }>('SELECT id FROM accounts WHERE id = $1', [
+          id,
+        ]);
+        if (check.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return null;
+        }
+        throw Object.assign(
+          new Error(
+            'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+          ),
+          {
+            code: 'OPTIMISTIC_LOCK_CONFLICT',
+            entity: 'account',
+            recordId: id,
+          },
+        );
+      }
 
       account = result.rows[0] ?? null;
     } else {
-      // No account fields to update — just fetch the existing row
+      // No account fields to update — just fetch the existing row and check version (MINCRM-349)
       const result = await client.query<AccountRow>(
         'SELECT * FROM accounts WHERE id = $1 LIMIT 1',
         [id],
       );
-      account = result.rows[0] ?? null;
+      if (!result.rows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      if (result.rows[0].version !== version) {
+        throw Object.assign(
+          new Error(
+            'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+          ),
+          {
+            code: 'OPTIMISTIC_LOCK_CONFLICT',
+            entity: 'account',
+            recordId: id,
+          },
+        );
+      }
+      account = result.rows[0];
     }
 
     if (account && contact_ids !== undefined) {

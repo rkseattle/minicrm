@@ -73,6 +73,8 @@ interface ActivitySingleResponse {
     account_id: string | null;
     deal_id: string | null;
     owner_id: string;
+    /** Optimistic lock version (MINCRM-349) */
+    version: number;
   };
 }
 
@@ -410,10 +412,13 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
 
     // owner_id is not in updateActivitySchema — the field is stripped and the
     // refine fires: "At least one field must be provided" → 400.
+    // MINCRM-349: include version so the failure is the intended refine, not a
+    // missing-version validation error.
     let caughtStatus: number | null = null;
     try {
       await restClient.patch(`/api/v1/activities/${activity.id}`, {
         owner_id: 'not-a-valid-field',
+        version: activity.version,
       });
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
@@ -571,7 +576,11 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
     contact_id: contact.id,
   });
 
-  await restClient.patch(`/api/v1/activities/${activity.id}`, { status: 'complete' });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/activities/${activity.id}`, {
+    status: 'complete',
+    version: activity.version,
+  });
 
   const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
   expect(detail.body.activity.status, 'status should be complete').toBe('complete');
@@ -772,9 +781,11 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
     contact_id: contact.id,
   });
 
+  // MINCRM-349: include version for optimistic locking. Use the updated version
+  // from the first patch response for the second patch.
   const afterComplete = await restClient.patch<ActivitySingleResponse>(
     `/api/v1/activities/${activity.id}`,
-    { status: 'complete' },
+    { status: 'complete', version: activity.version },
   );
   expect(afterComplete.body.activity.status, 'should be complete after first patch').toBe(
     'complete',
@@ -782,7 +793,7 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
 
   const afterUndo = await restClient.patch<ActivitySingleResponse>(
     `/api/v1/activities/${activity.id}`,
-    { status: 'open' },
+    { status: 'open', version: afterComplete.body.activity.version },
   );
   expect(afterUndo.body.activity.status, 'status should be open after undo').toBe('open');
 
@@ -808,7 +819,11 @@ test('@functional F5-CP3: completed task with past due date → not overdue (AC1
     contact_id: contact.id,
   });
 
-  await restClient.patch(`/api/v1/activities/${activity.id}`, { status: 'complete' });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/activities/${activity.id}`, {
+    status: 'complete',
+    version: activity.version,
+  });
 
   // AC1: overdue = open AND due_date < today. Completed task must NOT satisfy this.
   const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
@@ -847,9 +862,10 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
   });
 
   // PATCH type from Task to Meeting — currently accepted (200).
+  // MINCRM-349: include version for optimistic locking.
   const patchResponse = await restClient.patch<ActivitySingleResponse>(
     `/api/v1/activities/${activity.id}`,
-    { type: 'Meeting' },
+    { type: 'Meeting', version: activity.version },
   );
   expect(patchResponse.status, 'PATCH type currently returns 200 (type is mutable)').toBe(200);
   expect(
