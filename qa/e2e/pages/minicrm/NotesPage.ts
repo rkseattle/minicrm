@@ -322,4 +322,38 @@ export class NotesPage {
       { intent: 'cancel button in the note delete confirmation modal' },
     );
   }
+
+  /**
+   * Waits for the note composer to be removed from the DOM after save.
+   * Use this after clickSave() to confirm the save succeeded.
+   */
+  async waitForComposerClosed(timeout = 8_000): Promise<void> {
+    const composer = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'notes-composer' },
+          { type: 'css', value: '[data-testid="notes-composer"]' },
+        ],
+        { intent: 'note composer form container' },
+      )
+      .resolve();
+    await composer.waitFor({ state: 'hidden', timeout });
+  }
+
+  /**
+   * Waits for the delete confirmation modal to be removed from the DOM after confirm.
+   * Use this after confirmDelete() to confirm the action was processed.
+   */
+  async waitForDeleteModalClosed(timeout = 8_000): Promise<void> {
+    const modal = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'confirm-delete-modal' },
+          { type: 'css', value: '[data-testid="confirm-delete-modal"]' },
+        ],
+        { intent: 'delete confirmation modal' },
+      )
+      .resolve();
+    await modal.waitFor({ state: 'hidden', timeout });
+  }
 }

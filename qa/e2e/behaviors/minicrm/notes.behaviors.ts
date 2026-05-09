@@ -73,13 +73,13 @@ export async function createNoteViaUI(
 
   await notes.clickSave();
 
-  // Wait for the composer to close — indicates save succeeded
+  // Wait for the composer to disappear — indicates save succeeded
   let saved = false;
   try {
-    const composer = await notes.composerLocator();
-    saved = composer === null;
+    await notes.waitForComposerClosed();
+    saved = true;
   } catch {
-    saved = true; // locator threw because composer is gone
+    saved = false;
   }
 
   const list = await notes.notesListLocator();
@@ -125,10 +125,10 @@ export async function editNoteViaUI(
 
   let saved = false;
   try {
-    const composer = await notes.composerLocator();
-    saved = composer === null;
-  } catch {
+    await notes.waitForComposerClosed();
     saved = true;
+  } catch {
+    saved = false;
   }
 
   return { saved };
@@ -160,13 +160,13 @@ export async function deleteNoteViaUI(
   await notes.clickDeleteNote(noteId);
   await notes.confirmDelete();
 
-  // Give the modal time to close
+  // Wait for the delete modal to close — indicates the action was processed
   let confirmed = false;
   try {
-    const card = await notes.noteCardLocator(noteId);
-    confirmed = card === null;
-  } catch {
+    await notes.waitForDeleteModalClosed();
     confirmed = true;
+  } catch {
+    confirmed = false;
   }
 
   return { confirmed };
