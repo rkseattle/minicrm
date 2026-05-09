@@ -159,7 +159,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', repCookie)
-      .send({ name: 'Updated Corp' });
+      .send({ name: 'Updated Corp', version: account.version });
 
     expect(res.status).toBe(200);
     expect(res.body.account.name).toBe('Updated Corp');
@@ -171,7 +171,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', otherRepCookie)
-      .send({ name: 'Hijacked' });
+      .send({ name: 'Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -183,7 +183,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/accounts/${account.id}`)
       .set('Cookie', adminCookie)
-      .send({ name: 'Admin Updated' });
+      .send({ name: 'Admin Updated', version: account.version });
 
     expect(res.status).toBe(200);
     expect(res.body.account.name).toBe('Admin Updated');
@@ -193,7 +193,7 @@ describe('PATCH /api/accounts/:id — ownership', () => {
     const res = await request(app)
       .patch('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
-      .send({ name: 'Ghost' });
+      .send({ name: 'Ghost', version: 1 });
 
     expect(res.status).toBe(404);
   });
@@ -276,7 +276,7 @@ describe('GET /api/accounts — ?industry filter', () => {
     await createAccount({ name: 'Finance Co', industry: 'Finance', owner_id: repId });
 
     const res = await request(app)
-      .get('/api/v1/accounts?industry=Technology')
+      .get('/api/v1/accounts?industry=Technology&owner=me')
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);

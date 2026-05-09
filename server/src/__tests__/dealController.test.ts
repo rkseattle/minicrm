@@ -227,7 +227,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repCookie)
-      .send({ name: 'Updated Name' });
+      .send({ name: 'Updated Name', version: deal.version });
 
     expect(res.status).toBe(200);
     expect(res.body.deal.name).toBe('Updated Name');
@@ -239,7 +239,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', otherRepCookie)
-      .send({ name: 'Hijacked' });
+      .send({ name: 'Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -251,7 +251,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', adminCookie)
-      .send({ name: 'Admin Updated' });
+      .send({ name: 'Admin Updated', version: deal.version });
 
     expect(res.status).toBe(200);
     expect(res.body.deal.name).toBe('Admin Updated');
@@ -261,7 +261,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch('/api/v1/deals/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
-      .send({ name: 'Ghost' });
+      .send({ name: 'Ghost', version: 1 });
 
     expect(res.status).toBe(404);
   });
@@ -272,7 +272,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repCookie)
-      .send({ stage: 'NoSuchStage' });
+      .send({ stage: 'NoSuchStage', version: deal.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -290,7 +290,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
     const res = await request(app)
       .patch(`/api/v1/deals/${deal.id}`)
       .set('Cookie', repCookie)
-      .send({ close_date: futureDate });
+      .send({ close_date: futureDate, version: deal.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');

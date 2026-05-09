@@ -182,6 +182,10 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
       res.status(400).json({ error: { code, message: (err as Error).message } });
       return;
     }
+    if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
     throw err;
   }
   res.status(200).json({ account });

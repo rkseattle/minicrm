@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
 import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
+import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
 import {
   listActivities,
   createActivity,
@@ -62,6 +63,11 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [editError, setEditError] = useState<string | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Optimistic lock conflict state — tracks which activity has a pending conflict (MINCRM-349)
+  const [editConflict, setEditConflict] = useState<{
+    activityId: string;
+    pendingValues: ActivityFormValues;
+  } | null>(null);
 
   /** Number of activities to show; expanded by ACTIVITY_PAGE_SIZE on each "Load more" click */
   const ACTIVITY_PAGE_SIZE = 10;
@@ -101,7 +107,15 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, values }: { id: string; values: ActivityFormValues }) =>
+    mutationFn: ({
+      id,
+      values,
+      version,
+    }: {
+      id: string;
+      values: ActivityFormValues;
+      version: number;
+    }) =>
       updateActivity(id, {
         type: values.type,
         subject: values.subject,
@@ -109,19 +123,31 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         due_date: values.due_date || null,
         direction: (values.direction || null) as ActivityDirection | null,
         outcome: values.outcome || null,
+        version,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       setEditingId(null);
       setEditError(null);
+      setEditConflict(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        setEditConflict({ activityId: variables.id, pendingValues: variables.values });
+        void queryClient.invalidateQueries({ queryKey });
+        return;
+      }
       setEditError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
 
   const completeMutation = useMutation({
-    mutationFn: (id: string) => updateActivity(id, { status: 'complete' }),
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      updateActivity(id, { status: 'complete', version }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       setCompleteError(null);
@@ -222,24 +248,50 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                   data-testid={`activity-item-${activity.id}`}
                 >
                   {editingId === activity.id ? (
-                    <ActivityForm
-                      initialValues={{
-                        type: activity.type as ActivityType,
-                        subject: activity.subject,
-                        notes: activity.notes ?? '',
-                        due_date: activity.due_date ?? '',
-                        direction: (activity.direction ?? '') as ActivityDirection | '',
-                        outcome: activity.outcome ?? '',
-                      }}
-                      onSubmit={(values) => updateMutation.mutate({ id: activity.id, values })}
-                      onCancel={() => {
-                        setEditingId(null);
-                        setEditError(null);
-                      }}
-                      isSubmitting={updateMutation.isPending}
-                      submitLabel={t('activities.saveChanges')}
-                      error={editError ?? undefined}
-                    />
+                    <>
+                      <ActivityForm
+                        initialValues={{
+                          type: activity.type as ActivityType,
+                          subject: activity.subject,
+                          notes: activity.notes ?? '',
+                          due_date: activity.due_date ?? '',
+                          direction: (activity.direction ?? '') as ActivityDirection | '',
+                          outcome: activity.outcome ?? '',
+                        }}
+                        onSubmit={(values) =>
+                          updateMutation.mutate({
+                            id: activity.id,
+                            values,
+                            version: activity.version,
+                          })
+                        }
+                        onCancel={() => {
+                          setEditingId(null);
+                          setEditError(null);
+                          setEditConflict(null);
+                        }}
+                        isSubmitting={updateMutation.isPending}
+                        submitLabel={t('activities.saveChanges')}
+                        error={editError ?? undefined}
+                      />
+                      {editConflict?.activityId === activity.id && (
+                        <div className="mt-3">
+                          <OptimisticLockConflictBanner
+                            onResave={() => {
+                              updateMutation.mutate({
+                                id: activity.id,
+                                values: editConflict.pendingValues,
+                                version: activity.version,
+                              });
+                            }}
+                            onDiscard={() => {
+                              setEditConflict(null);
+                              setEditingId(null);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="flex items-start gap-3">
                       {/* Type badge + direction + status */}
@@ -317,11 +369,16 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                             variant="secondary"
                             size="sm"
                             data-testid={`mark-complete-${activity.id}`}
-                            onClick={() => completeMutation.mutate(activity.id)}
+                            onClick={() =>
+                              completeMutation.mutate({
+                                id: activity.id,
+                                version: activity.version,
+                              })
+                            }
                             disabled={completeMutation.isPending}
                           >
                             {completeMutation.isPending &&
-                            completeMutation.variables === activity.id
+                            completeMutation.variables?.id === activity.id
                               ? t('activities.markingComplete')
                               : t('activities.markComplete')}
                           </Button>

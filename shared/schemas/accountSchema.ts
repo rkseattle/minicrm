@@ -45,9 +45,14 @@ export const createAccountSchema = z.object({
 export const updateAccountSchema = createAccountSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
+    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    version: z.number().int().positive('Version must be a positive integer'),
   })
   .partial()
-  .refine((data) => Object.keys(data).length > 0, {
+  .extend({
+    version: z.number().int().positive('Version must be a positive integer'),
+  })
+  .refine((data) => Object.keys(data).filter((k) => k !== 'version').length > 0, {
     message: 'At least one field must be provided',
   });
 
@@ -68,6 +73,8 @@ export const accountResponseSchema = z.object({
   parent_account_id: z.string().uuid().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
+  /** Optimistic lock version (MINCRM-349) */
+  version: z.number().int(),
   /** Tags attached to this account — only present in list responses (MINCRM-186) */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });

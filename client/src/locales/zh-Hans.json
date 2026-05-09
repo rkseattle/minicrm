@@ -1034,7 +1034,10 @@
     "VALIDATION_ERROR": "请检查您的输入并重试。",
     "RESET_TOKEN_INVALID": "此重置链接无效或已过期。",
     "generic": "出了问题，请重试。",
-    "loadContactsFailed": "无法加载联系人，请刷新页面。"
+    "loadContactsFailed": "无法加载联系人，请刷新页面。",
+    "optimisticLockConflict": "您编辑时，该记录已被其他用户修改。您未保存的更改如下所示——请查看并重新保存，或放弃更改。",
+    "optimisticLockResave": "重新保存我的更改",
+    "optimisticLockDiscard": "放弃我的更改"
   },
   "search": {
     "inputLabel": "搜索",

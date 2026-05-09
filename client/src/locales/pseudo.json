@@ -898,7 +898,10 @@
     "VALIDATION_ERROR": "[Plëäŝë ĉhëĉk yöür ïñpüt äñd try ägäïñ.~~~~~~~~~~~~]",
     "RESET_TOKEN_INVALID": "[Thïŝ rëŝët lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~]",
     "generic": "[Ŝömëthïñg wëñt wröñg. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
-    "loadContactsFailed": "[Ĉöüld ñöt löäd ĉöñtäĉtŝ. Plëäŝë rëfrëŝh thë pägë.~~~~~~~~~~~~~~~]"
+    "loadContactsFailed": "[Ĉöüld ñöt löäd ĉöñtäĉtŝ. Plëäŝë rëfrëŝh thë pägë.~~~~~~~~~~~~~~~]",
+    "optimisticLockConflict": "[Thïŝ rëĉörd wäŝ möδïfïëd by äñöthër üŝër whïlë yöü wërë ëdïtïñg. Yöür üñŝävëd ĉhäñgëŝ ärë ŝhöwñ — plëäŝë rëvïëw äñd rë-ŝävë, ör dïŝĉärd.~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "optimisticLockResave": "[Rë-ŝävë my ĉhäñgëŝ~~~~~~~~~]",
+    "optimisticLockDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~~~~]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

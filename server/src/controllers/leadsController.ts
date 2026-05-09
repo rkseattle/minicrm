@@ -167,7 +167,17 @@ export async function updateLeadHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  const lead = await updateLead(id, parsed.data, { id: req.user!.id, name: req.user!.name });
+  let lead;
+  try {
+    lead = await updateLead(id, parsed.data, { id: req.user!.id, name: req.user!.name });
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
   res.status(200).json({ lead });
 }
 

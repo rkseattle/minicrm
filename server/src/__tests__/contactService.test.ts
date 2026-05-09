@@ -429,7 +429,10 @@ describe('listContacts — search filter', () => {
   });
 
   it('combines search with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-search-other@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-search-other@example.com`,
+    });
     await createContact({
       ...makeContact(),
       first_name: 'Alice',
@@ -566,7 +569,11 @@ describe('updateContact', () => {
     const base = makeContact();
     const contact = await createContact({ ...base, owner_id: ownerId });
 
-    const updated = await updateContact(contact.id, { first_name: 'Alicia', title: 'CRO' });
+    const updated = await updateContact(contact.id, {
+      first_name: 'Alicia',
+      title: 'CRO',
+      version: contact.version,
+    });
 
     expect(updated!.first_name).toBe('Alicia');
     expect(updated!.title).toBe('CRO');
@@ -575,9 +582,23 @@ describe('updateContact', () => {
     expect(updated!.email).toBe(base.email);
   });
 
+  it('increments version on successful update', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+    expect(contact.version).toBe(1);
+
+    const updated = await updateContact(contact.id, {
+      first_name: 'Versioned',
+      version: contact.version,
+    });
+    expect(updated!.version).toBe(2);
+  });
+
   it('updates updated_at timestamp', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
-    const updated = await updateContact(contact.id, { phone: '+1-555-9999' });
+    const updated = await updateContact(contact.id, {
+      phone: '+1-555-9999',
+      version: contact.version,
+    });
 
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(contact.updated_at.getTime());
   });
@@ -586,7 +607,10 @@ describe('updateContact', () => {
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     expect(contact.account_id).toBeNull();
 
-    const updated = await updateContact(contact.id, { account_id: accountId });
+    const updated = await updateContact(contact.id, {
+      account_id: accountId,
+      version: contact.version,
+    });
     expect(updated!.account_id).toBe(accountId);
   });
 
@@ -598,15 +622,48 @@ describe('updateContact', () => {
     });
     expect(contact.account_id).toBe(accountId);
 
-    const updated = await updateContact(contact.id, { account_id: null });
+    const updated = await updateContact(contact.id, {
+      account_id: null,
+      version: contact.version,
+    });
     expect(updated!.account_id).toBeNull();
   });
 
   it('returns null for a non-existent contact', async () => {
     const result = await updateContact('00000000-0000-0000-0000-000000000000', {
       first_name: 'Ghost',
+      version: 1,
     });
     expect(result).toBeNull();
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when version is stale', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    // First update succeeds and bumps version to 2
+    await updateContact(contact.id, { first_name: 'First Writer', version: contact.version });
+
+    // Second update with stale version (still 1) must conflict
+    await expect(
+      updateContact(contact.id, { first_name: 'Second Writer', version: contact.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+  });
+
+  it('does not overwrite the winning write on OPTIMISTIC_LOCK_CONFLICT', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    await updateContact(contact.id, { first_name: 'Winner', version: contact.version });
+
+    await expect(
+      updateContact(contact.id, { first_name: 'Loser', version: contact.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+
+    // The winning write is preserved
+    const { rows } = await pool.query<{ first_name: string }>(
+      'SELECT first_name FROM contacts WHERE id = $1',
+      [contact.id],
+    );
+    expect(rows[0]?.first_name).toBe('Winner');
   });
 });
 
@@ -682,13 +739,20 @@ describe('exportContactsForCsv', () => {
 
     // Must delete contacts before user due to FK constraint
     await pool.query('DELETE FROM contacts WHERE owner_id = $1', [otherOwnerId]);
-    await pool.query('DELETE FROM users WHERE email = $1', ['contact-svc-export-other@example.com']);
+    await pool.query('DELETE FROM users WHERE email = $1', [
+      'contact-svc-export-other@example.com',
+    ]);
   });
 
   it('filters by search', async () => {
     const aliceEmail = `${FILE_PREFIX}-${uid()}-alice-csv@example.com`;
     const bobEmail = `${FILE_PREFIX}-${uid()}-bob-csv@example.com`;
-    await createContact({ ...makeContact(), email: aliceEmail, first_name: 'Alice', owner_id: ownerId });
+    await createContact({
+      ...makeContact(),
+      email: aliceEmail,
+      first_name: 'Alice',
+      owner_id: ownerId,
+    });
     await createContact({
       ...makeContact(),
       first_name: 'Bob',
@@ -804,7 +868,11 @@ describe('createContact — address and social fields', () => {
 describe('updateContact — address and social fields', () => {
   it('updates city and country', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
-    const updated = await updateContact(contact.id, { city: 'Seattle', country: 'US' });
+    const updated = await updateContact(contact.id, {
+      city: 'Seattle',
+      country: 'US',
+      version: contact.version,
+    });
     expect(updated!.city).toBe('Seattle');
     expect(updated!.country).toBe('US');
     // Other fields intact
@@ -815,6 +883,7 @@ describe('updateContact — address and social fields', () => {
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     const updated = await updateContact(contact.id, {
       linkedin_url: 'https://www.linkedin.com/in/testuser',
+      version: contact.version,
     });
     expect(updated!.linkedin_url).toBe('https://www.linkedin.com/in/testuser');
   });
@@ -827,6 +896,7 @@ describe('updateContact — address and social fields', () => {
     });
     const updated = await updateContact(contact.id, {
       linkedin_url: 'https://linkedin.com/in/new-url',
+      version: contact.version,
     });
     expect(updated!.linkedin_url).toBe('https://linkedin.com/in/new-url');
   });

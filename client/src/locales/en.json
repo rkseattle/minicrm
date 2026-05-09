@@ -999,7 +999,10 @@
     "VALIDATION_ERROR": "Please check your input and try again.",
     "RESET_TOKEN_INVALID": "This reset link is invalid or has expired.",
     "generic": "Something went wrong. Please try again.",
-    "loadContactsFailed": "Could not load contacts. Please refresh the page."
+    "loadContactsFailed": "Could not load contacts. Please refresh the page.",
+    "optimisticLockConflict": "This record was modified by another user while you were editing. Your unsaved changes are shown — please review and re-save, or discard.",
+    "optimisticLockResave": "Re-save my changes",
+    "optimisticLockDiscard": "Discard my changes"
   },
   "search": {
     "inputLabel": "Search",

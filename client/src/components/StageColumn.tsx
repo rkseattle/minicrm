@@ -17,13 +17,18 @@ interface StageColumnProps {
   deals: DealResponse[];
   /** Map of account_id → account name for O(1) lookup */
   accountNames: Map<string, string>;
-  /** Called when a deal card's stage selector changes to a non-terminal stage */
-  onStageChange: (dealId: string, stage: string) => void;
   /**
-   * Called when the user selects a terminal stage on a deal card.
-   * The parent opens the close deal modal.
+   * Called when a deal's stage changes (from card selector or drag-and-drop).
+   * `version` is provided when the deal object is available (card selector); `undefined` when
+   * the source deal is in another column and must be looked up by the parent (drag-and-drop).
    */
-  onCloseRequested: (dealId: string, stage: string) => void;
+  onStageChange: (dealId: string, stage: string, version?: number) => void;
+  /**
+   * Called when a terminal stage is selected.
+   * `version` is provided when the deal object is available (card selector); `undefined` when
+   * triggered by a cross-column drag-and-drop.
+   */
+  onCloseRequested: (dealId: string, stage: string, version?: number) => void;
   /** Set of deal IDs whose stage updates are currently in flight */
   updatingDealIds: Set<string>;
   /** When true, the column expands to full width (used in mobile single-stage view) */

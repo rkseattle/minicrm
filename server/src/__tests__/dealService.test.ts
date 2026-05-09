@@ -113,7 +113,11 @@ afterAll(async () => {
 describe('updateDealSchema — close_date future-date validation', () => {
   it('accepts a close_date equal to today for a terminal stage', () => {
     const today = new Date().toISOString().split('T')[0];
-    const result = updateDealSchema.safeParse({ stage: 'Closed Won', close_date: today });
+    const result = updateDealSchema.safeParse({
+      stage: 'Closed Won',
+      close_date: today,
+      version: 1,
+    });
     expect(result.success).toBe(true);
   });
 
@@ -121,6 +125,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
     const result = updateDealSchema.safeParse({
       stage: 'Closed Lost',
       close_date: '2024-01-01',
+      version: 1,
     });
     expect(result.success).toBe(true);
   });
@@ -129,6 +134,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
     const result = updateDealSchema.safeParse({
       stage: 'Closed Won',
       close_date: '2099-12-31',
+      version: 1,
     });
     expect(result.success).toBe(false);
     expect(result.error?.errors[0].message).toBe('Close date cannot be in the future');
@@ -138,6 +144,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
     const result = updateDealSchema.safeParse({
       stage: 'Closed Lost',
       close_date: '2099-12-31',
+      version: 1,
     });
     expect(result.success).toBe(false);
   });
@@ -146,14 +153,20 @@ describe('updateDealSchema — close_date future-date validation', () => {
     const result = updateDealSchema.safeParse({
       stage: 'Prospecting',
       close_date: '2099-12-31',
+      version: 1,
     });
     expect(result.success).toBe(true);
   });
 
   it('allows a future close_date when no stage is specified', () => {
     // Note: controller-level check handles the bypass for already-closed deals (MINCRM-121)
-    const result = updateDealSchema.safeParse({ close_date: '2099-12-31' });
+    const result = updateDealSchema.safeParse({ close_date: '2099-12-31', version: 1 });
     expect(result.success).toBe(true);
+  });
+
+  it('rejects a missing version field', () => {
+    const result = updateDealSchema.safeParse({ stage: 'Prospecting' });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -167,11 +180,15 @@ describe('updateDeal — close_date enforcement on already-closed deals', () => 
     const updated = await updateDeal(deal.id, {
       stage: 'Closed Won',
       close_date: today,
+      version: deal.version,
     });
     expect(updated!.stage).toBe('Closed Won');
 
     // Updating loss_reason only (no close_date) should not be blocked
-    const patched = await updateDeal(deal.id, { loss_reason: 'Price' });
+    const patched = await updateDeal(updated!.id, {
+      loss_reason: 'Price',
+      version: updated!.version,
+    });
     expect(patched!.loss_reason).toBe('Price');
   });
 });
@@ -290,7 +307,10 @@ describe('listDeals', () => {
   });
 
   it('filters by ownerId when provided', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-other-owner@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-other-owner@example.com`,
+    });
 
     await createDeal({ ...BASE_DEAL, name: 'My Deal', owner_id: ownerId });
     await createDeal({ ...BASE_DEAL, name: 'Their Deal', owner_id: other.id });
@@ -329,11 +349,17 @@ describe('listDeals', () => {
 
     // Move them to terminal stages
     const today = new Date().toISOString().split('T')[0];
-    await updateDeal(closedWon.id, { stage: 'Closed Won', close_date: today, loss_reason: null });
+    await updateDeal(closedWon.id, {
+      stage: 'Closed Won',
+      close_date: today,
+      loss_reason: null,
+      version: closedWon.version,
+    });
     await updateDeal(closedLost.id, {
       stage: 'Closed Lost',
       close_date: today,
       loss_reason: 'Budget',
+      version: closedLost.version,
     });
 
     const withClosed = await listDeals({ ownerId });
@@ -389,7 +415,11 @@ describe('updateDeal', () => {
   it('updates the specified fields and returns the updated row', async () => {
     const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
 
-    const updated = await updateDeal(deal.id, { name: 'Updated Deal', stage: 'Qualification' });
+    const updated = await updateDeal(deal.id, {
+      name: 'Updated Deal',
+      stage: 'Qualification',
+      version: deal.version,
+    });
 
     expect(updated!.name).toBe('Updated Deal');
     expect(updated!.stage).toBe('Qualification');
@@ -399,14 +429,46 @@ describe('updateDeal', () => {
 
   it('updates updated_at timestamp', async () => {
     const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
-    const updated = await updateDeal(deal.id, { stage: 'Proposal' });
+    const updated = await updateDeal(deal.id, { stage: 'Proposal', version: deal.version });
 
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(deal.updated_at.getTime());
   });
 
   it('returns null for a non-existent deal', async () => {
-    const result = await updateDeal('00000000-0000-0000-0000-000000000000', { name: 'Ghost' });
+    const result = await updateDeal('00000000-0000-0000-0000-000000000000', {
+      name: 'Ghost',
+      version: 1,
+    });
     expect(result).toBeNull();
+  });
+
+  it('increments the version after each update', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    expect(deal.version).toBe(1);
+
+    const updated = await updateDeal(deal.id, { name: 'Version 2', version: deal.version });
+    expect(updated!.version).toBe(2);
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when the version is stale', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    await updateDeal(deal.id, { name: 'Concurrent update', version: deal.version });
+
+    await expect(
+      updateDeal(deal.id, { name: 'Stale update', version: deal.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+  });
+
+  it('does not apply changes when the version is stale', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+    await updateDeal(deal.id, { name: 'Winner', version: deal.version });
+
+    await expect(
+      updateDeal(deal.id, { name: 'Loser', version: deal.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+
+    const found = await findDealById(deal.id);
+    expect(found!.name).toBe('Winner');
   });
 });
 
@@ -594,7 +656,7 @@ describe('listDealContacts', () => {
 
 describe('exportDealsForCsv', () => {
   it('returns an empty array when no deals exist', async () => {
-    const rows = await exportDealsForCsv();
+    const rows = await exportDealsForCsv({ ownerId });
     expect(rows).toEqual([]);
   });
 
@@ -709,7 +771,7 @@ describe('deal probability — effective_probability and probability_is_overridd
     });
     expect(deal.probability_is_overridden).toBe(true);
 
-    const updated = await updateDeal(deal.id, { probability: null });
+    const updated = await updateDeal(deal.id, { probability: null, version: deal.version });
     expect(updated!.probability_is_overridden).toBe(false);
     expect(updated!.effective_probability).toBe(10); // back to Prospecting stage default
   });
@@ -717,7 +779,7 @@ describe('deal probability — effective_probability and probability_is_overridd
   it('reflects the stage default when the deal moves to a new stage (no override)', async () => {
     // Create in Prospecting (10%), move to Proposal (50%)
     const deal = await createDeal({ ...BASE_DEAL, stage: 'Prospecting', owner_id: ownerId });
-    const updated = await updateDeal(deal.id, { stage: 'Proposal' });
+    const updated = await updateDeal(deal.id, { stage: 'Proposal', version: deal.version });
     expect(updated!.probability_is_overridden).toBe(false);
     expect(updated!.effective_probability).toBe(50); // Proposal default
   });
@@ -730,7 +792,7 @@ describe('deal probability — effective_probability and probability_is_overridd
       probability: 80,
       owner_id: ownerId,
     });
-    const updated = await updateDeal(deal.id, { stage: 'Proposal' });
+    const updated = await updateDeal(deal.id, { stage: 'Proposal', version: deal.version });
     expect(updated!.probability_is_overridden).toBe(true);
     expect(updated!.effective_probability).toBe(80); // override persists
   });
@@ -780,13 +842,13 @@ describe('updateDeal — currency field', () => {
   it('updates the currency on an existing deal', async () => {
     const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
     expect(deal.currency).toBe('USD');
-    const updated = await updateDeal(deal.id, { currency: 'CAD' });
+    const updated = await updateDeal(deal.id, { currency: 'CAD', version: deal.version });
     expect(updated!.currency).toBe('CAD');
   });
 
   it('leaves currency unchanged when not in the update payload', async () => {
     const deal = await createDeal({ ...BASE_DEAL, currency: 'JPY', owner_id: ownerId });
-    const updated = await updateDeal(deal.id, { name: 'Renamed Deal' });
+    const updated = await updateDeal(deal.id, { name: 'Renamed Deal', version: deal.version });
     expect(updated!.currency).toBe('JPY');
   });
 });

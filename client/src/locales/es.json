@@ -1034,7 +1034,10 @@
     "VALIDATION_ERROR": "Por favor, revisa tu información e inténtalo de nuevo.",
     "RESET_TOKEN_INVALID": "Este enlace de restablecimiento es inválido o ha expirado.",
     "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
-    "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página."
+    "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página.",
+    "optimisticLockConflict": "Este registro fue modificado por otro usuario mientras lo editabas. Tus cambios no guardados se muestran a continuación — por favor, revisa y guarda de nuevo, o descarta.",
+    "optimisticLockResave": "Volver a guardar mis cambios",
+    "optimisticLockDiscard": "Descartar mis cambios"
   },
   "search": {
     "inputLabel": "Buscar",

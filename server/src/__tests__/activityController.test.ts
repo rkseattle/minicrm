@@ -88,7 +88,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${call.id}`)
       .set('Cookie', repCookie)
-      .send({ direction: null });
+      .send({ direction: null, version: call.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -106,7 +106,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${email.id}`)
       .set('Cookie', repCookie)
-      .send({ direction: null });
+      .send({ direction: null, version: email.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -124,7 +124,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${call.id}`)
       .set('Cookie', repCookie)
-      .send({ subject: 'Updated subject' });
+      .send({ subject: 'Updated subject', version: call.version });
 
     expect(res.status).toBe(200);
     expect(res.body.activity.subject).toBe('Updated subject');
@@ -142,7 +142,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${note.id}`)
       .set('Cookie', repCookie)
-      .send({ direction: null });
+      .send({ direction: null, version: note.version });
 
     expect(res.status).toBe(200);
   });
@@ -158,7 +158,7 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
     const res = await request(app)
       .patch(`/api/v1/activities/${note.id}`)
       .set('Cookie', repCookie)
-      .send({ type: 'Call', direction: null });
+      .send({ type: 'Call', direction: null, version: note.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');

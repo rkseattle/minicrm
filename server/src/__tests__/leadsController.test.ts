@@ -267,7 +267,7 @@ describe('PATCH /api/leads/:id', () => {
     const res = await request(app)
       .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', repCookie)
-      .send({ status: 'Contacted' });
+      .send({ status: 'Contacted', version: lead.version });
 
     expect(res.status).toBe(200);
     expect(res.body.lead.status).toBe('Contacted');
@@ -282,7 +282,7 @@ describe('PATCH /api/leads/:id', () => {
     const res = await request(app)
       .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', repCookie)
-      .send({ status: 'NotAStatus' });
+      .send({ status: 'NotAStatus', version: lead.version });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -297,7 +297,7 @@ describe('PATCH /api/leads/:id', () => {
     const res = await request(app)
       .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', otherRepCookie)
-      .send({ status: 'Contacted' });
+      .send({ status: 'Contacted', version: 1 });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -312,7 +312,7 @@ describe('PATCH /api/leads/:id', () => {
     const res = await request(app)
       .patch(`/api/v1/leads/${lead.id}`)
       .set('Cookie', adminCookie)
-      .send({ status: 'Qualified' });
+      .send({ status: 'Qualified', version: lead.version });
 
     expect(res.status).toBe(200);
     expect(res.body.lead.status).toBe('Qualified');
@@ -322,7 +322,7 @@ describe('PATCH /api/leads/:id', () => {
     const res = await request(app)
       .patch('/api/v1/leads/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie)
-      .send({ status: 'Contacted' });
+      .send({ status: 'Contacted', version: 1 });
 
     expect(res.status).toBe(404);
   });

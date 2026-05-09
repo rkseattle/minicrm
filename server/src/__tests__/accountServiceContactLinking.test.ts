@@ -257,7 +257,7 @@ describe('updateAccount with contact_ids', () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
     const contactId = await insertContact('on-update@example.com');
 
-    await updateAccount(account.id, { contact_ids: [contactId] });
+    await updateAccount(account.id, { contact_ids: [contactId], version: account.version });
 
     expect(await getContactAccountId(contactId)).toBe(account.id);
   });
@@ -271,7 +271,7 @@ describe('updateAccount with contact_ids', () => {
       contact_ids: [contactA],
     });
 
-    await updateAccount(account.id, { contact_ids: [contactB] });
+    await updateAccount(account.id, { contact_ids: [contactB], version: account.version });
 
     expect(await getContactAccountId(contactA)).toBeNull();
     expect(await getContactAccountId(contactB)).toBe(account.id);
@@ -284,6 +284,7 @@ describe('updateAccount with contact_ids', () => {
     const updated = await updateAccount(account.id, {
       name: 'Renamed Corp',
       contact_ids: [contactId],
+      version: account.version,
     });
 
     expect(updated!.name).toBe('Renamed Corp');
@@ -299,7 +300,7 @@ describe('updateAccount with contact_ids', () => {
     });
 
     // Update only the name — contact link should be preserved
-    await updateAccount(account.id, { name: 'Still Linked Corp' });
+    await updateAccount(account.id, { name: 'Still Linked Corp', version: account.version });
 
     expect(await getContactAccountId(contactId)).toBe(account.id);
   });

@@ -124,8 +124,10 @@ test(
     });
 
     // PATCH only the name — currency should remain GBP
+    // MINCRM-349: include version for optimistic locking.
     await restClient.patch(`/api/v1/deals/${deal.id}`, {
       name: `MC3-Deal Updated ${test.info().title}`,
+      version: deal.version,
     });
 
     const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
@@ -155,7 +157,8 @@ test(
       account_id: account.id,
     });
 
-    await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'CAD' });
+    // MINCRM-349: include version for optimistic locking.
+    await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'CAD', version: deal.version });
 
     const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
     expect(fetched.body.deal.currency).toBe('CAD');
@@ -183,12 +186,17 @@ test(
       account_id: account.id,
     });
 
-    await expect(restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ' })).rejects.toThrow(
-      RestClientError,
-    );
+    // MINCRM-349: include version for optimistic locking. Both calls expect 400
+    // (invalid currency code), so the version is not incremented between them.
+    await expect(
+      restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ', version: deal.version }),
+    ).rejects.toThrow(RestClientError);
 
     try {
-      await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ' });
+      await restClient.patch(`/api/v1/deals/${deal.id}`, {
+        currency: 'XYZ',
+        version: deal.version,
+      });
     } catch (err) {
       expect(err).toBeInstanceOf(RestClientError);
       expect((err as RestClientError).status).toBe(400);

@@ -9,6 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
 import LeadForm from '@/components/LeadForm.js';
 import ConvertLeadModal from '@/components/ConvertLeadModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
@@ -43,6 +44,8 @@ export default function LeadDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  // Optimistic lock conflict state (MINCRM-349)
+  const [conflictPendingValues, setConflictPendingValues] = useState<LeadFormValues | null>(null);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -77,14 +80,27 @@ export default function LeadDetailPage() {
         lead_source: (values.lead_source as LeadFormValues['lead_source']) || undefined,
         notes: values.notes || undefined,
         owner_id: values.owner_id || undefined,
+        // Read version from the current query cache at call time (MINCRM-349)
+        version:
+          queryClient.getQueryData<{ lead: { version: number } }>(leadQueryKey)?.lead.version ?? 1,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: leadQueryKey });
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
+      setConflictPendingValues(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        setConflictPendingValues(variables);
+        void queryClient.invalidateQueries({ queryKey: leadQueryKey });
+        return;
+      }
       setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
@@ -232,6 +248,19 @@ export default function LeadDetailPage() {
                 {updateError}
               </p>
             )}
+            {conflictPendingValues && (
+              <div className="mb-4">
+                <OptimisticLockConflictBanner
+                  onResave={() => {
+                    updateMutation.mutate(conflictPendingValues);
+                  }}
+                  onDiscard={() => {
+                    setConflictPendingValues(null);
+                    setIsEditing(false);
+                  }}
+                />
+              </div>
+            )}
             <LeadForm
               activeUsers={activeUsers}
               isAdmin={isAdmin}
@@ -250,6 +279,7 @@ export default function LeadDetailPage() {
               onCancel={() => {
                 setIsEditing(false);
                 setUpdateError(null);
+                setConflictPendingValues(null);
               }}
             />
           </div>

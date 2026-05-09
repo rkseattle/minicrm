@@ -80,6 +80,8 @@ interface LeadSingleResponse {
     converted_contact_id: string | null;
     converted_account_id: string | null;
     converted_deal_id: string | null;
+    /** Optimistic lock version (MINCRM-349) */
+    version: number;
   };
 }
 
@@ -228,10 +230,12 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
   const leadId = created.body.lead.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
-  // Disqualify via API
+  // Disqualify via API.
+  // MINCRM-349: include version for optimistic locking.
   await restClient.patch(`/api/v1/leads/${leadId}`, {
     status: 'Disqualified',
     disqualification_reason: 'Not a fit',
+    version: created.body.lead.version,
   });
 
   // Should not be visible by default

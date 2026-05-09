@@ -296,7 +296,7 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
     // Rep completes their own task.
     const res = await repClient.patch<{ activity: { id: string; status: string } }>(
       `/api/v1/activities/${activity.id}`,
-      { status: 'complete' },
+      { status: 'complete', version: activity.version },
     );
     expect(res.status, 'rep should be able to complete their own task').toBe(200);
     expect(res.body.activity.status, 'task status should be complete').toBe('complete');

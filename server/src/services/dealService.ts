@@ -53,6 +53,8 @@ export interface DealRow {
   probability_is_overridden: boolean;
   created_at: Date;
   updated_at: Date;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
   /** Tags attached to this deal — only populated in list responses (MINCRM-186) */
   tags?: Array<{ id: string; name: string }>;
 }
@@ -185,7 +187,7 @@ export async function findDealById(id: string): Promise<DealRow | null> {
 const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
   COALESCE(d.probability, ps.probability, 0) AS effective_probability,
   (d.probability IS NOT NULL) AS probability_is_overridden,
-  d.created_at, d.updated_at`;
+  d.created_at, d.updated_at, d.version`;
 
 /** FROM clause that joins pipeline_stages for probability resolution */
 const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.name = d.stage`;
@@ -277,8 +279,9 @@ export async function updateDeal(
   actor: AuditActor = SYSTEM_ACTOR,
   before?: DealRow,
 ): Promise<DealRow | null> {
-  const fields = (Object.keys(params) as (keyof UpdateDealInput)[]).filter((field) =>
-    ALLOWED_UPDATE_FIELDS.has(field),
+  const { version, ...dealParams } = params;
+  const fields = (Object.keys(dealParams) as (keyof typeof dealParams)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateDealInput),
   );
 
   // Guard against empty field list — would produce invalid SQL
@@ -288,8 +291,10 @@ export async function updateDeal(
 
   const previousStage = before?.stage;
 
-  // Build dynamic SET clause: name = $2, stage = $3, ...
+  // Build dynamic SET clause: name = $2, stage = $3, ..., version = version + 1
+  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+  const versionParam = fields.length + 2;
 
   const client: PoolClient = await pool.connect();
   try {
@@ -297,11 +302,30 @@ export async function updateDeal(
 
     const updateResult = await client.query<{ id: string }>(
       `UPDATE deals
-       SET ${setClauses}, updated_at = now()
-       WHERE id = $1
+       SET ${setClauses}, updated_at = now(), version = version + 1
+       WHERE id = $1 AND version = $${versionParam}
        RETURNING id`,
-      [id, ...fields.map((f) => params[f])],
+      [id, ...fields.map((f) => dealParams[f as keyof typeof dealParams]), version],
     );
+
+    if (updateResult.rowCount === 0) {
+      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      const check = await client.query<{ id: string }>('SELECT id FROM deals WHERE id = $1', [id]);
+      if (check.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      throw Object.assign(
+        new Error(
+          'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+        ),
+        {
+          code: 'OPTIMISTIC_LOCK_CONFLICT',
+          entity: 'deal',
+          recordId: id,
+        },
+      );
+    }
 
     // Re-fetch with pipeline_stages JOIN so effective_probability is resolved (MINCRM-179)
     const updatedId = updateResult.rows[0]?.id ?? null;

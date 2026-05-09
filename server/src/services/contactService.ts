@@ -70,6 +70,8 @@ export interface ContactRow {
   other_url: string | null;
   created_at: Date;
   updated_at: Date;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
   /** Tags attached to this contact — only populated in list responses (MINCRM-186) */
   tags?: EmbeddedTag[];
 }
@@ -356,16 +358,19 @@ export async function updateContact(
   actor: AuditActor = SYSTEM_ACTOR,
   before?: ContactRow,
 ): Promise<ContactRow | null> {
-  const normalized: UpdateContactInput = {
-    ...params,
-    ...(params.email !== undefined ? { email: params.email.toLowerCase() } : {}),
+  const { version, ...rest } = params;
+  const normalized: Omit<UpdateContactInput, 'version'> = {
+    ...rest,
+    ...(rest.email !== undefined ? { email: rest.email.toLowerCase() } : {}),
   };
-  const fields = (Object.keys(normalized) as (keyof UpdateContactInput)[]).filter((field) =>
-    ALLOWED_UPDATE_FIELDS.has(field),
+  const fields = (Object.keys(normalized) as (keyof typeof normalized)[]).filter((field) =>
+    ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateContactInput),
   );
 
-  // Build dynamic SET clause: first_name = $2, last_name = $3, ...
+  // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
+  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+  const versionParam = fields.length + 2;
 
   const client: PoolClient = await pool.connect();
   try {
@@ -373,11 +378,32 @@ export async function updateContact(
 
     const result = await client.query<ContactRow>(
       `UPDATE contacts
-       SET ${setClauses}, updated_at = now()
-       WHERE id = $1
+       SET ${setClauses}, updated_at = now(), version = version + 1
+       WHERE id = $1 AND version = $${versionParam}
        RETURNING *`,
-      [id, ...fields.map((f) => normalized[f])],
+      [id, ...fields.map((f) => normalized[f as keyof typeof normalized]), version],
     );
+
+    if (result.rowCount === 0) {
+      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
+        id,
+      ]);
+      if (check.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      throw Object.assign(
+        new Error(
+          'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+        ),
+        {
+          code: 'OPTIMISTIC_LOCK_CONFLICT',
+          entity: 'contact',
+          recordId: id,
+        },
+      );
+    }
 
     const contact = result.rows[0] ?? null;
 

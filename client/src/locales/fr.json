@@ -1034,7 +1034,10 @@
     "VALIDATION_ERROR": "Veuillez vérifier vos informations et réessayer.",
     "RESET_TOKEN_INVALID": "Ce lien de réinitialisation est invalide ou a expiré.",
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
-    "loadContactsFailed": "Impossible de charger les contacts. Veuillez actualiser la page."
+    "loadContactsFailed": "Impossible de charger les contacts. Veuillez actualiser la page.",
+    "optimisticLockConflict": "Cet enregistrement a été modifié par un autre utilisateur pendant que vous l'éditiez. Vos modifications non enregistrées sont affichées — veuillez les vérifier et les re-sauvegarder, ou les ignorer.",
+    "optimisticLockResave": "Re-sauvegarder mes modifications",
+    "optimisticLockDiscard": "Ignorer mes modifications"
   },
   "search": {
     "inputLabel": "Rechercher",

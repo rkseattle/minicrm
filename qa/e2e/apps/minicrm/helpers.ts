@@ -44,6 +44,8 @@ export interface TestContact {
   department: string | null;
   account_id: string | null;
   owner_id: string;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /**
@@ -74,6 +76,8 @@ export interface TestAccount {
   employee_range: string | null;
   revenue_range: string | null;
   owner_id: string;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /**
@@ -203,6 +207,8 @@ export interface TestDeal {
   loss_reason: string | null;
   account_id: string;
   owner_id: string;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /** Fields accepted when creating a deal. All fields optional except account_id. */
@@ -325,6 +331,8 @@ export interface TestActivity {
   account_id: string | null;
   deal_id: string | null;
   owner_id: string;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
 }
 
 /** Fields accepted when creating an activity. At least one linked record is required. */

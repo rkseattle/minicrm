@@ -212,7 +212,7 @@ describe('MINCRM-122: fire-and-forget automation triggers', () => {
     });
 
     // Trigger runs fire-and-forget; updateDeal must return the correct result synchronously
-    const updated = await updateDeal(deal.id, { stage: 'Qualification' });
+    const updated = await updateDeal(deal.id, { stage: 'Qualification', version: deal.version });
 
     expect(updated).not.toBeNull();
     expect(updated!.stage).toBe('Qualification');

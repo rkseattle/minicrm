@@ -260,6 +260,7 @@ export const ACCOUNT_1: AccountResponse = {
   owner_id: '00000000-0000-0000-0000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: a contact record linked to ACCOUNT_1 */
@@ -284,6 +285,7 @@ export const CONTACT_1: ContactResponse = {
   other_url: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: a second contact record for link/unlink tests */
@@ -308,6 +310,7 @@ export const CONTACT_2: ContactResponse = {
   other_url: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: a deal record */
@@ -325,6 +328,7 @@ export const DEAL_1: DealResponse = {
   probability_is_overridden: false,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: a lead record (MINCRM-173) */
@@ -346,6 +350,7 @@ export const LEAD_1: LeadResponse = {
   converted_deal_id: null,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: an open task for My Tasks view, linked to DEAL_1 */
@@ -367,6 +372,7 @@ export const MY_TASK_1: MyTaskResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
   linked_record_name: 'Acme Enterprise Deal',
   linked_record_type: 'deal',
+  version: 1,
 };
 
 /** Reusable fixture: an overdue open task for My Tasks view, linked to CONTACT_1 */
@@ -388,6 +394,7 @@ export const MY_TASK_OVERDUE: MyTaskResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
   linked_record_name: 'Alice Smith',
   linked_record_type: 'contact',
+  version: 1,
 };
 
 /** Reusable fixture: a completed task for My Tasks view */
@@ -409,6 +416,7 @@ export const MY_TASK_COMPLETE: MyTaskResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
   linked_record_name: 'Acme Corp',
   linked_record_type: 'account',
+  version: 1,
 };
 
 /** Reusable fixture: an open task activity linked to DEAL_1 */
@@ -428,6 +436,7 @@ export const ACTIVITY_1: ActivityResponse = {
   owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
+  version: 1,
 };
 
 /** Reusable fixture: a completed note activity linked to CONTACT_1 */
@@ -447,6 +456,7 @@ export const ACTIVITY_2: ActivityResponse = {
   owner_name: 'Admin User',
   created_at: '2025-01-02T00:00:00.000Z',
   updated_at: '2025-01-02T00:00:00.000Z',
+  version: 1,
 };
 
 /** Default handlers — can be overridden in individual tests with server.use() */

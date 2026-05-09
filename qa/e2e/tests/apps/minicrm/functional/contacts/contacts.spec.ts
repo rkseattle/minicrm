@@ -567,7 +567,11 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   });
 
   // Link the contact to the account via API (PATCH).
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: account.id });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+    account_id: account.id,
+    version: contact.version,
+  });
 
   // Navigate to the contact detail page and confirm the account is shown.
   await navigateToContact(page, contact.id);
@@ -605,7 +609,11 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
   expect(before.body.contact.account_id, 'contact should be linked before unlink').toBe(account.id);
 
   // Unlink by patching account_id to null.
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, { account_id: null });
+  // MINCRM-349: include version for optimistic locking.
+  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+    account_id: null,
+    version: contact.version,
+  });
 
   // Verify via API.
   const after = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact.id}`);

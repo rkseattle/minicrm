@@ -126,8 +126,8 @@ export default function LeadsPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      updateLead(id, { status: status as LeadResponse['status'] }),
+    mutationFn: ({ id, status, version }: { id: string; status: string; version: number }) =>
+      updateLead(id, { status: status as LeadResponse['status'], version }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setEditingStatusId(null);
@@ -422,6 +422,7 @@ export default function LeadsPage() {
                                     updateStatusMutation.mutate({
                                       id: lead.id,
                                       status: e.target.value,
+                                      version: lead.version,
                                     });
                                   }}
                                   onBlur={() => setEditingStatusId(null)}

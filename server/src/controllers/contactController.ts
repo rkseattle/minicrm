@@ -217,12 +217,22 @@ export async function updateContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const contact = await updateContact(
-    id,
-    parsed.data,
-    { id: req.user!.id, name: req.user!.name },
-    existing,
-  );
+  let contact;
+  try {
+    contact = await updateContact(
+      id,
+      parsed.data,
+      { id: req.user!.id, name: req.user!.name },
+      existing,
+    );
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
   res.status(200).json({ contact });
 
   // Fire-and-forget: notify the new owner when the contact is reassigned. (MINCRM-162)

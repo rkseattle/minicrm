@@ -186,7 +186,10 @@ describe('listAccounts — search filter', () => {
   });
 
   it('combines search with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-search-other@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-search-other@example.com`,
+    });
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: ownerId });
     await createAccount({ ...BASE_ACCOUNT, name: 'Mine Corp', owner_id: other.id });
 
@@ -242,7 +245,10 @@ describe('listAccounts — industry filter', () => {
   });
 
   it('combines industry filter with ownerId filter', async () => {
-    const other = await createUser({ ...OWNER_USER, email: `${FILE_PREFIX}-industry-other@example.com` });
+    const other = await createUser({
+      ...OWNER_USER,
+      email: `${FILE_PREFIX}-industry-other@example.com`,
+    });
     await createAccount({
       ...BASE_ACCOUNT,
       name: 'Mine Tech',
@@ -314,7 +320,11 @@ describe('updateAccount', () => {
   it('updates the specified fields and returns the updated row', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
 
-    const updated = await updateAccount(account.id, { name: 'Acme Inc', industry: 'Finance' });
+    const updated = await updateAccount(account.id, {
+      name: 'Acme Inc',
+      industry: 'Finance',
+      version: account.version,
+    });
 
     expect(updated!.name).toBe('Acme Inc');
     expect(updated!.industry).toBe('Finance');
@@ -323,9 +333,23 @@ describe('updateAccount', () => {
     expect(updated!.employee_range).toBe('51-200');
   });
 
+  it('increments version on successful update', async () => {
+    const account = await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
+    expect(account.version).toBe(1);
+
+    const updated = await updateAccount(account.id, {
+      name: 'Version Bumped Corp',
+      version: account.version,
+    });
+    expect(updated!.version).toBe(2);
+  });
+
   it('updates updated_at timestamp', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
-    const updated = await updateAccount(account.id, { revenue_range: '50M+' });
+    const updated = await updateAccount(account.id, {
+      revenue_range: '50M+',
+      version: account.version,
+    });
 
     expect(updated!.updated_at.getTime()).toBeGreaterThanOrEqual(account.updated_at.getTime());
   });
@@ -333,8 +357,19 @@ describe('updateAccount', () => {
   it('returns null for a non-existent account', async () => {
     const result = await updateAccount('00000000-0000-0000-0000-000000000000', {
       name: 'Ghost Corp',
+      version: 1,
     });
     expect(result).toBeNull();
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when version is stale', async () => {
+    const account = await createAccount({ ...BASE_ACCOUNT, owner_id: ownerId });
+
+    await updateAccount(account.id, { name: 'First Writer', version: account.version });
+
+    await expect(
+      updateAccount(account.id, { name: 'Second Writer', version: account.version }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
   });
 });
 
@@ -494,9 +529,9 @@ describe('createAccount — circular parent validation', () => {
     expect(child.parent_account_id).toBe(parent.id);
 
     // Attempting to set parent → child as its parent closes the loop
-    await expect(updateAccount(parent.id, { parent_account_id: child.id })).rejects.toMatchObject({
-      code: 'CIRCULAR_PARENT',
-    });
+    await expect(
+      updateAccount(parent.id, { parent_account_id: child.id, version: parent.version }),
+    ).rejects.toMatchObject({ code: 'CIRCULAR_PARENT' });
   });
 });
 
@@ -529,7 +564,10 @@ describe('createAccount — account_type and parent_account_id', () => {
 describe('updateAccount — account_type and parent_account_id', () => {
   it('updates account_type', async () => {
     const account = await createAccount({ name: 'Typecheck Corp', owner_id: ownerId });
-    const updated = await updateAccount(account.id, { account_type: 'Partner' });
+    const updated = await updateAccount(account.id, {
+      account_type: 'Partner',
+      version: account.version,
+    });
     expect(updated!.account_type).toBe('Partner');
   });
 
@@ -539,14 +577,17 @@ describe('updateAccount — account_type and parent_account_id', () => {
       owner_id: ownerId,
       account_type: 'Prospect',
     });
-    const updated = await updateAccount(account.id, { account_type: null });
+    const updated = await updateAccount(account.id, {
+      account_type: null,
+      version: account.version,
+    });
     expect(updated!.account_type).toBeNull();
   });
 
   it('rejects a circular parent (account set as its own parent)', async () => {
     const account = await createAccount({ name: 'Self Parent', owner_id: ownerId });
     await expect(
-      updateAccount(account.id, { parent_account_id: account.id }),
+      updateAccount(account.id, { parent_account_id: account.id, version: account.version }),
     ).rejects.toMatchObject({ code: 'CIRCULAR_PARENT' });
   });
 
@@ -557,9 +598,9 @@ describe('updateAccount — account_type and parent_account_id', () => {
       owner_id: ownerId,
       parent_account_id: a.id,
     });
-    await expect(updateAccount(a.id, { parent_account_id: b.id })).rejects.toMatchObject({
-      code: 'CIRCULAR_PARENT',
-    });
+    await expect(
+      updateAccount(a.id, { parent_account_id: b.id, version: a.version }),
+    ).rejects.toMatchObject({ code: 'CIRCULAR_PARENT' });
   });
 });
 

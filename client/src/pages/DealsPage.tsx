@@ -55,6 +55,7 @@ const VIEW_MODE_STORAGE_KEY = 'deals.viewMode';
 interface PendingClose {
   dealId: string;
   stage: string;
+  version: number;
 }
 
 /**
@@ -313,13 +314,20 @@ export default function DealsPage() {
       stage,
       close_date,
       loss_reason,
+      version,
     }: {
       id: string;
       stage: string;
+      version: number;
       close_date?: string;
       loss_reason?: string;
     }) =>
-      updateDeal(id, { stage, close_date: close_date ?? null, loss_reason: loss_reason ?? null }),
+      updateDeal(id, {
+        stage,
+        close_date: close_date ?? null,
+        loss_reason: loss_reason ?? null,
+        version,
+      }),
     onMutate: ({ id }) => {
       setStageError(null);
       setUpdatingDealIds((prev) => {
@@ -364,8 +372,11 @@ export default function DealsPage() {
    * @param dealId - UUID of the deal to update
    * @param stage - Target pipeline stage
    */
-  function handleStageChange(dealId: string, stage: string): void {
-    stageMutation.mutate({ id: dealId, stage });
+  function handleStageChange(dealId: string, stage: string, version?: number): void {
+    // version is provided by card selector; on cross-column drag-drop, look up from boardData
+    const resolvedVersion =
+      version ?? (boardData?.data ?? []).find((d) => d.id === dealId)?.version ?? 1;
+    stageMutation.mutate({ id: dealId, stage, version: resolvedVersion });
   }
 
   /**
@@ -374,9 +385,11 @@ export default function DealsPage() {
    * @param dealId - UUID of the deal to close
    * @param stage - Terminal stage selected by the user
    */
-  function handleCloseRequested(dealId: string, stage: string): void {
+  function handleCloseRequested(dealId: string, stage: string, version?: number): void {
+    const resolvedVersion =
+      version ?? (boardData?.data ?? []).find((d) => d.id === dealId)?.version ?? 1;
     setCloseError(null);
-    setPendingClose({ dealId, stage });
+    setPendingClose({ dealId, stage, version: resolvedVersion });
   }
 
   /**
@@ -390,6 +403,7 @@ export default function DealsPage() {
     stageMutation.mutate({
       id: pendingClose.dealId,
       stage: pendingClose.stage,
+      version: pendingClose.version,
       close_date: closeDate || undefined,
       loss_reason: lossReason || undefined,
     });

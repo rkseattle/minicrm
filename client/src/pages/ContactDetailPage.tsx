@@ -9,6 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -77,6 +78,10 @@ export default function ContactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
+  // Optimistic lock conflict state (MINCRM-349)
+  const [conflictPendingValues, setConflictPendingValues] = useState<ContactFormValues | null>(
+    null,
+  );
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -158,6 +163,10 @@ export default function ContactDetailPage() {
         linkedin_url: values.linkedin_url || undefined,
         twitter_x_url: values.twitter_x_url || undefined,
         other_url: values.other_url || undefined,
+        // Read version from the current query cache at call time (MINCRM-349)
+        version:
+          queryClient.getQueryData<{ contact: { version: number } }>(contactQueryKey)?.contact
+            .version ?? 1,
       }),
     onSuccess: async () => {
       // Save custom field values after core record is saved (MINCRM-276)
@@ -177,8 +186,19 @@ export default function ContactDetailPage() {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
+      setConflictPendingValues(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        // Preserve unsaved values so the user can compare with the reloaded record (MINCRM-349)
+        setConflictPendingValues(variables);
+        void queryClient.invalidateQueries({ queryKey: contactQueryKey });
+        return;
+      }
       setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
@@ -650,6 +670,20 @@ export default function ContactDetailPage() {
               />
             )}
 
+            {conflictPendingValues && (
+              <div className="mt-4">
+                <OptimisticLockConflictBanner
+                  onResave={() => {
+                    updateMutation.mutate(conflictPendingValues);
+                  }}
+                  onDiscard={() => {
+                    setConflictPendingValues(null);
+                    setIsEditing(false);
+                  }}
+                />
+              </div>
+            )}
+
             {updateError && (
               <p role="alert" className="mt-4 text-sm text-red-600" data-testid="update-error">
                 {updateError}
@@ -673,6 +707,7 @@ export default function ContactDetailPage() {
                 onClick={() => {
                   setIsEditing(false);
                   setUpdateError(null);
+                  setConflictPendingValues(null);
                   setIsAddingAddress(false);
                   setNewAddressFields({});
                   setAddressError(null);

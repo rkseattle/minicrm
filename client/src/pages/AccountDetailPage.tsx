@@ -9,6 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
 import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -39,6 +40,10 @@ export default function AccountDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
+  // Optimistic lock conflict state (MINCRM-349)
+  const [conflictPendingValues, setConflictPendingValues] = useState<AccountFormValues | null>(
+    null,
+  );
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
@@ -92,6 +97,10 @@ export default function AccountDetailPage() {
         contact_ids: values.contact_ids,
         account_type: values.account_type || null,
         parent_account_id: values.parent_account_id || null,
+        // Read version from the current query cache at call time (MINCRM-349)
+        version:
+          queryClient.getQueryData<{ account: { version: number } }>(accountQueryKey)?.account
+            .version ?? 1,
       }),
     onSuccess: async () => {
       if (customFieldValues.length > 0) {
@@ -104,8 +113,18 @@ export default function AccountDetailPage() {
       queryClient.invalidateQueries({ queryKey: childAccountsQueryKey });
       setIsEditing(false);
       setUpdateError(null);
+      setConflictPendingValues(null);
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
+    onError: (
+      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      variables,
+    ) => {
+      const code = error.response?.data?.error?.code;
+      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        setConflictPendingValues(variables);
+        void queryClient.invalidateQueries({ queryKey: accountQueryKey });
+        return;
+      }
       setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
     },
   });
@@ -240,11 +259,25 @@ export default function AccountDetailPage() {
                 onCancel={() => {
                   setIsEditing(false);
                   setUpdateError(null);
+                  setConflictPendingValues(null);
                 }}
                 isSubmitting={updateMutation.isPending}
                 submitLabel={t('accounts.saveChanges')}
                 error={updateError ?? undefined}
               />
+              {conflictPendingValues && (
+                <div className="mt-4">
+                  <OptimisticLockConflictBanner
+                    onResave={() => {
+                      updateMutation.mutate(conflictPendingValues);
+                    }}
+                    onDiscard={() => {
+                      setConflictPendingValues(null);
+                      setIsEditing(false);
+                    }}
+                  />
+                </div>
+              )}
             </div>
             {id && (
               <CustomFieldsSection
