@@ -1,0 +1,543 @@
+/**
+ * Note service — business logic and all DB access for the notes feature. (MINCRM-352)
+ *
+ * Visibility rules enforced here:
+ *   - private: body/title returned only to the creator
+ *   - team: visible to all authenticated users (default)
+ *   - public: same as team for now (forward-compat)
+ *
+ * Soft-delete: rows are never hard-deleted; deleted_at is set instead.
+ */
+
+import type { PoolClient } from 'pg';
+import pool from '../db.js';
+import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './contactService.js';
+import type {
+  CreateNoteInput,
+  UpdateNoteInput,
+  NoteEntityType,
+  NoteVisibility,
+  NoteResponse,
+} from '@minicrm/shared/schemas/noteSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
+
+/** Maximum characters for body_text in audit log previews */
+const AUDIT_BODY_TEXT_MAX = 200;
+
+/** Placeholder shown in audit log for private note content */
+const PRIVATE_NOTE_AUDIT_VALUE = '[private note]';
+
+/** Columns selected when fetching notes with creator/updater display names */
+const SELECT_COLS = `
+  n.id,
+  n.entity_type,
+  n.entity_id,
+  n.title,
+  n.body,
+  n.body_text,
+  n.visibility,
+  n.tags,
+  n.created_by,
+  creator.name  AS created_by_name,
+  n.updated_by,
+  updater.name  AS updated_by_name,
+  n.created_at,
+  n.updated_at
+`;
+
+/** Raw row as returned by PostgreSQL before masking */
+interface NoteRow {
+  id: string;
+  entity_type: NoteEntityType;
+  entity_id: string;
+  title: string | null;
+  body: string;
+  body_text: string | null;
+  visibility: NoteVisibility;
+  tags: string[];
+  created_by: string;
+  created_by_name: string;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/**
+ * Extracts plain text from a Tiptap/ProseMirror JSON document.
+ * Walks the node tree and concatenates all text-node values.
+ * Returns empty string on parse failure or non-object input.
+ */
+export function extractBodyText(json: string): string {
+  try {
+    const doc: unknown = JSON.parse(json);
+    const parts: string[] = [];
+
+    function walk(node: Record<string, unknown>): void {
+      if (node['type'] === 'text' && typeof node['text'] === 'string') {
+        parts.push(node['text']);
+      }
+      const content = node['content'];
+      if (Array.isArray(content)) {
+        for (const child of content as Record<string, unknown>[]) {
+          walk(child);
+        }
+      }
+    }
+
+    if (doc !== null && typeof doc === 'object' && !Array.isArray(doc)) {
+      walk(doc as Record<string, unknown>);
+    }
+    return parts.join(' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+/** Truncates body_text to the audit preview length, appending "…" if truncated */
+function auditBodyText(bodyText: string | null): string {
+  if (!bodyText) return '';
+  return bodyText.length > AUDIT_BODY_TEXT_MAX
+    ? bodyText.slice(0, AUDIT_BODY_TEXT_MAX) + '…'
+    : bodyText;
+}
+
+/** Applies visibility masking to a raw note row from the caller's perspective */
+function maskNote(row: NoteRow, callerId: string): NoteResponse {
+  const isMasked = row.visibility === 'private' && row.created_by !== callerId;
+  return {
+    id: row.id,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    title: isMasked ? null : row.title,
+    body: isMasked ? null : row.body,
+    body_text: isMasked ? null : row.body_text,
+    visibility: row.visibility,
+    tags: row.tags,
+    created_by: row.created_by,
+    created_by_name: row.created_by_name,
+    updated_by: row.updated_by,
+    updated_by_name: row.updated_by_name,
+    created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at.toISOString(),
+    is_masked: isMasked,
+  };
+}
+
+/**
+ * Fetches a raw note row by ID within an existing transaction client.
+ * Does not apply soft-delete filter so callers can inspect deleted notes for audit.
+ */
+async function fetchNoteRow(client: PoolClient, noteId: string): Promise<NoteRow | null> {
+  const result = await client.query<NoteRow>(
+    `SELECT ${SELECT_COLS}
+     FROM notes n
+     JOIN users creator ON creator.id = n.created_by
+     LEFT JOIN users updater ON updater.id = n.updated_by
+     WHERE n.id = $1
+     LIMIT 1`,
+    [noteId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Verifies the parent entity exists. Throws with code ENTITY_NOT_FOUND if missing.
+ * Used before write operations so callers receive a 404 rather than a FK violation.
+ */
+async function assertEntityExists(
+  client: PoolClient,
+  entityType: NoteEntityType,
+  entityId: string,
+): Promise<void> {
+  const tableMap: Record<NoteEntityType, string> = {
+    contact: 'contacts',
+    account: 'accounts',
+    deal: 'deals',
+    lead: 'leads',
+  };
+  const table = tableMap[entityType];
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM ${table} WHERE id = $1 LIMIT 1`,
+    [entityId],
+  );
+  if (!result.rows[0]) {
+    const error = new Error(`${entityType} ${entityId} not found`) as Error & { code: string };
+    error.code = 'ENTITY_NOT_FOUND';
+    throw error;
+  }
+}
+
+/**
+ * Returns a paginated list of notes for an entity.
+ * Visibility rules: team/public are always included; private notes are only
+ * included when created_by === callerId (bodies of others' private notes are masked).
+ *
+ * @param entityType - One of: contact | account | deal | lead
+ * @param entityId - UUID of the parent entity
+ * @param callerId - UUID of the authenticated user
+ * @param page - 1-based page number
+ * @param limit - Records per page
+ */
+export async function listNotes(
+  entityType: NoteEntityType,
+  entityId: string,
+  callerId: string,
+  page: number,
+  limit: number,
+): Promise<PaginatedResponse<NoteResponse>> {
+  const offset = (page - 1) * limit;
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count
+       FROM notes n
+       WHERE n.entity_type = $1
+         AND n.entity_id   = $2
+         AND n.deleted_at IS NULL`,
+      [entityType, entityId],
+    ),
+    pool.query<NoteRow>(
+      `SELECT ${SELECT_COLS}
+       FROM notes n
+       JOIN  users creator ON creator.id = n.created_by
+       LEFT JOIN users updater ON updater.id = n.updated_by
+       WHERE n.entity_type = $1
+         AND n.entity_id   = $2
+         AND n.deleted_at IS NULL
+       ORDER BY n.created_at DESC
+       LIMIT $3 OFFSET $4`,
+      [entityType, entityId, limit, offset],
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows.map((row) => maskNote(row, callerId)),
+    total: parseInt(countResult.rows[0]!.count, 10),
+    page,
+    limit,
+  };
+}
+
+/**
+ * Returns a single note by ID, or null if not found, deleted, or not visible.
+ * Private notes from other users are treated as not found (returns null) — use
+ * listNotes to obtain masked placeholders for private notes in a list view.
+ *
+ * @param entityType - Expected entity type (for validation)
+ * @param entityId - Expected entity ID (for validation)
+ * @param noteId - UUID of the note
+ * @param callerId - UUID of the authenticated user
+ */
+export async function getNoteById(
+  entityType: NoteEntityType,
+  entityId: string,
+  noteId: string,
+  callerId: string,
+): Promise<NoteResponse | null> {
+  const result = await pool.query<NoteRow>(
+    `SELECT ${SELECT_COLS}
+     FROM notes n
+     JOIN  users creator ON creator.id = n.created_by
+     LEFT JOIN users updater ON updater.id = n.updated_by
+     WHERE n.id          = $1
+       AND n.entity_type = $2
+       AND n.entity_id   = $3
+       AND n.deleted_at IS NULL
+     LIMIT 1`,
+    [noteId, entityType, entityId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  // Private notes from other users are not accessible via the single-note endpoint
+  if (row.visibility === 'private' && row.created_by !== callerId) return null;
+  return maskNote(row, callerId);
+}
+
+/**
+ * Creates a new note on the given entity.
+ * Validates entity existence, extracts body_text, writes audit entry in same transaction.
+ *
+ * @param entityType - Parent entity type
+ * @param entityId - Parent entity UUID
+ * @param params - Note fields from the validated request
+ * @param actor - Authenticated user performing the action
+ */
+export async function createNote(
+  entityType: NoteEntityType,
+  entityId: string,
+  params: CreateNoteInput,
+  actor: AuditActor,
+): Promise<NoteResponse> {
+  const bodyText = extractBodyText(params.body);
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await assertEntityExists(client, entityType, entityId);
+
+    const insertResult = await client.query<{ id: string }>(
+      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, tags, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
+      [
+        entityType,
+        entityId,
+        params.title ?? null,
+        params.body,
+        bodyText || null,
+        params.visibility ?? 'team',
+        params.tags ?? [],
+        actor.id,
+      ],
+    );
+
+    const note = await fetchNoteRow(client, insertResult.rows[0]!.id);
+    if (!note) throw new Error('Note insert succeeded but fetch returned nothing');
+
+    const isPrivate = note.visibility === 'private';
+    await writeAuditEntry(client, {
+      recordType: entityType,
+      recordId: entityId,
+      eventType: 'note_created',
+      fieldName: 'note',
+      newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(note.body_text),
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return maskNote(note, actor.id);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Updates a note. Only the creator or an admin may update.
+ * Visibility changes are only allowed for the creator — admins cannot override this.
+ *
+ * @param entityType - Parent entity type (for validation)
+ * @param entityId - Parent entity UUID (for validation)
+ * @param noteId - UUID of the note to update
+ * @param params - Fields to update
+ * @param actor - Authenticated user performing the action
+ * @param callerRole - 'admin' | 'rep' — gates write permission
+ * @returns The updated (possibly masked) note, or null if not found
+ */
+export async function updateNote(
+  entityType: NoteEntityType,
+  entityId: string,
+  noteId: string,
+  params: UpdateNoteInput,
+  actor: AuditActor,
+  callerRole: string,
+): Promise<NoteResponse | null> {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const before = await client.query<NoteRow>(
+      `SELECT ${SELECT_COLS}
+       FROM notes n
+       JOIN  users creator ON creator.id = n.created_by
+       LEFT JOIN users updater ON updater.id = n.updated_by
+       WHERE n.id          = $1
+         AND n.entity_type = $2
+         AND n.entity_id   = $3
+         AND n.deleted_at IS NULL`,
+      [noteId, entityType, entityId],
+    );
+
+    if (!before.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const beforeRow = before.rows[0];
+    const isCreator = beforeRow.created_by === actor.id;
+    const isAdmin = callerRole === 'admin';
+
+    if (!isCreator && !isAdmin) {
+      const error = new Error('Forbidden') as Error & { code: string };
+      error.code = 'FORBIDDEN';
+      throw error;
+    }
+
+    // Visibility changes are creator-only — admins cannot override
+    if (
+      params.visibility !== undefined &&
+      params.visibility !== beforeRow.visibility &&
+      !isCreator
+    ) {
+      const error = new Error('Only the note creator can change visibility') as Error & {
+        code: string;
+      };
+      error.code = 'VISIBILITY_CHANGE_FORBIDDEN';
+      throw error;
+    }
+
+    const newBodyText =
+      params.body !== undefined ? extractBodyText(params.body) : beforeRow.body_text;
+
+    await client.query(
+      `UPDATE notes
+       SET title      = CASE WHEN $2::text IS NOT NULL THEN $2::varchar(255) ELSE title END,
+           body       = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE body END,
+           body_text  = CASE WHEN $4::text IS NOT NULL THEN $4 ELSE body_text END,
+           visibility = CASE WHEN $5::text IS NOT NULL THEN $5::varchar(8) ELSE visibility END,
+           tags       = CASE WHEN $6::text[] IS NOT NULL THEN $6 ELSE tags END,
+           updated_by = $7,
+           updated_at = now()
+       WHERE id = $1`,
+      [
+        noteId,
+        params.title ?? null,
+        params.body ?? null,
+        newBodyText || null,
+        params.visibility ?? null,
+        params.tags ?? null,
+        actor.id,
+      ],
+    );
+
+    const after = await fetchNoteRow(client, noteId);
+    if (!after) throw new Error('Note update succeeded but fetch returned nothing');
+
+    const isPrivate = after.visibility === 'private';
+
+    const bodyChanged = params.body !== undefined && params.body !== beforeRow.body;
+    const visibilityChanged =
+      params.visibility !== undefined && params.visibility !== beforeRow.visibility;
+
+    if (bodyChanged) {
+      await writeAuditEntry(client, {
+        recordType: entityType,
+        recordId: entityId,
+        eventType: 'note_updated',
+        fieldName: 'note',
+        oldValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(beforeRow.body_text),
+        newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(after.body_text),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    if (visibilityChanged) {
+      await writeAuditEntry(client, {
+        recordType: entityType,
+        recordId: entityId,
+        eventType: 'note_visibility_changed',
+        fieldName: 'note',
+        oldValue: beforeRow.visibility,
+        newValue: after.visibility,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    // Write a note_updated entry when only non-body fields (title/tags) changed
+    if (!bodyChanged && !visibilityChanged) {
+      const titleChanged = params.title !== undefined && params.title !== beforeRow.title;
+      const tagsChanged =
+        params.tags !== undefined && JSON.stringify(params.tags) !== JSON.stringify(beforeRow.tags);
+      if (titleChanged || tagsChanged) {
+        await writeAuditEntry(client, {
+          recordType: entityType,
+          recordId: entityId,
+          eventType: 'note_updated',
+          fieldName: 'note',
+          oldValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(beforeRow.body_text),
+          newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(after.body_text),
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
+      }
+    }
+
+    await client.query('COMMIT');
+    return maskNote(after, actor.id);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Soft-deletes a note by setting deleted_at. Only the creator or an admin may delete.
+ *
+ * @param entityType - Parent entity type (for validation)
+ * @param entityId - Parent entity UUID (for validation)
+ * @param noteId - UUID of the note
+ * @param actor - Authenticated user performing the action
+ * @param callerRole - 'admin' | 'rep' — gates delete permission
+ * @returns true if deleted, false if not found
+ */
+export async function deleteNote(
+  entityType: NoteEntityType,
+  entityId: string,
+  noteId: string,
+  actor: AuditActor,
+  callerRole: string,
+): Promise<boolean> {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingResult = await client.query<NoteRow>(
+      `SELECT ${SELECT_COLS}
+       FROM notes n
+       JOIN  users creator ON creator.id = n.created_by
+       LEFT JOIN users updater ON updater.id = n.updated_by
+       WHERE n.id          = $1
+         AND n.entity_type = $2
+         AND n.entity_id   = $3
+         AND n.deleted_at IS NULL`,
+      [noteId, entityType, entityId],
+    );
+
+    const note = existingResult.rows[0];
+    if (!note) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    const isCreator = note.created_by === actor.id;
+    const isAdmin = callerRole === 'admin';
+
+    if (!isCreator && !isAdmin) {
+      const error = new Error('Forbidden') as Error & { code: string };
+      error.code = 'FORBIDDEN';
+      throw error;
+    }
+
+    await client.query(`UPDATE notes SET deleted_at = now() WHERE id = $1`, [noteId]);
+
+    const isPrivate = note.visibility === 'private';
+    await writeAuditEntry(client, {
+      recordType: entityType,
+      recordId: entityId,
+      eventType: 'note_deleted',
+      fieldName: 'note',
+      oldValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(note.body_text),
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

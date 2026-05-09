@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import NotesSection from '@/components/NotesSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
@@ -345,6 +346,9 @@ export default function AccountDetailPage() {
 
             {/* Attachments (MINCRM-167) */}
             {id && <AttachmentsSection recordType="account" recordId={id} />}
+
+            {/* Notes (MINCRM-352) */}
+            {id && <NotesSection entityType="account" entityId={id} />}
 
             {/* Change history (MINCRM-171) */}
             {id && <ChangeHistory recordType="account" recordId={id} />}

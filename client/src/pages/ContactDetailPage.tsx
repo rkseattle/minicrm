@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import NotesSection from '@/components/NotesSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
@@ -1205,6 +1206,9 @@ export default function ContactDetailPage() {
 
         {/* Attachments (MINCRM-167) */}
         {!isEditing && id && <AttachmentsSection recordType="contact" recordId={id} />}
+
+        {/* Notes (MINCRM-352) */}
+        {!isEditing && id && <NotesSection entityType="contact" entityId={id} />}
 
         {/* Change history (MINCRM-171) */}
         {!isEditing && id && <ChangeHistory recordType="contact" recordId={id} />}

@@ -79,3 +79,6 @@ export type { ReportsPageContext } from './ReportsPage.js';
 
 export { AutomationPage } from './AutomationPage.js';
 export type { AutomationPageContext } from './AutomationPage.js';
+
+export { NotesPage } from './NotesPage.js';
+export type { NotesPageContext } from './NotesPage.js';
