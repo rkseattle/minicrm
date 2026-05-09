@@ -491,6 +491,44 @@ describe('updateNote', () => {
     expect(parseInt(countAfter.rows[0]!.count)).toBe(parseInt(countBefore.rows[0]!.count) + 1);
   });
 
+  it('writes note_updated audit entry when only title changes', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('title-change-body'), title: 'Old Title', visibility: 'team', tags: [] },
+      adminActor,
+    );
+    await updateNote('contact', contactId, note.id, { title: 'New Title' }, adminActor, 'admin');
+    const audit = await pool.query<{ event_type: string }>(
+      `SELECT event_type FROM audit_log
+       WHERE record_id = $1 AND event_type = 'note_updated' AND changed_by_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [contactId, adminId],
+    );
+    expect(audit.rows[0]?.event_type).toBe('note_updated');
+  });
+
+  it('writes note_updated audit entry when only tags change', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('tags-change-body'), visibility: 'team', tags: ['old'] },
+      adminActor,
+    );
+    const countBefore = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM audit_log
+       WHERE record_id = $1 AND event_type = 'note_updated' AND changed_by_id = $2`,
+      [contactId, adminId],
+    );
+    await updateNote('contact', contactId, note.id, { tags: ['new'] }, adminActor, 'admin');
+    const countAfter = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM audit_log
+       WHERE record_id = $1 AND event_type = 'note_updated' AND changed_by_id = $2`,
+      [contactId, adminId],
+    );
+    expect(parseInt(countAfter.rows[0]!.count)).toBe(parseInt(countBefore.rows[0]!.count) + 1);
+  });
+
   it('returns null for non-existent note', async () => {
     const result = await updateNote(
       'contact',
@@ -573,6 +611,24 @@ describe('deleteNote', () => {
     );
     const result = await deleteNote('contact', contactId, note.id, adminActor, 'admin');
     expect(result).toBe(true);
+  });
+
+  it('masks audit old_value when deleting a private note', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('PrivDelete'), visibility: 'private', tags: [] },
+      adminActor,
+    );
+    await deleteNote('contact', contactId, note.id, adminActor, 'admin');
+    const audit = await pool.query<{ old_value: string }>(
+      `SELECT old_value FROM audit_log
+       WHERE record_id = $1 AND event_type = 'note_deleted'
+         AND changed_by_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [contactId, adminId],
+    );
+    expect(audit.rows[0]?.old_value).toBe('[private note]');
   });
 
   it('returns false for a non-existent note', async () => {
