@@ -581,4 +581,39 @@ describe('NotesSection — image upload errors', () => {
     });
     expect(screen.getByTestId('notes-image-upload-error').textContent).toMatch(/25 MB/);
   });
+
+  it('does not show an error and clears the file input after a successful upload', async () => {
+    const ATTACHMENT_ID = '00000000-0000-0000-0000-000000000a01';
+    withNotes([]);
+    server.use(
+      http.post('/api/v1/attachments', () =>
+        HttpResponse.json({
+          id: ATTACHMENT_ID,
+          filename: 'photo.png',
+          original_name: 'photo.png',
+          mime_type: 'image/png',
+          size_bytes: 1024,
+          record_type: 'contact',
+          record_id: CONTACT_ID,
+          uploaded_by_id: ADMIN_USER.id,
+          created_at: new Date().toISOString(),
+        }),
+      ),
+    );
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    await waitFor(() => expect(screen.getByTestId('notes-add-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('notes-add-button'));
+
+    const fileInput = screen.getByTestId('notes-image-input') as HTMLInputElement;
+    const file = new File(['data'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    // Upload succeeded — no error banner should appear
+    await waitFor(() => {
+      expect(screen.queryByTestId('notes-image-upload-error')).not.toBeInTheDocument();
+    });
+    // File input is cleared after each upload so the same file can be re-selected
+    expect(fileInput.value).toBe('');
+  });
 });
