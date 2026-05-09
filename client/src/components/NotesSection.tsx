@@ -10,7 +10,14 @@
  *   - the creator (and admin) see edit/delete actions
  */
 
-import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 'react';
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type ReactElement,
+  type MutableRefObject,
+} from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -23,12 +30,20 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   createEditor,
+  createCommand,
   $getSelection,
   $isRangeSelection,
   $createParagraphNode,
+  $insertNodes,
   FORMAT_TEXT_COMMAND,
+  DecoratorNode,
   type EditorState,
   type LexicalEditor,
+  type LexicalCommand,
+  type DOMExportOutput,
+  type NodeKey,
+  type SerializedLexicalNode,
+  type Spread,
 } from 'lexical';
 import { $setBlocksType } from '@lexical/selection';
 import {
@@ -56,9 +71,70 @@ import { Pagination } from '@/components/ui/Pagination.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import type { NoteEntityType, NoteVisibility, NoteResponse } from '@shared/schemas/noteSchema.js';
 
+// ── ImageNode ──────────────────────────────────────────────────────────────────
+
+type SerializedImageNode = Spread<{ src: string; alt: string }, SerializedLexicalNode>;
+
+export const INSERT_IMAGE_COMMAND: LexicalCommand<{ src: string; alt: string }> =
+  createCommand('INSERT_IMAGE_COMMAND');
+
+export class ImageNode extends DecoratorNode<ReactElement> {
+  __src: string;
+  __alt: string;
+
+  static getType(): string {
+    return 'image';
+  }
+
+  static clone(node: ImageNode): ImageNode {
+    return new ImageNode(node.__src, node.__alt, node.__key);
+  }
+
+  static importJSON(serializedNode: SerializedImageNode): ImageNode {
+    return new ImageNode(serializedNode.src, serializedNode.alt);
+  }
+
+  constructor(src: string, alt: string, key?: NodeKey) {
+    super(key);
+    this.__src = src;
+    this.__alt = alt;
+  }
+
+  exportJSON(): SerializedImageNode {
+    return { ...super.exportJSON(), type: 'image', src: this.__src, alt: this.__alt };
+  }
+
+  exportDOM(): DOMExportOutput {
+    const img = document.createElement('img');
+    img.src = this.__src;
+    img.alt = this.__alt;
+    img.style.maxWidth = '100%';
+    return { element: img };
+  }
+
+  createDOM(): HTMLElement {
+    return document.createElement('span');
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  decorate(): ReactElement {
+    return (
+      <img
+        src={this.__src}
+        alt={this.__alt}
+        className="max-w-full rounded my-1"
+        data-testid="note-image"
+      />
+    );
+  }
+}
+
 // ── Lexical config ─────────────────────────────────────────────────────────────
 
-const LEXICAL_NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode];
+const LEXICAL_NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, ImageNode];
 
 const LEXICAL_THEME = {
   text: {
@@ -299,6 +375,24 @@ function GetEditorPlugin({ editorRef }: { editorRef: MutableRefObject<LexicalEdi
   return null;
 }
 
+// ── ImagePlugin ────────────────────────────────────────────────────────────────
+
+function ImagePlugin(): null {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    return editor.registerCommand(
+      INSERT_IMAGE_COMMAND,
+      ({ src, alt }) => {
+        const node = new ImageNode(src, alt);
+        $insertNodes([node]);
+        return true;
+      },
+      1, // COMMAND_PRIORITY_EDITOR
+    );
+  }, [editor]);
+  return null;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface NotesSectionProps {
@@ -429,10 +523,8 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
     e.target.value = '';
     setImageUploadError(null);
     try {
-      await handleImageUpload(file);
-      // Image insertion into Lexical requires the ImageNode extension; for now
-      // the URL is available but we insert a plain text placeholder.
-      // Full image support can be added with a custom Lexical ImageNode.
+      const src = await handleImageUpload(file);
+      editorRef.current?.dispatchCommand(INSERT_IMAGE_COMMAND, { src, alt: file.name });
     } catch (err) {
       const is413 = axios.isAxiosError(err) && err.response?.status === 413;
       setImageUploadError(t(is413 ? 'notes.imageUploadTooLarge' : 'notes.imageUploadError'));
@@ -487,13 +579,14 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
           />
           <HistoryPlugin />
           <ListPlugin />
+          <ImagePlugin />
         </div>
       </LexicalComposer>
 
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/gif,image/webp"
+        accept="image/png,image/jpeg"
         className="hidden"
         data-testid="notes-image-input"
         onChange={(e) => {
