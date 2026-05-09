@@ -12,6 +12,7 @@ import NavBar from '@/components/NavBar.js';
 import LeadForm from '@/components/LeadForm.js';
 import ConvertLeadModal from '@/components/ConvertLeadModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import NotesSection from '@/components/NotesSection.js';
 import { Button } from '@/components/ui/Button.js';
 import { getLead, updateLead, deleteLead, getLeadStatusHistory } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -406,6 +407,9 @@ export default function LeadDetailPage() {
             </ol>
           </div>
         )}
+
+        {/* Notes (MINCRM-352) */}
+        {id && <NotesSection entityType="lead" entityId={id} />}
       </main>
 
       <ConfirmDeleteModal

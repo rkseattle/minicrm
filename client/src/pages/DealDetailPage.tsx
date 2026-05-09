@@ -14,6 +14,7 @@ import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import NotesSection from '@/components/NotesSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
@@ -448,6 +449,9 @@ export default function DealDetailPage() {
 
             {/* Attachments (MINCRM-167) */}
             {id && <AttachmentsSection recordType="deal" recordId={id} />}
+
+            {/* Notes (MINCRM-352) */}
+            {id && <NotesSection entityType="deal" entityId={id} />}
 
             {/* Change history (MINCRM-171) */}
             {id && <ChangeHistory recordType="deal" recordId={id} />}

@@ -12,7 +12,7 @@ import logger from '../logger.js';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Record types that can appear in the audit log */
-export type AuditRecordType = 'contact' | 'account' | 'deal' | 'user' | 'system_settings';
+export type AuditRecordType = 'contact' | 'account' | 'deal' | 'user' | 'system_settings' | 'lead';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
@@ -27,7 +27,12 @@ export type AuditEventType =
   | 'reactivated'
   | 'ownership_reassigned'
   /** Contact merge — winner record absorbed the loser (MINCRM-187) */
-  | 'merged';
+  | 'merged'
+  /** Note CRUD events (MINCRM-352) */
+  | 'note_created'
+  | 'note_updated'
+  | 'note_deleted'
+  | 'note_visibility_changed';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

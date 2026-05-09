@@ -182,6 +182,22 @@ export { filterAuditLog } from './audit-log.behaviors.js';
 export type { AuditLogBehaviorContext, FilterAuditLogResult } from './audit-log.behaviors.js';
 
 export {
+  createNoteViaUI,
+  editNoteViaUI,
+  deleteNoteViaUI,
+  noteCardIsVisible,
+  maskedNoteCardIsVisible,
+} from './notes.behaviors.js';
+export type {
+  NotesBehaviorContext,
+  CreateNoteInput,
+  CreateNoteResult,
+  EditNoteInput,
+  EditNoteResult,
+  DeleteNoteResult,
+} from './notes.behaviors.js';
+
+export {
   navigateToProfile,
   getProfilePreferences,
   uncheckAndSavePreference,

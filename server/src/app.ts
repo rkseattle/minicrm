@@ -31,6 +31,7 @@ import leadRoutes from './routes/leads.js';
 import tagRoutes from './routes/tags.js';
 import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
 import customFieldValueRoutes from './routes/customFieldValues.js';
+import noteRoutes from './routes/notes.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
 
@@ -115,6 +116,8 @@ app.use(`${API_V1}/leads`, leadRoutes);
 app.use(`${API_V1}/tags`, tagRoutes);
 app.use(`${API_V1}/custom-fields/definitions`, customFieldDefinitionRoutes);
 app.use(`${API_V1}/custom-fields`, customFieldValueRoutes);
+// Notes are mounted under each entity path (MINCRM-352)
+app.use(`${API_V1}/:entityType/:entityId/notes`, noteRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the

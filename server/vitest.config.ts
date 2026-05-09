@@ -54,6 +54,9 @@ const SERIAL_FILES = [
   // settingsService writes default_currency to system_settings; parallel runs cause
   // duplicate-key races on the INSERT in getDefaultCurrency tests.
   'src/__tests__/settingsService.test.ts',
+  // noteService uses ALTER TABLE audit_log DISABLE TRIGGER in beforeAll/afterAll;
+  // running in parallel with auditService races on the trigger's enabled/disabled state.
+  'src/__tests__/noteService.test.ts',
   // contactController's send-email tests check that an Email activity is created;
   // smtpSettingsService running in parallel can set smtp_host mid-test which causes
   // the activity query to return 0 results if the write races with the read.
