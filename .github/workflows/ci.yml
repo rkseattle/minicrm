@@ -890,26 +890,26 @@ jobs:
             local xml_file="$1"
             local project="$2"
             python3 - "$xml_file" "$project" <<'PYEOF'
-          import sys, xml.etree.ElementTree as ET
-          xml_file, project = sys.argv[1], sys.argv[2]
-          try:
-              root = ET.parse(xml_file).getroot()
-              suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
-              failures = []
-              for suite in suites:
-                  for tc in suite.findall('testcase'):
-                      fail = tc.find('failure') or tc.find('error')
-                      if fail is not None:
-                          name = tc.attrib.get('classname', '') + ' › ' + tc.attrib.get('name', tc.attrib.get('name', ''))
-                          msg = (fail.text or fail.attrib.get('message', '')).strip()[:2000]
-                          failures.append((name, msg))
-              if failures:
-                  print(f'\n### Failed Tests ({project})\n')
-                  for name, msg in failures:
-                      print(f'<details><summary>{name}</summary>\n\n```\n{msg}\n```\n</details>\n')
-          except Exception:
-              pass
-          PYEOF
+import sys, xml.etree.ElementTree as ET
+xml_file, project = sys.argv[1], sys.argv[2]
+try:
+    root = ET.parse(xml_file).getroot()
+    suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
+    failures = []
+    for suite in suites:
+        for tc in suite.findall('testcase'):
+            fail = tc.find('failure') or tc.find('error')
+            if fail is not None:
+                name = tc.attrib.get('classname', '') + ' › ' + tc.attrib.get('name', '')
+                msg = (fail.text or fail.attrib.get('message', '')).strip()[:2000]
+                failures.append((name, msg))
+    if failures:
+        print(f'\n### Failed Tests ({project})\n')
+        for name, msg in failures:
+            print(f'<details><summary>{name}</summary>\n\n```\n{msg}\n```\n</details>\n')
+except Exception as e:
+    print(f'\n### Failed Tests ({project})\n\n_(could not parse results: {e})_\n')
+PYEOF
           }
 
           build_summary() {
