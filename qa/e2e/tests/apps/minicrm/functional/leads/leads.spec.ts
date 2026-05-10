@@ -51,6 +51,14 @@ test.beforeAll(async ({ restClient }) => {
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
+// Reset the admin user's language preference and system default before each test so that
+// i18n tests running concurrently on another worker cannot leave a non-English locale that
+// causes badge text assertions to receive translated strings (e.g. "Contactado" vs "Contacted").
+test.beforeEach(async ({ restClient }) => {
+  await restClient.patch('/api/v1/users/me/language', { language: null }).catch(() => null);
+  await restClient.patch('/api/v1/settings/default-language', { language: 'en' }).catch(() => null);
+});
+
 // ---------------------------------------------------------------------------
 // Shared types
 // ---------------------------------------------------------------------------
