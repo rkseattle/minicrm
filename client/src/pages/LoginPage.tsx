@@ -9,34 +9,11 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import type { Location } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
-import type { AxiosError } from 'axios';
 import { login } from '@/api/auth.js';
 import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
-
-interface ApiError {
-  error: {
-    code: string;
-    message: string;
-  };
-}
-
-/**
- * Extracts a translated error message from an axios error response.
- *
- * @param error - The caught error object.
- * @param t - The i18next translate function.
- */
-function resolveErrorMessage(error: unknown, t: TFunction): string {
-  const axiosError = error as AxiosError<ApiError>;
-  const code = axiosError?.response?.data?.error?.code;
-  if (code && t(`errors.${code}`, { defaultValue: '' })) {
-    return t(`errors.${code}`);
-  }
-  return t('errors.generic');
-}
+import { resolveApiError } from '@/utils/apiError.js';
 
 /**
  * Login page with email and password form.
@@ -122,7 +99,7 @@ export default function LoginPage() {
                 role="alert"
                 className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
               >
-                {resolveErrorMessage(loginMutation.error, t)}
+                {resolveApiError(loginMutation.error, t)}
               </div>
             )}
 

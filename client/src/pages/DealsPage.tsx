@@ -11,6 +11,7 @@ import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import DealForm from '@/components/DealForm.js';
 import StageColumn from '@/components/StageColumn.js';
@@ -304,7 +305,7 @@ export default function DealsPage() {
       setCreateError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setCreateError(resolveApiError(error, t));
     },
   });
 

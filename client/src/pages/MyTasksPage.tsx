@@ -13,6 +13,7 @@ import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Badge } from '@/components/ui/Badge.js';
@@ -93,7 +94,7 @@ export default function MyTasksPage() {
       setCompleteError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCompleteError(error.response?.data?.error?.message ?? t('myTasks.completeError'));
+      setCompleteError(resolveApiError(error, t, 'myTasks.completeError'));
     },
   });
 

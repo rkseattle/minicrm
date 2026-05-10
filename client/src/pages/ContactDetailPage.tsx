@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import ContactForm from '@/components/ContactForm.js';
@@ -217,7 +218,7 @@ export default function ContactDetailPage() {
         void queryClient.invalidateQueries({ queryKey: contactQueryKey });
         return;
       }
-      setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setUpdateError(resolveApiError(error, t));
     },
   });
 
@@ -228,7 +229,7 @@ export default function ContactDetailPage() {
       navigate('/contacts', { replace: true });
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setDeleteError(resolveApiError(error, t));
     },
   });
 
@@ -261,7 +262,7 @@ export default function ContactDetailPage() {
       setAddressError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setAddressError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setAddressError(resolveApiError(error, t));
     },
   });
 
@@ -297,7 +298,7 @@ export default function ContactDetailPage() {
       setMergeError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setMergeError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setMergeError(resolveApiError(error, t));
     },
   });
 

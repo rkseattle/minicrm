@@ -191,7 +191,11 @@ describe('SendEmailModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('send-email-error')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('send-email-error')).toHaveTextContent('SMTP connection refused');
+    // Must show the i18n translation, not the raw English server message (MINCRM-354)
+    expect(screen.getByTestId('send-email-error')).not.toHaveTextContent('SMTP connection refused');
+    expect(screen.getByTestId('send-email-error')).toHaveTextContent(
+      'Failed to send email. Please check your SMTP settings.',
+    );
   });
 
   it('calls onCancel when the cancel button is clicked', () => {

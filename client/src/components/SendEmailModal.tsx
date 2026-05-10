@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button.js';
 import { sendContactEmail } from '@/api/contacts.js';
@@ -84,7 +85,7 @@ export default function SendEmailModal({
       }, 1500);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setErrorMessage(error.response?.data?.error?.message ?? t('errors.generic'));
+      setErrorMessage(resolveApiError(error, t));
     },
   });
 

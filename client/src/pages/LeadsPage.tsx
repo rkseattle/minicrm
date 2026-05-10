@@ -9,6 +9,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
@@ -119,7 +120,7 @@ export default function LeadsPage() {
         setDuplicateLead(axiosErr.response.data.duplicate);
         setCreateError(null);
       } else {
-        setCreateError(axiosErr?.response?.data?.error?.message ?? t('leads.createError'));
+        setCreateError(resolveApiError(err, t, 'leads.createError'));
         setDuplicateLead(null);
       }
     },
