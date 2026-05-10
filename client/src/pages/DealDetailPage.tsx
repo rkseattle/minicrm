@@ -136,7 +136,9 @@ export default function DealDetailPage() {
           queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
           1,
       }),
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      queryClient.setQueryData(dealQueryKey, data);
       if (customFieldValues.length > 0) {
         await putCustomFieldValues('deal', id!, customFieldValues);
         queryClient.invalidateQueries({ queryKey: customFieldValuesQueryKey('deal', id!) });
@@ -235,7 +237,9 @@ export default function DealDetailPage() {
           queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
           1,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      queryClient.setQueryData(dealQueryKey, data);
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });

@@ -88,7 +88,9 @@ export default function LeadDetailPage() {
           queryClient.getQueryData<{ lead: { version: number } }>(leadQueryKey)?.lead.version ??
           1,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      queryClient.setQueryData(leadQueryKey, data);
       void queryClient.invalidateQueries({ queryKey: leadQueryKey });
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setIsEditing(false);
