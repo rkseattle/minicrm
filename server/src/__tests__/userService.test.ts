@@ -292,15 +292,31 @@ describe('listActiveUsers', () => {
   });
 
   it('excludes inactive users', async () => {
-    const created = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-inactive@example.com`, status: 'inactive' });
+    const created = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-inactive@example.com`,
+      status: 'inactive',
+    });
     const users = await listActiveUsers();
     expect(users.find((u) => u.id === created.id)).toBeUndefined();
   });
 
   it('orders results alphabetically by name', async () => {
-    const charlie = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-charlie@example.com`, name: 'Charlie' });
-    const alice = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-alice@example.com`, name: 'Alice' });
-    const bob = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-bob@example.com`, name: 'Bob' });
+    const charlie = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-charlie@example.com`,
+      name: 'Charlie',
+    });
+    const alice = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-alice@example.com`,
+      name: 'Alice',
+    });
+    const bob = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-bob@example.com`,
+      name: 'Bob',
+    });
     const myIds = new Set([charlie.id, alice.id, bob.id]);
 
     const users = await listActiveUsers();
@@ -309,8 +325,16 @@ describe('listActiveUsers', () => {
   });
 
   it('includes all active users regardless of role', async () => {
-    const admin = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-admin@example.com`, role: 'admin' });
-    const rep = await createUser({ ...BASE_USER, email: `${FILE_PREFIX}-rep@example.com`, role: 'rep' });
+    const admin = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-admin@example.com`,
+      role: 'admin',
+    });
+    const rep = await createUser({
+      ...BASE_USER,
+      email: `${FILE_PREFIX}-rep@example.com`,
+      role: 'rep',
+    });
     const myIds = new Set([admin.id, rep.id]);
 
     const users = await listActiveUsers();
@@ -475,6 +499,7 @@ describe('seedDefaultAdmin', () => {
     await pool.query('DELETE FROM leads');
     await pool.query('DELETE FROM contacts');
     await pool.query('DELETE FROM accounts');
+    await pool.query('DELETE FROM notes');
     await pool.query('DELETE FROM users');
 
     process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-admin@example.com`;

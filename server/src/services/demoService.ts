@@ -7,6 +7,7 @@
 
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
+import { encrypt } from './cryptoService.js';
 import type pg from 'pg';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
@@ -867,6 +868,283 @@ const DEMO_REP_LEADS = [
   },
 ];
 
+/**
+ * Helper to build a Tiptap doc JSON string for a single plain-text paragraph.
+ * The `body` column in the notes table stores serialised Tiptap JSON.
+ */
+function tiptapText(text: string): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+}
+
+// Notes for admin-owned entities (MINCRM-353)
+// contactIndex references DEMO_CONTACTS; dealIndex references DEMO_DEALS; accountIndex references DEMO_ACCOUNTS.
+const DEMO_NOTES: Array<{
+  entityType: 'contact' | 'account' | 'deal';
+  entityIndex: number;
+  ownerType: 'admin' | 'rep';
+  title: string | null;
+  bodyText: string;
+  visibility: 'team' | 'private';
+  tags: string[];
+}> = [
+  // Admin-owned contact notes
+  {
+    entityType: 'contact',
+    entityIndex: 0, // Alice Chen
+    ownerType: 'admin',
+    title: 'Initial discovery call summary',
+    bodyText:
+      'Alice confirmed the legacy system is causing significant friction for the sales team. Key pain points: no mobile access, slow reporting, and no API for integrations. She is the main champion — next step is a joint call with her CTO.',
+    visibility: 'team',
+    tags: [],
+  },
+  {
+    entityType: 'contact',
+    entityIndex: 9, // Jack Wilson (CEO)
+    ownerType: 'admin',
+    title: null,
+    bodyText:
+      'Jack seems lukewarm on the deal despite the positive signals from Alice. My read is he has a preferred vendor relationship with a competitor and is using us as leverage. Worth having a candid conversation before investing more time.',
+    visibility: 'private',
+    tags: [],
+  },
+  {
+    entityType: 'contact',
+    entityIndex: 2, // Carol Johnson (CFO)
+    ownerType: 'admin',
+    title: 'Budget discussion',
+    bodyText:
+      'Carol confirmed the finance team has allocated budget in Q3 for a CRM modernisation project. Total envelope is approximately $150k. She wants a phased proposal with payment milestones.',
+    visibility: 'team',
+    tags: [],
+  },
+  // Admin-owned deal notes
+  {
+    entityType: 'deal',
+    entityIndex: 1, // Acme — Security Upgrade
+    ownerType: 'admin',
+    title: 'Proposal walkthrough notes',
+    bodyText:
+      'Walked Carol and Bob through the 3-year security roadmap. Carol raised concerns about the implementation timeline clashing with their fiscal year-end in September. Agreed to shift Phase 2 start to October. Bob is comfortable with the technical approach.',
+    visibility: 'team',
+    tags: [],
+  },
+  {
+    entityType: 'deal',
+    entityIndex: 5, // Globex — ERP Migration
+    ownerType: 'admin',
+    title: 'Risk note — procurement delay',
+    bodyText:
+      'Karen mentioned that the internal procurement process requires sign-off from three VPs and typically takes 6–8 weeks. We need to factor that into the timeline. Flag this to leadership as a deal risk.',
+    visibility: 'team',
+    tags: ['at-risk'],
+  },
+  // Account note
+  {
+    entityType: 'account',
+    entityIndex: 0, // Acme Corporation
+    ownerType: 'admin',
+    title: 'Account strategy — FY2026',
+    bodyText:
+      'Acme is our largest active prospect. We have three active deals in play. Priority is to close the Support Contract renewal before Q2 ends, then convert the Analytics Add-on to a closed deal before the Enterprise Platform enters legal review.',
+    visibility: 'team',
+    tags: ['key-account'],
+  },
+  // Rep-owned contact notes
+  {
+    entityType: 'contact',
+    entityIndex: 0, // Natalie Russo — rep contacts (resolved via repContactIds)
+    ownerType: 'rep',
+    title: 'First call notes',
+    bodyText:
+      'Great first conversation with Natalie. She is frustrated with their current CI/CD pipeline and keen to evaluate alternatives. Budget is not confirmed yet but she expects H2 approval. Sending a technical overview deck this week.',
+    visibility: 'team',
+    tags: [],
+  },
+  {
+    entityType: 'contact',
+    entityIndex: 3, // Raymond Osei (CEO, Ironbridge) — rep contacts
+    ownerType: 'rep',
+    title: null,
+    bodyText:
+      'Raymond signed off on the ERP upgrade contract. Implementation kick-off is scheduled for next month. Keep an eye on scope creep — he mentioned wanting reporting customisations that are outside the current SOW.',
+    visibility: 'team',
+    tags: [],
+  },
+];
+
+// Custom field definitions (MINCRM-353)
+const DEMO_CUSTOM_FIELD_DEFINITIONS: Array<{
+  entity_type: 'contact' | 'deal';
+  name: string;
+  field_type: 'text' | 'select' | 'date' | 'number';
+  options: string[] | null;
+  sort_order: number;
+}> = [
+  {
+    entity_type: 'contact',
+    name: 'LinkedIn URL',
+    field_type: 'text',
+    options: null,
+    sort_order: 1,
+  },
+  {
+    entity_type: 'contact',
+    name: 'Lead Source Detail',
+    field_type: 'select',
+    options: ['Cold outreach', 'Referral', 'Event', 'Inbound'],
+    sort_order: 2,
+  },
+  {
+    entity_type: 'deal',
+    name: 'Contract Signed Date',
+    field_type: 'date',
+    options: null,
+    sort_order: 1,
+  },
+  {
+    entity_type: 'deal',
+    name: 'Estimated ARR',
+    field_type: 'number',
+    options: null,
+    sort_order: 2,
+  },
+];
+
+// Custom field values — keyed by definition name, then by entity index within the owner's set.
+// contactIndices reference DEMO_CONTACTS (admin) or repContactIndices (rep).
+// dealIndices reference DEMO_DEALS (admin) or repDealIndices (rep).
+const DEMO_CUSTOM_FIELD_VALUES: Array<{
+  definitionName: string;
+  ownerType: 'admin' | 'rep';
+  entityType: 'contact' | 'deal';
+  entityIndex: number;
+  value: string;
+}> = [
+  // LinkedIn URL — admin contacts
+  {
+    definitionName: 'LinkedIn URL',
+    ownerType: 'admin',
+    entityType: 'contact',
+    entityIndex: 0, // Alice Chen
+    value: 'https://www.linkedin.com/in/alice-chen-demo',
+  },
+  {
+    definitionName: 'LinkedIn URL',
+    ownerType: 'admin',
+    entityType: 'contact',
+    entityIndex: 9, // Jack Wilson
+    value: 'https://www.linkedin.com/in/jack-wilson-demo',
+  },
+  {
+    definitionName: 'LinkedIn URL',
+    ownerType: 'rep',
+    entityType: 'contact',
+    entityIndex: 0, // Natalie Russo
+    value: 'https://www.linkedin.com/in/natalie-russo-demo',
+  },
+  // Lead Source Detail — admin contacts
+  {
+    definitionName: 'Lead Source Detail',
+    ownerType: 'admin',
+    entityType: 'contact',
+    entityIndex: 0, // Alice Chen
+    value: 'Event',
+  },
+  {
+    definitionName: 'Lead Source Detail',
+    ownerType: 'admin',
+    entityType: 'contact',
+    entityIndex: 12, // Mia Thompson (Globex)
+    value: 'Referral',
+  },
+  {
+    definitionName: 'Lead Source Detail',
+    ownerType: 'rep',
+    entityType: 'contact',
+    entityIndex: 3, // Raymond Osei
+    value: 'Cold outreach',
+  },
+  // Contract Signed Date — admin closed-won deal
+  {
+    definitionName: 'Contract Signed Date',
+    ownerType: 'admin',
+    entityType: 'deal',
+    entityIndex: 4, // Acme — Support Contract (Closed Won)
+    value: relativeDate(-5),
+  },
+  {
+    definitionName: 'Contract Signed Date',
+    ownerType: 'rep',
+    entityType: 'deal',
+    entityIndex: 2, // Ironbridge — ERP Upgrade (Closed Won)
+    value: relativeDate(-3),
+  },
+  // Estimated ARR — open deals
+  {
+    definitionName: 'Estimated ARR',
+    ownerType: 'admin',
+    entityType: 'deal',
+    entityIndex: 0, // Acme — Enterprise Platform
+    value: '120000',
+  },
+  {
+    definitionName: 'Estimated ARR',
+    ownerType: 'admin',
+    entityType: 'deal',
+    entityIndex: 5, // Globex — ERP Migration
+    value: '200000',
+  },
+  {
+    definitionName: 'Estimated ARR',
+    ownerType: 'rep',
+    entityType: 'deal',
+    entityIndex: 0, // Stellartech — Cloud Migration
+    value: '75000',
+  },
+];
+
+// Webhook subscriptions (MINCRM-353)
+const DEMO_WEBHOOK_SUBSCRIPTIONS: Array<{
+  url: string;
+  events: string[];
+  dummySecret: string;
+}> = [
+  {
+    url: 'https://hooks.example.com/slack/minicrm-deals',
+    events: ['deal.won', 'deal.lost'],
+    dummySecret: 'demo-slack-webhook-secret-placeholder',
+  },
+  {
+    url: 'https://hooks.zapier.com/example/minicrm',
+    events: ['contact.created', 'contact.updated'],
+    dummySecret: 'demo-zapier-webhook-secret-placeholder',
+  },
+];
+
+// Demo webhook URLs — used for teardown matching
+const DEMO_WEBHOOK_URLS = DEMO_WEBHOOK_SUBSCRIPTIONS.map((s) => s.url);
+
+// Currency exchange rates (MINCRM-353)
+const DEMO_CURRENCIES: Array<{
+  code: string;
+  name: string;
+  symbol: string;
+  rate_to_home: number;
+}> = [
+  { code: 'GBP', name: 'British Pound Sterling', symbol: '£', rate_to_home: 1.27 },
+  { code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 1.09 },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$', rate_to_home: 0.73 },
+];
+
+const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
+
+// Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
+const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -919,6 +1197,41 @@ export async function getDemoStatus(): Promise<{ active: boolean }> {
  * @param client - Active DB client (must already be inside a transaction).
  */
 async function removeDemoData(client: pg.PoolClient): Promise<void> {
+  // Notes have no is_demo flag — identify by parent entity (MINCRM-353)
+  await client.query(`
+    DELETE FROM notes
+    WHERE entity_id IN (
+      SELECT id FROM contacts WHERE is_demo = true
+      UNION SELECT id FROM accounts WHERE is_demo = true
+      UNION SELECT id FROM deals WHERE is_demo = true
+      UNION SELECT id FROM leads WHERE is_demo = true
+    )
+  `);
+
+  // Custom field values reference demo contacts and deals (MINCRM-353)
+  await client.query(`
+    DELETE FROM custom_field_values
+    WHERE record_id IN (
+      SELECT id FROM contacts WHERE is_demo = true
+      UNION SELECT id FROM deals WHERE is_demo = true
+    )
+  `);
+  // Deleting definitions by name also cascade-deletes their values via ON DELETE CASCADE,
+  // but we delete values first to be explicit about ordering.
+  await client.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
+    DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
+  ]);
+
+  // Webhook subscriptions identified by URL (no is_demo flag) (MINCRM-353)
+  await client.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
+    DEMO_WEBHOOK_URLS,
+  ]);
+
+  // Currency rates — only remove the non-home demo rows (MINCRM-353)
+  await client.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
+    DEMO_CURRENCY_CODES,
+  ]);
+
   // lead_status_history cascades automatically when leads are deleted
   await client.query(`DELETE FROM leads WHERE is_demo = true`);
 
@@ -1306,6 +1619,94 @@ async function insertDemoData(
         lead.status,
         repId,
       ],
+    );
+  }
+
+  // 16. Notes — spread across contacts, accounts, and deals for both users (MINCRM-353)
+  for (const note of DEMO_NOTES) {
+    let entityId: string;
+    if (note.entityType === 'contact') {
+      entityId =
+        note.ownerType === 'admin' ? contactIds[note.entityIndex] : repContactIds[note.entityIndex];
+    } else if (note.entityType === 'deal') {
+      entityId =
+        note.ownerType === 'admin' ? dealIds[note.entityIndex] : repDealIds[note.entityIndex];
+    } else {
+      // account — admin only in this fixture set
+      entityId = accountIds[note.entityIndex];
+    }
+    const createdBy = note.ownerType === 'admin' ? adminId : repId;
+    const body = tiptapText(note.bodyText);
+    await client.query(
+      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, tags, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        note.entityType,
+        entityId,
+        note.title,
+        body,
+        note.bodyText,
+        note.visibility,
+        note.tags,
+        createdBy,
+      ],
+    );
+  }
+
+  // 17. Custom field definitions and values (MINCRM-353)
+  const customFieldDefIds: Record<string, string> = {};
+  for (const def of DEMO_CUSTOM_FIELD_DEFINITIONS) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO custom_field_definitions (entity_type, name, field_type, options, sort_order)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (entity_type, name) DO UPDATE SET sort_order = EXCLUDED.sort_order
+       RETURNING id`,
+      [
+        def.entity_type,
+        def.name,
+        def.field_type,
+        def.options !== null ? JSON.stringify(def.options) : null,
+        def.sort_order,
+      ],
+    );
+    customFieldDefIds[def.name] = result.rows[0].id;
+  }
+
+  for (const val of DEMO_CUSTOM_FIELD_VALUES) {
+    const definitionId = customFieldDefIds[val.definitionName];
+    let recordId: string;
+    if (val.entityType === 'contact') {
+      recordId =
+        val.ownerType === 'admin' ? contactIds[val.entityIndex] : repContactIds[val.entityIndex];
+    } else {
+      recordId = val.ownerType === 'admin' ? dealIds[val.entityIndex] : repDealIds[val.entityIndex];
+    }
+    await client.query(
+      `INSERT INTO custom_field_values (definition_id, record_id, value)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (definition_id, record_id) DO NOTHING`,
+      [definitionId, recordId, val.value],
+    );
+  }
+
+  // 18. Webhook subscriptions — no unique constraint on url, so we rely on the hasDemoData()
+  // guard in seedDemo/resetDemo to prevent duplicate inserts. (MINCRM-353)
+  for (const webhook of DEMO_WEBHOOK_SUBSCRIPTIONS) {
+    const encryptedSecret = encrypt(webhook.dummySecret);
+    await client.query(
+      `INSERT INTO webhook_subscriptions (url, events, secret_hash, created_by)
+       VALUES ($1, $2, $3, $4)`,
+      [webhook.url, webhook.events, encryptedSecret, adminId],
+    );
+  }
+
+  // 19. Currency exchange rates (MINCRM-353)
+  for (const currency of DEMO_CURRENCIES) {
+    await client.query(
+      `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home)
+       VALUES ($1, $2, $3, $4, false)
+       ON CONFLICT (code) DO NOTHING`,
+      [currency.code, currency.name, currency.symbol, currency.rate_to_home],
     );
   }
 }

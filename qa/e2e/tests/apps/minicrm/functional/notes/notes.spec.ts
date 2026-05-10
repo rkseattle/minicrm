@@ -250,6 +250,10 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
   const deleteResult = await deleteNoteViaUI({ page }, noteId);
   expect(deleteResult.confirmed, 'delete modal should close after confirm').toBe(true);
 
+  // Wait for the note list to refetch after the delete — the card is removed when the
+  // invalidateQueries refetch completes, which is async relative to modal close.
+  await card?.waitFor({ state: 'detached', timeout: 8_000 }).catch(() => undefined);
+
   // Card should no longer be visible
   const stillVisible = await noteCardIsVisible({ page }, noteId);
   expect(stillVisible, 'note card should be gone after delete').toBe(false);

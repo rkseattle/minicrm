@@ -148,6 +148,8 @@ export default defineConfig({
           name: 'serial',
           include: SERIAL_FILES,
           fileParallelism: false,
+          // seedDemo() is heavier now — notes, custom fields, webhooks, currencies
+          testTimeout: 30000,
         },
         resolve: sharedResolve,
       },
