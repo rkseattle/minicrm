@@ -415,4 +415,12 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await resetLanguage(restClient, 'F9-L5');
     }
   });
+  // Safety-net: unconditionally restore system language and framework locale after
+  // the entire serial block, even if an individual test's finally block failed or
+  // the test was aborted before reaching it. Without this, a stale non-English DB
+  // setting leaks into tests on the same shard that assert English UI strings.
+  test.afterAll(async ({ restClient }) => {
+    await setSystemLanguage('en', restClient, 'afterAll');
+    setLocale('en');
+  });
 }); // end Language switching
