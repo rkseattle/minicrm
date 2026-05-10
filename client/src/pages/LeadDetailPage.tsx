@@ -72,7 +72,7 @@ export default function LeadDetailPage() {
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const updateMutation = useMutation({
-    mutationFn: (values: LeadFormValues) =>
+    mutationFn: ({ values, version }: { values: LeadFormValues; version?: number }) =>
       updateLead(id!, {
         first_name: values.first_name,
         last_name: values.last_name || undefined,
@@ -82,9 +82,11 @@ export default function LeadDetailPage() {
         lead_source: (values.lead_source as LeadFormValues['lead_source']) || undefined,
         notes: values.notes || undefined,
         owner_id: values.owner_id || undefined,
-        // Read version from the current query cache at call time (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
-          queryClient.getQueryData<{ lead: { version: number } }>(leadQueryKey)?.lead.version ?? 1,
+          version ??
+          queryClient.getQueryData<{ lead: { version: number } }>(leadQueryKey)?.lead.version ??
+          1,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: leadQueryKey });
@@ -107,7 +109,7 @@ export default function LeadDetailPage() {
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
         const cached = queryClient.getQueryData<{ lead: Record<string, unknown> }>(leadQueryKey);
         setConflictBase(cached?.lead ?? {});
-        setConflictPendingValues(variables);
+        setConflictPendingValues(variables.values);
         setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: leadQueryKey });
         return;
@@ -283,8 +285,11 @@ export default function LeadDetailPage() {
               }}
               onResolve={(resolved) => {
                 updateMutation.mutate({
-                  ...(conflictPendingValues as LeadFormValues),
-                  ...(resolved as Partial<LeadFormValues>),
+                  values: {
+                    ...(conflictPendingValues as LeadFormValues),
+                    ...(resolved as Partial<LeadFormValues>),
+                  },
+                  version: conflictTheirs?.version as number | undefined,
                 });
                 setConflictPendingValues(null);
                 setConflictBase(null);
@@ -304,7 +309,7 @@ export default function LeadDetailPage() {
                 notes: lead.notes ?? '',
                 owner_id: lead.owner_id,
               }}
-              onSubmit={(values) => updateMutation.mutate(values)}
+              onSubmit={(values) => updateMutation.mutate({ values })}
               isSubmitting={updateMutation.isPending}
               onCancel={() => {
                 setIsEditing(false);

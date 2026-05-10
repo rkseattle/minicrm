@@ -309,16 +309,14 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           outcome: t('activities.outcomeLabel'),
                         }}
                         onResolve={(resolved) => {
-                          // mutationFn reads fresh version from cache after the invalidation (MINCRM-351)
-                          const activities: ActivityResponse[] = data?.data ?? [];
-                          const fresh = activities.find((a) => a.id === activity.id);
+                          // Use version from theirs (the 409 body) — authoritative, no cache race (MINCRM-351)
                           updateMutation.mutate({
                             id: activity.id,
                             values: {
                               ...(editConflict?.pendingValues as ActivityFormValues),
                               ...(resolved as Partial<ActivityFormValues>),
                             },
-                            version: fresh?.version ?? activity.version,
+                            version: (editConflict?.theirs.version as number) ?? activity.version,
                           });
                           setEditConflict(null);
                         }}

@@ -119,7 +119,7 @@ export default function DealDetailPage() {
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const updateMutation = useMutation({
-    mutationFn: (values: DealFormValues) =>
+    mutationFn: ({ values, version }: { values: DealFormValues; version?: number }) =>
       updateDeal(id!, {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
@@ -130,9 +130,11 @@ export default function DealDetailPage() {
         owner_id: values.owner_id || undefined,
         // null clears the override; undefined leaves it unchanged
         probability: values.probability !== '' ? parseInt(values.probability, 10) : null,
-        // Read version from the current query cache at call time (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
-          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ?? 1,
+          version ??
+          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
+          1,
       }),
     onSuccess: async () => {
       if (customFieldValues.length > 0) {
@@ -160,7 +162,7 @@ export default function DealDetailPage() {
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
         const cached = queryClient.getQueryData<{ deal: Record<string, unknown> }>(dealQueryKey);
         setConflictBase(cached?.deal ?? {});
-        setConflictPendingValues(variables);
+        setConflictPendingValues(variables.values);
         setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
@@ -210,11 +212,13 @@ export default function DealDetailPage() {
       close_date,
       loss_reason,
       formValues,
+      version,
     }: {
       stage: string;
       close_date: string | null;
       loss_reason: string | null;
       formValues: DealFormValues;
+      version?: number;
     }) =>
       updateDeal(id!, {
         name: formValues.name,
@@ -225,9 +229,11 @@ export default function DealDetailPage() {
         account_id: formValues.account_id || null,
         owner_id: formValues.owner_id || undefined,
         probability: formValues.probability !== '' ? parseInt(formValues.probability, 10) : null,
-        // Read version from the current query cache at call time (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
-          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ?? 1,
+          version ??
+          queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
+          1,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
@@ -397,7 +403,7 @@ export default function DealDetailPage() {
                 }}
                 onSubmit={(values) => {
                   setUpdateError(null);
-                  updateMutation.mutate(values);
+                  updateMutation.mutate({ values });
                 }}
                 onCancel={() => {
                   setIsEditing(false);
@@ -431,8 +437,11 @@ export default function DealDetailPage() {
                 }}
                 onResolve={(resolved) => {
                   updateMutation.mutate({
-                    ...(conflictPendingValues as DealFormValues),
-                    ...(resolved as Partial<DealFormValues>),
+                    values: {
+                      ...(conflictPendingValues as DealFormValues),
+                      ...(resolved as Partial<DealFormValues>),
+                    },
+                    version: conflictTheirs?.version as number | undefined,
                   });
                   setConflictPendingValues(null);
                   setConflictBase(null);

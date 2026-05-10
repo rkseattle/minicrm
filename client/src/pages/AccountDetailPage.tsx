@@ -88,7 +88,7 @@ export default function AccountDetailPage() {
   const childAccounts = childAccountsData?.accounts ?? [];
 
   const updateMutation = useMutation({
-    mutationFn: (values: AccountFormValues) =>
+    mutationFn: ({ values, version }: { values: AccountFormValues; version?: number }) =>
       updateAccount(id!, {
         name: values.name,
         industry: values.industry || undefined,
@@ -99,10 +99,12 @@ export default function AccountDetailPage() {
         contact_ids: values.contact_ids,
         account_type: values.account_type || null,
         parent_account_id: values.parent_account_id || null,
-        // Read version from the current query cache at call time (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
+          version ??
           queryClient.getQueryData<{ account: { version: number } }>(accountQueryKey)?.account
-            .version ?? 1,
+            .version ??
+          1,
       }),
     onSuccess: async () => {
       if (customFieldValues.length > 0) {
@@ -133,7 +135,7 @@ export default function AccountDetailPage() {
           accountQueryKey,
         );
         setConflictBase(cached?.account ?? {});
-        setConflictPendingValues(variables);
+        setConflictPendingValues(variables.values);
         setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: accountQueryKey });
         return;
@@ -267,7 +269,7 @@ export default function AccountDetailPage() {
                 initialParentAccountName={parentAccountData?.account?.name}
                 onSubmit={(values) => {
                   setUpdateError(null);
-                  updateMutation.mutate(values);
+                  updateMutation.mutate({ values });
                 }}
                 onCancel={() => {
                   setIsEditing(false);
@@ -301,8 +303,11 @@ export default function AccountDetailPage() {
                 }}
                 onResolve={(resolved) => {
                   updateMutation.mutate({
-                    ...(conflictPendingValues as AccountFormValues),
-                    ...(resolved as Partial<AccountFormValues>),
+                    values: {
+                      ...(conflictPendingValues as AccountFormValues),
+                      ...(resolved as Partial<AccountFormValues>),
+                    },
+                    version: conflictTheirs?.version as number | undefined,
                   });
                   setConflictPendingValues(null);
                   setConflictBase(null);
