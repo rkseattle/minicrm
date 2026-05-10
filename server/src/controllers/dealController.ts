@@ -26,7 +26,13 @@ import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { z } from 'zod';
 
-const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only edit or delete records you own. Contact an admin to make changes to records owned by others.',
+  },
+};
 
 /**
  * POST /api/deals
@@ -154,7 +160,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -239,7 +245,7 @@ export async function linkContactHandler(req: Request, res: Response): Promise<v
   }
 
   if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -270,7 +276,7 @@ export async function unlinkContactHandler(req: Request, res: Response): Promise
   }
 
   if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -295,7 +301,7 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 

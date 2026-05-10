@@ -7,7 +7,13 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { bulkContacts, bulkAccounts, bulkDeals } from '../services/bulkService.js';
 
-const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+const FORBIDDEN_BULK_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only perform bulk operations on records you own. Contact an admin to operate on records owned by others.',
+  },
+};
 
 /** Zod schema for bulk contacts/accounts requests */
 const bulkContactAccountSchema = z
@@ -55,7 +61,7 @@ export async function bulkContactsHandler(req: Request, res: Response): Promise<
   const result = await bulkContacts(parsed.data, actor);
 
   if ('forbidden' in result) {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_BULK_ERROR);
     return;
   }
 
@@ -79,7 +85,7 @@ export async function bulkAccountsHandler(req: Request, res: Response): Promise<
   const result = await bulkAccounts(parsed.data, actor);
 
   if ('forbidden' in result) {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_BULK_ERROR);
     return;
   }
 
@@ -103,7 +109,7 @@ export async function bulkDealsHandler(req: Request, res: Response): Promise<voi
   const result = await bulkDeals(parsed.data, actor);
 
   if ('forbidden' in result) {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_BULK_ERROR);
     return;
   }
 

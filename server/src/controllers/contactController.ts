@@ -32,7 +32,13 @@ import { createActivity } from '../services/activityService.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import logger from '../logger.js';
 
-const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only edit or delete records you own. Contact an admin to make changes to records owned by others.',
+  },
+};
 
 /**
  * POST /api/contacts
@@ -213,7 +219,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -404,7 +410,7 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -433,7 +439,7 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
   }
 
   if (winner.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
