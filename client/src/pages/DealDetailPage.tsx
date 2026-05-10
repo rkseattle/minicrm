@@ -11,7 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
-import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
+import FieldMergeModal from '@/components/FieldMergeModal.js';
 import DealForm from '@/components/DealForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -73,8 +73,10 @@ export default function DealDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  // Optimistic lock conflict state (MINCRM-349)
+  // Three-way merge conflict state (MINCRM-351)
   const [conflictPendingValues, setConflictPendingValues] = useState<DealFormValues | null>(null);
+  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
+  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -143,14 +145,23 @@ export default function DealDetailPage() {
       setIsEditing(false);
       setUpdateError(null);
       setConflictPendingValues(null);
+      setConflictBase(null);
+      setConflictTheirs(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        const cached = queryClient.getQueryData<{ deal: Record<string, unknown> }>(dealQueryKey);
+        setConflictBase(cached?.deal ?? {});
         setConflictPendingValues(variables);
+        setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
       }
@@ -226,14 +237,23 @@ export default function DealDetailPage() {
       setCloseError(null);
       setIsEditing(false);
       setConflictPendingValues(null);
+      setConflictBase(null);
+      setConflictTheirs(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        const cached = queryClient.getQueryData<{ deal: Record<string, unknown> }>(dealQueryKey);
+        setConflictBase(cached?.deal ?? {});
         setConflictPendingValues(variables.formValues);
+        setConflictTheirs(error.response?.data?.error?.current ?? null);
         setPendingClose(null);
         void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
@@ -388,19 +408,37 @@ export default function DealDetailPage() {
                 submitLabel={t('deals.saveChanges')}
                 error={updateError ?? undefined}
               />
-              {conflictPendingValues && (
-                <div className="mt-4">
-                  <OptimisticLockConflictBanner
-                    onResave={() => {
-                      updateMutation.mutate(conflictPendingValues);
-                    }}
-                    onDiscard={() => {
-                      setConflictPendingValues(null);
-                      setIsEditing(false);
-                    }}
-                  />
-                </div>
-              )}
+              <FieldMergeModal
+                isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
+                onClose={() => {
+                  setConflictPendingValues(null);
+                  setConflictBase(null);
+                  setConflictTheirs(null);
+                  setIsEditing(false);
+                }}
+                entityType="deal"
+                base={conflictBase ?? {}}
+                theirs={conflictTheirs ?? {}}
+                mine={(conflictPendingValues as unknown as Record<string, unknown>) ?? {}}
+                fieldLabels={{
+                  name: t('deals.nameLabel'),
+                  stage: t('deals.stageLabel'),
+                  value: t('deals.valueLabel'),
+                  currency: t('deals.currencyLabel'),
+                  close_date: t('deals.closeDateLabel'),
+                  probability: t('deals.probabilityLabel'),
+                  owner_id: t('deals.ownerLabel'),
+                }}
+                onResolve={(resolved) => {
+                  updateMutation.mutate({
+                    ...(conflictPendingValues as DealFormValues),
+                    ...(resolved as Partial<DealFormValues>),
+                  });
+                  setConflictPendingValues(null);
+                  setConflictBase(null);
+                  setConflictTheirs(null);
+                }}
+              />
             </div>
             {id && (
               <CustomFieldsSection

@@ -1035,9 +1035,20 @@
     "RESET_TOKEN_INVALID": "此重置链接无效或已过期。",
     "generic": "出了问题，请重试。",
     "loadContactsFailed": "无法加载联系人，请刷新页面。",
-    "optimisticLockConflict": "您编辑时，该记录已被其他用户修改。您未保存的更改如下所示——请查看并重新保存，或放弃更改。",
-    "optimisticLockResave": "重新保存我的更改",
-    "optimisticLockDiscard": "放弃我的更改"
+    "fieldMergeTitle": "解决冲突更改",
+    "fieldMergeSubtitle": "另一位用户在您编辑时保存了更改。请查看以下字段，并选择要保留的值。",
+    "fieldMergeField": "字段",
+    "fieldMergeOriginal": "原始值",
+    "fieldMergeTheirVersion": "他们的版本",
+    "fieldMergeYourVersion": "您的版本",
+    "fieldMergeKeep": "保留",
+    "fieldMergeKeepTheirs": "他们的",
+    "fieldMergeKeepMine": "我的",
+    "fieldMergeAuto": "自动",
+    "fieldMergeChoiceLabel": "选择要为 {{field}} 保留的值",
+    "fieldMergeSaveResolved": "保存解决方案",
+    "fieldMergeDiscard": "放弃我的更改",
+    "fieldMergeNoChanges": "未找到冲突字段。"
   },
   "search": {
     "inputLabel": "搜索",

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
 import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
-import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
+import FieldMergeModal from '@/components/FieldMergeModal.js';
 import {
   listActivities,
   createActivity,
@@ -63,10 +63,12 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [editError, setEditError] = useState<string | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  // Optimistic lock conflict state — tracks which activity has a pending conflict (MINCRM-349)
+  // Three-way merge conflict state — tracks which activity has a pending conflict (MINCRM-351)
   const [editConflict, setEditConflict] = useState<{
     activityId: string;
     pendingValues: ActivityFormValues;
+    base: Record<string, unknown>;
+    theirs: Record<string, unknown>;
   } | null>(null);
 
   /** Number of activities to show; expanded by ACTIVITY_PAGE_SIZE on each "Load more" click */
@@ -132,12 +134,24 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setEditConflict(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        setEditConflict({ activityId: variables.id, pendingValues: variables.values });
+        // Capture base from current timeline data before invalidating (MINCRM-351)
+        const activities: ActivityResponse[] = data?.data ?? [];
+        const baseActivity = activities.find((a) => a.id === variables.id);
+        setEditConflict({
+          activityId: variables.id,
+          pendingValues: variables.values,
+          base: (baseActivity as unknown as Record<string, unknown>) ?? {},
+          theirs: error.response?.data?.error?.current ?? {},
+        });
         void queryClient.invalidateQueries({ queryKey });
         return;
       }
@@ -274,23 +288,41 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         submitLabel={t('activities.saveChanges')}
                         error={editError ?? undefined}
                       />
-                      {editConflict?.activityId === activity.id && (
-                        <div className="mt-3">
-                          <OptimisticLockConflictBanner
-                            onResave={() => {
-                              updateMutation.mutate({
-                                id: activity.id,
-                                values: editConflict.pendingValues,
-                                version: activity.version,
-                              });
-                            }}
-                            onDiscard={() => {
-                              setEditConflict(null);
-                              setEditingId(null);
-                            }}
-                          />
-                        </div>
-                      )}
+                      <FieldMergeModal
+                        isOpen={editConflict?.activityId === activity.id}
+                        onClose={() => {
+                          setEditConflict(null);
+                          setEditingId(null);
+                        }}
+                        entityType="activity"
+                        base={editConflict?.base ?? {}}
+                        theirs={editConflict?.theirs ?? {}}
+                        mine={
+                          (editConflict?.pendingValues as unknown as Record<string, unknown>) ?? {}
+                        }
+                        fieldLabels={{
+                          subject: t('activities.subjectLabel'),
+                          notes: t('activities.notesLabel'),
+                          type: t('activities.typeLabel'),
+                          direction: t('activities.directionLabel'),
+                          due_date: t('activities.dueDateLabel'),
+                          outcome: t('activities.outcomeLabel'),
+                        }}
+                        onResolve={(resolved) => {
+                          // mutationFn reads fresh version from cache after the invalidation (MINCRM-351)
+                          const activities: ActivityResponse[] = data?.data ?? [];
+                          const fresh = activities.find((a) => a.id === activity.id);
+                          updateMutation.mutate({
+                            id: activity.id,
+                            values: {
+                              ...(editConflict?.pendingValues as ActivityFormValues),
+                              ...(resolved as Partial<ActivityFormValues>),
+                            },
+                            version: fresh?.version ?? activity.version,
+                          });
+                          setEditConflict(null);
+                        }}
+                      />
                     </>
                   ) : (
                     <div className="flex items-start gap-3">

@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
-import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
+import FieldMergeModal from '@/components/FieldMergeModal.js';
 import AccountForm from '@/components/AccountForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -40,10 +40,12 @@ export default function AccountDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
-  // Optimistic lock conflict state (MINCRM-349)
+  // Three-way merge conflict state (MINCRM-351)
   const [conflictPendingValues, setConflictPendingValues] = useState<AccountFormValues | null>(
     null,
   );
+  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
+  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
@@ -114,14 +116,25 @@ export default function AccountDetailPage() {
       setIsEditing(false);
       setUpdateError(null);
       setConflictPendingValues(null);
+      setConflictBase(null);
+      setConflictTheirs(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        const cached = queryClient.getQueryData<{ account: Record<string, unknown> }>(
+          accountQueryKey,
+        );
+        setConflictBase(cached?.account ?? {});
         setConflictPendingValues(variables);
+        setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: accountQueryKey });
         return;
       }
@@ -265,19 +278,37 @@ export default function AccountDetailPage() {
                 submitLabel={t('accounts.saveChanges')}
                 error={updateError ?? undefined}
               />
-              {conflictPendingValues && (
-                <div className="mt-4">
-                  <OptimisticLockConflictBanner
-                    onResave={() => {
-                      updateMutation.mutate(conflictPendingValues);
-                    }}
-                    onDiscard={() => {
-                      setConflictPendingValues(null);
-                      setIsEditing(false);
-                    }}
-                  />
-                </div>
-              )}
+              <FieldMergeModal
+                isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
+                onClose={() => {
+                  setConflictPendingValues(null);
+                  setConflictBase(null);
+                  setConflictTheirs(null);
+                  setIsEditing(false);
+                }}
+                entityType="account"
+                base={conflictBase ?? {}}
+                theirs={conflictTheirs ?? {}}
+                mine={(conflictPendingValues as unknown as Record<string, unknown>) ?? {}}
+                fieldLabels={{
+                  name: t('accounts.nameLabel'),
+                  industry: t('accounts.industryLabel'),
+                  website: t('accounts.websiteLabel'),
+                  employee_range: t('accounts.employeeRangeLabel'),
+                  revenue_range: t('accounts.revenueRangeLabel'),
+                  owner_id: t('accounts.ownerLabel'),
+                  account_type: t('accounts.accountTypeLabel'),
+                }}
+                onResolve={(resolved) => {
+                  updateMutation.mutate({
+                    ...(conflictPendingValues as AccountFormValues),
+                    ...(resolved as Partial<AccountFormValues>),
+                  });
+                  setConflictPendingValues(null);
+                  setConflictBase(null);
+                  setConflictTheirs(null);
+                }}
+              />
             </div>
             {id && (
               <CustomFieldsSection

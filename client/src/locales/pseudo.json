@@ -899,9 +899,20 @@
     "RESET_TOKEN_INVALID": "[Thïŝ rëŝët lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~]",
     "generic": "[Ŝömëthïñg wëñt wröñg. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "loadContactsFailed": "[Ĉöüld ñöt löäd ĉöñtäĉtŝ. Plëäŝë rëfrëŝh thë pägë.~~~~~~~~~~~~~~~]",
-    "optimisticLockConflict": "[Thïŝ rëĉörd wäŝ möδïfïëd by äñöthër üŝër whïlë yöü wërë ëdïtïñg. Yöür üñŝävëd ĉhäñgëŝ ärë ŝhöwñ — plëäŝë rëvïëw äñd rë-ŝävë, ör dïŝĉärd.~~~~~~~~~~~~~~~~~~~~~~~~~]",
-    "optimisticLockResave": "[Rë-ŝävë my ĉhäñgëŝ~~~~~~~~~]",
-    "optimisticLockDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~~~~]"
+    "fieldMergeTitle": "[Rëŝölvë ĉöñflïĉtïñg ĉhäñgëŝ~~~~~~~~~]",
+    "fieldMergeSubtitle": "[Äñöthër üŝër ŝävëd ĉhäñgëŝ whïlë yöü wërë ëdïtïñg. Rëvïëw thë fïëldŝ bëlöw äñd ĉhööŝë whïĉh välüëŝ tö këëp.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "fieldMergeField": "[Fïëld~~~~]",
+    "fieldMergeOriginal": "[Örïgïñäl~~~~]",
+    "fieldMergeTheirVersion": "[Thëïr vërŝïöñ~~~~]",
+    "fieldMergeYourVersion": "[Yöür vërŝïöñ~~~~]",
+    "fieldMergeKeep": "[Këëp~~~~]",
+    "fieldMergeKeepTheirs": "[Thëïrŝ~~~~]",
+    "fieldMergeKeepMine": "[Mïñë~~~~]",
+    "fieldMergeAuto": "[äütö]",
+    "fieldMergeChoiceLabel": "[Ĉhööŝë välüë tö këëp för {{field}}~~~~~~~~~]",
+    "fieldMergeSaveResolved": "[Ŝävë rëŝölvëd~~~~]",
+    "fieldMergeDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~~~~]",
+    "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

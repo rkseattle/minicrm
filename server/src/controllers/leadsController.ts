@@ -173,7 +173,9 @@ export async function updateLeadHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      res.status(409).json({ error: { code, message: (err as Error).message } });
+      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      const current = await findLeadById(id);
+      res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
     }
     throw err;

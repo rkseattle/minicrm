@@ -1035,9 +1035,20 @@
     "RESET_TOKEN_INVALID": "Este enlace de restablecimiento es inválido o ha expirado.",
     "generic": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "loadContactsFailed": "No se pudieron cargar los contactos. Por favor, recarga la página.",
-    "optimisticLockConflict": "Este registro fue modificado por otro usuario mientras lo editabas. Tus cambios no guardados se muestran a continuación — por favor, revisa y guarda de nuevo, o descarta.",
-    "optimisticLockResave": "Volver a guardar mis cambios",
-    "optimisticLockDiscard": "Descartar mis cambios"
+    "fieldMergeTitle": "Resolver cambios conflictivos",
+    "fieldMergeSubtitle": "Otro usuario guardó cambios mientras editabas. Revisa los campos a continuación y elige qué valores conservar.",
+    "fieldMergeField": "Campo",
+    "fieldMergeOriginal": "Original",
+    "fieldMergeTheirVersion": "Su versión",
+    "fieldMergeYourVersion": "Tu versión",
+    "fieldMergeKeep": "Conservar",
+    "fieldMergeKeepTheirs": "La suya",
+    "fieldMergeKeepMine": "La mía",
+    "fieldMergeAuto": "auto",
+    "fieldMergeChoiceLabel": "Elige el valor a conservar para {{field}}",
+    "fieldMergeSaveResolved": "Guardar resolución",
+    "fieldMergeDiscard": "Descartar mis cambios",
+    "fieldMergeNoChanges": "No se encontraron campos en conflicto."
   },
   "search": {
     "inputLabel": "Buscar",

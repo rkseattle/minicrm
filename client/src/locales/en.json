@@ -1000,9 +1000,20 @@
     "RESET_TOKEN_INVALID": "This reset link is invalid or has expired.",
     "generic": "Something went wrong. Please try again.",
     "loadContactsFailed": "Could not load contacts. Please refresh the page.",
-    "optimisticLockConflict": "This record was modified by another user while you were editing. Your unsaved changes are shown — please review and re-save, or discard.",
-    "optimisticLockResave": "Re-save my changes",
-    "optimisticLockDiscard": "Discard my changes"
+    "fieldMergeTitle": "Resolve conflicting changes",
+    "fieldMergeSubtitle": "Another user saved changes while you were editing. Review the fields below and choose which values to keep.",
+    "fieldMergeField": "Field",
+    "fieldMergeOriginal": "Original",
+    "fieldMergeTheirVersion": "Their version",
+    "fieldMergeYourVersion": "Your version",
+    "fieldMergeKeep": "Keep",
+    "fieldMergeKeepTheirs": "Theirs",
+    "fieldMergeKeepMine": "Mine",
+    "fieldMergeAuto": "auto",
+    "fieldMergeChoiceLabel": "Choose value to keep for {{field}}",
+    "fieldMergeSaveResolved": "Save resolved",
+    "fieldMergeDiscard": "Discard my changes",
+    "fieldMergeNoChanges": "No conflicting fields found."
   },
   "search": {
     "inputLabel": "Search",

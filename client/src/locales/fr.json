@@ -1035,9 +1035,20 @@
     "RESET_TOKEN_INVALID": "Ce lien de réinitialisation est invalide ou a expiré.",
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
     "loadContactsFailed": "Impossible de charger les contacts. Veuillez actualiser la page.",
-    "optimisticLockConflict": "Cet enregistrement a été modifié par un autre utilisateur pendant que vous l'éditiez. Vos modifications non enregistrées sont affichées — veuillez les vérifier et les re-sauvegarder, ou les ignorer.",
-    "optimisticLockResave": "Re-sauvegarder mes modifications",
-    "optimisticLockDiscard": "Ignorer mes modifications"
+    "fieldMergeTitle": "Résoudre les conflits",
+    "fieldMergeSubtitle": "Un autre utilisateur a enregistré des modifications pendant que vous éditiez. Examinez les champs ci-dessous et choisissez les valeurs à conserver.",
+    "fieldMergeField": "Champ",
+    "fieldMergeOriginal": "Original",
+    "fieldMergeTheirVersion": "Leur version",
+    "fieldMergeYourVersion": "Votre version",
+    "fieldMergeKeep": "Conserver",
+    "fieldMergeKeepTheirs": "La leur",
+    "fieldMergeKeepMine": "La mienne",
+    "fieldMergeAuto": "auto",
+    "fieldMergeChoiceLabel": "Choisir la valeur à conserver pour {{field}}",
+    "fieldMergeSaveResolved": "Enregistrer la résolution",
+    "fieldMergeDiscard": "Ignorer mes modifications",
+    "fieldMergeNoChanges": "Aucun champ en conflit trouvé."
   },
   "search": {
     "inputLabel": "Rechercher",
