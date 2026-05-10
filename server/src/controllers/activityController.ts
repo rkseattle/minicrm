@@ -22,7 +22,13 @@ import {
   deleteActivity,
 } from '../services/activityService.js';
 
-const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only edit or delete records you own. Contact an admin to make changes to records owned by others.',
+  },
+};
 
 /**
  * POST /api/activities
@@ -186,7 +192,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -241,7 +247,7 @@ export async function deleteActivityHandler(req: Request, res: Response): Promis
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 

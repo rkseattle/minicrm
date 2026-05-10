@@ -27,7 +27,13 @@ import { queueAssignmentNotification } from '../services/notificationService.js'
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 
-const FORBIDDEN_ERROR = { error: { code: 'FORBIDDEN', message: 'Forbidden' } };
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only edit or delete records you own. Contact an admin to make changes to records owned by others.',
+  },
+};
 
 /**
  * POST /api/accounts
@@ -164,7 +170,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -315,7 +321,7 @@ export async function deleteAccountHandler(req: Request, res: Response): Promise
   }
 
   if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ERROR);
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 

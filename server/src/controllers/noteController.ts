@@ -191,7 +191,14 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const typedErr = err as { code?: string };
     if (typedErr.code === 'FORBIDDEN') {
-      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+      res
+        .status(403)
+        .json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Only the note creator or an admin can edit this note.',
+          },
+        });
       return;
     }
     if (typedErr.code === 'VISIBILITY_CHANGE_FORBIDDEN') {
@@ -244,7 +251,14 @@ export async function deleteNoteHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const typedErr = err as { code?: string };
     if (typedErr.code === 'FORBIDDEN') {
-      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+      res
+        .status(403)
+        .json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Only the note creator or an admin can delete this note.',
+          },
+        });
       return;
     }
     throw err;
