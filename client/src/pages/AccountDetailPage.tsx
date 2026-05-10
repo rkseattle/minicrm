@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import AccountForm from '@/components/AccountForm.js';
@@ -142,7 +143,7 @@ export default function AccountDetailPage() {
         void queryClient.invalidateQueries({ queryKey: accountQueryKey });
         return;
       }
-      setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setUpdateError(resolveApiError(error, t));
     },
   });
 
@@ -153,7 +154,7 @@ export default function AccountDetailPage() {
       navigate('/accounts', { replace: true });
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setDeleteError(resolveApiError(error, t));
     },
   });
 

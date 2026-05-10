@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
 import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
@@ -104,7 +105,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setCreateError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setCreateError(resolveApiError(error, t));
     },
   });
 
@@ -155,7 +156,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         void queryClient.invalidateQueries({ queryKey });
         return;
       }
-      setEditError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setEditError(resolveApiError(error, t));
     },
   });
 
@@ -167,7 +168,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setCompleteError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCompleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setCompleteError(resolveApiError(error, t));
     },
   });
 
@@ -178,7 +179,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setDeleteError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setDeleteError(resolveApiError(error, t));
     },
   });
 

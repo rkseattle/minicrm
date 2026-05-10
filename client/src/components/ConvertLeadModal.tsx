@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import { useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
@@ -118,7 +119,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
       onConverted(data.conversion);
     },
     onError: (err: { response?: { data?: { error?: { message?: string } } } }) => {
-      setConvertError(err.response?.data?.error?.message ?? t('leads.convertError'));
+      setConvertError(resolveApiError(err, t, 'leads.convertError'));
     },
   });
 

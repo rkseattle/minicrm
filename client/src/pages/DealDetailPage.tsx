@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import DealForm from '@/components/DealForm.js';
@@ -169,7 +170,7 @@ export default function DealDetailPage() {
         void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
       }
-      setUpdateError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setUpdateError(resolveApiError(error, t));
     },
   });
 
@@ -181,7 +182,7 @@ export default function DealDetailPage() {
       navigate('/deals', { replace: true });
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setDeleteError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setDeleteError(resolveApiError(error, t));
     },
   });
 
@@ -193,7 +194,7 @@ export default function DealDetailPage() {
       setLinkError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setLinkError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setLinkError(resolveApiError(error, t));
     },
   });
 
@@ -204,7 +205,7 @@ export default function DealDetailPage() {
       setUnlinkError(null);
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setUnlinkError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setUnlinkError(resolveApiError(error, t));
     },
   });
 
@@ -268,7 +269,7 @@ export default function DealDetailPage() {
         void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
       }
-      setCloseError(error.response?.data?.error?.message ?? t('errors.generic'));
+      setCloseError(resolveApiError(error, t));
     },
   });
 

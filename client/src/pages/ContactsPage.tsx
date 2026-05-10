@@ -10,6 +10,7 @@ import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
@@ -203,7 +204,7 @@ export default function ContactsPage() {
         setDuplicateContact(error.response.data.duplicate);
         setCreateError(null);
       } else {
-        setCreateError(error.response?.data?.error?.message ?? t('errors.generic'));
+        setCreateError(resolveApiError(error, t));
       }
     },
   });
