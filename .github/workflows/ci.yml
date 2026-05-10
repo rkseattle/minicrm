@@ -320,8 +320,8 @@ jobs:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
     # suites; they run alongside all functional tests in the same phase.
-    # MINCRM-217: 4 shards × 4 workers = 16 parallel test slots per project;
-    # target per-project runtime from ~8–10 minutes down to ~2–3 minutes.
+    # MINCRM-217: 4 shards × 2 workers = 8 parallel test slots per project;
+    # 2 workers matches GitHub free-tier runner vCPU count (2 vCPUs per ubuntu-latest).
     # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
     needs: [server-tests, client-tests, changes]
@@ -517,7 +517,7 @@ jobs:
           --config=qa/e2e/playwright.config.ts
           --project=${{ matrix.project }}
           --shard=${{ matrix.shard }}/4
-          --workers=4
+          --workers=2
           --grep @functional
           --grep-invert visual-regression
           qa/e2e/tests/apps/minicrm/functional/
