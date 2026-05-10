@@ -61,6 +61,26 @@ jobs:
               - 'qa/e2e/tests/apps/minicrm/functional/visual/**'
               - 'qa/e2e/snapshots/**'
 
+      - name: Clear stale E2E functional test comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: playwright-results-functional
+          message: |
+            ## Playwright Test Results — Functional
+
+            ⏳ Run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) in progress…
+
+      - name: Clear stale unit test comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: unit-test-coverage
+          message: |
+            ## Phase 2 — Unit & Framework Tests
+
+            ⏳ Run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) in progress…
+
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
