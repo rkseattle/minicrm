@@ -477,27 +477,20 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         'bulk action bar should disappear after successful reassign',
       ).toBe(true);
 
-      // Verify all three contacts have the new owner and versions are incremented
+      // Verify all three contacts have the new owner.
+      // Bulk ops are exempt from optimistic locking — they do NOT increment version,
+      // and they do NOT require a version in the request body.
       const r1 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`);
       expect(r1.body.contact.owner_id, 'c1 should have new owner').toBe(newOwner.id);
-      expect(
-        r1.body.contact.version,
-        'c1 version should be incremented by bulk op',
-      ).toBeGreaterThan(1);
+      expect(r1.body.contact.version, 'c1 version unchanged by bulk op').toBe(1);
 
       const r2 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`);
       expect(r2.body.contact.owner_id, 'c2 should have new owner').toBe(newOwner.id);
-      expect(
-        r2.body.contact.version,
-        'c2 version should be incremented by bulk op',
-      ).toBeGreaterThan(1);
+      expect(r2.body.contact.version, 'c2 version unchanged by bulk op').toBe(1);
 
       const r3 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c3.id}`);
       expect(r3.body.contact.owner_id, 'c3 should have new owner').toBe(newOwner.id);
-      expect(
-        r3.body.contact.version,
-        'c3 version should be incremented by bulk op',
-      ).toBeGreaterThan(1);
+      expect(r3.body.contact.version, 'c3 version unchanged by bulk op').toBe(1);
 
       // Deactivate the temp user (users cannot be hard-deleted)
       await restClient.patch(`/api/v1/users/${newOwner.id}/deactivate`, {});
