@@ -152,7 +152,7 @@ export default function ContactDetailPage() {
   const linkedDeals = contactDealsData?.deals ?? [];
 
   const updateMutation = useMutation({
-    mutationFn: (values: ContactFormValues) =>
+    mutationFn: ({ values, version }: { values: ContactFormValues; version?: number }) =>
       updateContact(id!, {
         first_name: values.first_name,
         last_name: values.last_name,
@@ -165,10 +165,12 @@ export default function ContactDetailPage() {
         linkedin_url: values.linkedin_url || undefined,
         twitter_x_url: values.twitter_x_url || undefined,
         other_url: values.other_url || undefined,
-        // Read version from the current query cache at call time (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
+          version ??
           queryClient.getQueryData<{ contact: { version: number } }>(contactQueryKey)?.contact
-            .version ?? 1,
+            .version ??
+          1,
       }),
     onSuccess: async () => {
       // Save custom field values after core record is saved (MINCRM-276)
@@ -207,7 +209,7 @@ export default function ContactDetailPage() {
           contactQueryKey,
         );
         setConflictBase(cached?.contact ?? {});
-        setConflictPendingValues(variables);
+        setConflictPendingValues(variables.values);
         setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: contactQueryKey });
         return;
@@ -420,7 +422,7 @@ export default function ContactDetailPage() {
               users={activeUsers}
               onSubmit={(values) => {
                 setUpdateError(null);
-                updateMutation.mutate(values);
+                updateMutation.mutate({ values });
               }}
               isSubmitting={updateMutation.isPending}
               formRef={editFormRef}
@@ -708,10 +710,13 @@ export default function ContactDetailPage() {
                 other_url: t('contacts.otherUrlLabel'),
               }}
               onResolve={(resolved) => {
-                // mutationFn reads the fresh version from cache (now theirs.version after refetch)
+                // Use the version from theirs (the 409 body) — authoritative, no cache race (MINCRM-351)
                 updateMutation.mutate({
-                  ...(conflictPendingValues as ContactFormValues),
-                  ...(resolved as Partial<ContactFormValues>),
+                  values: {
+                    ...(conflictPendingValues as ContactFormValues),
+                    ...(resolved as Partial<ContactFormValues>),
+                  },
+                  version: conflictTheirs?.version as number | undefined,
                 });
                 setConflictPendingValues(null);
                 setConflictBase(null);
