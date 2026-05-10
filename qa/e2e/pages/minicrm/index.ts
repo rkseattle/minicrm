@@ -82,3 +82,6 @@ export type { AutomationPageContext } from './AutomationPage.js';
 
 export { NotesPage } from './NotesPage.js';
 export type { NotesPageContext } from './NotesPage.js';
+
+export { ConflictBannerWidget } from './ConflictBannerWidget.js';
+export type { ConflictBannerWidgetContext } from './ConflictBannerWidget.js';
