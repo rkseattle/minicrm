@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
-import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
+import FieldMergeModal from '@/components/FieldMergeModal.js';
 import ContactForm from '@/components/ContactForm.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
@@ -78,10 +78,12 @@ export default function ContactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
-  // Optimistic lock conflict state (MINCRM-349)
+  // Three-way merge conflict state (MINCRM-351)
   const [conflictPendingValues, setConflictPendingValues] = useState<ContactFormValues | null>(
     null,
   );
+  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
+  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -187,15 +189,26 @@ export default function ContactDetailPage() {
       setIsEditing(false);
       setUpdateError(null);
       setConflictPendingValues(null);
+      setConflictBase(null);
+      setConflictTheirs(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        // Preserve unsaved values so the user can compare with the reloaded record (MINCRM-349)
+        // Capture base from cache before invalidating, then store theirs from the 409 body (MINCRM-351)
+        const cached = queryClient.getQueryData<{ contact: Record<string, unknown> }>(
+          contactQueryKey,
+        );
+        setConflictBase(cached?.contact ?? {});
         setConflictPendingValues(variables);
+        setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: contactQueryKey });
         return;
       }
@@ -670,19 +683,41 @@ export default function ContactDetailPage() {
               />
             )}
 
-            {conflictPendingValues && (
-              <div className="mt-4">
-                <OptimisticLockConflictBanner
-                  onResave={() => {
-                    updateMutation.mutate(conflictPendingValues);
-                  }}
-                  onDiscard={() => {
-                    setConflictPendingValues(null);
-                    setIsEditing(false);
-                  }}
-                />
-              </div>
-            )}
+            <FieldMergeModal
+              isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
+              onClose={() => {
+                setConflictPendingValues(null);
+                setConflictBase(null);
+                setConflictTheirs(null);
+                setIsEditing(false);
+              }}
+              entityType="contact"
+              base={conflictBase ?? {}}
+              theirs={conflictTheirs ?? {}}
+              mine={(conflictPendingValues as unknown as Record<string, unknown>) ?? {}}
+              fieldLabels={{
+                first_name: t('contacts.firstNameLabel'),
+                last_name: t('contacts.lastNameLabel'),
+                email: t('contacts.emailLabel'),
+                phone: t('contacts.phoneLabel'),
+                title: t('contacts.titleLabel'),
+                department: t('contacts.departmentLabel'),
+                owner_id: t('contacts.ownerLabel'),
+                linkedin_url: t('contacts.linkedinUrlLabel'),
+                twitter_x_url: t('contacts.twitterXUrlLabel'),
+                other_url: t('contacts.otherUrlLabel'),
+              }}
+              onResolve={(resolved) => {
+                // mutationFn reads the fresh version from cache (now theirs.version after refetch)
+                updateMutation.mutate({
+                  ...(conflictPendingValues as ContactFormValues),
+                  ...(resolved as Partial<ContactFormValues>),
+                });
+                setConflictPendingValues(null);
+                setConflictBase(null);
+                setConflictTheirs(null);
+              }}
+            />
 
             {updateError && (
               <p role="alert" className="mt-4 text-sm text-red-600" data-testid="update-error">

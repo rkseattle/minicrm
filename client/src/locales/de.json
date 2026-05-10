@@ -1035,9 +1035,20 @@
     "RESET_TOKEN_INVALID": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "loadContactsFailed": "Kontakte konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
-    "optimisticLockConflict": "Dieser Datensatz wurde von einem anderen Benutzer bearbeitet, während Sie ihn bearbeiteten. Ihre nicht gespeicherten Änderungen werden angezeigt — bitte überprüfen und erneut speichern oder verwerfen.",
-    "optimisticLockResave": "Meine Änderungen erneut speichern",
-    "optimisticLockDiscard": "Meine Änderungen verwerfen"
+    "fieldMergeTitle": "Konflikte lösen",
+    "fieldMergeSubtitle": "Ein anderer Benutzer hat Änderungen gespeichert, während Sie bearbeitet haben. Überprüfen Sie die Felder unten und wählen Sie, welche Werte Sie behalten möchten.",
+    "fieldMergeField": "Feld",
+    "fieldMergeOriginal": "Original",
+    "fieldMergeTheirVersion": "Ihre Version",
+    "fieldMergeYourVersion": "Meine Version",
+    "fieldMergeKeep": "Behalten",
+    "fieldMergeKeepTheirs": "Ihrer",
+    "fieldMergeKeepMine": "Meiner",
+    "fieldMergeAuto": "auto",
+    "fieldMergeChoiceLabel": "Wählen Sie den zu behaltenden Wert für {{field}}",
+    "fieldMergeSaveResolved": "Auflösung speichern",
+    "fieldMergeDiscard": "Meine Änderungen verwerfen",
+    "fieldMergeNoChanges": "Keine Konflikte gefunden."
   },
   "search": {
     "inputLabel": "Suche",

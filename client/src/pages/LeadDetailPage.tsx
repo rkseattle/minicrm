@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
-import OptimisticLockConflictBanner from '@/components/OptimisticLockConflictBanner.js';
+import FieldMergeModal from '@/components/FieldMergeModal.js';
 import LeadForm from '@/components/LeadForm.js';
 import ConvertLeadModal from '@/components/ConvertLeadModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
@@ -44,8 +44,10 @@ export default function LeadDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  // Optimistic lock conflict state (MINCRM-349)
+  // Three-way merge conflict state (MINCRM-351)
   const [conflictPendingValues, setConflictPendingValues] = useState<LeadFormValues | null>(null);
+  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
+  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -90,14 +92,23 @@ export default function LeadDetailPage() {
       setIsEditing(false);
       setUpdateError(null);
       setConflictPendingValues(null);
+      setConflictBase(null);
+      setConflictTheirs(null);
     },
     onError: (
-      error: { response?: { data?: { error?: { code?: string; message?: string } } } },
+      error: {
+        response?: {
+          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
+        };
+      },
       variables,
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
+        const cached = queryClient.getQueryData<{ lead: Record<string, unknown> }>(leadQueryKey);
+        setConflictBase(cached?.lead ?? {});
         setConflictPendingValues(variables);
+        setConflictTheirs(error.response?.data?.error?.current ?? null);
         void queryClient.invalidateQueries({ queryKey: leadQueryKey });
         return;
       }
@@ -248,19 +259,38 @@ export default function LeadDetailPage() {
                 {updateError}
               </p>
             )}
-            {conflictPendingValues && (
-              <div className="mb-4">
-                <OptimisticLockConflictBanner
-                  onResave={() => {
-                    updateMutation.mutate(conflictPendingValues);
-                  }}
-                  onDiscard={() => {
-                    setConflictPendingValues(null);
-                    setIsEditing(false);
-                  }}
-                />
-              </div>
-            )}
+            <FieldMergeModal
+              isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
+              onClose={() => {
+                setConflictPendingValues(null);
+                setConflictBase(null);
+                setConflictTheirs(null);
+                setIsEditing(false);
+              }}
+              entityType="lead"
+              base={conflictBase ?? {}}
+              theirs={conflictTheirs ?? {}}
+              mine={(conflictPendingValues as unknown as Record<string, unknown>) ?? {}}
+              fieldLabels={{
+                first_name: t('leads.firstNameLabel'),
+                last_name: t('leads.lastNameLabel'),
+                email: t('leads.emailLabel'),
+                phone: t('leads.phoneLabel'),
+                company_name: t('leads.companyLabel'),
+                lead_source: t('leads.sourceLabel'),
+                notes: t('leads.notesLabel'),
+                owner_id: t('leads.ownerLabel'),
+              }}
+              onResolve={(resolved) => {
+                updateMutation.mutate({
+                  ...(conflictPendingValues as LeadFormValues),
+                  ...(resolved as Partial<LeadFormValues>),
+                });
+                setConflictPendingValues(null);
+                setConflictBase(null);
+                setConflictTheirs(null);
+              }}
+            />
             <LeadForm
               activeUsers={activeUsers}
               isAdmin={isAdmin}
