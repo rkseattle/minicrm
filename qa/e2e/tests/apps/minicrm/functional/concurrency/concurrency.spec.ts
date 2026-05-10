@@ -266,10 +266,11 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
 
       // Record the automation rule log count before the stale save
       // We verify it does not increase after the rejected save
+      // GET /api/v1/automation/rules returns PaginatedResponse: { data: [...], total, page, limit }
       const automationRulesResponse = await restClient
-        .get<{ rules: Array<{ id: string }> }>('/api/v1/automation/rules')
-        .catch(() => ({ body: { rules: [] as Array<{ id: string }> } }));
-      const ruleIds = automationRulesResponse.body.rules.map((r) => r.id);
+        .get<{ data: Array<{ id: string }> }>('/api/v1/automation/rules')
+        .catch(() => ({ body: { data: [] as Array<{ id: string }> } }));
+      const ruleIds = automationRulesResponse.body.data.map((r) => r.id);
 
       // Submit the stale UI save — expect conflict modal
       await detailPage.submitForm();
