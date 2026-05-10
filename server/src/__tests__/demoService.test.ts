@@ -1,6 +1,6 @@
 /**
  * Integration tests for demoService.
- * Verifies seed, remove, reset, and status operations against a real test DB. (MINCRM-103, MINCRM-206)
+ * Verifies seed, remove, reset, and status operations against a real test DB. (MINCRM-103, MINCRM-206, MINCRM-353)
  *
  * Runs against the minicrm_test database.
  */
@@ -18,7 +18,50 @@ const ADMIN_USER = {
   status: 'active' as const,
 };
 
+// Derived from DEMO_WEBHOOK_SUBSCRIPTIONS in demoService.ts
+const DEMO_WEBHOOK_URLS = [
+  'https://hooks.example.com/slack/minicrm-deals',
+  'https://hooks.zapier.com/example/minicrm',
+];
+// Derived from DEMO_CUSTOM_FIELD_DEFINITIONS in demoService.ts
+const DEMO_CUSTOM_FIELD_NAMES = [
+  'LinkedIn URL',
+  'Lead Source Detail',
+  'Contract Signed Date',
+  'Estimated ARR',
+];
+// Derived from DEMO_CURRENCIES in demoService.ts
+const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD'];
+
 async function cleanDemoData(): Promise<void> {
+  // Delete notes created by demo rep first (no is_demo column on notes)
+  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
+    'alex.rivera@demo.minicrm.app',
+  ]);
+  // Delete notes linked to demo entities
+  await pool.query(
+    `DELETE FROM notes WHERE entity_id IN (
+       SELECT id FROM contacts WHERE is_demo = true
+       UNION SELECT id FROM accounts WHERE is_demo = true
+       UNION SELECT id FROM deals WHERE is_demo = true
+       UNION SELECT id FROM leads WHERE is_demo = true
+     )`,
+  );
+  await pool.query(
+    `DELETE FROM custom_field_values WHERE record_id IN (
+       SELECT id FROM contacts WHERE is_demo = true
+       UNION SELECT id FROM deals WHERE is_demo = true
+     )`,
+  );
+  await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
+    DEMO_CUSTOM_FIELD_NAMES,
+  ]);
+  await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
+    DEMO_WEBHOOK_URLS,
+  ]);
+  await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
+    DEMO_CURRENCY_CODES,
+  ]);
   await pool.query(`DELETE FROM leads WHERE is_demo = true`);
   await pool.query(
     `DELETE FROM contact_addresses
@@ -58,6 +101,10 @@ async function cleanDemoData(): Promise<void> {
 
 beforeAll(async () => {
   await cleanDemoData();
+  // Delete notes created_by admin user before deleting the user
+  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
+    ADMIN_USER.email,
+  ]);
   await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
   await createUser(ADMIN_USER);
 });
@@ -73,6 +120,37 @@ afterAll(async () => {
   const adminId = adminResult.rows[0]?.id;
 
   if (adminId) {
+    // Delete notes created_by admin and rep before deleting their entities/users
+    await pool.query(`DELETE FROM notes WHERE created_by = $1`, [adminId]);
+    await pool.query(
+      `DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`,
+      ['alex.rivera@demo.minicrm.app'],
+    );
+    // Delete notes linked to admin-owned entities
+    await pool.query(
+      `DELETE FROM notes WHERE entity_id IN (
+         SELECT id FROM contacts WHERE owner_id = $1
+         UNION SELECT id FROM accounts WHERE owner_id = $1
+         UNION SELECT id FROM deals WHERE owner_id = $1
+       )`,
+      [adminId],
+    );
+    await pool.query(
+      `DELETE FROM custom_field_values WHERE record_id IN (
+       SELECT id FROM contacts WHERE is_demo = true OR owner_id = $1
+       UNION SELECT id FROM deals WHERE is_demo = true OR owner_id = $1
+    )`,
+      [adminId],
+    );
+    await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
+      DEMO_CUSTOM_FIELD_NAMES,
+    ]);
+    await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
+      DEMO_WEBHOOK_URLS,
+    ]);
+    await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
+      DEMO_CURRENCY_CODES,
+    ]);
     await pool.query(`DELETE FROM leads WHERE is_demo = true OR owner_id = $1`, [adminId]);
     await pool.query(
       `DELETE FROM contact_addresses
@@ -556,5 +634,291 @@ describe('resetDemo', () => {
       `SELECT COUNT(*) AS count FROM leads WHERE is_demo = true`,
     );
     expect(afterLeads.rows[0].count).toBe(beforeLeads.rows[0].count);
+  });
+});
+
+// ── seedDemo — notes ──────────────────────────────────────────────────────────
+
+describe('seedDemo — notes', () => {
+  it('inserts 8 notes linked to demo entities', async () => {
+    await seedDemo();
+
+    const notes = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_id IN (
+         SELECT id FROM contacts WHERE is_demo = true
+         UNION SELECT id FROM accounts WHERE is_demo = true
+         UNION SELECT id FROM deals WHERE is_demo = true
+       )`,
+    );
+    expect(parseInt(notes.rows[0].count, 10)).toBe(8);
+  });
+
+  it('notes have valid Tiptap JSON body', async () => {
+    await seedDemo();
+
+    const notes = await pool.query<{ body: string }>(
+      `SELECT body FROM notes
+       WHERE entity_id IN (SELECT id FROM contacts WHERE is_demo = true)
+       LIMIT 1`,
+    );
+    expect(notes.rowCount).toBeGreaterThan(0);
+    // body column is text, not jsonb — parse manually
+    const body = JSON.parse(notes.rows[0].body) as Record<string, unknown>;
+    expect(body).toHaveProperty('type', 'doc');
+    expect(Array.isArray((body as { content: unknown[] }).content)).toBe(true);
+  });
+
+  it('notes are spread across contacts, accounts, and deals', async () => {
+    await seedDemo();
+
+    const contactNotes = await pool.query(
+      `SELECT n.id FROM notes n
+       JOIN contacts c ON n.entity_id = c.id
+       WHERE c.is_demo = true`,
+    );
+    const accountNotes = await pool.query(
+      `SELECT n.id FROM notes n
+       JOIN accounts a ON n.entity_id = a.id
+       WHERE a.is_demo = true`,
+    );
+    const dealNotes = await pool.query(
+      `SELECT n.id FROM notes n
+       JOIN deals d ON n.entity_id = d.id
+       WHERE d.is_demo = true`,
+    );
+
+    expect(contactNotes.rowCount).toBeGreaterThan(0);
+    expect(accountNotes.rowCount).toBeGreaterThan(0);
+    expect(dealNotes.rowCount).toBeGreaterThan(0);
+  });
+});
+
+// ── removeDemo — notes ────────────────────────────────────────────────────────
+
+describe('removeDemo — notes', () => {
+  it('removes all notes linked to demo entities', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const notes = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_id IN (
+         SELECT id FROM contacts WHERE is_demo = true
+         UNION SELECT id FROM accounts WHERE is_demo = true
+         UNION SELECT id FROM deals WHERE is_demo = true
+       )`,
+    );
+    expect(parseInt(notes.rows[0].count, 10)).toBe(0);
+  });
+});
+
+// ── seedDemo — custom fields ──────────────────────────────────────────────────
+
+describe('seedDemo — custom fields', () => {
+  it('inserts 4 custom field definitions', async () => {
+    await seedDemo();
+
+    const defs = await pool.query<{ name: string; entity_type: string; field_type: string }>(
+      `SELECT name, entity_type, field_type FROM custom_field_definitions
+       WHERE name = ANY($1::text[])
+       ORDER BY name`,
+      [DEMO_CUSTOM_FIELD_NAMES],
+    );
+    expect(defs.rowCount).toBe(4);
+  });
+
+  it('inserts correct field types for each definition', async () => {
+    await seedDemo();
+
+    const defs = await pool.query<{ name: string; field_type: string }>(
+      `SELECT name, field_type FROM custom_field_definitions
+       WHERE name = ANY($1::text[])`,
+      [DEMO_CUSTOM_FIELD_NAMES],
+    );
+    const byName = Object.fromEntries(defs.rows.map((r) => [r.name, r.field_type]));
+    expect(byName['LinkedIn URL']).toBe('text');
+    expect(byName['Lead Source Detail']).toBe('select');
+    expect(byName['Contract Signed Date']).toBe('date');
+    expect(byName['Estimated ARR']).toBe('number');
+  });
+
+  it('inserts select options for Lead Source Detail', async () => {
+    await seedDemo();
+
+    const def = await pool.query<{ options: string[] }>(
+      `SELECT options FROM custom_field_definitions WHERE name = 'Lead Source Detail'`,
+    );
+    // pg returns jsonb as a parsed JS value
+    const opts = def.rows[0].options;
+    expect(Array.isArray(opts)).toBe(true);
+    expect(opts.length).toBeGreaterThan(0);
+  });
+
+  it('inserts custom field values for demo contacts and deals', async () => {
+    await seedDemo();
+
+    const values = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM custom_field_values
+       WHERE record_id IN (
+         SELECT id FROM contacts WHERE is_demo = true
+         UNION SELECT id FROM deals WHERE is_demo = true
+       )`,
+    );
+    expect(parseInt(values.rows[0].count, 10)).toBeGreaterThan(0);
+  });
+
+  it('is idempotent — second seed does not duplicate definitions', async () => {
+    await seedDemo();
+    await removeDemo();
+    await seedDemo();
+
+    const defs = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM custom_field_definitions WHERE name = ANY($1::text[])`,
+      [DEMO_CUSTOM_FIELD_NAMES],
+    );
+    expect(parseInt(defs.rows[0].count, 10)).toBe(4);
+  });
+});
+
+// ── removeDemo — custom fields ────────────────────────────────────────────────
+
+describe('removeDemo — custom fields', () => {
+  it('removes demo custom field definitions and their values', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const defs = await pool.query(
+      `SELECT id FROM custom_field_definitions WHERE name = ANY($1::text[])`,
+      [DEMO_CUSTOM_FIELD_NAMES],
+    );
+    expect(defs.rowCount).toBe(0);
+  });
+});
+
+// ── seedDemo — webhooks ───────────────────────────────────────────────────────
+
+describe('seedDemo — webhooks', () => {
+  it('inserts 2 demo webhook subscriptions', async () => {
+    await seedDemo();
+
+    const webhooks = await pool.query(
+      `SELECT url, events FROM webhook_subscriptions WHERE url = ANY($1::text[])`,
+      [DEMO_WEBHOOK_URLS],
+    );
+    expect(webhooks.rowCount).toBe(2);
+  });
+
+  it('stores a non-empty secret_hash for each webhook', async () => {
+    await seedDemo();
+
+    const webhooks = await pool.query<{ secret_hash: string }>(
+      `SELECT secret_hash FROM webhook_subscriptions WHERE url = ANY($1::text[])`,
+      [DEMO_WEBHOOK_URLS],
+    );
+    for (const row of webhooks.rows) {
+      expect(typeof row.secret_hash).toBe('string');
+      expect(row.secret_hash.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('Slack webhook subscribes to deal.won and deal.lost events', async () => {
+    await seedDemo();
+
+    const slack = await pool.query<{ events: string[] }>(
+      `SELECT events FROM webhook_subscriptions
+       WHERE url = 'https://hooks.example.com/slack/minicrm-deals'`,
+    );
+    expect(slack.rowCount).toBe(1);
+    // pg returns arrays as JS arrays for array columns
+    const events = slack.rows[0].events;
+    expect(events).toContain('deal.won');
+    expect(events).toContain('deal.lost');
+  });
+
+  it('Zapier webhook subscribes to contact.created and contact.updated events', async () => {
+    await seedDemo();
+
+    const zapier = await pool.query<{ events: string[] }>(
+      `SELECT events FROM webhook_subscriptions
+       WHERE url = 'https://hooks.zapier.com/example/minicrm'`,
+    );
+    expect(zapier.rowCount).toBe(1);
+    const events = zapier.rows[0].events;
+    expect(events).toContain('contact.created');
+    expect(events).toContain('contact.updated');
+  });
+});
+
+// ── removeDemo — webhooks ─────────────────────────────────────────────────────
+
+describe('removeDemo — webhooks', () => {
+  it('removes demo webhook subscriptions', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const webhooks = await pool.query(
+      `SELECT id FROM webhook_subscriptions WHERE url = ANY($1::text[])`,
+      [DEMO_WEBHOOK_URLS],
+    );
+    expect(webhooks.rowCount).toBe(0);
+  });
+});
+
+// ── seedDemo — currencies ─────────────────────────────────────────────────────
+
+describe('seedDemo — currencies', () => {
+  it('inserts GBP, EUR, and CAD exchange rates', async () => {
+    await seedDemo();
+
+    const currencies = await pool.query<{ code: string; rate_to_home: string }>(
+      `SELECT code, rate_to_home FROM currencies WHERE code = ANY($1::text[]) ORDER BY code`,
+      [DEMO_CURRENCY_CODES],
+    );
+    expect(currencies.rowCount).toBe(3);
+
+    const byCode = Object.fromEntries(
+      currencies.rows.map((r) => [r.code, parseFloat(r.rate_to_home)]),
+    );
+    expect(byCode['GBP']).toBeCloseTo(1.27, 2);
+    expect(byCode['EUR']).toBeCloseTo(1.09, 2);
+    expect(byCode['CAD']).toBeCloseTo(0.73, 2);
+  });
+
+  it('inserted currencies are not the home currency', async () => {
+    await seedDemo();
+
+    const currencies = await pool.query<{ is_home: boolean }>(
+      `SELECT is_home FROM currencies WHERE code = ANY($1::text[])`,
+      [DEMO_CURRENCY_CODES],
+    );
+    expect(currencies.rows.every((r) => r.is_home === false)).toBe(true);
+  });
+
+  it('is idempotent — second seed does not create duplicate currencies', async () => {
+    await seedDemo();
+    await removeDemo();
+    await seedDemo();
+
+    const currencies = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM currencies WHERE code = ANY($1::text[])`,
+      [DEMO_CURRENCY_CODES],
+    );
+    expect(parseInt(currencies.rows[0].count, 10)).toBe(3);
+  });
+});
+
+// ── removeDemo — currencies ───────────────────────────────────────────────────
+
+describe('removeDemo — currencies', () => {
+  it('removes demo currencies after removeDemo', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const currencies = await pool.query(
+      `SELECT code FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`,
+      [DEMO_CURRENCY_CODES],
+    );
+    expect(currencies.rowCount).toBe(0);
   });
 });
