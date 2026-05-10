@@ -172,7 +172,10 @@ export default function ContactDetailPage() {
             .version ??
           1,
       }),
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // Seed the cache immediately with the PATCH response so the version is correct before
+      // any subsequent edit — invalidateQueries is async and may lose the race (MINCRM-351)
+      queryClient.setQueryData(contactQueryKey, data);
       // Save custom field values after core record is saved (MINCRM-276)
       if (customFieldValues.length > 0) {
         try {

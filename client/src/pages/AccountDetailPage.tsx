@@ -106,7 +106,9 @@ export default function AccountDetailPage() {
             .version ??
           1,
       }),
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      queryClient.setQueryData(accountQueryKey, data);
       if (customFieldValues.length > 0) {
         await putCustomFieldValues('account', id!, customFieldValues);
         queryClient.invalidateQueries({ queryKey: customFieldValuesQueryKey('account', id!) });
