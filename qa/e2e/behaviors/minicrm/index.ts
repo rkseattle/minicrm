@@ -216,3 +216,10 @@ export type {
   NavigateToAdminSettingsResult,
   ToggleAdminEmailNotificationsResult,
 } from './notifications.behaviors.js';
+
+export { simulateConcurrentEdit, assertConflictModal } from './concurrency.behaviors.js';
+export type {
+  ConcurrentEditEntityType,
+  SimulateConcurrentEditResult,
+  AssertConflictModalResult,
+} from './concurrency.behaviors.js';
