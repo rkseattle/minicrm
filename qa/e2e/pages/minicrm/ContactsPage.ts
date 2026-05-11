@@ -86,14 +86,18 @@ export class ContactsPage {
    */
   async rowCount(): Promise<number> {
     // Wait for rows or the empty state — confirms the list has settled after any mutation.
+    // Single css :is() strategy matches both desktop (contact-link-*) and mobile
+    // (contact-card-link-*) rows plus the empty state in one selector, avoiding the
+    // double-timeout from sequential strategy probing. .catch(() => null): locate().count()
+    // below is the authoritative read.
     await this.page
       .waitUntilVisible(
         [
           {
             type: 'css',
-            value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+            value:
+              ':is([data-testid^="contact-link-"], [data-testid^="contact-card-link-"], [data-testid="contacts-empty-state"])',
           },
-          { type: 'testId', value: 'contacts-empty-state' },
         ],
         { intent: 'contact rows or empty state confirming contacts list has loaded' },
         10_000,
@@ -245,17 +249,17 @@ export class ContactsPage {
       ],
       { intent: 'contacts list search input field' },
     );
-    // Wait for rows or empty state — confirms debounce fired and list re-rendered.
-    await this.page.waitUntilVisible(
+    // Wait for the loading indicator to disappear — confirms the debounce fired,
+    // the API request completed, and the list re-rendered. waitUntilHidden handles
+    // the fast-machine case where the loading state is never attached (instantaneous
+    // response) via its internal attachedTimeoutMs guard.
+    await this.page.waitUntilHidden(
       [
-        {
-          type: 'css',
-          value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
-        },
-        { type: 'testId', value: 'contacts-empty-state' },
+        { type: 'testId', value: 'contacts-loading' },
+        { type: 'css', value: '[aria-busy="true"]' },
       ],
-      { intent: 'contact rows or empty state after search query settles' },
-      15_000,
+      { intent: 'contacts loading indicator gone after search query settles' },
+      10_000,
     );
   }
 
@@ -583,9 +587,9 @@ export class ContactsPage {
           [
             {
               type: 'css',
-              value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+              value:
+                ':is([data-testid^="contact-link-"], [data-testid^="contact-card-link-"], [data-testid="contacts-empty-state"])',
             },
-            { type: 'testId', value: 'contacts-empty-state' },
           ],
           { intent: 'contact rows or empty state after sort column click settles' },
           10_000,

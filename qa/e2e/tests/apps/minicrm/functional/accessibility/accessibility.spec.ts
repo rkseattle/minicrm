@@ -184,19 +184,11 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
     5_000,
   );
 
-  // Submit with empty fields — browser native constraint validation fires
-  // (required fields), rendering per-field <p class="text-red-600"> errors.
-  // No server request is made. Wait for the first error to confirm the DOM
-  // is in its :invalid state before axe audits it.
+  // Submit with empty fields — browser native HTML5 constraint validation fires
+  // synchronously (required inputs become :invalid; the submit event is suppressed
+  // by the browser before handleSubmit runs). No async DOM changes occur, so there
+  // is nothing to wait for. Audit immediately after the click.
   await contactsPage.submitCreateForm();
-  await page.waitUntilVisible(
-    [
-      { type: 'css', value: 'p.text-red-600' },
-      { type: 'css', value: '.text-red-600' },
-    ],
-    { intent: 'field validation error paragraph visible after empty form submission' },
-    10_000,
-  );
 
   await assertNoBlockingViolations(page);
 });
