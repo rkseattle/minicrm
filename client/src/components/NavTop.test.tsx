@@ -83,14 +83,14 @@ describe('NavTop', () => {
     it('renders the hamburger toggle', async () => {
       renderWithProviders(<NavTop />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
       });
     });
 
     it('drawer is closed by default', async () => {
       renderWithProviders(<NavTop />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
       });
       expect(screen.queryByTestId('nav-top-dashboard-mobile')).not.toBeInTheDocument();
     });
@@ -99,9 +99,9 @@ describe('NavTop', () => {
       const user = userEvent.setup();
       renderWithProviders(<NavTop />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
       });
-      await user.click(screen.getByTestId('nav-menu-toggle'));
+      await user.click(screen.getByTestId('nav-mobile-toggle'));
       expect(screen.getByTestId('nav-top-dashboard-mobile')).toBeInTheDocument();
     });
 
@@ -109,11 +109,11 @@ describe('NavTop', () => {
       const user = userEvent.setup();
       renderWithProviders(<NavTop />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
       });
-      await user.click(screen.getByTestId('nav-menu-toggle'));
+      await user.click(screen.getByTestId('nav-mobile-toggle'));
       expect(screen.getByTestId('nav-top-dashboard-mobile')).toBeInTheDocument();
-      await user.click(screen.getByTestId('nav-menu-toggle'));
+      await user.click(screen.getByTestId('nav-mobile-toggle'));
       expect(screen.queryByTestId('nav-top-dashboard-mobile')).not.toBeInTheDocument();
     });
 
@@ -121,9 +121,9 @@ describe('NavTop', () => {
       const user = userEvent.setup();
       renderWithProviders(<NavTop />);
       await waitFor(() => {
-        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+        expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
       });
-      await user.click(screen.getByTestId('nav-menu-toggle'));
+      await user.click(screen.getByTestId('nav-mobile-toggle'));
       expect(screen.getByTestId('nav-top-contacts-mobile')).toBeInTheDocument();
       expect(screen.getByTestId('nav-top-deals-mobile')).toBeInTheDocument();
     });
@@ -138,9 +138,9 @@ describe('NavTop', () => {
       </Routes>,
     );
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-mobile-toggle'));
     await user.click(screen.getByTestId('nav-logout-mobile'));
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument();

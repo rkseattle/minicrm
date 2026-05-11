@@ -30,15 +30,28 @@ export class NavPage {
   }
 
   /**
-   * Clicks the hamburger / mobile menu toggle button.
+   * Clicks the mobile (NavTop) menu toggle button.
    */
   async clickMenuToggle(): Promise<void> {
     await this.page.click(
       [
-        { type: 'testId', value: 'nav-menu-toggle' },
+        { type: 'testId', value: 'nav-mobile-toggle' },
         { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
       ],
-      { intent: 'hamburger or mobile menu toggle button in navigation' },
+      { intent: 'mobile nav menu toggle button in navigation' },
+    );
+  }
+
+  /**
+   * Clicks the hamburger layout (NavHamburger) toggle button.
+   */
+  async clickHamburgerToggle(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'nav-hamburger-toggle' },
+        { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
+      ],
+      { intent: 'hamburger layout menu toggle button in navigation' },
     );
   }
 
@@ -51,7 +64,7 @@ export class NavPage {
     const toggle = await this.page
       .locate(
         [
-          { type: 'testId', value: 'nav-menu-toggle' },
+          { type: 'testId', value: 'nav-mobile-toggle' },
           { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
         ],
         { intent: 'mobile menu toggle button — force click to bypass overlap' },
@@ -68,7 +81,7 @@ export class NavPage {
     const toggle = await this.page
       .locate(
         [
-          { type: 'testId', value: 'nav-menu-toggle' },
+          { type: 'testId', value: 'nav-mobile-toggle' },
           { type: 'role', value: 'button', options: { name: 'Close', exact: false } },
         ],
         { intent: 'mobile menu close button — force click to bypass overlap' },
@@ -232,17 +245,17 @@ export class NavPage {
   }
 
   /**
-   * Returns a resolved locator for the hamburger menu toggle button.
+   * Returns a resolved locator for the hamburger layout toggle button.
    * Throws StrategyExhaustedError if the toggle is not in the DOM.
    */
   async menuToggleLocator() {
     return this.page
       .locate(
         [
-          { type: 'testId', value: 'nav-menu-toggle' },
+          { type: 'testId', value: 'nav-hamburger-toggle' },
           { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
         ],
-        { intent: 'hamburger or mobile menu toggle button in navigation' },
+        { intent: 'hamburger layout menu toggle button in navigation' },
       )
       .resolve();
   }

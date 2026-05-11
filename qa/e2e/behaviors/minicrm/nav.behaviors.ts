@@ -129,13 +129,13 @@ export async function openHamburgerMenu(
   // before setMenuOpen is wired up, so the drawer never appears.
   await context.page.waitFor(
     [
-      { type: 'testId', value: 'nav-menu-toggle' },
+      { type: 'testId', value: 'nav-hamburger-toggle' },
       { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
     ],
     'visible',
   );
   const navPage = new NavPage(context);
-  await navPage.clickMenuToggle();
+  await navPage.clickHamburgerToggle();
   // page.waitFor() re-resolves the element on every internal retry cycle, so it
   // never holds a stale DOM snapshot from before the React commit. This is
   // different from resolve()-then-waitFor(), which captures the locator once at

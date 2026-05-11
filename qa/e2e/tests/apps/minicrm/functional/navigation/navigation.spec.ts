@@ -366,8 +366,8 @@ test.describe.serial('Layout-mutating tests', () => {
         await page
           .waitFor(
             [
-              { type: 'testId', value: 'nav-menu-toggle' },
-              { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
+              { type: 'testId', value: 'nav-hamburger-toggle' },
+              { type: 'css', value: '[data-testid="nav-hamburger-toggle"]' },
             ],
             'visible',
             { intent: 'nav hamburger toggle button visible after route change' },
@@ -735,6 +735,19 @@ test.describe.serial('Layout-mutating tests', () => {
       await navigateToDashboard(page);
 
       try {
+        // Wait for the hamburger toggle to appear — the nav layout setting is
+        // applied via React Query and may resolve after networkidle on a warm
+        // SPA navigation (the query might reuse a cached response and re-fetch
+        // in the background). waitUntilVisible polls until the toggle is rendered.
+        await page.waitUntilVisible(
+          [
+            { type: 'testId', value: 'nav-hamburger-toggle' },
+            { type: 'css', value: '[data-testid="nav-hamburger-toggle"]' },
+          ],
+          { intent: 'hamburger menu toggle confirming hamburger layout is active' },
+          10_000,
+        );
+
         // Focus the hamburger toggle and activate it via keyboard.
         const navPage = new NavPage({ page });
         const toggle = await navPage.menuToggleLocator();

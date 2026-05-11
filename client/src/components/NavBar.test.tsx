@@ -89,7 +89,7 @@ describe('NavBar dispatcher — desktop viewport', () => {
       expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
     });
     // The hamburger toggle is the only interactive element visible without opening the overlay
-    expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     expect(screen.queryByTestId('nav-left-dashboard')).not.toBeInTheDocument();
   });
 
@@ -101,7 +101,7 @@ describe('NavBar dispatcher — desktop viewport', () => {
       // Give the query time to resolve
       expect(screen.queryByTestId('nav-top-dashboard')).not.toBeInTheDocument();
     });
-    expect(screen.queryByTestId('nav-menu-toggle')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-hamburger-toggle')).not.toBeInTheDocument();
   });
 });
 
@@ -118,7 +118,7 @@ describe('NavBar dispatcher — mobile viewport', () => {
   it('renders NavTop when layout is "top"', async () => {
     renderNavBar('top');
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
     });
   });
 
@@ -127,7 +127,7 @@ describe('NavBar dispatcher — mobile viewport', () => {
     // Mobile always renders NavTop — the stored layout setting is ignored.
     // NavTop's mobile drawer has the canonical mobile nav (logout, language selector).
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
     });
     // NavHamburger-specific elements should not be present.
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe('NavBar dispatcher — mobile viewport', () => {
     renderNavBar('left');
     // On mobile the left sidebar setting is ignored — NavTop renders instead.
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-mobile-toggle')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('nav-left-dashboard')).not.toBeInTheDocument();
   });

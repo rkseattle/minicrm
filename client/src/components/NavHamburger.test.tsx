@@ -43,14 +43,14 @@ describe('NavHamburger', () => {
   it('renders the hamburger toggle button', async () => {
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
   });
 
   it('popover is closed by default', async () => {
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
@@ -59,9 +59,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
   });
 
@@ -69,9 +69,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-dashboard')).toBeInTheDocument();
     expect(screen.getByTestId('nav-hamburger-contacts')).toBeInTheDocument();
     expect(screen.getByTestId('nav-hamburger-accounts')).toBeInTheDocument();
@@ -83,9 +83,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-users')).toBeInTheDocument();
     expect(screen.getByTestId('nav-hamburger-settings')).toBeInTheDocument();
   });
@@ -95,9 +95,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.queryByTestId('nav-hamburger-users')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nav-hamburger-settings')).not.toBeInTheDocument();
   });
@@ -106,9 +106,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
     await user.click(screen.getByTestId('nav-hamburger-close'));
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
@@ -118,9 +118,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
     await user.click(screen.getByTestId('nav-hamburger-contacts'));
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
@@ -130,9 +130,9 @@ describe('NavHamburger', () => {
     const user = userEvent.setup();
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId('nav-hamburger-toggle')).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
+    await user.click(screen.getByTestId('nav-hamburger-toggle'));
     expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();

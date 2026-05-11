@@ -37,6 +37,11 @@ export interface HamburgerProps {
    * from outside-click handlers that close the drawer.
    */
   toggleEl?: React.RefObject<HTMLButtonElement | null>;
+  /**
+   * data-testid for the toggle button. Callers must pass a layout-specific
+   * value to avoid testId collisions when multiple nav layouts share the page.
+   */
+  testId?: string;
 }
 
 export interface NavHeaderProps {
@@ -161,7 +166,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
             aria-label={hamburgerIsOpen ? t('nav.close') : t('nav.menu')}
             aria-expanded={hamburgerIsOpen}
             aria-controls={hamburgerControls}
-            data-testid="nav-menu-toggle"
+            data-testid={hamburger?.testId ?? 'nav-menu-toggle'}
             onClick={hamburgerOnToggle}
             className={hamburgerButtonClass}
           >

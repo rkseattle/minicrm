@@ -133,7 +133,7 @@ export class GlobalSearchPage {
     // then resolve the input scoped to the drawer via `within`.
     await this.page.click(
       [
-        { type: 'testId', value: 'nav-menu-toggle' },
+        { type: 'testId', value: 'nav-mobile-toggle' },
         { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
       ],
       { intent: 'mobile nav menu toggle button' },

@@ -128,6 +128,7 @@ export default function NavTop() {
           controls: 'mobile-nav-drawer',
           mobileOnly: true,
           toggleEl: hamburgerRef,
+          testId: 'nav-mobile-toggle',
         }}
       />
 

@@ -109,6 +109,7 @@ export default function NavHamburger() {
             onToggle: handleToggle,
             controls: 'hamburger-nav-drawer',
             toggleEl: hamburgerRef,
+            testId: 'nav-hamburger-toggle',
           }}
         />
       </nav>
