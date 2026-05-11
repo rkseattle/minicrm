@@ -563,6 +563,7 @@ jobs:
           name: e2e-shard-${{ matrix.project }}-${{ matrix.shard }}
           path: |
             qa/e2e/test-results/results.xml
+            qa/e2e/test-results/results.json
             qa/e2e/test-results/healing-shard*.json
             qa/e2e/test-results/healing-suggestions.md
             qa/e2e/blob-report/
@@ -753,6 +754,52 @@ jobs:
           console.log(`Merged ${files.length} JUnit XML files, ${testcases.length} testsuites`);
           EOF
 
+      - name: Merge JSON results and count flaky tests (MINCRM-355)
+        if: always()
+        id: flaky
+        run: |
+          node --input-type=module << 'EOF'
+          import { readFileSync, writeFileSync, existsSync } from 'fs';
+          import { execSync } from 'child_process';
+          import { appendFileSync } from 'fs';
+
+          const files = execSync(
+            'find ./shard-artifacts -name "results.json" 2>/dev/null || true'
+          ).toString().trim().split('\n').filter(Boolean);
+
+          let flaky = 0;
+          const flakyNames = [];
+
+          for (const f of files) {
+            if (!existsSync(f)) continue;
+            let report;
+            try { report = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
+            const suites = report.suites ?? [];
+            const walk = (items) => {
+              for (const item of items ?? []) {
+                if (item.specs) {
+                  for (const spec of item.specs ?? []) {
+                    for (const test of spec.tests ?? []) {
+                      if (test.status === 'flaky') {
+                        flaky++;
+                        flakyNames.push(spec.title);
+                      }
+                    }
+                  }
+                }
+                if (item.suites) walk(item.suites);
+              }
+            };
+            walk(suites);
+          }
+
+          const output = `flaky_count=${flaky}\nflaky_names=${JSON.stringify(flakyNames)}`;
+          appendFileSync(process.env.GITHUB_OUTPUT, output + '\n');
+          writeFileSync('flaky-report-${{ matrix.project }}.json', JSON.stringify({ flaky, flakyNames }, null, 2));
+          console.log(`Flaky tests this run: ${flaky}`);
+          if (flakyNames.length) console.log(flakyNames.map(n => '  - ' + n).join('\n'));
+          EOF
+
       - name: Merge healing artifacts
         if: always()
         run: >
@@ -797,6 +844,19 @@ jobs:
             exit 1
           fi
 
+      - name: Enforce flaky test gate (MINCRM-355)
+        if: always()
+        run: |
+          REPORT="flaky-report-${{ matrix.project }}.json"
+          if [ -f "$REPORT" ]; then
+            COUNT=$(node -e "const r=require('./$REPORT'); console.log(r.flaky ?? 0)")
+            echo "Flaky test count for ${{ matrix.project }}: $COUNT"
+            if [ "$COUNT" -gt 3 ]; then
+              echo "::error::Flaky test count ($COUNT) exceeds threshold of 3 for project ${{ matrix.project }}. Fix flaky tests before merging."
+              exit 1
+            fi
+          fi
+
       - name: Publish merged results to GitHub Checks
         uses: dorny/test-reporter@v3
         if: always()
@@ -816,6 +876,7 @@ jobs:
             playwright-report/
             healing-report-${{ matrix.project }}.json
             healing-suggestions-${{ matrix.project }}.md
+            flaky-report-${{ matrix.project }}.json
           retention-days: 30
           if-no-files-found: warn
 
@@ -857,6 +918,19 @@ jobs:
           HEAL_LINK=""
           AI_HEAL_LINE=""
           SUGGESTIONS_BODY=""
+          TOTAL_FLAKY=0
+          FLAKY_SECTION=""
+          for project in desktop mobile-web; do
+            FLAKY_REPORT="artifacts/$project/flaky-report-$project.json"
+            if [ -f "$FLAKY_REPORT" ]; then
+              COUNT=$(node -e "const r=require('./$FLAKY_REPORT'); console.log(r.flaky ?? 0)")
+              TOTAL_FLAKY=$((TOTAL_FLAKY + COUNT))
+              if [ "$COUNT" -gt 0 ]; then
+                NAMES=$(node -e "const r=require('./$FLAKY_REPORT'); (r.flakyNames??[]).forEach(n=>console.log('  - '+n))")
+                FLAKY_SECTION="${FLAKY_SECTION}\n**${project}** (${COUNT} flaky):\n${NAMES}"
+              fi
+            fi
+          done
           for project in desktop mobile-web; do
             dir="artifacts/$project"
             REPORT="$dir/healing-report-$project.json"
@@ -907,6 +981,21 @@ jobs:
             fi
             if [ "$m_failed" -gt 0 ] 2>/dev/null; then
               python3 .github/scripts/parse-junit.py failures artifacts/mobile-web/merged-results.xml mobile-web
+            fi
+            # Flaky test report (MINCRM-355)
+            if [ "$TOTAL_FLAKY" -gt 0 ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "## ⚠️ Flaky Tests Detected"
+              echo ""
+              echo "> $TOTAL_FLAKY test(s) required a retry to pass this run."
+              echo "> Fix these before they mask real failures."
+              printf '%b\n' "$FLAKY_SECTION"
+              if [ "$TOTAL_FLAKY" -gt 3 ]; then
+                echo ""
+                echo "> ❌ Flaky count exceeds threshold (3) — \`ci-gate\` will fail."
+              fi
             fi
             if [ -n "$SUGGESTIONS_BODY" ]; then
               echo ""

@@ -342,9 +342,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // The key assertion here is that the save succeeds and the modal is dismissed
       await widget.clickSaveResolved();
 
-      // Wait for edit mode to exit (edit button returns = save succeeded)
+      // Wait for edit mode to exit (edit button returns = save succeeded).
+      // isLoaded() resolves once the Edit button is visible — no networkidle needed.
       const detailPage = new ContactDetailPage({ page });
-      await page.waitForLoadState('networkidle');
 
       // Conflict modal should be dismissed
       expect(
@@ -389,8 +389,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
 
       // Click "Discard my changes" — abandons pending edits, accepts server state
       await widget.clickDiscard();
-
-      await page.waitForLoadState('networkidle');
 
       // Conflict modal should be dismissed
       expect(await widget.isVisible(), 'conflict modal should be dismissed after discard').toBe(
@@ -521,8 +519,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await widget.selectTheirs('first_name');
       await widget.clickSaveResolved();
 
-      await page.waitForLoadState('networkidle');
-
       // Modal should be dismissed, page back in read mode
       expect(await widget.isVisible(), 'modal should be dismissed after save resolved').toBe(false);
 
@@ -547,8 +543,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await detailPage.clickEdit();
       await detailPage.fillField('contact-first-name', 'First name', 'CC7-PostResolve');
       await detailPage.save();
-
-      await page.waitForLoadState('networkidle');
 
       // No conflict modal should appear
       expect(
@@ -599,8 +593,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await widget.selectMine('first_name');
       await widget.clickSaveResolved();
 
-      await page.waitForLoadState('networkidle');
-
       // Modal should be dismissed, page back in read mode
       expect(await widget.isVisible(), 'modal should be dismissed after save resolved').toBe(false);
 
@@ -623,8 +615,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await detailPage.clickEdit();
       await detailPage.fillField('contact-first-name', 'First name', 'CC8-PostResolve');
       await detailPage.save();
-
-      await page.waitForLoadState('networkidle');
 
       // No conflict modal should appear
       expect(

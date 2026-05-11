@@ -105,10 +105,8 @@ test(
     await submitBtn.click();
 
     // Wait for the form to close (submit button detaches from DOM) before querying
-    // the API — networkidle alone can resolve before the mutation response lands and
-    // the React state update closes the form.
+    // the API — this confirms the mutation response has landed and React has closed the form.
     await submitBtn.waitFor({ state: 'detached', timeout: 15_000 });
-    await page.waitForLoadState('networkidle');
 
     const listResponse = await restClient.get<{ data: DealSingleResponse['deal'][] }>(
       '/api/v1/deals?sort=created_at&dir=desc&limit=100',
@@ -174,9 +172,8 @@ test(
 
     await dealDetailPage.submitForm();
 
-    await page.waitForLoadState('networkidle');
-
-    // UI assertion — deal name heading shows updated value
+    // UI assertion — deal name heading shows updated value.
+    // toHaveText has built-in retry — no networkidle preamble needed.
     const dealNameEl = await dealDetailPage.dealNameLocator();
     await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
 

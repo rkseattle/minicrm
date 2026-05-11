@@ -170,9 +170,17 @@ test(
       last_name: 'Contact',
     });
 
-    // Navigate to the contact detail page (assumes the app uses /contacts/:id).
+    // Navigate to the contact detail page; wait for edit button = fully loaded.
     await page.goto(`/contacts/${contact.id}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitFor(
+      [
+        { type: 'testId', value: 'edit-contact-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      'visible',
+      { intent: 'edit button confirming contact detail page is loaded' },
+      15_000,
+    );
 
     const attachResult = await attachTagViaUI(contact.id, tag.id, tag.name, { page });
     expect(attachResult.badgeVisible).toBe(true);
@@ -206,7 +214,15 @@ test(
     await restClient.post(`/api/v1/contacts/${contact.id}/tags`, { name: tag.name });
 
     await page.goto(`/contacts/${contact.id}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitFor(
+      [
+        { type: 'testId', value: 'edit-contact-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      'visible',
+      { intent: 'edit button confirming contact detail page is loaded' },
+      15_000,
+    );
 
     const detachResult = await detachTagViaUI(contact.id, tag.id, { page });
     expect(detachResult.badgeGone).toBe(true);
@@ -240,9 +256,17 @@ test(
       account_id: account.id,
     });
 
-    // Navigate to the deal detail page.
+    // Navigate to the deal detail page; wait for edit button = fully loaded.
     await page.goto(`/deals/${deal.id}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitFor(
+      [
+        { type: 'testId', value: 'edit-deal-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      'visible',
+      { intent: 'edit button confirming deal detail page is loaded' },
+      15_000,
+    );
 
     const attachResult = await attachTagViaUI(deal.id, tag.id, tag.name, { page });
     expect(attachResult.badgeVisible).toBe(true);

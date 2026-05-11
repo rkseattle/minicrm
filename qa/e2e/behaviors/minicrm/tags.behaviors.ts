@@ -89,9 +89,15 @@ export async function renameTagViaUI(
   await adminTagsPage.fillRenameInput(tagId, newName);
   await adminTagsPage.clickRenameSave(tagId);
 
-  // After a successful save the rename form closes and the row reverts to
-  // read mode — the tag row itself remains visible.
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the save button to detach — confirms React Query closed the inline form.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: `rename-save-${tagId}` }],
+      'detached',
+      { intent: 'tag rename save button detaching after successful rename' },
+      5_000,
+    )
+    .catch(() => null);
 
   // The rename form's save button disappears on success.
   const renameFormGone = !(await adminTagsPage.renameSaveButtonIsVisible(tagId));
@@ -133,7 +139,16 @@ export async function deleteTagViaUI(
   const adminTagsPage = new AdminTagsPage(context);
 
   await adminTagsPage.clickDelete(tagId);
-  await context.page.waitForLoadState('networkidle');
+
+  // Wait for the tag row to disappear — confirms React Query invalidated the list.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: `admin-tag-row-${tagId}` }],
+      'detached',
+      { intent: 'tag row detaching after successful delete' },
+      5_000,
+    )
+    .catch(() => null);
 
   // Row should be gone after a successful delete + React Query invalidation.
   const deleted = !(await adminTagsPage.isTagRowVisible(tagId));

@@ -132,7 +132,8 @@ export async function clickSearchResult(
   await searchPage.typeQuery(query);
   await searchPage.clickResult(entity, id);
 
-  await context.page.waitForLoadState('networkidle');
+  // Wait for navigation to the entity detail URL — deterministic and not racy.
+  await context.page.waitForURL(`**/${entity}s/${id}`, { timeout: 10_000 }).catch(() => null);
   return { finalUrl: context.page.url() };
 }
 

@@ -115,8 +115,15 @@ export async function createLeadViaUI(
 
   await leadsPage.submitForm();
 
-  // Short wait for network/React state to settle.
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the submit button to detach — confirms the response was processed.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: 'lead-form-submit' }],
+      'detached',
+      { intent: 'lead form submit button detaching after form closes' },
+      10_000,
+    )
+    .catch(() => null);
 
   const finalUrl = leadsPage.url();
   const duplicateWarning = await leadsPage.duplicateWarningIsVisible();
@@ -164,7 +171,15 @@ export async function createLeadViaUIThenCreateAnyway(
   await leadsPage.submitForm();
   await leadsPage.clickCreateAnyway();
 
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the submit button to detach — confirms the form was submitted.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: 'lead-form-submit' }],
+      'detached',
+      { intent: 'lead form submit button detaching after form closes' },
+      10_000,
+    )
+    .catch(() => null);
 
   const finalUrl = leadsPage.url();
   const formStillVisible = await leadsPage.formIsVisible();
@@ -330,9 +345,8 @@ export async function convertLead(
 
   await detailPage.confirmConvert();
 
-  // Wait for navigation to the new contact detail page.
+  // waitForURL is sufficient — no follow-up networkidle needed.
   await context.page.waitForURL(/\/contacts\//, { timeout: 15_000 }).catch(() => null);
-  await context.page.waitForLoadState('networkidle');
 
   const finalUrl = detailPage.url();
   const navigatedToContact = new URL(finalUrl).pathname.startsWith('/contacts/');
@@ -370,8 +384,8 @@ export async function deleteLead(
   await detailPage.clickDelete();
   await detailPage.confirmDelete();
 
+  // waitForURL is sufficient — no follow-up networkidle needed.
   await context.page.waitForURL('**/leads', { timeout: 10_000 }).catch(() => null);
-  await context.page.waitForLoadState('networkidle');
 
   const finalUrl = detailPage.url();
   const deleted = new URL(finalUrl).pathname === '/leads';

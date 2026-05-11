@@ -211,9 +211,21 @@ export async function reloadAndGetProfilePreferences(
   context: NotificationsBehaviorContext,
 ): Promise<GetProfilePreferencesResult> {
   await context.page.reload();
-  await context.page.waitForLoadState('networkidle');
 
+  // Wait for the profile heading — confirms React Query has re-fetched preferences.
   const profilePage = new ProfilePage(context);
+  await context.page
+    .waitFor(
+      [
+        { type: 'testId', value: 'profile-heading' },
+        { type: 'css', value: '[data-testid="profile-heading"]' },
+      ],
+      'visible',
+      { intent: 'profile page heading confirming page has reloaded and preferences are ready' },
+      10_000,
+    )
+    .catch(() => null);
+
   const preferences: ProfilePreferences = {
     notify_overdue_tasks: await profilePage.checkboxIsChecked('notify_overdue_tasks'),
     notify_assignments: await profilePage.checkboxIsChecked('notify_assignments'),

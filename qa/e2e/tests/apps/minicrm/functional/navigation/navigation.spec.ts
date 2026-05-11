@@ -362,11 +362,18 @@ test.describe.serial('Layout-mutating tests', () => {
         // URL guarantees NavLink sees the correct active location on first render.
         await page.waitForURL('**/deals', { timeout: 10_000 });
 
-        // Wait for the page to fully settle after navigation. NavHamburger
-        // remounts on route change and resets menuOpen to false. Without this
-        // wait, openHamburgerMenu can click the toggle on the unmounting instance
-        // before the new instance has wired up its state.
-        await page.waitForLoadState('networkidle');
+        // Wait for the NavHamburger to finish remounting after route change.
+        await page
+          .waitFor(
+            [
+              { type: 'testId', value: 'nav-menu-toggle' },
+              { type: 'css', value: '[data-testid="nav-menu-toggle"]' },
+            ],
+            'visible',
+            { intent: 'nav hamburger toggle button visible after route change' },
+            5_000,
+          )
+          .catch(() => null);
 
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
@@ -745,7 +752,7 @@ test.describe.serial('Layout-mutating tests', () => {
         await page.keyboard.press('Enter');
 
         // After pressing Enter on a nav link the menu closes and navigation occurs.
-        await page.waitForLoadState('networkidle').catch(() => null);
+        // expect(...).not.toBeVisible() has built-in retry — no networkidle preamble needed.
         await expect(drawer!).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM5');
@@ -934,17 +941,13 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   page,
 }) => {
   // Use an ID that is extremely unlikely to exist.
-  await page.goto('/contacts/00000000-0000-0000-0000-000000000000', { waitUntil: 'networkidle' });
-
-  // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
-  // React Query fires its error state after the server 404 response arrives, which may
-  // land after networkidle under CI load. Waiting for networkidle a second time ensures
-  // the 404 response has been processed before we start probing for the alert.
-  await page.waitForLoadState('networkidle');
+  await page.goto('/contacts/00000000-0000-0000-0000-000000000000', {
+    waitUntil: 'domcontentloaded',
+  });
 
   // The page must not be blank or show an unhandled 500.
-  // Pass 10 000 ms fallbackTimeout — React Query's error state can arrive after
-  // networkidle under CI load, so the probe window must match the original behaviour.
+  // React Query's error state arrives after the 404 response — notFoundAlertLocator
+  // waits up to fallbackTimeout for the alert to appear, which is the correct anchor.
   const alert = await new ContactDetailPage({ page }).notFoundAlertLocator(10_000);
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });

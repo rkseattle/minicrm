@@ -102,9 +102,8 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
   // Submit — the mock intercepts the POST and returns 500.
   await submitContactCreateForm({ page });
 
-  await page.waitForLoadState('networkidle');
-
   // Form must still be visible — user was not navigated away.
+  // expect(...).toBeVisible() has built-in retry — no networkidle preamble needed.
   const contactsPage = new ContactsPage({ page });
   const form = await contactsPage.createFormLocator();
   await expect(form).toBeVisible();
@@ -168,9 +167,8 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
   const stageSelect = await pipelineBoard.dealStageSelectLocator(deal.id);
   await stageSelect.selectOption('Qualification');
 
-  await page.waitForLoadState('networkidle');
-
   // The stage-update-error banner must be visible.
+  // expect(...).toBeVisible() has built-in retry — no networkidle preamble needed.
   const errorBanner = await pipelineBoard.stageUpdateErrorLocator();
   await expect(errorBanner).toBeVisible({ timeout: 8_000 });
 
@@ -376,10 +374,8 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   const loadingEl = await new ContactsPage({ page }).loadingIndicatorLocator();
   await expect(loadingEl).toBeVisible({ timeout: DELAY_MS - 500 });
 
-  // After the delay the real data arrives — wait for the page to settle.
-  await page.waitForLoadState('networkidle');
-
-  // Loading indicator should be gone once data is rendered.
+  // After the delay the real data arrives — wait for the loading indicator to disappear.
+  // isNotVisible already retries until the condition is met or the timeout expires.
   const loadingGone = await page.isNotVisible(
     [
       { type: 'css', value: '[aria-busy="true"]' },

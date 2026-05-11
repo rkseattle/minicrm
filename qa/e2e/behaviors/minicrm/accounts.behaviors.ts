@@ -256,9 +256,8 @@ export async function deleteAccountViaUI(
   await detailPage.clickDelete();
   await detailPage.confirmDelete();
 
-  // Wait for navigation back to /accounts.
+  // waitForURL is sufficient — no follow-up networkidle needed.
   await context.page.waitForURL('**/accounts', { timeout: 10_000 }).catch(() => null);
-  await context.page.waitForLoadState('networkidle');
 
   const finalUrl = context.page.url();
   const deleted = new URL(finalUrl).pathname === '/accounts';
@@ -296,9 +295,15 @@ export async function cancelDeleteAccount(
   await detailPage.clickDelete();
   await detailPage.cancelDelete();
 
-  // Wait briefly for the modal close animation.
-  await context.page.waitForTimeout(200);
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the modal to close — cancel button detaches when modal is dismissed.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: 'confirm-delete-cancel' }],
+      'detached',
+      { intent: 'cancel button detaching after modal closes' },
+      5_000,
+    )
+    .catch(() => null);
 
   const finalUrl = context.page.url();
   const stillOnDetailPage = new URL(finalUrl).pathname === `/accounts/${id}`;
@@ -383,8 +388,7 @@ export async function cancelAccountEdit(
 
   await detailPage.cancelEdit();
 
-  await context.page.waitForLoadState('networkidle');
-
+  // isLoaded() resolves once the edit button is visible — no networkidle needed.
   const backToReadMode = await detailPage.isLoaded();
   const finalUrl = detailPage.url();
 

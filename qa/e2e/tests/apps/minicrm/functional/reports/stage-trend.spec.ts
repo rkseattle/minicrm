@@ -74,10 +74,9 @@ test('stage trend report: nav link navigates to /reports @functional', async ({
   await setNavLayoutViaAPI('left', restClient);
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.waitForLoadState('networkidle');
-    // The left-nav layout is applied via a React Query setting; the nav link may
-    // not be in the DOM immediately after networkidle if the setting fetch is still
-    // in flight. Wait explicitly before attempting the click.
+    // The left-nav layout is applied via a React Query setting; wait explicitly
+    // for the nav link rather than relying on networkidle which can fire before
+    // the settings fetch completes.
     await page.waitFor(
       [
         { type: 'testId', value: 'nav-left-reports' },

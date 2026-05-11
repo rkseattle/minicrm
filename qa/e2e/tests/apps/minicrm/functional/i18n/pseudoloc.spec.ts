@@ -114,7 +114,17 @@ const FIND_OVERFLOW_ELEMENTS = new Function(`
 async function applyPseudoLocale(page: SafePage): Promise<void> {
   const err = await page.evaluate(SWITCH_TO_PSEUDO);
   if (err) throw new Error(`applyPseudoLocale: ${err}`);
-  await page.waitForLoadState('networkidle');
+  // Wait for a known translated text node to change from English — confirms
+  // the React re-render triggered by changeLanguage() has completed.
+  // Wait for a nav link text to include '[' — pseudo locale wraps all strings in
+  // brackets (e.g. "[Contacts]"), confirming the React re-render completed.
+  await page
+    .waitForFunction(
+      'document.querySelector(\'[data-testid="nav-top-contacts"],[data-testid="nav-left-contacts"]\')' +
+        "?.textContent?.includes('[')",
+      { timeout: 10_000 },
+    )
+    .catch(() => null);
 }
 
 // ---------------------------------------------------------------------------

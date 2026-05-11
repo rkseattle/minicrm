@@ -82,7 +82,7 @@ test.describe('Auth forms', () => {
   test('@functional A11Y-A1: login page — empty form', async ({ page }) => {
     const loginPage = new LoginPage({ page });
     await loginPage.navigate();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await assertNoBlockingViolations(page);
   });
@@ -92,7 +92,7 @@ test.describe('Auth forms', () => {
     await loginPage.navigate();
     // Submit empty form to surface required-field / credential error state.
     await loginPage.submit();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await assertNoBlockingViolations(page);
   });
@@ -100,7 +100,7 @@ test.describe('Auth forms', () => {
   test('@functional A11Y-A3: forgot-password page — empty form', async ({ page }) => {
     const forgotPage = new ForgotPasswordPage({ page });
     await forgotPage.navigate();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await assertNoBlockingViolations(page);
   });
@@ -117,7 +117,18 @@ test('@functional A11Y-N1: main navigation — top layout landmark structure', a
   // Ensure a known nav layout so the NavBar renders consistently across runs.
   await setNavLayoutViaAPI('top', restClient);
   await page.goto('/contacts');
-  await page.waitForLoadState('networkidle');
+  // Wait for the contacts table or empty state — stable DOM anchor for axe.
+  await page
+    .waitFor(
+      [
+        { type: 'testId', value: 'contacts-table' },
+        { type: 'testId', value: 'contacts-empty-state' },
+      ],
+      'visible',
+      { intent: 'contacts list content confirming page is fully loaded' },
+      15_000,
+    )
+    .catch(() => null);
 
   await assertNoBlockingViolations(page);
 });
@@ -133,7 +144,7 @@ test('@functional A11Y-C1: contacts list — table with data', async ({
 }) => {
   await createTestContact(testData, restClient);
   await navigateToContacts({ page });
-  await page.waitForLoadState('networkidle');
+  // ContactsPage.navigate() already waits for the page to load — no extra wait needed.
 
   await assertNoBlockingViolations(page);
 });
@@ -142,7 +153,16 @@ test('@functional A11Y-C2: contact creation form — empty state', async ({ page
   const contactsPage = new ContactsPage({ page });
   await contactsPage.navigate();
   await contactsPage.clickNewContact();
-  await page.waitForLoadState('networkidle');
+  // Wait for the create form to be visible before auditing.
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'contact-form' },
+      { type: 'role', value: 'form' },
+    ],
+    'visible',
+    { intent: 'contact creation form visible and ready for audit' },
+    10_000,
+  );
 
   await assertNoBlockingViolations(page);
 });
@@ -154,7 +174,16 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 
   // Submit without filling any fields to trigger required-field validation errors.
   await contactsPage.submitCreateForm();
-  await page.waitForLoadState('networkidle');
+  // Wait for at least one validation error to appear before auditing.
+  await page.waitFor(
+    [
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[aria-invalid="true"]' },
+    ],
+    'visible',
+    { intent: 'validation error visible after form submission' },
+    10_000,
+  );
 
   await assertNoBlockingViolations(page);
 });
@@ -163,7 +192,8 @@ test('@functional A11Y-C4: contact detail page', async ({ page, restClient, test
   const contact = await createTestContact(testData, restClient);
   const detailPage = new ContactDetailPage({ page });
   await detailPage.navigate(contact.id);
-  await page.waitForLoadState('networkidle');
+  // Wait for the edit button — confirms detail page has rendered.
+  await detailPage.editButtonLocator();
 
   await assertNoBlockingViolations(page);
 });
@@ -181,7 +211,16 @@ test('@functional A11Y-D1: pipeline board — Kanban with a deal card', async ({
   await createTestDeal(testData, restClient, { account_id: account.id });
   const boardPage = new PipelineBoardPage({ page });
   await boardPage.navigate();
-  await page.waitForLoadState('networkidle');
+  // Wait for the board container to be visible — stable DOM anchor for axe.
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'pipeline-board' },
+      { type: 'css', value: '[data-testid="pipeline-board"]' },
+    ],
+    'visible',
+    { intent: 'pipeline kanban board container confirming page is loaded' },
+    15_000,
+  );
 
   await assertNoBlockingViolations(page);
 });
@@ -195,7 +234,16 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
   const boardPage = new PipelineBoardPage({ page });
   await boardPage.navigate();
-  await page.waitForLoadState('networkidle');
+  // Wait for the board container to be visible before interacting.
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'pipeline-board' },
+      { type: 'css', value: '[data-testid="pipeline-board"]' },
+    ],
+    'visible',
+    { intent: 'pipeline kanban board container confirming page is loaded' },
+    15_000,
+  );
 
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
@@ -225,7 +273,7 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   const contact = await createTestContact(testData, restClient);
   const contactsPage = new ContactsPage({ page });
   await contactsPage.navigate();
-  await page.waitForLoadState('networkidle');
+  // ContactsPage.navigate() already waits for the page to load — no extra wait needed.
 
   // Select the seeded contact row to enable the bulk action bar.
   await contactsPage.waitForBulkCheckbox(contact.id);
@@ -252,7 +300,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   const contact = await createTestContact(testData, restClient);
   const contactsPage = new ContactsPage({ page });
   await contactsPage.navigate();
-  await page.waitForLoadState('networkidle');
+  // ContactsPage.navigate() already waits for the page to load — no extra wait needed.
 
   // Select the seeded contact row to enable the bulk action bar.
   await contactsPage.waitForBulkCheckbox(contact.id);
@@ -278,7 +326,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 test('@functional A11Y-ADM1: user invite form', async ({ page }) => {
   const usersPage = new UsersPage({ page });
   await usersPage.navigate();
-  await page.waitForLoadState('networkidle');
+  // UsersPage.navigate() already waits for the page to load — no extra wait needed.
 
   await assertNoBlockingViolations(page);
 });

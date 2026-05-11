@@ -314,8 +314,15 @@ export async function createContactViaUI(
   // Submit the form.
   await contactsPage.submitCreateForm();
 
-  // Short wait for network/React state to settle.
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the submit button to detach — confirms the response was processed.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: 'contact-form-submit' }],
+      'detached',
+      { intent: 'contact form submit button detaching after form closes' },
+      10_000,
+    )
+    .catch(() => null);
 
   const finalUrl = context.page.url();
 
@@ -363,9 +370,8 @@ export async function deleteContactViaUI(
   await detailPage.clickDelete();
   await detailPage.confirmDelete();
 
-  // Wait for navigation back to /contacts.
+  // waitForURL is sufficient — no follow-up networkidle needed.
   await context.page.waitForURL('**/contacts', { timeout: 10_000 }).catch(() => null);
-  await context.page.waitForLoadState('networkidle');
 
   const finalUrl = context.page.url();
   const deleted = new URL(finalUrl).pathname === '/contacts';
@@ -403,10 +409,15 @@ export async function cancelDeleteContact(
   await detailPage.clickDelete();
   await detailPage.cancelDelete();
 
-  // Wait briefly for the modal close animation before checking state.
-  await context.page.waitForTimeout(200);
-
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the modal to close — cancel button detaches when modal is dismissed.
+  await context.page
+    .waitFor(
+      [{ type: 'testId', value: 'confirm-delete-cancel' }],
+      'detached',
+      { intent: 'cancel button detaching after modal closes' },
+      5_000,
+    )
+    .catch(() => null);
 
   const finalUrl = context.page.url();
   // Still on the contact detail page if path matches /contacts/:id.
@@ -450,8 +461,7 @@ export async function cancelContactEdit(
 
   await detailPage.cancelEdit();
 
-  await context.page.waitForLoadState('networkidle');
-
+  // isLoaded() resolves once the edit button is visible — no networkidle needed.
   const backToReadMode = await detailPage.isLoaded();
   const finalUrl = detailPage.url();
 
