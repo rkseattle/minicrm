@@ -160,6 +160,12 @@ export interface RequestOptions {
    * When omitted, behaviour is identical to a bare cast.
    */
   schema?: Schema;
+  /**
+   * Request timeout in milliseconds. Defaults to 15 000 ms so a hung server
+   * surfaces a clear timeout error well within the 30 s test budget rather than
+   * consuming it entirely.
+   */
+  timeout?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +319,7 @@ export class RestClient {
   ): Promise<ApiResponse<T>> {
     const response = await this.request.get(this.url(path), {
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout ?? 15_000,
     });
     return this.parseResponse<T>(response, 'GET', path, options);
   }
@@ -334,6 +341,7 @@ export class RestClient {
     const response = await this.request.post(this.url(path), {
       data: body,
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout ?? 15_000,
     });
     return this.parseResponse<T>(response, 'POST', path, options);
   }
@@ -355,6 +363,7 @@ export class RestClient {
     const response = await this.request.put(this.url(path), {
       data: body,
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout ?? 15_000,
     });
     return this.parseResponse<T>(response, 'PUT', path, options);
   }
@@ -376,6 +385,7 @@ export class RestClient {
     const response = await this.request.patch(this.url(path), {
       data: body,
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout ?? 15_000,
     });
     return this.parseResponse<T>(response, 'PATCH', path, options);
   }
@@ -394,6 +404,7 @@ export class RestClient {
   ): Promise<ApiResponse<T>> {
     const response = await this.request.delete(this.url(path), {
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout ?? 15_000,
     });
     return this.parseResponse<T>(response, 'DELETE', path, options);
   }

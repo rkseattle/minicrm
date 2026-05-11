@@ -208,6 +208,32 @@ export interface HealMethods {
     timeout?: number,
   ): Promise<void>;
 
+  /**
+   * Waits for a visible element to become hidden or detached, trying each
+   * strategy in priority order with the full timeout. Symmetric with
+   * waitUntilVisible.
+   *
+   * Prevents the 0-match false-positive: if the primary locator currently
+   * matches 0 elements it first waits up to `attachedTimeoutMs` for the element
+   * to attach before starting the hidden wait. If the element never attaches
+   * within that window the hidden wait still proceeds (element is already gone).
+   *
+   * Records a heal event when a fallback strategy detects disappearance before
+   * the primary does.
+   *
+   * @param strategies       - Ranked strategies; tried in STRATEGY_ORDER priority.
+   * @param options          - LocateOptions (intent required for AI tier).
+   * @param timeout          - Maximum ms to wait for hidden state (default 10 000).
+   * @param attachedTimeoutMs - Max ms to wait for initial presence (default 3 000).
+   * @throws StrategyExhaustedError if no strategy confirms disappearance within timeout.
+   */
+  waitUntilHidden(
+    strategies: LocatorStrategy[],
+    options?: LocateOptions,
+    timeout?: number,
+    attachedTimeoutMs?: number,
+  ): Promise<void>;
+
   /** Resolves the locator and returns the element's text content. */
   textContent(strategies: LocatorStrategy[], options?: LocateOptions): Promise<string | null>;
 
@@ -573,6 +599,68 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       throw new StrategyExhaustedError(attempted);
     },
 
+    async waitUntilHidden(
+      strategies: LocatorStrategy[],
+      options: LocateOptions = {},
+      timeout = 10_000,
+      attachedTimeoutMs = 3_000,
+    ): Promise<void> {
+      const sorted = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      const [primary, ...fallbacks] = sorted;
+      const attempted: LocatorStrategyRecord[] = [];
+
+      function toRecord(s: LocatorStrategy): LocatorStrategyRecord {
+        const r: LocatorStrategyRecord = { type: s.type, value: s.value };
+        if (s.options !== undefined) r.options = s.options;
+        if (s.within !== undefined) r.within = s.within;
+        return r;
+      }
+
+      // Guard against the 0-match false-positive: waitFor({state:'hidden'}) on a
+      // locator with 0 matches resolves immediately, giving a spurious "gone"
+      // result before the element was ever present. Wait briefly for the element
+      // to attach first; if it never attaches the hidden wait still proceeds
+      // (element is genuinely absent, which counts as hidden).
+      const primaryLocator = buildLocator(page, primary!);
+      await primaryLocator
+        .first()
+        .waitFor({ state: 'attached', timeout: attachedTimeoutMs })
+        .catch(() => null);
+
+      try {
+        await primaryLocator.first().waitFor({ state: 'hidden', timeout });
+        return;
+      } catch {
+        attempted.push(toRecord(primary!));
+      }
+
+      for (const fallback of fallbacks) {
+        const fallbackLocator = buildLocator(page, fallback);
+        await fallbackLocator
+          .first()
+          .waitFor({ state: 'attached', timeout: attachedTimeoutMs })
+          .catch(() => null);
+        try {
+          await fallbackLocator.first().waitFor({ state: 'hidden', timeout });
+          HealingRegistry.instance.record(
+            testName,
+            toRecord(primary!),
+            toRecord(fallback),
+            false,
+            options.pageObject,
+            options.method,
+          );
+          return;
+        } catch {
+          attempted.push(toRecord(fallback));
+        }
+      }
+
+      throw new StrategyExhaustedError(attempted);
+    },
+
     async textContent(
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
@@ -708,7 +796,7 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       // a false-positive. Strategy 1 catches this: if it finds the element
       // visible within a short window, the element is not actually gone.
       // Keep the probe window short (2 s) — it must not consume a significant
-      // portion of the caller's budget after strategy 0 already ran. (MINCRM-355)
+      // portion of the caller's budget after strategy 0 already ran.
       if (sorted.length > 1) {
         const locator1 = buildLocator(page, sorted[1]!);
         const PROBE_TIMEOUT_MS = 2_000;
