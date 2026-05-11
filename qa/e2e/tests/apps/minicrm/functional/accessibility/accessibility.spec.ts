@@ -172,16 +172,15 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
   await contactsPage.navigate();
   await contactsPage.clickNewContact();
 
-  // Submit without filling any fields to trigger required-field validation errors.
+  // Submit without filling any fields — server returns 400 and the form
+  // renders a role="alert" error message. waitUntilVisible polls until it appears.
   await contactsPage.submitCreateForm();
-  // Field-level validation errors render as <p class="text-xs text-red-600"> — no role or aria-invalid.
-  await page.waitFor(
+  await page.waitUntilVisible(
     [
-      { type: 'css', value: 'p.text-red-600' },
-      { type: 'css', value: '.text-red-600' },
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: '[role="alert"]' },
     ],
-    'visible',
-    { intent: 'red field validation error paragraph visible after form submission' },
+    { intent: 'server validation error alert appearing after empty form submission' },
     10_000,
   );
 

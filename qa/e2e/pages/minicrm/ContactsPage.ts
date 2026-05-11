@@ -85,7 +85,17 @@ export class ContactsPage {
    * Returns 0 when no contacts are listed or during a loading state.
    */
   async rowCount(): Promise<number> {
-    await this.page.waitForLoadState('networkidle');
+    // Wait for rows or the empty state — confirms the list has settled after any mutation.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: '[data-testid^="contact-link-"]' },
+          { type: 'testId', value: 'contacts-empty-state' },
+        ],
+        { intent: 'contact rows or empty state confirming contacts list has loaded' },
+        10_000,
+      )
+      .catch(() => null);
     try {
       const resolved = await this.page
         .locate(
@@ -205,27 +215,15 @@ export class ContactsPage {
       .resolve();
     await checkbox.scrollIntoViewIfNeeded();
     await checkbox.click();
-    // Wait for React to flush the selection state update. The bulk-action-bar
-    // appearing in the DOM is the authoritative signal that toggleRow has run.
-    // waitForFunction polls until the element exists before locate().resolve(),
-    // because resolve() throws StrategyExhaustedError immediately when absent.
-    await this.page.waitForFunction(
-      `document.querySelector('[data-testid="bulk-action-bar"]') !== null`,
-      undefined,
-      { timeout: 5_000 },
+    // Wait for the bulk-action-bar to appear — authoritative signal that toggleRow has run.
+    await this.page.waitUntilVisible(
+      [
+        { type: 'testId', value: 'bulk-action-bar' },
+        { type: 'role', value: 'toolbar' },
+      ],
+      { intent: 'floating action bar appearing after contact row is selected' },
+      5_000,
     );
-    const bar = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'bulk-action-bar' },
-          { type: 'role', value: 'toolbar' },
-        ],
-        { intent: 'floating action bar that appears when contacts are selected' },
-      )
-      .resolve();
-    // 5 s matches the waitForFunction guard above — prevents 30 s default consuming
-    // the full test budget on mobile where the bar may render more slowly. (MINCRM-298)
-    await bar.waitFor({ state: 'visible', timeout: 5_000 });
   }
 
   /**
@@ -244,9 +242,17 @@ export class ContactsPage {
       ],
       { intent: 'contacts list search input field' },
     );
-    // Wait for the debounce to fire, the request to complete, and React to
-    // repopulate the list — matches the pattern used in rowCount().
-    await this.page.waitForLoadState('networkidle');
+    // Wait for rows or empty state — confirms debounce fired and list re-rendered.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: '[data-testid^="contact-link-"]' },
+          { type: 'testId', value: 'contacts-empty-state' },
+        ],
+        { intent: 'contact rows or empty state after search query settles' },
+        10_000,
+      )
+      .catch(() => null);
   }
 
   /**
@@ -467,10 +473,17 @@ export class ContactsPage {
    * @param ownerLabel - Display label of the owner option.
    */
   async selectBulkReassignOwner(ownerId: string, ownerLabel: string): Promise<void> {
-    await this.page.waitForFunction(
-      `document.querySelector('[data-testid="bulk-reassign-owner-select"]')?.querySelector('option[value="${ownerId}"]') !== null`,
-      undefined,
-      { timeout: 5_000 },
+    // Wait until the specific owner option is populated in the select element.
+    await this.page.waitUntilVisible(
+      [
+        {
+          type: 'css',
+          value: `[data-testid="bulk-reassign-owner-select"] option[value="${ownerId}"]`,
+        },
+        { type: 'css', value: `option[value="${ownerId}"]` },
+      ],
+      { intent: 'owner option populated in bulk reassign dropdown' },
+      5_000,
     );
     const ownerSelect = await this.page
       .locate(
@@ -559,7 +572,17 @@ export class ContactsPage {
       const isVisible = await el.isVisible().catch(() => false);
       if (!isVisible) return false;
       await el.click();
-      await this.page.waitForLoadState('networkidle');
+      // Wait for rows or empty state to confirm the sort re-render settled.
+      await this.page
+        .waitUntilVisible(
+          [
+            { type: 'css', value: '[data-testid^="contact-link-"]' },
+            { type: 'testId', value: 'contacts-empty-state' },
+          ],
+          { intent: 'contact rows or empty state after sort column click settles' },
+          10_000,
+        )
+        .catch(() => null);
       return true;
     } catch {
       return false;

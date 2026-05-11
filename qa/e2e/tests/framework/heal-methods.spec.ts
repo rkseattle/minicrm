@@ -136,6 +136,66 @@ test.describe('healPage.waitFor()', () => {
 });
 
 // ---------------------------------------------------------------------------
+// waitUntilVisible — polls for element appearance (MINCRM-355)
+// ---------------------------------------------------------------------------
+
+test.describe('healPage.waitUntilVisible()', () => {
+  test.beforeEach(() => {
+    HealingRegistry.instance._reset();
+  });
+
+  test('primary becomes visible — no heal event', async () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'waitUntilVisible primary');
+
+    await hp.waitUntilVisible([{ type: 'testId', value: 'el' }], { fallbackTimeout: 100 }, 200);
+
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('primary times out, fallback becomes visible — heal event recorded', async () => {
+    const page = mockPage([false, true]);
+    const hp = buildHealPage(page, 'waitUntilVisible fallback');
+
+    await hp.waitUntilVisible(
+      [
+        { type: 'testId', value: 'el' },
+        { type: 'css', value: '.el' },
+      ],
+      { fallbackTimeout: 100 },
+      200,
+    );
+
+    expect(HealingRegistry.instance.count).toBe(1);
+  });
+
+  test('all strategies time out — throws StrategyExhaustedError', async () => {
+    const page = mockPage([false, false]);
+    const hp = buildHealPage(page, 'waitUntilVisible all fail');
+
+    await expect(
+      hp.waitUntilVisible(
+        [
+          { type: 'testId', value: 'el' },
+          { type: 'css', value: '.el' },
+        ],
+        {},
+        100,
+      ),
+    ).rejects.toThrow('HealingLocator: all strategies exhausted');
+
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('is present on HealMethods instance', () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'waitUntilVisible presence');
+
+    expect(typeof hp.waitUntilVisible).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // textContent
 // ---------------------------------------------------------------------------
 

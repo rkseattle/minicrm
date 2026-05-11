@@ -17,11 +17,13 @@ import { expect } from '@playwright/test';
 import type { AxeResults } from 'axe-core';
 import {
   HealingLocator,
+  HealingRegistry,
   buildLocator,
   STRATEGY_ORDER,
   BoundHealingLocator,
+  StrategyExhaustedError,
 } from '../healing/index.js';
-import type { LocatorStrategy } from '../healing/index.js';
+import type { LocatorStrategy, LocatorStrategyRecord } from '../healing/index.js';
 import type { SafePage } from '../types/safe-page.js';
 import type { SafeLocator } from '../types/safe-locator.js';
 
@@ -165,6 +167,27 @@ export interface HealMethods {
   waitFor(
     strategies: LocatorStrategy[],
     state: 'visible' | 'hidden' | 'attached' | 'detached',
+    options?: LocateOptions,
+    timeout?: number,
+  ): Promise<void>;
+
+  /**
+   * Waits for an element to become visible, trying each strategy in priority
+   * order with the full timeout. Unlike waitFor(), this does NOT require the
+   * element to already exist in the DOM — it polls each strategy until the
+   * element appears or the timeout elapses.
+   *
+   * Use this wherever you previously needed page.waitForFunction('document.querySelector(...)').
+   *
+   * Records a heal event when a fallback strategy succeeds before the primary.
+   *
+   * @param strategies - Ranked strategies; tried in STRATEGY_ORDER priority.
+   * @param options    - LocateOptions (intent required for AI tier).
+   * @param timeout    - Maximum ms to wait per strategy (default 10 000).
+   * @throws StrategyExhaustedError if no strategy finds the element within timeout.
+   */
+  waitUntilVisible(
+    strategies: LocatorStrategy[],
     options?: LocateOptions,
     timeout?: number,
   ): Promise<void>;
@@ -435,6 +458,56 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       timeout?: number,
     ): Promise<void> {
       await (await resolveLocator(strategies, options)).waitFor({ state, timeout });
+    },
+
+    async waitUntilVisible(
+      strategies: LocatorStrategy[],
+      options: LocateOptions = {},
+      timeout = 10_000,
+    ): Promise<void> {
+      const sorted = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      const [primary, ...fallbacks] = sorted;
+      const attempted: LocatorStrategyRecord[] = [];
+
+      function toRecord(s: LocatorStrategy): LocatorStrategyRecord {
+        const r: LocatorStrategyRecord = { type: s.type, value: s.value };
+        if (s.options !== undefined) r.options = s.options;
+        if (s.within !== undefined) r.within = s.within;
+        return r;
+      }
+
+      // Try primary with the full timeout — it gets the first and longest window.
+      const primaryLocator = buildLocator(page, primary!);
+      try {
+        await primaryLocator.first().waitFor({ state: 'visible', timeout });
+        return;
+      } catch {
+        attempted.push(toRecord(primary!));
+      }
+
+      // Try each fallback with the full timeout.
+      for (const fallback of fallbacks) {
+        const fallbackLocator = buildLocator(page, fallback);
+        try {
+          await fallbackLocator.first().waitFor({ state: 'visible', timeout });
+          // Record the heal event — a fallback succeeded where primary did not.
+          HealingRegistry.instance.record(
+            testName,
+            toRecord(primary!),
+            toRecord(fallback),
+            false,
+            options.pageObject,
+            options.method,
+          );
+          return;
+        } catch {
+          attempted.push(toRecord(fallback));
+        }
+      }
+
+      throw new StrategyExhaustedError(attempted);
     },
 
     async textContent(

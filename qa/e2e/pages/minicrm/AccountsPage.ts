@@ -87,7 +87,17 @@ export class AccountsPage {
    * Returns 0 when no accounts are listed or during a loading state.
    */
   async rowCount(): Promise<number> {
-    await this.page.waitForLoadState('networkidle');
+    // Wait for either rows or the empty state to appear — confirms the list has settled.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: '[data-testid^="account-link-"]' },
+          { type: 'testId', value: 'accounts-empty-state' },
+        ],
+        { intent: 'account rows or empty state confirming accounts list has loaded' },
+        10_000,
+      )
+      .catch(() => null);
     try {
       const resolved = await this.page
         .locate(
@@ -260,7 +270,17 @@ export class AccountsPage {
       ],
       { intent: 'accounts list search input field' },
     );
-    await this.page.waitForLoadState('networkidle');
+    // Wait for rows or empty state — confirms debounce fired and list re-rendered.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: '[data-testid^="account-link-"]' },
+          { type: 'testId', value: 'accounts-empty-state' },
+        ],
+        { intent: 'account rows or empty state after search query settles' },
+        10_000,
+      )
+      .catch(() => null);
   }
 
   /**

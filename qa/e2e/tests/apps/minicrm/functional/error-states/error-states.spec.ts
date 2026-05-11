@@ -266,11 +266,16 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
   // branch and the success branch, so its presence is an unambiguous signal).
   await page.goto(`/contacts/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // Wait until the not-found paragraph is present in the DOM.
-  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
-  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
-    timeout: 10_000,
-  });
+  // Wait until the not-found alert paragraph appears — present only after React
+  // processes the 404 response and transitions from loading to error state.
+  await page.waitUntilVisible(
+    [
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: 'p[role="alert"]' },
+    ],
+    { intent: 'not-found alert paragraph after 404 API response on contact detail page' },
+    10_000,
+  );
 
   // The page must show a not-found message — not a blank screen or JS error.
   const contactDetailPage = new ContactDetailPage({ page });
@@ -293,11 +298,15 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
 
   await page.goto(`/deals/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
 
-  // Wait until the not-found paragraph is present — same pattern as ES-1-4.
-  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
-  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
-    timeout: 10_000,
-  });
+  // Wait until the not-found alert paragraph appears — same pattern as ES-1-4.
+  await page.waitUntilVisible(
+    [
+      { type: 'role', value: 'alert' },
+      { type: 'css', value: 'p[role="alert"]' },
+    ],
+    { intent: 'not-found alert paragraph after 404 API response on deal detail page' },
+    10_000,
+  );
 
   // The page must show a not-found message.
   const dealDetailPage = new DealDetailPage({ page });

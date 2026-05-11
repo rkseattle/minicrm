@@ -206,11 +206,22 @@ export async function dragDealToStage(
   const cardTestId = `deal-card-${dealId}`;
   const headerTestId = `stage-column-header-${targetSlug}`;
 
-  await context.page.waitForFunction(
-    `document.querySelector('[data-testid="${cardTestId}"]') !== null && ` +
-      `document.querySelector('[data-testid="${headerTestId}"]') !== null`,
-    undefined,
-    { timeout: 10_000 },
+  // Wait for both the card and the target column header to be visible before dragging.
+  await context.page.waitUntilVisible(
+    [
+      { type: 'testId', value: cardTestId },
+      { type: 'css', value: `[data-testid="${cardTestId}"]` },
+    ],
+    { intent: 'deal card visible on pipeline board before drag' },
+    10_000,
+  );
+  await context.page.waitUntilVisible(
+    [
+      { type: 'testId', value: headerTestId },
+      { type: 'css', value: `[data-testid="${headerTestId}"]` },
+    ],
+    { intent: 'target stage column header visible on pipeline board before drag' },
+    10_000,
   );
 
   await context.page.evaluate(`(() => {
@@ -232,14 +243,14 @@ export async function dragDealToStage(
   let closeDealModalOpened = false;
 
   if (isTerminal) {
-    // CloseDealModal opens — fill required close_date and confirm.
-    // waitForFunction polls until the modal element is in the DOM before
-    // closeDealModalLocator(), because locate().resolve() throws StrategyExhaustedError
-    // immediately when the element is absent rather than waiting for it to appear.
-    await context.page.waitForFunction(
-      `document.querySelector('[data-testid="close-deal-modal"]') !== null`,
-      undefined,
-      { timeout: 8_000 },
+    // CloseDealModal opens — wait for it to appear before interacting.
+    await context.page.waitUntilVisible(
+      [
+        { type: 'testId', value: 'close-deal-modal' },
+        { type: 'css', value: '[data-testid="close-deal-modal"]' },
+      ],
+      { intent: 'close deal modal appearing after dragging deal to terminal stage' },
+      8_000,
     );
     const modal = await boardPage.closeDealModalLocator();
     await modal?.waitFor({ state: 'visible', timeout: 5_000 });
@@ -259,13 +270,17 @@ export async function dragDealToStage(
   // Wait for the card to appear in the target column. For terminal stages this
   // implicitly waits for the React Query refetch triggered by the mutation's
   // onSettled to complete. 25s gives the refetch room to settle under CI concurrent
-  // load. A reload cycle was tried previously but consumed too much of the 30s test
-  // budget even when every step succeeded. (MINCRM-313)
-  const cardInTargetSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
-  await context.page.waitForFunction(
-    `document.querySelector(${JSON.stringify(cardInTargetSelector)}) !== null`,
-    undefined,
-    { timeout: 25_000 },
+  // load. (MINCRM-313)
+  await context.page.waitUntilVisible(
+    [
+      {
+        type: 'css',
+        value: `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`,
+      },
+      { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
+    ],
+    { intent: 'deal card appearing in target stage column after drag-and-drop' },
+    25_000,
   );
 
   const columnSlug = await boardPage.getDealColumnSlug(dealId);

@@ -131,15 +131,15 @@ export class LeadsPage {
    */
   async selectStatus(leadId: string, status: string): Promise<void> {
     // The <select> is conditionally rendered only after the status badge is clicked.
-    // locate().resolve() throws StrategyExhaustedError when the element is absent,
-    // so use waitForFunction to poll the DOM until it appears before resolving.
+    // waitUntilVisible polls until the element appears — no StrategyExhaustedError on absence.
     const testId = `status-select-${leadId}`;
-    // waitForFunction body runs in the browser; pass the testId as part of the
-    // expression string so node-side TypeScript never sees `document` directly.
-    await this.page.waitForFunction(
-      `document.querySelector('[data-testid="${testId}"]') !== null`,
-      undefined,
-      { timeout: 10_000 },
+    await this.page.waitUntilVisible(
+      [
+        { type: 'testId', value: testId },
+        { type: 'css', value: `[data-testid="${testId}"]` },
+      ],
+      { intent: 'inline status select dropdown appearing after status badge click' },
+      10_000,
     );
     const resolved = await this.page
       .locate(
@@ -196,7 +196,9 @@ export class LeadsPage {
     while (Date.now() < deadline) {
       const text = ((await resolved.textContent()) ?? '').trim();
       if (text === expected) return text;
-      await resolved.page().waitForTimeout(50);
+      // Short yield to avoid a busy-spin; waitForTimeout is acceptable inside
+      // a polling loop where a fixed interval is intentional. (MINCRM-355)
+      await new Promise<void>((r) => setTimeout(r, 50));
     }
     return ((await resolved.textContent()) ?? '').trim();
   }

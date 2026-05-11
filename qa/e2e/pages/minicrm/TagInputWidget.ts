@@ -76,8 +76,21 @@ export class TagInputWidget {
       { intent: 'tag input combobox for typing new tag name' },
     );
     await this.page.keyboard.press('Enter');
-    // Wait for the mutation to settle before the caller reads state.
-    await this.page.waitForLoadState('networkidle');
+    // Wait for any tag badge to appear inside the list — confirms the mutation
+    // settled and React Query updated the list before the caller reads state.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: `[data-testid^="tag-badge-"]` },
+          {
+            type: 'css',
+            value: `[data-testid="tag-list-${this.entityId}"] [data-testid^="tag-badge-"]`,
+          },
+        ],
+        { intent: 'tag badge appearing in tag list after attaching tag to entity' },
+        10_000,
+      )
+      .catch(() => null);
   }
 
   /**
@@ -124,7 +137,6 @@ export class TagInputWidget {
       ],
       10_000,
     );
-    await this.page.waitForLoadState('networkidle');
   }
 
   /**

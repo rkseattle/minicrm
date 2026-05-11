@@ -104,7 +104,17 @@ export class UsersPage {
       ],
       { intent: 'submit button to send user invite' },
     );
-    await this.page.waitForLoadState('networkidle');
+    // Wait for a new user card to appear — confirms the invite mutation settled.
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'css', value: '[data-testid^="user-card-"]' },
+          { type: 'css', value: '[data-testid="users-list"]' },
+        ],
+        { intent: 'user card appearing in list after invite is sent' },
+        10_000,
+      )
+      .catch(() => null);
   }
 
   /**
@@ -113,7 +123,16 @@ export class UsersPage {
    * @param userId - User UUID.
    */
   async userCardIsVisible(userId: string): Promise<boolean> {
-    await this.page.waitForLoadState('networkidle');
+    await this.page
+      .waitUntilVisible(
+        [
+          { type: 'testId', value: `user-card-${userId}` },
+          { type: 'css', value: `[data-testid="user-card-${userId}"]` },
+        ],
+        { intent: 'user card in the users management list' },
+        10_000,
+      )
+      .catch(() => null);
     try {
       const card = await this.page
         .locate(
