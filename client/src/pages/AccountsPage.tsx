@@ -477,7 +477,9 @@ export default function AccountsPage() {
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
             {accounts.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-gray-500">{t('accounts.empty')}</p>
+                <p className="text-sm text-gray-500" data-testid="accounts-empty-state">
+                  {t('accounts.empty')}
+                </p>
               </div>
             ) : (
               <div className="flex-1 overflow-auto min-h-0">

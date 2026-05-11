@@ -89,7 +89,10 @@ export class ContactsPage {
     await this.page
       .waitUntilVisible(
         [
-          { type: 'css', value: '[data-testid^="contact-link-"]' },
+          {
+            type: 'css',
+            value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+          },
           { type: 'testId', value: 'contacts-empty-state' },
         ],
         { intent: 'contact rows or empty state confirming contacts list has loaded' },
@@ -243,16 +246,17 @@ export class ContactsPage {
       { intent: 'contacts list search input field' },
     );
     // Wait for rows or empty state — confirms debounce fired and list re-rendered.
-    await this.page
-      .waitUntilVisible(
-        [
-          { type: 'css', value: '[data-testid^="contact-link-"]' },
-          { type: 'testId', value: 'contacts-empty-state' },
-        ],
-        { intent: 'contact rows or empty state after search query settles' },
-        10_000,
-      )
-      .catch(() => null);
+    await this.page.waitUntilVisible(
+      [
+        {
+          type: 'css',
+          value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+        },
+        { type: 'testId', value: 'contacts-empty-state' },
+      ],
+      { intent: 'contact rows or empty state after search query settles' },
+      15_000,
+    );
   }
 
   /**
@@ -577,7 +581,10 @@ export class ContactsPage {
       await this.page
         .waitUntilVisible(
           [
-            { type: 'css', value: '[data-testid^="contact-link-"]' },
+            {
+              type: 'css',
+              value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
+            },
             { type: 'testId', value: 'contacts-empty-state' },
           ],
           { intent: 'contact rows or empty state after sort column click settles' },

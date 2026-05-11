@@ -58,6 +58,13 @@ async function setOnboardingCompleted(completed: boolean, restClient: RestClient
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Onboarding banner (MINCRM-256)', () => {
+  // Restore onboarding_completed=true after the suite so the banner does not
+  // bleed into other specs that run in parallel. Individual tests set it to
+  // false as needed in their own setup. (MINCRM-355)
+  test.afterAll(async ({ restClient }) => {
+    await setOnboardingCompleted(true, restClient);
+  });
+
   test('@functional F-OB1: banner is visible for admin when is_first_run is true', async ({
     page,
     restClient,

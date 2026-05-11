@@ -172,15 +172,29 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
   await contactsPage.navigate();
   await contactsPage.clickNewContact();
 
-  // Submit without filling any fields — server returns 400 and the form
-  // renders a role="alert" error message. waitUntilVisible polls until it appears.
+  // Wait for the form to mount before attempting submission — confirms the
+  // submit button is actionable and the form is in the DOM.
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'contact-form' },
+      { type: 'role', value: 'form' },
+    ],
+    'visible',
+    { intent: 'contact creation form mounted and ready' },
+    5_000,
+  );
+
+  // Submit with empty fields — browser native constraint validation fires
+  // (required fields), rendering per-field <p class="text-red-600"> errors.
+  // No server request is made. Wait for the first error to confirm the DOM
+  // is in its :invalid state before axe audits it.
   await contactsPage.submitCreateForm();
   await page.waitUntilVisible(
     [
-      { type: 'role', value: 'alert' },
-      { type: 'css', value: '[role="alert"]' },
+      { type: 'css', value: 'p.text-red-600' },
+      { type: 'css', value: '.text-red-600' },
     ],
-    { intent: 'server validation error alert appearing after empty form submission' },
+    { intent: 'field validation error paragraph visible after empty form submission' },
     10_000,
   );
 

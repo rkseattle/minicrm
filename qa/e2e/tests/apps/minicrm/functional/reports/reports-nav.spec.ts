@@ -51,15 +51,15 @@ test('reports nav: clicking Reports nav link lands on /reports @functional', asy
   await setNavLayoutViaAPI('left', restClient);
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    // The left-nav layout is applied via a React Query setting; wait explicitly
-    // for the nav link rather than relying on networkidle which can fire before
-    // the settings fetch completes.
-    await page.waitFor(
+    // The left-nav layout is applied via a React Query setting; the nav link may
+    // not be in the DOM immediately after login if the settings fetch hasn't
+    // completed yet. waitUntilVisible polls until it appears — unlike waitFor,
+    // it does not throw if the element is absent at call time.
+    await page.waitUntilVisible(
       [
         { type: 'testId', value: 'nav-left-reports' },
         { type: 'css', value: '[data-testid="nav-left-reports"]' },
       ],
-      'visible',
       { intent: 'Reports nav link in left navigation bar' },
       10_000,
     );

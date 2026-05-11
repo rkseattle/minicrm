@@ -365,11 +365,16 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
 }) => {
   const DELAY_MS = 3_000;
 
-  // Intercept GET /api/v1/contacts, hold for 3 s, then continue to the real server.
+  // Intercept GET /api/v1/contacts, hold for 3 s, then forward to the real server.
+  // route.fetch() is the Playwright-native way to delay-then-forward: it fetches
+  // the real response and returns it so route.fulfill() can deliver it to the
+  // browser. route.continue() after a setTimeout is unreliable because the route
+  // handler context may be torn down after navigation completes. (MINCRM-355)
   await page.mockRoute('**/api/v1/contacts*', async (route) => {
     if (route.request().method() === 'GET') {
       await new Promise<void>((resolve) => setTimeout(resolve, DELAY_MS));
-      await route.continue();
+      const response = await route.fetch();
+      await route.fulfill({ response });
     } else {
       await route.continue();
     }
@@ -383,16 +388,19 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   const loadingEl = await new ContactsPage({ page }).loadingIndicatorLocator();
   await expect(loadingEl).toBeVisible({ timeout: DELAY_MS - 500 });
 
-  // After the delay the real data arrives — wait for the loading indicator to disappear.
-  // isNotVisible already retries until the condition is met or the timeout expires.
-  const loadingGone = await page.isNotVisible(
+  // After the delay the real data arrives — wait for the contacts-loading div to
+  // become hidden. waitUntilHidden first confirms the element is attached before
+  // waiting for it to disappear, preventing the 0-match false-positive where
+  // waitFor({state:'hidden'}) resolves instantly on an unmatched locator.
+  // (MINCRM-355)
+  await page.waitUntilHidden(
     [
-      { type: 'css', value: '[aria-busy="true"]' },
-      { type: 'css', value: 'p[aria-busy]' },
+      { type: 'testId', value: 'contacts-loading' },
+      { type: 'css', value: '[data-testid="contacts-loading"]' },
     ],
+    { intent: 'contacts loading indicator disappearing once data has loaded' },
     DELAY_MS + 5_000,
   );
-  expect(loadingGone, 'loading indicator should disappear once contacts are loaded').toBe(true);
 });
 
 // ---------------------------------------------------------------------------

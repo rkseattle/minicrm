@@ -369,11 +369,19 @@ function LoadStatePlugin({ body }: { body: string | null | undefined }) {
 
 // ── GetEditor plugin (exposes editor instance to parent via ref) ───────────────
 
-function GetEditorPlugin({ editorRef }: { editorRef: MutableRefObject<LexicalEditor | null> }) {
+function GetEditorPlugin({
+  editorRef,
+  onReady,
+}: {
+  editorRef: MutableRefObject<LexicalEditor | null>;
+  onReady: () => void;
+}) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     editorRef.current = editor;
-  });
+    onReady();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return null;
 }
 
@@ -462,6 +470,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
   const [tagInput, setTagInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
 
   const handleImageUpload = useCallback(
     async (file: File): Promise<string> => {
@@ -493,6 +502,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const isSaveDisabled = !isEditorReady || isPending;
 
   function handleSave() {
     const editor = editorRef.current;
@@ -556,7 +566,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
 
       {/* Lexical editor */}
       <LexicalComposer key={composerKey} initialConfig={initialConfig}>
-        <GetEditorPlugin editorRef={editorRef} />
+        <GetEditorPlugin editorRef={editorRef} onReady={() => setIsEditorReady(true)} />
         <LoadStatePlugin body={editingNote?.body} />
         <ToolbarPlugin onImageUpload={() => imageInputRef.current?.click()} />
         <div
@@ -673,7 +683,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
           <button
             type="button"
             onClick={handleSave}
-            disabled={isPending}
+            disabled={isSaveDisabled}
             data-testid="notes-composer-save"
             className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
           >

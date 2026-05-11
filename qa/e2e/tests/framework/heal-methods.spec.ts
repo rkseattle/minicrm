@@ -256,6 +256,72 @@ test.describe('healPage.waitUntilAttached()', () => {
 });
 
 // ---------------------------------------------------------------------------
+// waitUntilHidden — polls for disappearance, guards 0-match false-positive
+// ---------------------------------------------------------------------------
+
+test.describe('healPage.waitUntilHidden()', () => {
+  test.beforeEach(() => {
+    HealingRegistry.instance._reset();
+  });
+
+  test('primary becomes hidden — no heal event', async () => {
+    // mockLocator(true) resolves all waitFor calls — attached probe and hidden
+    // wait both succeed on the primary strategy.
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'waitUntilHidden primary');
+
+    await hp.waitUntilHidden([{ type: 'testId', value: 'el' }], {}, 200, 200);
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('primary times out, fallback detects hidden — heal event recorded', async () => {
+    // mockPage([false, true]): first locator (primary) always rejects waitFor,
+    // second locator (fallback) always resolves. Primary's attached probe is
+    // swallowed by .catch(() => null), then hidden wait rejects → falls through.
+    // Fallback's attached probe resolves, hidden wait resolves → heal recorded.
+    const page = mockPage([false, true]);
+    const hp = buildHealPage(page, 'waitUntilHidden fallback');
+
+    await hp.waitUntilHidden(
+      [
+        { type: 'testId', value: 'primary' },
+        { type: 'css', value: '.fallback' },
+      ],
+      {},
+      200,
+      200,
+    );
+    expect(HealingRegistry.instance.count).toBe(1);
+  });
+
+  test('all strategies time out — throws StrategyExhaustedError', async () => {
+    const page = mockPage([false, false]);
+    const hp = buildHealPage(page, 'waitUntilHidden all fail');
+
+    await expect(
+      hp.waitUntilHidden(
+        [
+          { type: 'testId', value: 'el' },
+          { type: 'css', value: '.el' },
+        ],
+        {},
+        50,
+        50,
+      ),
+    ).rejects.toThrow('HealingLocator: all strategies exhausted');
+
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  test('is present on HealMethods instance', () => {
+    const page = mockPage([true]);
+    const hp = buildHealPage(page, 'waitUntilHidden presence');
+
+    expect(typeof hp.waitUntilHidden).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // textContent
 // ---------------------------------------------------------------------------
 

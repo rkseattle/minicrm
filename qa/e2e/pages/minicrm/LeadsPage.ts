@@ -119,8 +119,12 @@ export class LeadsPage {
     // forced click — force:true bypasses Playwright's own scroll-into-view, which
     // loops forever inside nested overflow-auto containers on mobile. Without the
     // explicit scroll the click fires on an off-screen element and React ignores it.
+    // scrollIntoViewIfNeeded brings the element into the viewport first so the
+    // normal pointer-event click works inside nested overflow-auto containers.
+    // force:true was removed — it bypasses Playwright's pointer-event simulation
+    // which React needs to fire onClick. (MINCRM-355)
     await badge.scrollIntoViewIfNeeded();
-    await badge.click({ force: true });
+    await badge.click();
   }
 
   /**
@@ -131,23 +135,22 @@ export class LeadsPage {
    */
   async selectStatus(leadId: string, status: string): Promise<void> {
     // The <select> is conditionally rendered only after the status badge is clicked.
-    // waitUntilVisible polls until the element appears — no StrategyExhaustedError on absence.
+    // Pass fallbackTimeout:10_000 so locate().resolve() polls for up to 10 s before
+    // throwing — this mirrors the original waitForFunction('!== null') pattern.
+    // A single locate+selectOption call avoids the race where the select mounts,
+    // auto-focuses via ref, then loses focus (onBlur fires) before a second
+    // resolve() call can find it.
     const testId = `status-select-${leadId}`;
-    await this.page.waitUntilVisible(
-      [
-        { type: 'testId', value: testId },
-        { type: 'css', value: `[data-testid="${testId}"]` },
-      ],
-      { intent: 'inline status select dropdown appearing after status badge click' },
-      10_000,
-    );
     const resolved = await this.page
       .locate(
         [
           { type: 'testId', value: testId },
           { type: 'css', value: `[data-testid="${testId}"]` },
         ],
-        { intent: 'inline status select dropdown for lead row' },
+        {
+          intent: 'inline status select dropdown for lead row',
+          fallbackTimeout: 10_000,
+        },
       )
       .resolve();
     await resolved.selectOption(status);

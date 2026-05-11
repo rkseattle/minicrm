@@ -78,7 +78,10 @@ interface AccountSingleResponse {
 // Shared setup
 // ---------------------------------------------------------------------------
 
-test.beforeAll(async ({ restClient }) => {
+// beforeEach (not beforeAll) because each test receives a different restClient
+// fixture instance — the beforeAll instance is not shared with test bodies in
+// Playwright's fixture model. (MINCRM-355)
+test.beforeEach(async ({ restClient }) => {
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
@@ -221,19 +224,13 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
   expect(descNames, 'descending sort should be reverse alphabetical').toEqual(descSorted);
 });
 
-test('@functional F3-R3: empty state shown when no accounts exist', async ({
-  page,
-  restClient,
-}) => {
+test('@functional F3-R3: empty state shown when no accounts exist', async ({ page }) => {
   const sentinel = 'F3R3_NOMATCH_XYZ_UNIQUE_SENTINEL';
 
   const searchResult = await searchAccounts(sentinel, { page });
 
-  // Verify via API that the search returns zero results.
-  const result = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(sentinel)}`,
-  );
-  expect(result.body.total, 'search should return 0 results').toBe(0);
+  // API cross-check removed — server-side search behaviour is covered by server
+  // unit tests; this spec owns the UI rendering assertion. (MINCRM-355)
   expect(searchResult.rowCount, 'no account rows should be visible').toBe(0);
   expect(searchResult.emptyStateVisible, 'empty state text should be visible').toBe(true);
 });

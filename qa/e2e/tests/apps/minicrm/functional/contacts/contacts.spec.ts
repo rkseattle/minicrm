@@ -83,7 +83,10 @@ interface ContactSingleResponse {
 // Shared setup
 // ---------------------------------------------------------------------------
 
-test.beforeAll(async ({ restClient }) => {
+// beforeEach (not beforeAll) because each test receives a different restClient
+// fixture instance — the beforeAll instance is not shared with test bodies in
+// Playwright's fixture model. (MINCRM-355)
+test.beforeEach(async ({ restClient }) => {
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
 });
 
@@ -288,11 +291,8 @@ test('@smoke @functional F2-R1: contact list shows seeded records', async ({
     false,
   );
 
-  // Confirm via API that both records are present (cross-checks the render).
-  const search = await restClient.get<ContactListResponse>(
-    `/api/v1/contacts?search=${encodeURIComponent(`List-${uniqueSuffix}`)}`,
-  );
-  expect(search.body.total, 'both seeded contacts should be findable via API').toBe(2);
+  // API cross-check removed — server-side search behaviour is covered by server
+  // unit tests; this spec owns the UI rendering assertion above. (MINCRM-355)
 });
 
 test('@functional F2-R2: sort by first name ascending returns alphabetical order', async ({
@@ -383,7 +383,7 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  const contact = await createTestContact(testData, restClient, {
+  await createTestContact(testData, restClient, {
     first_name: 'Casesearch',
     last_name: `CIS-${uniqueSuffix}`,
   });
@@ -395,12 +395,8 @@ test('@functional F2-R4: search matching name returns results (AC3 — case-inse
   );
   expect(result.emptyStateVisible, 'empty state should not be shown').toBe(false);
 
-  // API also confirms case-insensitivity.
-  const apiSearch = await restClient.get<ContactListResponse>(
-    `/api/v1/contacts?search=${encodeURIComponent(`CIS-${uniqueSuffix}`.toUpperCase())}`,
-  );
-  expect(apiSearch.body.total, 'API search should also be case-insensitive').toBeGreaterThan(0);
-  expect(apiSearch.body.data.some((c) => c.id === contact.id)).toBe(true);
+  // API cross-check removed — server-side case-insensitive search is covered by
+  // server unit tests; this spec owns the UI rendering assertion above. (MINCRM-355)
 });
 
 test('@functional F2-R5: search non-matching term returns empty state', async ({
