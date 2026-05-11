@@ -192,6 +192,22 @@ export interface HealMethods {
     timeout?: number,
   ): Promise<void>;
 
+  /**
+   * Waits for an element to be attached to the DOM (not necessarily visible).
+   * Use for elements that are never "visible" in Playwright's sense, such as
+   * `<option>` elements inside a `<select>`.
+   *
+   * @param strategies - Ranked strategies; tried in STRATEGY_ORDER priority.
+   * @param options    - LocateOptions (intent required for AI tier).
+   * @param timeout    - Maximum ms to wait per strategy (default 10 000).
+   * @throws StrategyExhaustedError if no strategy finds the element within timeout.
+   */
+  waitUntilAttached(
+    strategies: LocatorStrategy[],
+    options?: LocateOptions,
+    timeout?: number,
+  ): Promise<void>;
+
   /** Resolves the locator and returns the element's text content. */
   textContent(strategies: LocatorStrategy[], options?: LocateOptions): Promise<string | null>;
 
@@ -510,6 +526,53 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
       throw new StrategyExhaustedError(attempted);
     },
 
+    async waitUntilAttached(
+      strategies: LocatorStrategy[],
+      options: LocateOptions = {},
+      timeout = 10_000,
+    ): Promise<void> {
+      const sorted = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      const [primary, ...fallbacks] = sorted;
+      const attempted: LocatorStrategyRecord[] = [];
+
+      function toRecord(s: LocatorStrategy): LocatorStrategyRecord {
+        const r: LocatorStrategyRecord = { type: s.type, value: s.value };
+        if (s.options !== undefined) r.options = s.options;
+        if (s.within !== undefined) r.within = s.within;
+        return r;
+      }
+
+      const primaryLocator = buildLocator(page, primary!);
+      try {
+        await primaryLocator.first().waitFor({ state: 'attached', timeout });
+        return;
+      } catch {
+        attempted.push(toRecord(primary!));
+      }
+
+      for (const fallback of fallbacks) {
+        const fallbackLocator = buildLocator(page, fallback);
+        try {
+          await fallbackLocator.first().waitFor({ state: 'attached', timeout });
+          HealingRegistry.instance.record(
+            testName,
+            toRecord(primary!),
+            toRecord(fallback),
+            false,
+            options.pageObject,
+            options.method,
+          );
+          return;
+        } catch {
+          attempted.push(toRecord(fallback));
+        }
+      }
+
+      throw new StrategyExhaustedError(attempted);
+    },
+
     async textContent(
       strategies: LocatorStrategy[],
       options: LocateOptions = {},
@@ -639,17 +702,22 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
         return false;
       }
 
-      // Strategy 0 says hidden/absent — probe strategy 1 to guard against a
-      // stale primary locator (e.g. data-testid renamed). If strategy 1 finds
-      // the element visible, it is not hidden. No heal event is recorded.
+      // Strategy 0 says hidden/absent — do a short probe with strategy 1 to
+      // guard against a stale primary locator (e.g. data-testid renamed): if
+      // 0 elements match the primary, waitFor(hidden) resolves immediately —
+      // a false-positive. Strategy 1 catches this: if it finds the element
+      // visible within a short window, the element is not actually gone.
+      // Keep the probe window short (2 s) — it must not consume a significant
+      // portion of the caller's budget after strategy 0 already ran. (MINCRM-355)
       if (sorted.length > 1) {
         const locator1 = buildLocator(page, sorted[1]!);
+        const PROBE_TIMEOUT_MS = 2_000;
         try {
-          await locator1.waitFor({ state: 'visible', timeout: timeoutMs });
+          await locator1.waitFor({ state: 'visible', timeout: PROBE_TIMEOUT_MS });
           // Strategy 1 found the element visible — it is not hidden.
           return false;
         } catch {
-          // Strategy 1 also timed out — element is genuinely hidden/absent.
+          // Strategy 1 also did not find it visible — element is genuinely hidden/absent.
         }
       }
 

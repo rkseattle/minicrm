@@ -473,8 +473,9 @@ export class ContactsPage {
    * @param ownerLabel - Display label of the owner option.
    */
   async selectBulkReassignOwner(ownerId: string, ownerLabel: string): Promise<void> {
-    // Wait until the specific owner option is populated in the select element.
-    await this.page.waitUntilVisible(
+    // <option> elements are never "visible" in Playwright's sense — use
+    // waitUntilAttached to confirm the select is populated before calling selectOption.
+    await this.page.waitUntilAttached(
       [
         {
           type: 'css',
