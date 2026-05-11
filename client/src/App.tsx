@@ -72,7 +72,13 @@ function LayoutShell() {
 function AppRoutes() {
   return (
     <Suspense
-      fallback={<div className="flex h-screen items-center justify-center" aria-label="Loading" />}
+      fallback={
+        <div
+          role="status"
+          className="flex h-screen items-center justify-center"
+          aria-label="Loading"
+        />
+      }
     >
       <Routes>
         {/* Public routes — no layout shell */}

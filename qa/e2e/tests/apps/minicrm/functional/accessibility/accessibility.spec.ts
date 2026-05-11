@@ -174,14 +174,14 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 
   // Submit without filling any fields to trigger required-field validation errors.
   await contactsPage.submitCreateForm();
-  // Wait for at least one validation error to appear before auditing.
+  // Field-level validation errors render as <p class="text-xs text-red-600"> — no role or aria-invalid.
   await page.waitFor(
     [
-      { type: 'role', value: 'alert' },
-      { type: 'css', value: '[aria-invalid="true"]' },
+      { type: 'css', value: 'p.text-red-600' },
+      { type: 'css', value: '.text-red-600' },
     ],
     'visible',
-    { intent: 'validation error visible after form submission' },
+    { intent: 'red field validation error paragraph visible after form submission' },
     10_000,
   );
 
@@ -326,7 +326,16 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 test('@functional A11Y-ADM1: user invite form', async ({ page }) => {
   const usersPage = new UsersPage({ page });
   await usersPage.navigate();
-  // UsersPage.navigate() already waits for the page to load — no extra wait needed.
+  // Wait for the invite form to be visible so axe doesn't audit the Suspense loading state.
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'invite-submit' },
+      { type: 'role', value: 'button', options: { name: /invite/i } },
+    ],
+    'visible',
+    { intent: 'invite submit button confirming users page is fully loaded' },
+    10_000,
+  );
 
   await assertNoBlockingViolations(page);
 });
