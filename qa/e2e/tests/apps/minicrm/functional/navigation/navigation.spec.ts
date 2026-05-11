@@ -130,8 +130,13 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
 // Shared setup — admin auth + test name capture
 // ---------------------------------------------------------------------------
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ page, restClient }) => {
   await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  // Wait for the page to settle before each test so that a prior test's
+  // teardown navigation (resetNavLayout → PATCH + page side-effects) does not
+  // leave the serial worker's page in a partially-rendered state when the next
+  // test begins its own goto/navigate call.
+  await page.waitForLoadState('networkidle').catch(() => null);
 });
 
 // ---------------------------------------------------------------------------
@@ -382,12 +387,15 @@ test.describe.serial('Layout-mutating tests', () => {
         const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
 
         // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
-        // toHaveClass retries until the assertion passes (up to default timeout), avoiding the
-        // one-shot getAttribute race with React reconciliation after navigation.
+        // Wait explicitly for the active class to appear on the DOM element before
+        // asserting — React Router's NavLink applies the class after reconciliation,
+        // which can lag behind the popover mount that openHamburgerMenu triggers.
+        // This avoids the one-shot getAttribute race that causes intermittent failures.
+        await dealsLink.waitFor({ state: 'attached' });
         await expect(
           dealsLink,
           'active nav-hamburger-deals should carry indigo active class',
-        ).toHaveClass(/text-indigo-700/);
+        ).toHaveClass(/text-indigo-700/, { timeout: 10_000 });
 
         // A non-active link should not carry the active class.
         const contactsLink = await navPage.navLinkLocator('hamburger', 'contacts');
