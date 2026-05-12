@@ -732,8 +732,14 @@ jobs:
             'find ./shard-artifacts -name "results.xml"'
           ).toString().trim().split('\n').filter(Boolean);
 
+          const EXPECTED_SHARDS = 4;
           if (files.length === 0) {
-            console.error('No results.xml files found');
+            console.error('No results.xml files found — all shards failed before Playwright ran.');
+            process.exit(1);
+          }
+          if (files.length < EXPECTED_SHARDS) {
+            console.error(`Only ${files.length}/${EXPECTED_SHARDS} shard results.xml files found. Some shards failed before Playwright ran and produced no output. Failing to prevent a partial green result from masking real failures.`);
+            console.error('Files found:', files.join(', '));
             process.exit(1);
           }
 
