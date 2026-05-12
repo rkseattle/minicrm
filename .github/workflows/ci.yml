@@ -630,6 +630,11 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
+        # continue-on-error: artifact uploads can fail under rate limiting or storage
+        # quota when many shards upload large trace/video directories simultaneously.
+        # This upload is for human debugging only — the results.xml upload above is
+        # what matters for CI reporting, and it is a separate step.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-functional-${{ matrix.project }}-${{ github.run_id }}
