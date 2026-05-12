@@ -74,6 +74,7 @@ import {
   navigateToContact,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
+import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -128,11 +129,16 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
 }
 
 // ---------------------------------------------------------------------------
-// Shared setup — admin auth + test name capture
+// Shared setup — admin auth + known-good system state (MINCRM-358)
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
+  await ensureSystemDefaults(restClient);
+});
+
+test.afterEach(async ({ restClient }) => {
+  await ensureSystemDefaults(restClient);
 });
 
 // ---------------------------------------------------------------------------

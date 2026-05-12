@@ -36,6 +36,7 @@ import { login, loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.
 import { openMobileNav, closeMobileNavViaToggle } from '@behaviors/minicrm/nav.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
+import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestUser, navigateToDashboard } from '@apps/minicrm/helpers.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
 import { setLocale, t } from '@framework/i18n/locale.js';
@@ -70,11 +71,16 @@ async function resetLanguage(restClient: RestClient, tag: string): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
-// Shared setup — admin auth before each test
+// Shared setup — admin auth + known-good system state before/after each test (MINCRM-358)
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
+  await ensureSystemDefaults(restClient);
+});
+
+test.afterEach(async ({ restClient }) => {
+  await ensureSystemDefaults(restClient);
 });
 
 // ---------------------------------------------------------------------------

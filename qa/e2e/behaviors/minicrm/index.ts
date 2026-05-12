@@ -337,6 +337,8 @@ export {
   setOnboardingCompleted,
   getOnboardingStatus,
 } from './setup.behaviors.js';
+
+export { ensureSystemDefaults } from './settings.behaviors.js';
 export type {
   WebhookSubscription,
   WebhookCreateResult,
