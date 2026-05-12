@@ -32,19 +32,19 @@ import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
-// Known-good system state before/after each test (MINCRM-358)
+// Known-good system state before each test (MINCRM-358)
 //
-// Individual tests set onboarding_completed=false to exercise the first-run
-// state — those per-test calls are intentional and are kept. The beforeEach
-// here ensures a clean baseline even when a prior test's teardown failed.
+// Resets all mutable system settings to defaults before each test so a prior
+// test's failed teardown cannot contaminate this one. Individual tests still
+// call setOnboardingCompleted(restClient, false) explicitly to exercise the
+// first-run state — that per-test call overrides the default set here.
+//
+// No afterEach: the per-test loginAsAdmin + setOnboardingCompleted calls
+// already own teardown, and adding an afterEach creates a timing race where
+// the server is mid-reset when login() returns and the banner query fires.
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-  await ensureSystemDefaults(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   await ensureSystemDefaults(restClient);
 });
