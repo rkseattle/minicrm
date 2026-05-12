@@ -76,6 +76,7 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -126,6 +127,42 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
   await setNavLayoutViaAPI('top', restClient).catch((err: unknown) => {
     console.error(`[${tag}] teardown: failed to reset nav layout: ${String(err)}`);
   });
+}
+
+/**
+ * Sets the nav layout to 'hamburger' in a way that is guaranteed to be visible
+ * to the browser page immediately — no stale React Query cache risk.
+ *
+ * On desktop: uses the Settings UI (setNavLayoutViaUI), which calls
+ * queryClient.setQueryData() and bypasses the 5-minute staleTime window.
+ *
+ * On mobile: the nav layout selector is hidden (hidden lg:block), so we fall
+ * back to the API + page.reload() to force a fresh fetch past the stale cache.
+ *
+ * @param page - The PageFacade for the current browser context.
+ * @param restClient - Admin-authenticated RestClient (used only on mobile path).
+ */
+async function activateHamburgerLayout(page: PageFacade, restClient: RestClient): Promise<void> {
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  if (isMobile) {
+    await setNavLayoutViaAPI('hamburger', restClient);
+    await navigateToDashboard(page);
+    await page.reload({ waitUntil: 'networkidle' });
+  } else {
+    await navigateToAdminSettings(page);
+    const result = await setNavLayoutViaUI('hamburger', { page });
+    expect(result.clicked, 'hamburger layout option must be clickable').toBe(true);
+    // Wait for aria-checked on the option to confirm the PATCH has round-tripped
+    // before navigating away. Without this, goto('/') may fetch the layout before
+    // the server write commits and serve the stale value.
+    await page.waitFor(
+      [{ type: 'css', value: '[data-testid="nav-layout-option-hamburger"][aria-checked="true"]' }],
+      'visible',
+      {},
+      10_000,
+    );
+    await navigateToDashboard(page);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -355,8 +392,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HB2: NavHamburger is desktop-only; mobile always renders NavTop');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         // Navigate to Deals via hamburger, then open menu again to check active state.
@@ -464,8 +500,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-AD3: NavHamburger is desktop-only; mobile always renders NavTop');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         await openHamburgerMenu({ page });
@@ -590,8 +625,7 @@ test.describe.serial('Layout-mutating tests', () => {
       page,
       restClient,
     }) => {
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         // Hamburger toggle must be visible.
@@ -626,8 +660,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM1: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         // Drawer is conditionally rendered — not in DOM when closed.
@@ -657,8 +690,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM2: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         await openHamburgerMenu({ page });
@@ -684,8 +716,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM3: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         await openHamburgerMenu({ page });
@@ -712,8 +743,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM4: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         // Open the hamburger menu and verify all admin destinations are visible.
@@ -742,8 +772,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
       test.skip(isMobile, 'F8-HM5: NavHamburger is desktop-only; see F8-MN for mobile nav');
 
-      await setNavLayoutViaAPI('hamburger', restClient);
-      await navigateToDashboard(page);
+      await activateHamburgerLayout(page, restClient);
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
