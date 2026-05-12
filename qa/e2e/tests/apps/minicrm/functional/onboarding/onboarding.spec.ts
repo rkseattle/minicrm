@@ -24,11 +24,30 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { setOnboardingCompleted, getOnboardingStatus } from '@behaviors/minicrm/setup.behaviors.js';
+import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
 
 // Tests navigate to the UI login page, so they must not inherit the pre-auth
 // admin storageState from globalSetup.
 test.use({ storageState: { cookies: [], origins: [] } });
+
+// ---------------------------------------------------------------------------
+// Known-good system state before/after each test (MINCRM-358)
+//
+// Individual tests set onboarding_completed=false to exercise the first-run
+// state — those per-test calls are intentional and are kept. The beforeEach
+// here ensures a clean baseline even when a prior test's teardown failed.
+// ---------------------------------------------------------------------------
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+  await ensureSystemDefaults(restClient);
+});
+
+test.afterEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+  await ensureSystemDefaults(restClient);
+});
 
 // ---------------------------------------------------------------------------
 // Environment
