@@ -150,7 +150,7 @@ export async function openHamburgerMenu(
       { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
     ],
     'visible',
-    { fallbackTimeout: 500 },
+    {},
     10_000,
   );
   return { drawerVisible: true };
