@@ -1705,4 +1705,26 @@ export const handlers = [
   http.get('/api/v1/admin/webhooks/:id/logs', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }),
+
+  // ── Notes (MINCRM-352) ────────────────────────────────────────────────────
+
+  /** Notes: GET /api/v1/contact/:id/notes — returns empty paginated list by default */
+  http.get('/api/v1/contact/:id/notes', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
+  }),
+
+  /** Notes: GET /api/v1/account/:id/notes — returns empty paginated list by default */
+  http.get('/api/v1/account/:id/notes', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
+  }),
+
+  /** Notes: GET /api/v1/deal/:id/notes — returns empty paginated list by default */
+  http.get('/api/v1/deal/:id/notes', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
+  }),
+
+  /** Notes: GET /api/v1/lead/:id/notes — returns empty paginated list by default */
+  http.get('/api/v1/lead/:id/notes', () => {
+    return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
+  }),
 ];
