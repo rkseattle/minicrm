@@ -614,7 +614,7 @@ jobs:
         if: always() && steps.healing-check.outputs.exists == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: healing-report-functional-${{ matrix.project }}-${{ github.run_id }}
+          name: healing-report-functional-${{ matrix.project }}-${{ matrix.shard }}-${{ github.run_id }}
           path: test-results/healing-report.json
           retention-days: 14
 
