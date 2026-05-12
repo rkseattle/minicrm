@@ -378,6 +378,17 @@ test.describe.serial('Layout-mutating tests', () => {
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
+        // openHamburgerMenu() waits for the drawer container to be visible, but
+        // React may not have committed the NavLink children to the DOM yet at that
+        // instant. Wait for a known link to confirm the drawer content is rendered
+        // before resolving any specific link locator.
+        await page.waitFor(
+          [{ type: 'testId', value: 'nav-hamburger-dashboard' }],
+          'visible',
+          {},
+          10_000,
+        );
+
         const navPage = new NavPage({ page });
         const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
 
