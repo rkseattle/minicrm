@@ -349,13 +349,15 @@ export default function LeadsPage() {
         )}
         {!isLoading && !isError && (
           <div className="flex-1 flex flex-col min-h-0 mb-8">
-            {leads.length === 0 ? (
-              <p className="text-gray-500" data-testid="leads-empty">
-                {t('leads.empty')}
-              </p>
-            ) : (
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                <div className="flex-1 overflow-auto min-h-0">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="flex-1 overflow-auto min-h-0">
+                {leads.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-500" data-testid="leads-empty">
+                      {t('leads.empty')}
+                    </p>
+                  </div>
+                ) : (
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="sticky top-0 z-10 bg-gray-50">
                       <tr>
@@ -479,16 +481,16 @@ export default function LeadsPage() {
                       })}
                     </tbody>
                   </table>
-                </div>
-                <Pagination
-                  page={page}
-                  limit={limit}
-                  total={total}
-                  onPageChange={setPage}
-                  onLimitChange={handleLimitChange}
-                />
+                )}
               </div>
-            )}
+              <Pagination
+                page={page}
+                limit={limit}
+                total={total}
+                onPageChange={setPage}
+                onLimitChange={handleLimitChange}
+              />
+            </div>
           </div>
         )}
       </main>
