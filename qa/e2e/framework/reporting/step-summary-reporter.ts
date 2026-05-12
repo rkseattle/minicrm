@@ -120,6 +120,7 @@ export class StepSummaryReporter implements Reporter {
   private resultLabel(status: string): string {
     if (status === 'passed') return 'Passed';
     if (status === 'failed') return 'Failed';
+    if (status === 'skipped') return 'Skipped';
     if (status === 'timedOut') return 'Timed out';
     if (status === 'interrupted') return 'Interrupted';
     return 'Unknown';

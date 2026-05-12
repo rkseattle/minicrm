@@ -383,15 +383,25 @@ test.describe.serial('Layout-mutating tests', () => {
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
+        // Wait for the deals link to be visible inside the drawer before resolving
+        // a handle — navLinkLocator().resolve() is a one-shot attempt that throws
+        // StrategyExhaustedError if the link hasn't rendered yet. waitUntilVisible
+        // polls with the full timeout so the handle is only captured once the element
+        // is confirmed present.
+        await page.waitUntilVisible(
+          [
+            { type: 'testId', value: 'nav-hamburger-deals' },
+            { type: 'role', value: 'link', options: { name: /deals/i } },
+          ],
+          { intent: 'active deals link in open hamburger drawer' },
+          10_000,
+        );
+
         const navPage = new NavPage({ page });
         const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
 
-        // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
-        // Wait explicitly for the active class to appear on the DOM element before
-        // asserting — React Router's NavLink applies the class after reconciliation,
-        // which can lag behind the popover mount that openHamburgerMenu triggers.
-        // This avoids the one-shot getAttribute race that causes intermittent failures.
-        await dealsLink.waitFor({ state: 'attached' });
+        // toHaveClass auto-retries, so it handles the NavLink active-class reconciliation
+        // lag without a separate waitFor call.
         await expect(
           dealsLink,
           'active nav-hamburger-deals should carry indigo active class',
