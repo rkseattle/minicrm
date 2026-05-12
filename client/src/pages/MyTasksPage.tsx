@@ -150,13 +150,15 @@ export default function MyTasksPage() {
             )}
 
             {/* Open tasks table */}
-            {visibleTasks.length === 0 && !showCompleted ? (
-              <p className="text-sm text-gray-500" data-testid="my-tasks-empty">
-                {t('myTasks.empty')}
-              </p>
-            ) : visibleTasks.length > 0 ? (
-              <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-                {isDesktop ? (
+            <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
+              {visibleTasks.length === 0 && !showCompleted ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-gray-500" data-testid="my-tasks-empty">
+                    {t('myTasks.empty')}
+                  </p>
+                </div>
+              ) : visibleTasks.length > 0 ? (
+                isDesktop ? (
                   /* Desktop table */
                   <div className="flex-1 overflow-auto min-h-0">
                     <table
@@ -389,18 +391,18 @@ export default function MyTasksPage() {
                       );
                     })}
                   </ul>
-                )}
-                {data && (
-                  <Pagination
-                    page={data.page}
-                    limit={data.limit}
-                    total={data.total}
-                    onPageChange={setPage}
-                    onLimitChange={handleLimitChange}
-                  />
-                )}
-              </div>
-            ) : null}
+                )
+              ) : null}
+              {data && (
+                <Pagination
+                  page={data.page}
+                  limit={data.limit}
+                  total={data.total}
+                  onPageChange={setPage}
+                  onLimitChange={handleLimitChange}
+                />
+              )}
+            </div>
 
             {/* Completed tasks empty state when toggle is on */}
             {showCompleted && completedTasks.length === 0 && (

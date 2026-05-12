@@ -767,20 +767,20 @@ export default function AutomationRulesPage() {
           </p>
         )}
 
-        {data && data.data.length === 0 && !showForm && (
-          <p className="text-sm text-gray-500 text-center py-12" data-testid="rules-empty">
-            {t('automation.empty')}
-          </p>
-        )}
-
         {data && (
           <div className="flex-1 flex flex-col min-h-0 mb-8">
-            {data.data.length > 0 && (
-              <div
-                className="flex-1 overflow-auto min-h-0 bg-white rounded-t-lg border border-gray-200 divide-y divide-gray-100"
-                data-testid="rules-list"
-              >
-                {data.data.map((rule: AutomationRuleResponse) => (
+            <div
+              className="flex-1 overflow-auto min-h-0 bg-white rounded-t-lg border border-gray-200 divide-y divide-gray-100"
+              data-testid="rules-list"
+            >
+              {data.data.length === 0 && !showForm ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-gray-500 text-center py-12" data-testid="rules-empty">
+                    {t('automation.empty')}
+                  </p>
+                </div>
+              ) : (
+                data.data.map((rule: AutomationRuleResponse) => (
                   <div
                     key={rule.id}
                     className="px-6 py-4 flex items-start gap-4"
@@ -875,9 +875,9 @@ export default function AutomationRulesPage() {
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
             <Pagination
               page={data.page}
               limit={data.limit}
