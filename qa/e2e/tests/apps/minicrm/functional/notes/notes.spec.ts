@@ -34,6 +34,14 @@ import {
   noteCardIsVisible,
   maskedNoteCardIsVisible,
   login,
+  loginAsAdmin,
+  deactivateUser,
+  createNoteViaApi,
+  getNoteById,
+  listNotes,
+  patchNote,
+  deleteNote,
+  getRecordAuditLog,
 } from '@behaviors/minicrm/index.js';
 import { NotesPage } from '@pages/minicrm/NotesPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
@@ -42,55 +50,14 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F14-notes] E2E_ADMIN_PASSWORD is not set');
-
 const REP_PASSWORD = 'BvtPassword1!';
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface NoteEnvelope {
-  note: {
-    id: string;
-    title: string | null;
-    body: string | null;
-    visibility: string;
-    tags: string[];
-    created_by: string;
-    created_at: string;
-    is_masked: boolean;
-  };
-}
-
-interface NotesListResponse {
-  data: Array<{
-    id: string;
-    title: string | null;
-    visibility: string;
-    is_masked: boolean;
-  }>;
-  total: number;
-}
-
-interface AuditLogResponse {
-  entries: Array<{
-    id: string;
-    event_type: string;
-    record_type: string;
-    record_id: string | null;
-    changed_by_name: string | null;
-  }>;
-}
 
 // ---------------------------------------------------------------------------
 // Shared setup — admin auth
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -122,11 +89,9 @@ test('@functional F14-C1: Create a team note on a contact — note appears in UI
   expect(result.listVisible, 'notes list should be visible after first note').toBe(true);
 
   // Verify via REST API
-  const listResponse = await restClient.get<NotesListResponse>(
-    `/api/v1/contact/${contact.id}/notes`,
-  );
-  expect(listResponse.body.total, 'one note should be created').toBe(1);
-  const created = listResponse.body.data[0]!;
+  const notesList = await listNotes(restClient, contact.id);
+  expect(notesList.total, 'one note should be created').toBe(1);
+  const created = notesList.data[0]!;
   expect(created.title).toBe('F14-C1 team note');
   expect(created.visibility).toBe('team');
   expect(created.is_masked).toBe(false);
@@ -154,10 +119,8 @@ test('@functional F14-C2: Create a note with tags — tags are persisted', async
     },
   );
 
-  const listResponse = await restClient.get<NotesListResponse>(
-    `/api/v1/contact/${contact.id}/notes`,
-  );
-  expect(listResponse.body.total).toBe(1);
+  const notesList = await listNotes(restClient, contact.id);
+  expect(notesList.total).toBe(1);
 });
 
 // ---------------------------------------------------------------------------
@@ -172,19 +135,16 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   const contact = await createTestContact(testData, restClient);
 
   // Create via API to get the ID
-  const createResponse = await restClient.post<NoteEnvelope>(
-    `/api/v1/contact/${contact.id}/notes`,
-    {
-      body: JSON.stringify({
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original body' }] }],
-      }),
-      title: 'Original title',
-      visibility: 'team',
-      tags: [],
-    },
-  );
-  const noteId = createResponse.body.note.id;
+  const note = await createNoteViaApi(restClient, contact.id, {
+    body: JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Original body' }] }],
+    }),
+    title: 'Original title',
+    visibility: 'team',
+    tags: [],
+  });
+  const noteId = note.id;
 
   await navigateToContact(page, contact.id);
   const notesPage = new NotesPage({ page });
@@ -210,10 +170,8 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   await expect(titleEl!).toHaveText('Updated title F14-E1');
 
   // Verify via API
-  const getResponse = await restClient.get<NoteEnvelope>(
-    `/api/v1/contact/${contact.id}/notes/${noteId}`,
-  );
-  expect(getResponse.body.note.title).toBe('Updated title F14-E1');
+  const updatedNote = await getNoteById(restClient, contact.id, noteId);
+  expect(updatedNote.title).toBe('Updated title F14-E1');
 });
 
 // ---------------------------------------------------------------------------
@@ -227,18 +185,15 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
 }) => {
   const contact = await createTestContact(testData, restClient);
 
-  const createResponse = await restClient.post<NoteEnvelope>(
-    `/api/v1/contact/${contact.id}/notes`,
-    {
-      body: JSON.stringify({
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'To be deleted' }] }],
-      }),
-      visibility: 'team',
-      tags: [],
-    },
-  );
-  const noteId = createResponse.body.note.id;
+  const note = await createNoteViaApi(restClient, contact.id, {
+    body: JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'To be deleted' }] }],
+    }),
+    visibility: 'team',
+    tags: [],
+  });
+  const noteId = note.id;
 
   await navigateToContact(page, contact.id);
   const notesPage = new NotesPage({ page });
@@ -258,7 +213,8 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
   const stillVisible = await noteCardIsVisible({ page }, noteId);
   expect(stillVisible, 'note card should be gone after delete').toBe(false);
 
-  // API should return 404 for the deleted note
+  // API should return 404 for the deleted note — exempt from behavior replacement
+  // because the purpose is to assert the error status code directly.
   let got404 = false;
   try {
     await restClient.get(`/api/v1/contact/${contact.id}/notes/${noteId}`);
@@ -285,31 +241,20 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
   const repA = await createTestUser(restClient, { password: REP_PASSWORD });
   const repB = await createTestUser(restClient, { password: REP_PASSWORD });
 
-  // Deactivate both users in teardown (users can't be hard-deleted)
-  const deactivateRepA = async () => {
-    await restClient.patch(`/api/v1/users/${repA.id}/deactivate`, {});
-  };
-  const deactivateRepB = async () => {
-    await restClient.patch(`/api/v1/users/${repB.id}/deactivate`, {});
-  };
-
   try {
     // Rep A creates a private note via API
     const repAClient = restClient; // rep A's client (we re-use restClient after re-login)
     await loginAndVerify(repAClient, repA.email, REP_PASSWORD);
 
-    const createResponse = await repAClient.post<NoteEnvelope>(
-      `/api/v1/contact/${contact.id}/notes`,
-      {
-        body: JSON.stringify({
-          type: 'doc',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Secret rep A note' }] }],
-        }),
-        visibility: 'private',
-        tags: [],
-      },
-    );
-    const noteId = createResponse.body.note.id;
+    const note = await createNoteViaApi(repAClient, contact.id, {
+      body: JSON.stringify({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Secret rep A note' }] }],
+      }),
+      visibility: 'private',
+      tags: [],
+    });
+    const noteId = note.id;
 
     // Log in as rep B in the browser
     await login({ email: repB.email, password: REP_PASSWORD }, { page });
@@ -330,9 +275,9 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
     expect(bodyEl, 'note body should not be accessible to rep B').toBeNull();
   } finally {
     // Restore admin session so subsequent tests are not affected
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateRepA();
-    await deactivateRepB();
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, repA.id);
+    await deactivateUser(restClient, repB.id);
   }
 });
 
@@ -347,31 +292,26 @@ test('@functional F14-A1: Create and update a note — audit entries recorded', 
   const contact = await createTestContact(testData, restClient);
 
   // Create note via API
-  const createResponse = await restClient.post<NoteEnvelope>(
-    `/api/v1/contact/${contact.id}/notes`,
-    {
-      body: JSON.stringify({
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Audit test note' }] }],
-      }),
-      title: 'Audit note',
-      visibility: 'team',
-      tags: [],
-    },
-  );
-  const noteId = createResponse.body.note.id;
+  const note = await createNoteViaApi(restClient, contact.id, {
+    body: JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Audit test note' }] }],
+    }),
+    title: 'Audit note',
+    visibility: 'team',
+    tags: [],
+  });
+  const noteId = note.id;
 
   // Update the note
-  await restClient.patch(`/api/v1/contact/${contact.id}/notes/${noteId}`, {
+  await patchNote(restClient, contact.id, noteId, {
     title: 'Audit note — updated',
   });
 
   // Check audit log for this contact via the per-record endpoint
-  const auditResponse = await restClient.get<AuditLogResponse>(
-    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
-  );
+  const auditLog = await getRecordAuditLog(restClient, 'contact', contact.id, true);
 
-  const entries = auditResponse.body.entries;
+  const entries = auditLog.entries;
 
   const createdEntry = entries.find((e) => e.event_type === 'note_created');
   expect(createdEntry, 'note_created audit entry should exist').toBeDefined();
@@ -386,25 +326,20 @@ test('@functional F14-A2: Delete a note — note_deleted audit entry recorded', 
 }) => {
   const contact = await createTestContact(testData, restClient);
 
-  const createResponse = await restClient.post<NoteEnvelope>(
-    `/api/v1/contact/${contact.id}/notes`,
-    {
-      body: JSON.stringify({
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Delete audit test' }] }],
-      }),
-      visibility: 'team',
-      tags: [],
-    },
-  );
-  const noteId = createResponse.body.note.id;
+  const note = await createNoteViaApi(restClient, contact.id, {
+    body: JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Delete audit test' }] }],
+    }),
+    visibility: 'team',
+    tags: [],
+  });
+  const noteId = note.id;
 
-  await restClient.delete(`/api/v1/contact/${contact.id}/notes/${noteId}`);
+  await deleteNote(restClient, contact.id, noteId);
 
-  const auditResponse = await restClient.get<AuditLogResponse>(
-    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
-  );
+  const auditLog = await getRecordAuditLog(restClient, 'contact', contact.id, true);
 
-  const deletedEntry = auditResponse.body.entries.find((e) => e.event_type === 'note_deleted');
+  const deletedEntry = auditLog.entries.find((e) => e.event_type === 'note_deleted');
   expect(deletedEntry, 'note_deleted audit entry should exist').toBeDefined();
 });

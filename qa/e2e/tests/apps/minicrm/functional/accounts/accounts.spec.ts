@@ -38,48 +38,22 @@ import {
   cancelDeleteAccount,
   cancelAccountEdit,
   searchAccounts,
+  getAccountById,
+  searchAccountsViaApi,
+  listAccountsViaApi,
 } from '@behaviors/minicrm/accounts.behaviors.js';
+import { getContactById, patchContactAccount } from '@behaviors/minicrm/contacts.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAccount, createTestContact, navigateToAccount } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F3-accounts] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface AccountListResponse {
-  data: Array<{ id: string; name: string; industry: string | null }>;
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface AccountSingleResponse {
-  account: {
-    id: string;
-    name: string;
-    industry: string | null;
-    website: string | null;
-    employee_range: string | null;
-    revenue_range: string | null;
-    owner_id: string;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -101,11 +75,9 @@ test('@functional F3-C1: all required fields submitted → account created and a
   expect(result.validationError, 'no validation error expected').toBe(false);
 
   // Verify via API that the account exists and register for teardown.
-  const search = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(name)}`,
-  );
-  expect(search.body.total, 'created account should be findable via API').toBe(1);
-  const created = search.body.data[0];
+  const search = await searchAccountsViaApi(restClient, name);
+  expect(search.total, 'created account should be findable via API').toBe(1);
+  const created = search.data[0];
   expect(created).toBeDefined();
   testData.register('account', created!.id, `/api/v1/accounts/${created!.id}`);
 });
@@ -132,15 +104,12 @@ test('@functional F3-C2: optional fields included → all saved on detail page',
   expect(result.created, 'account with optional fields should be created').toBe(true);
 
   // Retrieve via API to confirm all fields were persisted.
-  const search = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(name)}`,
-  );
-  expect(search.body.total, 'account should be findable via API').toBe(1);
-  const id = search.body.data[0]!.id;
+  const search = await searchAccountsViaApi(restClient, name);
+  expect(search.total, 'account should be findable via API').toBe(1);
+  const id = search.data[0]!.id;
   testData.register('account', id, `/api/v1/accounts/${id}`);
 
-  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${id}`);
-  const account = detail.body.account;
+  const account = await getAccountById(restClient, id);
   expect(account.industry).toBe('Technology');
   expect(account.website).toBe('https://f3c2.example.com');
   expect(account.employee_range).toBe('51-200');
@@ -180,15 +149,11 @@ test('@functional F3-R1: seeded accounts are visible in the list', async ({
   expect(result.loaded, 'accounts page should load').toBe(true);
 
   // Both seeded accounts should be findable via API.
-  const searchA = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(accountA.name)}`,
-  );
-  expect(searchA.body.total, 'first seeded account should exist').toBeGreaterThanOrEqual(1);
+  const searchA = await searchAccountsViaApi(restClient, accountA.name);
+  expect(searchA.total, 'first seeded account should exist').toBeGreaterThanOrEqual(1);
 
-  const searchB = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(accountB.name)}`,
-  );
-  expect(searchB.body.total, 'second seeded account should exist').toBeGreaterThanOrEqual(1);
+  const searchB = await searchAccountsViaApi(restClient, accountB.name);
+  expect(searchB.total, 'second seeded account should exist').toBeGreaterThanOrEqual(1);
 });
 
 test('@functional F3-R2: sort by name ascending then descending', async ({
@@ -203,20 +168,14 @@ test('@functional F3-R2: sort by name ascending then descending', async ({
   await navigateToAccounts({ page });
 
   // Verify API returns correct sort order ascending.
-  const ascResult = await restClient.get<AccountListResponse>(
-    '/api/v1/accounts?sort=name&dir=asc&limit=5',
-  );
-  expect(ascResult.status).toBe(200);
-  const ascNames = ascResult.body.data.map((a) => a.name);
+  const ascResult = await listAccountsViaApi(restClient, { sort: 'name', dir: 'asc', limit: 5 });
+  const ascNames = ascResult.data.map((a) => a.name);
   const ascSorted = [...ascNames].sort((x, y) => x.localeCompare(y));
   expect(ascNames, 'ascending sort should be alphabetical').toEqual(ascSorted);
 
   // Verify API returns correct sort order descending.
-  const descResult = await restClient.get<AccountListResponse>(
-    '/api/v1/accounts?sort=name&dir=desc&limit=5',
-  );
-  expect(descResult.status).toBe(200);
-  const descNames = descResult.body.data.map((a) => a.name);
+  const descResult = await listAccountsViaApi(restClient, { sort: 'name', dir: 'desc', limit: 5 });
+  const descNames = descResult.data.map((a) => a.name);
   const descSorted = [...descNames].sort((x, y) => y.localeCompare(x));
   expect(descNames, 'descending sort should be reverse alphabetical').toEqual(descSorted);
 });
@@ -230,10 +189,8 @@ test('@functional F3-R3: empty state shown when no accounts exist', async ({
   const searchResult = await searchAccounts(sentinel, { page });
 
   // Verify via API that the search returns zero results.
-  const result = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(sentinel)}`,
-  );
-  expect(result.body.total, 'search should return 0 results').toBe(0);
+  const result = await searchAccountsViaApi(restClient, sentinel);
+  expect(result.total, 'search should return 0 results').toBe(0);
   expect(searchResult.rowCount, 'no account rows should be visible').toBe(0);
   expect(searchResult.emptyStateVisible, 'empty state text should be visible').toBe(true);
 });
@@ -259,8 +216,8 @@ test('@functional F3-U1: edit account name → change reflected in detail view',
   expect(result.saved, 'edit should save successfully').toBe(true);
 
   // Verify the name change is reflected via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
-  expect(detail.body.account.name, 'updated name should be persisted').toBe(updatedName);
+  const detail = await getAccountById(restClient, account.id);
+  expect(detail.name, 'updated name should be persisted').toBe(updatedName);
 });
 
 test('@functional F3-U2: edit industry field → change reflected in detail view', async ({
@@ -276,8 +233,8 @@ test('@functional F3-U2: edit industry field → change reflected in detail view
 
   expect(result.saved, 'edit should save successfully').toBe(true);
 
-  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
-  expect(detail.body.account.industry, 'updated industry should be persisted').toBe('Healthcare');
+  const detail = await getAccountById(restClient, account.id);
+  expect(detail.industry, 'updated industry should be persisted').toBe('Healthcare');
 });
 
 test('@functional F3-U3: cancel edit → no change persisted', async ({
@@ -296,8 +253,8 @@ test('@functional F3-U3: cancel edit → no change persisted', async ({
   expect(result.backToReadMode, 'cancel should return to read mode').toBe(true);
 
   // Verify name is unchanged via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
-  expect(detail.body.account.name, 'name should not change after cancel').toBe(originalName);
+  const detail = await getAccountById(restClient, account.id);
+  expect(detail.name, 'name should not change after cancel').toBe(originalName);
 });
 
 // ---------------------------------------------------------------------------
@@ -358,13 +315,8 @@ test('@functional F3-D2: delete account with associated contacts → contacts un
   expect(threw, 'account should return 404 after delete').toBe(true);
 
   // AC3: contact still exists but its account_id is now null (unlinked).
-  const contactDetail = await restClient.get<{
-    contact: { id: string; account_id: string | null };
-  }>(`/api/v1/contacts/${contact.id}`);
-  expect(
-    contactDetail.body.contact.account_id,
-    'contact should be unlinked from deleted account',
-  ).toBeNull();
+  const contactDetail = await getContactById(restClient, contact.id);
+  expect(contactDetail.account_id, 'contact should be unlinked from deleted account').toBeNull();
 });
 
 test('@functional F3-D3: cancel confirmation dialog → account not deleted', async ({
@@ -380,9 +332,9 @@ test('@functional F3-D3: cancel confirmation dialog → account not deleted', as
 
   expect(result.stillOnDetailPage, 'cancel should keep user on detail page').toBe(true);
 
-  // Verify account still exists via API.
-  const detail = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account.id}`);
-  expect(detail.status, 'account should still exist after cancel').toBe(200);
+  // Verify account still exists via API (getAccountById throws RestClientError on 404).
+  const detail = await getAccountById(restClient, account.id);
+  expect(detail.id, 'account should still exist after cancel').toBe(account.id);
 });
 
 // ---------------------------------------------------------------------------
@@ -452,10 +404,7 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
 
   // Unlink the contact by patching account_id to null via REST.
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
-    account_id: null,
-    version: contact.version,
-  });
+  await patchContactAccount(restClient, contact.id, null, contact.version);
 
   await navigateToAccount(page, account.id);
 
@@ -489,18 +438,22 @@ test('@functional F3-P1: sort order is stable across pages (AC2)', async ({
   }
 
   // Fetch page 1 and page 2 sorted by name asc.
-  const page1 = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?sort=name&dir=asc&limit=2&search=${encodeURIComponent(prefix)}`,
-  );
-  const page2 = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?sort=name&dir=asc&limit=2&page=2&search=${encodeURIComponent(prefix)}`,
-  );
+  const page1 = await listAccountsViaApi(restClient, {
+    sort: 'name',
+    dir: 'asc',
+    limit: 2,
+    search: prefix,
+  });
+  const page2 = await listAccountsViaApi(restClient, {
+    sort: 'name',
+    dir: 'asc',
+    limit: 2,
+    page: 2,
+    search: prefix,
+  });
 
-  expect(page1.status).toBe(200);
-  expect(page2.status).toBe(200);
-
-  const page1Names = page1.body.data.map((a) => a.name);
-  const page2Names = page2.body.data.map((a) => a.name);
+  const page1Names = page1.data.map((a) => a.name);
+  const page2Names = page2.data.map((a) => a.name);
 
   // All names across both pages combined should be in ascending order.
   const allNames = [...page1Names, ...page2Names];

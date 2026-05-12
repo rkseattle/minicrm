@@ -33,11 +33,19 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
   login,
+  loginAsAdmin,
+  logoutViaApi,
+  getCurrentUser,
   logout,
   changePassword,
   navigateToProtectedPage,
 } from '@behaviors/minicrm/auth.behaviors.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  adminSetUserPassword,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // MINCRM-192: Auth tests exercise the real login flow and must not load the
@@ -63,11 +71,6 @@ const PROTECTED_PATH = '/contacts';
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface InviteResponse {
-  user: { id: string; email: string };
-  inviteToken: string;
-}
-
 /**
  * Creates a test user via invite + admin-set-password (sets must_change_password=true).
  * Returns the user id, email, and the temporary password.
@@ -79,30 +82,24 @@ interface InviteResponse {
  * @returns Created user id, email, and temp password.
  */
 async function createUserWithForcedPasswordChange(
-  restClient: RestClient,
+  restClient: Parameters<typeof inviteUserViaApi>[0],
   tempPassword: string,
 ): Promise<{ userId: string; email: string; tempPassword: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, {
     name: `F1 User ${uniqueSuffix}`,
     email: `f1-auth-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
-  const { user, inviteToken } = inviteRes.body;
 
   // Use set-password with the invite token to activate the account first
   // (required before admin-set-password will accept the user id).
   const activationPassword = 'Activate1!';
-  await restClient.post('/api/v1/users/set-password', {
-    token: inviteToken,
-    password: activationPassword,
-  });
+  await setUserPassword(restClient, inviteToken, activationPassword);
 
   // admin-set-password sets must_change_password=true so the user is forced
   // to change password on next login.
-  await restClient.post(`/api/v1/users/${user.id}/admin-set-password`, {
-    password: tempPassword,
-  });
+  await adminSetUserPassword(restClient, user.id, tempPassword);
 
   return { userId: user.id, email: user.email, tempPassword };
 }
@@ -191,15 +188,14 @@ test('@functional F1-S1: cleared session cookie → browser redirected to /login
 
 test('@functional F1-S2: cleared session → API returns 401 (AC3)', async ({ restClient }) => {
   // Authenticate the restClient as admin.
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Confirm the session is valid.
-  const meResponse = await restClient.get<{ user: { id: string } }>('/api/v1/auth/me');
-  expect(meResponse.status, 'authenticated /me should return 200').toBe(200);
+  await getCurrentUser(restClient);
 
   // Simulate session expiry: logout via API clears the cookie on the
   // restClient's underlying APIRequestContext.
-  await restClient.post('/api/v1/auth/logout', {});
+  await logoutViaApi(restClient);
 
   // Subsequent authenticated request must return 401 — the session cookie was cleared.
   let caughtStatus: number | null = null;
@@ -255,14 +251,14 @@ test('@smoke @functional F1-O1: logout clears session cookie → subsequent API 
 }) => {
   // Authenticate both the browser page and the restClient independently.
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Perform logout via the UI — clears the browser session cookie.
   const logoutResult = await logout({ page });
   expect(logoutResult.success, 'logout should return to /login').toBe(true);
 
   // Also logout the restClient session so the same APIRequestContext loses its cookie.
-  await restClient.post('/api/v1/auth/logout', {});
+  await logoutViaApi(restClient);
 
   // Subsequent API request must return 401.
   let caughtStatus: number | null = null;
@@ -312,7 +308,7 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
   const NEW_PASSWORD = 'NewPass2@';
 
   // Authenticate restClient as admin to create the test user.
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   let userId: string | null = null;
   try {
@@ -362,10 +358,8 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
   } finally {
     // Deactivate the test user. Re-auth as admin in case restClient cookie changed.
     if (userId) {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-P1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
       });
     }
@@ -379,7 +373,7 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
   const TEMP_PASSWORD = 'TempPass1!';
 
   // Authenticate restClient as admin to create the test user.
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   let userId: string | null = null;
   try {
@@ -411,10 +405,8 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
     ).toBe('/change-password');
   } finally {
     if (userId) {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-P2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
       });
     }

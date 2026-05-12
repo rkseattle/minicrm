@@ -11,6 +11,7 @@
  * MINCRM-186
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 import { TagInputWidget } from '@pages/minicrm/TagInputWidget.js';
@@ -221,4 +222,82 @@ export async function detachTagViaUI(
   const badgeGone = !(await widget.isBadgeVisible(tagId));
   const finalUrl = widget.url();
   return { badgeGone, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape of a tag returned by GET /api/v1/tags/:id. */
+export interface TagRow {
+  id: string;
+  name: string;
+}
+
+/** Shape of a contact-tag association. */
+export interface ContactTagRow {
+  id: string;
+  name: string;
+}
+
+/** Shape of a deal-tag association. */
+export interface DealTagRow {
+  id: string;
+  name: string;
+}
+
+/**
+ * Fetches a single tag by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param tagId - Tag UUID.
+ * @returns The tag record.
+ */
+export async function getTagById(restClient: RestClient, tagId: string): Promise<TagRow> {
+  const res = await restClient.get<{ tag: TagRow }>(`/api/v1/tags/${tagId}`);
+  return res.body.tag;
+}
+
+/**
+ * Fetches all tags attached to a contact.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @returns Array of contact tag rows.
+ */
+export async function getContactTags(
+  restClient: RestClient,
+  contactId: string,
+): Promise<ContactTagRow[]> {
+  const res = await restClient.get<{ tags: ContactTagRow[] }>(`/api/v1/contacts/${contactId}/tags`);
+  return res.body.tags;
+}
+
+/**
+ * Attaches a tag to a contact by name via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param name - Tag name to attach.
+ * @returns HTTP status code.
+ */
+export async function attachTagToContact(
+  restClient: RestClient,
+  contactId: string,
+  name: string,
+): Promise<number> {
+  const res = await restClient.post(`/api/v1/contacts/${contactId}/tags`, { name });
+  return res.status;
+}
+
+/**
+ * Fetches all tags attached to a deal.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @returns Array of deal tag rows.
+ */
+export async function getDealTags(restClient: RestClient, dealId: string): Promise<DealTagRow[]> {
+  const res = await restClient.get<{ tags: DealTagRow[] }>(`/api/v1/deals/${dealId}/tags`);
+  return res.body.tags;
 }

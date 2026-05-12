@@ -26,11 +26,16 @@ import {
   createTestDeal,
 } from '@apps/minicrm/helpers.js';
 import {
+  loginAsAdmin,
   navigateToAdminTags,
   renameTagViaUI,
   deleteTagViaUI,
   attachTagViaUI,
   detachTagViaUI,
+  getTagById,
+  getContactTags,
+  attachTagToContact,
+  getDealTags,
 } from '@behaviors/minicrm/index.js';
 import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 
@@ -38,27 +43,19 @@ import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F8-TG] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
-// Response types for API verification
+// Local types for 4xx/5xx error-path assertions (exempt from behavior refactor)
 // ---------------------------------------------------------------------------
 
+/** Response shape for GET /api/v1/tags/:id — used only in the delete-then-404 assertion. */
 interface TagSingleResponse {
   tag: {
     id: string;
     name: string;
   };
-}
-
-interface ContactTagsResponse {
-  tags: Array<{ id: string; name: string }>;
-}
-
-interface DealTagsResponse {
-  tags: Array<{ id: string; name: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +68,7 @@ test(
   async ({ page, testData, restClient }) => {
     void testData;
 
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const result = await navigateToAdminTags({ page });
 
@@ -90,7 +87,7 @@ test(
   async ({ page, testData, restClient }) => {
     void testData;
 
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     await navigateToAdminTags({ page });
 
@@ -108,7 +105,7 @@ test(
   'F8-TG2: admin renames a tag via UI and new name is persisted via API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const tag = await createTestTag(testData, restClient, { name: `tg2-original-${Date.now()}` });
 
@@ -120,8 +117,8 @@ test(
     expect(renameResult.saved).toBe(true);
 
     // Verify via API that the name was persisted server-side.
-    const fetched = await restClient.get<TagSingleResponse>(`/api/v1/tags/${tag.id}`);
-    expect(fetched.body.tag.name).toBe(newName);
+    const fetchedTag = await getTagById(restClient, tag.id);
+    expect(fetchedTag.name).toBe(newName);
   },
 );
 
@@ -133,7 +130,7 @@ test(
   'F8-TG3: admin deletes a tag via UI and tag is removed from API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     // Create the tag but unregister it from TestDataManager after we delete it
     // in the test — otherwise teardown will attempt a DELETE on an already-gone
@@ -162,7 +159,7 @@ test(
   'F8-TG4: tag attached to a contact via TagInput widget badge appears and API confirms',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const tag = await createTestTag(testData, restClient, { name: `tg4-attach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -178,10 +175,8 @@ test(
     expect(attachResult.badgeVisible).toBe(true);
 
     // Verify via API that the tag is recorded on the contact.
-    const fetched = await restClient.get<ContactTagsResponse>(
-      `/api/v1/contacts/${contact.id}/tags`,
-    );
-    const tagIds = fetched.body.tags.map((t) => t.id);
+    const contactTags = await getContactTags(restClient, contact.id);
+    const tagIds = contactTags.map((t) => t.id);
     expect(tagIds).toContain(tag.id);
   },
 );
@@ -194,7 +189,7 @@ test(
   'F8-TG5: tag detached from a contact via TagInput remove button disappears from UI and API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const tag = await createTestTag(testData, restClient, { name: `tg5-detach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -203,7 +198,7 @@ test(
     });
 
     // Attach via API so the badge is visible when we load the page.
-    await restClient.post(`/api/v1/contacts/${contact.id}/tags`, { name: tag.name });
+    await attachTagToContact(restClient, contact.id, tag.name);
 
     await page.goto(`/contacts/${contact.id}`);
     await page.waitForLoadState('networkidle');
@@ -212,10 +207,8 @@ test(
     expect(detachResult.badgeGone).toBe(true);
 
     // Verify via API that the tag is no longer on the contact.
-    const fetched = await restClient.get<ContactTagsResponse>(
-      `/api/v1/contacts/${contact.id}/tags`,
-    );
-    const tagIds = fetched.body.tags.map((t) => t.id);
+    const contactTags = await getContactTags(restClient, contact.id);
+    const tagIds = contactTags.map((t) => t.id);
     expect(tagIds).not.toContain(tag.id);
   },
 );
@@ -228,7 +221,7 @@ test(
   'F8-TG6: tag attached to a deal via TagInput widget persists via API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const tag = await createTestTag(testData, restClient, { name: `tg6-deal-${Date.now()}` });
     const account = await createTestAccount(testData, restClient, {
@@ -248,8 +241,8 @@ test(
     expect(attachResult.badgeVisible).toBe(true);
 
     // Verify via API that the tag is recorded on the deal.
-    const fetched = await restClient.get<DealTagsResponse>(`/api/v1/deals/${deal.id}/tags`);
-    const tagIds = fetched.body.tags.map((t) => t.id);
+    const dealTags = await getDealTags(restClient, deal.id);
+    const tagIds = dealTags.map((t) => t.id);
     expect(tagIds).toContain(tag.id);
   },
 );

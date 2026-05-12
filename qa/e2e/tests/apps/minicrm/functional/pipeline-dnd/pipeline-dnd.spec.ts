@@ -20,29 +20,9 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { openDeal, dragDealToStage } from '@behaviors/minicrm/deals.behaviors.js';
+import { openDeal, dragDealToStage, getDealById } from '@behaviors/minicrm/deals.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F5-pipeline-dnd] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    name: string;
-    stage: string;
-    close_date: string | null;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // DnD Stage Transition tests
@@ -64,7 +44,7 @@ test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualificati
     'F5-DND1: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND1-Account-${Date.now()}`,
@@ -90,10 +70,8 @@ test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualificati
   );
 
   // Confirm stage change persisted via API.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Qualification via API').toBe(
-    'Qualification',
-  );
+  const detail = await getDealById(restClient, deal.id);
+  expect(detail.stage, 'deal stage should be Qualification via API').toBe('Qualification');
 });
 
 test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens, confirm closes deal as Won', async ({
@@ -109,7 +87,7 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
     'F5-DND2: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND2-Account-${Date.now()}`,
@@ -134,8 +112,8 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
   ).toBe('closed-won');
 
   // Confirm stage change persisted via API.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Closed Won via API').toBe('Closed Won');
+  const detail = await getDealById(restClient, deal.id);
+  expect(detail.stage, 'deal stage should be Closed Won via API').toBe('Closed Won');
 });
 
 test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal opens, confirm closes deal as Lost', async ({
@@ -151,7 +129,7 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
     'F5-DND3: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND3-Account-${Date.now()}`,
@@ -176,6 +154,6 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
   ).toBe('closed-lost');
 
   // Confirm stage change persisted via API.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Closed Lost via API').toBe('Closed Lost');
+  const detail = await getDealById(restClient, deal.id);
+  expect(detail.stage, 'deal stage should be Closed Lost via API').toBe('Closed Lost');
 });

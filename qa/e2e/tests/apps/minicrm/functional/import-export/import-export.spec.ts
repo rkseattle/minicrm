@@ -31,6 +31,11 @@ import {
   createTestDeal,
   createTestUser,
 } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
+import { searchAccountsViaApi } from '@behaviors/minicrm/accounts.behaviors.js';
+import { getDealsByAccount } from '@behaviors/minicrm/deals.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Import request helper — wraps Playwright multipart POSTs to admin import
@@ -106,19 +111,11 @@ function buildMapping(headers: string[], fields: Array<{ key: string }>): Record
 }
 
 // ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F11-import-export] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
 // Shared setup — admin auth
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -158,21 +155,6 @@ interface ImportSummaryResponse {
   error_csv?: string | null;
 }
 
-interface ContactListResponse {
-  data: Array<{ id: string; first_name: string; last_name: string; email: string }>;
-  total: number;
-}
-
-interface AccountListResponse {
-  data: Array<{ id: string; name: string }>;
-  total: number;
-}
-
-interface DealListResponse {
-  data: Array<{ id: string; name: string }>;
-  total: number;
-}
-
 // ---------------------------------------------------------------------------
 // Import — Contacts (F11-IC)
 // ---------------------------------------------------------------------------
@@ -201,14 +183,12 @@ test('@functional F11-IC1: Upload a valid contacts CSV — import summary shows 
   expect(ran.body.failed, 'no failures expected').toBe(0);
 
   // Verify contacts are queryable via API
-  const listResponse = await restClient.get<ContactListResponse>(
-    `/api/v1/contacts?search=${encodeURIComponent(email1)}`,
-  );
-  expect(listResponse.body.total, 'imported contact should be findable').toBeGreaterThanOrEqual(1);
+  const listResponse = await searchContactsViaApi(restClient, email1);
+  expect(listResponse.total, 'imported contact should be findable').toBeGreaterThanOrEqual(1);
 
   // Register created contacts for teardown
-  const allContacts = await restClient.get<ContactListResponse>(`/api/v1/contacts?search=f11ic1`);
-  for (const contact of allContacts.body.data) {
+  const allContacts = await searchContactsViaApi(restClient, 'f11ic1');
+  for (const contact of allContacts.data) {
     if (contact.email === email1 || contact.email === email2) {
       testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
     }
@@ -287,11 +267,9 @@ test('@functional F11-IA1: Upload a valid accounts CSV — accounts created and 
   expect(ran.body.created, 'one account should be created').toBeGreaterThanOrEqual(1);
 
   // Verify and register for teardown
-  const listResponse = await restClient.get<AccountListResponse>(
-    `/api/v1/accounts?search=${encodeURIComponent(accountName)}`,
-  );
-  expect(listResponse.body.total, 'imported account should be findable').toBeGreaterThanOrEqual(1);
-  for (const account of listResponse.body.data) {
+  const listResponse = await searchAccountsViaApi(restClient, accountName);
+  expect(listResponse.total, 'imported account should be findable').toBeGreaterThanOrEqual(1);
+  for (const account of listResponse.data) {
     if (account.name === accountName) {
       testData.register('account', account.id, `/api/v1/accounts/${account.id}`);
     }
@@ -323,10 +301,8 @@ test('@functional F11-ID1: Upload a valid deals CSV with account name reference 
   expect(ran.body.created, 'deal should be created').toBeGreaterThanOrEqual(1);
 
   // Look up the imported deal by account so we can register it for teardown
-  const dealList = await restClient.get<DealListResponse>(
-    `/api/v1/deals?account=${account.id}&limit=10`,
-  );
-  for (const deal of dealList.body.data) {
+  const dealList = await getDealsByAccount(restClient, account.id);
+  for (const deal of dealList) {
     if (deal.name === dealName) {
       testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
       break;
@@ -368,10 +344,7 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
   const repUser = await createTestUser(restClient, { role: 'rep' });
 
   try {
-    await restClient.post('/api/v1/auth/login', {
-      email: repUser.email,
-      password: 'BvtPassword1!',
-    });
+    await loginAs(restClient, repUser.email, 'BvtPassword1!');
 
     const csvBuffer = contactsCsv([
       {
@@ -383,8 +356,8 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
     const parsed = await importParse(request, 'contacts', csvBuffer);
     expect(parsed.status, 'rep should be blocked from import endpoint').toBe(403);
   } finally {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch(`/api/v1/users/${repUser.id}/deactivate`, {});
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, repUser.id);
   }
 });
 

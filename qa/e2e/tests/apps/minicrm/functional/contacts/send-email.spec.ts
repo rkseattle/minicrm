@@ -17,14 +17,12 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
 import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[SENDEMAIL] E2E_ADMIN_PASSWORD is not set');
 
 const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
 
@@ -33,7 +31,7 @@ const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -94,19 +92,15 @@ test(
     ).toBe('Test email subject from E2E');
 
     // Verify the Email activity was logged via the API
-    const activitiesRes = await restClient.get<{
-      data: Array<{ id: string; type: string; subject: string; direction: string }>;
-      total: number;
-    }>(`/api/v1/activities?contact=${contact.id}`);
+    const activities = await getActivities(restClient, { contact: contact.id });
 
-    const emailActivities = activitiesRes.body.data.filter((a) => a.type === 'Email');
-    expect(emailActivities.length, 'at least one Email activity should be logged').toBeGreaterThan(
-      0,
-    );
-    expect(emailActivities[0].subject, 'activity subject should match the composed subject').toBe(
+    const emailListRow = activities.find((a) => a.type === 'Email');
+    expect(emailListRow, 'at least one Email activity should be logged').toBeDefined();
+    const emailActivity = await getActivityById(restClient, emailListRow!.id);
+    expect(emailActivity.subject, 'activity subject should match the composed subject').toBe(
       'Test email subject from E2E',
     );
-    expect(emailActivities[0].direction, 'direction should be Outbound').toBe('Outbound');
+    expect(emailActivity.direction, 'direction should be Outbound').toBe('Outbound');
   },
 );
 

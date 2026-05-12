@@ -34,41 +34,22 @@ import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { listAttachments } from '@behaviors/minicrm/attachments.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F10-attachments] E2E_ADMIN_PASSWORD is not set');
-
 const REP_PASSWORD = 'BvtPassword1!';
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface AttachmentRow {
-  id: string;
-  filename: string;
-  size: number;
-  record_type: string;
-  record_id: string;
-  uploaded_by: string;
-  created_at: string;
-}
-
-interface AttachmentListResponse {
-  attachments: AttachmentRow[];
-}
 
 // ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -99,14 +80,9 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
   // Verify API reflects the upload
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
-  );
-  expect(
-    listResponse.body.attachments.length,
-    'attachment should be present in API',
-  ).toBeGreaterThan(0);
-  const created = listResponse.body.attachments[0]!;
+  const attachments = await listAttachments(restClient, 'contact', contact.id);
+  expect(attachments.length, 'attachment should be present in API').toBeGreaterThan(0);
+  const created = attachments[0]!;
   expect(created.filename).toBe('test-upload.txt');
   testData.register('attachment', created.id, `/api/v1/attachments/${created.id}`);
 });
@@ -133,11 +109,9 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   const attachmentList = await accountPage.attachmentsListLocator();
   await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=account&recordId=${account.id}`,
-  );
-  expect(listResponse.body.attachments.length, 'attachment created for account').toBeGreaterThan(0);
-  const created = listResponse.body.attachments[0]!;
+  const attachments = await listAttachments(restClient, 'account', account.id);
+  expect(attachments.length, 'attachment created for account').toBeGreaterThan(0);
+  const created = attachments[0]!;
   testData.register('attachment', created.id, `/api/v1/attachments/${created.id}`);
 });
 
@@ -164,11 +138,9 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   const attachmentList = await dealPage.attachmentsListLocator();
   await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=deal&recordId=${deal.id}`,
-  );
-  expect(listResponse.body.attachments.length, 'attachment created for deal').toBeGreaterThan(0);
-  const created = listResponse.body.attachments[0]!;
+  const attachments = await listAttachments(restClient, 'deal', deal.id);
+  expect(attachments.length, 'attachment created for deal').toBeGreaterThan(0);
+  const created = attachments[0]!;
   testData.register('attachment', created.id, `/api/v1/attachments/${created.id}`);
 });
 
@@ -196,10 +168,8 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   await expect(uploadError!).toBeVisible({ timeout: 5_000 });
 
   // No attachment should have been created
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
-  );
-  expect(listResponse.body.attachments.length, 'no attachment created for disallowed type').toBe(0);
+  const attachments = await listAttachments(restClient, 'contact', contact.id);
+  expect(attachments.length, 'no attachment created for disallowed type').toBe(0);
 });
 
 test('@functional F10-U5: Upload a file exceeding the size limit — rejected with error message', async ({
@@ -261,15 +231,9 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   await expect(downloadLink).toBeVisible({ timeout: 10_000 });
 
   // Register for teardown
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
-  );
-  if (listResponse.body.attachments[0]) {
-    testData.register(
-      'attachment',
-      listResponse.body.attachments[0].id,
-      `/api/v1/attachments/${listResponse.body.attachments[0].id}`,
-    );
+  const attachments = await listAttachments(restClient, 'contact', contact.id);
+  if (attachments[0]) {
+    testData.register('attachment', attachments[0].id, `/api/v1/attachments/${attachments[0].id}`);
   }
 
   // Verify download link is present and has a valid href
@@ -304,13 +268,9 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   const attachmentList = await contactPage.attachmentsListLocator();
   await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
-  const listResponse = await restClient.get<AttachmentListResponse>(
-    `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
-  );
-  expect(listResponse.body.attachments.length, 'attachment exists before delete').toBeGreaterThan(
-    0,
-  );
-  const attachmentId = listResponse.body.attachments[0]!.id;
+  const attachments = await listAttachments(restClient, 'contact', contact.id);
+  expect(attachments.length, 'attachment exists before delete').toBeGreaterThan(0);
+  const attachmentId = attachments[0]!.id;
 
   // Click delete button for this attachment
   const deleteButton = await contactPage.attachmentDeleteLocator(attachmentId);
@@ -347,7 +307,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   testData,
 }) => {
   // Admin uploads the attachment
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
@@ -370,15 +330,13 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     const attachmentList = await contactPage.attachmentsListLocator();
     await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
 
-    const listResponse = await restClient.get<AttachmentListResponse>(
-      `/api/v1/attachments?recordType=contact&recordId=${contact.id}`,
-    );
-    expect(listResponse.body.attachments.length, 'attachment exists').toBeGreaterThan(0);
-    const attachmentId = listResponse.body.attachments[0]!.id;
+    const attachments = await listAttachments(restClient, 'contact', contact.id);
+    expect(attachments.length, 'attachment exists').toBeGreaterThan(0);
+    const attachmentId = attachments[0]!.id;
     testData.register('attachment', attachmentId, `/api/v1/attachments/${attachmentId}`);
 
     // Switch to rep session
-    await restClient.post('/api/v1/auth/login', { email: rep.email, password: REP_PASSWORD });
+    await loginAs(restClient, rep.email, REP_PASSWORD);
 
     // Rep tries to delete via API — should get 403
     let got403 = false;
@@ -390,7 +348,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     expect(got403, 'rep should get 403 when deleting another user attachment').toBe(true);
   } finally {
     // Restore admin session so teardown succeeds, then deactivate the rep
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {}).catch(() => null);
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, rep.id).catch(() => null);
   }
 });

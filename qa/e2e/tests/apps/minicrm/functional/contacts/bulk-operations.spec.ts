@@ -23,32 +23,21 @@ import {
   filterContactsByTerm,
   bulkReassignContacts,
   bulkDeleteContacts,
+  getContactById,
+  type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 
 // ---------------------------------------------------------------------------
-// Environment
+// Local type extensions
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F2-Bulk] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Response types
-// ---------------------------------------------------------------------------
-
-interface ContactSingleResponse {
-  contact: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    owner_id: string;
-  };
-}
+/** Extends ContactRow with owner_id, which is present in the API response. */
+type ContactWithOwner = ContactRow & { owner_id: string };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -61,7 +50,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Create a second rep to reassign to.
   const newOwner = await createTestUser(restClient, {
@@ -109,14 +98,14 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify via API that both contacts now have the new owner.
-  const r1 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`);
-  expect(r1.body.contact.owner_id, 'c1 should have new owner').toBe(newOwner.id);
+  const c1Updated = (await getContactById(restClient, c1.id)) as ContactWithOwner;
+  expect(c1Updated.owner_id, 'c1 should have new owner').toBe(newOwner.id);
 
-  const r2 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`);
-  expect(r2.body.contact.owner_id, 'c2 should have new owner').toBe(newOwner.id);
+  const c2Updated = (await getContactById(restClient, c2.id)) as ContactWithOwner;
+  expect(c2Updated.owner_id, 'c2 should have new owner').toBe(newOwner.id);
 
   // Deactivate the temp user (users cannot be hard-deleted).
-  await restClient.patch(`/api/v1/users/${newOwner.id}/deactivate`, {});
+  await deactivateUser(restClient, newOwner.id);
 });
 
 test('@functional F2-BK2: select multiple contacts → bulk delete → contacts return 404 via API', async ({
@@ -126,7 +115,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Create two contacts to be deleted.
   const c1 = await createTestContact(testData, restClient, {
@@ -163,13 +152,9 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
 
   // Verify both contacts return 404 via API.
-  const err1 = await restClient
-    .get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`)
-    .catch((e: unknown) => e);
+  const err1 = await restClient.get<never>(`/api/v1/contacts/${c1.id}`).catch((e: unknown) => e);
   expect(err1 instanceof RestClientError && err1.status === 404, 'c1 should be deleted').toBe(true);
 
-  const err2 = await restClient
-    .get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`)
-    .catch((e: unknown) => e);
+  const err2 = await restClient.get<never>(`/api/v1/contacts/${c2.id}`).catch((e: unknown) => e);
   expect(err2 instanceof RestClientError && err2.status === 404, 'c2 should be deleted').toBe(true);
 });

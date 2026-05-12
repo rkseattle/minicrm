@@ -43,7 +43,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
 import {
   setNavLayoutViaAPI,
   setNavLayoutViaUI,
@@ -74,10 +79,6 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F8] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -131,7 +132,7 @@ async function resetNavLayout(restClient: RestClient, tag: string): Promise<void
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -966,15 +967,13 @@ test.describe('Rep deep-link redirect', () => {
     const repEmail = `f8-rep-${uniqueSuffix}@example.com`;
     const repPassword = 'F8RepPass1!';
 
-    const inviteRes = await restClient.post<{ user: { id: string }; inviteToken: string }>(
-      '/api/v1/users/invite',
-      { name: `F8 Rep ${uniqueSuffix}`, email: repEmail, role: 'rep' },
-    );
-    const { user: rep, inviteToken } = inviteRes.body;
-    await restClient.post('/api/v1/users/set-password', {
-      token: inviteToken,
-      password: repPassword,
+    const inviteRes = await inviteUserViaApi(restClient, {
+      name: `F8 Rep ${uniqueSuffix}`,
+      email: repEmail,
+      role: 'rep',
     });
+    const rep = inviteRes.user;
+    await setUserPassword(restClient, inviteRes.inviteToken, repPassword);
 
     try {
       await login({ email: repEmail, password: repPassword }, { page });
@@ -990,10 +989,8 @@ test.describe('Rep deep-link redirect', () => {
       const finalPath = new URL(page.url()).pathname;
       expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
     } finally {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch(() => null);
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, rep.id).catch(() => null);
     }
   });
 });

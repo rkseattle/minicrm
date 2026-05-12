@@ -8,10 +8,11 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110, MINCRM-137
+ * MINCRM-130, MINCRM-110, MINCRM-137, MINCRM-357
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
@@ -26,6 +27,88 @@ import { NavPage } from '@pages/minicrm/NavPage.js';
 /** Fixtures required by auth behaviors. */
 export interface AuthBehaviorContext {
   page: PageFacade;
+}
+
+// ---------------------------------------------------------------------------
+// loginAsAdmin()
+// ---------------------------------------------------------------------------
+
+/**
+ * Authenticates the given RestClient as the E2E admin user.
+ *
+ * Reads credentials from the E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD environment
+ * variables. Throws when E2E_ADMIN_PASSWORD is not set so misconfigured
+ * environments fail fast rather than producing confusing 401 errors downstream.
+ *
+ * @param restClient - The RestClient instance to authenticate.
+ *
+ * @example
+ * ```ts
+ * test.beforeAll(async ({ restClient }) => {
+ *   await loginAsAdmin(restClient);
+ * });
+ * ```
+ */
+export async function loginAsAdmin(restClient: RestClient): Promise<void> {
+  const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
+  const password = process.env['E2E_ADMIN_PASSWORD'];
+  if (!password) throw new Error('[loginAsAdmin] E2E_ADMIN_PASSWORD is not set');
+  await restClient.post('/api/v1/auth/login', { email, password });
+}
+
+// ---------------------------------------------------------------------------
+// loginAs()
+// ---------------------------------------------------------------------------
+
+/**
+ * Authenticates the given RestClient with the supplied credentials.
+ *
+ * Use this when a test needs to authenticate as a specific non-admin user.
+ * Returns the HTTP status so callers can assert on expected failures (e.g.
+ * deactivated-user login returning 401/403).
+ *
+ * @param restClient - The RestClient instance to authenticate.
+ * @param email - User email address.
+ * @param password - User password.
+ * @returns The HTTP status code from the login response.
+ *
+ * @example
+ * ```ts
+ * const status = await loginAs(repClient, rep.email, repPassword);
+ * expect(status).toBe(200);
+ * ```
+ */
+export async function loginAs(
+  restClient: RestClient,
+  email: string,
+  password: string,
+): Promise<number> {
+  const res = await restClient.post('/api/v1/auth/login', { email, password });
+  return res.status;
+}
+
+// ---------------------------------------------------------------------------
+// getCurrentUser()
+// ---------------------------------------------------------------------------
+
+/** The authenticated user returned by GET /api/auth/me. */
+export interface CurrentUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'rep';
+  status: string;
+}
+
+/**
+ * Fetches the currently authenticated user from GET /api/auth/me.
+ *
+ * @param restClient - An authenticated RestClient.
+ * @returns The current user record.
+ */
+export async function getCurrentUser(restClient: RestClient): Promise<CurrentUser> {
+  const res = await restClient.get<{ user: CurrentUser }>('/api/v1/auth/me');
+  return res.body.user;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,4 +550,42 @@ export async function setPassword(
   const errorMessage = await setPasswordPage.errorMessage();
   const success = new URL(finalUrl).pathname !== '/set-password';
   return { success, finalUrl, errorMessage };
+}
+
+// ---------------------------------------------------------------------------
+// Additional API helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/**
+ * Logs the current RestClient session out via POST /api/v1/auth/logout.
+ *
+ * @param restClient - An authenticated RestClient.
+ */
+export async function logoutViaApi(restClient: RestClient): Promise<void> {
+  await restClient.post('/api/v1/auth/logout', {});
+}
+
+/**
+ * Submits a forgot-password request for the given email address.
+ *
+ * @param restClient - RestClient (no auth required).
+ * @param email - Email address to request a reset link for.
+ * @returns The HTTP status code.
+ */
+export async function forgotPassword(restClient: RestClient, email: string): Promise<number> {
+  const res = await restClient.post('/api/v1/auth/forgot-password', { email });
+  return res.status;
+}
+
+/**
+ * Fetches a plaintext password reset token via the dev-only endpoint.
+ * Only works in non-production environments.
+ *
+ * @param restClient - RestClient (no auth required).
+ * @param email - Email address of the user.
+ * @returns The plaintext reset token.
+ */
+export async function getDevResetToken(restClient: RestClient, email: string): Promise<string> {
+  const res = await restClient.post<{ token: string }>('/api/v1/auth/dev/reset-token', { email });
+  return res.body.token;
 }

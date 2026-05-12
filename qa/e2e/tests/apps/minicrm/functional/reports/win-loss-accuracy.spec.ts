@@ -20,27 +20,8 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F10-WL] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface WinLossApiResponse {
-  wonCount: number;
-  wonValue: string;
-  lostCount: number;
-  lostValue: string;
-  winRate: number | null;
-  lossReasonBreakdown: { reason: string; count: number }[];
-}
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { getWinLossReport } from '@behaviors/minicrm/reports.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,7 +90,7 @@ test(
   'F10-WL1: Win/Loss report shows correct won count, lost count, and win rate for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const { start, end } = currentMonthDateRange();
 
@@ -170,7 +151,7 @@ test(
   'F10-WL2: date filter excludes a deal closed in the previous month',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const { start: monthStart, end: monthEnd } = currentMonthDateRange();
     const prevMonthDate = previousMonthFirstDay();
@@ -204,18 +185,12 @@ test(
     await waitForReportLoaded(reportsPage);
 
     // Verify via API that the current-month filter does not include the previous-month deal.
-    const apiResponse = await restClient.get<WinLossApiResponse>(
-      `/api/v1/reports/win-loss?start=${monthStart}&end=${monthEnd}`,
-    );
-    const report = apiResponse.body;
+    const report = await getWinLossReport(restClient, monthStart, monthEnd);
 
     // The previous-month deal should not be in the won count for this month
     const prevStart = prevMonthDate;
     const prevEnd = prevMonthDate; // single-day range containing only the prev-month deal
-    const prevApiResponse = await restClient.get<WinLossApiResponse>(
-      `/api/v1/reports/win-loss?start=${prevStart}&end=${prevEnd}`,
-    );
-    const prevReport = prevApiResponse.body;
+    const prevReport = await getWinLossReport(restClient, prevStart, prevEnd);
 
     // The previous-month deal shows up in its own period
     expect(prevReport.wonCount).toBeGreaterThanOrEqual(1);
@@ -238,7 +213,7 @@ test(
   'F10-WL3: API endpoint returns wonCount and lostCount matching the UI for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const { start, end } = currentMonthDateRange();
 
@@ -285,10 +260,7 @@ test(
     expect(uiWonCount).toBeGreaterThanOrEqual(3);
 
     // Secondary API assertion
-    const apiResponse = await restClient.get<WinLossApiResponse>(
-      `/api/v1/reports/win-loss?start=${start}&end=${end}`,
-    );
-    const report = apiResponse.body;
+    const report = await getWinLossReport(restClient, start, end);
 
     // At minimum our seeded deals must be counted (other tests may have seeded data too)
     expect(report.wonCount).toBeGreaterThanOrEqual(3);
@@ -308,7 +280,7 @@ test(
   'F10-WL4: Win/Loss report stat cards are visible on mobile viewport',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const { start, end } = currentMonthDateRange();
 

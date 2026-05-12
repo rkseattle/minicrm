@@ -25,7 +25,20 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { logout, requestPasswordReset, resetPassword } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  loginAs,
+  getCurrentUser,
+  getDevResetToken,
+  logout,
+  requestPasswordReset,
+  resetPassword,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -49,18 +62,9 @@ if (!ADMIN_PASSWORD) throw new Error('[F1-PR] E2E_ADMIN_PASSWORD is not set');
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface InviteResponse {
-  user: { id: string; email: string };
-  inviteToken: string;
-}
-
-interface DevResetTokenResponse {
-  token: string;
-}
-
 /**
  * Creates an active test user via invite + set-password.
- * Returns the user id, email, and initial password.
+ * Returns the user id and email.
  *
  * The caller is responsible for deactivating the user in a finally block.
  *
@@ -72,34 +76,15 @@ async function createActiveTestUser(
   initialPassword: string,
 ): Promise<{ userId: string; email: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, {
     name: `F1-PR User ${uniqueSuffix}`,
     email: `f1-pr-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
-  const { user, inviteToken } = inviteRes.body;
 
-  await restClient.post('/api/v1/users/set-password', {
-    token: inviteToken,
-    password: initialPassword,
-  });
+  await setUserPassword(restClient, inviteToken, initialPassword);
 
   return { userId: user.id, email: user.email };
-}
-
-/**
- * Calls the dev-only endpoint to get a plaintext reset token for an email.
- * Only works in non-production environments.
- *
- * @param restClient - Any RestClient (no auth required by the endpoint).
- * @param email - Email address of the user.
- * @returns The plaintext reset token.
- */
-async function getDevResetToken(restClient: RestClient, email: string): Promise<string> {
-  const res = await restClient.post<DevResetTokenResponse>('/api/v1/auth/dev/reset-token', {
-    email,
-  });
-  return res.body.token;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,7 +132,7 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
 }) => {
   const INITIAL_PASSWORD = 'InitPass1!';
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   let userId: string | null = null;
   try {
@@ -167,10 +152,8 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
     );
   } finally {
     if (userId) {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-PR4] teardown failed: ${String(err)}`);
       });
     }
@@ -184,7 +167,7 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   let userId: string | null = null;
   try {
@@ -223,10 +206,8 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
     expect(replayResult.errorMessage, 'replay error should be present').not.toBeNull();
   } finally {
     if (userId) {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-PR5] teardown failed: ${String(err)}`);
       });
     }
@@ -240,7 +221,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
   const INITIAL_PASSWORD = 'InitPass1!';
   const NEW_PASSWORD = 'NewPass2@';
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   let userId: string | null = null;
   try {
@@ -248,17 +229,13 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     userId = uid;
 
     // ── 1. Establish a restClient session for the test user ───────────────────
-    await restClient.post('/api/v1/auth/login', { email, password: INITIAL_PASSWORD });
-    const beforeReset = await restClient.get<{ user: { id: string } }>('/api/v1/auth/me');
-    expect(beforeReset.status, 'restClient session should be valid before reset').toBe(200);
+    await loginAs(restClient, email, INITIAL_PASSWORD);
+    // getCurrentUser() throws on non-2xx — success here confirms session is valid.
+    await getCurrentUser(restClient);
 
     // ── 2. Reset password via browser ─────────────────────────────────────────
     // Re-auth admin to get a new dev token (restClient now holds test-user session).
-    const adminClient = await restClient.post('/api/v1/auth/login', {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-    });
-    void adminClient; // used for side-effect (login sets cookie on restClient)
+    await loginAsAdmin(restClient);
     const token = await getDevResetToken(restClient, email);
 
     // Do the reset in the browser — this sets password_changed_at.
@@ -270,7 +247,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     // as the test user with the OLD password — which should now fail.
     let caughtStatus: number | null = null;
     try {
-      await restClient.post('/api/v1/auth/login', { email, password: INITIAL_PASSWORD });
+      await loginAs(restClient, email, INITIAL_PASSWORD);
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
         caughtStatus = err.status;
@@ -285,10 +262,8 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     );
   } finally {
     if (userId) {
-      await restClient
-        .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-        .catch(() => null);
-      await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-PR6] teardown failed: ${String(err)}`);
       });
     }

@@ -20,82 +20,30 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestUser } from '@apps/minicrm/helpers.js';
-import { filterAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
+import { filterAuditLog, getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
+import { patchContact, getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
+import { getAccountById } from '@behaviors/minicrm/accounts.behaviors.js';
+import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
+import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import {
+  createLeadViaApi,
+  convertLeadViaApi,
+  getLeads,
+  getLeadById,
+} from '@behaviors/minicrm/leads.behaviors.js';
 import { AuditLogPage } from '@pages/minicrm/AuditLogPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F12-audit-log] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Shared setup — admin auth + test name capture
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 const REP_PASSWORD = 'BvtPassword1!';
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-/**
- * Each audit log row represents a single field change — one row per changed
- * field. The server uses a one-entry-per-field model (not a nested changes
- * array). changed_by_id and changed_by_name are the actor's identifiers.
- */
-interface AuditLogEntry {
-  id: string;
-  event_type: string;
-  record_type: string;
-  record_id: string | null;
-  record_name: string | null;
-  field_name: string | null;
-  old_value: string | null;
-  new_value: string | null;
-  changed_by_id: string | null;
-  changed_by_name: string | null;
-  created_at: string;
-}
-
-interface AuditLogListResponse {
-  data: AuditLogEntry[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface ContactSingleResponse {
-  contact: { id: string; first_name: string; last_name: string; email: string };
-}
-
-interface AccountSingleResponse {
-  account: { id: string; name: string };
-}
-
-interface DealSingleResponse {
-  deal: { id: string; name: string; account_id: string };
-}
-
-interface ConversionResponse {
-  conversion: { contact_id: string; account_id: string; deal_id: string };
-}
-
-interface LeadSingleResponse {
-  lead: {
-    id: string;
-    converted_at: string | null;
-    converted_contact_id: string | null;
-    converted_deal_id: string | null;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Audit Log — F12-AL
@@ -114,7 +62,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
 
   // Update a field so an 'updated' entry is written
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+  await patchContact(restClient, contact.id, {
     first_name: 'F12AL1Updated',
     version: contact.version,
   });
@@ -131,16 +79,11 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   await expect(await auditLogPage.listLocator()).toBeVisible({ timeout: 10_000 });
 
   // Verify via API that the entry exists
-  const auditResponse = await restClient.get<AuditLogListResponse>(
-    `/api/v1/audit-log?recordType=contact`,
-  );
-  expect(
-    auditResponse.body.total,
-    'audit log should have at least one contact entry',
-  ).toBeGreaterThan(0);
+  const { entries, total } = await getAuditLog(restClient, { recordType: 'contact' });
+  expect(total, 'audit log should have at least one contact entry').toBeGreaterThan(0);
 
   // Find the entry for our specific contact
-  const entry = auditResponse.body.data.find((e) => e.record_id === contact.id);
+  const entry = entries.find((e) => e.record_id === contact.id);
   expect(entry, 'audit entry for our contact should exist').toBeDefined();
 });
 
@@ -165,10 +108,8 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   await expect(await auditLogPage.listLocator()).toBeVisible({ timeout: 10_000 });
 
   // Check via API that the filtered results only contain account entries
-  const auditResponse = await restClient.get<AuditLogListResponse>(
-    `/api/v1/audit-log?recordType=account`,
-  );
-  const nonAccountEntries = auditResponse.body.data.filter((e) => e.record_type !== 'account');
+  const { entries } = await getAuditLog(restClient, { recordType: 'account' });
+  const nonAccountEntries = entries.filter((e) => e.record_type !== 'account');
   expect(nonAccountEntries.length, 'filtered audit log should only contain account entries').toBe(
     0,
   );
@@ -186,18 +127,19 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
 
   // Update to generate change entries (one row per changed field in the audit log)
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+  await patchContact(restClient, contact.id, {
     first_name: 'F12AL3Updated',
     version: contact.version,
   });
 
-  // Use the record-scoped endpoint to avoid pagination gaps in the system-wide list.
-  const auditResponse = await restClient.get<{ entries: AuditLogEntry[] }>(
-    `/api/v1/audit-log/record?record_type=contact&record_id=${contact.id}&all=true`,
-  );
+  // Use the record-scoped query to avoid pagination gaps in the system-wide list.
+  const { entries } = await getAuditLog(restClient, {
+    recordType: 'contact',
+    recordId: contact.id,
+  });
   // The audit service stores the display name via getFieldDisplayName(), so
   // 'first_name' (DB column) is stored as 'First Name' in field_name.
-  const firstNameEntry = auditResponse.body.entries.find(
+  const firstNameEntry = entries.find(
     (e) => e.event_type === 'updated' && e.field_name === 'First Name',
   );
   expect(firstNameEntry, 'First Name change entry should exist in audit log').toBeDefined();
@@ -266,18 +208,18 @@ test('@functional F12-AL5: Rep navigating to audit log is blocked', async ({ res
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
   try {
-    await restClient.post('/api/v1/auth/login', { email: rep.email, password: REP_PASSWORD });
+    await loginAs(restClient, rep.email, REP_PASSWORD);
 
     let got403 = false;
     try {
-      await restClient.get<AuditLogListResponse>('/api/v1/audit-log');
+      await restClient.get<unknown>('/api/v1/audit-log');
     } catch (err) {
       if (err instanceof RestClientError && err.status === 403) got403 = true;
     }
     expect(got403, 'rep should get 403 when accessing audit log').toBe(true);
   } finally {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {}).catch(() => null);
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, rep.id).catch(() => null);
   }
 });
 
@@ -295,22 +237,21 @@ test('@functional F12-V1: Lead conversion — contact, account, and deal all exi
   const dealName = `${companyName} — Opportunity`;
 
   // Create lead
-  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/v1/leads', {
+  const lead = await createLeadViaApi(restClient, {
     first_name: 'F12V1',
     last_name: 'Lead',
     email: leadEmail,
     company_name: companyName,
   });
-  const leadId = leadResp.body.lead.id;
+  const leadId = lead.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   // Convert atomically
-  const conversion = await restClient.post<ConversionResponse>(`/api/v1/leads/${leadId}/convert`, {
+  const { contact_id, account_id, deal_id } = await convertLeadViaApi(restClient, leadId, {
     contact: { first_name: 'F12V1', last_name: 'Lead', email: leadEmail },
     account: { mode: 'create', name: companyName },
     deal: { name: dealName },
   });
-  const { contact_id, account_id, deal_id } = conversion.body.conversion;
 
   testData.register('contact', contact_id, `/api/v1/contacts/${contact_id}`);
   testData.register('deal', deal_id, `/api/v1/deals/${deal_id}`);
@@ -319,28 +260,22 @@ test('@functional F12-V1: Lead conversion — contact, account, and deal all exi
   testData.register('account', account_id, `/api/v1/accounts/${account_id}`);
 
   // Verify contact exists with correct email
-  const contactResp = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contact_id}`);
-  expect(contactResp.body.contact.email, 'converted contact email should match lead email').toBe(
-    leadEmail,
-  );
+  const contact = await getContactById(restClient, contact_id);
+  expect(contact.email, 'converted contact email should match lead email').toBe(leadEmail);
 
   // Verify account exists with correct name
-  const accountResp = await restClient.get<AccountSingleResponse>(`/api/v1/accounts/${account_id}`);
-  expect(accountResp.body.account.name, 'converted account name should match company name').toBe(
-    companyName,
-  );
+  const account = await getAccountById(restClient, account_id);
+  expect(account.name, 'converted account name should match company name').toBe(companyName);
 
   // Verify deal exists and is linked to the account
-  const dealResp = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal_id}`);
-  expect(dealResp.body.deal.name, 'converted deal name should match').toBe(dealName);
-  expect(dealResp.body.deal.account_id, 'converted deal should be linked to the new account').toBe(
-    account_id,
-  );
+  const deal = await getDealById(restClient, deal_id);
+  expect(deal.name, 'converted deal name should match').toBe(dealName);
+  expect(deal.account_id, 'converted deal should be linked to the new account').toBe(account_id);
 
   // Verify lead is marked converted
-  const leadDetail = await restClient.get<LeadSingleResponse>(`/api/v1/leads/${leadId}`);
-  expect(leadDetail.body.lead.converted_at, 'lead converted_at should be set').not.toBeNull();
-  expect(leadDetail.body.lead.converted_contact_id, 'lead should reference converted contact').toBe(
+  const leadDetail = await getLeadById(restClient, leadId);
+  expect(leadDetail.converted_at, 'lead converted_at should be set').not.toBeNull();
+  expect(leadDetail.converted_contact_id, 'lead should reference converted contact').toBe(
     contact_id,
   );
 });
@@ -352,44 +287,30 @@ test('@functional F12-V2: Converted lead does not appear in default list but app
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const leadEmail = `f12v2-${suffix}@example.com`;
 
-  const leadResp = await restClient.post<{ lead: { id: string } }>('/api/v1/leads', {
+  const lead = await createLeadViaApi(restClient, {
     first_name: 'F12V2',
     email: leadEmail,
     company_name: `F12V2 Corp ${suffix}`,
   });
-  const leadId = leadResp.body.lead.id;
+  const leadId = lead.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
-  const conversion = await restClient.post<ConversionResponse>(`/api/v1/leads/${leadId}/convert`, {
+  const conversion = await convertLeadViaApi(restClient, leadId, {
     contact: { first_name: 'F12V2', email: leadEmail },
     account: { mode: 'create', name: `F12V2 Corp ${suffix}` },
     deal: { name: `F12V2 Corp — Opportunity` },
   });
-  testData.register(
-    'contact',
-    conversion.body.conversion.contact_id,
-    `/api/v1/contacts/${conversion.body.conversion.contact_id}`,
-  );
-  testData.register(
-    'deal',
-    conversion.body.conversion.deal_id,
-    `/api/v1/deals/${conversion.body.conversion.deal_id}`,
-  );
-  testData.register(
-    'account',
-    conversion.body.conversion.account_id,
-    `/api/v1/accounts/${conversion.body.conversion.account_id}`,
-  );
+  testData.register('contact', conversion.contact_id, `/api/v1/contacts/${conversion.contact_id}`);
+  testData.register('deal', conversion.deal_id, `/api/v1/deals/${conversion.deal_id}`);
+  testData.register('account', conversion.account_id, `/api/v1/accounts/${conversion.account_id}`);
 
   // Default list should not include the converted lead
-  const defaultList = await restClient.get<{ data: Array<{ id: string }> }>('/api/v1/leads');
-  const foundInDefault = defaultList.body.data.some((l) => l.id === leadId);
+  const defaultList = await getLeads(restClient);
+  const foundInDefault = defaultList.data.some((l) => l.id === leadId);
   expect(foundInDefault, 'converted lead should be hidden in default list').toBe(false);
 
   // With includeConverted=true, lead should appear
-  const fullList = await restClient.get<{ data: Array<{ id: string }> }>(
-    '/api/v1/leads?includeConverted=true',
-  );
-  const foundInFull = fullList.body.data.some((l) => l.id === leadId);
+  const fullList = await getLeads(restClient, { includeConverted: true });
+  const foundInFull = fullList.data.some((l) => l.id === leadId);
   expect(foundInFull, 'converted lead should be visible with includeConverted=true').toBe(true);
 });

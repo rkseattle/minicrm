@@ -29,8 +29,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateToContacts } from '@behaviors/minicrm/contacts.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { navigateToContacts, searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
@@ -41,18 +41,6 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) {
   throw new Error('[bvt] E2E_ADMIN_PASSWORD environment variable is not set');
-}
-
-// ---------------------------------------------------------------------------
-// Response shape for GET /api/contacts (paginated envelope)
-// ---------------------------------------------------------------------------
-
-interface ContactListResponse {
-  data: unknown[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,15 +61,12 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     testData,
   }) => {
     // ── Step 0: Authenticate the REST client ──────────────────────────────
-    // POST /api/auth/login sets the JWT cookie on the Playwright
-    // APIRequestContext, so all subsequent restClient calls are authenticated.
-    await restClient.post('/api/v1/auth/login', {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-    });
+    // loginAsAdmin sets the JWT cookie on the Playwright APIRequestContext,
+    // so all subsequent restClient calls are authenticated.
+    await loginAsAdmin(restClient);
 
     // ── Step 1: Confirm the contacts endpoint is reachable ───────────────
-    await restClient.get<ContactListResponse>('/api/v1/contacts');
+    await searchContactsViaApi(restClient, '');
 
     // ── Step 2: Create test contact via API ───────────────────────────────
     // createTestContact registers the contact with testData immediately so
@@ -113,12 +98,9 @@ test.describe('BVT — MiniCRM E2E framework integration', () => {
     // queryable — avoids pagination concerns with large contact lists.
     // Note: asserting total == countBefore + 1 is racey with --workers=4
     // because other workers may create contacts between the two reads.
-    const searchResponse = await restClient.get<ContactListResponse>(
-      `/api/v1/contacts?search=${encodeURIComponent(contact.last_name)}`,
-    );
-    expect(searchResponse.body.total).toBe(1);
-    const found = searchResponse.body.data as Array<{ id: string }>;
-    expect(found[0].id).toBe(contact.id);
+    const searchResponse = await searchContactsViaApi(restClient, contact.last_name);
+    expect(searchResponse.total).toBe(1);
+    expect(searchResponse.data[0].id).toBe(contact.id);
 
     // ── Step 6: Explicit teardown (AC4) ──────────────────────────────────
     // Call teardown manually here so we can assert success below.

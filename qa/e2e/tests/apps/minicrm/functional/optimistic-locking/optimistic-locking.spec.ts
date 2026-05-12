@@ -24,14 +24,11 @@ import {
   createTestDeal,
   createTestActivity,
 } from '@apps/minicrm/helpers.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F-OL] E2E_ADMIN_PASSWORD is not set');
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { patchContact } from '@behaviors/minicrm/contacts.behaviors.js';
+import { patchAccount } from '@behaviors/minicrm/accounts.behaviors.js';
+import { patchDeal } from '@behaviors/minicrm/deals.behaviors.js';
+import { patchActivity } from '@behaviors/minicrm/activities.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,7 +61,7 @@ test(
   'F-OL1: contact — version increments on update; stale version returns 409',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const contact = await createTestContact(testData, restClient, {
       first_name: 'OL',
@@ -72,11 +69,11 @@ test(
     });
     expect(contact.version).toBe(1);
 
-    const updated = await restClient.patch<{ contact: { version: number } }>(
-      `/api/v1/contacts/${contact.id}`,
-      { first_name: 'Edited', version: contact.version },
-    );
-    expect(updated.body.contact.version).toBe(2);
+    const updated = await patchContact(restClient, contact.id, {
+      first_name: 'Edited',
+      version: contact.version,
+    });
+    expect(updated.version).toBe(2);
 
     // Stale PATCH with original version must be rejected
     await assertConflict(restClient, `/api/v1/contacts/${contact.id}`, {
@@ -90,16 +87,16 @@ test(
   'F-OL2: account — version increments on update; stale version returns 409',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, { name: 'OL Account Test' });
     expect(account.version).toBe(1);
 
-    const updated = await restClient.patch<{ account: { version: number } }>(
-      `/api/v1/accounts/${account.id}`,
-      { name: 'Edited Name', version: account.version },
-    );
-    expect(updated.body.account.version).toBe(2);
+    const updated = await patchAccount(restClient, account.id, {
+      name: 'Edited Name',
+      version: account.version,
+    });
+    expect(updated.version).toBe(2);
 
     await assertConflict(restClient, `/api/v1/accounts/${account.id}`, {
       name: 'Stale Edit',
@@ -112,7 +109,7 @@ test(
   'F-OL3: deal — version increments on update; stale version returns 409',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, { name: 'OL Deal Account' });
     const deal = await createTestDeal(testData, restClient, {
@@ -122,11 +119,11 @@ test(
     });
     expect(deal.version).toBe(1);
 
-    const updated = await restClient.patch<{ deal: { version: number } }>(
-      `/api/v1/deals/${deal.id}`,
-      { name: 'Edited Deal', version: deal.version },
-    );
-    expect(updated.body.deal.version).toBe(2);
+    const updated = await patchDeal(restClient, deal.id, {
+      name: 'Edited Deal',
+      version: deal.version,
+    });
+    expect(updated.version).toBe(2);
 
     await assertConflict(restClient, `/api/v1/deals/${deal.id}`, {
       name: 'Stale Edit',
@@ -139,7 +136,7 @@ test(
   'F-OL4: activity — version increments on update; stale version returns 409',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: 'OL Activity Account',
@@ -151,11 +148,11 @@ test(
     });
     expect(activity.version).toBe(1);
 
-    const updated = await restClient.patch<{ activity: { version: number } }>(
-      `/api/v1/activities/${activity.id}`,
-      { subject: 'Edited Subject', version: activity.version },
-    );
-    expect(updated.body.activity.version).toBe(2);
+    const updated = await patchActivity(restClient, activity.id, {
+      subject: 'Edited Subject',
+      version: activity.version,
+    });
+    expect(updated.version).toBe(2);
 
     await assertConflict(restClient, `/api/v1/activities/${activity.id}`, {
       subject: 'Stale Edit',

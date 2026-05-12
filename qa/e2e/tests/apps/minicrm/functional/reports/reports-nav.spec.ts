@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
@@ -34,7 +34,7 @@ if (!ADMIN_PASSWORD) throw new Error('[reports-nav-spec] E2E_ADMIN_PASSWORD is n
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------

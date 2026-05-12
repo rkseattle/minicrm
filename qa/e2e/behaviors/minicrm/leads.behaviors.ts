@@ -8,9 +8,10 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192
+ * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192, MINCRM-357
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { LeadsPage } from '@pages/minicrm/LeadsPage.js';
 import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
@@ -410,4 +411,131 @@ export async function leadRowIsHidden(
   const finalUrl = leadsPage.url();
 
   return { hidden: !visible, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by GET /api/v1/leads/:id. */
+export interface LeadRow {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  status: string;
+  converted_at: string | null;
+  converted_contact_id: string | null;
+  converted_account_id: string | null;
+  converted_deal_id: string | null;
+  /** Optimistic lock version (MINCRM-349). */
+  version: number;
+}
+
+/** Shape of a paginated lead list row. */
+export interface LeadListRow {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  status: string;
+  company_name: string | null;
+}
+
+/**
+ * Fetches a single lead by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param leadId - Lead UUID.
+ * @returns The lead record.
+ */
+export async function getLeadById(restClient: RestClient, leadId: string): Promise<LeadRow> {
+  const res = await restClient.get<{ lead: LeadRow }>(`/api/v1/leads/${leadId}`);
+  return res.body.lead;
+}
+
+/**
+ * Creates a lead via the API and returns the lead row.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param params - Lead fields.
+ * @returns The created lead record.
+ */
+export async function createLeadViaApi(
+  restClient: RestClient,
+  params: { first_name: string; email: string; last_name?: string; company_name?: string },
+): Promise<LeadRow> {
+  const res = await restClient.post<{ lead: LeadRow }>('/api/v1/leads', params);
+  return res.body.lead;
+}
+
+/** Shape of the lead conversion response. */
+export interface LeadConversionResult {
+  contact_id: string;
+  account_id: string;
+  deal_id: string;
+}
+
+/**
+ * Converts a lead atomically via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param leadId - Lead UUID.
+ * @param params - Conversion parameters.
+ * @returns The conversion result containing the IDs of created entities.
+ */
+export async function convertLeadViaApi(
+  restClient: RestClient,
+  leadId: string,
+  params: {
+    contact: { first_name: string; email: string; last_name?: string };
+    account: { mode: 'create'; name: string };
+    deal: { name: string };
+  },
+): Promise<LeadConversionResult> {
+  const res = await restClient.post<{ conversion: LeadConversionResult }>(
+    `/api/v1/leads/${leadId}/convert`,
+    params,
+  );
+  return res.body.conversion;
+}
+
+/**
+ * Fetches all leads optionally including disqualified / converted entries.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param options - Filters.
+ * @returns Paginated result.
+ */
+export async function getLeads(
+  restClient: RestClient,
+  options: { includeDisqualified?: boolean; includeConverted?: boolean } = {},
+): Promise<{ data: LeadListRow[]; total: number }> {
+  const params = new URLSearchParams();
+  if (options.includeDisqualified) params.set('includeDisqualified', 'true');
+  if (options.includeConverted) params.set('includeConverted', 'true');
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await restClient.get<{ data: LeadListRow[]; total: number }>(`/api/v1/leads${query}`);
+  return { data: res.body.data, total: res.body.total };
+}
+
+/**
+ * Disqualifies a lead via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param leadId - Lead UUID.
+ * @param version - Current optimistic-lock version.
+ * @param reason - Disqualification reason.
+ */
+export async function disqualifyLead(
+  restClient: RestClient,
+  leadId: string,
+  version: number,
+  reason: string,
+): Promise<void> {
+  await restClient.patch(`/api/v1/leads/${leadId}`, {
+    status: 'Disqualified',
+    disqualification_reason: reason,
+    version,
+  });
 }

@@ -42,7 +42,7 @@ import {
   createTestDeal,
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
@@ -110,10 +110,7 @@ async function resolveTimestampMasks(page: PageFacadeShape) {
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', {
-    email: ADMIN_EMAIL,
-    password: ADMIN_PASSWORD,
-  });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------

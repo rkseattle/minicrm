@@ -28,6 +28,12 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient, decodeQuotedPrintable } from '@apps/minicrm/mailhogClient.js';
+import { loginAsAdmin, forgotPassword } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
 
 // F1-EM tests exercise unauthenticated flows. Use an empty storageState to
 // prevent the project-level admin session from loading.
@@ -37,20 +43,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F1-EM] E2E_ADMIN_PASSWORD is not set');
-
 const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-interface InviteResponse {
-  user: { id: string; email: string };
-  inviteToken: string;
-}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -62,16 +55,16 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
   const mailhog = new MailhogClient(MAILHOG_URL);
 
   // Log in as admin to create a test user.
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const testEmail = `f1-em1-${uniqueSuffix}@example.com`;
 
-  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
+  const inviteRes = await inviteUserViaApi(restClient, {
     name: `F1-EM1 User ${uniqueSuffix}`,
     email: testEmail,
     role: 'rep',
   });
-  const userId = inviteRes.body.user.id;
+  const userId = inviteRes.user.id;
 
   // Wait for the invite email to arrive before triggering the reset flow —
   // ensures the invite email has landed so the reset email arrives as a second message.
@@ -79,13 +72,10 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
 
   try {
     // Activate the user so they can request a password reset.
-    await restClient.post('/api/v1/users/set-password', {
-      token: inviteRes.body.inviteToken,
-      password: 'InitPass1!',
-    });
+    await setUserPassword(restClient, inviteRes.inviteToken, 'InitPass1!');
 
     // Trigger the forgot-password flow.
-    await restClient.post('/api/v1/auth/forgot-password', { email: testEmail });
+    await forgotPassword(restClient, testEmail);
 
     // Poll until 2 messages arrive (invite + reset). Each test uses a unique
     // address so no clearMessages() is needed — won't collide with parallel tests.
@@ -108,10 +98,8 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
       '/reset-password?token=',
     );
   } finally {
-    await restClient
-      .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
-      .catch(() => null);
-    await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+    await loginAsAdmin(restClient).catch(() => null);
+    await deactivateUser(restClient, userId).catch((err: unknown) => {
       console.error(`[F1-EM1] teardown failed: ${String(err)}`);
     });
   }
@@ -122,17 +110,17 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
 }) => {
   const mailhog = new MailhogClient(MAILHOG_URL);
 
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const invitedEmail = `f1-em2-${uniqueSuffix}@example.com`;
 
-  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
+  const inviteRes = await inviteUserViaApi(restClient, {
     name: `F1-EM2 User ${uniqueSuffix}`,
     email: invitedEmail,
     role: 'rep',
   });
-  const userId = inviteRes.body.user.id;
+  const userId = inviteRes.user.id;
 
   try {
     // Poll Mailhog briefly — the server fires the invite email after responding.
@@ -146,7 +134,7 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
       '/set-password?token=',
     );
   } finally {
-    await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
+    await deactivateUser(restClient, userId).catch((err: unknown) => {
       console.error(`[F1-EM2] teardown failed: ${String(err)}`);
     });
   }

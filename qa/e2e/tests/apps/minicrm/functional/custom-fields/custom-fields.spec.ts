@@ -18,7 +18,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  getCustomFieldDefinitions,
+  createCustomFieldDefinition,
+  setContactCustomFields,
+} from '@behaviors/minicrm/setup.behaviors.js';
 import { createTestContact } from '@apps/minicrm/helpers.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -36,7 +41,7 @@ if (!ADMIN_PASSWORD) throw new Error('[custom-fields-spec] E2E_ADMIN_PASSWORD is
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -87,12 +92,8 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
 
   // The field appears in the table
   // Resolve the created definition id via REST for cleanup
-  const defsResp = await restClient.get<{
-    definitions: Array<{ id: string; name: string }>;
-  }>('/api/v1/custom-fields/definitions?entity_type=contact');
-  const created = defsResp.body.definitions.find(
-    (d: { id: string; name: string }) => d.name === fieldName,
-  );
+  const definitions = await getCustomFieldDefinitions(restClient, 'contact');
+  const created = definitions.find((d) => d.name === fieldName);
   expect(created).toBeDefined();
   createdFieldId = created!.id;
 
@@ -119,11 +120,12 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 
   // Create a text custom field definition via REST
   const fieldName = `Persist Test Field ${Date.now()}`;
-  const defResp = await restClient.post<{ id: string; name: string }>(
-    '/api/v1/custom-fields/definitions',
-    { entity_type: 'contact', name: fieldName, field_type: 'text' },
-  );
-  const definitionId = defResp.body.id;
+  const definition = await createCustomFieldDefinition(restClient, {
+    entity_type: 'contact',
+    name: fieldName,
+    field_type: 'text',
+  });
+  const definitionId = definition.id;
   testData.register(
     'custom_field_definition',
     definitionId,
@@ -191,18 +193,19 @@ test('admin deletes a custom field definition; it disappears from the contact de
 
   // Create a text custom field definition via REST
   const fieldName = `Delete Test Field ${Date.now()}`;
-  const defResp = await restClient.post<{ id: string; name: string }>(
-    '/api/v1/custom-fields/definitions',
-    { entity_type: 'contact', name: fieldName, field_type: 'text' },
-  );
-  const definitionId = defResp.body.id;
+  const definition = await createCustomFieldDefinition(restClient, {
+    entity_type: 'contact',
+    name: fieldName,
+    field_type: 'text',
+  });
+  const definitionId = definition.id;
   // No testData.register — we delete the definition via the UI in this test
 
   // Create a contact via REST
   const contact = await createTestContact(testData, restClient);
 
   // Set a value for the field via REST so it appears in read mode
-  await restClient.put(`/api/v1/custom-fields/contact/${contact.id}/custom-fields`, [
+  await setContactCustomFields(restClient, contact.id, [
     { definition_id: definitionId, value: 'Temp Value' },
   ]);
 

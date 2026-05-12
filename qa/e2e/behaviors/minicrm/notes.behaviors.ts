@@ -9,6 +9,7 @@
  * result objects that test specs assert against.
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { NotesPage } from '@pages/minicrm/NotesPage.js';
 
@@ -210,4 +211,148 @@ export async function maskedNoteCardIsVisible(
   const card = await notes.maskedNoteCardLocator(noteId);
   if (!card) return false;
   return card.isVisible();
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape of a note returned by GET /api/v1/contact/:id/notes/:noteId. */
+export interface NoteRow {
+  id: string;
+  title: string | null;
+  body: string;
+  visibility: 'team' | 'private';
+  is_masked: boolean;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape of a paginated notes list. */
+export interface NoteListRow {
+  id: string;
+  title: string | null;
+  visibility: 'team' | 'private';
+  is_masked: boolean;
+  tags: string[];
+  total: number;
+}
+
+/** Parameters for creating a note via the API. */
+export interface CreateNoteParams {
+  body: string;
+  title?: string;
+  visibility?: 'team' | 'private';
+  tags?: string[];
+}
+
+/**
+ * Creates a note on a contact via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param params - Note fields.
+ * @returns The created note record.
+ */
+export async function createNoteViaApi(
+  restClient: RestClient,
+  contactId: string,
+  params: CreateNoteParams,
+): Promise<NoteRow> {
+  const res = await restClient.post<{ note: NoteRow }>(
+    `/api/v1/contact/${contactId}/notes`,
+    params,
+  );
+  return res.body.note;
+}
+
+/**
+ * Fetches a single note by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param noteId - Note UUID.
+ * @returns The note record.
+ */
+export async function getNoteById(
+  restClient: RestClient,
+  contactId: string,
+  noteId: string,
+): Promise<NoteRow> {
+  const res = await restClient.get<{ note: NoteRow }>(
+    `/api/v1/contact/${contactId}/notes/${noteId}`,
+  );
+  return res.body.note;
+}
+
+/**
+ * Lists notes for a contact from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @returns Object with data array and total count.
+ */
+export async function listNotes(
+  restClient: RestClient,
+  contactId: string,
+): Promise<{ data: NoteListRow[]; total: number }> {
+  const res = await restClient.get<{ data: NoteListRow[]; total: number }>(
+    `/api/v1/contact/${contactId}/notes`,
+  );
+  return { data: res.body.data, total: res.body.total };
+}
+
+/**
+ * Patches a note's fields via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param noteId - Note UUID.
+ * @param patch - Fields to update.
+ */
+export async function patchNote(
+  restClient: RestClient,
+  contactId: string,
+  noteId: string,
+  patch: Partial<Pick<NoteRow, 'title' | 'body' | 'visibility' | 'tags'>>,
+): Promise<void> {
+  await restClient.patch(`/api/v1/contact/${contactId}/notes/${noteId}`, patch);
+}
+
+/**
+ * Deletes a note via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param noteId - Note UUID.
+ */
+export async function deleteNote(
+  restClient: RestClient,
+  contactId: string,
+  noteId: string,
+): Promise<void> {
+  await restClient.delete(`/api/v1/contact/${contactId}/notes/${noteId}`);
+}
+
+/**
+ * Fetches audit log entries for a record via the per-record endpoint.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param recordType - Record type (e.g. 'contact').
+ * @param recordId - Record UUID.
+ * @param all - When true, includes all events including note_created/updated/deleted.
+ * @returns Object with entries array.
+ */
+export async function getRecordAuditLog(
+  restClient: RestClient,
+  recordType: string,
+  recordId: string,
+  all = false,
+): Promise<{ entries: Array<{ event_type: string; field_name: string | null }> }> {
+  const query = `?record_type=${recordType}&record_id=${recordId}${all ? '&all=true' : ''}`;
+  const res = await restClient.get<{
+    entries: Array<{ event_type: string; field_name: string | null }>;
+  }>(`/api/v1/audit-log/record${query}`);
+  return { entries: res.body.entries };
 }

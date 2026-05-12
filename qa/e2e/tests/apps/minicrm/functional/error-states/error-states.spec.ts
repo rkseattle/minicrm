@@ -24,6 +24,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createContactViaUI,
   navigateToContacts,
@@ -36,7 +37,9 @@ import {
   clickBulkCheckbox,
   bulkDeleteContacts,
   contactRowIsVisible,
+  searchContactsViaApi,
 } from '@behaviors/minicrm/contacts.behaviors.js';
+import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
@@ -45,10 +48,6 @@ import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[ES-1] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Shared error response bodies
@@ -63,7 +62,7 @@ const SERVER_ERROR_BODY = JSON.stringify({
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -114,10 +113,8 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
   await expect(firstNameInput).toHaveValue(firstName);
 
   // Confirm the contact was never created via API.
-  const search = await restClient.get<{ total: number }>(
-    `/api/v1/contacts?search=${encodeURIComponent(lastName)}`,
-  );
-  expect(search.body.total, 'contact must not have been created').toBe(0);
+  const search = await searchContactsViaApi(restClient, lastName);
+  expect(search.total, 'contact must not have been created').toBe(0);
 
   // testData has nothing to register — the contact was never saved.
   void testData; // consumed via restClient fixture
@@ -175,10 +172,8 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
   await expect(errorBanner).toBeVisible({ timeout: 8_000 });
 
   // Verify via API that the deal's stage was NOT changed.
-  const dealResp = await restClient.get<{ deal: { stage: string } }>(`/api/v1/deals/${deal.id}`);
-  expect(dealResp.body.deal.stage, 'deal stage must remain Prospecting after 500').toBe(
-    'Prospecting',
-  );
+  const dealRecord = await getDealById(restClient, deal.id);
+  expect(dealRecord.stage, 'deal stage must remain Prospecting after 500').toBe('Prospecting');
 });
 
 // ---------------------------------------------------------------------------

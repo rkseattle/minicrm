@@ -29,32 +29,10 @@ import {
   createTestDeal,
   createTestActivity,
 } from '@apps/minicrm/helpers.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F11-CD] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface ContactSingleResponse {
-  contact: {
-    id: string;
-    account_id: string | null;
-  };
-}
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    account_id: string | null;
-  };
-}
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { getContactById, deleteContact } from '@behaviors/minicrm/contacts.behaviors.js';
+import { deleteAccount } from '@behaviors/minicrm/accounts.behaviors.js';
+import { getDealById, deleteDeal } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,6 +41,8 @@ interface DealSingleResponse {
 /**
  * Asserts that a GET to the given path returns a 404 RestClientError.
  * Used to confirm records were removed by cascade.
+ * The raw restClient.get call here is intentional — it is the mechanism for
+ * asserting on a 4xx HTTP error status.
  */
 async function assertDeleted(
   restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
@@ -87,7 +67,7 @@ test(
   'F11-CD1: deleting a contact removes its linked activities via cascade',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const contact = await createTestContact(testData, restClient, {
       first_name: 'CD1',
@@ -108,7 +88,7 @@ test(
     });
 
     // Delete the contact via API
-    await restClient.delete(`/api/v1/contacts/${contact.id}`);
+    await deleteContact(restClient, contact.id);
 
     // Contact itself should return 404
     await assertDeleted(restClient, `/api/v1/contacts/${contact.id}`);
@@ -127,7 +107,7 @@ test(
   'F11-CD2: deleting an account unlinks its contacts (account_id SET NULL) rather than deleting them',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `CD2-Acct ${test.info().title}`,
@@ -148,17 +128,17 @@ test(
     });
 
     // Delete the account
-    await restClient.delete(`/api/v1/accounts/${account.id}`);
+    await deleteAccount(restClient, account.id);
 
     // Account itself should return 404
     await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
 
     // Contacts should survive but have account_id nulled out (ON DELETE SET NULL)
-    const fetchedA = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contactA.id}`);
-    expect(fetchedA.body.contact.account_id).toBeNull();
+    const fetchedA = await getContactById(restClient, contactA.id);
+    expect(fetchedA.account_id).toBeNull();
 
-    const fetchedB = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${contactB.id}`);
-    expect(fetchedB.body.contact.account_id).toBeNull();
+    const fetchedB = await getContactById(restClient, contactB.id);
+    expect(fetchedB.account_id).toBeNull();
   },
 );
 
@@ -170,7 +150,7 @@ test(
   'F11-CD3: deleting a deal removes its linked activities via cascade',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `CD3-Acct ${test.info().title}`,
@@ -190,7 +170,7 @@ test(
     });
 
     // Delete the deal
-    await restClient.delete(`/api/v1/deals/${deal.id}`);
+    await deleteDeal(restClient, deal.id);
 
     // Deal itself should return 404
     await assertDeleted(restClient, `/api/v1/deals/${deal.id}`);
@@ -208,7 +188,7 @@ test(
   'F11-CD4: deleting an account unlinks its deals (account_id SET NULL) rather than deleting them',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `CD4-Acct ${test.info().title}`,
@@ -221,13 +201,15 @@ test(
     });
 
     // Delete the account
-    await restClient.delete(`/api/v1/accounts/${account.id}`);
+    await deleteAccount(restClient, account.id);
 
     // Account returns 404
     await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
 
-    // Deal survives but account_id is nulled (ON DELETE SET NULL — migration 004)
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.account_id).toBeNull();
+    // Deal survives but account_id is nulled (ON DELETE SET NULL — migration 004).
+    // DealRow.account_id is typed as string but the DB SET NULL rule produces null
+    // here; the cast is safe because we are specifically testing the nulled-out state.
+    const fetched = await getDealById(restClient, deal.id);
+    expect((fetched as unknown as { account_id: string | null }).account_id).toBeNull();
   },
 );

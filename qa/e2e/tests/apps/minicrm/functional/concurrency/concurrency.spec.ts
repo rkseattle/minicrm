@@ -51,7 +51,11 @@ import {
   clickBulkCheckbox,
   filterContactsByTerm,
   bulkReassignContacts,
+  getContactById,
+  patchContact,
 } from '@behaviors/minicrm/contacts.behaviors.js';
+import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { simulateConcurrentEdit } from '@behaviors/minicrm/concurrency.behaviors.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
@@ -67,25 +71,17 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F-CC] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
-// Response types
+// Local response types (only for endpoints not covered by behavior helpers)
 // ---------------------------------------------------------------------------
 
-interface ContactSingleResponse {
+/**
+ * Raw contact response shape used in F-CC6 to assert owner_id, which is not
+ * included in the ContactRow type exported by contacts.behaviors.ts.
+ */
+interface ContactWithOwnerResponse {
   contact: {
     id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
     owner_id: string;
-    version: number;
-  };
-}
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    name: string;
-    stage: string;
     version: number;
   };
 }
@@ -177,14 +173,11 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(contact.version, 'freshly created contact should be at version 1').toBe(1);
 
       // Successful update with current version — version increments to 2
-      const updated = await restClient.patch<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-        { first_name: 'CC1-Updated', version: contact.version },
-      );
-      expect(
-        updated.body.contact.version,
-        'version should increment to 2 on successful PATCH',
-      ).toBe(2);
+      const updated = await patchContact(restClient, contact.id, {
+        first_name: 'CC1-Updated',
+        version: contact.version,
+      });
+      expect(updated.version, 'version should increment to 2 on successful PATCH').toBe(2);
 
       // Stale PATCH with original version 1 must be rejected with 409
       await assertStaleVersionRejected(restClient, `/api/v1/contacts/${contact.id}`, {
@@ -281,13 +274,13 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
 
       // Verify the deal version is still 2 in the database — the stale save
       // was rejected before any side effects (webhooks, automation) could fire
-      const dealResponse = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
+      const dealResponse = await getDealById(restClient, deal.id);
       expect(
-        dealResponse.body.deal.version,
+        dealResponse.version,
         'deal version should remain at 2 — stale save was rejected',
       ).toBe(2);
       expect(
-        dealResponse.body.deal.stage,
+        dealResponse.stage,
         'deal stage should be Negotiation (from background write), not Qualification (stale UI save)',
       ).toBe('Negotiation');
 
@@ -357,11 +350,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(loaded, 'contact detail page should return to read mode after re-save').toBe(true);
 
       // Verify via API that the contact was updated (version is now 3)
-      const response = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
+      const response = await getContactById(restClient, contact.id);
       expect(
-        response.body.contact.version,
+        response.version,
         'contact should be at version 3 after conflict resolution save',
       ).toBe(3);
     },
@@ -404,15 +395,13 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
 
       // Verify via API that the contact is at version 2 (background write version)
       // and shows the background first name, not our discarded value
-      const response = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
+      const response = await getContactById(restClient, contact.id);
       expect(
-        response.body.contact.version,
+        response.version,
         'contact should remain at version 2 — no additional write on discard',
       ).toBe(2);
       expect(
-        response.body.contact.first_name,
+        response.first_name,
         'contact first_name should reflect the background write, not the discarded value',
       ).toBe('CC5-Theirs');
     },
@@ -480,20 +469,22 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // Verify all three contacts have the new owner.
       // Bulk ops are exempt from optimistic locking — they do NOT increment version,
       // and they do NOT require a version in the request body.
-      const r1 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c1.id}`);
+      // Raw restClient calls are used here because ContactRow (from contacts.behaviors)
+      // does not expose owner_id.
+      const r1 = await restClient.get<ContactWithOwnerResponse>(`/api/v1/contacts/${c1.id}`);
       expect(r1.body.contact.owner_id, 'c1 should have new owner').toBe(newOwner.id);
       expect(r1.body.contact.version, 'c1 version unchanged by bulk op').toBe(1);
 
-      const r2 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c2.id}`);
+      const r2 = await restClient.get<ContactWithOwnerResponse>(`/api/v1/contacts/${c2.id}`);
       expect(r2.body.contact.owner_id, 'c2 should have new owner').toBe(newOwner.id);
       expect(r2.body.contact.version, 'c2 version unchanged by bulk op').toBe(1);
 
-      const r3 = await restClient.get<ContactSingleResponse>(`/api/v1/contacts/${c3.id}`);
+      const r3 = await restClient.get<ContactWithOwnerResponse>(`/api/v1/contacts/${c3.id}`);
       expect(r3.body.contact.owner_id, 'c3 should have new owner').toBe(newOwner.id);
       expect(r3.body.contact.version, 'c3 version unchanged by bulk op').toBe(1);
 
       // Deactivate the temp user (users cannot be hard-deleted)
-      await restClient.patch(`/api/v1/users/${newOwner.id}/deactivate`, {});
+      await deactivateUser(restClient, newOwner.id);
     },
   );
 
@@ -530,16 +521,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(await detailPage.isLoaded(), 'page should return to read mode').toBe(true);
 
       // Contact should now be at version 3 with "theirs" first name
-      const afterResolve = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
-      expect(
-        afterResolve.body.contact.version,
-        'version should be 3 after conflict resolution',
-      ).toBe(3);
-      expect(afterResolve.body.contact.first_name, '"theirs" value should have won').toBe(
-        'CC7-Theirs',
-      );
+      const afterResolve = await getContactById(restClient, contact.id);
+      expect(afterResolve.version, 'version should be 3 after conflict resolution').toBe(3);
+      expect(afterResolve.first_name, '"theirs" value should have won').toBe('CC7-Theirs');
 
       // -----------------------------------------------------------------------
       // Subsequent edit — must save cleanly with no conflict (version is now 3)
@@ -562,16 +546,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       );
 
       // Version is now 4
-      const afterEdit = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
-      expect(
-        afterEdit.body.contact.version,
-        'version should be 4 after clean subsequent save',
-      ).toBe(4);
-      expect(afterEdit.body.contact.first_name, 'subsequent edit value should be saved').toBe(
-        'CC7-PostResolve',
-      );
+      const afterEdit = await getContactById(restClient, contact.id);
+      expect(afterEdit.version, 'version should be 4 after clean subsequent save').toBe(4);
+      expect(afterEdit.first_name, 'subsequent edit value should be saved').toBe('CC7-PostResolve');
     },
   );
 
@@ -608,14 +585,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(await detailPage.isLoaded(), 'page should return to read mode').toBe(true);
 
       // Contact should now be at version 3 with "mine" first name
-      const afterResolve = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
-      expect(
-        afterResolve.body.contact.version,
-        'version should be 3 after conflict resolution',
-      ).toBe(3);
-      expect(afterResolve.body.contact.first_name, '"mine" value should have won').toBe('CC8-Mine');
+      const afterResolve = await getContactById(restClient, contact.id);
+      expect(afterResolve.version, 'version should be 3 after conflict resolution').toBe(3);
+      expect(afterResolve.first_name, '"mine" value should have won').toBe('CC8-Mine');
 
       // -----------------------------------------------------------------------
       // Subsequent edit — must save cleanly with no conflict (version is now 3)
@@ -638,16 +610,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       );
 
       // Version is now 4
-      const afterEdit = await restClient.get<ContactSingleResponse>(
-        `/api/v1/contacts/${contact.id}`,
-      );
-      expect(
-        afterEdit.body.contact.version,
-        'version should be 4 after clean subsequent save',
-      ).toBe(4);
-      expect(afterEdit.body.contact.first_name, 'subsequent edit value should be saved').toBe(
-        'CC8-PostResolve',
-      );
+      const afterEdit = await getContactById(restClient, contact.id);
+      expect(afterEdit.version, 'version should be 4 after clean subsequent save').toBe(4);
+      expect(afterEdit.first_name, 'subsequent edit value should be saved').toBe('CC8-PostResolve');
     },
   );
 });

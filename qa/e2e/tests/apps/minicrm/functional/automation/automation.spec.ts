@@ -28,14 +28,11 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F13-automation] E2E_ADMIN_PASSWORD is not set');
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { createAutomationRule } from '@behaviors/minicrm/setup.behaviors.js';
+import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
+import type { ActivityListRow } from '@behaviors/minicrm/activities.behaviors.js';
+import { patchDealStage } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Polling helper
@@ -44,18 +41,6 @@ if (!ADMIN_PASSWORD) throw new Error('[F13-automation] E2E_ADMIN_PASSWORD is not
 const MAX_POLL_MS = 8_000;
 const INITIAL_BACKOFF_MS = 200;
 
-interface ActivityListResponse {
-  data: Array<{
-    id: string;
-    type: string;
-    subject: string;
-    owner_id: string;
-    due_date: string | null;
-    deal_id: string | null;
-  }>;
-  total: number;
-}
-
 /**
  * Polls GET /api/activities until a task matching the given subject appears,
  * using exponential backoff. Throws a descriptive error if the timeout is exceeded.
@@ -63,13 +48,13 @@ interface ActivityListResponse {
  * @param restClient - Authenticated REST client.
  * @param subject - The task subject to look for.
  * @param dealId - Optional deal ID to narrow the search.
- * @returns The matching activity row.
+ * @returns The matching activity list row.
  */
 async function pollForTask(
   restClient: RestClient,
   subject: string,
   dealId?: string,
-): Promise<ActivityListResponse['data'][0]> {
+): Promise<ActivityListRow> {
   const deadline = Date.now() + MAX_POLL_MS;
   let backoff = INITIAL_BACKOFF_MS;
   let attempt = 0;
@@ -79,10 +64,8 @@ async function pollForTask(
     await new Promise((resolve) => setTimeout(resolve, backoff));
     backoff = Math.min(backoff * 2, 2_000);
 
-    const query = dealId ? `/api/v1/activities?deal=${dealId}` : `/api/v1/activities`;
-
-    const response = await restClient.get<ActivityListResponse>(query);
-    const match = response.body.data.find((a) => a.subject === subject && a.type === 'Task');
+    const activities = await getActivities(restClient, dealId ? { deal: dealId } : {});
+    const match = activities.find((a) => a.subject === subject && a.type === 'Task');
     if (match) return match;
   }
 
@@ -93,22 +76,6 @@ async function pollForTask(
 }
 
 // ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface AutomationRuleRow {
-  id: string;
-  name: string;
-  enabled: boolean;
-  trigger_type: string;
-  action_type: string;
-}
-
-interface AutomationRuleResponse {
-  rule: AutomationRuleRow;
-}
-
-// ---------------------------------------------------------------------------
 // deal_created → create_task (F13-DC)
 // ---------------------------------------------------------------------------
 
@@ -116,13 +83,13 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC1 Follow Up ${suffix}`;
 
   // Create the automation rule
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
+  const rule = await createAutomationRule(restClient, {
     name: `F13DC1 Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_created',
@@ -135,8 +102,7 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
       due_date_offset_days: 1,
     },
   });
-  const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
+  testData.register('automation_rule', rule.id, `/api/v1/automation/rules/${rule.id}`);
 
   // Create a deal to fire the trigger
   const account = await createTestAccount(testData, restClient);
@@ -145,11 +111,14 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
     name: `F13DC1 Deal ${suffix}`,
   });
 
-  // Poll until the task appears
-  const task = await pollForTask(restClient, taskSubject, deal.id);
+  // Poll until the task appears (list row for subject/type/deal_id assertions)
+  const taskRow = await pollForTask(restClient, taskSubject, deal.id);
 
-  expect(task.subject, 'task subject should match automation action config').toBe(taskSubject);
-  expect(task.type, 'created activity should be a Task').toBe('Task');
+  expect(taskRow.subject, 'task subject should match automation action config').toBe(taskSubject);
+  expect(taskRow.type, 'created activity should be a Task').toBe('Task');
+
+  // Fetch the full activity to assert owner_id (not present on list rows)
+  const task = await getActivityById(restClient, taskRow.id);
   expect(task.owner_id, 'task should be assigned to the deal owner').toBe(deal.owner_id);
 
   // Verify due date is set (offset = 1 day from now)
@@ -163,13 +132,13 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC2 Should Not Appear ${suffix}`;
 
   // Create a disabled rule
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
+  const rule = await createAutomationRule(restClient, {
     name: `F13DC2 Disabled Rule ${suffix}`,
     enabled: false,
     trigger_type: 'deal_created',
@@ -182,8 +151,7 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
       due_date_offset_days: 1,
     },
   });
-  const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
+  testData.register('automation_rule', rule.id, `/api/v1/automation/rules/${rule.id}`);
 
   // Create a deal
   const account = await createTestAccount(testData, restClient);
@@ -195,10 +163,8 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
   // Wait a reasonable window and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>('/api/v1/activities');
-  const spuriousTask = response.body.data.find(
-    (a) => a.subject === taskSubject && a.type === 'Task',
-  );
+  const activities = await getActivities(restClient);
+  const spuriousTask = activities.find((a) => a.subject === taskSubject && a.type === 'Task');
   expect(spuriousTask, 'disabled rule should not create a task').toBeUndefined();
 });
 
@@ -210,13 +176,13 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS1 Proposal Follow Up ${suffix}`;
 
   // Create rule: fire when deal moves to Proposal
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
+  const rule = await createAutomationRule(restClient, {
     name: `F13DS1 Stage Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_stage_changed',
@@ -229,8 +195,7 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
       due_date_offset_days: 2,
     },
   });
-  const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
+  testData.register('automation_rule', rule.id, `/api/v1/automation/rules/${rule.id}`);
 
   // Create deal in Prospecting
   const account = await createTestAccount(testData, restClient);
@@ -242,7 +207,7 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
 
   // Advance to Proposal — this fires the trigger.
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/deals/${deal.id}`, { stage: 'Proposal', version: deal.version });
+  await patchDealStage(restClient, deal.id, 'Proposal', deal.version);
 
   // Poll until the task appears
   const task = await pollForTask(restClient, taskSubject, deal.id);
@@ -259,13 +224,13 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS2 Wrong Stage Task ${suffix}`;
 
   // Rule configured for Proposal, but we will move deal to Qualification only
-  const ruleResp = await restClient.post<AutomationRuleResponse>('/api/v1/automation/rules', {
+  const rule = await createAutomationRule(restClient, {
     name: `F13DS2 Wrong Stage Rule ${suffix}`,
     enabled: true,
     trigger_type: 'deal_stage_changed',
@@ -278,8 +243,7 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
       due_date_offset_days: 1,
     },
   });
-  const ruleId = ruleResp.body.rule.id;
-  testData.register('automation_rule', ruleId, `/api/v1/automation/rules/${ruleId}`);
+  testData.register('automation_rule', rule.id, `/api/v1/automation/rules/${rule.id}`);
 
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, {
@@ -290,18 +254,13 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
 
   // Move to Qualification — not the trigger stage.
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/deals/${deal.id}`, {
-    stage: 'Qualification',
-    version: deal.version,
-  });
+  await patchDealStage(restClient, deal.id, 'Qualification', deal.version);
 
   // Wait briefly and confirm no task was created
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-  const response = await restClient.get<ActivityListResponse>(`/api/v1/activities?deal=${deal.id}`);
-  const spuriousTask = response.body.data.find(
-    (a) => a.subject === taskSubject && a.type === 'Task',
-  );
+  const activities = await getActivities(restClient, { deal: deal.id });
+  const spuriousTask = activities.find((a) => a.subject === taskSubject && a.type === 'Task');
   expect(
     spuriousTask,
     'rule should not fire when deal moves to a non-matching stage',
@@ -316,7 +275,7 @@ test('@functional F13-PAG1: Automation rules page — pagination controls always
   page,
   restClient,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const automationPage = new AutomationPage({ page });
   await automationPage.navigate();
