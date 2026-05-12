@@ -11,6 +11,7 @@
  * MINCRM-145, MINCRM-168, MINCRM-192
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { GlobalSearchPage } from '@pages/minicrm/GlobalSearchPage.js';
 
@@ -306,4 +307,39 @@ export async function typeSearchQueryAndCheckPanel(
 export async function clearSearchQuery(context: SearchBehaviorContext): Promise<void> {
   const searchPage = new GlobalSearchPage(context);
   await searchPage.clearQuery();
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape of the global search API response. */
+export interface GlobalSearchResult {
+  contacts: Array<{ id: string; first_name: string; last_name: string; email: string }>;
+  accounts: Array<{ id: string; name: string }>;
+  deals: Array<{ id: string; name: string; stage: string }>;
+  leads: Array<{
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    email: string;
+    company_name: string | null;
+  }>;
+}
+
+/**
+ * Executes a global search via the API and returns the raw result.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param query - Search query string.
+ * @returns GlobalSearchResult with contacts, accounts, deals, and leads arrays.
+ */
+export async function globalSearchViaApi(
+  restClient: RestClient,
+  query: string,
+): Promise<GlobalSearchResult> {
+  const res = await restClient.get<GlobalSearchResult>(
+    `/api/v1/search?q=${encodeURIComponent(query)}`,
+  );
+  return res.body;
 }

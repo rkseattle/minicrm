@@ -36,15 +36,11 @@ import {
   reloadAndGetProfilePreferences,
   navigateToAdminSettings,
   toggleAdminEmailNotifications,
+  loginAsAdmin,
+  patchNotificationPreferences,
+  getEmailNotificationsEnabled,
+  setEmailNotificationsEnabled,
 } from '@behaviors/minicrm/index.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F10] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Profile page — notification preferences
@@ -73,8 +69,8 @@ test.describe.serial('Profile page — notification preferences', () => {
   }) => {
     // Reset preferences to all-true via API before reading — parallel workers
     // running PP3/PP4 may have unchecked them, causing this assertion to flake.
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch('/api/v1/users/me/notification-preferences', {
+    await loginAsAdmin(restClient);
+    await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,
@@ -99,9 +95,9 @@ test.describe.serial('Profile page — notification preferences', () => {
     restClient,
   }) => {
     // Authenticate restClient to use API for setup/teardown
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
     // Reset preferences to all-true via API before the test
-    await restClient.patch('/api/v1/users/me/notification-preferences', {
+    await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,
@@ -124,7 +120,7 @@ test.describe.serial('Profile page — notification preferences', () => {
     ).toBe(false);
 
     // Restore preferences
-    await restClient.patch('/api/v1/users/me/notification-preferences', {
+    await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,
@@ -136,8 +132,8 @@ test.describe.serial('Profile page — notification preferences', () => {
     restClient,
   }) => {
     // Authenticate restClient to use API for setup/teardown
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await restClient.patch('/api/v1/users/me/notification-preferences', {
+    await loginAsAdmin(restClient);
+    await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,
@@ -162,7 +158,7 @@ test.describe.serial('Profile page — notification preferences', () => {
     expect(afterReload.preferences.notify_deal_stage_changes).toBe(false);
 
     // Restore
-    await restClient.patch('/api/v1/users/me/notification-preferences', {
+    await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,
@@ -195,9 +191,9 @@ test.describe('Admin Settings — global email notifications', () => {
     restClient,
   }) => {
     // Authenticate restClient to use API for setup/teardown
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
     // Ensure enabled at start
-    await restClient.patch('/api/v1/settings/email-notifications', { enabled: true });
+    await setEmailNotificationsEnabled(restClient, true);
 
     // Navigate to settings — toggle should show as enabled.
     const initial = await navigateToAdminSettings({ page });
@@ -209,19 +205,15 @@ test.describe('Admin Settings — global email notifications', () => {
     expect(disableResult.isEnabled, 'toggle should now be off').toBe(false);
 
     // Verify via API (AC2)
-    const afterDisable = await restClient.get<{ enabled: boolean }>(
-      '/api/v1/settings/email-notifications',
-    );
-    expect(afterDisable.body.enabled, 'API should reflect disabled state (AC2)').toBe(false);
+    const afterDisable = await getEmailNotificationsEnabled(restClient);
+    expect(afterDisable, 'API should reflect disabled state (AC2)').toBe(false);
 
     // Toggle back on
     const enableResult = await toggleAdminEmailNotifications({ page });
     expect(enableResult.saved, 'success message should appear after toggling on').toBe(true);
     expect(enableResult.isEnabled, 'toggle should now be on').toBe(true);
 
-    const afterEnable = await restClient.get<{ enabled: boolean }>(
-      '/api/v1/settings/email-notifications',
-    );
-    expect(afterEnable.body.enabled, 'API should reflect enabled state (AC2)').toBe(true);
+    const afterEnable = await getEmailNotificationsEnabled(restClient);
+    expect(afterEnable, 'API should reflect enabled state (AC2)').toBe(true);
   });
 });

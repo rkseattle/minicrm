@@ -27,7 +27,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { setPassword, navigateToProtectedPage } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  setPassword,
+  navigateToProtectedPage,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import { inviteUserViaApi, deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // MINCRM-262: Set-password tests exercise an unauthenticated flow. Use an
@@ -35,21 +40,8 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F1-INV] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-interface InviteResponse {
-  user: { id: string; email: string };
-  inviteToken: string;
-}
 
 /**
  * Creates a new invited user and returns the user id, email, and invite token.
@@ -61,12 +53,11 @@ async function createInvitedUser(
   restClient: RestClient,
 ): Promise<{ userId: string; email: string; inviteToken: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, {
     name: `F1-INV User ${uniqueSuffix}`,
     email: `f1-inv-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
-  const { user, inviteToken } = inviteRes.body;
   return { userId: user.id, email: user.email, inviteToken };
 }
 
@@ -78,7 +69,7 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
   page,
   restClient,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -98,7 +89,7 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
       'unauthenticated user should stay on /set-password, not be redirected to /login',
     ).toBe('/set-password');
   } finally {
-    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
+    await deactivateUser(restClient, userId);
   }
 });
 
@@ -143,7 +134,7 @@ test('@functional F1-INV4: /set-password — mismatched passwords shows inline v
   page,
   restClient,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -155,7 +146,7 @@ test('@functional F1-INV4: /set-password — mismatched passwords shows inline v
       '/set-password',
     );
   } finally {
-    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
+    await deactivateUser(restClient, userId);
   }
 });
 
@@ -167,7 +158,7 @@ test('@functional F1-INV5: /set-password — successful activation redirects to 
   page,
   restClient,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
@@ -182,7 +173,7 @@ test('@functional F1-INV5: /set-password — successful activation redirects to 
       'successful set-password should redirect to /login',
     ).toBe('/login');
   } finally {
-    await restClient.patch(`/api/v1/users/${userId}/deactivate`, {});
+    await deactivateUser(restClient, userId);
   }
 });
 

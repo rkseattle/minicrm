@@ -47,72 +47,32 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
+import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  getActivityById,
+  getActivities,
+  getMyTasks,
+  createActivityViaApi,
+  patchActivity,
+  type ActivityRow,
+} from '@behaviors/minicrm/activities.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
+// Fast-fail guard: loginAsAdmin() also checks this, but checking early gives
+// a clearer error before any test scaffolding runs.
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F5-activities] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface ActivitySingleResponse {
-  activity: {
-    id: string;
-    type: string;
-    subject: string;
-    notes: string | null;
-    due_date: string | null;
-    status: 'open' | 'complete';
-    direction: string | null;
-    contact_id: string | null;
-    account_id: string | null;
-    deal_id: string | null;
-    owner_id: string;
-    /** Optimistic lock version (MINCRM-349) */
-    version: number;
-  };
-}
-
-/** GET /api/activities returns paginated shape { data, total, page, limit } */
-interface ActivityListResponse {
-  data: Array<{
-    id: string;
-    type: string;
-    subject: string;
-    status: 'open' | 'complete';
-    due_date: string | null;
-    contact_id: string | null;
-    account_id: string | null;
-    deal_id: string | null;
-    owner_id: string;
-  }>;
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface MyTasksResponse {
-  tasks: Array<{
-    id: string;
-    type: string;
-    subject: string;
-    status: 'open' | 'complete';
-    due_date: string | null;
-    owner_id: string;
-  }>;
-}
 
 // ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -148,13 +108,13 @@ test('@smoke @functional F5-C1: create Task → appears in my-tasks with type Ta
   });
 
   // Verify via API: GET /api/activities/:id returns correct type.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.type, 'type should be Task').toBe('Task');
-  expect(detail.body.activity.status, 'status should be open').toBe('open');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.type, 'type should be Task').toBe('Task');
+  expect(detail.status, 'status should be open').toBe('open');
 
   // Verify via my-tasks: task appears in the authenticated user's task list.
-  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
-  const found = tasks.body.tasks.find((t) => t.id === activity.id);
+  const tasks = await getMyTasks(restClient);
+  const found = tasks.find((t) => t.id === activity.id);
   expect(found, 'created task should appear in my-tasks').toBeDefined();
   expect(found!.type, 'my-tasks entry should have type Task').toBe('Task');
 });
@@ -170,13 +130,12 @@ test('@functional F5-C2: create Call Log → saved with correct type', async ({
     last_name: `CallCreate-${uniqueSuffix}`,
   });
 
-  const response = await restClient.post<ActivitySingleResponse>('/api/v1/activities', {
+  const activity = await createActivityViaApi(restClient, {
     type: 'Call',
     subject: `F5-C2 Discovery Call ${uniqueSuffix}`,
     direction: 'Outbound',
     contact_id: contact.id,
   });
-  const activity = response.body.activity;
   testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
   expect(activity.type, 'type should be Call').toBe('Call');
@@ -202,10 +161,14 @@ test('@functional F5-C3: create Meeting Note → saved with correct type and ass
     contact_id: contact.id,
   });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.type, 'type should be Meeting').toBe('Meeting');
-  expect(detail.body.activity.contact_id, 'contact_id should match').toBe(contact.id);
-  expect(detail.body.activity.notes, 'notes should be persisted').toBe('Agreed on next steps.');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.type, 'type should be Meeting').toBe('Meeting');
+  expect(detail.contact_id, 'contact_id should match').toBe(contact.id);
+  // ActivityRow does not include 'notes'; cast to access the raw API field.
+  expect(
+    (detail as ActivityRow & { notes: string | null }).notes,
+    'notes should be persisted',
+  ).toBe('Agreed on next steps.');
 });
 
 test('@functional F5-C4: missing required field (subject) → 400 validation error, activity not created', async ({
@@ -274,10 +237,8 @@ test('@functional F5-C6: activity visible on associated contact via GET /api/act
     contact_id: contact.id,
   });
 
-  const list = await restClient.get<ActivityListResponse>(
-    `/api/v1/activities?contact=${contact.id}`,
-  );
-  const found = list.body.data.find((a) => a.id === activity.id);
+  const list = await getActivities(restClient, { contact: contact.id });
+  const found = list.find((a) => a.id === activity.id);
   expect(found, 'activity should appear when filtering by its contact').toBeDefined();
 });
 
@@ -302,8 +263,8 @@ test('@functional F5-MY1: task created by self → appears in my-tasks for that 
     contact_id: contact.id,
   });
 
-  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
-  const found = tasks.body.tasks.find((t) => t.id === activity.id);
+  const tasks = await getMyTasks(restClient);
+  const found = tasks.find((t) => t.id === activity.id);
   expect(found, "task should appear in creator's my-tasks").toBeDefined();
 });
 
@@ -333,31 +294,27 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
   const repRequestContext = await playwright.request.newContext();
   const repClient = new RestClient(repRequestContext);
   try {
-    await repClient.post('/api/v1/auth/login', {
-      email: repUser.email,
-      password: repPassword,
-    });
+    await loginAs(repClient, repUser.email, repPassword);
 
-    const response = await repClient.post<ActivitySingleResponse>('/api/v1/activities', {
+    const activity = await createActivityViaApi(repClient, {
       type: 'Task',
       subject: `F5-MY2 Rep Task ${uniqueSuffix}`,
       contact_id: contact.id,
     });
-    const activity = response.body.activity;
     testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
     // Rep's my-tasks should include the task.
-    const repTasks = await repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
-    const repFound = repTasks.body.tasks.find((t) => t.id === activity.id);
+    const repTasks = await getMyTasks(repClient);
+    const repFound = repTasks.find((t) => t.id === activity.id);
     expect(repFound, "task should appear in rep's my-tasks").toBeDefined();
 
     // Admin's my-tasks should NOT include the rep's task (different owner_id).
-    const adminTasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
-    const adminFound = adminTasks.body.tasks.find((t) => t.id === activity.id);
+    const adminTasks = await getMyTasks(restClient);
+    const adminFound = adminTasks.find((t) => t.id === activity.id);
     expect(adminFound, 'rep task should not appear in admin my-tasks').toBeUndefined();
   } finally {
     await repRequestContext.dispose().catch(() => null);
-    await restClient.patch(`/api/v1/users/${repUser.id}/deactivate`).catch((err: unknown) => {
+    await deactivateUser(restClient, repUser.id).catch((err: unknown) => {
       console.error(`[F5-MY2] teardown: failed to deactivate rep ${repUser.id}: ${String(err)}`);
     });
   }
@@ -394,19 +351,18 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   const repClient = new RestClient(repContext);
 
   try {
-    await repClient.post('/api/v1/auth/login', { email: rep.email, password: repPassword });
+    await loginAs(repClient, rep.email, repPassword);
 
-    const response = await repClient.post<ActivitySingleResponse>('/api/v1/activities', {
+    const activity = await createActivityViaApi(repClient, {
       type: 'Task',
       subject: `F5-MY3 Owner Stable ${uniqueSuffix}`,
       contact_id: contact.id,
     });
-    const activity = response.body.activity;
     testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
 
-    const repTasks = await repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
+    const repTasks = await getMyTasks(repClient);
     expect(
-      repTasks.body.tasks.some((t) => t.id === activity.id),
+      repTasks.some((t) => t.id === activity.id),
       'task should be in rep my-tasks',
     ).toBe(true);
 
@@ -433,17 +389,17 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
     ).toBe(400);
 
     const [detail, repTasksAfter] = await Promise.all([
-      restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`),
-      repClient.get<MyTasksResponse>('/api/v1/activities/my-tasks'),
+      getActivityById(restClient, activity.id),
+      getMyTasks(repClient),
     ]);
-    expect(detail.body.activity.owner_id, 'owner_id should remain the rep').toBe(activity.owner_id);
+    expect(detail.owner_id, 'owner_id should remain the rep').toBe(activity.owner_id);
     expect(
-      repTasksAfter.body.tasks.some((t) => t.id === activity.id),
+      repTasksAfter.some((t) => t.id === activity.id),
       'task should still be in rep my-tasks after failed reassign attempt',
     ).toBe(true);
   } finally {
     await repContext.dispose().catch(() => null);
-    await restClient.patch(`/api/v1/users/${rep.id}/deactivate`).catch((err: unknown) => {
+    await deactivateUser(restClient, rep.id).catch((err: unknown) => {
       console.error(`[F5-MY3] teardown: failed to deactivate rep ${rep.id}: ${String(err)}`);
     });
   }
@@ -481,12 +437,9 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
     'future task should not show overdue badge',
   ).toBe(true);
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.status, 'status should be open').toBe('open');
-  expect(
-    detail.body.activity.due_date! > daysFromToday(0),
-    'due_date should be in the future',
-  ).toBe(true);
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.status, 'status should be open').toBe('open');
+  expect(detail.due_date! > daysFromToday(0), 'due_date should be in the future').toBe(true);
 });
 
 test('@functional F5-DS2: task with past due date → overdue badge visible in UI (AC1)', async ({
@@ -509,10 +462,10 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   });
 
   // AC1: verify overdue state via API (due_date < today, status = open).
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.status, 'status should be open').toBe('open');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.status, 'status should be open').toBe('open');
   expect(
-    detail.body.activity.due_date! < daysFromToday(0),
+    detail.due_date! < daysFromToday(0),
     'due_date should be in the past (server-determined overdue)',
   ).toBe(true);
 
@@ -544,9 +497,9 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
     contact_id: contact.id,
   });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.due_date, 'due_date should be null').toBeNull();
-  expect(detail.body.activity.status, 'status should be open').toBe('open');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.due_date, 'due_date should be null').toBeNull();
+  expect(detail.status, 'status should be open').toBe('open');
 
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded).toBe(true);
@@ -577,13 +530,13 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   });
 
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/activities/${activity.id}`, {
+  await patchActivity(restClient, activity.id, {
     status: 'complete',
     version: activity.version,
   });
 
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.status, 'status should be complete').toBe('complete');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.status, 'status should be complete').toBe('complete');
 
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded).toBe(true);
@@ -634,14 +587,12 @@ test("@functional F5-FL1: filter by contact → only that contact's activities r
     }),
   ]);
 
-  const list = await restClient.get<ActivityListResponse>(
-    `/api/v1/activities?contact=${contactA.id}`,
-  );
-  const ids = list.body.data.map((a) => a.id);
+  const list = await getActivities(restClient, { contact: contactA.id });
+  const ids = list.map((a) => a.id);
   expect(ids, 'contact A activity should be in filtered list').toContain(activityA.id);
   expect(ids, 'contact B activity should NOT be in filtered list').not.toContain(activityB.id);
   expect(
-    list.body.data.every((a) => a.contact_id === contactA.id),
+    list.every((a) => a.contact_id === contactA.id),
     'all results should belong to contact A',
   ).toBe(true);
 });
@@ -670,11 +621,9 @@ test('@functional F5-FL2: filter by type → only matching activity types return
 
   // Filter account activities and check by type manually (API doesn't have a type filter,
   // so we filter by account and verify both exist, then confirm type field correctness).
-  const list = await restClient.get<ActivityListResponse>(
-    `/api/v1/activities?account=${account.id}`,
-  );
-  const taskEntry = list.body.data.find((a) => a.id === taskActivity.id);
-  const noteEntry = list.body.data.find((a) => a.id === noteActivity.id);
+  const list = await getActivities(restClient, { account: account.id });
+  const taskEntry = list.find((a) => a.id === taskActivity.id);
+  const noteEntry = list.find((a) => a.id === noteActivity.id);
 
   expect(taskEntry, 'task activity should be in list').toBeDefined();
   expect(taskEntry!.type, 'task entry type should be Task').toBe('Task');
@@ -714,12 +663,12 @@ test('@functional F5-FL3: combined filter (contact + account) → only activitie
 
   // AC3: cross-reference filter results — each contact's query must return only its own activities.
   const [listA, listB] = await Promise.all([
-    restClient.get<ActivityListResponse>(`/api/v1/activities?contact=${contactA.id}`),
-    restClient.get<ActivityListResponse>(`/api/v1/activities?contact=${contactB.id}`),
+    getActivities(restClient, { contact: contactA.id }),
+    getActivities(restClient, { contact: contactB.id }),
   ]);
 
-  const idsA = listA.body.data.map((a) => a.id);
-  const idsB = listB.body.data.map((a) => a.id);
+  const idsA = listA.map((a) => a.id);
+  const idsB = listB.map((a) => a.id);
 
   expect(idsA, 'contact A filter should include actA').toContain(actA.id);
   expect(idsA, 'contact A filter should exclude actB').not.toContain(actB.id);
@@ -761,8 +710,8 @@ test('@smoke @functional F5-CP1: mark task complete via UI → removed from open
   ).toBe(true);
 
   // API confirms status=complete.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
-  expect(detail.body.activity.status, 'API should reflect status complete').toBe('complete');
+  const detail = await getActivityById(restClient, activity.id);
+  expect(detail.status, 'API should reflect status complete').toBe('complete');
 });
 
 test('@functional F5-CP2: undo completion (PATCH status open) → task returns to open state', async ({
@@ -783,22 +732,20 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
 
   // MINCRM-349: include version for optimistic locking. Use the updated version
   // from the first patch response for the second patch.
-  const afterComplete = await restClient.patch<ActivitySingleResponse>(
-    `/api/v1/activities/${activity.id}`,
-    { status: 'complete', version: activity.version },
-  );
-  expect(afterComplete.body.activity.status, 'should be complete after first patch').toBe(
-    'complete',
-  );
+  const afterComplete = await patchActivity(restClient, activity.id, {
+    status: 'complete',
+    version: activity.version,
+  });
+  expect(afterComplete.status, 'should be complete after first patch').toBe('complete');
 
-  const afterUndo = await restClient.patch<ActivitySingleResponse>(
-    `/api/v1/activities/${activity.id}`,
-    { status: 'open', version: afterComplete.body.activity.version },
-  );
-  expect(afterUndo.body.activity.status, 'status should be open after undo').toBe('open');
+  const afterUndo = await patchActivity(restClient, activity.id, {
+    status: 'open',
+    version: afterComplete.version,
+  });
+  expect(afterUndo.status, 'status should be open after undo').toBe('open');
 
-  const tasks = await restClient.get<MyTasksResponse>('/api/v1/activities/my-tasks');
-  const found = tasks.body.tasks.find((t) => t.id === activity.id);
+  const tasks = await getMyTasks(restClient);
+  const found = tasks.find((t) => t.id === activity.id);
   expect(found, 'task should reappear in my-tasks after undo').toBeDefined();
 });
 
@@ -820,17 +767,15 @@ test('@functional F5-CP3: completed task with past due date → not overdue (AC1
   });
 
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/activities/${activity.id}`, {
+  await patchActivity(restClient, activity.id, {
     status: 'complete',
     version: activity.version,
   });
 
   // AC1: overdue = open AND due_date < today. Completed task must NOT satisfy this.
-  const detail = await restClient.get<ActivitySingleResponse>(`/api/v1/activities/${activity.id}`);
+  const detail = await getActivityById(restClient, activity.id);
   const apiOverdue =
-    detail.body.activity.status === 'open' &&
-    detail.body.activity.due_date !== null &&
-    detail.body.activity.due_date < daysFromToday(0);
+    detail.status === 'open' && detail.due_date !== null && detail.due_date < daysFromToday(0);
   expect(apiOverdue, 'completed task should not be considered overdue by API logic').toBe(false);
 });
 
@@ -863,13 +808,10 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
 
   // PATCH type from Task to Meeting — currently accepted (200).
   // MINCRM-349: include version for optimistic locking.
-  const patchResponse = await restClient.patch<ActivitySingleResponse>(
-    `/api/v1/activities/${activity.id}`,
-    { type: 'Meeting', version: activity.version },
-  );
-  expect(patchResponse.status, 'PATCH type currently returns 200 (type is mutable)').toBe(200);
-  expect(
-    patchResponse.body.activity.type,
-    'type is updated to Meeting by current implementation',
-  ).toBe('Meeting');
+  // patchActivity throws on non-2xx; a successful return implies 200.
+  const patched = await patchActivity(restClient, activity.id, {
+    type: 'Meeting',
+    version: activity.version,
+  });
+  expect(patched.type, 'type is updated to Meeting by current implementation').toBe('Meeting');
 });

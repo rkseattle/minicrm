@@ -8,9 +8,10 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-139
+ * MINCRM-139, MINCRM-357
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
@@ -389,4 +390,137 @@ export async function cancelAccountEdit(
   const finalUrl = detailPage.url();
 
   return { backToReadMode, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by GET /api/v1/accounts/:id. */
+export interface AccountRow {
+  id: string;
+  name: string;
+  industry: string | null;
+  website: string | null;
+  employee_range: string | null;
+  revenue_range: string | null;
+  owner_id: string;
+  /** Optimistic lock version (MINCRM-349). */
+  version: number;
+}
+
+/** Shape of paginated account list rows from GET /api/v1/accounts. */
+export interface AccountListRow {
+  id: string;
+  name: string;
+  industry: string | null;
+}
+
+/**
+ * Fetches a single account by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param accountId - Account UUID.
+ * @returns The account record.
+ */
+export async function getAccountById(
+  restClient: RestClient,
+  accountId: string,
+): Promise<AccountRow> {
+  const res = await restClient.get<{ account: AccountRow }>(`/api/v1/accounts/${accountId}`);
+  return res.body.account;
+}
+
+/**
+ * Searches for accounts matching the given query and returns the list.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param search - Search term (URL-encoded internally).
+ * @returns Object with total count and data array.
+ */
+export async function searchAccountsViaApi(
+  restClient: RestClient,
+  search: string,
+): Promise<{ total: number; data: AccountListRow[] }> {
+  const res = await restClient.get<{ data: AccountListRow[]; total: number }>(
+    `/api/v1/accounts?search=${encodeURIComponent(search)}`,
+  );
+  return { total: res.body.total, data: res.body.data };
+}
+
+/**
+ * Fetches a paginated, optionally sorted accounts list from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param options - Query parameters (search, sort, dir, limit, page).
+ * @returns Object with data array and total count.
+ */
+export async function listAccountsViaApi(
+  restClient: RestClient,
+  options: {
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    limit?: number;
+    page?: number;
+  } = {},
+): Promise<{ total: number; data: AccountListRow[] }> {
+  const params = new URLSearchParams();
+  if (options.search) params.set('search', options.search);
+  if (options.sort) params.set('sort', options.sort);
+  if (options.dir) params.set('dir', options.dir);
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.page !== undefined) params.set('page', String(options.page));
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await restClient.get<{ data: AccountListRow[]; total: number }>(
+    `/api/v1/accounts${query}`,
+  );
+  return { total: res.body.total, data: res.body.data };
+}
+
+/**
+ * Patches arbitrary fields on an account via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param accountId - Account UUID.
+ * @param patch - Fields to update (must include version for optimistic locking).
+ * @returns The updated account record.
+ */
+export async function patchAccount(
+  restClient: RestClient,
+  accountId: string,
+  patch: Partial<AccountRow> & { version: number },
+): Promise<AccountRow> {
+  const res = await restClient.patch<{ account: AccountRow }>(
+    `/api/v1/accounts/${accountId}`,
+    patch,
+  );
+  return res.body.account;
+}
+
+/**
+ * Deletes an account by ID via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param accountId - Account UUID.
+ * @returns The HTTP status code.
+ */
+export async function deleteAccount(restClient: RestClient, accountId: string): Promise<number> {
+  const res = await restClient.delete(`/api/v1/accounts/${accountId}`);
+  return res.status;
+}
+
+/**
+ * Creates an account via the API and returns the created record.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param params - Account fields.
+ * @returns The created account record.
+ */
+export async function createAccountViaApi(
+  restClient: RestClient,
+  params: { name: string; industry?: string; website?: string; owner_id?: string },
+): Promise<AccountRow> {
+  const res = await restClient.post<{ account: AccountRow }>('/api/v1/accounts', params);
+  return res.body.account;
 }

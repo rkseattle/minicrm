@@ -4,7 +4,7 @@
  * Import from here rather than individual files so that reorganizing
  * behavior files internally does not break callers.
  *
- * MINCRM-130, MINCRM-110
+ * MINCRM-130, MINCRM-110, MINCRM-357
  */
 
 export {
@@ -13,6 +13,12 @@ export {
   changePassword,
   navigateToProtectedPage,
   setPassword,
+  loginAsAdmin,
+  loginAs,
+  getCurrentUser,
+  logoutViaApi,
+  forgotPassword,
+  getDevResetToken,
 } from './auth.behaviors.js';
 export type {
   AuthBehaviorContext,
@@ -23,6 +29,7 @@ export type {
   ChangePasswordResult,
   NavigateToProtectedPageResult,
   SetPasswordResult,
+  CurrentUser,
 } from './auth.behaviors.js';
 
 export {
@@ -45,6 +52,14 @@ export {
   sortContactsByName,
   bulkReassignContacts,
   bulkDeleteContacts,
+  getContactById,
+  searchContactsViaApi,
+  getContactDeals,
+  patchContactAccount,
+  deleteContact,
+  patchContact,
+  listContactsViaApi,
+  createContactViaApi,
 } from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
@@ -61,6 +76,8 @@ export type {
   PartialContactUIFields,
   SubmitContactFormValidationResult,
   SortContactsByNameResult,
+  ContactRow,
+  ContactListRow,
 } from './contacts.behaviors.js';
 
 export {
@@ -71,6 +88,12 @@ export {
   cancelDeleteAccount,
   cancelAccountEdit,
   searchAccounts,
+  getAccountById,
+  searchAccountsViaApi,
+  listAccountsViaApi,
+  deleteAccount,
+  createAccountViaApi,
+  patchAccount,
 } from './accounts.behaviors.js';
 export type {
   AccountsBehaviorContext,
@@ -83,15 +106,33 @@ export type {
   CancelDeleteAccountResult,
   CancelAccountEditResult,
   SearchAccountsResult,
+  AccountRow,
+  AccountListRow,
 } from './accounts.behaviors.js';
 
-export { openDeal, advanceDealStage, closeDealAsWon, dragDealToStage } from './deals.behaviors.js';
+export {
+  openDeal,
+  advanceDealStage,
+  closeDealAsWon,
+  dragDealToStage,
+  getDealById,
+  getDealsByAccount,
+  linkContactToDeal,
+  patchDealStage,
+  patchDeal,
+  deleteDeal,
+  createDealViaApi,
+  listDealsViaApi,
+  exportDealsAsCsv,
+} from './deals.behaviors.js';
 export type {
   DealsBehaviorContext,
   OpenDealResult,
   AdvanceDealStageResult,
   CloseDealAsWonResult,
   DragDealToStageResult,
+  DealRow,
+  DealListRow,
 } from './deals.behaviors.js';
 
 export {
@@ -107,12 +148,25 @@ export type {
   CompleteTaskResult,
 } from './tasks.behaviors.js';
 
-export { navigateToUsers, inviteUserViaUI, userIsVisibleInList } from './users.behaviors.js';
+export {
+  navigateToUsers,
+  inviteUserViaUI,
+  userIsVisibleInList,
+  findUserById,
+  inviteUserViaApi,
+  setUserPassword,
+  adminSetUserPassword,
+  deactivateUser,
+  reactivateUser,
+  changeUserRole,
+} from './users.behaviors.js';
 export type {
   UsersBehaviorContext,
   NavigateToUsersResult,
   InviteUserViaUIResult,
   UserIsVisibleInListResult,
+  UserRow,
+  InviteUserResponse,
 } from './users.behaviors.js';
 
 export {
@@ -125,6 +179,11 @@ export {
   convertLead,
   deleteLead,
   leadRowIsHidden,
+  getLeadById,
+  createLeadViaApi,
+  convertLeadViaApi,
+  getLeads,
+  disqualifyLead,
 } from './leads.behaviors.js';
 export type {
   LeadsBehaviorContext,
@@ -138,6 +197,9 @@ export type {
   ConvertLeadResult,
   DeleteLeadResult,
   LeadRowIsHiddenResult,
+  LeadRow,
+  LeadListRow,
+  LeadConversionResult,
 } from './leads.behaviors.js';
 
 export {
@@ -150,6 +212,7 @@ export {
   checkNoResultsForQuery,
   typeSearchQueryAndCheckPanel,
   clearSearchQuery,
+  globalSearchViaApi,
 } from './search.behaviors.js';
 export type {
   SearchBehaviorContext,
@@ -160,6 +223,7 @@ export type {
   GetMinLengthHintResult,
   CheckNoResultsForQueryResult,
   TypeSearchQueryAndCheckPanelResult,
+  GlobalSearchResult,
 } from './search.behaviors.js';
 
 export {
@@ -168,6 +232,10 @@ export {
   deleteTagViaUI,
   attachTagViaUI,
   detachTagViaUI,
+  getTagById,
+  getContactTags,
+  attachTagToContact,
+  getDealTags,
 } from './tags.behaviors.js';
 export type {
   TagsBehaviorContext,
@@ -176,10 +244,17 @@ export type {
   DeleteTagViaUIResult,
   AttachTagViaUIResult,
   DetachTagViaUIResult,
+  TagRow,
+  ContactTagRow,
+  DealTagRow,
 } from './tags.behaviors.js';
 
-export { filterAuditLog } from './audit-log.behaviors.js';
-export type { AuditLogBehaviorContext, FilterAuditLogResult } from './audit-log.behaviors.js';
+export { filterAuditLog, getAuditLog } from './audit-log.behaviors.js';
+export type {
+  AuditLogBehaviorContext,
+  FilterAuditLogResult,
+  AuditLogEntry,
+} from './audit-log.behaviors.js';
 
 export {
   createNoteViaUI,
@@ -187,6 +262,12 @@ export {
   deleteNoteViaUI,
   noteCardIsVisible,
   maskedNoteCardIsVisible,
+  createNoteViaApi,
+  getNoteById,
+  listNotes,
+  patchNote,
+  deleteNote,
+  getRecordAuditLog,
 } from './notes.behaviors.js';
 export type {
   NotesBehaviorContext,
@@ -195,6 +276,9 @@ export type {
   EditNoteInput,
   EditNoteResult,
   DeleteNoteResult,
+  NoteRow,
+  NoteListRow,
+  CreateNoteParams,
 } from './notes.behaviors.js';
 
 export {
@@ -205,6 +289,9 @@ export {
   reloadAndGetProfilePreferences,
   navigateToAdminSettings,
   toggleAdminEmailNotifications,
+  patchNotificationPreferences,
+  getEmailNotificationsEnabled,
+  setEmailNotificationsEnabled,
 } from './notifications.behaviors.js';
 export type {
   NotificationsBehaviorContext,
@@ -215,6 +302,7 @@ export type {
   UncheckAllAndSaveResult,
   NavigateToAdminSettingsResult,
   ToggleAdminEmailNotificationsResult,
+  NotificationPreferences,
 } from './notifications.behaviors.js';
 
 export { simulateConcurrentEdit, assertConflictModal } from './concurrency.behaviors.js';
@@ -223,3 +311,49 @@ export type {
   SimulateConcurrentEditResult,
   AssertConflictModalResult,
 } from './concurrency.behaviors.js';
+
+export {
+  getActivityById,
+  getActivities,
+  getMyTasks,
+  createActivityViaApi,
+  patchActivity,
+} from './activities.behaviors.js';
+export type { ActivityRow, ActivityListRow, CreateActivityParams } from './activities.behaviors.js';
+
+export {
+  createWebhookSubscription,
+  listWebhookSubscriptions,
+  getWebhookDeliveryLogs,
+  pollForWebhookDelivery,
+  createAutomationRule,
+  getCustomFieldDefinitions,
+  createCustomFieldDefinition,
+  setContactCustomFields,
+  setCurrencySettings,
+  setUserLanguage,
+  setSystemDefaultLanguage,
+  setNavLayout,
+  setOnboardingCompleted,
+  getOnboardingStatus,
+} from './setup.behaviors.js';
+export type {
+  WebhookSubscription,
+  WebhookCreateResult,
+  WebhookDeliveryLog,
+  AutomationRule,
+  CreateAutomationRuleParams,
+  CustomFieldDefinition,
+  CreateCustomFieldDefinitionParams,
+  CurrencySettings,
+} from './setup.behaviors.js';
+
+export {
+  listAttachments,
+  deleteAttachment,
+  getAttachmentDownloadStatus,
+} from './attachments.behaviors.js';
+export type { AttachmentRow } from './attachments.behaviors.js';
+
+export { getWinLossReport } from './reports.behaviors.js';
+export type { WinLossReport } from './reports.behaviors.js';

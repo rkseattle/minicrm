@@ -21,31 +21,8 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F8-MC] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    name: string;
-    stage: string;
-    value: string | null;
-    currency: string;
-    close_date: string | null;
-    account_id: string;
-    owner_id: string;
-  };
-}
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { getDealById, patchDeal, exportDealsAsCsv } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // F8-MC1 — deal created with explicit currency stores the correct code
@@ -55,7 +32,7 @@ test(
   'F8-MC1: deal created with explicit EUR currency stores EUR via API',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC1-Acct ${test.info().title}`,
@@ -70,8 +47,8 @@ test(
     });
 
     // Verify the stored currency via GET
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.currency).toBe('EUR');
+    const fetched = await getDealById(restClient, deal.id);
+    expect(fetched.currency).toBe('EUR');
   },
 );
 
@@ -83,7 +60,7 @@ test(
   'F8-MC2: deal created without currency defaults to USD',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC2-Acct ${test.info().title}`,
@@ -96,8 +73,8 @@ test(
       account_id: account.id,
     });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.currency).toBe('USD');
+    const fetched = await getDealById(restClient, deal.id);
+    expect(fetched.currency).toBe('USD');
   },
 );
 
@@ -109,7 +86,7 @@ test(
   'F8-MC3: currency is preserved after a PATCH update that does not touch currency',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC3-Acct ${test.info().title}`,
@@ -125,13 +102,13 @@ test(
 
     // PATCH only the name — currency should remain GBP
     // MINCRM-349: include version for optimistic locking.
-    await restClient.patch(`/api/v1/deals/${deal.id}`, {
+    await patchDeal(restClient, deal.id, {
       name: `MC3-Deal Updated ${test.info().title}`,
       version: deal.version,
     });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.currency).toBe('GBP');
+    const fetched = await getDealById(restClient, deal.id);
+    expect(fetched.currency).toBe('GBP');
   },
 );
 
@@ -143,7 +120,7 @@ test(
   'F8-MC4: currency can be changed via PATCH',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC4-Acct ${test.info().title}`,
@@ -158,10 +135,10 @@ test(
     });
 
     // MINCRM-349: include version for optimistic locking.
-    await restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'CAD', version: deal.version });
+    await patchDeal(restClient, deal.id, { currency: 'CAD', version: deal.version });
 
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.currency).toBe('CAD');
+    const fetched = await getDealById(restClient, deal.id);
+    expect(fetched.currency).toBe('CAD');
   },
 );
 
@@ -173,7 +150,7 @@ test(
   'F8-MC5: PATCH with unsupported currency returns 400',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC5-Acct ${test.info().title}`,
@@ -212,7 +189,7 @@ test(
   'F8-MC6: deal CSV export includes a Currency column',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `MC6-Acct ${test.info().title}`,
@@ -226,11 +203,7 @@ test(
       account_id: account.id,
     });
 
-    const response = await restClient.get<string>('/api/v1/deals/export', {
-      headers: { Accept: 'text/csv' },
-    });
-
-    const csv = response.body as unknown as string;
+    const csv = await exportDealsAsCsv(restClient);
     // Header row must contain a Currency column
     const headerRow = csv.split('\n')[0] ?? '';
     expect(headerRow).toContain('Currency');

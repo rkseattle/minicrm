@@ -34,49 +34,25 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createContactViaUI } from '@behaviors/minicrm/contacts.behaviors.js';
-import { openDeal, advanceDealStage, closeDealAsWon } from '@behaviors/minicrm/deals.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  createContactViaUI,
+  searchContactsViaApi,
+  getContactById,
+  getContactDeals,
+} from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  openDeal,
+  advanceDealStage,
+  closeDealAsWon,
+  getDealById,
+  getDealsByAccount,
+  linkContactToDeal,
+  patchDealStage,
+  createDealViaApi,
+} from '@behaviors/minicrm/deals.behaviors.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F4-leads-opportunities] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface ContactListResponse {
-  data: Array<{ id: string; first_name: string; last_name: string; email: string }>;
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface DealListResponse {
-  data: Array<{ id: string; name: string; stage: string; value: string | null }>;
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    name: string;
-    stage: string;
-    value: string | null;
-    close_date: string | null;
-    loss_reason: string | null;
-    account_id: string;
-    owner_id: string;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Lead (Contact) Creation tests
@@ -88,7 +64,7 @@ test('@functional F4-LC1: create contact with all required fields → appears in
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const email = `f4lc1-${uniqueSuffix}@example.com`;
   const result = await createContactViaUI(
@@ -100,11 +76,9 @@ test('@functional F4-LC1: create contact with all required fields → appears in
   expect(result.validationError, 'no validation error expected').toBe(false);
 
   // Verify via API.
-  const search = await restClient.get<ContactListResponse>(
-    `/api/v1/contacts?search=${encodeURIComponent(email)}`,
-  );
-  expect(search.body.total, 'created contact should be findable via API').toBe(1);
-  const created = search.body.data[0];
+  const search = await searchContactsViaApi(restClient, email);
+  expect(search.total, 'created contact should be findable via API').toBe(1);
+  const created = search.data[0];
   expect(created).toBeDefined();
   testData.register('contact', created!.id, `/api/v1/contacts/${created!.id}`);
 });
@@ -114,7 +88,7 @@ test('@functional F4-LC2: missing required email field → inline validation err
   restClient,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Submit with empty email — browser required validation fires before submission.
   const result = await createContactViaUI(
@@ -139,7 +113,7 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Create account (required for deal).
   const account = await createTestAccount(testData, restClient, {
@@ -159,8 +133,8 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   });
 
   // Link the deal to the contact via deal_contacts (route: POST /deals/:id/contacts/:contactId).
-  const linkResponse = await restClient.post(`/api/v1/deals/${deal.id}/contacts/${contact.id}`, {});
-  expect(linkResponse.status, 'linking contact to deal should return 200').toBe(200);
+  const linkStatus = await linkContactToDeal(restClient, deal.id, contact.id);
+  expect(linkStatus, 'linking contact to deal should return 200').toBe(200);
 
   // Verify deal is accessible on the pipeline board.
   const dealResult = await openDeal(deal.id, { page });
@@ -168,16 +142,15 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   expect(dealResult.columnSlug, 'deal should be in Prospecting column').toBe('prospecting');
 
   // Verify contact still exists via API (lead not destroyed by conversion).
-  const contactDetail = await restClient.get<{ contact: { id: string } }>(
-    `/api/v1/contacts/${contact.id}`,
+  // getContactById throws on non-2xx, so a successful return proves accessibility.
+  const contactDetail = await getContactById(restClient, contact.id);
+  expect(contactDetail.id, 'contact should still be accessible after deal creation').toBe(
+    contact.id,
   );
-  expect(contactDetail.status, 'contact should still be accessible after deal creation').toBe(200);
 
   // Verify the link is recorded: contact's linked deals should include this deal.
-  const contactDeals = await restClient.get<{ deals: Array<{ id: string }> }>(
-    `/api/v1/contacts/${contact.id}/deals`,
-  );
-  const linkedDealIds = contactDeals.body.deals.map((d) => d.id);
+  const linkedDeals = await getContactDeals(restClient, contact.id);
+  const linkedDealIds = linkedDeals.map((d) => d.id);
   expect(linkedDealIds, 'contact should have the deal linked').toContain(deal.id);
 });
 
@@ -190,7 +163,7 @@ test('@smoke @functional F4-OC1: create deal with required fields → appears on
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC1-Account-${Date.now()}`,
@@ -210,7 +183,7 @@ test('@functional F4-OC2: create deal linked to account → account visible on d
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC2-Account-${Date.now()}`,
@@ -220,22 +193,24 @@ test('@functional F4-OC2: create deal linked to account → account visible on d
     account_id: account.id,
   });
 
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.account_id, 'deal account_id should match created account').toBe(
-    account.id,
-  );
+  const dealDetail = await getDealById(restClient, deal.id);
+  expect(dealDetail.account_id, 'deal account_id should match created account').toBe(account.id);
 });
 
 test('@functional F4-OC3: missing required name field → API 400', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC3-Account-${Date.now()}`,
   });
 
+  // This test intentionally sends a malformed payload to verify the API rejects
+  // it with 400. createDealViaApi always requires name so we use restClient.post
+  // directly here to omit it — this is the sole permitted raw restClient call in
+  // this spec file.
   let threw = false;
   try {
     await restClient.post('/api/v1/deals', {
@@ -260,7 +235,7 @@ test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequenc
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP1-Account-${Date.now()}`,
@@ -289,7 +264,7 @@ test('@functional F4-OP2: regress deal to a previous stage → allowed, reflecte
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP2-Account-${Date.now()}`,
@@ -313,7 +288,7 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP3-Account-${Date.now()}`,
@@ -330,8 +305,8 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
   expect(result.columnSlug, 'deal should be in closed-won column').toBe('closed-won');
 
   // Confirm via API.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Closed Won via API').toBe('Closed Won');
+  const dealDetail = await getDealById(restClient, deal.id);
+  expect(dealDetail.stage, 'deal stage should be Closed Won via API').toBe('Closed Won');
 });
 
 test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lost column', async ({
@@ -339,7 +314,7 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP4-Account-${Date.now()}`,
@@ -356,8 +331,8 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
   expect(result.columnSlug, 'deal should be in closed-lost column').toBe('closed-lost');
 
   // Confirm via API.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Closed Lost via API').toBe('Closed Lost');
+  const dealDetail = await getDealById(restClient, deal.id);
+  expect(dealDetail.stage, 'deal stage should be Closed Lost via API').toBe('Closed Lost');
 });
 
 test('@functional F4-OP5: reopen closed-won deal → returns to open stage on board', async ({
@@ -365,7 +340,7 @@ test('@functional F4-OP5: reopen closed-won deal → returns to open stage on bo
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP5-Account-${Date.now()}`,
@@ -384,8 +359,8 @@ test('@functional F4-OP5: reopen closed-won deal → returns to open stage on bo
   const result = await advanceDealStage(deal.id, 'Negotiation', { page });
   expect(result.columnSlug, 'deal should have moved back to Negotiation').toBe('negotiation');
 
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage, 'deal stage should be Negotiation via API').toBe('Negotiation');
+  const dealDetail = await getDealById(restClient, deal.id);
+  expect(dealDetail.stage, 'deal stage should be Negotiation via API').toBe('Negotiation');
 });
 
 // ---------------------------------------------------------------------------
@@ -396,36 +371,33 @@ test('@functional F4-OV1: deal value is stored and returned correctly via API', 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV1-Account-${Date.now()}`,
   });
 
-  // value must be a number per the Zod schema — post directly rather than via
-  // createTestDeal whose helper type models value as a string.
   const dealName = `F4OV1-Deal-${Date.now()}`;
-  const created = await restClient.post<{ deal: { id: string } }>('/api/v1/deals', {
+  // value is passed as a number because the Zod schema requires it numeric.
+  // createDealViaApi accepts value as number | string.
+  const createdDeal = await createDealViaApi(restClient, {
     name: dealName,
     stage: 'Prospecting',
     account_id: account.id,
     value: 25000,
   });
-  testData.register('deal', created.body.deal.id, `/api/v1/deals/${created.body.deal.id}`);
+  testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${created.body.deal.id}`);
+  const dealDetail = await getDealById(restClient, createdDeal.id);
   // Server returns value as a numeric string (NUMERIC column).
-  expect(parseFloat(detail.body.deal.value ?? '0'), 'deal value should be 25000').toBeCloseTo(
-    25000,
-    0,
-  );
+  expect(parseFloat(dealDetail.value ?? '0'), 'deal value should be 25000').toBeCloseTo(25000, 0);
 });
 
 test('@functional F4-OV2: open deal contributes to pipeline value total via API (AC)', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV2-Account-${Date.now()}`,
@@ -434,22 +406,21 @@ test('@functional F4-OV2: open deal contributes to pipeline value total via API 
   const dealValue = 50000;
   const uniquePrefix = `F4OV2-${Date.now()}`;
 
-  // value must be a number per the Zod schema — post directly.
-  const created = await restClient.post<{ deal: { id: string } }>('/api/v1/deals', {
+  // value is passed as a number because the Zod schema requires it numeric.
+  // createDealViaApi accepts value as number | string.
+  const createdDeal = await createDealViaApi(restClient, {
     name: `${uniquePrefix}-Deal`,
     stage: 'Qualification',
     account_id: account.id,
     value: dealValue,
   });
-  const deal = { id: created.body.deal.id };
-  testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
+  testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
   // Retrieve open deals scoped to the test account and verify our deal's value is included.
   // ?search is not supported by the deals endpoint — use ?account=<id> to scope reliably.
-  const listResult = await restClient.get<DealListResponse>(`/api/v1/deals?account=${account.id}`);
-  expect(listResult.status, 'list endpoint should return 200').toBe(200);
+  const deals = await getDealsByAccount(restClient, account.id);
 
-  const ourDeal = listResult.body.data.find((d) => d.id === deal.id);
+  const ourDeal = deals.find((d) => d.id === createdDeal.id);
   expect(ourDeal, 'seeded deal should appear in list').toBeDefined();
   expect(
     parseFloat(ourDeal!.value ?? '0'),
@@ -461,7 +432,7 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV3-Account-${Date.now()}`,
@@ -471,44 +442,43 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
 
   // Create a deal and immediately close it as Won via API.
   // MINCRM-349: capture version from the create response for optimistic locking.
-  const created = await restClient.post<{ deal: { id: string; version: number } }>(
-    '/api/v1/deals',
-    {
-      name: `${uniquePrefix}-Deal`,
-      stage: 'Prospecting',
-      account_id: account.id,
-      value: 75000,
-    },
-  );
-  const deal = { id: created.body.deal.id, version: created.body.deal.version };
-  testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
-
-  await restClient.patch(`/api/v1/deals/${deal.id}`, {
-    stage: 'Closed Won',
-    close_date: new Date().toISOString().slice(0, 10),
-    version: deal.version,
+  // value is passed as a number because the Zod schema requires it numeric.
+  // createDealViaApi accepts value as number | string.
+  const createdDeal = await createDealViaApi(restClient, {
+    name: `${uniquePrefix}-Deal`,
+    stage: 'Prospecting',
+    account_id: account.id,
+    value: 75000,
   });
+  testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
+
+  await patchDealStage(
+    restClient,
+    createdDeal.id,
+    'Closed Won',
+    createdDeal.version,
+    new Date().toISOString().slice(0, 10),
+  );
 
   // Fetch deals scoped to the test account, then filter client-side to open
   // stages only (?search is not supported; ?account= is the reliable scoping filter).
   const OPEN_STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation'];
-  const listResult = await restClient.get<DealListResponse>(`/api/v1/deals?account=${account.id}`);
-  expect(listResult.status, 'list endpoint should return 200').toBe(200);
+  const deals = await getDealsByAccount(restClient, account.id);
 
-  const openDeals = listResult.body.data.filter((d) => OPEN_STAGES.includes(d.stage));
-  const foundInOpen = openDeals.some((d) => d.id === deal.id);
+  const openDeals = deals.filter((d) => OPEN_STAGES.includes(d.stage));
+  const foundInOpen = openDeals.some((d) => d.id === createdDeal.id);
   expect(foundInOpen, 'closed-won deal should not appear in open pipeline list').toBe(false);
 
   // Confirm deal is definitively closed via direct GET.
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage).toBe('Closed Won');
+  const dealDetail = await getDealById(restClient, createdDeal.id);
+  expect(dealDetail.stage).toBe('Closed Won');
 });
 
 test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list via API (AC)', async ({
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV4-Account-${Date.now()}`,
@@ -517,34 +487,33 @@ test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list v
   const uniquePrefix = `F4OV4-${Date.now()}`;
 
   // MINCRM-349: capture version from the create response for optimistic locking.
-  const created = await restClient.post<{ deal: { id: string; version: number } }>(
-    '/api/v1/deals',
-    {
-      name: `${uniquePrefix}-Deal`,
-      stage: 'Prospecting',
-      account_id: account.id,
-      value: 30000,
-    },
-  );
-  const deal = { id: created.body.deal.id, version: created.body.deal.version };
-  testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
-
-  await restClient.patch(`/api/v1/deals/${deal.id}`, {
-    stage: 'Closed Lost',
-    close_date: new Date().toISOString().slice(0, 10),
-    version: deal.version,
+  // value is passed as a number because the Zod schema requires it numeric.
+  // createDealViaApi accepts value as number | string.
+  const createdDeal = await createDealViaApi(restClient, {
+    name: `${uniquePrefix}-Deal`,
+    stage: 'Prospecting',
+    account_id: account.id,
+    value: 30000,
   });
+  testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
+
+  await patchDealStage(
+    restClient,
+    createdDeal.id,
+    'Closed Lost',
+    createdDeal.version,
+    new Date().toISOString().slice(0, 10),
+  );
 
   // Fetch deals scoped to the test account, then filter client-side to open
   // stages only (?search is not supported; ?account= is the reliable scoping filter).
   const OPEN_STAGES = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation'];
-  const listResult = await restClient.get<DealListResponse>(`/api/v1/deals?account=${account.id}`);
-  expect(listResult.status).toBe(200);
+  const deals = await getDealsByAccount(restClient, account.id);
 
-  const openDeals = listResult.body.data.filter((d) => OPEN_STAGES.includes(d.stage));
-  const foundInOpen = openDeals.some((d) => d.id === deal.id);
+  const openDeals = deals.filter((d) => OPEN_STAGES.includes(d.stage));
+  const foundInOpen = openDeals.some((d) => d.id === createdDeal.id);
   expect(foundInOpen, 'closed-lost deal should not appear in open pipeline list').toBe(false);
 
-  const detail = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-  expect(detail.body.deal.stage).toBe('Closed Lost');
+  const dealDetail = await getDealById(restClient, createdDeal.id);
+  expect(dealDetail.stage).toBe('Closed Lost');
 });

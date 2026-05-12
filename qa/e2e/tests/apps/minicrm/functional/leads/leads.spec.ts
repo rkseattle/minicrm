@@ -25,6 +25,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
+  loginAsAdmin,
   createLeadViaUI,
   createLeadViaUIThenCreateAnyway,
   updateLeadStatus,
@@ -33,73 +34,30 @@ import {
   convertLead,
   deleteLead,
   leadRowIsHidden,
+  createLeadViaApi,
+  getLeadById,
+  getLeads,
+  disqualifyLead,
+  convertLeadViaApi,
+  setUserLanguage,
+  setSystemDefaultLanguage,
 } from '@behaviors/minicrm/index.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F9-leads] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Shared setup — admin auth + test name capture
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // Reset the admin user's language preference and system default before each test so that
 // i18n tests running concurrently on another worker cannot leave a non-English locale that
 // causes badge text assertions to receive translated strings (e.g. "Contactado" vs "Contacted").
 test.beforeEach(async ({ restClient }) => {
-  await restClient.patch('/api/v1/users/me/language', { language: null }).catch(() => null);
-  await restClient.patch('/api/v1/settings/default-language', { language: 'en' }).catch(() => null);
+  await setUserLanguage(restClient, null).catch(() => null);
+  await setSystemDefaultLanguage(restClient, 'en').catch(() => null);
 });
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface LeadListResponse {
-  data: Array<{
-    id: string;
-    first_name: string;
-    last_name: string | null;
-    email: string;
-    status: string;
-    company_name: string | null;
-  }>;
-  total: number;
-  page: number;
-  limit: number;
-}
-
-interface LeadSingleResponse {
-  lead: {
-    id: string;
-    first_name: string;
-    last_name: string | null;
-    email: string;
-    status: string;
-    converted_at: string | null;
-    converted_contact_id: string | null;
-    converted_account_id: string | null;
-    converted_deal_id: string | null;
-    /** Optimistic lock version (MINCRM-349) */
-    version: number;
-  };
-}
-
-interface ConversionResponse {
-  conversion: {
-    contact_id: string;
-    account_id: string;
-    deal_id: string;
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Create tests (F9-C)
@@ -118,10 +76,11 @@ test('@functional F9-C1: required fields submitted → lead created and visible 
   expect(result.created, 'form should close after successful create').toBe(true);
 
   // Confirm via API
-  const apiResult = await restClient.get<LeadListResponse>(
-    `/api/v1/leads?includeDisqualified=true&includeConverted=true`,
-  );
-  const found = apiResult.body.data.find((l) => l.email === email);
+  const { data } = await getLeads(restClient, {
+    includeDisqualified: true,
+    includeConverted: true,
+  });
+  const found = data.find((l) => l.email === email);
   expect(found, 'lead should exist via API').toBeDefined();
   testData.register('lead', found!.id, `/api/v1/leads/${found!.id}`);
 });
@@ -148,15 +107,16 @@ test('@functional F9-C2: optional fields saved and displayed on detail page', as
   expect(result.created, 'form should close after successful create').toBe(true);
 
   // Navigate to detail via API to confirm fields saved
-  const apiResult = await restClient.get<LeadListResponse>(
-    `/api/v1/leads?includeDisqualified=true&includeConverted=true`,
-  );
-  const found = apiResult.body.data.find((l) => l.email === email);
+  const { data } = await getLeads(restClient, {
+    includeDisqualified: true,
+    includeConverted: true,
+  });
+  const found = data.find((l) => l.email === email);
   expect(found).toBeDefined();
   testData.register('lead', found!.id, `/api/v1/leads/${found!.id}`);
 
-  const detail = await restClient.get<LeadSingleResponse>(`/api/v1/leads/${found!.id}`);
-  expect(detail.body.lead.last_name).toBe('Optional');
+  const detail = await getLeadById(restClient, found!.id);
+  expect(detail.last_name).toBe('Optional');
 });
 
 test('@functional F9-C3: duplicate email shows warning, Create Anyway creates duplicate', async ({
@@ -168,11 +128,8 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
 
   const email = `f9c3-${uniqueSuffix}@example.com`;
   // Pre-create a lead via API
-  const existing = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
-    first_name: 'Existing',
-    email,
-  });
-  testData.register('lead', existing.body.lead.id, `/api/v1/leads/${existing.body.lead.id}`);
+  const existing = await createLeadViaApi(restClient, { first_name: 'Existing', email });
+  testData.register('lead', existing.id, `/api/v1/leads/${existing.id}`);
 
   // First submit should show warning
   const withWarning = await createLeadViaUI({ first_name: 'Duplicate', email }, { page });
@@ -186,12 +143,13 @@ test('@functional F9-C3: duplicate email shows warning, Create Anyway creates du
   );
   expect(result.created, 'lead should be created after clicking Create anyway').toBe(true);
 
-  const apiResult = await restClient.get<LeadListResponse>(
-    `/api/v1/leads?includeDisqualified=true&includeConverted=true`,
-  );
-  const withEmail = apiResult.body.data.filter((l) => l.email === email);
+  const { data } = await getLeads(restClient, {
+    includeDisqualified: true,
+    includeConverted: true,
+  });
+  const withEmail = data.filter((l) => l.email === email);
   expect(withEmail.length, 'two leads with same email should exist').toBe(2);
-  const secondId = withEmail.find((l) => l.id !== existing.body.lead.id)!.id;
+  const secondId = withEmail.find((l) => l.id !== existing.id)!.id;
   testData.register('lead', secondId, `/api/v1/leads/${secondId}`);
 });
 
@@ -207,11 +165,8 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9s1-${uniqueSuffix}@example.com`;
-  const created = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
-    first_name: 'F9S1',
-    email,
-  });
-  const leadId = created.body.lead.id;
+  const created = await createLeadViaApi(restClient, { first_name: 'F9S1', email });
+  const leadId = created.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   const result = await updateLeadStatus(leadId, 'Contacted', { page });
@@ -219,8 +174,8 @@ test('@functional F9-S1: inline status update from list view updates badge', asy
   expect(result.badgeText, 'badge text should update to new status').toBe('Contacted');
 
   // Confirm via API
-  const detail = await restClient.get<LeadSingleResponse>(`/api/v1/leads/${leadId}`);
-  expect(detail.body.lead.status).toBe('Contacted');
+  const detail = await getLeadById(restClient, leadId);
+  expect(detail.status).toBe('Contacted');
 });
 
 test('@functional F9-S2: disqualified leads hidden by default, shown with toggle', async ({
@@ -231,20 +186,13 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9s2-${uniqueSuffix}@example.com`;
-  const created = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
-    first_name: 'F9S2',
-    email,
-  });
-  const leadId = created.body.lead.id;
+  const created = await createLeadViaApi(restClient, { first_name: 'F9S2', email });
+  const leadId = created.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   // Disqualify via API.
   // MINCRM-349: include version for optimistic locking.
-  await restClient.patch(`/api/v1/leads/${leadId}`, {
-    status: 'Disqualified',
-    disqualification_reason: 'Not a fit',
-    version: created.body.lead.version,
-  });
+  await disqualifyLead(restClient, leadId, created.version, 'Not a fit');
 
   // Should not be visible by default
   const hiddenResult = await leadRowIsHidden(leadId, { page });
@@ -268,12 +216,12 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
 
   const email = `f9v1-${uniqueSuffix}@example.com`;
   const company = `F9V1 Corp ${uniqueSuffix}`;
-  const created = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
+  const created = await createLeadViaApi(restClient, {
     first_name: 'F9V1',
     email,
     company_name: company,
   });
-  const leadId = created.body.lead.id;
+  const leadId = created.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   const result = await convertLead(leadId, { page });
@@ -287,13 +235,12 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   expect(result.navigatedToContact, 'should navigate to contact after conversion').toBe(true);
 
   // Confirm lead is marked converted via API
-  const leadDetail = await restClient.get<LeadSingleResponse>(`/api/v1/leads/${leadId}`);
-  expect(leadDetail.body.lead.converted_at, 'lead should be marked converted').not.toBeNull();
-  expect(leadDetail.body.lead.converted_contact_id).toBeDefined();
-  expect(leadDetail.body.lead.converted_deal_id).toBeDefined();
+  const conv = await getLeadById(restClient, leadId);
+  expect(conv.converted_at, 'lead should be marked converted').not.toBeNull();
+  expect(conv.converted_contact_id).toBeDefined();
+  expect(conv.converted_deal_id).toBeDefined();
 
   // Register created records for cleanup
-  const conv = leadDetail.body.lead;
   if (conv.converted_contact_id) {
     testData.register(
       'contact',
@@ -321,39 +268,35 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9v2-${uniqueSuffix}@example.com`;
-  const created = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
+  const created = await createLeadViaApi(restClient, {
     first_name: 'F9V2',
     email,
     company_name: `F9V2 Corp ${uniqueSuffix}`,
   });
-  const leadId = created.body.lead.id;
+  const leadId = created.id;
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   // Convert via API directly
-  const conversion = await restClient.post<ConversionResponse>(`/api/v1/leads/${leadId}/convert`, {
+  const conversion = await convertLeadViaApi(restClient, leadId, {
     contact: { first_name: 'F9V2', email },
     account: { mode: 'create', name: `F9V2 Corp ${uniqueSuffix}` },
     deal: { name: `F9V2 Corp — Opportunity` },
   });
-  if (conversion.body.conversion.contact_id) {
+  if (conversion.contact_id) {
     testData.register(
       'contact',
-      conversion.body.conversion.contact_id,
-      `/api/v1/contacts/${conversion.body.conversion.contact_id}`,
+      conversion.contact_id,
+      `/api/v1/contacts/${conversion.contact_id}`,
     );
   }
-  if (conversion.body.conversion.deal_id) {
-    testData.register(
-      'deal',
-      conversion.body.conversion.deal_id,
-      `/api/v1/deals/${conversion.body.conversion.deal_id}`,
-    );
+  if (conversion.deal_id) {
+    testData.register('deal', conversion.deal_id, `/api/v1/deals/${conversion.deal_id}`);
   }
-  if (conversion.body.conversion.account_id) {
+  if (conversion.account_id) {
     testData.register(
       'account',
-      conversion.body.conversion.account_id,
-      `/api/v1/accounts/${conversion.body.conversion.account_id}`,
+      conversion.account_id,
+      `/api/v1/accounts/${conversion.account_id}`,
     );
   }
 
@@ -380,11 +323,8 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9d1-${uniqueSuffix}@example.com`;
-  const created = await restClient.post<LeadSingleResponse>('/api/v1/leads', {
-    first_name: 'F9D1',
-    email,
-  });
-  const leadId = created.body.lead.id;
+  const created = await createLeadViaApi(restClient, { first_name: 'F9D1', email });
+  const leadId = created.id;
 
   const result = await deleteLead(leadId, { page });
 

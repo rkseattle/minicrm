@@ -11,7 +11,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +28,7 @@ if (!ADMIN_PASSWORD) throw new Error('[settings-spec] E2E_ADMIN_PASSWORD is not 
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -39,10 +40,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   restClient,
 }) => {
   // Reset currencies to just USD home so test state is predictable
-  await restClient.put('/api/v1/settings/currencies', {
-    home_currency: 'USD',
-    currencies: [],
-  });
+  await setCurrencySettings(restClient, { home_currency: 'USD', currencies: [] });
 
   // Log in via the UI
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
@@ -105,8 +103,5 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await expect(eurRow).toBeVisible();
 
   // Restore to USD home for other tests
-  await restClient.put('/api/v1/settings/currencies', {
-    home_currency: 'USD',
-    currencies: [],
-  });
+  await setCurrencySettings(restClient, { home_currency: 'USD', currencies: [] });
 });

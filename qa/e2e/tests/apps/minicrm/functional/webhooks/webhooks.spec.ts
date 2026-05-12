@@ -17,9 +17,14 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin, getCurrentUser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createContactViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  createWebhookSubscription,
+  listWebhookSubscriptions,
+  pollForWebhookDelivery,
+} from '@behaviors/minicrm/setup.behaviors.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -28,83 +33,6 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[webhooks-spec] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface WebhookSubscription {
-  id: string;
-  url: string;
-  events: string[];
-  status: 'active' | 'failed' | 'disabled';
-  created_by: string;
-  created_at: string;
-}
-
-interface WebhookSubscriptionsResponse {
-  subscriptions: WebhookSubscription[];
-}
-
-interface WebhookCreateResponse {
-  subscription: WebhookSubscription;
-  plaintextSecret: string;
-}
-
-interface DeliveryLog {
-  id: string;
-  subscription_id: string | null;
-  event_type: string;
-  attempt: number;
-  status_code: number | null;
-  error: string | null;
-  delivered_at: string;
-}
-
-interface DeliveryLogsResponse {
-  data: DeliveryLog[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-// ---------------------------------------------------------------------------
-// Polling helper
-// ---------------------------------------------------------------------------
-
-const MAX_POLL_MS = 8_000;
-const INITIAL_BACKOFF_MS = 200;
-
-/**
- * Polls GET /api/admin/webhooks/:id/logs until a log entry matching the given
- * event type appears, using exponential backoff.
- */
-async function pollForDeliveryLog(
-  restClient: RestClient,
-  subscriptionId: string,
-  eventType: string,
-): Promise<DeliveryLog> {
-  const deadline = Date.now() + MAX_POLL_MS;
-  let backoff = INITIAL_BACKOFF_MS;
-  let attempt = 0;
-
-  while (Date.now() < deadline) {
-    attempt++;
-    await new Promise((resolve) => setTimeout(resolve, backoff));
-    backoff = Math.min(backoff * 2, 2_000);
-
-    const response = await restClient.get<DeliveryLogsResponse>(
-      `/api/v1/admin/webhooks/${subscriptionId}/logs?limit=10`,
-    );
-    const match = response.body.data.find((log) => log.event_type === eventType);
-    if (match) return match;
-  }
-
-  throw new Error(
-    `[pollForDeliveryLog] No delivery log for event "${eventType}" on subscription ` +
-      `"${subscriptionId}" after ${attempt} attempts (${MAX_POLL_MS}ms).`,
-  );
-}
 
 // ---------------------------------------------------------------------------
 // WH-01 – Admin sees Webhooks section
@@ -130,7 +58,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
   const adminSettings = new AdminSettingsPage({ page });
@@ -157,10 +85,8 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await adminSettings.closeWebhookSecretModal();
 
   // Find and register the newly created subscription for teardown
-  const listResp = await restClient.get<WebhookSubscriptionsResponse>('/api/v1/admin/webhooks');
-  const created = listResp.body.subscriptions.find(
-    (s) => s.url === 'https://wh02.example.com/hook',
-  );
+  const subscriptions = await listWebhookSubscriptions(restClient);
+  const created = subscriptions.find((s) => s.url === 'https://wh02.example.com/hook');
   if (created) {
     testData.register('webhook_subscription', created.id, `/api/v1/admin/webhooks/${created.id}`);
   }
@@ -175,16 +101,15 @@ test('@functional WH-03: created subscription appears in the list with correct d
   testData,
   page,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
   const hookUrl = `https://wh03-${suffix}.example.com/hook`;
 
-  const createResp = await restClient.post<WebhookCreateResponse>('/api/v1/admin/webhooks', {
+  const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
     events: ['deal.won', 'deal.lost'],
   });
-  const sub = createResp.body.subscription;
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
@@ -210,16 +135,15 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   testData,
   page,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
   const hookUrl = `https://wh04-${suffix}.example.com/hook`;
 
-  const createResp = await restClient.post<WebhookCreateResponse>('/api/v1/admin/webhooks', {
+  const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
     events: ['account.created'],
   });
-  const sub = createResp.body.subscription;
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
@@ -242,16 +166,15 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
 // ---------------------------------------------------------------------------
 
 test('@functional WH-05: delete subscription → removed from list', async ({ restClient, page }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
   const hookUrl = `https://wh05-${suffix}.example.com/hook`;
 
-  const createResp = await restClient.post<WebhookCreateResponse>('/api/v1/admin/webhooks', {
+  const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
     events: ['contact.deleted'],
   });
-  const sub = createResp.body.subscription;
   // Do NOT register for auto-teardown — the test itself deletes it via UI
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
@@ -284,30 +207,32 @@ test('@functional WH-06: create contact via API → contact.created log appears 
   restClient,
   testData,
 }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 
   // Create a webhook subscribed to contact.created pointing at httpbin (any valid URL —
   // we only verify the log was written, not that the target accepted it)
   const suffix = Date.now().toString();
-  const createResp = await restClient.post<WebhookCreateResponse>('/api/v1/admin/webhooks', {
+  const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: `https://httpbin.org/anything/wh06-${suffix}`,
     events: ['contact.created'],
   });
-  const sub = createResp.body.subscription;
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
+  // Resolve the admin user's ID for the contact owner_id field
+  const currentUser = await getCurrentUser(restClient);
+
   // Create a contact to fire the contact.created event
-  const contactResp = await restClient.post<{ contact: { id: string } }>('/api/v1/contacts', {
+  const contact = await createContactViaApi(restClient, {
     first_name: 'WH06',
     last_name: `Contact-${suffix}`,
     email: `wh06-${suffix}@example.com`,
-    owner_id: (await restClient.get<{ user: { id: string } }>('/api/v1/auth/me')).body.user.id,
+    owner_id: currentUser.id,
   });
-  const contactId = contactResp.body.contact.id;
+  const contactId = contact.id;
   testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
   // Poll until a delivery log entry for contact.created appears
-  const log = await pollForDeliveryLog(restClient, sub.id, 'contact.created');
+  const log = await pollForWebhookDelivery(restClient, sub.id, 'contact.created');
 
   expect(log.event_type, 'delivery log should record event type').toBe('contact.created');
   // A log entry was written (status_code may be null if target was unreachable — that's OK)

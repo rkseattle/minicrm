@@ -8,9 +8,10 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-110
+ * MINCRM-110, MINCRM-357
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
@@ -270,4 +271,192 @@ export async function dragDealToStage(
 
   const columnSlug = await boardPage.getDealColumnSlug(dealId);
   return { closeDealModalOpened, columnSlug };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by GET /api/v1/deals/:id. */
+export interface DealRow {
+  id: string;
+  name: string;
+  stage: string;
+  value: string | null;
+  currency: string;
+  close_date: string | null;
+  loss_reason: string | null;
+  account_id: string;
+  owner_id: string;
+  /** Optimistic lock version (MINCRM-349). */
+  version: number;
+}
+
+/** Shape of paginated deal list from GET /api/v1/deals. */
+export interface DealListRow {
+  id: string;
+  name: string;
+  stage: string;
+  value: string | null;
+  currency?: string;
+}
+
+/**
+ * Fetches a single deal by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @returns The deal record.
+ */
+export async function getDealById(restClient: RestClient, dealId: string): Promise<DealRow> {
+  const res = await restClient.get<{ deal: DealRow }>(`/api/v1/deals/${dealId}`);
+  return res.body.deal;
+}
+
+/**
+ * Fetches all deals scoped to a specific account.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param accountId - Account UUID to scope the query.
+ * @returns Array of deal list rows.
+ */
+export async function getDealsByAccount(
+  restClient: RestClient,
+  accountId: string,
+): Promise<DealListRow[]> {
+  const res = await restClient.get<{ data: DealListRow[] }>(`/api/v1/deals?account=${accountId}`);
+  return res.body.data;
+}
+
+/**
+ * Links a contact to a deal via POST /api/v1/deals/:dealId/contacts/:contactId.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @param contactId - Contact UUID to link.
+ * @returns HTTP status code (200 on success).
+ */
+export async function linkContactToDeal(
+  restClient: RestClient,
+  dealId: string,
+  contactId: string,
+): Promise<number> {
+  const res = await restClient.post(`/api/v1/deals/${dealId}/contacts/${contactId}`, {});
+  return res.status;
+}
+
+/**
+ * Patches a deal's stage (and close date for terminal stages) via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @param stage - Target stage name.
+ * @param version - Current optimistic-lock version.
+ * @param closeDate - Optional close date string (YYYY-MM-DD) for terminal stages.
+ */
+export async function patchDealStage(
+  restClient: RestClient,
+  dealId: string,
+  stage: string,
+  version: number,
+  closeDate?: string,
+): Promise<void> {
+  await restClient.patch(`/api/v1/deals/${dealId}`, {
+    stage,
+    version,
+    ...(closeDate !== undefined ? { close_date: closeDate } : {}),
+  });
+}
+
+/**
+ * Patches arbitrary fields on a deal via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @param patch - Fields to update (must include version for optimistic locking).
+ * @returns The updated deal record.
+ */
+export async function patchDeal(
+  restClient: RestClient,
+  dealId: string,
+  patch: Partial<DealRow> & { version: number },
+): Promise<DealRow> {
+  const res = await restClient.patch<{ deal: DealRow }>(`/api/v1/deals/${dealId}`, patch);
+  return res.body.deal;
+}
+
+/**
+ * Deletes a deal by ID via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param dealId - Deal UUID.
+ * @returns The HTTP status code.
+ */
+export async function deleteDeal(restClient: RestClient, dealId: string): Promise<number> {
+  const res = await restClient.delete(`/api/v1/deals/${dealId}`);
+  return res.status;
+}
+
+/**
+ * Fetches a paginated, optionally sorted deals list from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param options - Query parameters (search, sort, dir, limit, page).
+ * @returns Object with data array and total count.
+ */
+export async function listDealsViaApi(
+  restClient: RestClient,
+  options: {
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    limit?: number;
+    page?: number;
+  } = {},
+): Promise<{ total: number; data: DealRow[] }> {
+  const params = new URLSearchParams();
+  if (options.search) params.set('search', options.search);
+  if (options.sort) params.set('sort', options.sort);
+  if (options.dir) params.set('dir', options.dir);
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.page !== undefined) params.set('page', String(options.page));
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await restClient.get<{ data: DealRow[]; total: number }>(`/api/v1/deals${query}`);
+  return { total: res.body.total, data: res.body.data };
+}
+
+/**
+ * Creates a deal via the API and returns the created record.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param params - Deal fields.
+ * @returns The created deal record.
+ */
+export async function createDealViaApi(
+  restClient: RestClient,
+  params: {
+    name: string;
+    account_id: string;
+    stage?: string;
+    /** Accepts number or string — the server Zod schema requires a numeric value. */
+    value?: number | string;
+    currency?: string;
+    owner_id?: string;
+  },
+): Promise<DealRow> {
+  const res = await restClient.post<{ deal: DealRow }>('/api/v1/deals', params);
+  return res.body.deal;
+}
+
+/**
+ * Downloads the deals list as a CSV string via the export endpoint.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @returns Raw CSV string.
+ */
+export async function exportDealsAsCsv(restClient: RestClient): Promise<string> {
+  const res = await restClient.get<string>('/api/v1/deals/export', {
+    headers: { Accept: 'text/csv' },
+  });
+  return res.body as unknown as string;
 }

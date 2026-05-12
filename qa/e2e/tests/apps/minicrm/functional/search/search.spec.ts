@@ -42,6 +42,7 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import {
+  loginAsAdmin,
   typeSearchQuery,
   getSearchResult,
   clickSearchResult,
@@ -50,39 +51,16 @@ import {
   checkNoResultsForQuery,
   typeSearchQueryAndCheckPanel,
   clearSearchQuery,
+  globalSearchViaApi,
+  type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F9-search] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-interface SearchApiResponse {
-  contacts: Array<{ id: string; first_name: string; last_name: string; email: string }>;
-  accounts: Array<{ id: string; name: string }>;
-  deals: Array<{ id: string; name: string; stage: string }>;
-  leads: Array<{
-    id: string;
-    first_name: string;
-    last_name: string | null;
-    email: string;
-    company_name: string | null;
-  }>;
-}
 
 // ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
 
 test.beforeAll(async ({ restClient }) => {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  await loginAsAdmin(restClient);
 });
 
 // ---------------------------------------------------------------------------
@@ -107,11 +85,9 @@ test('@functional @search F9-RC1: search by contact name returns matching contac
   expect(result.visible, 'contact result should appear in search dropdown').toBe(true);
 
   // AC2: verify API returns the same record.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(`ContactSearch-${suffix}`)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, `ContactSearch-${suffix}`);
   expect(
-    apiResult.body.contacts.some((c) => c.id === contact.id),
+    apiResult.contacts.some((c) => c.id === contact.id),
     'API should also return the matching contact',
   ).toBe(true);
 });
@@ -133,11 +109,9 @@ test('@functional @search F9-RC2: search by account name returns matching accoun
   expect(result.visible, 'account result should appear in search dropdown').toBe(true);
 
   // AC2: API cross-check.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(`AccountSearch-${suffix}`)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, `AccountSearch-${suffix}`);
   expect(
-    apiResult.body.accounts.some((a) => a.id === account.id),
+    apiResult.accounts.some((a) => a.id === account.id),
     'API should also return the matching account',
   ).toBe(true);
 });
@@ -163,11 +137,9 @@ test('@functional @search F9-RC3: search by deal name returns matching deal resu
   expect(result.visible, 'deal result should appear in search dropdown').toBe(true);
 
   // AC2: API cross-check.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(`DealSearch-${suffix}`)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, `DealSearch-${suffix}`);
   expect(
-    apiResult.body.deals.some((d) => d.id === deal.id),
+    apiResult.deals.some((d) => d.id === deal.id),
     'API should also return the matching deal',
   ).toBe(true);
 });
@@ -236,11 +208,9 @@ test('@functional @search F9-RA1: unrelated records are not returned in results'
   ).toBe(true);
 
   // API confirms the term returns nothing for contacts.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(`F9RA1-no-match-${suffix}`)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, `F9RA1-no-match-${suffix}`);
   expect(
-    apiResult.body.contacts.some((c) => c.id === unrelated.id),
+    apiResult.contacts.some((c) => c.id === unrelated.id),
     'API must not return the unrelated contact',
   ).toBe(false);
 });
@@ -266,11 +236,9 @@ test('@functional @search F9-RA2: search is case-insensitive', async ({
   expect(result.visible, 'uppercase query should still return the contact').toBe(true);
 
   // API cross-check with uppercase term.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(uppercaseQuery)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, uppercaseQuery);
   expect(
-    apiResult.body.contacts.some((c) => c.id === contact.id),
+    apiResult.contacts.some((c) => c.id === contact.id),
     'API should return the contact for uppercase query (case-insensitive)',
   ).toBe(true);
 });
@@ -295,11 +263,9 @@ test('@functional @search F9-RA3: partial-word match returns relevant results', 
   expect(result.visible, 'partial suffix search should return the matching account').toBe(true);
 
   // AC2: API also returns the record.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(suffix)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, suffix);
   expect(
-    apiResult.body.accounts.some((a) => a.id === account.id),
+    apiResult.accounts.some((a) => a.id === account.id),
     'API should return the matching account for partial query',
   ).toBe(true);
 });
@@ -323,15 +289,13 @@ test('@functional @search F9-RA4: exact-match search returns the correct record 
   expect(result.visible, 'exact-match contact should appear in results').toBe(true);
 
   // AC2: API returns at least 1 contact match and the seeded contact is included.
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(`ExactMatch-${suffix}`)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, `ExactMatch-${suffix}`);
   expect(
-    apiResult.body.contacts.length,
+    apiResult.contacts.length,
     'API should return at least 1 contact for exact match',
   ).toBeGreaterThanOrEqual(1);
   expect(
-    apiResult.body.contacts.some((c) => c.id === contact.id),
+    apiResult.contacts.some((c) => c.id === contact.id),
     'API result should include the exact contact',
   ).toBe(true);
 });
@@ -529,7 +493,7 @@ test('@functional @search F9-EC3: query with special characters is handled grace
 
     // Also verify via API — must not return a 500 (4xx is acceptable for validation).
     try {
-      const apiResult = await restClient.get<SearchApiResponse>(
+      const apiResult = await restClient.get<GlobalSearchResult>(
         `/api/v1/search?q=${encodeURIComponent(query)}`,
       );
       expect(apiResult.status, `API must not 500 for special-char query "${query}"`).toBeLessThan(
@@ -561,7 +525,7 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
 
   // API must also handle gracefully (4xx is fine — 500 is not).
   try {
-    const apiResult = await restClient.get<SearchApiResponse>(
+    const apiResult = await restClient.get<GlobalSearchResult>(
       `/api/v1/search?q=${encodeURIComponent(longQuery)}`,
     );
     expect(apiResult.status, 'API must not 500 for very long query').toBeLessThan(500);
@@ -599,11 +563,9 @@ test('@functional @search F9-EX1: searching a contact phone number returns that 
   const result = await getSearchResult(phone, 'contact', contact.id, { page });
   expect(result.visible, 'contact should appear in search results for phone query').toBe(true);
 
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent(phone)}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, phone);
   expect(
-    apiResult.body.contacts.some((c) => c.id === contact.id),
+    apiResult.contacts.some((c) => c.id === contact.id),
     'API should return the contact when searching by phone',
   ).toBe(true);
 });
@@ -629,11 +591,9 @@ test('@functional @search F9-EX2: searching a deal value returns that deal (MINC
   const result = await getSearchResult('777777', 'deal', deal.id, { page });
   expect(result.visible, 'deal should appear when searching by its numeric value').toBe(true);
 
-  const apiResult = await restClient.get<SearchApiResponse>(
-    `/api/v1/search?q=${encodeURIComponent('$777,777')}`,
-  );
+  const apiResult = await globalSearchViaApi(restClient, '$777,777');
   expect(
-    apiResult.body.deals.some((d) => d.id === deal.id),
+    apiResult.deals.some((d) => d.id === deal.id),
     'API should return the deal when searching with dollar-formatted value',
   ).toBe(true);
 });

@@ -22,9 +22,9 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { setOnboardingCompleted, getOnboardingStatus } from '@behaviors/minicrm/setup.behaviors.js';
 import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
 
 // Tests navigate to the UI login page, so they must not inherit the pre-auth
 // admin storageState from globalSetup.
@@ -37,16 +37,6 @@ test.use({ storageState: { cookies: [], origins: [] } });
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Resets onboarding_completed to the given value via the admin API. */
-async function setOnboardingCompleted(completed: boolean, restClient: RestClient): Promise<void> {
-  await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-  await restClient.put('/api/v1/settings/onboarding', { onboarding_completed: completed });
-}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -62,7 +52,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     page,
     restClient,
   }) => {
-    await setOnboardingCompleted(false, restClient);
+    await loginAsAdmin(restClient);
+    await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const onboardingPage = new OnboardingPage({ page });
@@ -74,7 +65,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     page,
     restClient,
   }) => {
-    await setOnboardingCompleted(true, restClient);
+    await loginAsAdmin(restClient);
+    await setOnboardingCompleted(restClient, true);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     // Navigate explicitly to the dashboard and wait for its heading — this is
@@ -89,7 +81,8 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     page,
     restClient,
   }) => {
-    await setOnboardingCompleted(false, restClient);
+    await loginAsAdmin(restClient);
+    await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const onboardingPage = new OnboardingPage({ page });
@@ -102,18 +95,17 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
 
     // Verify persistence via API.
-    const res = await restClient.get<{ is_first_run: boolean; onboarding_completed: boolean }>(
-      '/api/v1/settings/onboarding',
-    );
-    expect(res.body.onboarding_completed).toBe(true);
-    expect(res.body.is_first_run).toBe(false);
+    const status = await getOnboardingStatus(restClient);
+    expect(status.onboarding_completed).toBe(true);
+    expect(status.is_first_run).toBe(false);
   });
 
   test('@functional F-OB4: step 1 advances to step 2 when "Looks good" is clicked', async ({
     page,
     restClient,
   }) => {
-    await setOnboardingCompleted(false, restClient);
+    await loginAsAdmin(restClient);
+    await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const onboardingPage = new OnboardingPage({ page });

@@ -11,6 +11,7 @@
  * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -295,4 +296,52 @@ export async function toggleAdminEmailNotifications(
   const finalUrl = adminSettings.url();
 
   return { saved, isEnabled, finalUrl };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Notification preference payload for PATCH /api/v1/users/me/notification-preferences. */
+export interface NotificationPreferences {
+  notify_overdue_tasks?: boolean;
+  notify_assignments?: boolean;
+  notify_deal_stage_changes?: boolean;
+}
+
+/**
+ * Patches the current user's notification preferences via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param prefs - Preference fields to update.
+ */
+export async function patchNotificationPreferences(
+  restClient: RestClient,
+  prefs: NotificationPreferences,
+): Promise<void> {
+  await restClient.patch('/api/v1/users/me/notification-preferences', prefs);
+}
+
+/**
+ * Fetches the current global email-notifications enabled state from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @returns True when email notifications are enabled globally.
+ */
+export async function getEmailNotificationsEnabled(restClient: RestClient): Promise<boolean> {
+  const res = await restClient.get<{ enabled: boolean }>('/api/v1/settings/email-notifications');
+  return res.body.enabled;
+}
+
+/**
+ * Sets the global email-notifications enabled state via the API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param enabled - New enabled state.
+ */
+export async function setEmailNotificationsEnabled(
+  restClient: RestClient,
+  enabled: boolean,
+): Promise<void> {
+  await restClient.patch('/api/v1/settings/email-notifications', { enabled });
 }

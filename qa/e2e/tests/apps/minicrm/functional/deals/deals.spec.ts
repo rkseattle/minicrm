@@ -30,31 +30,8 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F7-D] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Shared response types
-// ---------------------------------------------------------------------------
-
-interface DealSingleResponse {
-  deal: {
-    id: string;
-    name: string;
-    stage: string;
-    value: string | null;
-    currency: string;
-    close_date: string | null;
-    account_id: string | null;
-    owner_id: string;
-  };
-}
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { getDealById, listDealsViaApi, type DealRow } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // F7-D1 — Create deal via UI; card appears on pipeline board
@@ -67,7 +44,7 @@ test(
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(isMobile, 'new-deal-button is desktop-only on the pipeline board');
 
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D1-Acct ${test.info().title}`,
@@ -110,10 +87,12 @@ test(
     await submitBtn.waitFor({ state: 'detached', timeout: 15_000 });
     await page.waitForLoadState('networkidle');
 
-    const listResponse = await restClient.get<{ data: DealSingleResponse['deal'][] }>(
-      '/api/v1/deals?sort=created_at&dir=desc&limit=100',
-    );
-    const createdDeal = listResponse.body.data.find((d) => d.name === dealName);
+    const listResponse = await listDealsViaApi(restClient, {
+      sort: 'created_at',
+      dir: 'desc',
+      limit: 100,
+    });
+    const createdDeal = listResponse.data.find((d) => d.name === dealName);
     expect(
       createdDeal,
       `Deal "${dealName}" must appear in the API list sorted newest-first`,
@@ -128,11 +107,9 @@ test(
       await expect(dealCard).toBeVisible({ timeout: 10_000 });
 
       // Verify via API
-      const fetchedResponse = await restClient.get<DealSingleResponse>(
-        `/api/v1/deals/${createdDeal.id}`,
-      );
-      expect(fetchedResponse.body.deal.stage).toBe('Prospecting');
-      expect(parseFloat(fetchedResponse.body.deal.value ?? '0')).toBe(15000);
+      const fetchedDeal = await getDealById(restClient, createdDeal.id);
+      expect(fetchedDeal.stage).toBe('Prospecting');
+      expect(parseFloat(fetchedDeal.value ?? '0')).toBe(15000);
     }
   },
 );
@@ -145,7 +122,7 @@ test(
   'F7-D2: editing a deal name and value via the detail page persists the changes',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D2-Acct ${test.info().title}`,
@@ -181,9 +158,9 @@ test(
     await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
 
     // API assertion — GET returns updated fields
-    const fetched = await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
-    expect(fetched.body.deal.name).toBe(updatedName);
-    expect(parseFloat(fetched.body.deal.value ?? '0')).toBe(9999);
+    const fetched = await getDealById(restClient, deal.id);
+    expect(fetched.name).toBe(updatedName);
+    expect(parseFloat(fetched.value ?? '0')).toBe(9999);
   },
 );
 
@@ -195,7 +172,7 @@ test(
   'F7-D3: deleting a deal via the confirm dialog removes it and cascades to linked activities',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D3-Acct ${test.info().title}`,
@@ -226,11 +203,11 @@ test(
     await page.waitForURL('/deals', { timeout: 10_000 });
 
     // API assertion — deal returns 404
-    await expect(restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`)).rejects.toThrow(
+    await expect(restClient.get<{ deal: DealRow }>(`/api/v1/deals/${deal.id}`)).rejects.toThrow(
       RestClientError,
     );
     try {
-      await restClient.get<DealSingleResponse>(`/api/v1/deals/${deal.id}`);
+      await restClient.get<{ deal: DealRow }>(`/api/v1/deals/${deal.id}`);
     } catch (err) {
       expect(err).toBeInstanceOf(RestClientError);
       expect((err as RestClientError).status).toBe(404);
@@ -260,7 +237,7 @@ test(
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(isMobile, 'link-contact-form requires sufficient viewport width');
 
-    await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D4-Acct ${test.info().title}`,

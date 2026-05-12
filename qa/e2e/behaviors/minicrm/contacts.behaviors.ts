@@ -8,9 +8,10 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110, MINCRM-138
+ * MINCRM-130, MINCRM-110, MINCRM-138, MINCRM-357
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -695,4 +696,176 @@ export async function bulkDeleteContacts(
   const contactsPage = new ContactsPage(context);
   await contactsPage.clickBulkDelete(force);
   await contactsPage.confirmBulkDelete(force);
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape returned by GET /api/v1/contacts/:id. */
+export interface ContactRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  account_id: string | null;
+  /** Optimistic lock version (MINCRM-349). */
+  version: number;
+}
+
+/** Shape of paginated contact list rows from GET /api/v1/contacts. */
+export interface ContactListRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
+/**
+ * Creates a contact via the API and returns the created record.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param params - Contact fields.
+ * @returns The created contact record.
+ */
+export async function createContactViaApi(
+  restClient: RestClient,
+  params: {
+    first_name: string;
+    last_name?: string;
+    email?: string;
+    account_id?: string;
+    owner_id?: string;
+  },
+): Promise<ContactRow> {
+  const res = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', params);
+  return res.body.contact;
+}
+
+/**
+ * Fetches a single contact by ID from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @returns The contact record.
+ */
+export async function getContactById(
+  restClient: RestClient,
+  contactId: string,
+): Promise<ContactRow> {
+  const res = await restClient.get<{ contact: ContactRow }>(`/api/v1/contacts/${contactId}`);
+  return res.body.contact;
+}
+
+/**
+ * Searches for contacts matching the given query and returns the list.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param search - Search term (URL-encoded internally).
+ * @returns Object with total count and data array.
+ */
+export async function searchContactsViaApi(
+  restClient: RestClient,
+  search: string,
+): Promise<{ total: number; data: ContactListRow[] }> {
+  const res = await restClient.get<{ data: ContactListRow[]; total: number }>(
+    `/api/v1/contacts?search=${encodeURIComponent(search)}`,
+  );
+  return { total: res.body.total, data: res.body.data };
+}
+
+/**
+ * Fetches the deals linked to a contact.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @returns Array of linked deal IDs.
+ */
+export async function getContactDeals(
+  restClient: RestClient,
+  contactId: string,
+): Promise<Array<{ id: string }>> {
+  const res = await restClient.get<{ deals: Array<{ id: string }> }>(
+    `/api/v1/contacts/${contactId}/deals`,
+  );
+  return res.body.deals;
+}
+
+/**
+ * Patches a contact's account association.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param accountId - Account UUID to link, or null to unlink.
+ * @param version - Current optimistic-lock version.
+ */
+export async function patchContactAccount(
+  restClient: RestClient,
+  contactId: string,
+  accountId: string | null,
+  version: number,
+): Promise<void> {
+  await restClient.patch(`/api/v1/contacts/${contactId}`, { account_id: accountId, version });
+}
+
+/**
+ * Deletes a contact by ID via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @returns The HTTP status code.
+ */
+export async function deleteContact(restClient: RestClient, contactId: string): Promise<number> {
+  const res = await restClient.delete(`/api/v1/contacts/${contactId}`);
+  return res.status;
+}
+
+/**
+ * Fetches a paginated, optionally sorted contacts list from the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param options - Query parameters (search, sort, dir, limit, page).
+ * @returns Object with data array and total count.
+ */
+export async function listContactsViaApi(
+  restClient: RestClient,
+  options: {
+    search?: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+    limit?: number;
+    page?: number;
+  } = {},
+): Promise<{ total: number; data: ContactListRow[] }> {
+  const params = new URLSearchParams();
+  if (options.search) params.set('search', options.search);
+  if (options.sort) params.set('sort', options.sort);
+  if (options.dir) params.set('dir', options.dir);
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.page !== undefined) params.set('page', String(options.page));
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await restClient.get<{ data: ContactListRow[]; total: number }>(
+    `/api/v1/contacts${query}`,
+  );
+  return { total: res.body.total, data: res.body.data };
+}
+
+/**
+ * Patches arbitrary fields on a contact via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param contactId - Contact UUID.
+ * @param patch - Fields to update (must include version for optimistic locking).
+ * @returns The updated contact record.
+ */
+export async function patchContact(
+  restClient: RestClient,
+  contactId: string,
+  patch: Partial<ContactRow> & { version: number },
+): Promise<ContactRow> {
+  const res = await restClient.patch<{ contact: ContactRow }>(
+    `/api/v1/contacts/${contactId}`,
+    patch,
+  );
+  return res.body.contact;
 }

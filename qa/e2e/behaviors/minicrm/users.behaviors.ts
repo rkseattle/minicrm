@@ -8,9 +8,10 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-110
+ * MINCRM-110, MINCRM-357
  */
 
+import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { UsersPage } from '@pages/minicrm/UsersPage.js';
 
@@ -139,4 +140,137 @@ export async function userIsVisibleInList(
 
   const visible = await usersPage.userCardIsVisible(userId);
   return { visible };
+}
+
+// ---------------------------------------------------------------------------
+// API data-fetch helpers (MINCRM-357)
+// ---------------------------------------------------------------------------
+
+/** Shape of a user row returned by GET /api/v1/users. */
+export interface UserRow {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'rep';
+  status: 'active' | 'invited' | 'inactive';
+  must_change_password: boolean;
+}
+
+/** Shape of the invite endpoint response. */
+export interface InviteUserResponse {
+  user: UserRow;
+  inviteToken: string;
+}
+
+/**
+ * Finds a user by ID in the admin user list, paginating as needed.
+ *
+ * GET /api/v1/users does not support filtering by ID, so this function
+ * iterates through pages (max 100/page) until the user is found.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - User UUID to look up.
+ * @returns The user row, or undefined if not found.
+ */
+export async function findUserById(
+  restClient: RestClient,
+  userId: string,
+): Promise<UserRow | undefined> {
+  let page = 1;
+  while (true) {
+    const res = await restClient.get<{ data: UserRow[]; total: number; limit: number }>(
+      `/api/v1/users?limit=100&page=${page}`,
+    );
+    const found = res.body.data.find((u) => u.id === userId);
+    if (found) return found;
+    const { total, limit } = res.body;
+    if (page * limit >= total) return undefined;
+    page++;
+  }
+}
+
+/**
+ * Invites a new user via the API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param params - Invite parameters.
+ * @returns The invite response containing the user row and invite token.
+ */
+export async function inviteUserViaApi(
+  restClient: RestClient,
+  params: { name: string; email: string; role: 'admin' | 'rep' },
+): Promise<InviteUserResponse> {
+  const res = await restClient.post<InviteUserResponse>('/api/v1/users/invite', params);
+  return res.body;
+}
+
+/**
+ * Activates an invited account by setting the initial password using the invite token.
+ *
+ * @param restClient - RestClient (does not need to be authenticated).
+ * @param token - Invite token from the invite response.
+ * @param password - Password to set.
+ */
+export async function setUserPassword(
+  restClient: RestClient,
+  token: string,
+  password: string,
+): Promise<void> {
+  await restClient.post('/api/v1/users/set-password', { token, password });
+}
+
+/**
+ * Sets a user's password as admin, which forces must_change_password=true.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - User UUID.
+ * @param password - Password to set.
+ */
+export async function adminSetUserPassword(
+  restClient: RestClient,
+  userId: string,
+  password: string,
+): Promise<void> {
+  await restClient.post(`/api/v1/users/${userId}/admin-set-password`, { password });
+}
+
+/**
+ * Deactivates a user via the API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - User UUID.
+ * @returns The updated user row.
+ */
+export async function deactivateUser(restClient: RestClient, userId: string): Promise<UserRow> {
+  const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/deactivate`);
+  return res.body.user;
+}
+
+/**
+ * Reactivates a user via the API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - User UUID.
+ * @returns The updated user row.
+ */
+export async function reactivateUser(restClient: RestClient, userId: string): Promise<UserRow> {
+  const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/reactivate`);
+  return res.body.user;
+}
+
+/**
+ * Changes a user's role via the API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - User UUID.
+ * @param role - New role.
+ * @returns The updated user row.
+ */
+export async function changeUserRole(
+  restClient: RestClient,
+  userId: string,
+  role: 'admin' | 'rep',
+): Promise<UserRow> {
+  const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/role`, { role });
+  return res.body.user;
 }
