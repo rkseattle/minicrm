@@ -22,7 +22,9 @@
     "collapseSidebar": "Réduire la barre latérale",
     "expandSidebar": "Développer la barre latérale",
     "tags": "Étiquettes",
-    "administrationSection": "Administration"
+    "administrationSection": "Administration",
+    "poweredByMiniCRM": "Propulsé par MiniCRM",
+    "appName": "MiniCRM"
   },
   "login": {
     "title": "Connectez-vous à votre compte",
@@ -493,6 +495,7 @@
       "notifications": "Notifications",
       "currency": "Devise",
       "customisation": "Personnalisation",
+      "branding": "Identité visuelle",
       "data": "Données",
       "integrations": "Intégrations"
     },
@@ -715,6 +718,36 @@
       "resetHint": "Affiche à nouveau la bannière de configuration guidée au prochain chargement de page. Utile après une reconfiguration ou à des fins de démonstration.",
       "resetButton": "Réinitialiser l'intégration",
       "resetSuccess": "Intégration réinitialisée. La bannière de configuration réapparaîtra au prochain chargement de page.",
+      "resetError": "Échec de la réinitialisation. Veuillez réessayer."
+    },
+    "branding": {
+      "sectionTitle": "Identité visuelle personnalisée",
+      "sectionHint": "Personnalisez l'apparence de l'application avec le logo, la couleur et la police de votre organisation. Lorsque l'identité visuelle est active, un badge « Propulsé par MiniCRM » s'affiche dans la navigation.",
+      "companyNameLabel": "Nom de l'entreprise",
+      "companyNameHint": "Affiché dans la navigation et comme titre de l'onglet du navigateur.",
+      "logoUrlLabel": "URL du logo",
+      "logoAltTextLabel": "Texte alternatif du logo",
+      "logoAltTextPlaceholder": "Le logo de votre entreprise",
+      "logoPreviewAlt": "Aperçu du logo",
+      "faviconUrlLabel": "URL du favicon",
+      "primaryColorLabel": "Couleur de marque",
+      "primaryColorHexLabel": "Valeur de couleur hexadécimale",
+      "contrastRatio": "Contraste sur blanc : {{ratio}}:1",
+      "contrastWarning": "en dessous du niveau AA WCAG (4,5:1 pour le texte normal)",
+      "fontLabel": "Police",
+      "previewLabel": "Aperçu",
+      "previewActiveLink": "Tableau de bord",
+      "previewLink": "Contacts",
+      "previewButton": "Enregistrer",
+      "saveSuccess": "Identité visuelle enregistrée.",
+      "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+      "resetTitle": "Rétablir les paramètres par défaut",
+      "resetHint": "Supprime toute l'identité visuelle personnalisée et restaure l'apparence MiniCRM par défaut. Cette action est irréversible.",
+      "resetButton": "Réinitialiser l'identité visuelle",
+      "resetConfirmMessage": "Supprimer toute l'identité visuelle personnalisée ?",
+      "resetConfirmAction": "Réinitialiser",
+      "resetCancelAction": "Annuler",
+      "resetSuccess": "Identité visuelle réinitialisée aux valeurs par défaut.",
       "resetError": "Échec de la réinitialisation. Veuillez réessayer."
     },
     "customFields": {

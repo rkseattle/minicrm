@@ -1569,6 +1569,33 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  /** Settings: GET /api/settings/branding — no branding by default (MINCRM-356) */
+  http.get('/api/v1/settings/branding', () => {
+    return HttpResponse.json({ branding: null });
+  }),
+
+  /** Settings: PUT /api/settings/branding (MINCRM-356) */
+  http.put('/api/v1/settings/branding', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      branding: {
+        logoUrl: body['logoUrl'] ?? null,
+        logoAltText: body['logoAltText'] ?? null,
+        faviconUrl: body['faviconUrl'] ?? null,
+        primaryColor: body['primaryColor'] ?? null,
+        primaryColorText: body['primaryColor'] ? '#ffffff' : null,
+        fontFamily: body['fontFamily'] ?? null,
+        companyName: body['companyName'] ?? null,
+        poweredByEnabled: true,
+      },
+    });
+  }),
+
+  /** Settings: DELETE /api/settings/branding (MINCRM-356) */
+  http.delete('/api/v1/settings/branding', () => {
+    return HttpResponse.json({ branding: null });
+  }),
+
   /** Onboarding: GET /api/settings/onboarding — not first run by default (MINCRM-256) */
   http.get('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({ is_first_run: false, onboarding_completed: false });

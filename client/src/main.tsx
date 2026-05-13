@@ -13,6 +13,7 @@ import i18n from './i18n.js';
 import App from './App.js';
 import ErrorBoundary from './components/ErrorBoundary.js';
 import { BreakpointProvider } from './context/BreakpointContext.js';
+import { BrandingProvider } from './context/BrandingContext.js';
 import { initSentry } from './sentry.js';
 
 initSentry();
@@ -58,9 +59,11 @@ createRoot(rootElement).render(
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <I18nextProvider i18n={i18n}>
           <BreakpointProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            <BrandingProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </BrandingProvider>
           </BreakpointProvider>
         </I18nextProvider>
       </BrowserRouter>

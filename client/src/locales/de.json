@@ -22,7 +22,9 @@
     "collapseSidebar": "Seitenleiste zuklappen",
     "expandSidebar": "Seitenleiste aufklappen",
     "tags": "Tags",
-    "administrationSection": "Verwaltung"
+    "administrationSection": "Verwaltung",
+    "poweredByMiniCRM": "Powered by MiniCRM",
+    "appName": "MiniCRM"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",
@@ -493,6 +495,7 @@
       "notifications": "Benachrichtigungen",
       "currency": "Währung",
       "customisation": "Anpassung",
+      "branding": "Erscheinungsbild",
       "data": "Daten",
       "integrations": "Integrationen"
     },
@@ -716,6 +719,36 @@
       "resetButton": "Onboarding zurücksetzen",
       "resetSuccess": "Onboarding zurückgesetzt. Das Einrichtungs-Banner erscheint beim nächsten Seitenaufruf erneut.",
       "resetError": "Onboarding konnte nicht zurückgesetzt werden. Bitte erneut versuchen."
+    },
+    "branding": {
+      "sectionTitle": "Eigenes Erscheinungsbild",
+      "sectionHint": "Passen Sie das Erscheinungsbild der Anwendung mit dem Logo, der Farbe und der Schriftart Ihrer Organisation an. Bei aktiviertem Erscheinungsbild wird in der Navigation ein Powered-by-MiniCRM-Badge angezeigt.",
+      "companyNameLabel": "Firmenname",
+      "companyNameHint": "Wird in der Navigation und als Browser-Tab-Titel angezeigt.",
+      "logoUrlLabel": "Logo-URL",
+      "logoAltTextLabel": "Alternativtext für Logo",
+      "logoAltTextPlaceholder": "Ihr Firmenlogo",
+      "logoPreviewAlt": "Logo-Vorschau",
+      "faviconUrlLabel": "Favicon-URL",
+      "primaryColorLabel": "Markenfarbe",
+      "primaryColorHexLabel": "Hexadezimaler Farbwert",
+      "contrastRatio": "Kontrast zu Weiß: {{ratio}}:1",
+      "contrastWarning": "unter WCAG AA (4,5:1 für Normaltext)",
+      "fontLabel": "Schriftart",
+      "previewLabel": "Vorschau",
+      "previewActiveLink": "Dashboard",
+      "previewLink": "Kontakte",
+      "previewButton": "Speichern",
+      "saveSuccess": "Erscheinungsbild gespeichert.",
+      "saveError": "Erscheinungsbild konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "resetTitle": "Auf Standardeinstellungen zurücksetzen",
+      "resetHint": "Entfernt alle benutzerdefinierten Einstellungen und stellt das Standard-MiniCRM-Erscheinungsbild wieder her. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "resetButton": "Erscheinungsbild zurücksetzen",
+      "resetConfirmMessage": "Alle benutzerdefinierten Einstellungen entfernen?",
+      "resetConfirmAction": "Zurücksetzen",
+      "resetCancelAction": "Abbrechen",
+      "resetSuccess": "Erscheinungsbild auf Standardeinstellungen zurückgesetzt.",
+      "resetError": "Zurücksetzen fehlgeschlagen. Bitte erneut versuchen."
     },
     "customFields": {
       "sectionTitle": "Benutzerdefinierte Felder",

@@ -22,7 +22,9 @@
     "collapseSidebar": "[Ĉölläpŝë ŝïdëbär~~~~~]",
     "expandSidebar": "[Ëxpäñd ŝïdëbär~~~~~]",
     "tags": "[Tägŝ~~]",
-    "administrationSection": "[Ädmïñïŝträtïöñ~~~~~~~]"
+    "administrationSection": "[Ädmïñïŝträtïöñ~~~~~~~]",
+    "poweredByMiniCRM": "[Pöwërëd by MïñïĈRM~~~~~~~~]",
+    "appName": "[MïñïĈRM~~]"
   },
   "login": {
     "title": "[Ŝïgñ ïñ tö yöür äĉĉöüñt~~~~~~~]",

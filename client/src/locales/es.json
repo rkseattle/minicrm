@@ -22,7 +22,9 @@
     "collapseSidebar": "Contraer barra lateral",
     "expandSidebar": "Expandir barra lateral",
     "tags": "Etiquetas",
-    "administrationSection": "Administración"
+    "administrationSection": "Administración",
+    "poweredByMiniCRM": "Desarrollado por MiniCRM",
+    "appName": "MiniCRM"
   },
   "login": {
     "title": "Inicia sesión en tu cuenta",
@@ -493,6 +495,7 @@
       "notifications": "Notificaciones",
       "currency": "Moneda",
       "customisation": "Personalización",
+      "branding": "Marca",
       "data": "Datos",
       "integrations": "Integraciones"
     },
@@ -716,6 +719,36 @@
       "resetButton": "Restablecer incorporación",
       "resetSuccess": "Incorporación restablecida. El banner de configuración reaparecerá en la próxima carga de página.",
       "resetError": "Error al restablecer la incorporación. Intenta de nuevo."
+    },
+    "branding": {
+      "sectionTitle": "Marca personalizada",
+      "sectionHint": "Personaliza la apariencia de la aplicación con el logotipo, color y fuente de tu organización. Cuando la marca está activa, se muestra una insignia 'Desarrollado por MiniCRM' en la navegación.",
+      "companyNameLabel": "Nombre de la empresa",
+      "companyNameHint": "Se muestra en la navegación y como título de la pestaña del navegador.",
+      "logoUrlLabel": "URL del logotipo",
+      "logoAltTextLabel": "Texto alternativo del logotipo",
+      "logoAltTextPlaceholder": "El logotipo de su empresa",
+      "logoPreviewAlt": "Vista previa del logotipo",
+      "faviconUrlLabel": "URL del favicon",
+      "primaryColorLabel": "Color de marca",
+      "primaryColorHexLabel": "Valor de color hexadecimal",
+      "contrastRatio": "Contraste con blanco: {{ratio}}:1",
+      "contrastWarning": "por debajo de WCAG AA (4,5:1 para texto normal)",
+      "fontLabel": "Fuente",
+      "previewLabel": "Vista previa",
+      "previewActiveLink": "Panel",
+      "previewLink": "Contactos",
+      "previewButton": "Guardar",
+      "saveSuccess": "Marca guardada.",
+      "saveError": "Error al guardar la marca. Inténtalo de nuevo.",
+      "resetTitle": "Restablecer valores predeterminados",
+      "resetHint": "Elimina toda la marca personalizada y restaura la apariencia predeterminada de MiniCRM. Esta acción no se puede deshacer.",
+      "resetButton": "Restablecer marca",
+      "resetConfirmMessage": "¿Eliminar toda la marca personalizada?",
+      "resetConfirmAction": "Restablecer",
+      "resetCancelAction": "Cancelar",
+      "resetSuccess": "Marca restablecida a los valores predeterminados.",
+      "resetError": "Error al restablecer la marca. Inténtalo de nuevo."
     },
     "customFields": {
       "sectionTitle": "Campos personalizados",
