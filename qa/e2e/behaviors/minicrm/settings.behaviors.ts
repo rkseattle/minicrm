@@ -35,5 +35,6 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     restClient
       .put('/api/v1/settings/onboarding', { onboarding_completed: true })
       .catch(() => undefined),
+    restClient.delete('/api/v1/settings/branding').catch(() => undefined),
   ]);
 }

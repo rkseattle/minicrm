@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { NavLayoutProvider } from '@/components/NavLayoutContext.js';
 import { BreakpointProvider } from '@/context/BreakpointContext.js';
+import { BrandingProvider } from '@/context/BrandingContext.js';
 
 interface RenderOptions {
   /** Initial URL entries for MemoryRouter (default: ['/']) */
@@ -59,7 +60,9 @@ export function renderWithProviders(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
         <BreakpointProvider>
-          <NavLayoutProvider>{content}</NavLayoutProvider>
+          <BrandingProvider>
+            <NavLayoutProvider>{content}</NavLayoutProvider>
+          </BrandingProvider>
         </BreakpointProvider>
       </MemoryRouter>
     </QueryClientProvider>,

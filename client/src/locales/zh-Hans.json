@@ -22,7 +22,9 @@
     "collapseSidebar": "收起侧栏",
     "expandSidebar": "展开侧栏",
     "tags": "标签",
-    "administrationSection": "管理"
+    "administrationSection": "管理",
+    "poweredByMiniCRM": "由 MiniCRM 提供",
+    "appName": "MiniCRM"
   },
   "login": {
     "title": "登录您的账户",
@@ -493,6 +495,7 @@
       "notifications": "通知",
       "currency": "货币",
       "customisation": "自定义",
+      "branding": "品牌",
       "data": "数据",
       "integrations": "集成"
     },
@@ -716,6 +719,36 @@
       "resetButton": "重置引导",
       "resetSuccess": "引导已重置。设置横幅将在下次页面加载时重新出现。",
       "resetError": "重置引导失败，请重试。"
+    },
+    "branding": {
+      "sectionTitle": "自定义品牌",
+      "sectionHint": "使用您组织的标志、颜色和字体自定义应用外观。启用品牌后，导航栏中将显示「由 MiniCRM 提供」徽章。",
+      "companyNameLabel": "公司名称",
+      "companyNameHint": "显示在导航栏和浏览器标签标题中。",
+      "logoUrlLabel": "标志 URL",
+      "logoAltTextLabel": "标志替代文本",
+      "logoAltTextPlaceholder": "您的公司标志",
+      "logoPreviewAlt": "标志预览",
+      "faviconUrlLabel": "网站图标 URL",
+      "primaryColorLabel": "品牌颜色",
+      "primaryColorHexLabel": "十六进制颜色值",
+      "contrastRatio": "与白色对比度：{{ratio}}:1",
+      "contrastWarning": "低于 WCAG AA（正文文字 4.5:1）",
+      "fontLabel": "字体",
+      "previewLabel": "预览",
+      "previewActiveLink": "仪表板",
+      "previewLink": "联系人",
+      "previewButton": "保存",
+      "saveSuccess": "品牌设置已保存。",
+      "saveError": "保存品牌设置失败，请重试。",
+      "resetTitle": "恢复默认设置",
+      "resetHint": "删除所有自定义品牌并恢复默认 MiniCRM 外观。此操作不可撤销。",
+      "resetButton": "重置品牌",
+      "resetConfirmMessage": "删除所有自定义品牌？",
+      "resetConfirmAction": "重置",
+      "resetCancelAction": "取消",
+      "resetSuccess": "品牌已重置为默认设置。",
+      "resetError": "重置品牌失败，请重试。"
     },
     "customFields": {
       "sectionTitle": "自定义字段",

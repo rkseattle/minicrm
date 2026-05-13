@@ -29,6 +29,7 @@ export type AdminSettingsTab =
   | 'notifications'
   | 'currency'
   | 'customisation'
+  | 'branding'
   | 'data'
   | 'integrations';
 
@@ -793,5 +794,147 @@ export class AdminSettingsPage {
       ],
       { intent: 'confirm button in the webhook delete confirmation dialog' },
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Branding interactions (MINCRM-356)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the branding form.
+   */
+  async brandingFormLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-form' },
+          { type: 'role', value: 'form' },
+        ],
+        { intent: 'custom branding configuration form on admin settings page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding company name input.
+   */
+  async brandingCompanyNameLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-company-name' },
+          { type: 'role', value: 'textbox', options: { name: /company name/i } },
+        ],
+        { intent: 'company name text input in the branding settings form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding primary colour hex text input.
+   */
+  async brandingColorTextLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-color-text' },
+          { type: 'role', value: 'textbox', options: { name: /hex colour/i } },
+        ],
+        { intent: 'hex colour text input in the branding settings form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding font family select dropdown.
+   */
+  async brandingFontSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-font-select' },
+          { type: 'role', value: 'combobox', options: { name: /font/i } },
+        ],
+        { intent: 'font family dropdown in the branding settings form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding Save button.
+   */
+  async brandingSaveLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-save' },
+          { type: 'role', value: 'button', options: { name: /save/i } },
+        ],
+        { intent: 'save button for the branding configuration form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding save success message.
+   */
+  async brandingSaveSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-success' },
+          { type: 'role', value: 'status' },
+        ],
+        {
+          intent: 'success confirmation message after saving branding settings',
+          fallbackTimeout: 8_000,
+        },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding reset button.
+   */
+  async brandingResetButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-reset-button' },
+          { type: 'role', value: 'button', options: { name: /reset branding/i } },
+        ],
+        { intent: 'reset to defaults button in the branding settings panel' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding reset confirm button.
+   */
+  async brandingResetConfirmLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-reset-confirm-button' },
+          { type: 'role', value: 'button', options: { name: /reset/i } },
+        ],
+        { intent: 'confirm button in the branding reset confirmation dialog' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the branding reset success message.
+   */
+  async brandingResetSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'branding-reset-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message after resetting branding to defaults', fallbackTimeout: 8_000 },
+      )
+      .resolve();
   }
 }

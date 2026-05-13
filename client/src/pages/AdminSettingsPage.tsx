@@ -21,14 +21,23 @@ import CurrencySettings from '@/pages/admin/CurrencySettings.js';
 import CustomisationSettings from '@/pages/admin/CustomisationSettings.js';
 import DataSettings from '@/pages/admin/DataSettings.js';
 import IntegrationSettings from '@/pages/admin/IntegrationSettings.js';
+import BrandingSettings from '@/pages/admin/BrandingSettings.js';
 
-type TabKey = 'general' | 'notifications' | 'currency' | 'customisation' | 'data' | 'integrations';
+type TabKey =
+  | 'general'
+  | 'notifications'
+  | 'currency'
+  | 'customisation'
+  | 'branding'
+  | 'data'
+  | 'integrations';
 
 const TAB_KEYS: TabKey[] = [
   'general',
   'notifications',
   'currency',
   'customisation',
+  'branding',
   'data',
   'integrations',
 ];
@@ -38,6 +47,7 @@ const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
   notifications: NotificationSettings,
   currency: CurrencySettings,
   customisation: CustomisationSettings,
+  branding: BrandingSettings,
   data: DataSettings,
   integrations: IntegrationSettings,
 };

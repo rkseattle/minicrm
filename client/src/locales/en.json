@@ -22,7 +22,9 @@
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
     "tags": "Tags",
-    "administrationSection": "Administration"
+    "administrationSection": "Administration",
+    "poweredByMiniCRM": "Powered by MiniCRM",
+    "appName": "MiniCRM"
   },
   "login": {
     "title": "Sign in to your account",
@@ -493,6 +495,7 @@
       "notifications": "Notifications",
       "currency": "Currency",
       "customisation": "Customisation",
+      "branding": "Branding",
       "data": "Data",
       "integrations": "Integrations"
     },
@@ -716,6 +719,36 @@
       "resetButton": "Reset onboarding",
       "resetSuccess": "Onboarding reset. The setup banner will reappear on the next page load.",
       "resetError": "Failed to reset onboarding. Please try again."
+    },
+    "branding": {
+      "sectionTitle": "Custom Branding",
+      "sectionHint": "Customise the application appearance with your organisation's logo, colour, and font. When branding is active, a 'Powered by MiniCRM' badge is shown in the navigation.",
+      "companyNameLabel": "Company name",
+      "companyNameHint": "Displayed in the navigation and as the browser tab title.",
+      "logoUrlLabel": "Logo URL",
+      "logoAltTextLabel": "Logo alt text",
+      "logoAltTextPlaceholder": "Your company logo",
+      "logoPreviewAlt": "Logo preview",
+      "faviconUrlLabel": "Favicon URL",
+      "primaryColorLabel": "Brand colour",
+      "primaryColorHexLabel": "Hex colour value",
+      "contrastRatio": "Contrast vs white: {{ratio}}:1",
+      "contrastWarning": "below WCAG AA (4.5:1) for normal text",
+      "fontLabel": "Font",
+      "previewLabel": "Preview",
+      "previewActiveLink": "Dashboard",
+      "previewLink": "Contacts",
+      "previewButton": "Save",
+      "saveSuccess": "Branding saved.",
+      "saveError": "Failed to save branding. Please try again.",
+      "resetTitle": "Reset to defaults",
+      "resetHint": "Remove all custom branding and restore the default MiniCRM appearance. This cannot be undone.",
+      "resetButton": "Reset branding",
+      "resetConfirmMessage": "Remove all custom branding?",
+      "resetConfirmAction": "Reset",
+      "resetCancelAction": "Cancel",
+      "resetSuccess": "Branding reset to defaults.",
+      "resetError": "Failed to reset branding. Please try again."
     },
     "customFields": {
       "sectionTitle": "Custom Fields",

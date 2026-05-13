@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { LOCALE_NATIVE_NAME } from './navLinks.js';
 import GlobalSearch from './GlobalSearch.js';
+import { useBranding } from '@/context/BrandingContext.js';
+import PoweredByBadge from './PoweredByBadge.js';
 
 /** Props for the optional hamburger toggle button. */
 export interface HamburgerProps {
@@ -61,6 +63,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const previousLocaleRef = useRef<string | null>(null);
+  const { branding } = useBranding();
 
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -112,10 +115,22 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
 
   return (
     <div className="px-6 flex items-center min-h-12 gap-3 py-2">
-      {/* Brand */}
-      <span className="text-indigo-600 font-bold text-lg tracking-tight select-none flex-shrink-0">
-        MiniCRM
-      </span>
+      {/* Brand — custom logo when configured, otherwise MiniCRM wordmark */}
+      {branding?.logoUrl ? (
+        <img
+          src={branding.logoUrl}
+          alt={branding.logoAltText ?? branding.companyName ?? 'Logo'}
+          className="h-8 w-auto flex-shrink-0 object-contain"
+          data-testid="nav-brand-logo"
+        />
+      ) : (
+        <span
+          className="text-indigo-600 font-bold text-lg tracking-tight select-none flex-shrink-0"
+          data-testid="nav-brand-wordmark"
+        >
+          {branding?.companyName ?? t('nav.appName')}
+        </span>
+      )}
 
       {/* Search */}
       <div className="flex-1">
@@ -153,6 +168,9 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
         >
           {t('nav.logout')}
         </Button>
+
+        {/* Powered by badge — only when custom branding is active */}
+        {branding?.poweredByEnabled && <PoweredByBadge />}
 
         {hamburger && (
           <button

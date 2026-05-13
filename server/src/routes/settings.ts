@@ -42,6 +42,11 @@ import {
   putSmtpConfigHandler,
   testSmtpHandler,
 } from '../controllers/smtpController.js';
+import {
+  getBrandingHandler,
+  putBrandingHandler,
+  deleteBrandingHandler,
+} from '../controllers/brandingController.js';
 
 const router = Router();
 
@@ -953,5 +958,93 @@ router.put(
   requireRole('admin'),
   asyncHandler(setOnboardingCompletedHandler),
 );
+
+// ── Branding (MINCRM-356) ─────────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/branding:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getBranding
+ *     summary: Get the custom branding configuration (MINCRM-356)
+ *     description: >
+ *       Returns the current branding config, or { branding: null } when no
+ *       custom branding is configured. Public endpoint — callers need this
+ *       before auth resolves so the login page reflects custom branding.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Current branding configuration or null
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 branding:
+ *                   nullable: true
+ *                   type: object
+ */
+router.get('/branding', asyncHandler(getBrandingHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/branding:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: putBranding
+ *     summary: Set or update the custom branding configuration (admin only, MINCRM-356)
+ *     description: >
+ *       Merges the supplied fields onto the existing branding config.
+ *       Derives primaryColorText server-side when primaryColor is provided.
+ *       Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               logoUrl: { type: string, format: uri }
+ *               logoAltText: { type: string }
+ *               faviconUrl: { type: string, format: uri }
+ *               primaryColor: { type: string, example: '#1a56db' }
+ *               fontFamily: { type: string }
+ *               companyName: { type: string }
+ *     responses:
+ *       200:
+ *         description: Updated branding configuration
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put('/branding', authenticate, requireRole('admin'), asyncHandler(putBrandingHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/branding:
+ *   delete:
+ *     tags: [Settings]
+ *     operationId: deleteBranding
+ *     summary: Reset branding to defaults (admin only, MINCRM-356)
+ *     description: >
+ *       Deletes the branding configuration, restoring default MiniCRM appearance.
+ *       Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Branding reset — returns { branding: null }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.delete('/branding', authenticate, requireRole('admin'), asyncHandler(deleteBrandingHandler));
 
 export default router;
