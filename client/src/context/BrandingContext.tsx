@@ -52,10 +52,14 @@ function applyBrandingStyles(config: BrandingConfig | null): void {
     }
   }
   if (fontEntry && fontEntry.googleFamily !== null) {
-    // fontEntry.label is the CSS font-family name (e.g. "Source Sans 3")
     lines.push(`  --font-body: '${fontEntry.label}', sans-serif;`);
   }
   lines.push('}');
+  // Apply the custom font to the document body so it takes effect regardless
+  // of Tailwind's font-sans utility class being set on child elements.
+  if (fontEntry && fontEntry.googleFamily !== null) {
+    lines.push(`body { font-family: '${fontEntry.label}', sans-serif; }`);
+  }
 
   const style = existingStyle ?? document.createElement('style');
   style.id = 'minicrm-branding';
