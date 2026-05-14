@@ -111,6 +111,36 @@ describe('AuditLogPage', () => {
     expect(screen.getByTestId('clear-filters-button')).toBeInTheDocument();
   });
 
+  it('includes "Lead" as a selectable option in the record-type filter (MINCRM-363)', async () => {
+    renderWithProviders(<AuditLogPage />);
+    fireEvent.click(screen.getByTestId('filters-toggle'));
+
+    const select = screen.getByTestId('filter-record-type') as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain('lead');
+  });
+
+  it('filters by lead record type when "Lead" is selected (MINCRM-363)', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get('/api/v1/audit-log', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
+      }),
+    );
+
+    renderWithProviders(<AuditLogPage />);
+    await waitFor(() => screen.getByTestId('audit-log-empty'));
+
+    fireEvent.click(screen.getByTestId('filters-toggle'));
+    fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'lead' } });
+    fireEvent.click(screen.getByTestId('apply-filters-button'));
+
+    await waitFor(() => {
+      expect(capturedUrl).toContain('recordType=lead');
+    });
+  });
+
   it('applies filters when the Apply button is clicked', async () => {
     let capturedUrl: string | undefined;
     server.use(
