@@ -55,14 +55,14 @@ test(
 
     // Send Email button should be visible for a contact with an email address
     const sendEmailButton = await detailPage.sendEmailButtonLocator();
-    await sendEmailButton!.waitFor({ state: 'visible', timeout: 10_000 });
+    await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
 
     // Open the compose modal
     await detailPage.clickSendEmail();
 
     // Modal should appear
     const modal = await detailPage.sendEmailModalLocator();
-    await modal!.waitFor({ state: 'visible', timeout: 5_000 });
+    await modal.waitFor({ state: 'visible', timeout: 5_000 });
 
     // Fill in subject and body
     await detailPage.fillSendEmailSubject('Test email subject from E2E');
@@ -73,14 +73,14 @@ test(
 
     // Success message appears; must say "sent to" not "logged" — confirms SMTP delivered.
     const successMsg = await detailPage.sendEmailSuccessLocator();
-    await successMsg!.waitFor({ state: 'visible', timeout: 10_000 });
-    const successText = (await successMsg!.textContent()) ?? '';
+    await successMsg.waitFor({ state: 'visible', timeout: 10_000 });
+    const successText = (await successMsg.textContent()) ?? '';
     expect(successText, 'success message should confirm SMTP delivery, not log fallback').toContain(
       'Email sent to',
     );
 
     // Modal should auto-close
-    await modal!.waitFor({ state: 'detached', timeout: 5_000 });
+    await modal.waitFor({ state: 'detached', timeout: 5_000 });
 
     // Poll Mailhog — the server sends email asynchronously after responding
     const messages = await mailhog.waitForMessagesTo(contact.email);
@@ -121,7 +121,7 @@ test(
 
     const detailPage = new ContactDetailPage({ page });
     const button = await detailPage.sendEmailButtonLocator();
-    await button!.waitFor({ state: 'visible', timeout: 10_000 });
-    expect(await button!.isVisible(), 'Send Email button should be visible').toBe(true);
+    await button.waitFor({ state: 'visible', timeout: 10_000 });
+    expect(await button.isVisible(), 'Send Email button should be visible').toBe(true);
   },
 );

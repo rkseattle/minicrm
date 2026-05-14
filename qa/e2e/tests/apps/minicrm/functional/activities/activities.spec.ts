@@ -475,7 +475,7 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
 
   const myTasksPage = new MyTasksPage({ page });
   const overdueBadge = await myTasksPage.overdueTaskBadgeLocator(activity.id);
-  await expect(overdueBadge!, 'past-due task should show overdue badge').toBeVisible();
+  await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
 
 test('@functional F5-DS3: task with no due date → no overdue state in UI or API', async ({

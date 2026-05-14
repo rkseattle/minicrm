@@ -531,8 +531,8 @@ test('@functional F2-A1: link contact to account → contact appears in account 
 
   // The detail-account element should show the account name.
   const accountLocator = await new ContactDetailPage({ page }).accountLinkLocator();
-  await accountLocator!.waitFor({ state: 'visible', timeout: 10_000 });
-  const accountText = await accountLocator!.textContent();
+  await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
+  const accountText = await accountLocator.textContent();
   expect(accountText, 'detail view should show the linked account name').toContain(
     `F2A1 Corp ${uniqueSuffix}`,
   );
@@ -590,11 +590,11 @@ test('@functional F2-A3: contact detail view shows associated account name with 
 
   // Confirm account name is a link pointing to the account's detail page.
   const accountLink = await new ContactDetailPage({ page }).accountLinkLocator();
-  await accountLink!.waitFor({ state: 'visible', timeout: 10_000 });
-  const href = await accountLink!.getAttribute('href');
+  await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
+  const href = await accountLink.getAttribute('href');
   expect(href, 'account link should point to /accounts/:id').toContain(`/accounts/${account.id}`);
 
-  const linkText = await accountLink!.textContent();
+  const linkText = await accountLink.textContent();
   expect(linkText, 'account link text should be the account name').toContain(
     `F2A3 Corp ${uniqueSuffix}`,
   );
@@ -657,7 +657,6 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   const total = (await searchContactsViaApi(restClient, '')).total;
   if (total > 50) {
     const paginationLocator = await new ContactsPage({ page }).paginationLocator();
-    // paginationLocator returns null when pagination is absent; here total > 50 so it must exist
-    await expect(paginationLocator!).toBeVisible();
+    await expect(paginationLocator).toBeVisible();
   }
 });

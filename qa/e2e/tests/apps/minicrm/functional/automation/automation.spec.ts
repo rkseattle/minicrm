@@ -281,7 +281,6 @@ test('@functional F13-PAG1: Automation rules page — pagination controls always
   await automationPage.navigate();
 
   await expect(await automationPage.headingLocator()).toBeVisible();
-  // paginationLocator returns null when absent; on a seeded instance it should always be present
   const automationPagination = await automationPage.paginationLocator();
-  await expect(automationPagination!).toBeVisible({ timeout: 10_000 });
+  await expect(automationPagination).toBeVisible({ timeout: 10_000 });
 });

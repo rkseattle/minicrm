@@ -72,7 +72,7 @@ export class ReportsPage {
 
   /**
    * Returns a resolved locator for the mobile tab select dropdown.
-   * Returns null if not in the DOM (desktop layout).
+   * Throws if not found — only present on mobile viewports.
    */
   async tabListSelectLocator() {
     return this.page
@@ -83,8 +83,7 @@ export class ReportsPage {
         ],
         { intent: 'mobile sub-navigation dropdown for selecting report view' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

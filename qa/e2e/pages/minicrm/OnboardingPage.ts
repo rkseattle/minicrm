@@ -34,7 +34,7 @@ export class OnboardingPage {
 
   /**
    * Returns a resolved locator for the onboarding banner container.
-   * Returns null if the banner is not in the DOM.
+   * Throws if the banner is not found — use `page.isNotVisible` to assert absence.
    */
   async bannerLocator() {
     return this.page
@@ -45,13 +45,12 @@ export class OnboardingPage {
         ],
         { intent: 'onboarding banner container element', fallbackTimeout: 10_000 },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for onboarding step 1 content.
-   * Returns null if not in the DOM.
+   * Throws if not found — the banner must be visible before calling this.
    */
   async step1Locator() {
     return this.page
@@ -62,13 +61,12 @@ export class OnboardingPage {
         ],
         { intent: 'onboarding step 1 content panel', fallbackTimeout: 10_000 },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for onboarding step 2 content.
-   * Returns null if not in the DOM.
+   * Throws if not found — call after clicking "Looks good" on step 1.
    */
   async step2Locator() {
     return this.page
@@ -79,8 +77,7 @@ export class OnboardingPage {
         ],
         { intent: 'onboarding step 2 content panel' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   // ---------------------------------------------------------------------------

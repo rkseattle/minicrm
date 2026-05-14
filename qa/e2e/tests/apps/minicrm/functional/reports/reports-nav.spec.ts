@@ -94,8 +94,8 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
   if (isMobile) {
     // On mobile SubPageNav renders a <select>; individual tab buttons are not in the DOM.
     const select = await reportsPage.tabListSelectLocator();
-    await expect(select!).toBeVisible();
-    await expect(select!).toHaveValue('win-loss');
+    await expect(select).toBeVisible();
+    await expect(select).toHaveValue('win-loss');
   } else {
     const winLossTab = await reportsPage.winLossTabLocator();
     const activityTab = await reportsPage.activityTabLocator();

@@ -674,9 +674,7 @@ test.describe.serial('Layout-mutating tests', () => {
         expect(result.drawerVisible, 'hamburger drawer should be visible after toggle tap').toBe(
           true,
         );
-        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
-          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
-        >;
+        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
         await expect(drawer).toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM1');
@@ -695,9 +693,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
-          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
-        >;
+        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
         await expect(drawer).toBeVisible();
 
         const result = await closeHamburgerMenuViaBackdrop({ page });
@@ -721,9 +717,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = (await new NavPage({ page }).hamburgerDrawerLocator()) as NonNullable<
-          Awaited<ReturnType<NavPage['hamburgerDrawerLocator']>>
-        >;
+        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
         await expect(drawer).toBeVisible();
 
         // Click a link — the NavLink onClick calls closeMenu().
@@ -778,13 +772,12 @@ test.describe.serial('Layout-mutating tests', () => {
         // Focus the hamburger toggle and activate it via keyboard.
         const navPage = new NavPage({ page });
         const toggle = await navPage.menuToggleLocator();
-        await toggle!.focus();
+        await toggle.focus();
         await page.keyboard.press('Enter');
 
         // Drawer should open.
-        const drawer = await navPage.hamburgerDrawerLocator();
-        // hamburgerDrawerLocator returns null when absent; here it just opened so it must exist
-        await expect(drawer!).toBeVisible();
+        const drawer = await navPage.requireHamburgerDrawerLocator();
+        await expect(drawer).toBeVisible();
 
         // Focus should move into the drawer on open (NavHamburger.tsx focuses first link).
         // Tab once to reach the first nav link (past the close button), then Enter.
@@ -793,7 +786,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
         // After pressing Enter on a nav link the menu closes and navigation occurs.
         await page.waitForLoadState('networkidle').catch(() => null);
-        await expect(drawer!).not.toBeVisible();
+        await expect(drawer).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM5');
       }
@@ -826,9 +819,8 @@ test.describe('Mobile nav mechanics', () => {
     const result = await openMobileNav({ page });
 
     expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
-    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
-    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
-    await expect(drawer!).toBeVisible();
+    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    await expect(drawer).toBeVisible();
   });
 
   test('@functional F8-MN3: mobile nav drawer closes on toggle tap when open', async ({ page }) => {
@@ -839,14 +831,13 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
-    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
-    await expect(drawer!).toBeVisible();
+    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    await expect(drawer).toBeVisible();
 
     const result = await closeMobileNavViaToggle({ page });
 
     expect(result.drawerClosed, 'mobile nav drawer should close on toggle tap').toBe(true);
-    await expect(drawer!).not.toBeVisible();
+    await expect(drawer).not.toBeVisible();
   });
 
   test('@functional F8-MN4: mobile nav drawer closes on navigation', async ({ page }) => {
@@ -857,14 +848,13 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
-    const drawer = await new NavPage({ page }).mobileNavDrawerLocator();
-    await expect(drawer!).toBeVisible();
+    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    await expect(drawer).toBeVisible();
 
     await navigateViaMobileNavLink('contacts', { page });
 
     // NavTop's NavLink onClick calls closeMobileMenu() — drawer should be gone.
-    await expect(drawer!).not.toBeVisible();
+    await expect(drawer).not.toBeVisible();
   });
 
   test('@functional F8-MN5: mobile nav drawer — all rep destinations accessible', async ({
@@ -878,9 +868,8 @@ test.describe('Mobile nav mechanics', () => {
     await openMobileNav({ page });
 
     const navPage = new NavPage({ page });
-    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
-    const drawer = await navPage.mobileNavDrawerLocator();
-    await expect(drawer!).toBeVisible();
+    const drawer = await navPage.requireMobileNavDrawerLocator();
+    await expect(drawer).toBeVisible();
 
     for (const destination of Object.keys(REP_DESTINATIONS)) {
       const link = await navPage.mobileNavLinkLocator(destination);
@@ -904,9 +893,8 @@ test.describe('Mobile nav mechanics', () => {
     await openMobileNav({ page });
 
     const navPage = new NavPage({ page });
-    // mobileNavDrawerLocator returns null when absent; it just opened so it must exist
-    const drawer = await navPage.mobileNavDrawerLocator();
-    await expect(drawer!).toBeVisible();
+    const drawer = await navPage.requireMobileNavDrawerLocator();
+    await expect(drawer).toBeVisible();
 
     await expect(
       await navPage.mobileLogoutButtonLocator(),

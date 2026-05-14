@@ -157,7 +157,7 @@ export class AuditLogPage {
 
   /**
    * Returns a resolved locator for the pagination navigation.
-   * Returns null if pagination is not present.
+   * Throws if not found — the audit log must have enough entries to paginate.
    */
   async paginationLocator() {
     return this.page
@@ -168,8 +168,7 @@ export class AuditLogPage {
         ],
         { intent: 'pagination navigation on audit log page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

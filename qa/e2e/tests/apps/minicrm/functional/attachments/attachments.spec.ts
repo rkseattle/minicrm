@@ -77,7 +77,7 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
 
   // Wait for attachment row to appear
   const attachmentList = await contactPage.attachmentsListLocator();
-  await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
+  await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
   // Verify API reflects the upload
   const attachments = await listAttachments(restClient, 'contact', contact.id);
@@ -165,7 +165,7 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
 
   // Client-side guard should show an upload error
   const uploadError = await contactPage.attachmentsUploadErrorLocator();
-  await expect(uploadError!).toBeVisible({ timeout: 5_000 });
+  await expect(uploadError).toBeVisible({ timeout: 5_000 });
 
   // No attachment should have been created
   const attachments = await listAttachments(restClient, 'contact', contact.id);
@@ -195,7 +195,7 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   });
 
   const uploadError = await contactPage.attachmentsUploadErrorLocator();
-  await expect(uploadError!).toBeVisible({ timeout: 5_000 });
+  await expect(uploadError).toBeVisible({ timeout: 5_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 
   // Wait for the upload to complete before querying the API for the attachment ID
   const attachmentList = await contactPage.attachmentsListLocator();
-  await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
+  await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
   const attachments = await listAttachments(restClient, 'contact', contact.id);
   expect(attachments.length, 'attachment exists before delete').toBeGreaterThan(0);
@@ -328,7 +328,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
 
     // Wait for the upload to complete before querying the API for the attachment ID
     const attachmentList = await contactPage.attachmentsListLocator();
-    await expect(attachmentList!).toBeVisible({ timeout: 10_000 });
+    await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
     const attachments = await listAttachments(restClient, 'contact', contact.id);
     expect(attachments.length, 'attachment exists').toBeGreaterThan(0);

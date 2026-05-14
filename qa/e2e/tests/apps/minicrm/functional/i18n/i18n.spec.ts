@@ -372,11 +372,8 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
       const navPageL5 = new NavPage({ page });
 
-      const drawerOrNull = await navPageL5.mobileNavDrawerLocator();
-      // mobileNavDrawerLocator returns null when not in the DOM; it must be present here
-      // since we just called openMobileNav — a null result means the drawer failed to open.
-      if (!drawerOrNull) throw new Error('[F9-L5] mobile nav drawer not found after openMobileNav');
-      await expect(drawerOrNull).toBeVisible();
+      const drawer = await navPageL5.requireMobileNavDrawerLocator();
+      await expect(drawer).toBeVisible();
 
       // The language selector must be present in the drawer.
       const langSelect = await navPageL5.mobileLanguageSelectLocator();

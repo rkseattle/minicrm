@@ -77,7 +77,7 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
 
     const onboardingPage = new OnboardingPage({ page });
     const banner = await onboardingPage.bannerLocator();
-    await expect(banner!).toBeVisible({ timeout: 10_000 });
+    await expect(banner).toBeVisible({ timeout: 10_000 });
   });
 
   test('@functional F-OB2: banner is NOT visible when is_first_run is false', async ({
@@ -106,7 +106,7 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
 
     const onboardingPage = new OnboardingPage({ page });
     const banner = await onboardingPage.bannerLocator();
-    await expect(banner!).toBeVisible({ timeout: 10_000 });
+    await expect(banner).toBeVisible({ timeout: 10_000 });
 
     await onboardingPage.dismiss();
 
@@ -128,12 +128,16 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
     const onboardingPage = new OnboardingPage({ page });
+    // Wait for the banner to appear before resolving step1 — the step-1 panel
+    // is only mounted after the banner's initial API fetch completes.
+    const banner = await onboardingPage.bannerLocator();
+    await expect(banner).toBeVisible({ timeout: 10_000 });
     const step1 = await onboardingPage.step1Locator();
-    await expect(step1!).toBeVisible({ timeout: 10_000 });
+    await expect(step1).toBeVisible({ timeout: 10_000 });
 
     await onboardingPage.clickLooksGood();
 
     const step2 = await onboardingPage.step2Locator();
-    await expect(step2!).toBeVisible({ timeout: 5_000 });
+    await expect(step2).toBeVisible({ timeout: 5_000 });
   });
 }); // end describe.serial
