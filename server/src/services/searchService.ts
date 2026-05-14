@@ -7,6 +7,8 @@
  * (pg_trgm) on contacts.first_name, contacts.last_name, contacts.email,
  * accounts.name, and deals.name were added in migration 041 (MINCRM-274) and
  * allow PostgreSQL to use index scans for leading-wildcard ILIKE patterns.
+ * Migration 049 (MINCRM-362) adds a GIN index on notes.body_text to support
+ * the notes join added below.
  */
 
 import pool from '../db.js';
@@ -104,14 +106,17 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     tagAccountRows,
     tagDealRows,
   ] = await Promise.all([
-    // Contacts: match on name, email, phone, title, department, and address fields
-    // from both the inline columns and the contact_addresses join table.
-    // DISTINCT prevents a contact from appearing multiple times when both address
-    // sources match.
+    // Contacts: match on name, email, phone, title, department, address fields,
+    // and note body_text. DISTINCT prevents duplicates when multiple sources match.
+    // Notes join: exclude soft-deleted notes; private notes only visible to their author.
     pool.query<ContactSearchResult>(
       `SELECT DISTINCT c.id, c.first_name, c.last_name, c.email
        FROM contacts c
        LEFT JOIN contact_addresses ca ON ca.contact_id = c.id
+       LEFT JOIN notes n ON n.entity_type = 'contact'
+         AND n.entity_id = c.id
+         AND n.deleted_at IS NULL
+         AND (n.visibility != 'private' OR n.created_by = $3)
        WHERE (
          c.first_name ILIKE $1 ESCAPE '\\'
          OR c.last_name ILIKE $1 ESCAPE '\\'
@@ -131,6 +136,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
          OR ca.state_region ILIKE $1 ESCAPE '\\'
          OR ca.postal_code ILIKE $1 ESCAPE '\\'
          OR ca.country ILIKE $1 ESCAPE '\\'
+         OR n.body_text ILIKE $1 ESCAPE '\\'
        )
          AND ($2 OR c.owner_id = $3)
        ORDER BY c.last_name, c.first_name
@@ -138,54 +144,72 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
       [pattern, isAdmin, options.userId, SEARCH_RESULT_LIMIT],
     ),
 
-    // Accounts: match on name, industry, and website
+    // Accounts: match on name, industry, website, and note body_text.
+    // Notes join: exclude soft-deleted notes; private notes only visible to their author.
     pool.query<AccountSearchResult>(
-      `SELECT id, name
-       FROM accounts
+      `SELECT DISTINCT ac.id, ac.name
+       FROM accounts ac
+       LEFT JOIN notes n ON n.entity_type = 'account'
+         AND n.entity_id = ac.id
+         AND n.deleted_at IS NULL
+         AND (n.visibility != 'private' OR n.created_by = $3)
        WHERE (
-         name ILIKE $1 ESCAPE '\\'
-         OR industry ILIKE $1 ESCAPE '\\'
-         OR website ILIKE $1 ESCAPE '\\'
+         ac.name ILIKE $1 ESCAPE '\\'
+         OR ac.industry ILIKE $1 ESCAPE '\\'
+         OR ac.website ILIKE $1 ESCAPE '\\'
+         OR n.body_text ILIKE $1 ESCAPE '\\'
        )
-         AND ($2 OR owner_id = $3)
-       ORDER BY name
+         AND ($2 OR ac.owner_id = $3)
+       ORDER BY ac.name
        LIMIT $4`,
       [pattern, isAdmin, options.userId, SEARCH_RESULT_LIMIT],
     ),
 
-    // Deals: match on name, stage, loss_reason, currency, and numeric value.
-    // value::text produces "120000.00" which is matched against the normalized query.
+    // Deals: match on name, stage, loss_reason, currency, numeric value, and note body_text.
+    // Notes join: exclude soft-deleted notes; private notes only visible to their author.
     pool.query<DealSearchResult>(
-      `SELECT id, name, stage
-       FROM deals
+      `SELECT DISTINCT d.id, d.name, d.stage
+       FROM deals d
+       LEFT JOIN notes n ON n.entity_type = 'deal'
+         AND n.entity_id = d.id
+         AND n.deleted_at IS NULL
+         AND (n.visibility != 'private' OR n.created_by = $4)
        WHERE (
-         name ILIKE $1 ESCAPE '\\'
-         OR stage ILIKE $1 ESCAPE '\\'
-         OR loss_reason ILIKE $1 ESCAPE '\\'
-         OR currency ILIKE $1 ESCAPE '\\'
-         OR value::text ILIKE $2 ESCAPE '\\'
+         d.name ILIKE $1 ESCAPE '\\'
+         OR d.stage ILIKE $1 ESCAPE '\\'
+         OR d.loss_reason ILIKE $1 ESCAPE '\\'
+         OR d.currency ILIKE $1 ESCAPE '\\'
+         OR d.value::text ILIKE $2 ESCAPE '\\'
+         OR n.body_text ILIKE $1 ESCAPE '\\'
        )
-         AND ($3 OR owner_id = $4)
-       ORDER BY name
+         AND ($3 OR d.owner_id = $4)
+       ORDER BY d.name
        LIMIT $5`,
       [pattern, valuePattern, isAdmin, options.userId, SEARCH_RESULT_LIMIT],
     ),
 
-    // Leads: match on name, email, company, phone, notes, and disqualification_reason
+    // Leads: match on name, email, company, phone, inline notes field,
+    // disqualification_reason, and note body_text from the notes table.
+    // Notes join: exclude soft-deleted notes; private notes only visible to their author.
     pool.query<LeadSearchResult>(
-      `SELECT id, first_name, last_name, email, company_name
-       FROM leads
+      `SELECT DISTINCT l.id, l.first_name, l.last_name, l.email, l.company_name
+       FROM leads l
+       LEFT JOIN notes n ON n.entity_type = 'lead'
+         AND n.entity_id = l.id
+         AND n.deleted_at IS NULL
+         AND (n.visibility != 'private' OR n.created_by = $3)
        WHERE (
-         first_name ILIKE $1 ESCAPE '\\'
-         OR last_name ILIKE $1 ESCAPE '\\'
-         OR email ILIKE $1 ESCAPE '\\'
-         OR company_name ILIKE $1 ESCAPE '\\'
-         OR phone ILIKE $1 ESCAPE '\\'
-         OR notes ILIKE $1 ESCAPE '\\'
-         OR disqualification_reason ILIKE $1 ESCAPE '\\'
+         l.first_name ILIKE $1 ESCAPE '\\'
+         OR l.last_name ILIKE $1 ESCAPE '\\'
+         OR l.email ILIKE $1 ESCAPE '\\'
+         OR l.company_name ILIKE $1 ESCAPE '\\'
+         OR l.phone ILIKE $1 ESCAPE '\\'
+         OR l.notes ILIKE $1 ESCAPE '\\'
+         OR l.disqualification_reason ILIKE $1 ESCAPE '\\'
+         OR n.body_text ILIKE $1 ESCAPE '\\'
        )
-         AND ($2 OR owner_id = $3)
-       ORDER BY first_name, last_name
+         AND ($2 OR l.owner_id = $3)
+       ORDER BY l.first_name, l.last_name
        LIMIT $4`,
       [pattern, isAdmin, options.userId, SEARCH_RESULT_LIMIT],
     ),

@@ -14,6 +14,7 @@ import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createLead } from '../services/leadsService.js';
 import { createActivity } from '../services/activityService.js';
+import { createNote } from '../services/noteService.js';
 import { attachTag } from '../services/tagService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -61,6 +62,10 @@ beforeAll(async () => {
   );
   await pool.query(
     'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(
@@ -117,6 +122,10 @@ beforeEach(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
@@ -158,6 +167,10 @@ afterAll(async () => {
   );
   await pool.query(
     'DELETE FROM activities WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(
@@ -829,7 +842,10 @@ describe('globalSearch — tags (MINCRM-207)', () => {
     });
     await attachTag('contact', contact.id, { name: `${FILE_PREFIX}-vip-search-tag` });
 
-    const results = await globalSearch(`${FILE_PREFIX}-vip-search-tag`, { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-vip-search-tag`, {
+      userId: adminId,
+      role: 'admin',
+    });
     expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
   });
 
@@ -837,7 +853,10 @@ describe('globalSearch — tags (MINCRM-207)', () => {
     const acct = await createAccount({ name: 'TagAccount', owner_id: adminId });
     await attachTag('account', acct.id, { name: `${FILE_PREFIX}-key-acct-search-tag` });
 
-    const results = await globalSearch(`${FILE_PREFIX}-key-acct-search-tag`, { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-key-acct-search-tag`, {
+      userId: adminId,
+      role: 'admin',
+    });
     expect(results.accounts.some((a) => a.id === acct.id)).toBe(true);
   });
 
@@ -850,7 +869,10 @@ describe('globalSearch — tags (MINCRM-207)', () => {
     });
     await attachTag('deal', deal.id, { name: `${FILE_PREFIX}-enterprise-search-tag` });
 
-    const results = await globalSearch(`${FILE_PREFIX}-enterprise-search-tag`, { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-enterprise-search-tag`, {
+      userId: adminId,
+      role: 'admin',
+    });
     expect(results.deals.some((d) => d.id === deal.id)).toBe(true);
   });
 
@@ -863,7 +885,225 @@ describe('globalSearch — tags (MINCRM-207)', () => {
     });
     await attachTag('contact', contact.id, { name: `${FILE_PREFIX}-NoDupTagContact` });
 
-    const results = await globalSearch(`${FILE_PREFIX}-NoDupTagContact`, { userId: adminId, role: 'admin' });
+    const results = await globalSearch(`${FILE_PREFIX}-NoDupTagContact`, {
+      userId: adminId,
+      role: 'admin',
+    });
+    const matches = results.contacts.filter((c) => c.id === contact.id);
+    expect(matches).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-362 — notes body_text search
+// ---------------------------------------------------------------------------
+
+/** Minimal Tiptap/ProseMirror doc JSON with the given plain text as a paragraph node.
+ *  extractBodyText() walks `content` arrays looking for type=text nodes. */
+function makeNoteDoc(text: string): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+}
+
+describe('globalSearch — notes body_text (MINCRM-362)', () => {
+  it('returns a contact that has a matching team note', async () => {
+    const contact = await createContact({
+      first_name: 'NoteSearch',
+      last_name: 'ContactNote',
+      email: `${FILE_PREFIX}-notesearch-contact@example.com`,
+      owner_id: adminId,
+    });
+    await createNote(
+      'contact',
+      contact.id,
+      {
+        body: makeNoteDoc('uniqueContactNoteBodyText'),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniqueContactNoteBodyText', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('returns an account that has a matching team note', async () => {
+    const account = await createAccount({ name: 'NoteSearchAccount', owner_id: adminId });
+    await createNote(
+      'account',
+      account.id,
+      {
+        body: makeNoteDoc('uniqueAccountNoteBodyText'),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniqueAccountNoteBodyText', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.accounts.some((a) => a.id === account.id)).toBe(true);
+  });
+
+  it('returns a deal that has a matching team note', async () => {
+    const deal = await createDeal({
+      name: 'NoteSearchDeal',
+      stage: 'Prospecting',
+      account_id: accountId,
+      owner_id: adminId,
+    });
+    await createNote(
+      'deal',
+      deal.id,
+      {
+        body: makeNoteDoc('uniqueDealNoteBodyText'),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniqueDealNoteBodyText', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.deals.some((d) => d.id === deal.id)).toBe(true);
+  });
+
+  it('returns a lead that has a matching team note', async () => {
+    const lead = await createLead({
+      first_name: 'NoteSearch',
+      last_name: 'LeadNote',
+      email: `${FILE_PREFIX}-notesearch-lead@example.com`,
+      owner_id: adminId,
+    });
+    await createNote(
+      'lead',
+      lead.id,
+      {
+        body: makeNoteDoc('uniqueLeadNoteBodyText'),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniqueLeadNoteBodyText', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.leads.some((l) => l.id === lead.id)).toBe(true);
+  });
+
+  it('excludes a private note from search results for a non-author user', async () => {
+    const contact = await createContact({
+      first_name: 'PrivateNote',
+      last_name: 'NonAuthor',
+      email: `${FILE_PREFIX}-privatenote-nonauth@example.com`,
+      owner_id: adminId,
+    });
+    // Admin creates a private note; rep searches — rep should not see the contact via that note.
+    await createNote(
+      'contact',
+      contact.id,
+      {
+        body: makeNoteDoc('uniquePrivateNoteForNonAuthor'),
+        visibility: 'private',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniquePrivateNoteForNonAuthor', {
+      userId: repId,
+      role: 'rep',
+    });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(false);
+  });
+
+  it('includes a private note in search results for the note author', async () => {
+    const contact = await createContact({
+      first_name: 'PrivateNote',
+      last_name: 'Author',
+      email: `${FILE_PREFIX}-privatenote-author@example.com`,
+      owner_id: adminId,
+    });
+    await createNote(
+      'contact',
+      contact.id,
+      {
+        body: makeNoteDoc('uniquePrivateNoteForAuthor'),
+        visibility: 'private',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch('uniquePrivateNoteForAuthor', {
+      userId: adminId,
+      role: 'admin',
+    });
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
+  });
+
+  it('excludes a soft-deleted note from search results', async () => {
+    const contact = await createContact({
+      first_name: 'DeletedNote',
+      last_name: 'Excluded',
+      email: `${FILE_PREFIX}-deletednote@example.com`,
+      owner_id: adminId,
+    });
+    const note = await createNote(
+      'contact',
+      contact.id,
+      {
+        body: makeNoteDoc('uniqueDeletedNoteBodyText'),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    // Soft-delete the note directly in the DB (matches what deleteNote() does).
+    await pool.query('UPDATE notes SET deleted_at = now() WHERE id = $1', [note.id]);
+
+    const results = await globalSearch('uniqueDeletedNoteBodyText', {
+      userId: adminId,
+      role: 'admin',
+    });
+    // Contact should NOT appear — the only match was the deleted note.
+    // The contact's own fields don't match the unique search term.
+    expect(results.contacts.some((c) => c.id === contact.id)).toBe(false);
+  });
+
+  it('returns a contact exactly once when matched by both its own fields and a note', async () => {
+    const uniqueTerm = 'NoDupNoteAndField';
+    const contact = await createContact({
+      first_name: uniqueTerm,
+      last_name: 'DedupTest',
+      email: `${FILE_PREFIX}-nodupnote@example.com`,
+      owner_id: adminId,
+    });
+    await createNote(
+      'contact',
+      contact.id,
+      {
+        body: makeNoteDoc(uniqueTerm),
+        visibility: 'team',
+        tags: [],
+      },
+      { id: adminId, name: 'Search Admin' },
+    );
+
+    const results = await globalSearch(uniqueTerm, { userId: adminId, role: 'admin' });
     const matches = results.contacts.filter((c) => c.id === contact.id);
     expect(matches).toHaveLength(1);
   });
