@@ -153,7 +153,7 @@ export default function LeadDetailPage() {
           <p role="alert" className="text-sm text-red-600">
             {t('leads.notFound')}
           </p>
-          <Link to="/leads" className="mt-4 inline-block text-sm text-indigo-600 hover:underline">
+          <Link to="/leads" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
             {t('leads.backToLeads')}
           </Link>
         </main>
@@ -174,7 +174,7 @@ export default function LeadDetailPage() {
         <Link
           to="/leads"
           data-testid="back-to-leads"
-          className="mb-6 inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
         >
           <svg
             aria-hidden="true"
@@ -408,7 +408,7 @@ export default function LeadDetailPage() {
                   {lead.converted_contact_id && (
                     <Link
                       to={`/contacts/${lead.converted_contact_id}`}
-                      className="text-indigo-600 hover:underline"
+                      className="text-primary-600 hover:underline"
                       data-testid="converted-contact-link"
                     >
                       {t('leads.viewContact')}
@@ -417,7 +417,7 @@ export default function LeadDetailPage() {
                   {lead.converted_account_id && (
                     <Link
                       to={`/accounts/${lead.converted_account_id}`}
-                      className="text-indigo-600 hover:underline"
+                      className="text-primary-600 hover:underline"
                       data-testid="converted-account-link"
                     >
                       {t('leads.viewAccount')}
@@ -426,7 +426,7 @@ export default function LeadDetailPage() {
                   {lead.converted_deal_id && (
                     <Link
                       to={`/deals/${lead.converted_deal_id}`}
-                      className="text-indigo-600 hover:underline"
+                      className="text-primary-600 hover:underline"
                       data-testid="converted-deal-link"
                     >
                       {t('leads.viewDeal')}

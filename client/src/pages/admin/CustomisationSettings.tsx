@@ -482,7 +482,7 @@ export default function CustomisationSettings() {
                           value={editDraft.name}
                           disabled={stage.is_fixed || updateStageMutation.isPending}
                           onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
-                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                           maxLength={100}
                         />
                       ) : (
@@ -509,7 +509,7 @@ export default function CustomisationSettings() {
                             setEditDraft((d) => ({ ...d, probability: e.target.value }))
                           }
                           disabled={updateStageMutation.isPending}
-                          className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       ) : (
                         <span className="text-gray-600">
@@ -611,7 +611,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddStageName(e.target.value)}
                       placeholder={t('settings.pipelineStages.namePlaceholder')}
                       maxLength={100}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div className="w-28">
@@ -629,7 +629,7 @@ export default function CustomisationSettings() {
                       min="0"
                       max="100"
                       onChange={(e) => setAddStageProbability(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -710,7 +710,7 @@ export default function CustomisationSettings() {
             data-testid="custom-fields-entity-select"
             value={selectedEntityType}
             onChange={(e) => setSelectedEntityType(e.target.value as EntityType)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="contact">{t('settings.customFields.entityContact')}</option>
             <option value="account">{t('settings.customFields.entityAccount')}</option>
@@ -772,7 +772,7 @@ export default function CustomisationSettings() {
                             onChange={(e) =>
                               setEditFieldDraft((d) => ({ ...d, name: e.target.value }))
                             }
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                             maxLength={100}
                           />
                         ) : (
@@ -788,7 +788,7 @@ export default function CustomisationSettings() {
                             }
                             placeholder={t('settings.customFields.optionsPlaceholder')}
                             rows={2}
-                            className="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+                            className="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                           />
                         )}
                       </td>
@@ -884,7 +884,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddFieldName(e.target.value)}
                       placeholder={t('settings.customFields.namePlaceholder')}
                       maxLength={100}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div className="w-36">
@@ -899,7 +899,7 @@ export default function CustomisationSettings() {
                       data-testid="add-field-type-select"
                       value={addFieldType}
                       onChange={(e) => setAddFieldType(e.target.value as FieldType)}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="text">{t('settings.customFields.fieldTypeText')}</option>
                       <option value="number">{t('settings.customFields.fieldTypeNumber')}</option>
@@ -924,7 +924,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddFieldOptions(e.target.value)}
                       placeholder={t('settings.customFields.optionsPlaceholder')}
                       rows={2}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 )}

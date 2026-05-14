@@ -251,7 +251,7 @@ export default function LeadsPage() {
                 setOwnerFilter('all');
                 setPage(1);
               }}
-              className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
+              className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
               data-testid="filter-owner-all"
             >
               {t('leads.filterAll')}
@@ -262,7 +262,7 @@ export default function LeadsPage() {
                 setOwnerFilter('me');
                 setPage(1);
               }}
-              className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
+              className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
               data-testid="filter-owner-me"
             >
               {t('leads.filterMine')}
@@ -393,7 +393,7 @@ export default function LeadsPage() {
                             className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
                             data-testid={`lead-row-${lead.id}`}
                           >
-                            <td className="px-4 py-3 text-sm font-medium text-indigo-600">
+                            <td className="px-4 py-3 text-sm font-medium text-primary-600">
                               <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
                                 {lead.first_name}
                                 {lead.last_name ? ` ${lead.last_name}` : ''}

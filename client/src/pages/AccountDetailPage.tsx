@@ -185,7 +185,7 @@ export default function AccountDetailPage() {
           </p>
           <Link
             to="/accounts"
-            className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+            className="mt-4 inline-block text-sm text-primary-600 hover:underline"
           >
             {t('accounts.backToAccounts')}
           </Link>
@@ -205,7 +205,7 @@ export default function AccountDetailPage() {
           to="/accounts"
           data-testid="back-to-accounts"
           aria-label={t('common.backToAccounts')}
-          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
+          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline mb-6"
         >
           <svg
             aria-hidden="true"
@@ -336,7 +336,7 @@ export default function AccountDetailPage() {
                     {t('accounts.accountTypeLabel')}
                   </span>
                   <span
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap shrink-0"
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 whitespace-nowrap shrink-0"
                     data-testid="detail-account-type"
                   >
                     {t(`accounts.accountType.${account.account_type}`)}
@@ -351,7 +351,7 @@ export default function AccountDetailPage() {
                   <Link
                     to={`/accounts/${account.parent_account_id}`}
                     data-testid="detail-parent-account"
-                    className="text-sm text-indigo-600 hover:underline"
+                    className="text-sm text-primary-600 hover:underline"
                   >
                     {t('accounts.parentAccountLink')}
                   </Link>
@@ -453,7 +453,7 @@ export default function AccountDetailPage() {
                         <Link
                           to={`/contacts/${contact.id}`}
                           data-testid={`linked-contact-${contact.id}`}
-                          className="text-sm font-medium text-indigo-600 hover:underline"
+                          className="text-sm font-medium text-primary-600 hover:underline"
                         >
                           {contact.first_name} {contact.last_name}
                         </Link>
@@ -484,12 +484,12 @@ export default function AccountDetailPage() {
                         <Link
                           to={`/accounts/${child.id}`}
                           data-testid={`subsidiary-account-${child.id}`}
-                          className="text-sm font-medium text-indigo-600 hover:underline"
+                          className="text-sm font-medium text-primary-600 hover:underline"
                         >
                           {child.name}
                         </Link>
                         {child.account_type && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 whitespace-nowrap shrink-0">
+                          <span className="text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
                             {t(`accounts.accountType.${child.account_type}`)}
                           </span>
                         )}

@@ -27,7 +27,7 @@ import {
 const DAYS_OPTIONS: StageTrendDays[] = [30, 60, 90];
 
 // ── Chart colours ────────────────────────────────────────────────────────────
-const COLOR_ENTERED = 'rgba(99, 102, 241, 0.7)'; // indigo-500 semi-transparent
+const COLOR_ENTERED = 'rgba(99, 102, 241, 0.7)'; // primary-500 semi-transparent
 const COLOR_CONVERTED = 'rgba(34, 197, 94, 0.7)'; // green-500 semi-transparent
 const COLOR_ENTERED_BORDER = 'rgb(99, 102, 241)';
 const COLOR_CONVERTED_BORDER = 'rgb(34, 197, 94)';
@@ -298,7 +298,7 @@ export function StageTrendReportContent() {
             data-testid="days-select"
             value={days}
             onChange={(e) => setDays(parseInt(e.target.value, 10) as StageTrendDays)}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
           >
             {DAYS_OPTIONS.map((d) => (
               <option key={d} value={d}>

@@ -112,7 +112,7 @@ export default function ContactSelector({
           {selectedContacts.map((contact) => (
             <li
               key={contact.id}
-              className="flex items-center gap-1 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1 text-sm text-indigo-800"
+              className="flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-3 py-1 text-sm text-primary-800"
               data-testid={`${id}-chip-${contact.id}`}
             >
               <span>
@@ -123,7 +123,7 @@ export default function ContactSelector({
                   type="button"
                   aria-label={`Remove ${contact.first_name} ${contact.last_name}`}
                   data-testid={`${id}-remove-${contact.id}`}
-                  className="ms-1 text-indigo-400 hover:text-indigo-700 focus:outline-none"
+                  className="ms-1 text-primary-400 hover:text-primary-700 focus:outline-none"
                   onClick={() => removeContact(contact.id)}
                 >
                   ×
@@ -179,7 +179,7 @@ export default function ContactSelector({
                   <button
                     type="button"
                     data-testid={`${id}-option-${contact.id}`}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
+                    className="w-full text-start px-4 py-2 text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none"
                     onClick={() => addContact(contact.id)}
                   >
                     <span className="font-medium text-gray-900">

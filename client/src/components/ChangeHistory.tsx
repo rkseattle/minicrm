@@ -204,7 +204,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
               type="button"
               onClick={() => setShowAll((prev) => !prev)}
               disabled={allFetching}
-              className="text-sm text-indigo-600 hover:underline disabled:opacity-50"
+              className="text-sm text-primary-600 hover:underline disabled:opacity-50"
               data-testid="change-history-toggle"
             >
               {showAll

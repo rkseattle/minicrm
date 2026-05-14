@@ -286,7 +286,7 @@ export default function DealForm({
             <button
               type="button"
               data-testid="deal-probability-clear"
-              className="text-xs text-indigo-600 hover:underline self-start"
+              className="text-xs text-primary-600 hover:underline self-start"
               onClick={() => setFormData((prev) => ({ ...prev, probability: '' }))}
               disabled={isSubmitting}
             >

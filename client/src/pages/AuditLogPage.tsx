@@ -170,7 +170,7 @@ export default function AuditLogPage() {
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm">
-          <Link to="/admin/settings" className="text-indigo-600 hover:underline">
+          <Link to="/admin/settings" className="text-primary-600 hover:underline">
             {t('nav.adminSettings')}
           </Link>
           <span className="text-gray-400" aria-hidden="true">
@@ -222,7 +222,7 @@ export default function AuditLogPage() {
                     type="date"
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     data-testid="filter-from"
                   />
                 </div>
@@ -240,7 +240,7 @@ export default function AuditLogPage() {
                     type="date"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     data-testid="filter-to"
                   />
                 </div>

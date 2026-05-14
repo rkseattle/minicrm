@@ -230,7 +230,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 onChange={(e) => setField('companyName', e.target.value)}
                 maxLength={100}
                 placeholder="MiniCRM"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <p className="text-xs text-gray-500 mt-1">{t('settings.branding.companyNameHint')}</p>
             </div>
@@ -247,7 +247,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 value={form.logoUrl}
                 onChange={(e) => setField('logoUrl', e.target.value)}
                 placeholder="https://example.com/logo.png"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               {form.logoUrl && (
                 <img
@@ -272,7 +272,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 onChange={(e) => setField('logoAltText', e.target.value)}
                 maxLength={200}
                 placeholder={t('settings.branding.logoAltTextPlaceholder')}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -291,7 +291,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 value={form.faviconUrl}
                 onChange={(e) => setField('faviconUrl', e.target.value)}
                 placeholder="https://example.com/favicon.ico"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -319,7 +319,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                   maxLength={7}
                   placeholder="#4f46e5"
                   aria-label={t('settings.branding.primaryColorHexLabel')}
-                  className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               <ContrastIndicator hex={form.primaryColor} />
@@ -335,7 +335,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 data-testid="branding-font-select"
                 value={form.fontFamily}
                 onChange={(e) => setField('fontFamily', e.target.value)}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {SUPPORTED_FONTS.map((font) => (
                   <option key={font.id} value={font.id}>

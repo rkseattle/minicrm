@@ -153,7 +153,7 @@ export default function AdminTagsPage() {
               checked={restricted}
               disabled={restrictMutation.isPending}
               onChange={(e) => restrictMutation.mutate(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-60"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-60"
               data-testid="tags-restrict-toggle"
             />
             <span className="min-w-0">

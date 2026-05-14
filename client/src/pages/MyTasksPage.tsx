@@ -253,7 +253,7 @@ export default function MyTasksPage() {
                                 {recordPath && task.linked_record_name ? (
                                   <Link
                                     to={recordPath}
-                                    className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                    className="text-primary-600 hover:text-primary-800 hover:underline"
                                     data-testid={`task-record-link-${task.id}`}
                                   >
                                     {task.linked_record_name}
@@ -350,7 +350,7 @@ export default function MyTasksPage() {
                               <p className="text-xs text-gray-500 mt-1">
                                 <Link
                                   to={recordPath}
-                                  className="text-indigo-600 hover:underline"
+                                  className="text-primary-600 hover:underline"
                                   data-testid={`task-record-link-${task.id}`}
                                 >
                                   {task.linked_record_name}

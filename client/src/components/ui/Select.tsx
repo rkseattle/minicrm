@@ -17,7 +17,7 @@ const SELECT_BASE_CLASSES =
   'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 ' +
   'min-h-[44px] sm:min-h-0';
 
-const SELECT_NORMAL_CLASSES = 'border-gray-300 focus:border-transparent focus:ring-indigo-500';
+const SELECT_NORMAL_CLASSES = 'border-gray-300 focus:border-transparent focus:ring-primary-500';
 const SELECT_ERROR_CLASSES = 'border-red-500 focus:border-transparent focus:ring-red-500';
 
 /**

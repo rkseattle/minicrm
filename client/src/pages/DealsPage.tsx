@@ -772,7 +772,7 @@ export default function DealsPage() {
                       setListPage(1);
                     }
                   }}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">{t('tags.sectionTitle')}</option>
                   {tagsData.tags.map((tag) => (
@@ -963,7 +963,7 @@ export default function DealsPage() {
                                 aria-label={t('bulk.selectedCount', {
                                   count: allVisibleDealIds.length,
                                 })}
-                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                               />
                             </th>
                             <th
@@ -1053,7 +1053,7 @@ export default function DealsPage() {
                           {sortedDeals.map((deal) => (
                             <tr
                               key={deal.id}
-                              className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
+                              className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-primary-50' : ''}`}
                             >
                               {/* Row checkbox (MINCRM-188) */}
                               <td className="w-10 ps-4 py-3">
@@ -1063,10 +1063,10 @@ export default function DealsPage() {
                                   checked={selectedIds.has(deal.id)}
                                   onChange={() => toggleRow(deal.id)}
                                   aria-label={deal.name}
-                                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                 />
                               </td>
-                              <td className="px-4 py-3 font-medium text-indigo-600">
+                              <td className="px-4 py-3 font-medium text-primary-600">
                                 <Link
                                   to={`/deals/${deal.id}`}
                                   data-testid={`deal-link-${deal.id}`}
@@ -1118,7 +1118,7 @@ export default function DealsPage() {
                             checked={allVisibleSelected}
                             onChange={toggleSelectAll}
                             aria-label={t('bulk.selectAll')}
-                            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <span className="text-xs text-gray-500">
                             {t('bulk.selectedCount', { count: selectedIds.size })}
@@ -1128,7 +1128,7 @@ export default function DealsPage() {
                           {sortedDeals.map((deal) => (
                             <li
                               key={deal.id}
-                              className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-indigo-50' : ''}`}
+                              className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-primary-50' : ''}`}
                               data-testid={`deal-list-card-${deal.id}`}
                             >
                               <input
@@ -1137,13 +1137,13 @@ export default function DealsPage() {
                                 checked={selectedIds.has(deal.id)}
                                 onChange={() => toggleRow(deal.id)}
                                 aria-label={deal.name}
-                                className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                               />
                               <div className="min-w-0 flex-1">
                                 <Link
                                   to={`/deals/${deal.id}`}
                                   data-testid={`deal-list-card-link-${deal.id}`}
-                                  className="block font-medium text-indigo-600 hover:underline mb-1"
+                                  className="block font-medium text-primary-600 hover:underline mb-1"
                                 >
                                   {deal.name}
                                 </Link>

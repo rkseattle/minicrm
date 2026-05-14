@@ -242,7 +242,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
                     setSelectedAccountId('');
                     setSelectedAccountName('');
                   }}
-                  className={`flex-1 px-3 py-1.5 ${accountMode === 'create' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'} rounded-s-md`}
+                  className={`flex-1 px-3 py-1.5 ${accountMode === 'create' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'} rounded-s-md`}
                   data-testid="account-mode-create"
                 >
                   {t('leads.convertAccountCreate')}
@@ -250,7 +250,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
                 <button
                   type="button"
                   onClick={() => setAccountMode('link')}
-                  className={`flex-1 px-3 py-1.5 ${accountMode === 'link' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'} rounded-e-md border-s border-gray-300`}
+                  className={`flex-1 px-3 py-1.5 ${accountMode === 'link' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'} rounded-e-md border-s border-gray-300`}
                   data-testid="account-mode-link"
                 >
                   {t('leads.convertAccountLink')}

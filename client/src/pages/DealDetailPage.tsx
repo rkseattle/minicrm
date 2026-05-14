@@ -298,7 +298,7 @@ export default function DealDetailPage() {
           <p role="alert" className="text-sm text-red-600">
             {t('deals.notFound')}
           </p>
-          <Link to="/deals" className="mt-4 inline-block text-sm text-indigo-600 hover:underline">
+          <Link to="/deals" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
             {t('deals.backToDeals')}
           </Link>
         </main>
@@ -330,7 +330,7 @@ export default function DealDetailPage() {
           to="/deals"
           data-testid="back-to-deals"
           aria-label={t('common.backToDeals')}
-          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
+          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline mb-6"
         >
           <svg
             aria-hidden="true"
@@ -580,7 +580,7 @@ export default function DealDetailPage() {
                           <Link
                             to={`/contacts/${contact.id}`}
                             data-testid={`linked-contact-${contact.id}`}
-                            className="text-sm font-medium text-indigo-600 hover:underline"
+                            className="text-sm font-medium text-primary-600 hover:underline"
                           >
                             {contact.first_name} {contact.last_name}
                           </Link>

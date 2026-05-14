@@ -143,9 +143,9 @@ export default function DataSettings() {
                 if (importTab !== tab) setImportTab(tab);
               }}
               className={[
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500',
+                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
                 importTab === tab
-                  ? 'border-indigo-600 text-indigo-700'
+                  ? 'border-primary-600 text-primary-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
               ].join(' ')}
             >
@@ -299,7 +299,7 @@ export default function DataSettings() {
         <p className="text-xs text-gray-500 mb-4">{t('auditLog.sectionHint')}</p>
         <Link
           to="/admin/audit-log"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:underline"
           data-testid="audit-log-link"
         >
           {t('auditLog.navLink')}

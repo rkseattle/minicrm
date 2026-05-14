@@ -102,7 +102,7 @@ export default function BulkActionBar({
         'bg-white border-t border-gray-200 shadow-lg px-4 py-3',
         // Desktop: inline bar
         'md:static md:flex md:items-center',
-        'md:bg-indigo-50 md:border md:border-indigo-200 md:rounded-lg md:px-4 md:py-2 md:mb-3',
+        'md:bg-primary-50 md:border md:border-primary-200 md:rounded-lg md:px-4 md:py-2 md:mb-3',
         'md:shadow-none',
       ].join(' ')}
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}

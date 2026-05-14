@@ -329,7 +329,7 @@ export default function ContactDetailPage() {
           </p>
           <Link
             to="/contacts"
-            className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+            className="mt-4 inline-block text-sm text-primary-600 hover:underline"
           >
             {t('contacts.backToContacts')}
           </Link>
@@ -349,7 +349,7 @@ export default function ContactDetailPage() {
           to="/contacts"
           data-testid="back-to-contacts"
           aria-label={t('common.backToContacts')}
-          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline mb-6"
+          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline mb-6"
         >
           <svg
             aria-hidden="true"
@@ -494,7 +494,7 @@ export default function ContactDetailPage() {
                       {addr.country && <p>{addr.country}</p>}
                       {addr.is_default && (
                         <span
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 mt-1"
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 mt-1"
                           data-testid={`address-default-badge-${addr.id}`}
                         >
                           {t('contacts.addressDefault')}
@@ -506,7 +506,7 @@ export default function ContactDetailPage() {
                         <button
                           type="button"
                           data-testid={`set-default-address-${addr.id}`}
-                          className="text-xs text-indigo-600 hover:underline"
+                          className="text-xs text-primary-600 hover:underline"
                           onClick={() => setDefaultAddressMutation.mutate(addr.id)}
                           disabled={
                             setDefaultAddressMutation.isPending || deleteAddressMutation.isPending
@@ -538,7 +538,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-label"
                       placeholder={t('contacts.addressLabelPlaceholder')}
-                      className="col-span-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="col-span-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.label ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -551,7 +551,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-line1"
                       placeholder={t('contacts.addressLine1Placeholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.address_line1 ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -564,7 +564,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-line2"
                       placeholder={t('contacts.addressLine2Placeholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.address_line2 ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -577,7 +577,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-city"
                       placeholder={t('contacts.cityPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.city ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -590,7 +590,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-state-region"
                       placeholder={t('contacts.stateRegionPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.state_region ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -603,7 +603,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-postal-code"
                       placeholder={t('contacts.postalCodePlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.postal_code ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -616,7 +616,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-country"
                       placeholder={t('contacts.countryPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.country ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -813,7 +813,7 @@ export default function ContactDetailPage() {
                 <Link
                   to={`/accounts/${linkedAccount.id}`}
                   data-testid="detail-account"
-                  className="text-sm text-indigo-600 hover:underline"
+                  className="text-sm text-primary-600 hover:underline"
                 >
                   {linkedAccount.name}
                 </Link>
@@ -930,7 +930,7 @@ export default function ContactDetailPage() {
                   href={contact.linkedin_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-indigo-600 hover:underline truncate"
+                  className="text-sm text-primary-600 hover:underline truncate"
                   data-testid="detail-linkedin-link"
                 >
                   {t('contacts.linkedinUrlLabel')}
@@ -952,7 +952,7 @@ export default function ContactDetailPage() {
                   href={contact.twitter_x_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-indigo-600 hover:underline truncate"
+                  className="text-sm text-primary-600 hover:underline truncate"
                   data-testid="detail-twitter-x-link"
                 >
                   {t('contacts.twitterXUrlLabel')}
@@ -980,7 +980,7 @@ export default function ContactDetailPage() {
                   href={contact.other_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-indigo-600 hover:underline truncate"
+                  className="text-sm text-primary-600 hover:underline truncate"
                   data-testid="detail-other-link"
                 >
                   {t('contacts.otherUrlLabel')}
@@ -1023,7 +1023,7 @@ export default function ContactDetailPage() {
                   {addr.country && <p>{addr.country}</p>}
                   {addr.is_default && (
                     <span
-                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 mt-1"
+                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 mt-1"
                       data-testid={`address-default-badge-${addr.id}`}
                     >
                       {t('contacts.addressDefault')}
@@ -1314,7 +1314,7 @@ export default function ContactDetailPage() {
                       <Link
                         to={`/deals/${deal.id}`}
                         data-testid={`linked-deal-${deal.id}`}
-                        className="text-sm font-medium text-indigo-600 hover:underline"
+                        className="text-sm font-medium text-primary-600 hover:underline"
                       >
                         {deal.name}
                       </Link>
@@ -1326,7 +1326,7 @@ export default function ContactDetailPage() {
                         data-testid={`linked-deal-probability-${deal.id}`}
                         className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
                           deal.probability_is_overridden
-                            ? 'bg-indigo-100 text-indigo-700 font-medium'
+                            ? 'bg-primary-100 text-primary-700 font-medium'
                             : 'bg-gray-100 text-gray-500 italic'
                         }`}
                         title={

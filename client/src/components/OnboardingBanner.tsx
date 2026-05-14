@@ -124,7 +124,7 @@ export default function OnboardingBanner() {
 
   return (
     <div
-      className="bg-indigo-50 border-b border-indigo-200"
+      className="bg-primary-50 border-b border-primary-200"
       data-testid="onboarding-banner"
       role="region"
       aria-label={t('onboarding.title')}
@@ -133,8 +133,8 @@ export default function OnboardingBanner() {
         {/* Header row */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-indigo-900">{t('onboarding.title')}</h2>
-            <p className="text-sm text-indigo-700 mt-0.5">{t('onboarding.subtitle')}</p>
+            <h2 className="text-base font-semibold text-primary-900">{t('onboarding.title')}</h2>
+            <p className="text-sm text-primary-700 mt-0.5">{t('onboarding.subtitle')}</p>
           </div>
           <button
             type="button"
@@ -142,7 +142,7 @@ export default function OnboardingBanner() {
             aria-label={t('onboarding.dismiss')}
             onClick={handleDismiss}
             disabled={dismissMutation.isPending}
-            className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+            className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md text-primary-500 hover:text-primary-700 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -165,15 +165,15 @@ export default function OnboardingBanner() {
               key={s}
               className={`h-1.5 rounded-full transition-all ${
                 s === step
-                  ? 'w-8 bg-indigo-600'
+                  ? 'w-8 bg-primary-600'
                   : s < step
-                    ? 'w-4 bg-indigo-400'
-                    : 'w-4 bg-indigo-200'
+                    ? 'w-4 bg-primary-400'
+                    : 'w-4 bg-primary-200'
               }`}
               aria-hidden="true"
             />
           ))}
-          <span className="text-xs text-indigo-700 ms-1">
+          <span className="text-xs text-primary-700 ms-1">
             {t('onboarding.stepOf', { current: step, total: TOTAL_STEPS })}
           </span>
         </div>
@@ -181,17 +181,17 @@ export default function OnboardingBanner() {
         {/* Step 1 — Pipeline review */}
         {step === 1 && (
           <div data-testid="onboarding-step-1">
-            <h3 className="text-sm font-medium text-indigo-900 mb-1">
+            <h3 className="text-sm font-medium text-primary-900 mb-1">
               {t('onboarding.step1.heading')}
             </h3>
-            <p className="text-sm text-indigo-700 mb-3">{t('onboarding.step1.description')}</p>
+            <p className="text-sm text-primary-700 mb-3">{t('onboarding.step1.description')}</p>
 
             {stages.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {stages.map((stage) => (
                   <span
                     key={stage.id}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white border border-indigo-200 text-indigo-700"
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white border border-primary-200 text-primary-700"
                   >
                     {getStageDisplayName(stage.name, t)}
                   </span>
@@ -212,7 +212,7 @@ export default function OnboardingBanner() {
               <a
                 href="/admin/settings?tab=customisation"
                 data-testid="onboarding-step1-customise-link"
-                className="text-sm text-indigo-600 hover:text-indigo-800 underline underline-offset-2"
+                className="text-sm text-primary-600 hover:text-primary-800 underline underline-offset-2"
                 onClick={() => setStep(2)}
               >
                 {t('onboarding.step1.customiseStages')}
@@ -224,10 +224,10 @@ export default function OnboardingBanner() {
         {/* Step 2 — Invite team */}
         {step === 2 && (
           <div data-testid="onboarding-step-2">
-            <h3 className="text-sm font-medium text-indigo-900 mb-1">
+            <h3 className="text-sm font-medium text-primary-900 mb-1">
               {t('onboarding.step2.heading')}
             </h3>
-            <p className="text-sm text-indigo-700 mb-3">{t('onboarding.step2.description')}</p>
+            <p className="text-sm text-primary-700 mb-3">{t('onboarding.step2.description')}</p>
 
             {inviteConfirmation && (
               <p
@@ -257,14 +257,14 @@ export default function OnboardingBanner() {
                 placeholder={t('onboarding.step2.emailPlaceholder')}
                 aria-label={t('onboarding.step2.emailLabel')}
                 data-testid="onboarding-invite-email"
-                className="flex-1 min-w-[200px] px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="flex-1 min-w-[200px] px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               />
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'admin' | 'rep')}
                 aria-label={t('onboarding.step2.roleLabel')}
                 data-testid="onboarding-invite-role"
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
               >
                 <option value="rep">{t('onboarding.step2.roleRep')}</option>
                 <option value="admin">{t('onboarding.step2.roleAdmin')}</option>
@@ -288,7 +288,7 @@ export default function OnboardingBanner() {
                 type="button"
                 data-testid="onboarding-step2-skip"
                 onClick={handleStep2Next}
-                className="text-sm text-indigo-600 hover:text-indigo-800 underline underline-offset-2"
+                className="text-sm text-primary-600 hover:text-primary-800 underline underline-offset-2"
               >
                 {t('onboarding.step2.skipForNow')}
               </button>
@@ -299,10 +299,10 @@ export default function OnboardingBanner() {
         {/* Step 3 — Get started */}
         {step === 3 && (
           <div data-testid="onboarding-step-3">
-            <h3 className="text-sm font-medium text-indigo-900 mb-1">
+            <h3 className="text-sm font-medium text-primary-900 mb-1">
               {t('onboarding.step3.heading')}
             </h3>
-            <p className="text-sm text-indigo-700 mb-3">{t('onboarding.step3.description')}</p>
+            <p className="text-sm text-primary-700 mb-3">{t('onboarding.step3.description')}</p>
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
@@ -330,7 +330,7 @@ export default function OnboardingBanner() {
                 type="button"
                 data-testid="onboarding-start-exploring"
                 onClick={handleStep3Dismiss}
-                className="text-sm text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
+                className="text-sm text-primary-500 hover:text-primary-700 underline underline-offset-2"
               >
                 {t('onboarding.step3.startExploring')}
               </button>

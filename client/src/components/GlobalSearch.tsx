@@ -77,7 +77,7 @@ export default function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="w-full lg:w-64 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors placeholder:text-gray-400"
+        className="w-full lg:w-64 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-colors placeholder:text-gray-400"
       />
 
       {showDropdown && (
@@ -112,7 +112,7 @@ export default function GlobalSearch() {
                       to={`/contacts/${contact.id}`}
                       data-testid={`search-result-contact-${contact.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
+                      className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
                     >
                       <span className="text-sm font-medium text-gray-900 truncate">
                         {contact.first_name} {contact.last_name}
@@ -138,7 +138,7 @@ export default function GlobalSearch() {
                       to={`/accounts/${account.id}`}
                       data-testid={`search-result-account-${account.id}`}
                       onClick={closeDropdown}
-                      className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-indigo-50 transition-colors truncate"
+                      className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-primary-50 transition-colors truncate"
                     >
                       {account.name}
                     </Link>
@@ -161,7 +161,7 @@ export default function GlobalSearch() {
                       to={`/deals/${deal.id}`}
                       data-testid={`search-result-deal-${deal.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
+                      className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
                     >
                       <span className="text-sm font-medium text-gray-900 truncate">
                         {deal.name}
@@ -187,7 +187,7 @@ export default function GlobalSearch() {
                       to={`/leads/${lead.id}`}
                       data-testid={`search-result-lead-${lead.id}`}
                       onClick={closeDropdown}
-                      className="flex flex-col px-4 py-2.5 hover:bg-indigo-50 transition-colors min-w-0"
+                      className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
                     >
                       <span className="text-sm font-medium text-gray-900 truncate">
                         {lead.first_name} {lead.last_name}

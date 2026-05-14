@@ -28,8 +28,8 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
   const { t } = useTranslation();
 
   const BASE =
-    'px-3 py-1.5 text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1';
-  const ACTIVE = 'bg-indigo-600 text-white border-indigo-600 z-10';
+    'px-3 py-1.5 text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1';
+  const ACTIVE = 'bg-primary-600 text-white border-primary-600 z-10';
   const INACTIVE = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
 
   return (

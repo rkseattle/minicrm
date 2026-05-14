@@ -272,7 +272,7 @@ function ToolbarPlugin({ onImageUpload }: ToolbarPluginProps) {
       aria-pressed={active}
       title={label}
       className={`rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
-        active ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'
+        active ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100'
       }`}
     >
       {symbol}
@@ -551,7 +551,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
         placeholder={t('notes.titlePlaceholder')}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
       />
 
       {/* Lexical editor */}
@@ -560,7 +560,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
         <LoadStatePlugin body={editingNote?.body} />
         <ToolbarPlugin onImageUpload={() => imageInputRef.current?.click()} />
         <div
-          className="relative min-h-[120px] px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-inset"
+          className="relative min-h-[120px] px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-inset"
           data-testid="notes-composer-body"
         >
           <RichTextPlugin
@@ -624,7 +624,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-0.5 bg-indigo-100 text-indigo-800 rounded-full px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-0.5 bg-primary-100 text-primary-800 rounded-full px-2 py-0.5 text-xs"
               data-testid={`note-tag-${tag}`}
             >
               {tag}
@@ -633,7 +633,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
                 onClick={() => setTags((prev) => prev.filter((tg) => tg !== tag))}
                 aria-label={`Remove tag ${tag}`}
                 data-testid={`note-tag-remove-${tag}`}
-                className="hover:text-indigo-600"
+                className="hover:text-primary-600"
               >
                 ×
               </button>
@@ -675,7 +675,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
             onClick={handleSave}
             disabled={isPending}
             data-testid="notes-composer-save"
-            className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {isPending ? t('notes.saving') : t('notes.save')}
           </button>
@@ -745,7 +745,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
             {note.tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex rounded-full bg-indigo-50 text-indigo-700 px-2 py-0.5 text-xs"
+                className="inline-flex rounded-full bg-primary-50 text-primary-700 px-2 py-0.5 text-xs"
                 data-testid={`note-tag-display-${tag}`}
               >
                 {tag}
@@ -759,7 +759,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
               type="button"
               onClick={() => onEdit(note)}
               data-testid={`note-edit-${note.id}`}
-              className="text-xs text-indigo-600 hover:underline"
+              className="text-xs text-primary-600 hover:underline"
             >
               {t('notes.edit')}
             </button>
@@ -866,7 +866,7 @@ export default function NotesSection({ entityType, entityId }: NotesSectionProps
             type="button"
             onClick={handleOpenComposer}
             data-testid="notes-add-button"
-            className="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+            className="text-xs px-3 py-1.5 rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors"
           >
             {t('notes.addButton')}
           </button>

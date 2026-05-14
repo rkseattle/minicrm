@@ -57,7 +57,7 @@ export default function CustomFieldsSection({
       }
       setEditValues(initial);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, definitions.length, serverValues.length]);
 
   // Notify parent whenever edit values change
@@ -68,7 +68,7 @@ export default function CustomFieldsSection({
       value: editValues[def.id] ?? null,
     }));
     onValuesChange(payload);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editValues, isEditing]);
 
   function handleChange(definitionId: string, value: string | null): void {
@@ -102,9 +102,7 @@ export default function CustomFieldsSection({
               >
                 {v.definition.name}
               </dt>
-              <dd className="mt-1 text-sm text-gray-900 break-words">
-                {v.value}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900 break-words">{v.value}</dd>
             </div>
           ))}
         </dl>
@@ -119,9 +117,7 @@ export default function CustomFieldsSection({
       data-testid="custom-fields-section"
       hidden={isEmpty}
     >
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">
-        {t('customFields.sectionTitle')}
-      </h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('customFields.sectionTitle')}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="custom-fields-edit-grid">
         {definitions.map((def) => {
           const currentValue = editValues[def.id] ?? '';
@@ -143,7 +139,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -154,7 +150,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -165,7 +161,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -177,7 +173,7 @@ export default function CustomFieldsSection({
                     data-testid={`custom-field-input-${def.id}`}
                     checked={currentValue === 'true'}
                     onChange={(e) => handleChange(def.id, e.target.checked ? 'true' : 'false')}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
                   <label htmlFor={`cf-${def.id}`} className="text-sm text-gray-700">
                     {def.name}
@@ -191,7 +187,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
                 >
                   <option value="">—</option>
                   {(def.options ?? []).map((opt) => (

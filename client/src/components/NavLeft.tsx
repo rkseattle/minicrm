@@ -20,7 +20,7 @@ function sidebarLinkClass({ isActive }: { isActive: boolean }): string {
   return [
     'flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors min-h-[36px]',
     isActive
-      ? 'bg-indigo-50 text-indigo-700'
+      ? 'bg-primary-50 text-primary-700'
       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
   ].join(' ');
 }
@@ -59,7 +59,7 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
               aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
               data-testid="nav-left-collapse-toggle"
               onClick={() => setCollapsed((c) => !c)}
-              className="flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"
+              className="flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 flex-shrink-0"
             >
               {collapsed ? (
                 // Expand icon (chevron right)

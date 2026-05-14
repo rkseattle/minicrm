@@ -148,7 +148,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
         </h2>
         <Link
           to="/activities"
-          className="text-sm text-indigo-600 hover:underline"
+          className="text-sm text-primary-600 hover:underline"
           data-testid="recent-activity-view-all"
         >
           {t('dashboard.recentActivityViewAll')}
@@ -192,7 +192,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
                 {entry.linkedRecordPath ? (
                   <Link
                     to={entry.linkedRecordPath}
-                    className="text-sm text-indigo-600 hover:underline shrink-0 hidden sm:block"
+                    className="text-sm text-primary-600 hover:underline shrink-0 hidden sm:block"
                     data-testid={`recent-activity-record-${entry.id}`}
                   >
                     {entry.linkedRecordName}

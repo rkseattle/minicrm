@@ -268,7 +268,7 @@ export function ActivityVolumeReportContent() {
           <button
             type="button"
             onClick={handleExportCsv}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
             data-testid="export-csv-button"
           >
             {t('reports.activityVolume.exportCsv')}
@@ -285,9 +285,9 @@ export function ActivityVolumeReportContent() {
           <button
             type="button"
             onClick={() => setViewMode('team')}
-            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               viewMode === 'team'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
             data-testid="view-mode-team"
@@ -297,9 +297,9 @@ export function ActivityVolumeReportContent() {
           <button
             type="button"
             onClick={() => setViewMode('my')}
-            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               viewMode === 'my'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
             data-testid="view-mode-my"
@@ -329,7 +329,7 @@ export function ActivityVolumeReportContent() {
             onChange={(e) => {
               if (e.target.value !== preset) setPreset(e.target.value as DatePreset);
             }}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
           >
             <option value="thisWeek">{t('reports.activityVolume.presetThisWeek')}</option>
             <option value="currentMonth">{t('reports.activityVolume.presetCurrentMonth')}</option>
@@ -356,7 +356,7 @@ export function ActivityVolumeReportContent() {
                 data-testid="custom-start-input"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -372,7 +372,7 @@ export function ActivityVolumeReportContent() {
                 data-testid="custom-end-input"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] sm:min-h-0"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
           </>
@@ -392,7 +392,7 @@ export function ActivityVolumeReportContent() {
               data-testid="owner-filter-select"
               value={selectedOwnerId}
               onChange={(e) => setSelectedOwnerId(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">{t('reports.activityVolume.ownerFilterAll')}</option>
               {activeUsersData?.users.map((u) => (
@@ -493,7 +493,7 @@ export function ActivityVolumeReportContent() {
                           {row.counts[col] > 0 ? (
                             <Link
                               to={buildActivitiesUrl(row.ownerId, col, start, end)}
-                              className="text-indigo-600 hover:underline font-medium"
+                              className="text-primary-600 hover:underline font-medium"
                             >
                               {row.counts[col]}
                             </Link>

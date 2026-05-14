@@ -44,9 +44,18 @@ function applyBrandingStyles(config: BrandingConfig | null): void {
 
   const lines: string[] = [':root {'];
   if (config.primaryColor) {
-    lines.push(`  --color-primary: ${config.primaryColor};`);
-    lines.push(`  --color-primary-hover: color-mix(in srgb, ${config.primaryColor} 90%, black);`);
-    lines.push(`  --color-primary-light: color-mix(in srgb, ${config.primaryColor} 10%, white);`);
+    const c = config.primaryColor;
+    // Override the full primary palette so every Tailwind primary-* utility
+    // reflects the brand color. Lighter shades mix toward white; darker toward black.
+    lines.push(`  --color-primary-50:  color-mix(in srgb, ${c}  8%, white);`);
+    lines.push(`  --color-primary-100: color-mix(in srgb, ${c} 15%, white);`);
+    lines.push(`  --color-primary-200: color-mix(in srgb, ${c} 30%, white);`);
+    lines.push(`  --color-primary-400: color-mix(in srgb, ${c} 70%, white);`);
+    lines.push(`  --color-primary-500: color-mix(in srgb, ${c} 85%, white);`);
+    lines.push(`  --color-primary-600: ${c};`);
+    lines.push(`  --color-primary-700: color-mix(in srgb, ${c} 85%, black);`);
+    lines.push(`  --color-primary-800: color-mix(in srgb, ${c} 70%, black);`);
+    lines.push(`  --color-primary-900: color-mix(in srgb, ${c} 55%, black);`);
     if (config.primaryColorText) {
       lines.push(`  --color-primary-text: ${config.primaryColorText};`);
     }

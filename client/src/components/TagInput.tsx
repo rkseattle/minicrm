@@ -167,7 +167,7 @@ export default function TagInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={t('tags.inputPlaceholder')}
-          className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-50 disabled:opacity-60"
+          className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:opacity-60"
         />
 
         {/* Suggestion dropdown */}
@@ -189,7 +189,7 @@ export default function TagInput({
                   e.preventDefault();
                   void handleSuggestionClick(tag);
                 }}
-                className="cursor-pointer px-3 py-1.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+                className="cursor-pointer px-3 py-1.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700"
               >
                 {tag.name}
               </li>

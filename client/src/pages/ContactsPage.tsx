@@ -437,7 +437,7 @@ export default function ContactsPage() {
                   setPage(1);
                 }
               }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="">{t('tags.sectionTitle')}</option>
               {tagsData.tags.map((tag) => (
@@ -574,7 +574,7 @@ export default function ContactsPage() {
                             checked={allVisibleSelected}
                             onChange={toggleSelectAll}
                             aria-label={t('bulk.selectAll')}
-                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </th>
                         <th
@@ -665,7 +665,7 @@ export default function ContactsPage() {
                         <tr
                           key={contact.id}
                           data-selected={selectedIds.has(contact.id) || undefined}
-                          className={`group hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
+                          className={`group hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                         >
                           {/* Row checkbox (MINCRM-188) */}
                           <td className="w-10 ps-4 py-3">
@@ -675,10 +675,10 @@ export default function ContactsPage() {
                               checked={selectedIds.has(contact.id)}
                               onChange={() => toggleRow(contact.id)}
                               aria-label={`${contact.first_name} ${contact.last_name}`}
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                             />
                           </td>
-                          <td className="px-4 py-3 font-medium text-indigo-600">
+                          <td className="px-4 py-3 font-medium text-primary-600">
                             <Link
                               to={`/contacts/${contact.id}`}
                               data-testid={`contact-link-${contact.id}`}
@@ -732,7 +732,7 @@ export default function ContactsPage() {
                         checked={allVisibleSelected}
                         onChange={toggleSelectAll}
                         aria-label={t('bulk.selectAll')}
-                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                       <span className="text-xs text-gray-500">
                         {t('bulk.selectedCount', { count: selectedIds.size })}
@@ -743,7 +743,7 @@ export default function ContactsPage() {
                         <li
                           key={contact.id}
                           data-selected={selectedIds.has(contact.id) || undefined}
-                          className={`group px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-indigo-50' : ''}`}
+                          className={`group px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                           data-testid={`contact-card-${contact.id}`}
                         >
                           <input
@@ -752,13 +752,13 @@ export default function ContactsPage() {
                             checked={selectedIds.has(contact.id)}
                             onChange={() => toggleRow(contact.id)}
                             aria-label={`${contact.first_name} ${contact.last_name}`}
-                            className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <div className="min-w-0 flex-1">
                             <Link
                               to={`/contacts/${contact.id}`}
                               data-testid={`contact-card-link-${contact.id}`}
-                              className="block font-medium text-indigo-600 hover:underline mb-1"
+                              className="block font-medium text-primary-600 hover:underline mb-1"
                             >
                               {contact.first_name} {contact.last_name}
                             </Link>

@@ -212,8 +212,8 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
             className={[
               'border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors mb-4',
               isDragging
-                ? 'border-indigo-400 bg-indigo-50'
-                : 'border-gray-300 hover:border-indigo-300 hover:bg-gray-50',
+                ? 'border-primary-400 bg-primary-50'
+                : 'border-gray-300 hover:border-primary-300 hover:bg-gray-50',
               uploadMutation.isPending ? 'opacity-50 pointer-events-none' : '',
             ].join(' ')}
           >
@@ -291,7 +291,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
                       href={getDownloadUrl(attachment.id)}
                       download={attachment.filename}
                       data-testid={`attachment-download-${attachment.id}`}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:underline"
+                      className="text-sm text-primary-600 hover:text-primary-800 font-medium focus:outline-none focus:underline"
                     >
                       {t('attachments.download')}
                     </a>

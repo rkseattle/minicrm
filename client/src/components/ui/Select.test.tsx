@@ -50,7 +50,7 @@ describe('Select', () => {
 
   it('applies indigo-ring class when no error', () => {
     render(<Select />);
-    expect(screen.getByRole('combobox')).toHaveClass('focus:ring-indigo-500');
+    expect(screen.getByRole('combobox')).toHaveClass('focus:ring-primary-500');
   });
 
   it('applies min-h touch-target class (MINCRM-98)', () => {
