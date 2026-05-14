@@ -28,19 +28,27 @@ npm run seed:demo
 
 ### Dashboard
 
-![MiniCRM dashboard showing pipeline value, deal counts, and recent activity](docs/screenshots/01-dashboard.png)
+![MiniCRM dashboard showing pipeline value, deal counts by stage, and overdue task indicators](docs/screenshots/01-dashboard.png)
 
 ### Pipeline Board
 
-![Deals pipeline board with Kanban columns for each stage](docs/screenshots/05-deals-board.png)
+![Deals pipeline board with Kanban columns for each stage, deal cards with currency-formatted values](docs/screenshots/05-deals-board.png)
 
 ### Contacts
 
-![Contacts list with search and filter controls](docs/screenshots/02-contacts.png)
+![Contacts list with full-viewport scroll, always-visible pagination, and page-size selector](docs/screenshots/02-contacts.png)
 
 ### Leads
 
-![Leads list with status badges and conversion workflow](docs/screenshots/07-leads.png)
+![Leads list with full-viewport scroll layout and always-visible pagination](docs/screenshots/07-leads.png)
+
+### Contact Detail
+
+![Contact detail page showing rich notes editor, optimistic-lock version indicator, and activity timeline](docs/screenshots/03-contact-detail.png)
+
+### Admin Settings
+
+![Admin Settings page with custom branding section — logo upload, brand color, font, and powered-by badge controls](docs/screenshots/10-admin-settings.png)
 
 ## Tech Stack
 
@@ -324,12 +332,15 @@ npm run remove:demo
 
 Both scripts read database connection from `.env` (`DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`).
 
-Demo data volume:
+Demo data volume (MINCRM-353):
 
-- 2 accounts (Acme Corporation, Globex Industries)
-- 20 contacts (10 per account)
-- 10 deals across Prospecting, Qualification, Proposal, Negotiation, Closed Won, and Closed Lost stages
-- 15 activities (calls, emails, notes, meetings, tasks) linked to deals and contacts
+- 2 accounts (Acme Corporation, Globex Industries — with parent/child relationship)
+- 20 contacts (10 per account, with addresses, social URLs, and custom field values)
+- 11 deals across all pipeline stages, including multi-currency deals (USD and GBP) with custom probability overrides
+- Activities (calls, emails, notes, meetings, tasks) linked to deals and contacts
+- 7 rich notes on contacts, accounts, and deals — covering team-visible and private visibility
+- Custom field definitions: LinkedIn URL, Lead Source Detail (select), Contract Signed Date, Estimated ARR; values populated on representative records
+- Exchange rate table seeded with USD, EUR, GBP, CAD, AUD, JPY, CHF rates
 
 All demo records have `is_demo = true`. The remove script deletes **only** rows where `is_demo = true`, so real data is never affected. Running the seed script twice is a no-op if demo data already exists.
 
@@ -359,6 +370,29 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Full CRUD REST API at `/api/leads`; conversion endpoint at `POST /api/leads/:id/convert`; status history at `GET /api/leads/:id/status-history`
 - Database migrations: `020_create_leads.js` adds `leads` and `lead_status_history` tables; adds `source_lead_id` FK column to `contacts` and `deals`
 
+### Optimistic Locking (MINCRM-349)
+
+- Every contact, account, deal, lead, and activity carries a `version` integer that increments on each update
+- PATCH endpoints require the client to echo back the current `version`; if the record was updated by someone else in the meantime the server returns **409** with the full current state in the response body, preventing silent overwrites
+- The version field is included in all read responses so the client always has the latest value after any successful save
+- Database migration: `048_add_version_to_all_entities.js` adds `version INTEGER NOT NULL DEFAULT 1` to `contacts`, `accounts`, `deals`, `leads`, and `activities`
+
+### Three-Way Merge UI for Conflicts (MINCRM-351)
+
+- When a 409 optimistic-lock conflict occurs on any edit form, a **Field Merge Modal** opens instead of showing a generic error
+- The modal presents a field-by-field comparison table with three value columns: **Original** (value when the page was opened), **Their change** (current server state), and **Your change** (what the user tried to save)
+- Conflicts where both sides changed the same field differently are highlighted and require the user to pick a value via radio buttons; non-conflicting changes are auto-resolved
+- String fields show character-level inline diffs (red strikethrough for removed text, green highlight for added text)
+- After resolving all conflicts the user clicks **Save resolved** to resubmit with the merged values, or **Discard my changes** to abandon the edit
+- Component: `client/src/components/FieldMergeModal.tsx`
+
+### Localized Server Error Messages (MINCRM-354)
+
+- Server error codes (e.g. `CONTACT_EMAIL_DUPLICATE`, `OPTIMISTIC_LOCK_CONFLICT`, `STAGE_HAS_OPEN_DEALS`) are translated to user-friendly messages in the active locale instead of showing raw code strings
+- The `resolveApiError()` utility in `client/src/utils/apiError.ts` looks up `errors.<CODE>` in the i18n catalog and falls back to `errors.generic` for unrecognized codes
+- All five supported locales (`en`, `zh-Hans`, `es`, `fr`, `de`) include translations for every domain error code
+- No API or migration changes — purely a client-side presentation improvement
+
 ### Contacts
 
 - List all contacts in a sortable table with owner column
@@ -373,6 +407,20 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated
 - Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written
 - Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:id/merge`
+
+### Full-Viewport List Layout (MINCRM-343)
+
+- All list pages (Contacts, Accounts, Leads, Activities) use a full-viewport layout where the table scrolls internally and the nav bar, filters, and pagination remain fixed on screen
+- The table container fills all remaining vertical space between the filter bar and the pagination strip — no page-level scrollbar
+- Sticky table header stays visible while scrolling through long record lists
+- Layout is implemented with Tailwind flex column utilities (`h-screen`, `flex-1`, `min-h-0`, `overflow-auto`) applied consistently across all list pages
+
+### Always-Visible Pagination with Page-Size Selector (MINCRM-342)
+
+- Every list page shows a persistent pagination strip at the bottom of the viewport — it is never pushed off screen regardless of how many rows are loaded
+- The left side of the strip shows a record count summary ("Showing X–Y of Z records") and a **Rows per page** dropdown (10 / 25 / 50 / 100); changing the page size resets to page 1
+- The right side shows Previous / Next navigation buttons and a "Page N of M" indicator
+- Implemented in the shared `Pagination` component (`client/src/components/ui/Pagination.tsx`) used by all list pages
 
 ### Accounts
 
@@ -401,6 +449,21 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 - Pipeline stages are admin-configurable (see [Custom Pipeline Stages](#custom-pipeline-stages)); default stages are Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
 - Full CRUD REST API at `/api/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
+
+### Rich Notes on Entity Detail Pages (MINCRM-352)
+
+- Contact, Account, Deal, and Lead detail pages include a **Notes** section with a rich-text composer (Lexical editor)
+- Notes support an optional title, a body with inline formatting, and a **visibility** setting: **Team** (visible to all users, default), **Private** (visible only to the creator and admins), or **Public**
+- Private notes authored by another user appear with the body masked — the card shows the author and timestamp but not the content
+- Notes are paginated; each entity's notes feed is independent
+- Notes support soft-delete: deleted notes are removed from the feed but retained in the audit log
+- Audit events (`note_created`, `note_updated`, `note_deleted`, `note_visibility_changed`) are written in the same transaction as the note change; private note bodies appear as `[private note]` in the audit log
+- API endpoints:
+  - `GET /api/{entityType}/{entityId}/notes` — list notes (paginated)
+  - `POST /api/{entityType}/{entityId}/notes` — create a note (auth required)
+  - `PATCH /api/{entityType}/{entityId}/notes/:noteId` — update a note (creator or admin only)
+  - `DELETE /api/{entityType}/{entityId}/notes/:noteId` — soft-delete a note (creator or admin only)
+- Database migration: `044_create_notes.js` creates the `notes` table with `entity_type`, `entity_id`, `title`, `body` (Lexical JSON), `visibility`, `deleted_at` (soft-delete), `created_by`, and `updated_by` columns; migration `045_extend_audit_event_types.js` adds note event types to the audit log enum
 
 ### Activities & Tasks
 
@@ -440,6 +503,19 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
   - `PATCH /api/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
 - Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
+
+### Custom Branding (MINCRM-356)
+
+- Admins can configure organisation-wide branding from the **Admin Settings** page: upload a logo and favicon, set a primary brand colour, choose a Google Font family, enter a company name, and optionally show a "Powered by MiniCRM" badge
+- A live preview panel on the settings page reflects changes before saving
+- The brand colour picker includes a WCAG AA contrast ratio indicator; the server derives a matching text colour (white or dark grey) based on relative luminance so branded buttons always remain readable
+- Branding is distributed to the client on app load via `BrandingContext`; the full CSS colour scale (50–900 shades) is injected as CSS custom properties and consumed via the Tailwind `primary-*` colour utilities, so every use of `bg-primary-*`, `text-primary-*`, etc. picks up the brand colour automatically
+- Custom fonts are loaded from Google Fonts and applied globally; the page font updates immediately without a reload
+- API endpoints (admin only):
+  - `GET /api/settings/branding` — public, returns current branding config or `{ branding: null }` if not configured
+  - `PUT /api/settings/branding` — admin only, partial merge of branding fields
+  - `DELETE /api/settings/branding` — admin only, resets all branding to defaults
+- Branding is stored as a JSON value in the `system_settings` table under the `branding` key; no dedicated migration required
 
 ### Navigation Layout
 
