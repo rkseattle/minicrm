@@ -256,15 +256,15 @@ test.describe.serial('Layout-mutating tests', () => {
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
           contactsLink,
-          'active nav-top-contacts should carry indigo active class',
-        ).toHaveClass(/text-indigo-700/);
+          'active nav-top-contacts should carry primary active class',
+        ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
         const dealsLink = await navPage.navLinkLocator('top', 'deals');
         await expect(
           dealsLink,
-          'inactive nav-top-deals should not carry the active indigo class',
-        ).not.toHaveClass(/text-indigo-700/);
+          'inactive nav-top-deals should not carry the active primary class',
+        ).not.toHaveClass(/text-primary-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-TN2');
       }
@@ -326,15 +326,15 @@ test.describe.serial('Layout-mutating tests', () => {
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
           accountsLink,
-          'active nav-left-accounts should carry indigo active class',
-        ).toHaveClass(/text-indigo-700/);
+          'active nav-left-accounts should carry primary active class',
+        ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
         const tasksLink = await navPage.navLinkLocator('left', 'tasks');
         await expect(
           tasksLink,
-          'inactive nav-left-tasks should not carry the active indigo class',
-        ).not.toHaveClass(/text-indigo-700/);
+          'inactive nav-left-tasks should not carry the active primary class',
+        ).not.toHaveClass(/text-primary-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-LN2');
       }
@@ -428,20 +428,20 @@ test.describe.serial('Layout-mutating tests', () => {
         const navPage = new NavPage({ page });
         const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
 
-        // The active class is 'bg-indigo-50 text-indigo-700' per NavHamburger.tsx overlayLinkClass.
+        // The active class is 'bg-primary-50 text-primary-700' per NavHamburger.tsx overlayLinkClass.
         // toHaveClass retries until the assertion passes (up to default timeout), avoiding the
         // one-shot getAttribute race with React reconciliation after navigation.
         await expect(
           dealsLink,
-          'active nav-hamburger-deals should carry indigo active class',
-        ).toHaveClass(/text-indigo-700/);
+          'active nav-hamburger-deals should carry primary active class',
+        ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
         const contactsLink = await navPage.navLinkLocator('hamburger', 'contacts');
         await expect(
           contactsLink,
-          'inactive nav-hamburger-contacts should not carry the active indigo class',
-        ).not.toHaveClass(/text-indigo-700/);
+          'inactive nav-hamburger-contacts should not carry the active primary class',
+        ).not.toHaveClass(/text-primary-700/);
       } finally {
         await resetNavLayout(restClient, 'F8-HB2');
       }
