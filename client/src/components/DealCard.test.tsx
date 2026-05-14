@@ -136,7 +136,7 @@ describe('DealCard — probability display (MINCRM-179)', () => {
     );
     const badge = screen.getByTestId(`deal-card-probability-${DEAL_OVERRIDDEN_PROB.id}`);
     // Overridden badge uses indigo classes to visually distinguish it
-    expect(badge.className).toContain('text-indigo-700');
+    expect(badge.className).toContain('text-primary-700');
     expect(badge.className).not.toContain('italic');
   });
 });

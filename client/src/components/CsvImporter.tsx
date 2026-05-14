@@ -244,7 +244,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
             role="button"
             tabIndex={0}
             data-testid={`${entity}-drop-zone`}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
@@ -325,7 +325,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                       data-testid={`${entity}-map-${field.key}`}
                       value={mapping[field.key] ?? ''}
                       onChange={(e) => handleMappingChange(field.key, e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">{t('import.selectColumn')}</option>
                       {parseData.headers.map((h) => (
@@ -350,7 +350,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                         onChange={(e) =>
                           setOptionValues((prev) => ({ ...prev, [opt.key]: e.target.checked }))
                         }
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                       {opt.label}
                     </label>
@@ -460,7 +460,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
         <div data-testid={`${entity}-running`} className="space-y-4">
           <div className="flex items-center gap-2">
             <svg
-              className="animate-spin h-4 w-4 text-indigo-600 shrink-0"
+              className="animate-spin h-4 w-4 text-primary-600 shrink-0"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -496,7 +496,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                 className="w-full bg-gray-200 rounded-full h-2"
               >
                 <div
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progressPercent()}%` }}
                 />
               </div>

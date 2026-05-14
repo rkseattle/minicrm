@@ -107,7 +107,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
   const hamburgerToggleEl = hamburger?.toggleEl;
   const hamburgerButtonClass = [
     'flex items-center justify-center w-11 h-11 rounded-md text-gray-600',
-    'hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500',
+    'hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500',
     hamburger?.mobileOnly ? 'lg:hidden' : '',
   ]
     .join(' ')
@@ -125,7 +125,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
         />
       ) : (
         <span
-          className="text-indigo-600 font-bold text-lg tracking-tight select-none flex-shrink-0"
+          className="text-primary-600 font-bold text-lg tracking-tight select-none flex-shrink-0"
           data-testid="nav-brand-wordmark"
         >
           {branding?.companyName ?? t('nav.appName')}
@@ -149,7 +149,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
           data-testid="nav-language-select"
           value={i18n.language}
           onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
-          className="hidden lg:block text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer"
+          className="hidden lg:block text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded cursor-pointer"
         >
           {SUPPORTED_LOCALES.map((locale) => (
             <option key={locale} value={locale}>

@@ -303,7 +303,7 @@ export default function FieldMergeModal({
                                     setChoices((c) => ({ ...c, [row.key]: 'theirs' }))
                                   }
                                   data-testid={`field-merge-radio-${row.key}-theirs`}
-                                  className="text-indigo-600 focus:ring-indigo-500"
+                                  className="text-primary-600 focus:ring-primary-500"
                                 />
                                 <span>{t('errors.fieldMergeKeepTheirs')}</span>
                               </label>
@@ -315,7 +315,7 @@ export default function FieldMergeModal({
                                   checked={(choices[row.key] ?? 'theirs') === 'mine'}
                                   onChange={() => setChoices((c) => ({ ...c, [row.key]: 'mine' }))}
                                   data-testid={`field-merge-radio-${row.key}-mine`}
-                                  className="text-indigo-600 focus:ring-indigo-500"
+                                  className="text-primary-600 focus:ring-primary-500"
                                 />
                                 <span>{t('errors.fieldMergeKeepMine')}</span>
                               </label>

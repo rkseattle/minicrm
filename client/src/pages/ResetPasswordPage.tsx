@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">MiniCRM</h1>
+            <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div
@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
             <Link
               to="/forgot-password"
               data-testid="reset-password-request-new-link"
-              className="text-indigo-600 hover:underline text-sm"
+              className="text-primary-600 hover:underline text-sm"
             >
               {t('resetPassword.requestNewLink')}
             </Link>
@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">MiniCRM</h1>
+          <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">

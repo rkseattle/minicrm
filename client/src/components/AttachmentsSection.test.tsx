@@ -288,7 +288,7 @@ describe('AttachmentsSection — upload validation', () => {
     fireEvent.dragOver(dropZone, { dataTransfer: {} });
 
     // The border changes to indigo on drag; className should contain the dragging class
-    expect(dropZone.className).toContain('border-indigo-400');
+    expect(dropZone.className).toContain('border-primary-400');
   });
 
   it('clears isDragging when a drag leaves the upload zone', async () => {
@@ -303,7 +303,7 @@ describe('AttachmentsSection — upload validation', () => {
     fireEvent.dragOver(dropZone, { dataTransfer: {} });
     fireEvent.dragLeave(dropZone);
 
-    expect(dropZone.className).not.toContain('border-indigo-400');
+    expect(dropZone.className).not.toContain('border-primary-400');
   });
 });
 

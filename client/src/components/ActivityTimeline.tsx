@@ -451,7 +451,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                   onClick={() => setVisibleLimit((prev) => prev + ACTIVITY_PAGE_SIZE)}
                   disabled={isLoading}
                   data-testid="activity-timeline-load-more"
-                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
+                  className="text-sm text-primary-600 hover:text-primary-800 font-medium disabled:opacity-50"
                 >
                   {isLoading ? t('activities.loading') : t('pagination.loadMore')}
                 </button>

@@ -106,7 +106,7 @@ export default function BulkReassignModal({
             onChange={(e) => setSelectedOwner(e.target.value)}
             disabled={isPending}
             data-testid="bulk-reassign-owner-select"
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 mb-6"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 mb-6"
           >
             <option value="">{t('bulk.selectOwner')}</option>
             {users.map((u) => (

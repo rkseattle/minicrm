@@ -36,7 +36,7 @@ export default function TagBadge({ tag, onRemove, removing = false }: TagBadgePr
 
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 whitespace-nowrap shrink-0"
+      className="inline-flex items-center gap-0.5 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-700/10 whitespace-nowrap shrink-0"
       data-testid={`tag-badge-${tag.id}`}
     >
       {tag.name}
@@ -47,7 +47,7 @@ export default function TagBadge({ tag, onRemove, removing = false }: TagBadgePr
           data-testid={`remove-tag-${tag.id}`}
           disabled={removing}
           onClick={() => onRemove(tag.id)}
-          className="ms-0.5 rounded-full p-0.5 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="ms-0.5 rounded-full p-0.5 text-primary-500 hover:bg-primary-100 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           ×
         </button>

@@ -21,7 +21,7 @@ function popoverLinkClass({ isActive }: { isActive: boolean }): string {
   return [
     'flex items-center w-full px-4 py-3 text-base font-medium rounded-md transition-colors min-h-[44px]',
     isActive
-      ? 'bg-indigo-50 text-indigo-700'
+      ? 'bg-primary-50 text-primary-700'
       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
   ].join(' ');
 }
@@ -131,7 +131,7 @@ export default function NavHamburger() {
               aria-label={t('nav.close')}
               data-testid="nav-hamburger-close"
               onClick={closeMenu}
-              className="flex items-center justify-center w-9 h-9 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex items-center justify-center w-9 h-9 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

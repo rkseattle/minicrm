@@ -27,7 +27,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
   return [
     'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
     isActive
-      ? 'bg-indigo-50 text-indigo-700'
+      ? 'bg-primary-50 text-primary-700'
       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
   ].join(' ');
 }
@@ -41,7 +41,7 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
   return [
     'flex items-center w-full px-4 py-3 text-base font-medium rounded-md transition-colors min-h-[44px]',
     isActive
-      ? 'bg-indigo-50 text-indigo-700'
+      ? 'bg-primary-50 text-primary-700'
       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
   ].join(' ');
 }
@@ -202,7 +202,7 @@ export default function NavTop() {
               data-testid="nav-language-select-mobile"
               value={i18n.language}
               onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
-              className="w-full px-4 py-3 text-base text-gray-700 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded cursor-pointer min-h-[44px]"
+              className="w-full px-4 py-3 text-base text-gray-700 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded cursor-pointer min-h-[44px]"
             >
               {SUPPORTED_LOCALES.map((locale) => (
                 <option key={locale} value={locale}>

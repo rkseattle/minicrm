@@ -81,7 +81,7 @@ export default function DealCard({
       <Link
         to={`/deals/${deal.id}`}
         data-testid={`${testIdPrefix}deal-card-link-${deal.id}`}
-        className="font-medium text-sm text-indigo-600 hover:underline block mb-1 truncate"
+        className="font-medium text-sm text-primary-600 hover:underline block mb-1 truncate"
         title={deal.name}
       >
         {deal.name}
@@ -119,7 +119,7 @@ export default function DealCard({
           data-testid={`${testIdPrefix}deal-card-probability-${deal.id}`}
           className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
             deal.probability_is_overridden
-              ? 'bg-indigo-100 text-indigo-700 font-medium'
+              ? 'bg-primary-100 text-primary-700 font-medium'
               : 'bg-gray-100 text-gray-600 italic'
           }`}
           title={

@@ -143,7 +143,7 @@ export default function IntegrationSettings() {
                 placeholder="https://s3.example.com"
                 value={storageForm.endpoint}
                 onChange={(e) => setStorageForm((prev) => ({ ...prev, endpoint: e.target.value }))}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -160,7 +160,7 @@ export default function IntegrationSettings() {
                 data-testid="storage-bucket-input"
                 value={storageForm.bucket}
                 onChange={(e) => setStorageForm((prev) => ({ ...prev, bucket: e.target.value }))}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -179,7 +179,7 @@ export default function IntegrationSettings() {
                 onChange={(e) =>
                   setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function IntegrationSettings() {
                 onChange={(e) =>
                   setStorageForm((prev) => ({ ...prev, secretAccessKey: e.target.value }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
 

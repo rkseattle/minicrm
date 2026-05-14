@@ -40,7 +40,7 @@ describe('Input', () => {
 
   it('applies indigo-ring class when no error', () => {
     render(<Input />);
-    expect(screen.getByRole('textbox')).toHaveClass('focus:ring-indigo-500');
+    expect(screen.getByRole('textbox')).toHaveClass('focus:ring-primary-500');
   });
 
   it('applies yellow-border class when warning prop is true', () => {

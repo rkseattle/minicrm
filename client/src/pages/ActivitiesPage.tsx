@@ -216,7 +216,7 @@ export default function ActivitiesPage() {
                             {recordPath ? (
                               <Link
                                 to={recordPath}
-                                className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                className="text-primary-600 hover:text-primary-800 hover:underline"
                                 data-testid={`activity-record-${activity.id}`}
                               >
                                 {activity.contact_id

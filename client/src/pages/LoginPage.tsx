@@ -61,7 +61,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600 tracking-tight">MiniCRM</h1>
+          <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
           <p className="text-gray-500 mt-1 text-sm">{t('login.tagline')}</p>
         </div>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
             <Link
               to="/forgot-password"
               data-testid="login-forgot-password"
-              className="text-indigo-600 hover:underline"
+              className="text-primary-600 hover:underline"
             >
               {t('login.forgotPassword')}
             </Link>

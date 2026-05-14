@@ -157,7 +157,7 @@ export default function SendEmailModal({
               disabled={sendMutation.isPending}
               data-testid="send-email-subject"
               maxLength={255}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               placeholder={t('contacts.sendEmail.subjectPlaceholder')}
             />
           </div>
@@ -177,7 +177,7 @@ export default function SendEmailModal({
               onChange={(e) => setBody(e.target.value)}
               disabled={sendMutation.isPending}
               data-testid="send-email-body"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 resize-y"
               placeholder={t('contacts.sendEmail.bodyPlaceholder')}
             />
           </div>
