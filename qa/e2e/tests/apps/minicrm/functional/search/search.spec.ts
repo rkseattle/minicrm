@@ -52,6 +52,7 @@ import {
   typeSearchQueryAndCheckPanel,
   clearSearchQuery,
   globalSearchViaApi,
+  createNoteViaApi,
   type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
 
@@ -595,5 +596,49 @@ test('@functional @search F9-EX2: searching a deal value returns that deal (MINC
   expect(
     apiResult.deals.some((d) => d.id === deal.id),
     'API should return the deal when searching with dollar-formatted value',
+  ).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-362 — notes body_text search
+// ---------------------------------------------------------------------------
+
+test('@functional @search F9-NT1: searching note body text returns the parent contact (MINCRM-362)', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'F9NT1',
+    last_name: `NoteSearch-${suffix}`,
+  });
+
+  // Tiptap/ProseMirror doc format — extractBodyText() walks `content` arrays for type=text nodes.
+  const noteBody = JSON.stringify({
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: `F9NT1UniqueNoteBody-${suffix}` }] },
+    ],
+  });
+  await createNoteViaApi(restClient, contact.id, { body: noteBody, visibility: 'team' });
+
+  await navigateToDashboard(page);
+
+  // UI: the contact should appear in search results when searching by the note body term.
+  const result = await getSearchResult(`F9NT1UniqueNoteBody-${suffix}`, 'contact', contact.id, {
+    page,
+  });
+  expect(
+    result.visible,
+    'contact should appear in search results when query matches a note body',
+  ).toBe(true);
+
+  // API cross-check.
+  const apiResult = await globalSearchViaApi(restClient, `F9NT1UniqueNoteBody-${suffix}`);
+  expect(
+    apiResult.contacts.some((c) => c.id === contact.id),
+    'API should return the contact when query matches a note body',
   ).toBe(true);
 });
