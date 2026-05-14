@@ -74,6 +74,10 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await loginAsAdmin(restClient);
     await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    // Wait for all initial queries (including getOnboardingStatus) to settle
+    // before probing for the banner. OnboardingBanner renders null until the
+    // query resolves, so without this the probe races against network latency.
+    await page.waitForLoadState('networkidle');
 
     const onboardingPage = new OnboardingPage({ page });
     const banner = await onboardingPage.bannerLocator();
@@ -103,6 +107,7 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await loginAsAdmin(restClient);
     await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.waitForLoadState('networkidle');
 
     const onboardingPage = new OnboardingPage({ page });
     const banner = await onboardingPage.bannerLocator();
@@ -126,6 +131,7 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await loginAsAdmin(restClient);
     await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.waitForLoadState('networkidle');
 
     const onboardingPage = new OnboardingPage({ page });
     // Wait for the banner to appear before resolving step1 — the step-1 panel
