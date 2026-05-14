@@ -1431,5 +1431,31 @@
     "linkPrompt": "Ingresa la URL",
     "imageUploadError": "La carga de la imagen falló — inténtalo de nuevo.",
     "imageUploadTooLarge": "Imagen demasiado grande — el tamaño máximo permitido es 25 MB."
+  },
+  "gdpr": {
+    "sectionTitle": "RGPD y Privacidad",
+    "statusLoading": "Cargando estado de privacidad…",
+    "eraseDescription": "Borrar permanentemente todos los datos personales de este registro según el Art. 17 del RGPD (Derecho al olvido). Esta acción no se puede deshacer.",
+    "eraseButton": "Borrar datos personales",
+    "alreadyErasedTitle": "Datos personales borrados",
+    "alreadyErasedDescription": "Los datos personales fueron borrados el {{date}}.",
+    "exportDescription": "Descargar una exportación completa de todos los datos personales almacenados para este registro (Art. 15 Derecho de acceso / Art. 20 Derecho a la portabilidad).",
+    "exportButton": "Descargar exportación de datos",
+    "exporting": "Descargando…",
+    "eraseModal": {
+      "title": "Borrar datos personales",
+      "intro": "Esto sobrescribirá permanentemente todos los campos de datos personales de este registro. La estructura del registro y el historial de auditoría se conservarán, pero todos los valores personales serán reemplazados por [GDPR deleted].",
+      "willBeErased": "Campos que se borrarán",
+      "alsoActivitiesAndNotes": "El asunto y las notas de todas las actividades y notas vinculadas también se borrarán.",
+      "alsoNotes": "El asunto y las notas de todas las notas vinculadas también se borrarán.",
+      "willBePreserved": "Qué se conservará",
+      "preservedDescription": "El propio registro (ID, marcas de tiempo, propietario, etapa), todas las asociaciones de negocios y el rastro de auditoría que muestra que ocurrieron eventos. Solo se eliminan los valores personales.",
+      "notesLabel": "Nota de referencia (opcional)",
+      "notesPlaceholder": "p. ej. Solicitud RGPD n.º 1234, correo recibido el 14/05/2026",
+      "confirmLabel": "Escribe {{word}} para confirmar",
+      "confirmButton": "Borrar datos personales",
+      "erasing": "Borrando…"
+    },
+    "statusErased": "Borrado"
   }
 }

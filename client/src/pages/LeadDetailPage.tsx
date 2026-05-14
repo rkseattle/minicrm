@@ -22,6 +22,7 @@ import type { ActiveUser } from '@/api/users.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
 import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import GdprPrivacySection from '@/components/GdprPrivacySection.js';
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
@@ -478,6 +479,17 @@ export default function LeadDetailPage() {
 
         {/* Notes (MINCRM-352) */}
         {id && <NotesSection entityType="lead" entityId={id} />}
+
+        {/* GDPR & Privacy (MINCRM-364) — admin only */}
+        {id && isAdmin && (
+          <GdprPrivacySection
+            recordType="lead"
+            recordId={id}
+            onErased={() => {
+              void queryClient.invalidateQueries({ queryKey: leadQueryKey });
+            }}
+          />
+        )}
       </main>
 
       <ConfirmDeleteModal

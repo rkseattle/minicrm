@@ -1754,4 +1754,21 @@ export const handlers = [
   http.get('/api/v1/lead/:id/notes', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
+
+  // ── GDPR (MINCRM-364) ─────────────────────────────────────────────────────
+
+  /** GDPR status: GET /api/v1/gdpr/status/:recordType/:recordId — not erased by default */
+  http.get('/api/v1/gdpr/status/:recordType/:recordId', () => {
+    return HttpResponse.json({ status: null });
+  }),
+
+  /** GDPR erase contact: POST /api/v1/contacts/:id/gdpr-erase */
+  http.post('/api/v1/contacts/:id/gdpr-erase', () => {
+    return HttpResponse.json({ success: true, erasedAt: new Date().toISOString() });
+  }),
+
+  /** GDPR erase lead: POST /api/v1/leads/:id/gdpr-erase */
+  http.post('/api/v1/leads/:id/gdpr-erase', () => {
+    return HttpResponse.json({ success: true, erasedAt: new Date().toISOString() });
+  }),
 ];
