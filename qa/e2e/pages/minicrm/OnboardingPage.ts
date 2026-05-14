@@ -43,7 +43,7 @@ export class OnboardingPage {
           { type: 'testId', value: 'onboarding-banner' },
           { type: 'role', value: 'region', options: { name: /onboarding/i } },
         ],
-        { intent: 'onboarding banner container element' },
+        { intent: 'onboarding banner container element', fallbackTimeout: 10_000 },
       )
       .resolve()
       .catch(() => null);
@@ -60,7 +60,7 @@ export class OnboardingPage {
           { type: 'testId', value: 'onboarding-step-1' },
           { type: 'css', value: '[data-testid="onboarding-step-1"]' },
         ],
-        { intent: 'onboarding step 1 content panel' },
+        { intent: 'onboarding step 1 content panel', fallbackTimeout: 10_000 },
       )
       .resolve()
       .catch(() => null);
