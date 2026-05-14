@@ -196,7 +196,7 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
 
   // Pagination bar should always be visible once data loads
   const pagination = await auditLogPage2.paginationLocator();
-  await expect(pagination!).toBeVisible({ timeout: 10_000 });
+  await expect(pagination).toBeVisible({ timeout: 10_000 });
 
   // Prev is disabled on first page
   const prevButton = await auditLogPage2.paginationPrevLocator();

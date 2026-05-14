@@ -166,8 +166,8 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
 
   // The card should now show the updated title
   const titleEl = await notesPage.noteTitleLocator(noteId);
-  await titleEl?.waitFor({ state: 'visible', timeout: 5_000 });
-  await expect(titleEl!).toHaveText('Updated title F14-E1');
+  await titleEl.waitFor({ state: 'visible', timeout: 5_000 });
+  await expect(titleEl).toHaveText('Updated title F14-E1');
 
   // Verify via API
   const updatedNote = await getNoteById(restClient, contact.id, noteId);

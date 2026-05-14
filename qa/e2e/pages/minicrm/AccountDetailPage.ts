@@ -159,7 +159,7 @@ export class AccountDetailPage {
 
   /**
    * Returns a resolved locator for a linked contact row by contact ID.
-   * Returns null if the contact is not linked.
+   * Throws if not found — contact must be linked to this account.
    *
    * @param id - Contact UUID.
    */
@@ -172,12 +172,12 @@ export class AccountDetailPage {
         ],
         { intent: 'linked contact row on account detail page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for the empty state when no contacts are linked.
+   * Throws if not found — call when the account has zero linked contacts.
    */
   async linkedContactsEmptyLocator() {
     return this.page
@@ -188,8 +188,7 @@ export class AccountDetailPage {
         ],
         { intent: 'empty state message when no contacts are linked to account' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

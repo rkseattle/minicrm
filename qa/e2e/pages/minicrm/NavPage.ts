@@ -136,8 +136,11 @@ export class NavPage {
   }
 
   /**
-   * Returns a resolved locator for the hamburger drawer element.
-   * Returns null if the drawer is not in the DOM.
+   * Returns a resolved locator for the hamburger drawer element, or null if absent.
+   *
+   * Returns null when the drawer is not mounted (e.g. closed or not yet opened).
+   * Use in behavior-layer code for conditional presence checks.
+   * In spec files where the drawer must be present, use `requireHamburgerDrawerLocator`.
    */
   async hamburgerDrawerLocator() {
     return this.page
@@ -153,8 +156,27 @@ export class NavPage {
   }
 
   /**
-   * Returns a resolved locator for the mobile nav drawer element.
-   * Returns null if the drawer is not in the DOM.
+   * Returns a resolved locator for the hamburger drawer element.
+   * Throws if the drawer is not found — call only after opening the drawer.
+   */
+  async requireHamburgerDrawerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nav-hamburger-drawer' },
+          { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
+        ],
+        { intent: 'hamburger nav drawer overlay' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the mobile nav drawer element, or null if absent.
+   *
+   * Returns null when the drawer is not mounted (e.g. closed or not yet opened).
+   * Use in behavior-layer code for conditional presence checks.
+   * In spec files where the drawer must be present, use `requireMobileNavDrawerLocator`.
    */
   async mobileNavDrawerLocator() {
     return this.page
@@ -167,6 +189,22 @@ export class NavPage {
       )
       .resolve()
       .catch(() => null);
+  }
+
+  /**
+   * Returns a resolved locator for the mobile nav drawer element.
+   * Throws if the drawer is not found — call only after opening the drawer.
+   */
+  async requireMobileNavDrawerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'mobile-nav-drawer' },
+          { type: 'role', value: 'dialog', options: { name: /menu|navigation/i } },
+        ],
+        { intent: 'mobile nav drawer overlay' },
+      )
+      .resolve();
   }
 
   /**

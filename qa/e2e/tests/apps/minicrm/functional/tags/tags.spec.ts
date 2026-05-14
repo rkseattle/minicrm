@@ -93,7 +93,7 @@ test(
 
     const adminTagsPage = new AdminTagsPage({ page });
     const pagination = await adminTagsPage.paginationLocator();
-    await expect(pagination!).toBeVisible({ timeout: 10_000 });
+    await expect(pagination).toBeVisible({ timeout: 10_000 });
   },
 );
 

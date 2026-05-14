@@ -250,7 +250,7 @@ export class ContactDetailPage {
 
   /**
    * Returns a resolved locator for the send email button.
-   * Returns null if not present.
+   * Throws if not found — contact must have an email address for this button to appear.
    */
   async sendEmailButtonLocator() {
     return this.page
@@ -261,13 +261,12 @@ export class ContactDetailPage {
         ],
         { intent: 'send email button on contact detail page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for the send email compose modal.
-   * Returns null if not present.
+   * Throws if not found — call after `clickSendEmail`.
    */
   async sendEmailModalLocator() {
     return this.page
@@ -278,13 +277,12 @@ export class ContactDetailPage {
         ],
         { intent: 'send email compose modal dialog' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for the send email success message.
-   * Returns null if not present.
+   * Throws if not found — call after `submitSendEmail`.
    */
   async sendEmailSuccessLocator() {
     return this.page
@@ -295,13 +293,12 @@ export class ContactDetailPage {
         ],
         { intent: 'success message after sending email from contact detail page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for the account link on the contact detail page.
-   * Returns null if not present.
+   * Throws if not found — contact must be linked to an account.
    */
   async accountLinkLocator() {
     return this.page
@@ -312,8 +309,7 @@ export class ContactDetailPage {
         ],
         { intent: 'account link on contact detail page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
@@ -350,7 +346,7 @@ export class ContactDetailPage {
 
   /**
    * Returns a resolved locator for the attachments list container.
-   * Returns null if not present (no attachments uploaded yet).
+   * Throws if not found — call after a successful upload.
    */
   async attachmentsListLocator() {
     return this.page
@@ -361,13 +357,12 @@ export class ContactDetailPage {
         ],
         { intent: 'list of uploaded attachments' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**
    * Returns a resolved locator for the attachments upload error message.
-   * Returns null if not present.
+   * Throws if not found — call after uploading a disallowed file type or oversized file.
    */
   async attachmentsUploadErrorLocator() {
     return this.page
@@ -378,8 +373,7 @@ export class ContactDetailPage {
         ],
         { intent: 'upload error message when attachment is rejected' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

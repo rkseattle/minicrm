@@ -188,7 +188,7 @@ export class AdminTagsPage {
 
   /**
    * Returns a resolved locator for the pagination container on the tags page.
-   * Returns null if pagination is not present (e.g. only one page of results).
+   * Throws if not found — the tags list must have more than one page of results.
    */
   async paginationLocator() {
     return this.page
@@ -199,8 +199,7 @@ export class AdminTagsPage {
         ],
         { intent: 'pagination navigation on admin tags page' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

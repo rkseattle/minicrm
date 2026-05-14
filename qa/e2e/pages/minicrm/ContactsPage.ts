@@ -584,7 +584,7 @@ export class ContactsPage {
 
   /**
    * Returns a resolved locator for the pagination controls bar.
-   * Returns null if pagination is not present (fewer records than page size).
+   * Throws if not found — the contacts list must exceed the page size.
    */
   async paginationLocator() {
     return this.page
@@ -595,8 +595,7 @@ export class ContactsPage {
         ],
         { intent: 'pagination bar showing record count and page controls' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

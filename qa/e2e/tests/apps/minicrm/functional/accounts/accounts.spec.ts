@@ -362,7 +362,7 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   const accountDetailPage = new AccountDetailPage({ page });
   const linkedContactLocator = await accountDetailPage.linkedContactLocator(contact.id);
   await expect(
-    linkedContactLocator!,
+    linkedContactLocator,
     'linked contact should be visible on account detail',
   ).toBeVisible();
 });
@@ -381,7 +381,7 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   // Empty state should be visible, no error.
   const accountDetailPage2 = new AccountDetailPage({ page });
   const emptyLocator = await accountDetailPage2.linkedContactsEmptyLocator();
-  await expect(emptyLocator!, 'empty contacts message should be visible').toBeVisible();
+  await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
   // No error alert should be present (doesNotExist — safe when element is absent).
   expect(
@@ -411,10 +411,7 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   // After unlinking, the linked contacts list should be empty.
   const accountDetailPage3 = new AccountDetailPage({ page });
   const emptyLocator = await accountDetailPage3.linkedContactsEmptyLocator();
-  await expect(
-    emptyLocator!,
-    'empty contacts message should be visible after unlink',
-  ).toBeVisible();
+  await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
   // The previously linked contact should not appear in the list.
   expect(

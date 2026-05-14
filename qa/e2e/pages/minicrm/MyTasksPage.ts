@@ -137,7 +137,7 @@ export class MyTasksPage {
 
   /**
    * Returns a resolved locator for the overdue badge on a task row.
-   * Returns null if the badge is not in the DOM.
+   * Throws if not found — the task must have a past due date.
    *
    * @param taskId - Activity UUID.
    */
@@ -150,8 +150,7 @@ export class MyTasksPage {
         ],
         { intent: 'overdue badge on a task row' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

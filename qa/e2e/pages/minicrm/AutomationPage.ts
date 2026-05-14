@@ -65,8 +65,7 @@ export class AutomationPage {
         ],
         { intent: 'pagination bar showing record count and page controls' },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /**

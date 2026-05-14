@@ -251,7 +251,7 @@ export class NotesPage {
       .catch(() => null);
   }
 
-  /** Returns the title element inside a note card. */
+  /** Returns the title element inside a note card. Throws if not found. */
   async noteTitleLocator(noteId: string) {
     return this.page
       .locate(
@@ -261,8 +261,7 @@ export class NotesPage {
         ],
         { intent: `title heading inside note card ${noteId}` },
       )
-      .resolve()
-      .catch(() => null);
+      .resolve();
   }
 
   /** Returns the body content element inside a note card. */
