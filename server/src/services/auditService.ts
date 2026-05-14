@@ -47,7 +47,9 @@ export type AuditEventType =
   | 'note_created'
   | 'note_updated'
   | 'note_deleted'
-  | 'note_visibility_changed';
+  | 'note_visibility_changed'
+  /** GDPR Art. 17 erasure (MINCRM-364) */
+  | 'gdpr_erasure';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {
@@ -285,9 +287,30 @@ export interface AuditLogPage {
 export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Promise<AuditLogRow[]> {
   const { recordType, recordId, limit = 20, all = false } = options;
 
+  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log. (MINCRM-364)
+  // When a record has a completed erasure, old_value/new_value are replaced with
+  // '[GDPR deleted]' so audit history does not leak PII that was erased.
   const query = all
-    ? `SELECT * FROM audit_log WHERE record_type = $1 AND record_id = $2 ORDER BY created_at DESC`
-    : `SELECT * FROM audit_log WHERE record_type = $1 AND record_id = $2 ORDER BY created_at DESC LIMIT $3`;
+    ? `SELECT
+         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         a.changed_by_id, a.changed_by_name, a.created_at
+       FROM audit_log a
+       LEFT JOIN gdpr_deletion_log g
+         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       WHERE a.record_type = $1 AND a.record_id = $2
+       ORDER BY a.created_at DESC`
+    : `SELECT
+         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         a.changed_by_id, a.changed_by_name, a.created_at
+       FROM audit_log a
+       LEFT JOIN gdpr_deletion_log g
+         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       WHERE a.record_type = $1 AND a.record_id = $2
+       ORDER BY a.created_at DESC LIMIT $3`;
 
   const params = all ? [recordType, recordId] : [recordType, recordId, limit];
 
@@ -310,36 +333,51 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
 
   if (from) {
     values.push(from);
-    conditions.push(`created_at >= $${values.length}`);
+    conditions.push(`a.created_at >= $${values.length}`);
   }
 
   if (to) {
     values.push(to);
-    conditions.push(`created_at <= $${values.length}`);
+    conditions.push(`a.created_at <= $${values.length}`);
   }
 
   if (userId) {
     values.push(userId);
-    conditions.push(`changed_by_id = $${values.length}`);
+    conditions.push(`a.changed_by_id = $${values.length}`);
   }
 
   if (recordType) {
     values.push(recordType);
-    conditions.push(`record_type = $${values.length}`);
+    conditions.push(`a.record_type = $${values.length}`);
   }
 
   if (eventType) {
     values.push(eventType);
-    conditions.push(`event_type = $${values.length}`);
+    conditions.push(`a.event_type = $${values.length}`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const offset = (page - 1) * limit;
 
+  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log. (MINCRM-364)
+  // When a record has a completed erasure, old_value/new_value display '[GDPR deleted]'.
+  // WHERE conditions are prefixed with `a.` to avoid ambiguity after the join.
+  const gdprJoin = `LEFT JOIN gdpr_deletion_log g ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL`;
+
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM audit_log ${where}`, values),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM audit_log a ${gdprJoin} ${where}`,
+      values,
+    ),
     pool.query<AuditLogRow>(
-      `SELECT * FROM audit_log ${where} ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      `SELECT
+         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         a.changed_by_id, a.changed_by_name, a.created_at
+       FROM audit_log a ${gdprJoin}
+       ${where}
+       ORDER BY a.created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     ),
   ]);

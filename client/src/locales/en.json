@@ -1431,5 +1431,31 @@
     "linkPrompt": "Enter URL",
     "imageUploadError": "Image upload failed — please try again.",
     "imageUploadTooLarge": "Image is too large — maximum allowed size is 25 MB."
+  },
+  "gdpr": {
+    "sectionTitle": "GDPR & Privacy",
+    "statusLoading": "Loading privacy status…",
+    "eraseDescription": "Permanently erase all personal data for this record per GDPR Art. 17 (Right to Erasure). This action cannot be undone.",
+    "eraseButton": "Erase personal data",
+    "alreadyErasedTitle": "Personal data erased",
+    "alreadyErasedDescription": "Personal data was erased on {{date}}.",
+    "exportDescription": "Download a complete export of all personal data held for this record (GDPR Art. 15 Right of Access / Art. 20 Right to Data Portability).",
+    "exportButton": "Download data export",
+    "exporting": "Downloading…",
+    "eraseModal": {
+      "title": "Erase personal data",
+      "intro": "This will permanently overwrite all personal data fields for this record. The record structure and audit history will be preserved, but all personal values will be replaced with [GDPR deleted].",
+      "willBeErased": "Fields that will be erased",
+      "alsoActivitiesAndNotes": "Subject and notes on all linked activities and notes will also be erased.",
+      "alsoNotes": "Subject and notes on all linked notes will also be erased.",
+      "willBePreserved": "What will be preserved",
+      "preservedDescription": "The record itself (ID, timestamps, owner, stage), all deal associations, and the audit trail showing that events occurred. Only the personal values are removed.",
+      "notesLabel": "Reference note (optional)",
+      "notesPlaceholder": "e.g. GDPR request #1234, email received 2026-05-14",
+      "confirmLabel": "Type {{word}} to confirm",
+      "confirmButton": "Erase personal data",
+      "erasing": "Erasing…"
+    },
+    "statusErased": "Erased"
   }
 }

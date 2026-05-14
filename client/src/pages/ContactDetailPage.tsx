@@ -47,6 +47,7 @@ import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { MergeFieldChoice } from '@/api/contacts.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import GdprPrivacySection from '@/components/GdprPrivacySection.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -1291,6 +1292,17 @@ export default function ContactDetailPage() {
 
         {/* Change history (MINCRM-171) */}
         {!isEditing && id && <ChangeHistory recordType="contact" recordId={id} />}
+
+        {/* GDPR & Privacy (MINCRM-364) — admin only */}
+        {!isEditing && id && user?.role === 'admin' && (
+          <GdprPrivacySection
+            recordType="contact"
+            recordId={id}
+            onErased={() => {
+              void queryClient.invalidateQueries({ queryKey: ['contacts', id] });
+            }}
+          />
+        )}
 
         {/* Linked deals */}
         {!isEditing && (

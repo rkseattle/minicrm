@@ -1431,5 +1431,31 @@
     "linkPrompt": "输入网址",
     "imageUploadError": "图片上传失败 — 请重试。",
     "imageUploadTooLarge": "图片太大 — 最大允许大小为 25 MB。"
+  },
+  "gdpr": {
+    "sectionTitle": "GDPR 与隐私",
+    "statusLoading": "正在加载隐私状态…",
+    "eraseDescription": "依据 GDPR 第 17 条（被遗忘权）永久删除该记录的所有个人数据。此操作不可撤销。",
+    "eraseButton": "删除个人数据",
+    "alreadyErasedTitle": "个人数据已删除",
+    "alreadyErasedDescription": "个人数据已于 {{date}} 删除。",
+    "exportDescription": "下载该记录所有个人数据的完整导出文件（GDPR 第 15 条访问权 / 第 20 条数据可携权）。",
+    "exportButton": "下载数据导出",
+    "exporting": "正在下载…",
+    "eraseModal": {
+      "title": "删除个人数据",
+      "intro": "此操作将永久覆盖该记录的所有个人数据字段。记录结构和审计历史将被保留，但所有个人值将替换为 [GDPR deleted]。",
+      "willBeErased": "将被删除的字段",
+      "alsoActivitiesAndNotes": "所有关联活动和笔记的主题及备注也将被删除。",
+      "alsoNotes": "所有关联笔记的主题及备注也将被删除。",
+      "willBePreserved": "将被保留的内容",
+      "preservedDescription": "记录本身（ID、时间戳、负责人、阶段）、所有交易关联以及显示事件发生的审计记录。仅删除个人值。",
+      "notesLabel": "参考备注（可选）",
+      "notesPlaceholder": "例如：GDPR 请求 #1234，2026-05-14 收到邮件",
+      "confirmLabel": "输入 {{word}} 以确认",
+      "confirmButton": "删除个人数据",
+      "erasing": "正在删除…"
+    },
+    "statusErased": "已删除"
   }
 }

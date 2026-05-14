@@ -1431,5 +1431,31 @@
     "linkPrompt": "Saisir l'URL",
     "imageUploadError": "Échec du téléchargement de l'image — veuillez réessayer.",
     "imageUploadTooLarge": "Image trop volumineuse — la taille maximale autorisée est 25 Mo."
+  },
+  "gdpr": {
+    "sectionTitle": "RGPD & Confidentialité",
+    "statusLoading": "Chargement du statut de confidentialité…",
+    "eraseDescription": "Effacer définitivement toutes les données personnelles de cet enregistrement conformément à l'Art. 17 du RGPD (Droit à l'effacement). Cette action est irréversible.",
+    "eraseButton": "Effacer les données personnelles",
+    "alreadyErasedTitle": "Données personnelles effacées",
+    "alreadyErasedDescription": "Les données personnelles ont été effacées le {{date}}.",
+    "exportDescription": "Télécharger un export complet de toutes les données personnelles détenues pour cet enregistrement (Art. 15 Droit d'accès / Art. 20 Droit à la portabilité des données).",
+    "exportButton": "Télécharger l'export des données",
+    "exporting": "Téléchargement…",
+    "eraseModal": {
+      "title": "Effacer les données personnelles",
+      "intro": "Cela écrasera définitivement tous les champs de données personnelles de cet enregistrement. La structure de l'enregistrement et l'historique d'audit seront conservés, mais toutes les valeurs personnelles seront remplacées par [GDPR deleted].",
+      "willBeErased": "Champs qui seront effacés",
+      "alsoActivitiesAndNotes": "L'objet et les notes de toutes les activités et notes liées seront également effacés.",
+      "alsoNotes": "L'objet et les notes de toutes les notes liées seront également effacés.",
+      "willBePreserved": "Ce qui sera conservé",
+      "preservedDescription": "L'enregistrement lui-même (ID, horodatages, propriétaire, étape), toutes les associations d'opportunités et la piste d'audit montrant que des événements ont eu lieu. Seules les valeurs personnelles sont supprimées.",
+      "notesLabel": "Note de référence (optionnel)",
+      "notesPlaceholder": "p. ex. Demande RGPD n° 1234, e-mail reçu le 14/05/2026",
+      "confirmLabel": "Saisissez {{word}} pour confirmer",
+      "confirmButton": "Effacer les données personnelles",
+      "erasing": "Effacement…"
+    },
+    "statusErased": "Effacé"
   }
 }

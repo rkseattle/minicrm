@@ -790,6 +790,15 @@ The document `dir` attribute is updated automatically when the language changes.
 
 Pipeline stage names and currency values are formatted using the active locale (`Intl.NumberFormat` with `style: 'currency'`). i18n keys for pipeline stages use camelCase (e.g. `pipeline.stages.closedWon`) to remain compatible with TMS static-extraction tooling.
 
+## Privacy and Compliance
+
+MiniCRM includes built-in support for GDPR data subject rights:
+
+- **Right to Erasure (Art. 17):** Admin users can erase all personal data fields for a contact or lead through the GDPR & Privacy section on each detail page. The audit trail structure is preserved; only personal values are masked.
+- **Right of Access / Data Portability (Art. 15 & 20):** Admin users can download a complete JSON export of all data held for a contact or lead.
+
+See [docs/gdpr.md](docs/gdpr.md) for step-by-step operator instructions, a summary of operator vs. MiniCRM responsibilities, and a recommended data retention policy template.
+
 ## Contributing
 
 Contributions are welcome. For small fixes, open a pull request directly. For larger

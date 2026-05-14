@@ -32,6 +32,7 @@ import tagRoutes from './routes/tags.js';
 import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
 import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
+import gdprRoutes from './routes/gdpr.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
 
@@ -118,6 +119,8 @@ app.use(`${API_V1}/custom-fields/definitions`, customFieldDefinitionRoutes);
 app.use(`${API_V1}/custom-fields`, customFieldValueRoutes);
 // Notes are mounted under each entity path (MINCRM-352)
 app.use(`${API_V1}/:entityType/:entityId/notes`, noteRoutes);
+// GDPR erasure and export endpoints (MINCRM-364)
+app.use(`${API_V1}/gdpr`, gdprRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the
@@ -141,6 +144,7 @@ const LEGACY_PREFIXES = [
   '/api/leads',
   '/api/tags',
   '/api/custom-fields',
+  '/api/gdpr',
 ];
 
 for (const prefix of LEGACY_PREFIXES) {

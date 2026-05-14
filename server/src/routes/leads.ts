@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { requireRole } from '../middleware/requireRole.js';
 import {
   createLeadHandler,
   listLeadsHandler,
@@ -16,6 +17,7 @@ import {
   convertLeadHandler,
   searchAccountsHandler,
 } from '../controllers/leadsController.js';
+import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 
 const router = Router();
 
@@ -269,5 +271,18 @@ router.get('/:id/status-history', authenticate, asyncHandler(getLeadStatusHistor
  *         description: Lead is Disqualified and cannot be converted
  */
 router.post('/:id/convert', authenticate, asyncHandler(convertLeadHandler));
+
+// ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
+
+/** Erase personal data for a lead per GDPR Art. 17. */
+router.post('/:id/gdpr-erase', authenticate, requireRole('admin'), asyncHandler(eraseLeadHandler));
+
+/** Export all personal data held for a lead as a JSON download. */
+router.get(
+  '/:id/gdpr-export',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(gdprExportLeadHandler),
+);
 
 export default router;

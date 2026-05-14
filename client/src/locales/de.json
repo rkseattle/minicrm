@@ -1431,5 +1431,31 @@
     "linkPrompt": "URL eingeben",
     "imageUploadError": "Bild-Upload fehlgeschlagen — bitte erneut versuchen.",
     "imageUploadTooLarge": "Bild zu groß — maximale erlaubte Größe beträgt 25 MB."
+  },
+  "gdpr": {
+    "sectionTitle": "DSGVO & Datenschutz",
+    "statusLoading": "Datenschutzstatus wird geladen…",
+    "eraseDescription": "Alle personenbezogenen Daten dieses Datensatzes gemäß DSGVO Art. 17 (Recht auf Löschung) dauerhaft löschen. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "eraseButton": "Personenbezogene Daten löschen",
+    "alreadyErasedTitle": "Personenbezogene Daten gelöscht",
+    "alreadyErasedDescription": "Die personenbezogenen Daten wurden am {{date}} gelöscht.",
+    "exportDescription": "Vollständigen Export aller gespeicherten personenbezogenen Daten herunterladen (DSGVO Art. 15 Auskunftsrecht / Art. 20 Recht auf Datenübertragbarkeit).",
+    "exportButton": "Datenexport herunterladen",
+    "exporting": "Wird heruntergeladen…",
+    "eraseModal": {
+      "title": "Personenbezogene Daten löschen",
+      "intro": "Dadurch werden alle personenbezogenen Datenfelder dieses Datensatzes dauerhaft überschrieben. Die Datensatzstruktur und der Prüfpfad bleiben erhalten, aber alle persönlichen Werte werden durch [GDPR deleted] ersetzt.",
+      "willBeErased": "Felder, die gelöscht werden",
+      "alsoActivitiesAndNotes": "Betreff und Notizen aller verknüpften Aktivitäten und Notizen werden ebenfalls gelöscht.",
+      "alsoNotes": "Betreff und Notizen aller verknüpften Notizen werden ebenfalls gelöscht.",
+      "willBePreserved": "Was erhalten bleibt",
+      "preservedDescription": "Der Datensatz selbst (ID, Zeitstempel, Eigentümer, Phase), alle Deal-Zuordnungen und der Prüfpfad, der zeigt, dass Ereignisse stattgefunden haben. Nur die persönlichen Werte werden entfernt.",
+      "notesLabel": "Referenznotiz (optional)",
+      "notesPlaceholder": "z. B. DSGVO-Anfrage Nr. 1234, E-Mail vom 14.05.2026",
+      "confirmLabel": "{{word}} eingeben, um zu bestätigen",
+      "confirmButton": "Personenbezogene Daten löschen",
+      "erasing": "Wird gelöscht…"
+    },
+    "statusErased": "Gelöscht"
   }
 }

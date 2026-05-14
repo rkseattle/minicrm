@@ -28,6 +28,8 @@ import {
   detachContactTagHandler,
 } from '../controllers/tagController.js';
 import { bulkContactsHandler } from '../controllers/bulkController.js';
+import { eraseContactHandler, gdprExportContactHandler } from '../controllers/gdprController.js';
+import { requireRole } from '../middleware/requireRole.js';
 
 const router = Router();
 
@@ -716,5 +718,23 @@ router.post('/:id/tags', authenticate, asyncHandler(attachContactTagHandler));
 
 /** Detach a tag from a contact. */
 router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachContactTagHandler));
+
+// ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
+
+/** Erase personal data for a contact per GDPR Art. 17. */
+router.post(
+  '/:id/gdpr-erase',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(eraseContactHandler),
+);
+
+/** Export all personal data held for a contact as a JSON download. */
+router.get(
+  '/:id/gdpr-export',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(gdprExportContactHandler),
+);
 
 export default router;
