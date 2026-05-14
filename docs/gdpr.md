@@ -8,7 +8,7 @@ This document covers how MiniCRM handles personal data, how operators should res
 
 MiniCRM is a CRM — its core function is to store information about contacts and leads so that sales representatives can manage relationships. The following personal data is stored:
 
-**Contacts**
+### Contacts
 
 - Identifying information: first name, last name, email address, phone number
 - Professional context: job title, department, linked account
@@ -17,14 +17,14 @@ MiniCRM is a CRM — its core function is to store information about contacts an
 - Linked activities (calls, emails, meetings, tasks): subject, notes
 - Notes authored against the contact record
 
-**Leads**
+### Leads
 
 - Identifying information: first name, last name, email address, phone number
 - Company context: company name
 - Notes field on the lead record
 - Notes authored against the lead record
 
-**What is not personal data (and is therefore retained after erasure)**
+### What is not personal data (and is therefore retained after erasure)
 
 - Record IDs and internal timestamps
 - Owner assignments, stage values, deal amounts
@@ -43,7 +43,7 @@ GDPR grants data subjects eight rights. MiniCRM provides software features for t
 
 An admin user can erase all personal data fields for a contact or lead while preserving the record structure and audit history.
 
-**Step-by-step: how to respond to a Right to Erasure request**
+##### Step-by-step: how to respond to a Right to Erasure request
 
 1. Log in as an admin user.
 2. Navigate to the contact or lead record for the data subject.
@@ -71,7 +71,7 @@ A second erasure request on an already-erased record returns a 409 error.
 
 An admin user can download a complete JSON export of all personal data held for a contact or lead.
 
-**Step-by-step: how to respond to a Right of Access request**
+##### Step-by-step: how to respond to a Right of Access request
 
 1. Navigate to the contact or lead record.
 2. Scroll to the **GDPR & Privacy** section.
