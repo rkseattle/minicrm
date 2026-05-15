@@ -27,7 +27,7 @@ import { RestClient } from '../clients/rest-client.js';
 export interface RestClientFixtures {
   /**
    * RestClient instance scoped per test.
-   * Base URL is read from `E2E_BASE_URL` (defaults to `http://localhost:5173`).
+   * Base URL is read from `E2E_API_URL` (defaults to `http://localhost:3001`).
    * No auth strategy is set by default — construct a RestClient directly with
    * an authStrategy when needed.
    */
@@ -46,9 +46,9 @@ export interface RestClientFixtures {
  */
 export const test = base.extend<RestClientFixtures>({
   restClient: async ({ request }, use) => {
-    // E2E_API_URL overrides E2E_BASE_URL for REST client calls so the API
-    // server can be targeted directly (bypassing the Vite proxy) in CI.
-    const baseUrl = process.env['E2E_API_URL'] ?? process.env['E2E_BASE_URL'];
+    // E2E_API_URL is the canonical API origin. RestClient falls back to its own
+    // default (http://localhost:3001) when the env var is absent.
+    const baseUrl = process.env['E2E_API_URL'];
     const client = new RestClient(request, baseUrl ? { baseUrl } : {});
     await use(client);
     // No explicit teardown needed — Playwright disposes the underlying

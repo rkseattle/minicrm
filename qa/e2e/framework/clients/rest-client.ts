@@ -171,8 +171,8 @@ export interface RequestOptions {
  */
 export interface RestClientOptions {
   /**
-   * Base URL for all requests. Defaults to the `E2E_BASE_URL` environment
-   * variable, which itself defaults to `http://localhost:5173`.
+   * Base URL for all requests. Defaults to the `E2E_API_URL` environment
+   * variable, which itself defaults to `http://localhost:3001`.
    */
   baseUrl?: string;
   /**
@@ -186,8 +186,8 @@ export interface RestClientOptions {
 // RestClient
 // ---------------------------------------------------------------------------
 
-/** Default base URL when E2E_BASE_URL is not set. */
-const DEFAULT_BASE_URL = 'http://localhost:5173';
+/** Default base URL when E2E_API_URL is not set. */
+const DEFAULT_BASE_URL = 'http://localhost:3001';
 
 /**
  * Typed HTTP client wrapping Playwright's APIRequestContext.
@@ -207,7 +207,7 @@ export class RestClient {
     private readonly request: APIRequestContext,
     options: RestClientOptions = {},
   ) {
-    this.baseUrl = options.baseUrl ?? process.env['E2E_BASE_URL'] ?? DEFAULT_BASE_URL;
+    this.baseUrl = options.baseUrl ?? process.env['E2E_API_URL'] ?? DEFAULT_BASE_URL;
     this.authStrategy = options.authStrategy;
   }
 

@@ -324,9 +324,9 @@ test.describe('Base URL override', () => {
     expect(calledUrl).toBe('http://api.example.com/health');
   });
 
-  test('uses E2E_BASE_URL env var when no baseUrl in options', async () => {
-    const original = process.env['E2E_BASE_URL'];
-    process.env['E2E_BASE_URL'] = 'http://env-override:8080';
+  test('uses E2E_API_URL env var when no baseUrl in options', async () => {
+    const original = process.env['E2E_API_URL'];
+    process.env['E2E_API_URL'] = 'http://env-override:8080';
 
     let calledUrl = '';
     const ctx = mockContext((_method, url) => {
@@ -340,16 +340,16 @@ test.describe('Base URL override', () => {
       expect(calledUrl).toBe('http://env-override:8080/ping');
     } finally {
       if (original !== undefined) {
-        process.env['E2E_BASE_URL'] = original;
+        process.env['E2E_API_URL'] = original;
       } else {
-        delete process.env['E2E_BASE_URL'];
+        delete process.env['E2E_API_URL'];
       }
     }
   });
 
-  test('falls back to http://localhost:5173 when no env or option set', async () => {
-    const original = process.env['E2E_BASE_URL'];
-    delete process.env['E2E_BASE_URL'];
+  test('falls back to http://localhost:3001 when no env or option set', async () => {
+    const original = process.env['E2E_API_URL'];
+    delete process.env['E2E_API_URL'];
 
     let calledUrl = '';
     const ctx = mockContext((_method, url) => {
@@ -360,9 +360,9 @@ test.describe('Base URL override', () => {
     try {
       const client = new RestClient(ctx);
       await client.get('/ping');
-      expect(calledUrl).toBe('http://localhost:5173/ping');
+      expect(calledUrl).toBe('http://localhost:3001/ping');
     } finally {
-      if (original !== undefined) process.env['E2E_BASE_URL'] = original;
+      if (original !== undefined) process.env['E2E_API_URL'] = original;
     }
   });
 });
