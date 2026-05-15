@@ -35,7 +35,8 @@
     "passwordPlaceholder": "您的密码",
     "submitButton": "登录",
     "submitting": "登录中…",
-    "forgotPassword": "忘记密码？"
+    "forgotPassword": "忘记密码？",
+    "sessionExpiredBanner": "您的会话已过期，请重新登录。"
   },
   "forgotPassword": {
     "title": "重置密码",

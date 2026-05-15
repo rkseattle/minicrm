@@ -3,6 +3,9 @@
  * Verifies the JWT stored in the httpOnly cookie, then performs a live DB
  * lookup to confirm the user is still active and does not have a forced
  * password-change pending (MINCRM-74).
+ *
+ * MINCRM-365: JWT expiry is 30 minutes (sliding idle timeout). The `login_at`
+ * claim enforces an 8-hour absolute session cap regardless of refresh activity.
  */
 
 import jwt from 'jsonwebtoken';
@@ -58,6 +61,24 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
+  // Enforce absolute 8-hour session cap (MINCRM-365).
+  // login_at is embedded at original login and preserved through every refresh.
+  // A missing login_at means the token predates this feature — allow it through
+  // so existing sessions are not abruptly invalidated on deploy.
+  const ABSOLUTE_SESSION_CAP_SECONDS = 8 * 60 * 60;
+  if (decoded.login_at !== undefined && decoded.iat !== undefined) {
+    const sessionAgeSeconds = decoded.iat - decoded.login_at;
+    if (sessionAgeSeconds >= ABSOLUTE_SESSION_CAP_SECONDS) {
+      res.status(401).json({
+        error: {
+          code: 'AUTH_SESSION_ABSOLUTE_TIMEOUT',
+          message: 'Your session has reached the maximum allowed duration. Please sign in again.',
+        },
+      });
+      return;
+    }
+  }
+
   // Invalidate sessions from before a password reset (MINCRM-157).
   // Compare at second granularity to match JWT iat precision: floor password_changed_at
   // to whole seconds so a token issued in the same second as the reset is accepted,
@@ -95,6 +116,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     name: user.name,
     role: user.role,
     status: user.status,
+    // Preserve the JWT claims that are not in the DB record (MINCRM-365).
+    login_at: decoded.login_at,
+    iat: decoded.iat,
+    exp: decoded.exp,
   };
   next();
 }

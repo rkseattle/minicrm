@@ -154,4 +154,24 @@ export class LoginPage {
       .resolve()
       .catch(() => null);
   }
+
+  /**
+   * Returns true when the session-expired banner is visible on the login page.
+   * The banner appears when the page is reached via ?reason=session_expired. (MINCRM-365)
+   */
+  async sessionExpiredBannerVisible(): Promise<boolean> {
+    const locator = this.page.locate(
+      [
+        { type: 'testId', value: 'session-expired-banner' },
+        { type: 'role', value: 'status' },
+      ],
+      { intent: 'session expired notice on login page' },
+    );
+    try {
+      const resolved = await locator.resolve();
+      return resolved.isVisible();
+    } catch {
+      return false;
+    }
+  }
 }

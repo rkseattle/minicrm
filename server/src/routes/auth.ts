@@ -12,6 +12,7 @@ import {
   changePassword,
   forgotPassword,
   resetPassword,
+  refreshSession,
 } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
@@ -219,6 +220,43 @@ router.post('/logout', authenticate, asyncHandler(logout));
  *                 message: Token expired or invalid
  */
 router.get('/me', authenticate, asyncHandler(me));
+
+/**
+ * @openapi
+ * /api/v1/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     operationId: refreshSession
+ *     summary: Refresh the session JWT to reset the idle timeout
+ *     description: >
+ *       Issues a new JWT with a fresh 30-minute idle expiry. The original login_at
+ *       claim is preserved so the 8-hour absolute session cap is still enforced.
+ *       Called automatically by the client on user activity. (MINCRM-365)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Session refreshed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *       401:
+ *         description: Token expired, invalid, or absolute session cap reached
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: AUTH_SESSION_ABSOLUTE_TIMEOUT
+ *                 message: Your session has reached the maximum allowed duration. Please sign in again.
+ */
+router.post('/refresh', authenticate, asyncHandler(refreshSession));
 
 /**
  * @openapi

@@ -1,12 +1,15 @@
 /**
- * Integration tests for auth middleware and cookie security (MINCRM-74, MINCRM-76).
+ * Integration tests for auth middleware and cookie security (MINCRM-74, MINCRM-76, MINCRM-365).
  *
  * MINCRM-74: Verifies that a deactivated user's JWT is rejected even if the
  *   token is still cryptographically valid, and that must_change_password is
  *   enforced on all routes except /api/auth/change-password.
  *
  * MINCRM-76: Verifies that the login response sets the expected cookie security
- *   flags (httpOnly, sameSite) and that the maxAge matches the 8-hour policy.
+ *   flags (httpOnly, sameSite) and that the maxAge matches the 30-minute idle policy.
+ *
+ * MINCRM-365: Verifies the sliding idle timeout (30-min JWT), login_at absolute cap
+ *   (8 hours), and the /refresh endpoint.
  *
  * Runs against a real PostgreSQL test database via supertest.
  */
@@ -18,8 +21,8 @@ import { createUser, updateUserStatus } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-/** Eight hours expressed in milliseconds — must match authController constant */
-const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+/** 30-minute idle expiry in milliseconds — must match authController constant (MINCRM-365) */
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 /** Tolerance window for maxAge assertions (5 seconds) */
 const MAX_AGE_TOLERANCE_MS = 5000;
@@ -185,7 +188,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     expect(authCookie!.toLowerCase()).toContain('samesite=lax');
   });
 
-  it('sets Max-Age consistent with the 8-hour session policy', async () => {
+  it('sets Max-Age consistent with the 30-minute idle session policy (MINCRM-365)', async () => {
     const bcrypt = await import('bcryptjs');
     const hash = await bcrypt.default.hash('TestPass1', 12);
     await pool.query(
@@ -204,7 +207,33 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     const maxAgeMatch = authCookie!.match(/max-age=(\d+)/i);
     expect(maxAgeMatch).not.toBeNull();
     const maxAgeMs = parseInt(maxAgeMatch![1], 10) * 1000;
-    expect(Math.abs(maxAgeMs - EIGHT_HOURS_MS)).toBeLessThan(MAX_AGE_TOLERANCE_MS);
+    expect(Math.abs(maxAgeMs - THIRTY_MINUTES_MS)).toBeLessThan(MAX_AGE_TOLERANCE_MS);
+  });
+
+  it('embeds login_at in the JWT payload (MINCRM-365)', async () => {
+    const bcrypt = await import('bcryptjs');
+    const jwt = await import('jsonwebtoken');
+    const hash = await bcrypt.default.hash('TestPass1', 12);
+    await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE email = 'auth-test-login@example.com'`,
+      [hash],
+    );
+
+    const beforeLogin = Math.floor(Date.now() / 1000);
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'auth-test-login@example.com', password: 'TestPass1' });
+
+    const cookies = res.headers['set-cookie'] as unknown as string[];
+    const authCookie = cookies.find((c: string) => c.startsWith('minicrm_token='));
+    const tokenValue = authCookie!.split(';')[0].split('=').slice(1).join('=');
+
+    const decoded = jwt.default.decode(tokenValue) as { login_at?: number; iat?: number };
+    expect(decoded.login_at).toBeDefined();
+    // login_at must be set at or after login started
+    expect(decoded.login_at!).toBeGreaterThanOrEqual(beforeLogin);
+    // login_at must equal iat (same signing call — no clock difference)
+    expect(decoded.login_at!).toBe(decoded.iat);
   });
 
   it('does not set Secure flag in test environment (NODE_ENV != production)', async () => {
@@ -223,5 +252,130 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     const authCookie = cookies.find((c: string) => c.startsWith('minicrm_token='));
     // In test/dev NODE_ENV the Secure flag should be absent
     expect(authCookie!.toLowerCase()).not.toContain('; secure');
+  });
+});
+
+// ── MINCRM-365: absolute session cap + /refresh endpoint ────────────────────
+
+describe('MINCRM-365 — absolute session cap via login_at', () => {
+  it('rejects a token where session age (iat - login_at) >= 8 hours', async () => {
+    const jwt = await import('jsonwebtoken');
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const EIGHT_HOURS_SECONDS = 8 * 60 * 60;
+
+    // Craft a token whose login_at is exactly 8 hours before now, simulating
+    // a session that has hit the absolute cap.
+    const expiredSessionPayload = {
+      id: activeUserId,
+      email: 'auth-test-active@example.com',
+      name: 'Auth Test User',
+      role: 'rep',
+      status: 'active',
+      // login_at 8 hours ago — the iat will be set to `now` by jwt.sign,
+      // so sessionAge = iat - login_at = 8*3600 which equals the cap.
+      login_at: nowSeconds - EIGHT_HOURS_SECONDS,
+    };
+
+    const expiredToken = jwt.default.sign(expiredSessionPayload, process.env.JWT_SECRET ?? '', {
+      expiresIn: '30m',
+    });
+    const expiredCookie = `minicrm_token=${expiredToken}`;
+
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', expiredCookie);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('AUTH_SESSION_ABSOLUTE_TIMEOUT');
+  });
+
+  it('allows a token where session age is under 8 hours', async () => {
+    const jwt = await import('jsonwebtoken');
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    const validPayload = {
+      id: activeUserId,
+      email: 'auth-test-active@example.com',
+      name: 'Auth Test User',
+      role: 'rep',
+      status: 'active',
+      login_at: nowSeconds - 60, // 1 minute ago — well within the 8-hour cap
+    };
+
+    const token = jwt.default.sign(validPayload, process.env.JWT_SECRET ?? '', {
+      expiresIn: '30m',
+    });
+    const cookie = `minicrm_token=${token}`;
+
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', cookie);
+    expect(res.status).toBe(200);
+  });
+
+  it('allows a token with no login_at (pre-MINCRM-365 token)', async () => {
+    // Tokens issued before this feature was deployed have no login_at.
+    // They must be accepted so existing sessions are not abruptly invalidated.
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', activeCookie);
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('MINCRM-365 — POST /api/v1/auth/refresh', () => {
+  it('issues a fresh JWT with the same login_at when session is valid', async () => {
+    const jwt = await import('jsonwebtoken');
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const originalLoginAt = nowSeconds - 60;
+
+    const payload = {
+      id: activeUserId,
+      email: 'auth-test-active@example.com',
+      name: 'Auth Test User',
+      role: 'rep',
+      status: 'active',
+      login_at: originalLoginAt,
+    };
+
+    const token = jwt.default.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '30m' });
+    const cookie = `minicrm_token=${token}`;
+
+    const res = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+
+    // Verify the new cookie preserves login_at
+    const setCookies = res.headers['set-cookie'] as unknown as string[];
+    const newCookie = setCookies.find((c: string) => c.startsWith('minicrm_token='));
+    expect(newCookie).toBeDefined();
+
+    const newTokenValue = newCookie!.split(';')[0].split('=').slice(1).join('=');
+    const decoded = jwt.default.decode(newTokenValue) as { login_at?: number };
+    expect(decoded.login_at).toBe(originalLoginAt);
+  });
+
+  it('returns 401 when the absolute session cap is reached on refresh', async () => {
+    const jwt = await import('jsonwebtoken');
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const EIGHT_HOURS_SECONDS = 8 * 60 * 60;
+
+    // Token where session has already been going 8+ hours — hitting the cap
+    const payload = {
+      id: activeUserId,
+      email: 'auth-test-active@example.com',
+      name: 'Auth Test User',
+      role: 'rep',
+      status: 'active',
+      login_at: nowSeconds - EIGHT_HOURS_SECONDS,
+    };
+
+    const token = jwt.default.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '30m' });
+    const cookie = `minicrm_token=${token}`;
+
+    const res = await request(app).post('/api/v1/auth/refresh').set('Cookie', cookie);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('AUTH_SESSION_ABSOLUTE_TIMEOUT');
+  });
+
+  it('returns 401 when called without a valid session cookie', async () => {
+    const res = await request(app).post('/api/v1/auth/refresh');
+    expect(res.status).toBe(401);
   });
 });

@@ -35,7 +35,8 @@
     "passwordPlaceholder": "Tu contraseña",
     "submitButton": "Iniciar sesión",
     "submitting": "Iniciando sesión…",
-    "forgotPassword": "¿Olvidaste tu contraseña?"
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "sessionExpiredBanner": "Tu sesión ha expirado. Por favor, inicia sesión de nuevo."
   },
   "forgotPassword": {
     "title": "Restablecer contraseña",

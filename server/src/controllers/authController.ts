@@ -19,11 +19,17 @@ import { sanitizeUser } from '../utils/userUtils.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 
-/** JWT expiry — 8 hours expressed in seconds */
-const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
+/**
+ * JWT idle-expiry window — 30 minutes (MINCRM-365).
+ * The token is refreshed by the client on activity, so the expiry slides with use.
+ */
+const JWT_IDLE_EXPIRY_SECONDS = 30 * 60;
 
-/** Cookie max-age in milliseconds (same duration as JWT) */
-const COOKIE_MAX_AGE_MS = JWT_EXPIRY_SECONDS * 1000;
+/** Cookie max-age in milliseconds for idle-expiry tokens */
+const COOKIE_MAX_AGE_MS = JWT_IDLE_EXPIRY_SECONDS * 1000;
+
+/** Absolute session cap — 8 hours from original login (MINCRM-365) */
+export const ABSOLUTE_SESSION_CAP_SECONDS = 8 * 60 * 60;
 
 /**
  * POST /api/auth/login
@@ -79,16 +85,20 @@ export async function login(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  const nowSeconds = Math.floor(Date.now() / 1000);
   const tokenPayload = {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
     status: user.status,
+    // login_at marks when this session was originally created; preserved across
+    // every refresh so the 8-hour absolute cap is always measured from first login. (MINCRM-365)
+    login_at: nowSeconds,
   };
 
   const token = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
-    expiresIn: JWT_EXPIRY_SECONDS,
+    expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
   res.cookie(AUTH_COOKIE_NAME, token, {
@@ -284,19 +294,18 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   }
 
   // Issue a fresh session for the user so they are logged in immediately.
+  const resetNowSeconds = Math.floor(Date.now() / 1000);
   const tokenPayload = {
     id: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
     status: user.status,
+    login_at: resetNowSeconds,
   };
 
-  const JWT_EXPIRY_SECONDS = 8 * 60 * 60;
-  const COOKIE_MAX_AGE_MS = JWT_EXPIRY_SECONDS * 1000;
-
   const sessionToken = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
-    expiresIn: JWT_EXPIRY_SECONDS,
+    expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
   res.cookie(AUTH_COOKIE_NAME, sessionToken, {
@@ -307,4 +316,57 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   });
 
   res.status(200).json({ user: sanitizeUser(user) });
+}
+
+/**
+ * POST /api/auth/refresh
+ * Issues a refreshed JWT for an authenticated user, resetting the idle timeout.
+ *
+ * The original `login_at` claim is preserved so the 8-hour absolute session cap
+ * is enforced regardless of how many times the token is refreshed. (MINCRM-365)
+ *
+ * Returns 401 AUTH_SESSION_ABSOLUTE_TIMEOUT if the absolute cap has been reached;
+ * this check is redundant with the authenticate middleware but explicit here for
+ * clarity. The client treats any 401 from this endpoint as a forced logout.
+ */
+export async function refreshSession(req: Request, res: Response): Promise<void> {
+  const decoded = req.user!;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  // Derive original login_at: use value from decoded token or fall back to now
+  // (graceful handling of tokens issued before this feature was deployed).
+  const loginAt = decoded.login_at ?? nowSeconds;
+
+  const sessionAgeSeconds = nowSeconds - loginAt;
+  if (sessionAgeSeconds >= ABSOLUTE_SESSION_CAP_SECONDS) {
+    res.status(401).json({
+      error: {
+        code: 'AUTH_SESSION_ABSOLUTE_TIMEOUT',
+        message: 'Your session has reached the maximum allowed duration. Please sign in again.',
+      },
+    });
+    return;
+  }
+
+  const tokenPayload = {
+    id: decoded.id,
+    email: decoded.email,
+    name: decoded.name,
+    role: decoded.role,
+    status: decoded.status,
+    login_at: loginAt,
+  };
+
+  const token = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
+    expiresIn: JWT_IDLE_EXPIRY_SECONDS,
+  });
+
+  res.cookie(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+  });
+
+  res.status(200).json({ ok: true });
 }

@@ -15,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary.js';
 import { BreakpointProvider } from './context/BreakpointContext.js';
 import { BrandingProvider } from './context/BrandingContext.js';
 import { initSentry } from './sentry.js';
+import { setupInterceptors } from './api/axiosInstance.js';
 
 initSentry();
 
@@ -43,6 +44,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Wire the global 401 interceptor now that queryClient exists. (MINCRM-365)
+setupInterceptors(queryClient);
 
 // Expose i18n on window so E2E tests can call window.i18n.changeLanguage('pseudo')
 // via page.evaluate(). MINCRM-241
