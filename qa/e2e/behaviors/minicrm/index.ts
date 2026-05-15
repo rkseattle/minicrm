@@ -4,7 +4,7 @@
  * Import from here rather than individual files so that reorganizing
  * behavior files internally does not break callers.
  *
- * MINCRM-130, MINCRM-110, MINCRM-357
+ * MINCRM-130, MINCRM-110, MINCRM-357, MINCRM-367
  */
 
 export {
@@ -19,6 +19,16 @@ export {
   logoutViaApi,
   forgotPassword,
   getDevResetToken,
+  loginFromCurrentPage,
+  requestPasswordReset,
+  resetPassword,
+  sessionExpiredBannerVisible,
+  navigateToLoginWithSessionExpired,
+  navigateToLoginPage,
+  submitLoginForm,
+  navigateToForgotPasswordPage,
+  navigateToSetPasswordPage,
+  isSetPasswordTokenInvalid,
 } from './auth.behaviors.js';
 export type {
   AuthBehaviorContext,
@@ -30,6 +40,8 @@ export type {
   NavigateToProtectedPageResult,
   SetPasswordResult,
   CurrentUser,
+  RequestPasswordResetResult,
+  ResetPasswordResult,
 } from './auth.behaviors.js';
 
 export {
@@ -138,6 +150,39 @@ export {
   createDealViaApi,
   listDealsViaApi,
   exportDealsAsCsv,
+  navigateToPipelineBoard,
+  pipelineBoardIsLoaded,
+  getPipelineBoardLocator,
+  getDealCardLocator,
+  getDealStageSelectOnBoardLocator,
+  getPipelineBoardStageUpdateErrorLocator,
+  getPipelineBoardCloseDealModalLocator,
+  cancelCloseDealModal,
+  clickNewDealOnBoard,
+  getPipelineMobileStageNameLocator,
+  navigateToDealDetail,
+  openDealEditForm,
+  getDealNameInputLocator,
+  getDealStageSelectOnFormLocator,
+  getDealValueInputLocator,
+  getDealCloseDateInputLocator,
+  getDealAccountSelectLocator,
+  getDealFormSubmitLocator,
+  submitDealForm,
+  getDealNameHeadingLocator,
+  clickDeleteDeal,
+  confirmDeleteDeal,
+  getDealLinkedContactsHeadingLocator,
+  getDealLinkContactSelectLocator,
+  getDealLinkContactButtonLocator,
+  getDealLinkedContactLocator,
+  getDealUnlinkContactLocator,
+  getDealLinkedContactsEmptyLocator,
+  getDealNotFoundLocator,
+  getDealNotFoundBackLink,
+  getDealAttachmentsSectionLocator,
+  getDealAttachmentsFileInputLocator,
+  getDealAttachmentsListLocator,
 } from './deals.behaviors.js';
 export type {
   DealsBehaviorContext,
@@ -365,7 +410,53 @@ export {
   getOnboardingStatus,
 } from './setup.behaviors.js';
 
-export { ensureSystemDefaults } from './settings.behaviors.js';
+export {
+  ensureSystemDefaults,
+  getAdminSettingsHeadingLocator,
+  getAdminSettingsSaveLocator,
+  getAdminSettingsCurrencySectionLocator,
+  getAdminSettingsEmailNotificationsSectionLocator,
+  getAdminSettingsWebhookSectionLocator,
+  getAdminSettingsWebhookUrlInputLocator,
+  getAdminSettingsWebhookSecretRevealLocator,
+  getAdminSettingsWebhookSecretValueLocator,
+  getAdminSettingsWebhookRowLocator,
+  getAdminSettingsWebhookDeleteConfirmLocator,
+  clickAdminSettingsWebhookEvent,
+  clickAdminSettingsAddWebhook,
+  closeAdminSettingsWebhookSecretModal,
+  toggleAdminSettingsWebhook,
+  clickAdminSettingsDeleteWebhook,
+  confirmAdminSettingsDeleteWebhook,
+  getAdminSettingsExchangeRatesSectionLocator,
+  getAdminSettingsHomeCurrencySelectLocator,
+  getAdminSettingsAddCurrencyFormLocator,
+  getAdminSettingsAddCurrencyCodeSelectLocator,
+  getAdminSettingsAddCurrencyRateInputLocator,
+  clickAdminSettingsAddCurrency,
+  confirmAdminSettingsAddCurrency,
+  saveAdminSettingsExchangeRates,
+  getAdminSettingsExchangeRateSaveSuccessLocator,
+  getAdminSettingsExchangeRateRowLocator,
+  getAdminSettingsCustomFieldsSectionLocator,
+  getAdminSettingsCustomFieldsEntitySelectLocator,
+  getAdminSettingsAddFieldFormLocator,
+  getAdminSettingsAddFieldNameInputLocator,
+  getAdminSettingsCustomFieldsFeedbackLocator,
+  getAdminSettingsDeleteFieldConfirmLocator,
+  clickAdminSettingsAddField,
+  submitAdminSettingsAddField,
+  getAdminSettingsBrandingFormLocator,
+  getAdminSettingsBrandingCompanyNameLocator,
+  getAdminSettingsBrandingColorTextLocator,
+  getAdminSettingsBrandingFontSelectLocator,
+  getAdminSettingsBrandingSaveLocator,
+  getAdminSettingsBrandingSaveSuccessLocator,
+  getAdminSettingsBrandingResetButtonLocator,
+  getAdminSettingsBrandingResetConfirmLocator,
+  getAdminSettingsBrandingResetSuccessLocator,
+} from './settings.behaviors.js';
+export type { AdminSettingsBehaviorContext } from './settings.behaviors.js';
 export type {
   WebhookSubscription,
   WebhookCreateResult,
@@ -384,5 +475,62 @@ export {
 } from './attachments.behaviors.js';
 export type { AttachmentRow } from './attachments.behaviors.js';
 
-export { getWinLossReport } from './reports.behaviors.js';
-export type { WinLossReport } from './reports.behaviors.js';
+export {
+  getWinLossReport,
+  navigateToReports,
+  getReportsHeadingLocator,
+  getReportsTabListLocator,
+  getReportsTabListSelectLocator,
+  getReportsWinLossTabLocator,
+  getReportsActivityTabLocator,
+  getReportsStageTrendTabLocator,
+  getReportsWinLossHeadingLocator,
+  getReportsActivityVolumeHeadingLocator,
+  getReportsStageTrendHeadingLocator,
+  getReportsLoadingLocator,
+  getReportsStageTrendTableLocator,
+  getReportsStageTrendEmptyLocator,
+  getReportsDaysSelectLocator,
+  getReportsDatePresetSelectLocator,
+  getReportsCustomStartInputLocator,
+  getReportsCustomEndInputLocator,
+  getReportsStatCardsLocator,
+  getReportsWonCountValueLocator,
+  getReportsLostCountValueLocator,
+  getReportsWinRateValueLocator,
+} from './reports.behaviors.js';
+export type { WinLossReport, ReportsBehaviorContext } from './reports.behaviors.js';
+
+export {
+  setNavLayoutViaAPI,
+  setNavLayoutViaUI,
+  openHamburgerMenu,
+  closeHamburgerMenuViaBackdrop,
+  closeHamburgerMenuViaCloseButton,
+  navigateViaNavLink,
+  openMobileNav,
+  closeMobileNavViaToggle,
+  navigateViaMobileNavLink,
+  getNavLinkLocator,
+  getAdminSectionDividerLocator,
+  getHamburgerDrawerLocator,
+  getMobileNavDrawerLocator,
+  getMenuToggleLocator,
+  getMobileNavLinkLocator,
+  getMobileLogoutButtonLocator,
+  getMobileLanguageSelectLocator,
+  getDesktopLanguageSelectLocator,
+} from './nav.behaviors.js';
+export type {
+  NavLayout,
+  NavBehaviorContext,
+  SetNavLayoutResult,
+  SetNavLayoutViaUIResult,
+  OpenHamburgerMenuResult,
+  CloseHamburgerMenuViaBackdropResult,
+  CloseHamburgerMenuViaCloseButtonResult,
+  NavigateViaNavLinkResult,
+  OpenMobileNavResult,
+  CloseMobileNavViaToggleResult,
+  NavigateViaMobileNavLinkResult,
+} from './nav.behaviors.js';
