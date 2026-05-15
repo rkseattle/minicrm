@@ -422,3 +422,94 @@ export async function navigateViaMobileNavLink(
     .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
   return { linkClicked: true, finalUrl: context.page.url() };
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap NavPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Fixture context accepted by nav locator behaviors. */
+export interface NavBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Returns a resolved locator for a nav link by layout and destination.
+ */
+export async function getNavLinkLocator(
+  layout: string,
+  destination: string,
+  context: NavBehaviorContext,
+) {
+  const navPage = new NavPage(context);
+  return navPage.navLinkLocator(layout, destination);
+}
+
+/**
+ * Returns a resolved locator for the admin section divider in a given nav layout.
+ */
+export async function getAdminSectionDividerLocator(
+  layout: 'left' | 'top' | 'hamburger' | 'top-mobile',
+  context: NavBehaviorContext,
+) {
+  const navPage = new NavPage(context);
+  return navPage.adminSectionDividerLocator(layout);
+}
+
+/**
+ * Returns a resolved locator for the hamburger nav drawer.
+ * Throws if the drawer is not in the DOM.
+ */
+export async function getHamburgerDrawerLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.requireHamburgerDrawerLocator();
+}
+
+/**
+ * Returns a resolved locator for the mobile nav drawer.
+ * Throws if the drawer is not in the DOM.
+ */
+export async function getMobileNavDrawerLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.requireMobileNavDrawerLocator();
+}
+
+/**
+ * Returns a resolved locator for the hamburger/mobile menu toggle button.
+ */
+export async function getMenuToggleLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.menuToggleLocator();
+}
+
+/**
+ * Returns a resolved locator for a mobile nav link by destination key.
+ */
+export async function getMobileNavLinkLocator(destination: string, context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.mobileNavLinkLocator(destination);
+}
+
+/**
+ * Returns a resolved locator for the mobile logout button in the nav drawer.
+ */
+export async function getMobileLogoutButtonLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.mobileLogoutButtonLocator();
+}
+
+/**
+ * Returns a resolved locator for the mobile language select in the nav drawer.
+ */
+export async function getMobileLanguageSelectLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.mobileLanguageSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the desktop language select in the nav header.
+ */
+export async function getDesktopLanguageSelectLocator(context: NavBehaviorContext) {
+  const navPage = new NavPage(context);
+  return navPage.desktopLanguageSelectLocator();
+}

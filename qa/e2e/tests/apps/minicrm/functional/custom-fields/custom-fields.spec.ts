@@ -24,9 +24,24 @@ import {
   createCustomFieldDefinition,
   setContactCustomFields,
 } from '@behaviors/minicrm/setup.behaviors.js';
+import {
+  getAdminSettingsCustomFieldsSectionLocator,
+  getAdminSettingsCustomFieldsEntitySelectLocator,
+  clickAdminSettingsAddField,
+  getAdminSettingsAddFieldFormLocator,
+  getAdminSettingsAddFieldNameInputLocator,
+  submitAdminSettingsAddField,
+  getAdminSettingsCustomFieldsFeedbackLocator,
+  getAdminSettingsDeleteFieldConfirmLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
+import {
+  getContactCustomFieldsReadGrid,
+  getContactCustomFieldsEditGrid,
+  clickContactEdit,
+  saveContact,
+  isContactDetailLoaded,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 import { createTestContact } from '@apps/minicrm/helpers.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -58,36 +73,34 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await adminSettings.customFieldsSectionLocator();
+  const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Ensure entity selector shows "contact" (default)
-  const entitySelect = await adminSettings.customFieldsEntitySelectLocator();
+  const entitySelect = await getAdminSettingsCustomFieldsEntitySelectLocator({ page });
   await entitySelect.selectOption('contact');
 
   // Click Add Field
-  await adminSettings.clickAddField();
+  await clickAdminSettingsAddField({ page });
 
-  const addForm = await adminSettings.addFieldFormLocator();
+  const addForm = await getAdminSettingsAddFieldFormLocator({ page });
   await expect(addForm).toBeVisible();
 
   // Fill in field name
   const fieldName = `E2E Test Field ${Date.now()}`;
-  const nameInput = await adminSettings.addFieldNameInputLocator();
+  const nameInput = await getAdminSettingsAddFieldNameInputLocator({ page });
   await nameInput.fill(fieldName);
 
   // field_type defaults to text — no change needed
 
   // Submit
-  await adminSettings.submitAddField();
+  await submitAdminSettingsAddField({ page });
 
   // Success feedback appears
-  const feedback = await adminSettings.customFieldsFeedbackLocator();
+  const feedback = await getAdminSettingsCustomFieldsFeedbackLocator({ page });
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
   // The field appears in the table
@@ -116,8 +129,6 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const contactDetailPage = new ContactDetailPage({ page });
-
   // Create a text custom field definition via REST
   const fieldName = `Persist Test Field ${Date.now()}`;
   const definition = await createCustomFieldDefinition(restClient, {
@@ -139,10 +150,10 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Click Edit
-  await contactDetailPage.clickEdit();
+  await clickContactEdit({ page });
 
   // Wait for custom fields section to appear in edit mode.
-  const editGrid = await contactDetailPage.customFieldsEditGridLocator();
+  const editGrid = await getContactCustomFieldsEditGrid({ page });
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value
@@ -153,11 +164,11 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await fieldInput.fill('Test Value 123');
 
   // Save the contact
-  await contactDetailPage.save();
+  await saveContact({ page });
 
   // Wait for edit mode to close (edit button reappears)
   expect(
-    await contactDetailPage.isLoaded(),
+    await isContactDetailLoaded({ page }),
     'contact detail should return to read mode after save',
   ).toBe(true);
 
@@ -165,7 +176,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Custom fields read section should show the saved value.
-  const readGrid = await contactDetailPage.customFieldsReadGridLocator();
+  const readGrid = await getContactCustomFieldsReadGrid({ page });
   if (!readGrid) throw new Error('custom-fields-read-grid not found after save');
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
@@ -189,8 +200,6 @@ test('admin deletes a custom field definition; it disappears from the contact de
 }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
   // Create a text custom field definition via REST
   const fieldName = `Delete Test Field ${Date.now()}`;
   const definition = await createCustomFieldDefinition(restClient, {
@@ -211,8 +220,8 @@ test('admin deletes a custom field definition; it disappears from the contact de
 
   // Confirm the field appears on the detail page before deletion.
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
-  const contactDetailPageForDelete = new ContactDetailPage({ page });
-  const readGridBefore = await contactDetailPageForDelete.customFieldsReadGridLocator();
+
+  const readGridBefore = await getContactCustomFieldsReadGrid({ page });
   if (!readGridBefore) throw new Error('custom-fields-read-grid not found before deletion');
   await expect(readGridBefore).toBeVisible({ timeout: 5_000 });
   await expect(readGridBefore).toContainText('Temp Value');
@@ -220,11 +229,11 @@ test('admin deletes a custom field definition; it disappears from the contact de
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
 
-  const section = await adminSettings.customFieldsSectionLocator();
+  const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Select "contact" entity type
-  const entitySelect = await adminSettings.customFieldsEntitySelectLocator();
+  const entitySelect = await getAdminSettingsCustomFieldsEntitySelectLocator({ page });
   await entitySelect.selectOption('contact');
 
   // Click Delete on the field row
@@ -236,23 +245,23 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await deleteBtn.click();
 
   // Confirm the deletion dialog.
-  const confirmDeleteBtn = await adminSettings.deleteFieldConfirmLocator();
+  const confirmDeleteBtn = await getAdminSettingsDeleteFieldConfirmLocator({ page });
   await expect(confirmDeleteBtn).toBeVisible({ timeout: 3_000 });
   await confirmDeleteBtn.click();
 
   // Success feedback
-  const feedback = await adminSettings.customFieldsFeedbackLocator();
+  const feedback = await getAdminSettingsCustomFieldsFeedbackLocator({ page });
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
   // Navigate back to the contact — custom fields section should not appear
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
   // Wait for the page to load (edit button should be visible)
-  const contactDetailPage = new ContactDetailPage({ page });
-  await expect(await contactDetailPage.isLoaded()).toBe(true);
+
+  await expect(await isContactDetailLoaded({ page })).toBe(true);
 
   // The custom-fields-section should not be visible (no definitions → component returns null).
-  const customFieldsSectionEl = await contactDetailPageForDelete.customFieldsReadGridLocator();
+  const customFieldsSectionEl = await getContactCustomFieldsReadGrid({ page });
   const sectionVisible = customFieldsSectionEl ? await customFieldsSectionEl.isVisible() : false;
   expect(
     sectionVisible,

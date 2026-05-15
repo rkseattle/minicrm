@@ -43,7 +43,13 @@ import {
   deleteNote,
   getRecordAuditLog,
 } from '@behaviors/minicrm/index.js';
-import { NotesPage } from '@pages/minicrm/NotesPage.js';
+import {
+  getNotesSectionLocator,
+  getNoteCardLocator,
+  getMaskedNoteCardLocator,
+  getNoteTitleLocator,
+  getNoteBodyLocator,
+} from '@behaviors/minicrm/notes.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -72,8 +78,8 @@ test('@functional F14-C1: Create a team note on a contact — note appears in UI
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const notesPage = new NotesPage({ page });
-  await (await notesPage.sectionLocator()).waitFor({ state: 'visible' });
+
+  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
 
   const result = await createNoteViaUI(
     { page },
@@ -108,8 +114,8 @@ test('@functional F14-C2: Create a note with tags — tags are persisted', async
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const notesPage = new NotesPage({ page });
-  await (await notesPage.sectionLocator()).waitFor({ state: 'visible' });
+
+  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
 
   await createNoteViaUI(
     { page },
@@ -147,11 +153,11 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   const noteId = note.id;
 
   await navigateToContact(page, contact.id);
-  const notesPage = new NotesPage({ page });
-  await (await notesPage.sectionLocator()).waitFor({ state: 'visible' });
+
+  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
 
   // Wait for the note card to appear
-  const card = await notesPage.noteCardLocator(noteId);
+  const card = await getNoteCardLocator(noteId, { page });
   await card?.waitFor({ state: 'visible', timeout: 8_000 });
 
   const editResult = await editNoteViaUI(
@@ -165,7 +171,7 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   expect(editResult.saved, 'composer should close after edit save').toBe(true);
 
   // The card should now show the updated title
-  const titleEl = await notesPage.noteTitleLocator(noteId);
+  const titleEl = await getNoteTitleLocator(noteId, { page });
   await titleEl.waitFor({ state: 'visible', timeout: 5_000 });
   await expect(titleEl).toHaveText('Updated title F14-E1');
 
@@ -196,10 +202,10 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
   const noteId = note.id;
 
   await navigateToContact(page, contact.id);
-  const notesPage = new NotesPage({ page });
-  await (await notesPage.sectionLocator()).waitFor({ state: 'visible' });
 
-  const card = await notesPage.noteCardLocator(noteId);
+  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+
+  const card = await getNoteCardLocator(noteId, { page });
   await card?.waitFor({ state: 'visible', timeout: 8_000 });
 
   const deleteResult = await deleteNoteViaUI({ page }, noteId);
@@ -260,18 +266,18 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
     await login({ email: repB.email, password: REP_PASSWORD }, { page });
 
     await navigateToContact(page, contact.id);
-    const notesPage = new NotesPage({ page });
-    await (await notesPage.sectionLocator()).waitFor({ state: 'visible' });
+
+    await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
 
     // Wait for the masked placeholder (rep B cannot see the body)
-    const maskedCard = await notesPage.maskedNoteCardLocator(noteId);
+    const maskedCard = await getMaskedNoteCardLocator(noteId, { page });
     await maskedCard?.waitFor({ state: 'visible', timeout: 8_000 });
 
     const masked = await maskedNoteCardIsVisible({ page }, noteId);
     expect(masked, 'rep B should see a masked placeholder for rep A private note').toBe(true);
 
     // The actual note body element must not exist
-    const bodyEl = await notesPage.noteBodyLocator(noteId);
+    const bodyEl = await getNoteBodyLocator(noteId, { page });
     expect(bodyEl, 'note body should not be accessible to rep B').toBeNull();
   } finally {
     // Restore admin session so subsequent tests are not affected

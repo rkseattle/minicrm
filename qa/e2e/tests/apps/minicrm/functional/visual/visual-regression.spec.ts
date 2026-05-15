@@ -43,10 +43,21 @@ import {
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import {
+  getPipelineBoardLocator,
+  getPipelineMobileStageNameLocator,
+} from '@behaviors/minicrm/deals.behaviors.js';
+import { getContactEditButtonLocator } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  getReportsWinLossHeadingLocator,
+  getReportsStatCardsLocator,
+} from '@behaviors/minicrm/reports.behaviors.js';
+import {
+  getAdminSettingsHeadingLocator,
+  getAdminSettingsSaveLocator,
+  getAdminSettingsCurrencySectionLocator,
+  getAdminSettingsEmailNotificationsSectionLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -153,7 +164,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/deals', { waitUntil: 'networkidle' });
 
-    const board = await new PipelineBoardPage({ page }).boardLocator();
+    const board = await getPipelineBoardLocator({ page });
     await board.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -201,7 +212,7 @@ test(
     await page.goto('/deals', { waitUntil: 'networkidle' });
 
     // Mobile board shows single column with prev/next navigation — wait for it
-    const mobileStage = await new PipelineBoardPage({ page }).mobileStageNameLocator();
+    const mobileStage = await getPipelineMobileStageNameLocator({ page });
     await mobileStage.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -305,7 +316,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
 
-    const editButton = await new ContactDetailPage({ page }).editButtonLocator();
+    const editButton = await getContactEditButtonLocator({ page });
     await editButton.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -359,12 +370,11 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/reports', { waitUntil: 'networkidle' });
 
-    const reportsPage = new ReportsPage({ page });
-    const reportHeading = await reportsPage.winLossHeadingLocator();
+    const reportHeading = await getReportsWinLossHeadingLocator({ page });
     await reportHeading.waitFor({ state: 'visible' });
 
     // Confirm stat cards are rendered before snapshotting.
-    const statCards = await reportsPage.statCardsLocator();
+    const statCards = await getReportsStatCardsLocator({ page });
     await statCards.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -385,12 +395,11 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
 
-    const adminSettingsPage = new AdminSettingsPage({ page });
-    const settingsHeading = await adminSettingsPage.settingsHeadingLocator();
+    const settingsHeading = await getAdminSettingsHeadingLocator({ page });
     await settingsHeading.waitFor({ state: 'visible' });
 
     // Wait for the general tab panel content to finish loading.
-    const saveButton = await adminSettingsPage.settingsSaveLocator();
+    const saveButton = await getAdminSettingsSaveLocator({ page });
     await saveButton.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -411,7 +420,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
-    const currencySection = await new AdminSettingsPage({ page }).currencySectionLocator();
+    const currencySection = await getAdminSettingsCurrencySectionLocator({ page });
     await currencySection.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);
@@ -432,7 +441,7 @@ test(
     await page.setViewportSize(DESKTOP_VIEWPORT);
     await page.goto('/admin/settings?tab=notifications', { waitUntil: 'networkidle' });
 
-    const notifSection = await new AdminSettingsPage({ page }).emailNotificationsSectionLocator();
+    const notifSection = await getAdminSettingsEmailNotificationsSectionLocator({ page });
     await notifSection.waitFor({ state: 'visible' });
 
     const masks = await resolveTimestampMasks(page);

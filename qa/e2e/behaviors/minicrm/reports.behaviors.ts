@@ -12,6 +12,8 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
+import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
 // ---------------------------------------------------------------------------
 // API data types (MINCRM-357)
@@ -48,4 +50,185 @@ export async function getWinLossReport(
     `/api/v1/reports/win-loss?start=${start}&end=${end}`,
   );
   return res.body;
+}
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap ReportsPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Fixture context for reports UI behaviors. */
+export interface ReportsBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Navigates to the reports page, optionally deep-linking to a view.
+ */
+export async function navigateToReports(
+  view: string | undefined,
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const reportsPage = new ReportsPage(context);
+  await reportsPage.navigate(view);
+}
+
+/**
+ * Returns a resolved locator for the reports page heading.
+ */
+export async function getReportsHeadingLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.headingLocator();
+}
+
+/**
+ * Returns a resolved locator for the tab list / sub-navigation container.
+ */
+export async function getReportsTabListLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.tabListLocator();
+}
+
+/**
+ * Returns a resolved locator for the mobile tab select dropdown.
+ */
+export async function getReportsTabListSelectLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.tabListSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the Win/Loss tab button.
+ */
+export async function getReportsWinLossTabLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.winLossTabLocator();
+}
+
+/**
+ * Returns a resolved locator for the Activity Volume tab button.
+ */
+export async function getReportsActivityTabLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.activityTabLocator();
+}
+
+/**
+ * Returns a resolved locator for the Pipeline Stage tab button.
+ */
+export async function getReportsStageTrendTabLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.stageTrendTabLocator();
+}
+
+/**
+ * Returns a resolved locator for the Win/Loss report heading.
+ */
+export async function getReportsWinLossHeadingLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.winLossHeadingLocator();
+}
+
+/**
+ * Returns a resolved locator for the Activity Volume report heading.
+ */
+export async function getReportsActivityVolumeHeadingLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.activityVolumeHeadingLocator();
+}
+
+/**
+ * Returns a resolved locator for the Stage Trend report heading.
+ */
+export async function getReportsStageTrendHeadingLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.stageTrendHeadingLocator();
+}
+
+/**
+ * Returns a resolved locator for the loading indicator (null if not present).
+ */
+export async function getReportsLoadingLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.loadingLocator();
+}
+
+/**
+ * Returns a resolved locator for the stage trend data table (null if not present).
+ */
+export async function getReportsStageTrendTableLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.stageTrendTableLocator();
+}
+
+/**
+ * Returns a resolved locator for the stage trend empty state (null if not present).
+ */
+export async function getReportsStageTrendEmptyLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.stageTrendEmptyLocator();
+}
+
+/**
+ * Returns a resolved locator for the days-range select on the stage trend report.
+ */
+export async function getReportsDaysSelectLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.daysSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the date preset select on the win-loss report.
+ */
+export async function getReportsDatePresetSelectLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.datePresetSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the custom date range start input.
+ */
+export async function getReportsCustomStartInputLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.customStartInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the custom date range end input.
+ */
+export async function getReportsCustomEndInputLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.customEndInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the stat cards container.
+ */
+export async function getReportsStatCardsLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.statCardsLocator();
+}
+
+/**
+ * Returns a resolved locator for the won count stat value.
+ */
+export async function getReportsWonCountValueLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.wonCountValueLocator();
+}
+
+/**
+ * Returns a resolved locator for the lost count stat value.
+ */
+export async function getReportsLostCountValueLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.lostCountValueLocator();
+}
+
+/**
+ * Returns a resolved locator for the win rate stat value.
+ */
+export async function getReportsWinRateValueLocator(context: ReportsBehaviorContext) {
+  const reportsPage = new ReportsPage(context);
+  return reportsPage.winRateValueLocator();
 }

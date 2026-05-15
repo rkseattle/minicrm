@@ -13,8 +13,19 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
-import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import {
+  ensureSystemDefaults,
+  getAdminSettingsExchangeRatesSectionLocator,
+  getAdminSettingsHomeCurrencySelectLocator,
+  clickAdminSettingsAddCurrency,
+  getAdminSettingsAddCurrencyFormLocator,
+  getAdminSettingsAddCurrencyCodeSelectLocator,
+  getAdminSettingsAddCurrencyRateInputLocator,
+  confirmAdminSettingsAddCurrency,
+  saveAdminSettingsExchangeRates,
+  getAdminSettingsExchangeRateSaveSuccessLocator,
+  getAdminSettingsExchangeRateRowLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -54,61 +65,59 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   // Log in via the UI
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
   // Navigate to Admin Settings — currency tab required for exchange-rates-section
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
 
   // Wait for the exchange rates section to be visible
-  const section = await adminSettings.exchangeRatesSectionLocator();
+  const section = await getAdminSettingsExchangeRatesSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
 
   // Set home currency to GBP
-  const homeSelect = await adminSettings.homeCurrencySelectLocator();
+  const homeSelect = await getAdminSettingsHomeCurrencySelectLocator({ page });
   await homeSelect.selectOption('GBP');
 
   // Click Add Currency to open the form
-  await adminSettings.clickAddCurrency();
-  const addForm = await adminSettings.addCurrencyFormLocator();
+  await clickAdminSettingsAddCurrency({ page });
+  const addForm = await getAdminSettingsAddCurrencyFormLocator({ page });
   await expect(addForm).toBeVisible();
 
   // Add USD with rate 1.27
-  const codeSelect = await adminSettings.addCurrencyCodeSelectLocator();
+  const codeSelect = await getAdminSettingsAddCurrencyCodeSelectLocator({ page });
   await codeSelect.selectOption('USD');
-  const rateInput = await adminSettings.addCurrencyRateInputLocator();
+  const rateInput = await getAdminSettingsAddCurrencyRateInputLocator({ page });
   await rateInput.fill('1.27');
-  await adminSettings.confirmAddCurrency();
+  await confirmAdminSettingsAddCurrency({ page });
 
   // Add EUR with rate 1.16
-  await adminSettings.clickAddCurrency();
-  const addForm2 = await adminSettings.addCurrencyFormLocator();
+  await clickAdminSettingsAddCurrency({ page });
+  const addForm2 = await getAdminSettingsAddCurrencyFormLocator({ page });
   await expect(addForm2).toBeVisible();
-  const codeSelect2 = await adminSettings.addCurrencyCodeSelectLocator();
+  const codeSelect2 = await getAdminSettingsAddCurrencyCodeSelectLocator({ page });
   await codeSelect2.selectOption('EUR');
-  const rateInput2 = await adminSettings.addCurrencyRateInputLocator();
+  const rateInput2 = await getAdminSettingsAddCurrencyRateInputLocator({ page });
   await rateInput2.fill('1.16');
-  await adminSettings.confirmAddCurrency();
+  await confirmAdminSettingsAddCurrency({ page });
 
   // Save rates
-  await adminSettings.saveExchangeRates();
+  await saveAdminSettingsExchangeRates({ page });
 
   // Wait for save success
-  const saveSuccess = await adminSettings.exchangeRateSaveSuccessLocator();
+  const saveSuccess = await getAdminSettingsExchangeRateSaveSuccessLocator({ page });
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
   // Reload and verify persistence — deep-link back to currency tab
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
-  const sectionAfterReload = await adminSettings.exchangeRatesSectionLocator();
+  const sectionAfterReload = await getAdminSettingsExchangeRatesSectionLocator({ page });
   await expect(sectionAfterReload).toBeVisible({ timeout: 10_000 });
 
   // Home currency should be GBP
-  const homeSelectAfterReload = await adminSettings.homeCurrencySelectLocator();
+  const homeSelectAfterReload = await getAdminSettingsHomeCurrencySelectLocator({ page });
   await expect(homeSelectAfterReload).toHaveValue('GBP');
 
   // USD and EUR rate rows should be visible
-  const usdRow = await adminSettings.exchangeRateRowLocator('USD');
+  const usdRow = await getAdminSettingsExchangeRateRowLocator('USD', { page });
   await expect(usdRow).toBeVisible();
-  const eurRow = await adminSettings.exchangeRateRowLocator('EUR');
+  const eurRow = await getAdminSettingsExchangeRateRowLocator('EUR', { page });
   await expect(eurRow).toBeVisible();
 
   // Restore to USD home for other tests

@@ -31,6 +31,8 @@ import {
   loginAsAdmin,
   setPassword,
   navigateToProtectedPage,
+  navigateToSetPasswordPage,
+  isSetPasswordTokenInvalid,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import { inviteUserViaApi, deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -73,12 +75,9 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
   const { userId, inviteToken } = await createInvitedUser(restClient);
 
   try {
-    const setPasswordPage = (await import('@pages/minicrm/SetPasswordPage.js')).SetPasswordPage;
-    const po = new setPasswordPage({ page });
+    await navigateToSetPasswordPage(inviteToken, { page });
 
-    await po.navigate(inviteToken);
-
-    const invalidToken = await po.invalidTokenVisible();
+    const invalidToken = await isSetPasswordTokenInvalid({ page });
     expect(invalidToken, 'set-password form should render, not show invalid-token error').toBe(
       false,
     );
@@ -96,10 +95,7 @@ test('@functional F1-INV1: /set-password — renders form for unauthenticated us
 test('@functional F1-INV2: /set-password — invalid token shows error on the page, not a redirect to login', async ({
   page,
 }) => {
-  const setPasswordPage = (await import('@pages/minicrm/SetPasswordPage.js')).SetPasswordPage;
-  const po = new setPasswordPage({ page });
-
-  await po.navigate('completely-invalid-token-xyz');
+  await navigateToSetPasswordPage('completely-invalid-token-xyz', { page });
 
   const finalUrl = page.url();
   expect(
@@ -113,10 +109,7 @@ test('@functional F1-INV3: /set-password — missing token shows invalid-token e
 }) => {
   await page.goto('/set-password');
 
-  const setPasswordPage = (await import('@pages/minicrm/SetPasswordPage.js')).SetPasswordPage;
-  const po = new setPasswordPage({ page });
-
-  const invalidToken = await po.invalidTokenVisible();
+  const invalidToken = await isSetPasswordTokenInvalid({ page });
   expect(invalidToken, 'missing token should show invalid-token error').toBe(true);
 
   const finalUrl = page.url();

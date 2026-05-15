@@ -12,6 +12,8 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
+import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 
 // ---------------------------------------------------------------------------
 // API data types (MINCRM-357)
@@ -144,4 +146,33 @@ export async function patchActivity(
     patch,
   );
   return res.body.activity;
+}
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap MyTasksPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Fixture context accepted by activity locator behaviors. */
+export interface ActivitiesBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Returns a resolved locator for a task row by task ID (null if absent).
+ */
+export async function getMyTaskRowLocator(taskId: string, context: ActivitiesBehaviorContext) {
+  const tasksPage = new MyTasksPage(context);
+  return tasksPage.taskRowLocator(taskId);
+}
+
+/**
+ * Returns a resolved locator for the overdue badge on a task row.
+ */
+export async function getOverdueTaskBadgeLocator(
+  taskId: string,
+  context: ActivitiesBehaviorContext,
+) {
+  const tasksPage = new MyTasksPage(context);
+  return tasksPage.overdueTaskBadgeLocator(taskId);
 }

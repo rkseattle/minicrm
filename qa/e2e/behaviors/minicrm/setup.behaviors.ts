@@ -11,6 +11,9 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
+import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
+import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
 
 // ---------------------------------------------------------------------------
 // Webhooks (MINCRM-279)
@@ -332,4 +335,78 @@ export async function getOnboardingStatus(
     '/api/v1/settings/onboarding',
   );
   return res.body;
+}
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap OnboardingPage / AutomationPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Fixture context for onboarding and automation UI behaviors. */
+export interface SetupUIBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Returns a resolved locator for the onboarding banner container.
+ */
+export async function getOnboardingBannerLocator(context: SetupUIBehaviorContext) {
+  const onboardingPage = new OnboardingPage(context);
+  return onboardingPage.bannerLocator();
+}
+
+/**
+ * Clicks the dismiss (X) button to close the onboarding banner.
+ */
+export async function dismissOnboardingBanner(context: SetupUIBehaviorContext): Promise<void> {
+  const onboardingPage = new OnboardingPage(context);
+  await onboardingPage.dismiss();
+}
+
+/**
+ * Returns a resolved locator for onboarding step 1 content panel.
+ */
+export async function getOnboardingStep1Locator(context: SetupUIBehaviorContext) {
+  const onboardingPage = new OnboardingPage(context);
+  return onboardingPage.step1Locator();
+}
+
+/**
+ * Returns a resolved locator for onboarding step 2 content panel.
+ */
+export async function getOnboardingStep2Locator(context: SetupUIBehaviorContext) {
+  const onboardingPage = new OnboardingPage(context);
+  return onboardingPage.step2Locator();
+}
+
+/**
+ * Clicks the "Looks good" button on onboarding step 1.
+ */
+export async function clickOnboardingLooksGood(context: SetupUIBehaviorContext): Promise<void> {
+  const onboardingPage = new OnboardingPage(context);
+  await onboardingPage.clickLooksGood();
+}
+
+/**
+ * Navigates to the automation rules page.
+ */
+export async function navigateToAutomation(context: SetupUIBehaviorContext): Promise<void> {
+  const automationPage = new AutomationPage(context);
+  await automationPage.navigate();
+}
+
+/**
+ * Returns a resolved locator for the automation rules page heading.
+ */
+export async function getAutomationHeadingLocator(context: SetupUIBehaviorContext) {
+  const automationPage = new AutomationPage(context);
+  return automationPage.headingLocator();
+}
+
+/**
+ * Returns a resolved locator for the pagination controls on the automation page.
+ */
+export async function getAutomationPaginationLocator(context: SetupUIBehaviorContext) {
+  const automationPage = new AutomationPage(context);
+  return automationPage.paginationLocator();
 }

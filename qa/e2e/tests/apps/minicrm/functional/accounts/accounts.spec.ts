@@ -41,12 +41,13 @@ import {
   getAccountById,
   searchAccountsViaApi,
   listAccountsViaApi,
+  getAccountLinkedContactLocator,
+  getAccountLinkedContactsEmptyLocator,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getContactById, patchContactAccount } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAccount, createTestContact, navigateToAccount } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Shared setup
@@ -359,8 +360,8 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   await navigateToAccount(page, account.id);
 
   // The linked contacts list should contain the contact.
-  const accountDetailPage = new AccountDetailPage({ page });
-  const linkedContactLocator = await accountDetailPage.linkedContactLocator(contact.id);
+
+  const linkedContactLocator = await getAccountLinkedContactLocator(contact.id, { page });
   await expect(
     linkedContactLocator,
     'linked contact should be visible on account detail',
@@ -379,8 +380,8 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   await navigateToAccount(page, account.id);
 
   // Empty state should be visible, no error.
-  const accountDetailPage2 = new AccountDetailPage({ page });
-  const emptyLocator = await accountDetailPage2.linkedContactsEmptyLocator();
+
+  const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
   // No error alert should be present (doesNotExist — safe when element is absent).
@@ -409,8 +410,8 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   await navigateToAccount(page, account.id);
 
   // After unlinking, the linked contacts list should be empty.
-  const accountDetailPage3 = new AccountDetailPage({ page });
-  const emptyLocator = await accountDetailPage3.linkedContactsEmptyLocator();
+
+  const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
   // The previously linked contact should not appear in the list.

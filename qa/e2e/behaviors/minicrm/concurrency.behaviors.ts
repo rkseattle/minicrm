@@ -101,3 +101,68 @@ export async function assertConflictModal(context: {
   const isVisible = await widget.isVisible();
   return { isVisible };
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap ConflictBannerWidget
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Fixture context for concurrency UI behaviors. */
+export interface ConcurrencyBehaviorContext {
+  page: PageFacade;
+}
+
+/** Returns true when the conflict resolution modal is visible. */
+export async function isConflictModalVisible(
+  context: ConcurrencyBehaviorContext,
+): Promise<boolean> {
+  return new ConflictBannerWidget(context).isVisible();
+}
+
+/** Returns a resolved locator for the conflict modal container. */
+export async function getConflictModalLocator(context: ConcurrencyBehaviorContext) {
+  return new ConflictBannerWidget(context).modalLocator();
+}
+
+/** Returns a resolved locator for the conflict modal title. */
+export async function getConflictModalTitleLocator(context: ConcurrencyBehaviorContext) {
+  return new ConflictBannerWidget(context).titleLocator();
+}
+
+/** Returns a resolved locator for the "Save resolved" button. */
+export async function getConflictSaveResolvedButtonLocator(context: ConcurrencyBehaviorContext) {
+  return new ConflictBannerWidget(context).saveResolvedButtonLocator();
+}
+
+/** Returns a resolved locator for the "Discard my changes" button. */
+export async function getConflictDiscardButtonLocator(context: ConcurrencyBehaviorContext) {
+  return new ConflictBannerWidget(context).discardButtonLocator();
+}
+
+/** Clicks "Save resolved" in the conflict modal. */
+export async function clickConflictSaveResolved(
+  context: ConcurrencyBehaviorContext,
+): Promise<void> {
+  return new ConflictBannerWidget(context).clickSaveResolved();
+}
+
+/** Clicks "Discard my changes" in the conflict modal. */
+export async function clickConflictDiscard(context: ConcurrencyBehaviorContext): Promise<void> {
+  return new ConflictBannerWidget(context).clickDiscard();
+}
+
+/** Selects "theirs" for the given field key in the conflict merge UI. */
+export async function selectConflictTheirs(
+  fieldKey: string,
+  context: ConcurrencyBehaviorContext,
+): Promise<void> {
+  return new ConflictBannerWidget(context).selectTheirs(fieldKey);
+}
+
+/** Selects "mine" for the given field key in the conflict merge UI. */
+export async function selectConflictMine(
+  fieldKey: string,
+  context: ConcurrencyBehaviorContext,
+): Promise<void> {
+  return new ConflictBannerWidget(context).selectMine(fieldKey);
+}

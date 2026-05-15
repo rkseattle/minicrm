@@ -15,6 +15,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
+import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -459,4 +460,285 @@ export async function exportDealsAsCsv(restClient: RestClient): Promise<string> 
     headers: { Accept: 'text/csv' },
   });
   return res.body as unknown as string;
+}
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap PipelineBoardPage / DealDetailPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the pipeline board page.
+ */
+export async function navigateToPipelineBoard(context: DealsBehaviorContext): Promise<void> {
+  const board = new PipelineBoardPage(context);
+  await board.navigate();
+}
+
+/**
+ * Returns whether the pipeline board is loaded.
+ */
+export async function pipelineBoardIsLoaded(context: DealsBehaviorContext): Promise<boolean> {
+  const board = new PipelineBoardPage(context);
+  return board.isLoaded();
+}
+
+/**
+ * Returns a resolved locator for the main pipeline board container.
+ */
+export async function getPipelineBoardLocator(context: DealsBehaviorContext) {
+  const board = new PipelineBoardPage(context);
+  return board.boardLocator();
+}
+
+/**
+ * Returns a resolved locator for a deal card by deal ID (desktop or mobile variant).
+ */
+export async function getDealCardLocator(dealId: string, context: DealsBehaviorContext) {
+  const board = new PipelineBoardPage(context);
+  return board.dealCardLocator(dealId);
+}
+
+/**
+ * Returns a resolved locator for the stage select dropdown on a deal card.
+ */
+export async function getDealStageSelectOnBoardLocator(
+  dealId: string,
+  context: DealsBehaviorContext,
+) {
+  const board = new PipelineBoardPage(context);
+  return board.dealStageSelectLocator(dealId);
+}
+
+/**
+ * Returns a resolved locator for the stage update error banner.
+ */
+export async function getPipelineBoardStageUpdateErrorLocator(context: DealsBehaviorContext) {
+  const board = new PipelineBoardPage(context);
+  return board.stageUpdateErrorLocator();
+}
+
+/**
+ * Returns a resolved locator for the close deal modal (null if absent).
+ */
+export async function getPipelineBoardCloseDealModalLocator(context: DealsBehaviorContext) {
+  const board = new PipelineBoardPage(context);
+  return board.closeDealModalLocator();
+}
+
+/**
+ * Cancels the close-deal modal without confirming the stage change.
+ */
+export async function cancelCloseDealModal(context: DealsBehaviorContext): Promise<void> {
+  const board = new PipelineBoardPage(context);
+  await board.cancelCloseDeal();
+}
+
+/**
+ * Clicks the New Deal button on the pipeline board.
+ */
+export async function clickNewDealOnBoard(context: DealsBehaviorContext): Promise<void> {
+  const board = new PipelineBoardPage(context);
+  await board.clickNewDeal();
+}
+
+/**
+ * Returns a resolved locator for the mobile stage name heading on the board.
+ */
+export async function getPipelineMobileStageNameLocator(context: DealsBehaviorContext) {
+  const board = new PipelineBoardPage(context);
+  return board.mobileStageNameLocator();
+}
+
+/**
+ * Navigates to a deal detail page.
+ */
+export async function navigateToDealDetail(
+  id: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
+  const detail = new DealDetailPage(context);
+  await detail.navigate(id);
+}
+
+/**
+ * Clicks the Edit button on a deal detail page.
+ */
+export async function openDealEditForm(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  await detail.clickEdit();
+}
+
+/**
+ * Returns a resolved locator for the deal name input on the deal form.
+ */
+export async function getDealNameInputLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.nameInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the deal stage select on the deal form.
+ */
+export async function getDealStageSelectOnFormLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.stageSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the deal value input on the deal form.
+ */
+export async function getDealValueInputLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.valueInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the deal close date input on the deal form.
+ */
+export async function getDealCloseDateInputLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.closeDateInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the deal account select on the deal form.
+ */
+export async function getDealAccountSelectLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.accountSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the deal form submit button.
+ */
+export async function getDealFormSubmitLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.submitLocator();
+}
+
+/**
+ * Submits the deal detail form.
+ */
+export async function submitDealForm(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  await detail.submitForm();
+}
+
+/**
+ * Returns a resolved locator for the deal name heading on the detail page.
+ */
+export async function getDealNameHeadingLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.dealNameLocator();
+}
+
+/**
+ * Clicks the Delete button on the deal detail page.
+ */
+export async function clickDeleteDeal(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  await detail.clickDelete();
+}
+
+/**
+ * Confirms deletion in the deal delete confirmation modal.
+ */
+export async function confirmDeleteDeal(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  await detail.confirmDelete();
+}
+
+/**
+ * Returns a resolved locator for the linked contacts heading on the deal detail page.
+ */
+export async function getDealLinkedContactsHeadingLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.linkedContactsHeadingLocator();
+}
+
+/**
+ * Returns a resolved locator for the link contact select dropdown.
+ */
+export async function getDealLinkContactSelectLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.linkContactSelectLocator();
+}
+
+/**
+ * Returns a resolved locator for the link contact button.
+ */
+export async function getDealLinkContactButtonLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.linkContactButtonLocator();
+}
+
+/**
+ * Returns a resolved locator for a specific linked contact entry by contact ID.
+ */
+export async function getDealLinkedContactLocator(
+  contactId: string,
+  context: DealsBehaviorContext,
+) {
+  const detail = new DealDetailPage(context);
+  return detail.linkedContactLocator(contactId);
+}
+
+/**
+ * Returns a resolved locator for the unlink button for a specific contact.
+ */
+export async function getDealUnlinkContactLocator(
+  contactId: string,
+  context: DealsBehaviorContext,
+) {
+  const detail = new DealDetailPage(context);
+  return detail.unlinkContactLocator(contactId);
+}
+
+/**
+ * Returns a resolved locator for the empty state when no contacts are linked to a deal.
+ */
+export async function getDealLinkedContactsEmptyLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.linkedContactsEmptyLocator();
+}
+
+/**
+ * Returns a resolved locator for the not-found alert on a deal detail page.
+ */
+export async function getDealNotFoundLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.notFoundAlertLocator();
+}
+
+/**
+ * Returns a resolved locator for the back-to-deals link on the deal not-found page.
+ */
+export async function getDealNotFoundBackLink(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.notFoundBackLinkLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments section on a deal detail page.
+ */
+export async function getDealAttachmentsSectionLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.attachmentsSectionLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments file input on a deal detail page.
+ */
+export async function getDealAttachmentsFileInputLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.attachmentsFileInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments list on a deal detail page.
+ */
+export async function getDealAttachmentsListLocator(context: DealsBehaviorContext) {
+  const detail = new DealDetailPage(context);
+  return detail.attachmentsListLocator();
 }

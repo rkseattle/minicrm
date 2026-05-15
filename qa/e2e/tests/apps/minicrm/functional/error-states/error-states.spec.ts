@@ -38,12 +38,24 @@ import {
   bulkDeleteContacts,
   contactRowIsVisible,
   searchContactsViaApi,
+  getContactsCreateFormLocator,
+  getContactsFirstNameInputLocator,
+  getContactsBulkActionBarLocator,
+  getContactsBulkErrorLocator,
+  getContactNotFoundLocator,
+  getContactNotFoundBackLink,
+  getContactsDuplicateWarningVisible,
+  getContactsLoadingIndicator,
+  getContactsContactLinkLocator,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
-import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
-import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
+import {
+  getDealById,
+  getDealCardLocator,
+  getDealStageSelectOnBoardLocator,
+  getPipelineBoardStageUpdateErrorLocator,
+  getDealNotFoundLocator,
+  getDealNotFoundBackLink,
+} from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -104,12 +116,12 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
   await page.waitForLoadState('networkidle');
 
   // Form must still be visible — user was not navigated away.
-  const contactsPage = new ContactsPage({ page });
-  const form = await contactsPage.createFormLocator();
+
+  const form = await getContactsCreateFormLocator({ page });
   await expect(form).toBeVisible();
 
   // First name field retains the entered value — form data is preserved.
-  const firstNameInput = await contactsPage.firstNameInputLocator();
+  const firstNameInput = await getContactsFirstNameInputLocator({ page });
   await expect(firstNameInput).toHaveValue(firstName);
 
   // Confirm the contact was never created via API.
@@ -142,10 +154,8 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
 
   await page.goto('/deals', { waitUntil: 'networkidle' });
 
-  const pipelineBoard = new PipelineBoardPage({ page });
-
   // Wait for the deal card to be present before setting up the mock.
-  const card = await pipelineBoard.dealCardLocator(deal.id);
+  const card = await getDealCardLocator(deal.id, { page });
   await card.waitFor({ state: 'visible', timeout: 10_000 });
 
   // Intercept the PATCH for this specific deal and return 500.
@@ -162,13 +172,13 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
   });
 
   // Change stage via the dropdown — triggers the PATCH.
-  const stageSelect = await pipelineBoard.dealStageSelectLocator(deal.id);
+  const stageSelect = await getDealStageSelectOnBoardLocator(deal.id, { page });
   await stageSelect.selectOption('Qualification');
 
   await page.waitForLoadState('networkidle');
 
   // The stage-update-error banner must be visible.
-  const errorBanner = await pipelineBoard.stageUpdateErrorLocator();
+  const errorBanner = await getPipelineBoardStageUpdateErrorLocator({ page });
   await expect(errorBanner).toBeVisible({ timeout: 8_000 });
 
   // Verify via API that the deal's stage was NOT changed.
@@ -203,7 +213,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   await clickBulkCheckbox(contact.id, { page });
 
   // Wait for the bulk-action-bar to confirm selection registered.
-  const bulkBar = await new ContactsPage({ page }).bulkActionBarLocator();
+  const bulkBar = await getContactsBulkActionBarLocator({ page });
   await bulkBar.waitFor({ state: 'visible', timeout: 8_000 });
 
   // Intercept the bulk contacts POST and return 500.
@@ -227,7 +237,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
 
   // Wait for the error element to attach rather than networkidle — the mock
   // returns instantly so networkidle settles before React re-renders bulkError.
-  const errorMsg = await new ContactsPage({ page }).bulkErrorLocator();
+  const errorMsg = await getContactsBulkErrorLocator({ page });
   await errorMsg.waitFor({ state: 'attached', timeout: 8_000 });
   await expect(errorMsg).toBeVisible({ timeout: 8_000 });
 
@@ -270,12 +280,12 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
   });
 
   // The page must show a not-found message — not a blank screen or JS error.
-  const contactDetailPage = new ContactDetailPage({ page });
-  const notFoundMsg = await contactDetailPage.notFoundAlertLocator();
+
+  const notFoundMsg = await getContactNotFoundLocator({ page });
   await expect(notFoundMsg).toBeVisible();
 
   // The back-to-contacts link must also be present so the user can recover.
-  const backLink = await contactDetailPage.notFoundBackLinkLocator();
+  const backLink = await getContactNotFoundBackLink({ page });
   await expect(backLink).toBeVisible();
 });
 
@@ -297,12 +307,12 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
   });
 
   // The page must show a not-found message.
-  const dealDetailPage = new DealDetailPage({ page });
-  const notFoundMsg = await dealDetailPage.notFoundAlertLocator();
+
+  const notFoundMsg = await getDealNotFoundLocator({ page });
   await expect(notFoundMsg).toBeVisible();
 
   // The back-to-deals link must be present so the user can recover.
-  const backLink = await dealDetailPage.notFoundBackLinkLocator();
+  const backLink = await getDealNotFoundBackLink({ page });
   await expect(backLink).toBeVisible();
 });
 
@@ -340,7 +350,7 @@ test('@functional ES-1-6: create contact with duplicate email → 409 → duplic
   expect(result.created, 'contact must not have been created').toBe(false);
 
   // Confirm the inline warning element is visible (not just any error element).
-  const warningIsVisible = await new ContactsPage({ page }).duplicateWarningIsVisible();
+  const warningIsVisible = await getContactsDuplicateWarningVisible({ page });
   expect(warningIsVisible, 'inline duplicate-contact-warning must be visible').toBe(true);
 });
 
@@ -368,7 +378,7 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   await page.goto('/contacts', { waitUntil: 'domcontentloaded' });
 
   // The loading indicator must appear while the request is in-flight.
-  const loadingEl = await new ContactsPage({ page }).loadingIndicatorLocator();
+  const loadingEl = await getContactsLoadingIndicator({ page });
   await expect(loadingEl).toBeVisible({ timeout: DELAY_MS - 500 });
 
   // After the delay the real data arrives — wait for the page to settle.
@@ -408,6 +418,6 @@ test('@functional ES-1-8: isolation check — contacts list loads normally witho
   await page.goto('/contacts', { waitUntil: 'networkidle' });
 
   // The contacts list should load promptly (well under 3 s) and show the seeded contact.
-  const contactRow = await new ContactsPage({ page }).contactLinkLocator(contact.id);
+  const contactRow = await getContactsContactLinkLocator(contact.id, { page });
   await expect(contactRow).toBeVisible({ timeout: 5_000 });
 });

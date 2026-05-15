@@ -524,3 +524,51 @@ export async function createAccountViaApi(
   const res = await restClient.post<{ account: AccountRow }>('/api/v1/accounts', params);
   return res.body.account;
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap AccountDetailPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a resolved locator for a linked contact row by contact ID on the account detail page.
+ */
+export async function getAccountLinkedContactLocator(
+  contactId: string,
+  context: AccountsBehaviorContext,
+) {
+  const detail = new AccountDetailPage(context);
+  return detail.linkedContactLocator(contactId);
+}
+
+/**
+ * Returns a resolved locator for the empty state when no contacts are linked to the account.
+ */
+export async function getAccountLinkedContactsEmptyLocator(context: AccountsBehaviorContext) {
+  const detail = new AccountDetailPage(context);
+  return detail.linkedContactsEmptyLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments section on the account detail page.
+ */
+export async function getAccountAttachmentsSectionLocator(context: AccountsBehaviorContext) {
+  const detail = new AccountDetailPage(context);
+  return detail.attachmentsSectionLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments file input on the account detail page.
+ */
+export async function getAccountAttachmentsFileInputLocator(context: AccountsBehaviorContext) {
+  const detail = new AccountDetailPage(context);
+  return detail.attachmentsFileInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments list on the account detail page.
+ */
+export async function getAccountAttachmentsListLocator(context: AccountsBehaviorContext) {
+  const detail = new AccountDetailPage(context);
+  return detail.attachmentsListLocator();
+}

@@ -27,8 +27,12 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  navigateToAutomation,
+  getAutomationHeadingLocator,
+  getAutomationPaginationLocator,
+} from '@behaviors/minicrm/setup.behaviors.js';
 import { createAutomationRule } from '@behaviors/minicrm/setup.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
 import type { ActivityListRow } from '@behaviors/minicrm/activities.behaviors.js';
@@ -277,10 +281,9 @@ test('@functional F13-PAG1: Automation rules page — pagination controls always
 }) => {
   await loginAsAdmin(restClient);
 
-  const automationPage = new AutomationPage({ page });
-  await automationPage.navigate();
+  await navigateToAutomation({ page });
 
-  await expect(await automationPage.headingLocator()).toBeVisible();
-  const automationPagination = await automationPage.paginationLocator();
+  await expect(await getAutomationHeadingLocator({ page })).toBeVisible();
+  const automationPagination = await getAutomationPaginationLocator({ page });
   await expect(automationPagination).toBeVisible({ timeout: 10_000 });
 });

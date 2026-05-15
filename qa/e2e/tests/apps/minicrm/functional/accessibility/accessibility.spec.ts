@@ -33,15 +33,34 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { navigateToContacts } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  navigateToContacts,
+  navigateToContactDetail,
+  clickNewContact,
+  submitContactCreateFormAction,
+  waitForBulkCheckbox,
+  clickBulkCheckbox,
+  clickContactsBulkDelete,
+  getContactsConfirmDeleteModalLocator,
+  cancelContactsBulkDelete,
+  clickContactsBulkReassign,
+  getContactsBulkReassignModalLocator,
+  cancelContactsBulkReassign,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
+import {
+  navigateToLoginPage,
+  submitLoginForm,
+  navigateToForgotPasswordPage,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  navigateToPipelineBoard,
+  getDealStageSelectOnBoardLocator,
+  getPipelineBoardCloseDealModalLocator,
+  cancelCloseDealModal,
+} from '@behaviors/minicrm/deals.behaviors.js';
+import { navigateToUsers } from '@behaviors/minicrm/users.behaviors.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import { LoginPage } from '@pages/minicrm/LoginPage.js';
-import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
-import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
-import { UsersPage } from '@pages/minicrm/UsersPage.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
@@ -80,26 +99,23 @@ test.describe('Auth forms', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@functional A11Y-A1: login page — empty form', async ({ page }) => {
-    const loginPage = new LoginPage({ page });
-    await loginPage.navigate();
+    await navigateToLoginPage({ page });
     await page.waitForLoadState('networkidle');
 
     await assertNoBlockingViolations(page);
   });
 
   test('@functional A11Y-A2: login page — validation errors visible', async ({ page }) => {
-    const loginPage = new LoginPage({ page });
-    await loginPage.navigate();
+    await navigateToLoginPage({ page });
     // Submit empty form to surface required-field / credential error state.
-    await loginPage.submit();
+    await submitLoginForm({ page });
     await page.waitForLoadState('networkidle');
 
     await assertNoBlockingViolations(page);
   });
 
   test('@functional A11Y-A3: forgot-password page — empty form', async ({ page }) => {
-    const forgotPage = new ForgotPasswordPage({ page });
-    await forgotPage.navigate();
+    await navigateToForgotPasswordPage({ page });
     await page.waitForLoadState('networkidle');
 
     await assertNoBlockingViolations(page);
@@ -139,21 +155,19 @@ test('@functional A11Y-C1: contacts list — table with data', async ({
 });
 
 test('@functional A11Y-C2: contact creation form — empty state', async ({ page }) => {
-  const contactsPage = new ContactsPage({ page });
-  await contactsPage.navigate();
-  await contactsPage.clickNewContact();
+  await navigateToContacts({ page });
+  await clickNewContact({ page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
 
 test('@functional A11Y-C3: contact creation form — validation errors visible', async ({ page }) => {
-  const contactsPage = new ContactsPage({ page });
-  await contactsPage.navigate();
-  await contactsPage.clickNewContact();
+  await navigateToContacts({ page });
+  await clickNewContact({ page });
 
   // Submit without filling any fields to trigger required-field validation errors.
-  await contactsPage.submitCreateForm();
+  await submitContactCreateFormAction({ page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
@@ -161,8 +175,7 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 
 test('@functional A11Y-C4: contact detail page', async ({ page, restClient, testData }) => {
   const contact = await createTestContact(testData, restClient);
-  const detailPage = new ContactDetailPage({ page });
-  await detailPage.navigate(contact.id);
+  await navigateToContactDetail(contact.id, { page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
@@ -179,8 +192,7 @@ test('@functional A11Y-D1: pipeline board — Kanban with a deal card', async ({
 }) => {
   const account = await createTestAccount(testData, restClient);
   await createTestDeal(testData, restClient, { account_id: account.id });
-  const boardPage = new PipelineBoardPage({ page });
-  await boardPage.navigate();
+  await navigateToPipelineBoard({ page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
@@ -193,24 +205,23 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
 }) => {
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
-  const boardPage = new PipelineBoardPage({ page });
-  await boardPage.navigate();
+  await navigateToPipelineBoard({ page });
   await page.waitForLoadState('networkidle');
 
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
   // Select a terminal stage to open CloseDealModal — audit while modal is open.
-  const stageSelect = await boardPage.dealStageSelectLocator(deal.id);
+  const stageSelect = await getDealStageSelectOnBoardLocator(deal.id, { page });
   await stageSelect.selectOption('Closed Won');
 
   // Wait for the modal to become visible before auditing.
-  const modalLocator = await boardPage.closeDealModalLocator();
+  const modalLocator = await getPipelineBoardCloseDealModalLocator({ page });
   await modalLocator?.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 
   // Dismiss the modal to leave the page in a clean state for teardown.
-  await boardPage.cancelCloseDeal();
+  await cancelCloseDealModal({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -223,25 +234,24 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   testData,
 }) => {
   const contact = await createTestContact(testData, restClient);
-  const contactsPage = new ContactsPage({ page });
-  await contactsPage.navigate();
+  await navigateToContacts({ page });
   await page.waitForLoadState('networkidle');
 
   // Select the seeded contact row to enable the bulk action bar.
-  await contactsPage.waitForBulkCheckbox(contact.id);
-  await contactsPage.clickBulkCheckbox(contact.id);
+  await waitForBulkCheckbox(contact.id, { page });
+  await clickBulkCheckbox(contact.id, { page });
 
   // Click the bulk-delete button to open ConfirmDeleteModal.
-  await contactsPage.clickBulkDelete();
+  await clickContactsBulkDelete({ page });
 
   // Wait for the modal to be visible before auditing.
-  const deleteModal = await contactsPage.confirmDeleteModalLocator();
+  const deleteModal = await getContactsConfirmDeleteModalLocator({ page });
   await deleteModal.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 
   // Dismiss without deleting so testData teardown can clean up.
-  await contactsPage.cancelBulkDelete();
+  await cancelContactsBulkDelete({ page });
 });
 
 test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
@@ -250,25 +260,24 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   testData,
 }) => {
   const contact = await createTestContact(testData, restClient);
-  const contactsPage = new ContactsPage({ page });
-  await contactsPage.navigate();
+  await navigateToContacts({ page });
   await page.waitForLoadState('networkidle');
 
   // Select the seeded contact row to enable the bulk action bar.
-  await contactsPage.waitForBulkCheckbox(contact.id);
-  await contactsPage.clickBulkCheckbox(contact.id);
+  await waitForBulkCheckbox(contact.id, { page });
+  await clickBulkCheckbox(contact.id, { page });
 
   // Click the bulk-reassign button to open BulkReassignModal.
-  await contactsPage.clickBulkReassign();
+  await clickContactsBulkReassign({ page });
 
   // Wait for the modal to be visible before auditing.
-  const reassignModal = await contactsPage.bulkReassignModalLocator();
+  const reassignModal = await getContactsBulkReassignModalLocator({ page });
   await reassignModal.waitFor({ state: 'visible' });
 
   await assertNoBlockingViolations(page);
 
   // Dismiss the modal so testData teardown can clean up.
-  await contactsPage.cancelBulkReassign();
+  await cancelContactsBulkReassign({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -276,8 +285,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 // ---------------------------------------------------------------------------
 
 test('@functional A11Y-ADM1: user invite form', async ({ page }) => {
-  const usersPage = new UsersPage({ page });
-  await usersPage.navigate();
+  await navigateToUsers({ page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);

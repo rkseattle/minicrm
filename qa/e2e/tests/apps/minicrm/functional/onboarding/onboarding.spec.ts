@@ -25,7 +25,13 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { setOnboardingCompleted, getOnboardingStatus } from '@behaviors/minicrm/setup.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
+import {
+  getOnboardingBannerLocator,
+  dismissOnboardingBanner,
+  getOnboardingStep1Locator,
+  getOnboardingStep2Locator,
+  clickOnboardingLooksGood,
+} from '@behaviors/minicrm/setup.behaviors.js';
 
 // Tests navigate to the UI login page, so they must not inherit the pre-auth
 // admin storageState from globalSetup.
@@ -79,8 +85,7 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     // query resolves, so without this the probe races against network latency.
     await page.waitForLoadState('networkidle');
 
-    const onboardingPage = new OnboardingPage({ page });
-    const banner = await onboardingPage.bannerLocator();
+    const banner = await getOnboardingBannerLocator({ page });
     await expect(banner).toBeVisible({ timeout: 10_000 });
   });
 
@@ -109,11 +114,10 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
     await page.waitForLoadState('networkidle');
 
-    const onboardingPage = new OnboardingPage({ page });
-    const banner = await onboardingPage.bannerLocator();
+    const banner = await getOnboardingBannerLocator({ page });
     await expect(banner).toBeVisible({ timeout: 10_000 });
 
-    await onboardingPage.dismiss();
+    await dismissOnboardingBanner({ page });
 
     // Banner should disappear after dismiss.
     expect(await page.isNotVisible([{ type: 'testId', value: 'onboarding-banner' }])).toBe(true);
@@ -133,17 +137,16 @@ test.describe.serial('Onboarding banner (MINCRM-256)', () => {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
     await page.waitForLoadState('networkidle');
 
-    const onboardingPage = new OnboardingPage({ page });
     // Wait for the banner to appear before resolving step1 — the step-1 panel
     // is only mounted after the banner's initial API fetch completes.
-    const banner = await onboardingPage.bannerLocator();
+    const banner = await getOnboardingBannerLocator({ page });
     await expect(banner).toBeVisible({ timeout: 10_000 });
-    const step1 = await onboardingPage.step1Locator();
+    const step1 = await getOnboardingStep1Locator({ page });
     await expect(step1).toBeVisible({ timeout: 10_000 });
 
-    await onboardingPage.clickLooksGood();
+    await clickOnboardingLooksGood({ page });
 
-    const step2 = await onboardingPage.step2Locator();
+    const step2 = await getOnboardingStep2Locator({ page });
     await expect(step2).toBeVisible({ timeout: 5_000 });
   });
 }); // end describe.serial

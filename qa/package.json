@@ -11,6 +11,7 @@
     "test:framework": "playwright test --config=e2e/playwright.config.ts --project=desktop e2e/tests/framework/",
     "test:framework:coverage": "NODE_V8_COVERAGE=./coverage-raw playwright test --config=e2e/playwright.config.ts --project=desktop e2e/tests/framework/ && npx c8 report --temp-directory ./coverage-raw --src e2e/framework --include 'e2e/framework/**/*.ts' --exclude 'e2e/tests/**' --reporter text --reporter lcov --reporter json-summary --reports-dir coverage --check-coverage --lines 80 --functions 80 --branches 80 --statements 80",
     "lint:framework-purity": "bash scripts/check-framework-purity.sh",
+    "lint:behavior-layer": "bash scripts/check-behavior-layer.sh",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
