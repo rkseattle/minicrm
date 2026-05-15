@@ -44,6 +44,36 @@ Spec files (`tests/apps/minicrm/**/*.spec.ts`) must also satisfy the two-strateg
 for any `page.locate()` call. Dynamic row-scoped IDs (e.g. `deal-card-${id}`) may use a
 single `testId` strategy when no stable role-based fallback exists — add a comment explaining why.
 
+## Lint Gates
+
+Two shell scripts enforce architectural contracts on every PR. Both run in the `e2e-framework-purity` CI job and can be run locally before pushing.
+
+### Framework purity (`lint:framework-purity`)
+
+Fails if any file under `qa/e2e/framework/` imports an application-domain string (contact names, route paths, etc.). The framework layer must remain product-agnostic so it can be reused across projects.
+
+```bash
+npm run lint:framework-purity --workspace=minicrm-qa
+# or directly:
+bash qa/scripts/check-framework-purity.sh
+```
+
+### Behavior-layer contract (`lint:behavior-layer`) — MINCRM-367
+
+Fails if any spec file under `qa/e2e/tests/apps/` imports directly from `@pages/*`. Spec files must route all UI interactions through named behavior functions in `qa/e2e/behaviors/minicrm/` — never reference Page Objects directly.
+
+```bash
+npm run lint:behavior-layer --workspace=minicrm-qa
+# or directly:
+bash qa/scripts/check-behavior-layer.sh
+```
+
+**How to fix a violation:**
+
+1. Identify the Page Object method called in the spec.
+2. Add a behavior wrapper in `qa/e2e/behaviors/minicrm/<domain>.behaviors.ts` that calls the PO method and exports it with a clear, intent-bearing name.
+3. Import the behavior in the spec instead of the PO, and remove the `@pages/*` import.
+
 ## Smoke-Level Coverage
 
 Smoke-level (sanity) E2E coverage is provided by 10 smoke-tagged tests spread across the functional suite (MINCRM-193). These tests cover the critical end-to-end journeys — auth login/logout, contact create/list/edit, deal create/advance/close-Won, task create/complete, and user invite/first-login — and run first in Phase 3 CI. The framework integration test lives at `functional/framework/bvt-framework.spec.ts`.
