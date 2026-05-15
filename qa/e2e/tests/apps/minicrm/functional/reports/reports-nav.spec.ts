@@ -19,7 +19,17 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
-import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
+import {
+  getReportsHeadingLocator,
+  getReportsTabListLocator,
+  getReportsTabListSelectLocator,
+  getReportsWinLossTabLocator,
+  getReportsActivityTabLocator,
+  getReportsStageTrendTabLocator,
+  getReportsWinLossHeadingLocator,
+  getReportsActivityVolumeHeadingLocator,
+  getReportsStageTrendHeadingLocator,
+} from '@behaviors/minicrm/reports.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -76,8 +86,7 @@ test('reports nav: /reports shows the page heading @functional', async ({ page }
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const heading = await reportsPage.headingLocator();
+  const heading = await getReportsHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 });
 
@@ -86,20 +95,19 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-  const reportsPage = new ReportsPage({ page });
 
-  const tabList = await reportsPage.tabListLocator();
+  const tabList = await getReportsTabListLocator({ page });
   await expect(tabList).toBeVisible({ timeout: 10_000 });
 
   if (isMobile) {
     // On mobile SubPageNav renders a <select>; individual tab buttons are not in the DOM.
-    const select = await reportsPage.tabListSelectLocator();
+    const select = await getReportsTabListSelectLocator({ page });
     await expect(select).toBeVisible();
     await expect(select).toHaveValue('win-loss');
   } else {
-    const winLossTab = await reportsPage.winLossTabLocator();
-    const activityTab = await reportsPage.activityTabLocator();
-    const stageTab = await reportsPage.stageTrendTabLocator();
+    const winLossTab = await getReportsWinLossTabLocator({ page });
+    const activityTab = await getReportsActivityTabLocator({ page });
+    const stageTab = await getReportsStageTrendTabLocator({ page });
 
     await expect(winLossTab).toBeVisible();
     await expect(activityTab).toBeVisible();
@@ -111,8 +119,7 @@ test('reports nav: /reports defaults to Win/Loss report content @functional', as
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const heading = await reportsPage.winLossHeadingLocator();
+  const heading = await getReportsWinLossHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 });
 
@@ -122,8 +129,7 @@ test('reports nav: /reports?view=activity deep-links to Activity Volume @functio
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=activity', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const heading = await reportsPage.activityVolumeHeadingLocator();
+  const heading = await getReportsActivityVolumeHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 });
 
@@ -133,8 +139,7 @@ test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage rep
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const heading = await reportsPage.stageTrendHeadingLocator();
+  const heading = await getReportsStageTrendHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 });
 
@@ -151,21 +156,20 @@ test('reports nav: switching tabs renders the selected report @functional', asyn
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-  const reportsPage = new ReportsPage({ page });
 
   // Wait for default (win-loss) to load
-  const winLossHeading = await reportsPage.winLossHeadingLocator();
+  const winLossHeading = await getReportsWinLossHeadingLocator({ page });
   await expect(winLossHeading).toBeVisible({ timeout: 10_000 });
 
   if (isMobile) {
     // On mobile SubPageNav renders a <select> — switch via selectOption.
-    const select = await reportsPage.tabListSelectLocator();
+    const select = await getReportsTabListSelectLocator({ page });
     await select?.selectOption('activity');
   } else {
-    const activityTab = await reportsPage.activityTabLocator();
+    const activityTab = await getReportsActivityTabLocator({ page });
     await activityTab.click();
   }
 
-  const activityHeading = await reportsPage.activityVolumeHeadingLocator();
+  const activityHeading = await getReportsActivityVolumeHeadingLocator({ page });
   await expect(activityHeading).toBeVisible({ timeout: 10_000 });
 });

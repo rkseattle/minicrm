@@ -1,10 +1,12 @@
 /**
- * Settings behaviors for MiniCRM — system-wide defaults enforcement.
- *
- * MINCRM-358
+ * Settings behaviors for MiniCRM — system-wide defaults enforcement and
+ * AdminSettings page locator-accessor wrappers (MINCRM-358, MINCRM-367).
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
+import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import type { AdminSettingsTab } from '@pages/minicrm/AdminSettingsPage.js';
 
 /**
  * Resets all mutable system settings to their known-good defaults in parallel.
@@ -17,6 +19,335 @@ import type { RestClient } from '@framework/clients/rest-client.js';
  *
  * @param restClient - Admin-authenticated RestClient.
  */
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
+/** Fixture context for admin settings UI behaviors. */
+export interface AdminSettingsBehaviorContext {
+  page: PageFacade;
+}
+
+export { AdminSettingsTab };
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the Admin Settings page, optionally deep-linking to a tab.
+ */
+export async function navigateToAdminSettings(
+  context: AdminSettingsBehaviorContext,
+  tab?: AdminSettingsTab,
+): Promise<void> {
+  const adminSettings = new AdminSettingsPage(context);
+  await adminSettings.navigate(tab);
+}
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap AdminSettingsPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/** Returns a resolved locator for the admin settings page heading. */
+export async function getAdminSettingsHeadingLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).settingsHeadingLocator();
+}
+
+/** Returns a resolved locator for the settings save button (general tab). */
+export async function getAdminSettingsSaveLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).settingsSaveLocator();
+}
+
+/** Returns a resolved locator for the currency section. */
+export async function getAdminSettingsCurrencySectionLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).currencySectionLocator();
+}
+
+/** Returns a resolved locator for the email notifications section. */
+export async function getAdminSettingsEmailNotificationsSectionLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).emailNotificationsSectionLocator();
+}
+
+/** Returns a resolved locator for the webhook settings section. */
+export async function getAdminSettingsWebhookSectionLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).webhookSectionLocator();
+}
+
+/** Returns a resolved locator for the webhook URL input. */
+export async function getAdminSettingsWebhookUrlInputLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).webhookUrlInputLocator();
+}
+
+/** Returns a resolved locator for the webhook secret reveal modal. */
+export async function getAdminSettingsWebhookSecretRevealLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).webhookSecretRevealLocator();
+}
+
+/** Returns a resolved locator for the webhook secret value input. */
+export async function getAdminSettingsWebhookSecretValueLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).webhookSecretValueLocator();
+}
+
+/** Returns a resolved locator for a webhook subscription row by ID. */
+export async function getAdminSettingsWebhookRowLocator(
+  subscriptionId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
+}
+
+/** Returns a resolved locator for the webhook delete confirmation dialog. */
+export async function getAdminSettingsWebhookDeleteConfirmLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).webhookDeleteConfirmLocator();
+}
+
+/** Clicks the webhook event checkbox for the given event name. */
+export async function clickAdminSettingsWebhookEvent(
+  eventName: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).clickWebhookEvent(eventName);
+}
+
+/** Clicks the Add Webhook button. */
+export async function clickAdminSettingsAddWebhook(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).clickAddWebhook();
+}
+
+/** Closes the webhook secret reveal modal. */
+export async function closeAdminSettingsWebhookSecretModal(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).closeWebhookSecretModal();
+}
+
+/** Toggles a webhook subscription's enabled/disabled status. */
+export async function toggleAdminSettingsWebhook(
+  subscriptionId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).toggleWebhook(subscriptionId);
+}
+
+/** Clicks the delete button for a specific webhook subscription. */
+export async function clickAdminSettingsDeleteWebhook(
+  subscriptionId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).clickDeleteWebhook(subscriptionId);
+}
+
+/** Confirms deletion in the webhook delete confirmation dialog. */
+export async function confirmAdminSettingsDeleteWebhook(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).confirmDeleteWebhook();
+}
+
+/** Returns a resolved locator for the exchange rates section. */
+export async function getAdminSettingsExchangeRatesSectionLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).exchangeRatesSectionLocator();
+}
+
+/** Returns a resolved locator for the home currency select. */
+export async function getAdminSettingsHomeCurrencySelectLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).homeCurrencySelectLocator();
+}
+
+/** Returns a resolved locator for the add-currency form. */
+export async function getAdminSettingsAddCurrencyFormLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).addCurrencyFormLocator();
+}
+
+/** Returns a resolved locator for the currency code select. */
+export async function getAdminSettingsAddCurrencyCodeSelectLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).addCurrencyCodeSelectLocator();
+}
+
+/** Returns a resolved locator for the exchange rate input. */
+export async function getAdminSettingsAddCurrencyRateInputLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).addCurrencyRateInputLocator();
+}
+
+/** Clicks Add Currency to open the add currency form. */
+export async function clickAdminSettingsAddCurrency(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).clickAddCurrency();
+}
+
+/** Confirms adding a new currency row. */
+export async function confirmAdminSettingsAddCurrency(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).confirmAddCurrency();
+}
+
+/** Clicks Save exchange rates. */
+export async function saveAdminSettingsExchangeRates(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).saveExchangeRates();
+}
+
+/** Returns a resolved locator for the exchange rate save success message. */
+export async function getAdminSettingsExchangeRateSaveSuccessLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).exchangeRateSaveSuccessLocator();
+}
+
+/** Returns a resolved locator for an exchange rate row by currency code. */
+export async function getAdminSettingsExchangeRateRowLocator(
+  currencyCode: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).exchangeRateRowLocator(currencyCode);
+}
+
+/** Returns a resolved locator for the custom fields section. */
+export async function getAdminSettingsCustomFieldsSectionLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).customFieldsSectionLocator();
+}
+
+/** Returns a resolved locator for the custom fields entity select. */
+export async function getAdminSettingsCustomFieldsEntitySelectLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).customFieldsEntitySelectLocator();
+}
+
+/** Returns a resolved locator for the add-field inline form. */
+export async function getAdminSettingsAddFieldFormLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).addFieldFormLocator();
+}
+
+/** Returns a resolved locator for the field name input. */
+export async function getAdminSettingsAddFieldNameInputLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).addFieldNameInputLocator();
+}
+
+/** Returns a resolved locator for the custom fields feedback message. */
+export async function getAdminSettingsCustomFieldsFeedbackLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).customFieldsFeedbackLocator();
+}
+
+/** Returns a resolved locator for the confirm-delete-field button. */
+export async function getAdminSettingsDeleteFieldConfirmLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).deleteFieldConfirmLocator();
+}
+
+/** Clicks Add Field to open the add-field form. */
+export async function clickAdminSettingsAddField(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).clickAddField();
+}
+
+/** Submits the add-field form. */
+export async function submitAdminSettingsAddField(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  return new AdminSettingsPage(context).submitAddField();
+}
+
+/** Returns a resolved locator for the branding form. */
+export async function getAdminSettingsBrandingFormLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).brandingFormLocator();
+}
+
+/** Returns a resolved locator for the branding company name input. */
+export async function getAdminSettingsBrandingCompanyNameLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingCompanyNameLocator();
+}
+
+/** Returns a resolved locator for the branding primary colour text input. */
+export async function getAdminSettingsBrandingColorTextLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingColorTextLocator();
+}
+
+/** Returns a resolved locator for the branding font select. */
+export async function getAdminSettingsBrandingFontSelectLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingFontSelectLocator();
+}
+
+/** Returns a resolved locator for the branding Save button. */
+export async function getAdminSettingsBrandingSaveLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).brandingSaveLocator();
+}
+
+/** Returns a resolved locator for the branding save success message. */
+export async function getAdminSettingsBrandingSaveSuccessLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingSaveSuccessLocator();
+}
+
+/** Returns a resolved locator for the branding reset button. */
+export async function getAdminSettingsBrandingResetButtonLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingResetButtonLocator();
+}
+
+/** Returns a resolved locator for the branding reset confirm button. */
+export async function getAdminSettingsBrandingResetConfirmLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingResetConfirmLocator();
+}
+
+/** Returns a resolved locator for the branding reset success message. */
+export async function getAdminSettingsBrandingResetSuccessLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).brandingResetSuccessLocator();
+}
+
+// ---------------------------------------------------------------------------
+// ensureSystemDefaults
+// ---------------------------------------------------------------------------
+
 export async function ensureSystemDefaults(restClient: RestClient): Promise<void> {
   await Promise.all([
     restClient

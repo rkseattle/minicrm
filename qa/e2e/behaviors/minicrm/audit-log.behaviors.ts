@@ -88,3 +88,56 @@ export async function getAuditLog(
   );
   return { entries: res.body.data, total: res.body.total };
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap AuditLogPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the audit log page.
+ */
+export async function navigateToAuditLog(context: AuditLogBehaviorContext): Promise<void> {
+  const auditLogPage = new AuditLogPage(context);
+  await auditLogPage.navigate();
+}
+
+/**
+ * Returns a resolved locator for the audit log page heading.
+ */
+export async function getAuditLogHeadingLocator(context: AuditLogBehaviorContext) {
+  const auditLogPage = new AuditLogPage(context);
+  return auditLogPage.headingLocator();
+}
+
+/**
+ * Returns a resolved locator for the audit log entry list.
+ */
+export async function getAuditLogListLocator(context: AuditLogBehaviorContext) {
+  const auditLogPage = new AuditLogPage(context);
+  return auditLogPage.listLocator();
+}
+
+/**
+ * Returns a resolved locator for the audit log pagination navigation.
+ */
+export async function getAuditLogPaginationLocator(context: AuditLogBehaviorContext) {
+  const auditLogPage = new AuditLogPage(context);
+  return auditLogPage.paginationLocator();
+}
+
+/**
+ * Returns a resolved locator for the "previous page" button in audit log pagination.
+ */
+export async function getAuditLogPaginationPrevLocator(context: AuditLogBehaviorContext) {
+  const auditLogPage = new AuditLogPage(context);
+  return auditLogPage.paginationPrevLocator();
+}
+
+/**
+ * Collapses the audit log filter panel (mobile starts expanded by default).
+ */
+export async function collapseAuditLogFilters(context: AuditLogBehaviorContext): Promise<void> {
+  const auditLogPage = new AuditLogPage(context);
+  await auditLogPage.collapseFilters();
+}

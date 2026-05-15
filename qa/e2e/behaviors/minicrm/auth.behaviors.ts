@@ -647,3 +647,51 @@ export async function getDevResetToken(restClient: RestClient, email: string): P
   const res = await restClient.post<{ token: string }>('/api/v1/auth/dev/reset-token', { email });
   return res.body.token;
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap SetPasswordPage / LoginPage / ForgotPasswordPage
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the set-password page with the given invite token.
+ */
+export async function navigateToSetPasswordPage(
+  token: string,
+  context: AuthBehaviorContext,
+): Promise<void> {
+  const po = new SetPasswordPage(context);
+  await po.navigate(token);
+}
+
+/**
+ * Returns true when the invalid-token error element is visible on the set-password page.
+ */
+export async function isSetPasswordTokenInvalid(context: AuthBehaviorContext): Promise<boolean> {
+  const po = new SetPasswordPage(context);
+  return po.invalidTokenVisible();
+}
+
+/**
+ * Navigates to the login page.
+ */
+export async function navigateToLoginPage(context: AuthBehaviorContext): Promise<void> {
+  const po = new LoginPage(context);
+  await po.navigate();
+}
+
+/**
+ * Clicks the login form submit button.
+ */
+export async function submitLoginForm(context: AuthBehaviorContext): Promise<void> {
+  const po = new LoginPage(context);
+  await po.submit();
+}
+
+/**
+ * Navigates to the forgot-password page.
+ */
+export async function navigateToForgotPasswordPage(context: AuthBehaviorContext): Promise<void> {
+  const po = new ForgotPasswordPage(context);
+  await po.navigate();
+}

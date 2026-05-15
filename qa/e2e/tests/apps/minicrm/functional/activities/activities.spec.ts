@@ -46,7 +46,6 @@ import {
   createTestUser,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
-import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getActivityById,
@@ -54,6 +53,8 @@ import {
   getMyTasks,
   createActivityViaApi,
   patchActivity,
+  getOverdueTaskBadgeLocator,
+  getMyTaskRowLocator,
   type ActivityRow,
 } from '@behaviors/minicrm/activities.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
@@ -473,8 +474,7 @@ test('@functional F5-DS2: task with past due date → overdue badge visible in U
   const navResult = await navigateToMyTasks({ page });
   expect(navResult.loaded, 'My Tasks page should load').toBe(true);
 
-  const myTasksPage = new MyTasksPage({ page });
-  const overdueBadge = await myTasksPage.overdueTaskBadgeLocator(activity.id);
+  const overdueBadge = await getOverdueTaskBadgeLocator(activity.id, { page });
   await expect(overdueBadge, 'past-due task should show overdue badge').toBeVisible();
 });
 
@@ -543,8 +543,8 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
 
   // Toggle is required — completed tasks are hidden by default.
   await showCompletedTasks({ page });
-  const myTasksPage2 = new MyTasksPage({ page });
-  const taskRow = await myTasksPage2.taskRowLocator(activity.id);
+
+  const taskRow = await getMyTaskRowLocator(activity.id, { page });
   await taskRow?.waitFor({ state: 'visible', timeout: 10_000 });
 
   expect(

@@ -24,7 +24,20 @@ import {
   listWebhookSubscriptions,
   pollForWebhookDelivery,
 } from '@behaviors/minicrm/setup.behaviors.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import {
+  getAdminSettingsWebhookSectionLocator,
+  getAdminSettingsWebhookUrlInputLocator,
+  clickAdminSettingsWebhookEvent,
+  clickAdminSettingsAddWebhook,
+  getAdminSettingsWebhookSecretRevealLocator,
+  getAdminSettingsWebhookSecretValueLocator,
+  closeAdminSettingsWebhookSecretModal,
+  getAdminSettingsWebhookRowLocator,
+  toggleAdminSettingsWebhook,
+  clickAdminSettingsDeleteWebhook,
+  getAdminSettingsWebhookDeleteConfirmLocator,
+  confirmAdminSettingsDeleteWebhook,
+} from '@behaviors/minicrm/settings.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -45,7 +58,7 @@ test('@functional WH-01: admin sees the Webhooks section in Settings → Integra
 
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const section = await new AdminSettingsPage({ page }).webhookSectionLocator();
+  const section = await getAdminSettingsWebhookSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
 });
 
@@ -61,28 +74,27 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await loginAsAdmin(restClient);
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-  const adminSettings = new AdminSettingsPage({ page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const urlInput = await adminSettings.webhookUrlInputLocator();
+  const urlInput = await getAdminSettingsWebhookUrlInputLocator({ page });
   await urlInput.fill('https://wh02.example.com/hook');
 
   // Select the contact.created event
-  await adminSettings.clickWebhookEvent('contact.created');
+  await clickAdminSettingsWebhookEvent('contact.created', { page });
 
-  await adminSettings.clickAddWebhook();
+  await clickAdminSettingsAddWebhook({ page });
 
   // Secret reveal modal should appear
-  const modal = await adminSettings.webhookSecretRevealLocator();
+  const modal = await getAdminSettingsWebhookSecretRevealLocator({ page });
   await expect(modal).toBeVisible({ timeout: 8_000 });
 
   // Secret value should be non-empty
-  const secretInput = await adminSettings.webhookSecretValueLocator();
+  const secretInput = await getAdminSettingsWebhookSecretValueLocator({ page });
   const secretValue = await secretInput.inputValue();
   expect(secretValue.length, 'plaintextSecret should be non-empty').toBeGreaterThan(0);
 
   // Close the modal
-  await adminSettings.closeWebhookSecretModal();
+  await closeAdminSettingsWebhookSecretModal({ page });
 
   // Find and register the newly created subscription for teardown
   const subscriptions = await listWebhookSubscriptions(restClient);
@@ -115,7 +127,7 @@ test('@functional WH-03: created subscription appears in the list with correct d
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const row = await new AdminSettingsPage({ page }).webhookRowLocator(sub.id);
+  const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // URL is displayed in the row
@@ -149,13 +161,11 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
-  const row = await adminSettings.webhookRowLocator(sub.id);
+  const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Disable toggle
-  await adminSettings.toggleWebhook(sub.id);
+  await toggleAdminSettingsWebhook(sub.id, { page });
 
   // Status badge should now show Disabled
   await expect(row).toContainText('Disabled', { timeout: 6_000 });
@@ -180,20 +190,18 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
-  const adminSettings = new AdminSettingsPage({ page });
-
-  const row = await adminSettings.webhookRowLocator(sub.id);
+  const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });
 
   // Click Delete
-  await adminSettings.clickDeleteWebhook(sub.id);
+  await clickAdminSettingsDeleteWebhook(sub.id, { page });
 
   // Confirm dialog appears
-  const dialog = await adminSettings.webhookDeleteConfirmLocator();
+  const dialog = await getAdminSettingsWebhookDeleteConfirmLocator({ page });
   await expect(dialog).toBeVisible();
 
   // Confirm deletion
-  await adminSettings.confirmDeleteWebhook();
+  await confirmAdminSettingsDeleteWebhook({ page });
 
   // Row should disappear
   await expect(row).not.toBeVisible({ timeout: 6_000 });

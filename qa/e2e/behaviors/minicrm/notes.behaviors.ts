@@ -356,3 +356,48 @@ export async function getRecordAuditLog(
   }>(`/api/v1/audit-log/record${query}`);
   return { entries: res.body.entries };
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap NotesPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a resolved locator for the notes section container on an entity detail page.
+ */
+export async function getNotesSectionLocator(context: NotesBehaviorContext) {
+  const notes = new NotesPage(context);
+  return notes.sectionLocator();
+}
+
+/**
+ * Returns a resolved locator for a specific note card by note ID (null if absent).
+ */
+export async function getNoteCardLocator(noteId: string, context: NotesBehaviorContext) {
+  const notes = new NotesPage(context);
+  return notes.noteCardLocator(noteId);
+}
+
+/**
+ * Returns a resolved locator for a masked (private) note card (null if absent).
+ */
+export async function getMaskedNoteCardLocator(noteId: string, context: NotesBehaviorContext) {
+  const notes = new NotesPage(context);
+  return notes.maskedNoteCardLocator(noteId);
+}
+
+/**
+ * Returns a resolved locator for the title element inside a note card.
+ */
+export async function getNoteTitleLocator(noteId: string, context: NotesBehaviorContext) {
+  const notes = new NotesPage(context);
+  return notes.noteTitleLocator(noteId);
+}
+
+/**
+ * Returns a resolved locator for the body element inside a note card (null if absent).
+ */
+export async function getNoteBodyLocator(noteId: string, context: NotesBehaviorContext) {
+  const notes = new NotesPage(context);
+  return notes.noteBodyLocator(noteId);
+}

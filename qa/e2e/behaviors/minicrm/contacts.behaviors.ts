@@ -869,3 +869,353 @@ export async function patchContact(
   );
   return res.body.contact;
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap ContactDetailPage / ContactsPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a resolved locator for the account link on the contact detail page.
+ */
+export async function getContactAccountLink(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.accountLinkLocator();
+}
+
+/**
+ * Returns a resolved locator for the contact name heading on the detail page.
+ */
+export async function getContactNameLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.contactNameLocator();
+}
+
+/**
+ * Returns a resolved locator for the "not found" alert on a contact detail page.
+ * @param timeout - Optional timeout passed to the locator.
+ */
+export async function getContactNotFoundLocator(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.notFoundAlertLocator(timeout);
+}
+
+/**
+ * Returns a resolved locator for the "back to contacts" link on the 404 page.
+ */
+export async function getContactNotFoundBackLink(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.notFoundBackLinkLocator();
+}
+
+/**
+ * Returns a resolved locator for the Edit button on the contact detail page.
+ */
+export async function getContactEditButtonLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.editButtonLocator();
+}
+
+/**
+ * Returns a resolved locator for the pagination container on the contacts list page.
+ */
+export async function getContactsPaginationLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.paginationLocator();
+}
+
+/**
+ * Returns a resolved locator for the bulk action bar on the contacts list page.
+ */
+export async function getContactsBulkActionBarLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.bulkActionBarLocator();
+}
+
+/**
+ * Returns a resolved locator for the bulk operation error banner.
+ */
+export async function getContactsBulkErrorLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.bulkErrorLocator();
+}
+
+/**
+ * Returns a resolved locator for a contact row link by contact ID.
+ */
+export async function getContactRowLocator(id: string, context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.contactLinkLocator(id);
+}
+
+/**
+ * Returns whether the duplicate-email warning is currently visible.
+ */
+export async function getContactsDuplicateWarningVisible(
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.duplicateWarningIsVisible();
+}
+
+/**
+ * Returns a resolved locator for the loading indicator on the contacts page.
+ */
+export async function getContactsLoadingIndicator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.loadingIndicatorLocator();
+}
+
+/**
+ * Returns a resolved locator for the send email button on a contact detail page.
+ */
+export async function getContactSendEmailButtonLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.sendEmailButtonLocator();
+}
+
+/**
+ * Returns a resolved locator for the send email compose modal.
+ */
+export async function getContactSendEmailModalLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.sendEmailModalLocator();
+}
+
+/**
+ * Returns a resolved locator for the send email success message.
+ */
+export async function getContactSendEmailSuccessLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.sendEmailSuccessLocator();
+}
+
+/**
+ * Opens the send email modal, fills subject and body, then submits.
+ */
+export async function sendEmailFromContact(
+  subject: string,
+  body: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.clickSendEmail();
+  await detailPage.fillSendEmailSubject(subject);
+  await detailPage.fillSendEmailBody(body);
+  await detailPage.submitSendEmail();
+}
+
+/**
+ * Returns a resolved locator for the custom fields read grid on a contact detail page.
+ */
+export async function getContactCustomFieldsReadGrid(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.customFieldsReadGridLocator();
+}
+
+/**
+ * Returns a resolved locator for the custom fields edit grid on a contact detail page.
+ */
+export async function getContactCustomFieldsEditGrid(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.customFieldsEditGridLocator();
+}
+
+/** Clicks the Edit button on the contact detail page. */
+export async function clickContactEdit(context: ContactsBehaviorContext): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.clickEdit();
+}
+
+/** Clicks Save on the contact detail page edit form. */
+export async function saveContact(context: ContactsBehaviorContext): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.save();
+}
+
+/** Returns true when the contact detail page is in read mode (edit button visible). */
+export async function isContactDetailLoaded(context: ContactsBehaviorContext): Promise<boolean> {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.isLoaded();
+}
+
+/**
+ * Returns a resolved locator for the attachments section on the contact detail page.
+ */
+export async function getContactAttachmentsSectionLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.attachmentsSectionLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments file input on the contact detail page.
+ */
+export async function getContactAttachmentsFileInputLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.attachmentsFileInputLocator();
+}
+
+/**
+ * Returns a resolved locator for the attachments list on the contact detail page.
+ */
+export async function getContactAttachmentsListLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.attachmentsListLocator();
+}
+
+/**
+ * Returns a resolved locator for an attachment's delete button by attachment ID.
+ */
+export async function getContactAttachmentDeleteLocator(
+  attachmentId: string,
+  context: ContactsBehaviorContext,
+) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.attachmentDeleteLocator(attachmentId);
+}
+
+/**
+ * Returns a resolved locator for the attachments upload error on the contact detail page.
+ */
+export async function getContactAttachmentsUploadErrorLocator(context: ContactsBehaviorContext) {
+  const detailPage = new ContactDetailPage(context);
+  return detailPage.attachmentsUploadErrorLocator();
+}
+
+/**
+ * Confirms deletion in the attachment delete confirmation dialog on the contact detail page.
+ */
+export async function confirmContactAttachmentDelete(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.confirmAttachmentDelete();
+}
+
+// ---------------------------------------------------------------------------
+// ContactsPage thin-wrapper behaviors (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the New Contact button to open the create form.
+ */
+export async function clickNewContact(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.clickNewContact();
+}
+
+/**
+ * Submits the contact create form.
+ */
+export async function submitContactCreateFormAction(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.submitCreateForm();
+}
+
+/**
+ * Returns a resolved locator for the contact create form.
+ */
+export async function getContactsCreateFormLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.createFormLocator();
+}
+
+/**
+ * Returns a resolved locator for the first-name input in the contact create form.
+ */
+export async function getContactsFirstNameInputLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.firstNameInputLocator();
+}
+
+/**
+ * Clicks the bulk-delete button on the contacts list.
+ */
+export async function clickContactsBulkDelete(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.clickBulkDelete();
+}
+
+/**
+ * Returns a resolved locator for the confirm-delete modal on the contacts list.
+ */
+export async function getContactsConfirmDeleteModalLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.confirmDeleteModalLocator();
+}
+
+/**
+ * Cancels a bulk delete by dismissing the confirmation dialog.
+ */
+export async function cancelContactsBulkDelete(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.cancelBulkDelete();
+}
+
+/**
+ * Clicks the bulk-reassign button on the contacts list.
+ */
+export async function clickContactsBulkReassign(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.clickBulkReassign();
+}
+
+/**
+ * Returns a resolved locator for the bulk-reassign modal on the contacts list.
+ */
+export async function getContactsBulkReassignModalLocator(context: ContactsBehaviorContext) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.bulkReassignModalLocator();
+}
+
+/**
+ * Cancels the bulk-reassign modal without reassigning.
+ */
+export async function cancelContactsBulkReassign(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.cancelBulkReassign();
+}
+
+/**
+ * Returns a resolved locator for a contact link in the contacts list by contact ID.
+ */
+export async function getContactsContactLinkLocator(
+  contactId: string,
+  context: ContactsBehaviorContext,
+) {
+  const contactsPage = new ContactsPage(context);
+  return contactsPage.contactLinkLocator(contactId);
+}
+
+/**
+ * Navigates to the contact detail page for the given contact ID.
+ */
+export async function navigateToContactDetail(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.navigate(contactId);
+}
+
+/**
+ * Fills a field in the contact edit form.
+ *
+ * @param testId - data-testid of the input field.
+ * @param label - i18n label used as fallback strategy.
+ * @param value - Value to type.
+ */
+export async function fillContactDetailField(
+  testId: string,
+  label: string,
+  value: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const detailPage = new ContactDetailPage(context);
+  await detailPage.fillField(testId, label, value);
+}

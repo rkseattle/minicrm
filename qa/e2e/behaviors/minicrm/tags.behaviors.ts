@@ -301,3 +301,16 @@ export async function getDealTags(restClient: RestClient, dealId: string): Promi
   const res = await restClient.get<{ tags: DealTagRow[] }>(`/api/v1/deals/${dealId}/tags`);
   return res.body.tags;
 }
+
+// ---------------------------------------------------------------------------
+// Locator-accessor behaviors — wrap AdminTagsPage locators
+// so spec files never import @pages/* directly. (MINCRM-367)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a resolved locator for the pagination container on the admin tags page.
+ */
+export async function getAdminTagsPaginationLocator(context: TagsBehaviorContext) {
+  const adminTagsPage = new AdminTagsPage(context);
+  return adminTagsPage.paginationLocator();
+}

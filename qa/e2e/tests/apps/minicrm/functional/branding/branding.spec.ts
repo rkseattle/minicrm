@@ -18,8 +18,19 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
+import {
+  ensureSystemDefaults,
+  navigateToAdminSettings,
+  getAdminSettingsBrandingFormLocator,
+  getAdminSettingsBrandingCompanyNameLocator,
+  getAdminSettingsBrandingSaveLocator,
+  getAdminSettingsBrandingSaveSuccessLocator,
+  getAdminSettingsBrandingColorTextLocator,
+  getAdminSettingsBrandingFontSelectLocator,
+  getAdminSettingsBrandingResetButtonLocator,
+  getAdminSettingsBrandingResetConfirmLocator,
+  getAdminSettingsBrandingResetSuccessLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -51,10 +62,10 @@ test.afterEach(async ({ restClient }) => {
 
 test('admin can navigate to the Branding tab @functional', async ({ page }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  const adminSettings = new AdminSettingsPage({ page });
-  await adminSettings.navigate('branding');
 
-  const form = await adminSettings.brandingFormLocator();
+  await navigateToAdminSettings({ page }, 'branding');
+
+  const form = await getAdminSettingsBrandingFormLocator({ page });
   await expect(form).toBeVisible({ timeout: 10_000 });
 });
 
@@ -64,46 +75,46 @@ test('admin can navigate to the Branding tab @functional', async ({ page }) => {
 
 test('admin can save a company name and see success confirmation @functional', async ({ page }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  const adminSettings = new AdminSettingsPage({ page });
-  await adminSettings.navigate('branding');
 
-  const companyInput = await adminSettings.brandingCompanyNameLocator();
+  await navigateToAdminSettings({ page }, 'branding');
+
+  const companyInput = await getAdminSettingsBrandingCompanyNameLocator({ page });
   await companyInput.fill('Acme Corporation');
 
-  const saveBtn = await adminSettings.brandingSaveLocator();
+  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
   await saveBtn.click();
 
-  const successMsg = await adminSettings.brandingSaveSuccessLocator();
+  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
 test('admin can save a primary colour @functional', async ({ page }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  const adminSettings = new AdminSettingsPage({ page });
-  await adminSettings.navigate('branding');
 
-  const colorText = await adminSettings.brandingColorTextLocator();
+  await navigateToAdminSettings({ page }, 'branding');
+
+  const colorText = await getAdminSettingsBrandingColorTextLocator({ page });
   await colorText.fill('#e53e3e');
 
-  const saveBtn = await adminSettings.brandingSaveLocator();
+  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
   await saveBtn.click();
 
-  const successMsg = await adminSettings.brandingSaveSuccessLocator();
+  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
 test('admin can select a custom font @functional', async ({ page }) => {
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  const adminSettings = new AdminSettingsPage({ page });
-  await adminSettings.navigate('branding');
 
-  const fontSelect = await adminSettings.brandingFontSelectLocator();
+  await navigateToAdminSettings({ page }, 'branding');
+
+  const fontSelect = await getAdminSettingsBrandingFontSelectLocator({ page });
   await fontSelect.selectOption('roboto');
 
-  const saveBtn = await adminSettings.brandingSaveLocator();
+  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
   await saveBtn.click();
 
-  const successMsg = await adminSettings.brandingSaveSuccessLocator();
+  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
@@ -116,16 +127,16 @@ test('admin can reset branding to defaults @functional', async ({ page, restClie
   await restClient.put('/api/v1/settings/branding', { companyName: 'ToBeReset' });
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  const adminSettings = new AdminSettingsPage({ page });
-  await adminSettings.navigate('branding');
 
-  const resetBtn = await adminSettings.brandingResetButtonLocator();
+  await navigateToAdminSettings({ page }, 'branding');
+
+  const resetBtn = await getAdminSettingsBrandingResetButtonLocator({ page });
   await resetBtn.click();
 
-  const confirmBtn = await adminSettings.brandingResetConfirmLocator();
+  const confirmBtn = await getAdminSettingsBrandingResetConfirmLocator({ page });
   await confirmBtn.click();
 
-  const successMsg = await adminSettings.brandingResetSuccessLocator();
+  const successMsg = await getAdminSettingsBrandingResetSuccessLocator({ page });
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 

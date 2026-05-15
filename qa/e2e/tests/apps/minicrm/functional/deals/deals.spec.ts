@@ -28,10 +28,32 @@ import {
   createTestActivity,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
-import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
-import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { getDealById, listDealsViaApi, type DealRow } from '@behaviors/minicrm/deals.behaviors.js';
+import {
+  getDealById,
+  listDealsViaApi,
+  navigateToPipelineBoard,
+  clickNewDealOnBoard,
+  getDealCardLocator,
+  getDealNameInputLocator,
+  getDealStageSelectOnFormLocator,
+  getDealValueInputLocator,
+  getDealCloseDateInputLocator,
+  getDealAccountSelectLocator,
+  getDealFormSubmitLocator,
+  openDealEditForm,
+  submitDealForm,
+  getDealNameHeadingLocator,
+  clickDeleteDeal,
+  confirmDeleteDeal,
+  getDealLinkedContactsHeadingLocator,
+  getDealLinkContactSelectLocator,
+  getDealLinkContactButtonLocator,
+  getDealLinkedContactLocator,
+  getDealUnlinkContactLocator,
+  getDealLinkedContactsEmptyLocator,
+  type DealRow,
+} from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // F7-D1 — Create deal via UI; card appears on pipeline board
@@ -50,35 +72,34 @@ test(
       name: `D1-Acct ${test.info().title}`,
     });
 
-    const boardPage = new PipelineBoardPage({ page });
-    await boardPage.navigate();
+    await navigateToPipelineBoard({ page });
 
     // Open the new deal form using the board's new-deal button
-    await boardPage.clickNewDeal();
+    await clickNewDealOnBoard({ page });
 
     // Fill in the deal form via DealDetailPage locators
-    const dealFormPage = new DealDetailPage({ page });
-    const dealNameInput = await dealFormPage.nameInputLocator();
+
+    const dealNameInput = await getDealNameInputLocator({ page });
     const dealName = `D1-Deal ${Date.now()}`;
     await dealNameInput.fill(dealName);
 
-    const stageSelect = await dealFormPage.stageSelectLocator();
+    const stageSelect = await getDealStageSelectOnFormLocator({ page });
     await stageSelect.selectOption('Prospecting');
 
-    const valueInput = await dealFormPage.valueInputLocator();
+    const valueInput = await getDealValueInputLocator({ page });
     await valueInput.fill('15000');
 
-    const closeDateInput = await dealFormPage.closeDateInputLocator();
+    const closeDateInput = await getDealCloseDateInputLocator({ page });
     const closeDate = new Date();
     closeDate.setMonth(closeDate.getMonth() + 1);
     const closeDateStr = closeDate.toISOString().split('T')[0]!;
     await closeDateInput.fill(closeDateStr);
 
-    const accountSelect = await dealFormPage.accountSelectLocator();
+    const accountSelect = await getDealAccountSelectLocator({ page });
     await accountSelect.selectOption(account.id);
 
     // Submit the form
-    const submitBtn = await dealFormPage.submitLocator();
+    const submitBtn = await getDealFormSubmitLocator({ page });
     await submitBtn.click();
 
     // Wait for the form to close (submit button detaches from DOM) before querying
@@ -103,7 +124,7 @@ test(
       testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
       // Assert the deal card appears on the board in the Prospecting column.
-      const dealCard = await new PipelineBoardPage({ page }).dealCardLocator(createdDeal.id);
+      const dealCard = await getDealCardLocator(createdDeal.id, { page });
       await expect(dealCard).toBeVisible({ timeout: 10_000 });
 
       // Verify via API
@@ -136,25 +157,23 @@ test(
 
     await navigateToDeal(page, deal.id);
 
-    const dealDetailPage = new DealDetailPage({ page });
-
     // Open edit form
-    await dealDetailPage.clickEdit();
+    await openDealEditForm({ page });
 
     // Change name and value
-    const nameInput = await dealDetailPage.nameInputLocator();
+    const nameInput = await getDealNameInputLocator({ page });
     const updatedName = `D2-Deal-Updated ${test.info().title}`;
     await nameInput.fill(updatedName);
 
-    const valueInput = await dealDetailPage.valueInputLocator();
+    const valueInput = await getDealValueInputLocator({ page });
     await valueInput.fill('9999');
 
-    await dealDetailPage.submitForm();
+    await submitDealForm({ page });
 
     await page.waitForLoadState('networkidle');
 
     // UI assertion — deal name heading shows updated value
-    const dealNameEl = await dealDetailPage.dealNameLocator();
+    const dealNameEl = await getDealNameHeadingLocator({ page });
     await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
 
     // API assertion — GET returns updated fields
@@ -193,11 +212,9 @@ test(
 
     await navigateToDeal(page, deal.id);
 
-    const dealDetailPage = new DealDetailPage({ page });
-
     // Trigger delete flow and confirm in the modal
-    await dealDetailPage.clickDelete();
-    await dealDetailPage.confirmDelete();
+    await clickDeleteDeal({ page });
+    await confirmDeleteDeal({ page });
 
     // Should redirect to /deals after deletion
     await page.waitForURL('/deals', { timeout: 10_000 });
@@ -256,29 +273,27 @@ test(
 
     await navigateToDeal(page, deal.id);
 
-    const dealDetailPage = new DealDetailPage({ page });
-
     // Wait for linked contacts section to be visible
-    const contactsHeading = await dealDetailPage.linkedContactsHeadingLocator();
+    const contactsHeading = await getDealLinkedContactsHeadingLocator({ page });
     await expect(contactsHeading).toBeVisible({ timeout: 10_000 });
 
     // Select contact from the link form dropdown
-    const linkSelect = await dealDetailPage.linkContactSelectLocator();
+    const linkSelect = await getDealLinkContactSelectLocator({ page });
     await linkSelect.selectOption(contact.id);
 
-    const linkBtn = await dealDetailPage.linkContactButtonLocator();
+    const linkBtn = await getDealLinkContactButtonLocator({ page });
     await linkBtn.click();
 
     // Assert contact appears in the linked contacts list
-    const linkedContactEl = await dealDetailPage.linkedContactLocator(contact.id);
+    const linkedContactEl = await getDealLinkedContactLocator(contact.id, { page });
     await expect(linkedContactEl).toBeVisible({ timeout: 10_000 });
 
     // Unlink the contact
-    const unlinkBtn = await dealDetailPage.unlinkContactLocator(contact.id);
+    const unlinkBtn = await getDealUnlinkContactLocator(contact.id, { page });
     await unlinkBtn.click();
 
     // After unlinking, the empty state should appear
-    const emptyState = await dealDetailPage.linkedContactsEmptyLocator();
+    const emptyState = await getDealLinkedContactsEmptyLocator({ page });
     await expect(emptyState).toBeVisible({ timeout: 10_000 });
   },
 );

@@ -30,13 +30,28 @@ import {
   navigateToAccount,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
-import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import { listAttachments } from '@behaviors/minicrm/attachments.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import {
+  getContactAttachmentsSectionLocator,
+  getContactAttachmentsFileInputLocator,
+  getContactAttachmentsListLocator,
+  getContactAttachmentsUploadErrorLocator,
+  getContactAttachmentDeleteLocator,
+  confirmContactAttachmentDelete,
+} from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  getAccountAttachmentsSectionLocator,
+  getAccountAttachmentsFileInputLocator,
+  getAccountAttachmentsListLocator,
+} from '@behaviors/minicrm/accounts.behaviors.js';
+import {
+  getDealAttachmentsSectionLocator,
+  getDealAttachmentsFileInputLocator,
+  getDealAttachmentsListLocator,
+} from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -64,11 +79,11 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const contactPage = new ContactDetailPage({ page });
-  const section = await contactPage.attachmentsSectionLocator();
+
+  const section = await getContactAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await contactPage.attachmentsFileInputLocator();
+  const fileInput = await getContactAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'test-upload.txt',
     mimeType: 'text/plain',
@@ -76,7 +91,7 @@ test('@functional F10-U1: Upload a file to a contact detail page — attachment 
   });
 
   // Wait for attachment row to appear
-  const attachmentList = await contactPage.attachmentsListLocator();
+  const attachmentList = await getContactAttachmentsListLocator({ page });
   await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
   // Verify API reflects the upload
@@ -95,18 +110,18 @@ test('@functional F10-U2: Upload a file to an account detail page — attachment
   const account = await createTestAccount(testData, restClient);
 
   await navigateToAccount(page, account.id);
-  const accountPage = new AccountDetailPage({ page });
-  const section = await accountPage.attachmentsSectionLocator();
+
+  const section = await getAccountAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await accountPage.attachmentsFileInputLocator();
+  const fileInput = await getAccountAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'account-doc.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('account document'),
   });
 
-  const attachmentList = await accountPage.attachmentsListLocator();
+  const attachmentList = await getAccountAttachmentsListLocator({ page });
   await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
   const attachments = await listAttachments(restClient, 'account', account.id);
@@ -124,18 +139,18 @@ test('@functional F10-U3: Upload a file to a deal detail page — attachment app
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
 
   await navigateToDeal(page, deal.id);
-  const dealPage = new DealDetailPage({ page });
-  const section = await dealPage.attachmentsSectionLocator();
+
+  const section = await getDealAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await dealPage.attachmentsFileInputLocator();
+  const fileInput = await getDealAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'deal-proposal.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('deal proposal content'),
   });
 
-  const attachmentList = await dealPage.attachmentsListLocator();
+  const attachmentList = await getDealAttachmentsListLocator({ page });
   await attachmentList?.waitFor({ state: 'visible', timeout: 10_000 });
 
   const attachments = await listAttachments(restClient, 'deal', deal.id);
@@ -152,11 +167,11 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const contactPage = new ContactDetailPage({ page });
-  const section = await contactPage.attachmentsSectionLocator();
+
+  const section = await getContactAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await contactPage.attachmentsFileInputLocator();
+  const fileInput = await getContactAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'malware.exe',
     mimeType: 'application/octet-stream',
@@ -164,7 +179,7 @@ test('@functional F10-U4: Upload a disallowed file type (.exe) — rejected with
   });
 
   // Client-side guard should show an upload error
-  const uploadError = await contactPage.attachmentsUploadErrorLocator();
+  const uploadError = await getContactAttachmentsUploadErrorLocator({ page });
   await expect(uploadError).toBeVisible({ timeout: 5_000 });
 
   // No attachment should have been created
@@ -180,21 +195,21 @@ test('@functional F10-U5: Upload a file exceeding the size limit — rejected wi
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const contactPage = new ContactDetailPage({ page });
-  const section = await contactPage.attachmentsSectionLocator();
+
+  const section = await getContactAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
   // 26 MB — exceeds the 25 MB server limit; client guard fires first
   const oversizedBuffer = Buffer.alloc(26 * 1024 * 1024, 'x');
 
-  const fileInput = await contactPage.attachmentsFileInputLocator();
+  const fileInput = await getContactAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'huge-file.pdf',
     mimeType: 'application/pdf',
     buffer: oversizedBuffer,
   });
 
-  const uploadError = await contactPage.attachmentsUploadErrorLocator();
+  const uploadError = await getContactAttachmentsUploadErrorLocator({ page });
   await expect(uploadError).toBeVisible({ timeout: 5_000 });
 });
 
@@ -210,11 +225,11 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const contactPage = new ContactDetailPage({ page });
-  const section = await contactPage.attachmentsSectionLocator();
+
+  const section = await getContactAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await contactPage.attachmentsFileInputLocator();
+  const fileInput = await getContactAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'download-test.txt',
     mimeType: 'text/plain',
@@ -253,11 +268,11 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   const contact = await createTestContact(testData, restClient);
 
   await navigateToContact(page, contact.id);
-  const contactPage = new ContactDetailPage({ page });
-  const section = await contactPage.attachmentsSectionLocator();
+
+  const section = await getContactAttachmentsSectionLocator({ page });
   await section?.waitFor({ state: 'visible' });
 
-  const fileInput = await contactPage.attachmentsFileInputLocator();
+  const fileInput = await getContactAttachmentsFileInputLocator({ page });
   await fileInput.setInputFiles({
     name: 'to-be-deleted.txt',
     mimeType: 'text/plain',
@@ -265,7 +280,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   });
 
   // Wait for the upload to complete before querying the API for the attachment ID
-  const attachmentList = await contactPage.attachmentsListLocator();
+  const attachmentList = await getContactAttachmentsListLocator({ page });
   await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
   const attachments = await listAttachments(restClient, 'contact', contact.id);
@@ -273,12 +288,12 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
   const attachmentId = attachments[0]!.id;
 
   // Click delete button for this attachment
-  const deleteButton = await contactPage.attachmentDeleteLocator(attachmentId);
+  const deleteButton = await getContactAttachmentDeleteLocator(attachmentId, { page });
   await expect(deleteButton).toBeVisible({ timeout: 10_000 });
   await deleteButton.click();
 
   // Confirm deletion in dialog
-  await contactPage.confirmAttachmentDelete();
+  await confirmContactAttachmentDelete({ page });
 
   // Row should be gone (isNotVisible — safe when element is removed from DOM).
   await expect
@@ -315,11 +330,11 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
 
   try {
     await navigateToContact(page, contact.id);
-    const contactPage = new ContactDetailPage({ page });
-    const section = await contactPage.attachmentsSectionLocator();
+
+    const section = await getContactAttachmentsSectionLocator({ page });
     await section?.waitFor({ state: 'visible' });
 
-    const fileInput = await contactPage.attachmentsFileInputLocator();
+    const fileInput = await getContactAttachmentsFileInputLocator({ page });
     await fileInput.setInputFiles({
       name: 'admin-uploaded.txt',
       mimeType: 'text/plain',
@@ -327,7 +342,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     });
 
     // Wait for the upload to complete before querying the API for the attachment ID
-    const attachmentList = await contactPage.attachmentsListLocator();
+    const attachmentList = await getContactAttachmentsListLocator({ page });
     await expect(attachmentList).toBeVisible({ timeout: 10_000 });
 
     const attachments = await listAttachments(restClient, 'contact', contact.id);

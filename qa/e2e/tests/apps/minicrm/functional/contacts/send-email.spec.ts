@@ -16,9 +16,14 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
 import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
+import {
+  getContactSendEmailButtonLocator,
+  getContactSendEmailModalLocator,
+  getContactSendEmailSuccessLocator,
+  sendEmailFromContact,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -51,28 +56,23 @@ test(
 
     await navigateToContact(page, contact.id);
 
-    const detailPage = new ContactDetailPage({ page });
-
     // Send Email button should be visible for a contact with an email address
-    const sendEmailButton = await detailPage.sendEmailButtonLocator();
+    const sendEmailButton = await getContactSendEmailButtonLocator({ page });
     await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
 
-    // Open the compose modal
-    await detailPage.clickSendEmail();
+    // Open the compose modal, fill subject/body, and submit
+    await sendEmailFromContact(
+      'Test email subject from E2E',
+      'This is the email body written by the E2E test.',
+      { page },
+    );
 
-    // Modal should appear
-    const modal = await detailPage.sendEmailModalLocator();
-    await modal.waitFor({ state: 'visible', timeout: 5_000 });
-
-    // Fill in subject and body
-    await detailPage.fillSendEmailSubject('Test email subject from E2E');
-    await detailPage.fillSendEmailBody('This is the email body written by the E2E test.');
-
-    // Click Send
-    await detailPage.submitSendEmail();
+    // sendEmailFromContact clicks open, fills, and submits; get the modal locator
+    // after submission to assert it auto-closes.
+    const modal = await getContactSendEmailModalLocator({ page });
 
     // Success message appears; must say "sent to" not "logged" — confirms SMTP delivered.
-    const successMsg = await detailPage.sendEmailSuccessLocator();
+    const successMsg = await getContactSendEmailSuccessLocator({ page });
     await successMsg.waitFor({ state: 'visible', timeout: 10_000 });
     const successText = (await successMsg.textContent()) ?? '';
     expect(successText, 'success message should confirm SMTP delivery, not log fallback').toContain(
@@ -119,8 +119,7 @@ test(
 
     await navigateToContact(page, contact.id);
 
-    const detailPage = new ContactDetailPage({ page });
-    const button = await detailPage.sendEmailButtonLocator();
+    const button = await getContactSendEmailButtonLocator({ page });
     await button.waitFor({ state: 'visible', timeout: 10_000 });
     expect(await button.isVisible(), 'Send Email button should be visible').toBe(true);
   },

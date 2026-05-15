@@ -59,10 +59,20 @@ import {
   openMobileNav,
   closeMobileNavViaToggle,
   navigateViaMobileNavLink,
+  getNavLinkLocator,
+  getAdminSectionDividerLocator,
+  getHamburgerDrawerLocator,
+  getMobileNavDrawerLocator,
+  getMenuToggleLocator,
+  getMobileNavLinkLocator,
+  getMobileLogoutButtonLocator,
+  getMobileLanguageSelectLocator,
 } from '@behaviors/minicrm/nav.behaviors.js';
-import { NavPage } from '@pages/minicrm/NavPage.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
+import {
+  getContactNameLocator,
+  getContactNotFoundLocator,
+} from '@behaviors/minicrm/contacts.behaviors.js';
+import { getDealNameHeadingLocator } from '@behaviors/minicrm/deals.behaviors.js';
 import {
   createTestContact,
   createTestDeal,
@@ -250,8 +260,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Contacts and verify the Contacts link carries the active class.
         await navigateViaNavLink('top', 'contacts', { page });
 
-        const navPage = new NavPage({ page });
-        const contactsLink = await navPage.navLinkLocator('top', 'contacts');
+        const contactsLink = await getNavLinkLocator('top', 'contacts', { page });
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -260,7 +269,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
-        const dealsLink = await navPage.navLinkLocator('top', 'deals');
+        const dealsLink = await getNavLinkLocator('top', 'deals', { page });
         await expect(
           dealsLink,
           'inactive nav-top-deals should not carry the active primary class',
@@ -320,8 +329,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // Navigate to Accounts and verify the Accounts link carries the active class.
         await navigateViaNavLink('left', 'accounts', { page });
 
-        const navPage = new NavPage({ page });
-        const accountsLink = await navPage.navLinkLocator('left', 'accounts');
+        const accountsLink = await getNavLinkLocator('left', 'accounts', { page });
         // Use auto-retrying toHaveClass so React Router's NavLink class update is
         // not read as a one-shot snapshot that can race the re-render cycle.
         await expect(
@@ -330,7 +338,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
-        const tasksLink = await navPage.navLinkLocator('left', 'tasks');
+        const tasksLink = await getNavLinkLocator('left', 'tasks', { page });
         await expect(
           tasksLink,
           'inactive nav-left-tasks should not carry the active primary class',
@@ -425,8 +433,7 @@ test.describe.serial('Layout-mutating tests', () => {
           10_000,
         );
 
-        const navPage = new NavPage({ page });
-        const dealsLink = await navPage.navLinkLocator('hamburger', 'deals');
+        const dealsLink = await getNavLinkLocator('hamburger', 'deals', { page });
 
         // The active class is 'bg-primary-50 text-primary-700' per NavHamburger.tsx overlayLinkClass.
         // toHaveClass retries until the assertion passes (up to default timeout), avoiding the
@@ -437,7 +444,7 @@ test.describe.serial('Layout-mutating tests', () => {
         ).toHaveClass(/text-primary-700/);
 
         // A non-active link should not carry the active class.
-        const contactsLink = await navPage.navLinkLocator('hamburger', 'contacts');
+        const contactsLink = await getNavLinkLocator('hamburger', 'contacts', { page });
         await expect(
           contactsLink,
           'inactive nav-hamburger-contacts should not carry the active primary class',
@@ -462,7 +469,7 @@ test.describe.serial('Layout-mutating tests', () => {
       await navigateToDashboard(page);
 
       try {
-        const divider = await new NavPage({ page }).adminSectionDividerLocator('left');
+        const divider = await getAdminSectionDividerLocator('left', { page });
         await expect(
           divider,
           'Administration divider should be visible in left nav for admin',
@@ -483,7 +490,7 @@ test.describe.serial('Layout-mutating tests', () => {
       await navigateToDashboard(page);
 
       try {
-        const divider = await new NavPage({ page }).adminSectionDividerLocator('top');
+        const divider = await getAdminSectionDividerLocator('top', { page });
         await expect(
           divider,
           'Administration divider should be visible in top nav for admin',
@@ -505,7 +512,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const divider = await new NavPage({ page }).adminSectionDividerLocator('hamburger');
+        const divider = await getAdminSectionDividerLocator('hamburger', { page });
         await expect(
           divider,
           'Administration divider should be visible in hamburger drawer for admin',
@@ -528,7 +535,7 @@ test.describe.serial('Layout-mutating tests', () => {
       const result = await openMobileNav({ page });
       expect(result.drawerVisible, 'mobile nav drawer should open').toBe(true);
 
-      const divider = await new NavPage({ page }).adminSectionDividerLocator('top-mobile');
+      const divider = await getAdminSectionDividerLocator('top-mobile', { page });
       await expect(
         divider,
         'Administration divider should be visible in mobile drawer for admin',
@@ -563,8 +570,8 @@ test.describe.serial('Layout-mutating tests', () => {
         await setNavLayoutViaUI('left', { page });
 
         // The sidebar nav links should now be visible without a page reload.
-        const navPage = new NavPage({ page });
-        const leftNavLink = await navPage.navLinkLocator('left', 'contacts');
+
+        const leftNavLink = await getNavLinkLocator('left', 'contacts', { page });
         await expect(leftNavLink).toBeVisible();
 
         // Top nav links should no longer be present.
@@ -577,7 +584,7 @@ test.describe.serial('Layout-mutating tests', () => {
         await setNavLayoutViaUI('hamburger', { page });
 
         // Hamburger toggle should now be visible; top and left nav links should not.
-        const hamburgerToggle = await navPage.menuToggleLocator();
+        const hamburgerToggle = await getMenuToggleLocator({ page });
         await expect(hamburgerToggle).toBeVisible();
         expect(
           await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
@@ -604,7 +611,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Verify the left sidebar is active.
-        const leftNavLink = await new NavPage({ page }).navLinkLocator('left', 'contacts');
+        const leftNavLink = await getNavLinkLocator('left', 'contacts', { page });
         await expect(leftNavLink).toBeVisible();
 
         // Full page reload.
@@ -629,7 +636,7 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Hamburger toggle must be visible.
-        const hamburgerToggle = await new NavPage({ page }).menuToggleLocator();
+        const hamburgerToggle = await getMenuToggleLocator({ page });
         await expect(hamburgerToggle).toBeVisible();
 
         // Full page reload.
@@ -674,7 +681,7 @@ test.describe.serial('Layout-mutating tests', () => {
         expect(result.drawerVisible, 'hamburger drawer should be visible after toggle tap').toBe(
           true,
         );
-        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
+        const drawer = await getHamburgerDrawerLocator({ page });
         await expect(drawer).toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM1');
@@ -693,7 +700,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
+        const drawer = await getHamburgerDrawerLocator({ page });
         await expect(drawer).toBeVisible();
 
         const result = await closeHamburgerMenuViaBackdrop({ page });
@@ -717,7 +724,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         await openHamburgerMenu({ page });
 
-        const drawer = await new NavPage({ page }).requireHamburgerDrawerLocator();
+        const drawer = await getHamburgerDrawerLocator({ page });
         await expect(drawer).toBeVisible();
 
         // Click a link — the NavLink onClick calls closeMenu().
@@ -743,9 +750,8 @@ test.describe.serial('Layout-mutating tests', () => {
         // Open the hamburger menu and verify all admin destinations are visible.
         await openHamburgerMenu({ page });
 
-        const navPage = new NavPage({ page });
         for (const destination of Object.keys(ALL_ADMIN_DESTINATIONS)) {
-          const link = await navPage.navLinkLocator('hamburger', destination);
+          const link = await getNavLinkLocator('hamburger', destination, { page });
           await expect(
             link,
             `nav-hamburger-${destination} should be visible inside the open menu`,
@@ -770,13 +776,13 @@ test.describe.serial('Layout-mutating tests', () => {
 
       try {
         // Focus the hamburger toggle and activate it via keyboard.
-        const navPage = new NavPage({ page });
-        const toggle = await navPage.menuToggleLocator();
+
+        const toggle = await getMenuToggleLocator({ page });
         await toggle.focus();
         await page.keyboard.press('Enter');
 
         // Drawer should open.
-        const drawer = await navPage.requireHamburgerDrawerLocator();
+        const drawer = await getHamburgerDrawerLocator({ page });
         await expect(drawer).toBeVisible();
 
         // Focus should move into the drawer on open (NavHamburger.tsx focuses first link).
@@ -819,7 +825,7 @@ test.describe('Mobile nav mechanics', () => {
     const result = await openMobileNav({ page });
 
     expect(result.drawerVisible, 'mobile nav drawer should be visible after toggle tap').toBe(true);
-    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    const drawer = await getMobileNavDrawerLocator({ page });
     await expect(drawer).toBeVisible();
   });
 
@@ -831,7 +837,7 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    const drawer = await getMobileNavDrawerLocator({ page });
     await expect(drawer).toBeVisible();
 
     const result = await closeMobileNavViaToggle({ page });
@@ -848,7 +854,7 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const drawer = await new NavPage({ page }).requireMobileNavDrawerLocator();
+    const drawer = await getMobileNavDrawerLocator({ page });
     await expect(drawer).toBeVisible();
 
     await navigateViaMobileNavLink('contacts', { page });
@@ -867,12 +873,11 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const navPage = new NavPage({ page });
-    const drawer = await navPage.requireMobileNavDrawerLocator();
+    const drawer = await getMobileNavDrawerLocator({ page });
     await expect(drawer).toBeVisible();
 
     for (const destination of Object.keys(REP_DESTINATIONS)) {
-      const link = await navPage.mobileNavLinkLocator(destination);
+      const link = await getMobileNavLinkLocator(destination, { page });
       await expect(
         link,
         `nav-top-${destination}-mobile should be visible in the open mobile drawer`,
@@ -892,16 +897,15 @@ test.describe('Mobile nav mechanics', () => {
 
     await openMobileNav({ page });
 
-    const navPage = new NavPage({ page });
-    const drawer = await navPage.requireMobileNavDrawerLocator();
+    const drawer = await getMobileNavDrawerLocator({ page });
     await expect(drawer).toBeVisible();
 
     await expect(
-      await navPage.mobileLogoutButtonLocator(),
+      await getMobileLogoutButtonLocator({ page }),
       'logout button should be present in mobile nav drawer',
     ).toBeVisible();
     await expect(
-      await navPage.mobileLanguageSelectLocator(),
+      await getMobileLanguageSelectLocator({ page }),
       'language selector should be present in mobile nav drawer',
     ).toBeVisible();
 
@@ -928,7 +932,7 @@ test('@functional F8-DL1: deep link to /contacts/:id loads the correct contact d
   await navigateToContact(page, contact.id);
 
   // The contact name heading is rendered once data loads.
-  const nameHeading = await new ContactDetailPage({ page }).contactNameLocator();
+  const nameHeading = await getContactNameLocator({ page });
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(contact.first_name);
   await expect(nameHeading).toContainText(contact.last_name);
@@ -957,7 +961,7 @@ test('@functional F8-DL2: deep link to /deals/:id loads the correct deal detail 
   await navigateToDeal(page, deal.id);
 
   // The deal name heading is rendered once data loads.
-  const nameHeading = await new DealDetailPage({ page }).dealNameLocator();
+  const nameHeading = await getDealNameHeadingLocator({ page });
   await expect(nameHeading).toBeVisible();
   await expect(nameHeading).toContainText(deal.name);
 
@@ -980,7 +984,7 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   // The page must not be blank or show an unhandled 500.
   // Pass 10 000 ms fallbackTimeout — React Query's error state can arrive after
   // networkidle under CI load, so the probe window must match the original behaviour.
-  const alert = await new ContactDetailPage({ page }).notFoundAlertLocator(10_000);
+  const alert = await getContactNotFoundLocator({ page }, 10_000);
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });
 

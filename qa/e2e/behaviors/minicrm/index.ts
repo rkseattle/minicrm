@@ -60,6 +60,20 @@ export {
   patchContact,
   listContactsViaApi,
   createContactViaApi,
+  navigateToContactDetail,
+  clickContactEdit,
+  fillContactDetailField,
+  saveContact,
+  isContactDetailLoaded,
+  getContactEditButtonLocator,
+  clickNewContact,
+  submitContactCreateFormAction,
+  clickContactsBulkDelete,
+  getContactsConfirmDeleteModalLocator,
+  cancelContactsBulkDelete,
+  clickContactsBulkReassign,
+  getContactsBulkReassignModalLocator,
+  cancelContactsBulkReassign,
 } from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
@@ -305,9 +319,22 @@ export type {
   NotificationPreferences,
 } from './notifications.behaviors.js';
 
-export { simulateConcurrentEdit, assertConflictModal } from './concurrency.behaviors.js';
+export {
+  simulateConcurrentEdit,
+  assertConflictModal,
+  isConflictModalVisible,
+  getConflictModalLocator,
+  getConflictModalTitleLocator,
+  getConflictSaveResolvedButtonLocator,
+  getConflictDiscardButtonLocator,
+  clickConflictSaveResolved,
+  clickConflictDiscard,
+  selectConflictTheirs,
+  selectConflictMine,
+} from './concurrency.behaviors.js';
 export type {
   ConcurrentEditEntityType,
+  ConcurrencyBehaviorContext,
   SimulateConcurrentEditResult,
   AssertConflictModalResult,
 } from './concurrency.behaviors.js';

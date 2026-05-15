@@ -48,12 +48,12 @@ import {
   searchContactsViaApi,
   listContactsViaApi,
   patchContactAccount,
+  getContactAccountLink,
+  getContactsPaginationLocator,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestContact, createTestAccount, navigateToContact } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 
 // ---------------------------------------------------------------------------
 // Shared setup
@@ -530,7 +530,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await navigateToContact(page, contact.id);
 
   // The detail-account element should show the account name.
-  const accountLocator = await new ContactDetailPage({ page }).accountLinkLocator();
+  const accountLocator = await getContactAccountLink({ page });
   await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
   const accountText = await accountLocator.textContent();
   expect(accountText, 'detail view should show the linked account name').toContain(
@@ -589,7 +589,7 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   await navigateToContact(page, contact.id);
 
   // Confirm account name is a link pointing to the account's detail page.
-  const accountLink = await new ContactDetailPage({ page }).accountLinkLocator();
+  const accountLink = await getContactAccountLink({ page });
   await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
   const href = await accountLink.getAttribute('href');
   expect(href, 'account link should point to /accounts/:id').toContain(`/accounts/${account.id}`);
@@ -656,7 +656,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   // If the total (all contacts in db) exceeds 50 the pagination component is shown.
   const total = (await searchContactsViaApi(restClient, '')).total;
   if (total > 50) {
-    const paginationLocator = await new ContactsPage({ page }).paginationLocator();
+    const paginationLocator = await getContactsPaginationLocator({ page });
     await expect(paginationLocator).toBeVisible();
   }
 });

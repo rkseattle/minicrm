@@ -56,11 +56,31 @@ import {
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
-import { simulateConcurrentEdit } from '@behaviors/minicrm/concurrency.behaviors.js';
-import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
-import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
-import { ConflictBannerWidget } from '@pages/minicrm/ConflictBannerWidget.js';
-import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
+import {
+  simulateConcurrentEdit,
+  isConflictModalVisible,
+  getConflictModalTitleLocator,
+  getConflictSaveResolvedButtonLocator,
+  getConflictDiscardButtonLocator,
+  clickConflictSaveResolved,
+  clickConflictDiscard,
+  selectConflictTheirs,
+  selectConflictMine,
+} from '@behaviors/minicrm/concurrency.behaviors.js';
+import {
+  navigateToContactDetail,
+  clickContactEdit,
+  fillContactDetailField,
+  saveContact,
+  isContactDetailLoaded,
+  getContactsBulkActionBarLocator,
+} from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  navigateToDealDetail,
+  openDealEditForm,
+  getDealStageSelectOnFormLocator,
+  submitDealForm,
+} from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -135,10 +155,9 @@ async function driveContactIntoConflict(
     backgroundFirstName: string;
   },
 ): Promise<{ backgroundVersion: number }> {
-  const detailPage = new ContactDetailPage(context);
-  await detailPage.navigate(contactId);
-  await detailPage.clickEdit();
-  await detailPage.fillField('contact-first-name', 'First name', opts.uiFirstName);
+  await navigateToContactDetail(contactId, context);
+  await clickContactEdit(context);
+  await fillContactDetailField('contact-first-name', 'First name', opts.uiFirstName, context);
 
   // Background write: another user saves before we do
   const { newVersion } = await simulateConcurrentEdit(
@@ -150,7 +169,7 @@ async function driveContactIntoConflict(
   );
 
   // Submit the stale UI form
-  await detailPage.save();
+  await saveContact(context);
 
   return { backgroundVersion: newVersion };
 }
@@ -203,21 +222,19 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         backgroundFirstName: 'CC2-Theirs',
       });
 
-      const widget = new ConflictBannerWidget({ page });
-
       // Conflict modal must appear
-      const isVisible = await widget.isVisible();
+      const isVisible = await isConflictModalVisible({ page });
       expect(isVisible, 'conflict modal should be visible after stale save').toBe(true);
 
       // Title heading must be present
-      const title = await widget.titleLocator();
+      const title = await getConflictModalTitleLocator({ page });
       expect(await title.isVisible(), 'modal title should be visible').toBe(true);
 
       // Both action buttons must be present
-      const saveBtn = await widget.saveResolvedButtonLocator();
+      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
       expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
 
-      const discardBtn = await widget.discardButtonLocator();
+      const discardBtn = await getConflictDiscardButtonLocator({ page });
       expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
         true,
       );
@@ -239,12 +256,11 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(deal.version, 'freshly created deal should be at version 1').toBe(1);
 
       // Navigate to deal and enter edit mode with a stage change
-      const detailPage = new DealDetailPage({ page });
-      await detailPage.navigate(deal.id);
-      await detailPage.clickEdit();
+      await navigateToDealDetail(deal.id, { page });
+      await openDealEditForm({ page });
 
       // Change stage in the UI to Qualification (do not save yet)
-      const stageSelect = await detailPage.stageSelectLocator();
+      const stageSelect = await getDealStageSelectOnFormLocator({ page });
       await stageSelect.selectOption('Qualification');
 
       // Background write: move stage to Negotiation — this increments version to 2
@@ -266,10 +282,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       const ruleIds = automationRulesResponse.body.data.map((r) => r.id);
 
       // Submit the stale UI save — expect conflict modal
-      await detailPage.submitForm();
+      await submitDealForm({ page });
 
-      const widget = new ConflictBannerWidget({ page });
-      const isVisible = await widget.isVisible();
+      const isVisible = await isConflictModalVisible({ page });
       expect(isVisible, 'conflict modal should appear on stale deal stage save').toBe(true);
 
       // Verify the deal version is still 2 in the database — the stale save
@@ -328,25 +343,22 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       });
 
       // Conflict modal should be visible
-      const widget = new ConflictBannerWidget({ page });
-      expect(await widget.isVisible(), 'conflict modal should be visible').toBe(true);
+      expect(await isConflictModalVisible({ page }), 'conflict modal should be visible').toBe(true);
 
       // Click "Save resolved" — modal defaults to "theirs" for conflicts, which is fine
       // The key assertion here is that the save succeeds and the modal is dismissed
-      await widget.clickSaveResolved();
+      await clickConflictSaveResolved({ page });
 
-      // Wait for edit mode to exit (edit button returns = save succeeded)
-      const detailPage = new ContactDetailPage({ page });
       await page.waitForLoadState('networkidle');
 
       // Conflict modal should be dismissed
       expect(
-        await widget.isVisible(),
+        await isConflictModalVisible({ page }),
         'conflict modal should be dismissed after successful re-save',
       ).toBe(false);
 
       // Contact should be in read mode (edit button visible = form submitted successfully)
-      const loaded = await detailPage.isLoaded();
+      const loaded = await isContactDetailLoaded({ page });
       expect(loaded, 'contact detail page should return to read mode after re-save').toBe(true);
 
       // Verify via API that the contact was updated (version is now 3)
@@ -375,22 +387,21 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         backgroundFirstName: 'CC5-Theirs',
       });
 
-      const widget = new ConflictBannerWidget({ page });
-      expect(await widget.isVisible(), 'conflict modal should be visible').toBe(true);
+      expect(await isConflictModalVisible({ page }), 'conflict modal should be visible').toBe(true);
 
       // Click "Discard my changes" — abandons pending edits, accepts server state
-      await widget.clickDiscard();
+      await clickConflictDiscard({ page });
 
       await page.waitForLoadState('networkidle');
 
       // Conflict modal should be dismissed
-      expect(await widget.isVisible(), 'conflict modal should be dismissed after discard').toBe(
-        false,
-      );
+      expect(
+        await isConflictModalVisible({ page }),
+        'conflict modal should be dismissed after discard',
+      ).toBe(false);
 
       // Contact detail page should return to read mode
-      const detailPage = new ContactDetailPage({ page });
-      const loaded = await detailPage.isLoaded();
+      const loaded = await isContactDetailLoaded({ page });
       expect(loaded, 'contact detail page should return to read mode after discard').toBe(true);
 
       // Verify via API that the contact is at version 2 (background write version)
@@ -454,8 +465,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await waitForBulkCheckbox(c3.id, { page });
       await clickBulkCheckbox(c3.id, { page });
 
-      const contactsPage = new ContactsPage({ page });
-      await expect(await contactsPage.bulkActionBarLocator()).toBeVisible();
+      await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
 
       // Bulk reassign — no version required, no conflict expected
       await bulkReassignContacts(newOwner.id, newOwner.name, { page });
@@ -505,20 +515,21 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         backgroundFirstName: 'CC7-Theirs',
       });
 
-      const widget = new ConflictBannerWidget({ page });
-      expect(await widget.isVisible(), 'conflict modal should be visible').toBe(true);
+      expect(await isConflictModalVisible({ page }), 'conflict modal should be visible').toBe(true);
 
       // Explicitly choose "theirs" for first_name (this is the default but we confirm it)
-      await widget.selectTheirs('first_name');
-      await widget.clickSaveResolved();
+      await selectConflictTheirs('first_name', { page });
+      await clickConflictSaveResolved({ page });
 
       await page.waitForLoadState('networkidle');
 
       // Modal should be dismissed, page back in read mode
-      expect(await widget.isVisible(), 'modal should be dismissed after save resolved').toBe(false);
+      expect(
+        await isConflictModalVisible({ page }),
+        'modal should be dismissed after save resolved',
+      ).toBe(false);
 
-      const detailPage = new ContactDetailPage({ page });
-      expect(await detailPage.isLoaded(), 'page should return to read mode').toBe(true);
+      expect(await isContactDetailLoaded({ page }), 'page should return to read mode').toBe(true);
 
       // Contact should now be at version 3 with "theirs" first name
       const afterResolve = await getContactById(restClient, contact.id);
@@ -528,22 +539,23 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // -----------------------------------------------------------------------
       // Subsequent edit — must save cleanly with no conflict (version is now 3)
       // -----------------------------------------------------------------------
-      await detailPage.clickEdit();
-      await detailPage.fillField('contact-first-name', 'First name', 'CC7-PostResolve');
-      await detailPage.save();
+      await clickContactEdit({ page });
+      await fillContactDetailField('contact-first-name', 'First name', 'CC7-PostResolve', { page });
+      await saveContact({ page });
 
       await page.waitForLoadState('networkidle');
 
       // No conflict modal should appear
       expect(
-        await widget.isVisible(),
+        await isConflictModalVisible({ page }),
         'no conflict modal should appear on the clean subsequent edit',
       ).toBe(false);
 
       // Page returns to read mode
-      expect(await detailPage.isLoaded(), 'page should return to read mode after clean save').toBe(
-        true,
-      );
+      expect(
+        await isContactDetailLoaded({ page }),
+        'page should return to read mode after clean save',
+      ).toBe(true);
 
       // Version is now 4
       const afterEdit = await getContactById(restClient, contact.id);
@@ -569,20 +581,21 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         backgroundFirstName: 'CC8-Theirs',
       });
 
-      const widget = new ConflictBannerWidget({ page });
-      expect(await widget.isVisible(), 'conflict modal should be visible').toBe(true);
+      expect(await isConflictModalVisible({ page }), 'conflict modal should be visible').toBe(true);
 
       // Switch the choice to "mine" for first_name
-      await widget.selectMine('first_name');
-      await widget.clickSaveResolved();
+      await selectConflictMine('first_name', { page });
+      await clickConflictSaveResolved({ page });
 
       await page.waitForLoadState('networkidle');
 
       // Modal should be dismissed, page back in read mode
-      expect(await widget.isVisible(), 'modal should be dismissed after save resolved').toBe(false);
+      expect(
+        await isConflictModalVisible({ page }),
+        'modal should be dismissed after save resolved',
+      ).toBe(false);
 
-      const detailPage = new ContactDetailPage({ page });
-      expect(await detailPage.isLoaded(), 'page should return to read mode').toBe(true);
+      expect(await isContactDetailLoaded({ page }), 'page should return to read mode').toBe(true);
 
       // Contact should now be at version 3 with "mine" first name
       const afterResolve = await getContactById(restClient, contact.id);
@@ -592,22 +605,23 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // -----------------------------------------------------------------------
       // Subsequent edit — must save cleanly with no conflict (version is now 3)
       // -----------------------------------------------------------------------
-      await detailPage.clickEdit();
-      await detailPage.fillField('contact-first-name', 'First name', 'CC8-PostResolve');
-      await detailPage.save();
+      await clickContactEdit({ page });
+      await fillContactDetailField('contact-first-name', 'First name', 'CC8-PostResolve', { page });
+      await saveContact({ page });
 
       await page.waitForLoadState('networkidle');
 
       // No conflict modal should appear
       expect(
-        await widget.isVisible(),
+        await isConflictModalVisible({ page }),
         'no conflict modal should appear on the clean subsequent edit',
       ).toBe(false);
 
       // Page returns to read mode
-      expect(await detailPage.isLoaded(), 'page should return to read mode after clean save').toBe(
-        true,
-      );
+      expect(
+        await isContactDetailLoaded({ page }),
+        'page should return to read mode after clean save',
+      ).toBe(true);
 
       // Version is now 4
       const afterEdit = await getContactById(restClient, contact.id);

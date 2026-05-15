@@ -18,7 +18,14 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
-import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
+import {
+  getReportsLoadingLocator,
+  getReportsStageTrendTableLocator,
+  getReportsStageTrendEmptyLocator,
+  getReportsStageTrendHeadingLocator,
+  getReportsDaysSelectLocator,
+} from '@behaviors/minicrm/reports.behaviors.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -41,18 +48,18 @@ test.beforeAll(async ({ restClient }) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Navigates to the stage trend report and waits for the loading indicator to
- * disappear, then returns whether the table or empty state is visible.
+ * Waits for the stage trend report loading indicator to disappear, then returns
+ * whether the table or empty state is visible.
  */
-async function waitForReportLoaded(reportsPage: ReportsPage): Promise<{
+async function waitForReportLoaded(page: PageFacade): Promise<{
   tableVisible: boolean;
   emptyVisible: boolean;
 }> {
-  const loadingEl = await reportsPage.loadingLocator();
+  const loadingEl = await getReportsLoadingLocator({ page });
   await loadingEl?.waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => null);
 
-  const tableEl = await reportsPage.stageTrendTableLocator();
-  const emptyEl = await reportsPage.stageTrendEmptyLocator();
+  const tableEl = await getReportsStageTrendTableLocator({ page });
+  const emptyEl = await getReportsStageTrendEmptyLocator({ page });
 
   const tableVisible = (await tableEl?.isVisible().catch(() => false)) ?? false;
   const emptyVisible = (await emptyEl?.isVisible().catch(() => false)) ?? false;
@@ -104,11 +111,10 @@ test('stage trend report: direct URL /reports?view=pipeline-stage shows heading 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const heading = await reportsPage.stageTrendHeadingLocator();
+  const heading = await getReportsStageTrendHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 
-  const daysSelect = await reportsPage.daysSelectLocator();
+  const daysSelect = await getReportsDaysSelectLocator({ page });
   await expect(daysSelect).toBeVisible();
   await expect(daysSelect).toHaveValue('30');
 });
@@ -128,8 +134,7 @@ test('stage trend report: table or empty state visible after load @functional', 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const { tableVisible, emptyVisible } = await waitForReportLoaded(reportsPage);
+  const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
 
   expect(
     tableVisible || emptyVisible,
@@ -143,18 +148,16 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-
   // Wait for initial load to settle
-  await waitForReportLoaded(reportsPage);
+  await waitForReportLoaded(page);
 
   // Switch to 60-day window
-  const daysSelect = await reportsPage.daysSelectLocator();
+  const daysSelect = await getReportsDaysSelectLocator({ page });
   await daysSelect.selectOption('60');
   await expect(daysSelect).toHaveValue('60');
 
   // Wait for the new fetch to complete
-  const { tableVisible, emptyVisible } = await waitForReportLoaded(reportsPage);
+  const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
   expect(
     tableVisible || emptyVisible,
     'table or empty state must still be visible after switching to 60-day window',
@@ -167,8 +170,7 @@ test('stage trend report: changing date range to 90 days updates the select @fun
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
-  const reportsPage = new ReportsPage({ page });
-  const daysSelect = await reportsPage.daysSelectLocator();
+  const daysSelect = await getReportsDaysSelectLocator({ page });
   await daysSelect.selectOption('90');
   await expect(daysSelect).toHaveValue('90');
 });

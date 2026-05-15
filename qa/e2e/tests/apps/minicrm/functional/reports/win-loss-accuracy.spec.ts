@@ -19,9 +19,21 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { getWinLossReport } from '@behaviors/minicrm/reports.behaviors.js';
+import {
+  getWinLossReport,
+  getReportsLoadingLocator,
+  getReportsStatCardsLocator,
+  getReportsDatePresetSelectLocator,
+  getReportsCustomStartInputLocator,
+  getReportsCustomEndInputLocator,
+  getReportsWinLossHeadingLocator,
+  getReportsWonCountValueLocator,
+  getReportsLostCountValueLocator,
+  getReportsWinRateValueLocator,
+  getReportsTabListSelectLocator,
+} from '@behaviors/minicrm/reports.behaviors.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,11 +67,11 @@ function previousMonthFirstDay(): string {
  * Waits for the Win/Loss report loading indicator to disappear and for the
  * stat cards container to become visible.
  */
-async function waitForReportLoaded(reportsPage: ReportsPage): Promise<void> {
-  const loadingEl = await reportsPage.loadingLocator();
+async function waitForReportLoaded(page: PageFacade): Promise<void> {
+  const loadingEl = await getReportsLoadingLocator({ page });
   await loadingEl?.waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => null);
 
-  const statCards = await reportsPage.statCardsLocator();
+  const statCards = await getReportsStatCardsLocator({ page });
   await expect(statCards).toBeVisible({ timeout: 10_000 });
 }
 
@@ -67,18 +79,14 @@ async function waitForReportLoaded(reportsPage: ReportsPage): Promise<void> {
  * Applies a custom date range filter on the Win/Loss report page by selecting
  * the "custom" preset and filling in the start/end date inputs.
  */
-async function applyCustomDateFilter(
-  reportsPage: ReportsPage,
-  start: string,
-  end: string,
-): Promise<void> {
-  const presetSelect = await reportsPage.datePresetSelectLocator();
+async function applyCustomDateFilter(page: PageFacade, start: string, end: string): Promise<void> {
+  const presetSelect = await getReportsDatePresetSelectLocator({ page });
   await presetSelect.selectOption('custom');
 
-  const startInput = await reportsPage.customStartInputLocator();
+  const startInput = await getReportsCustomStartInputLocator({ page });
   await startInput.fill(start);
 
-  const endInput = await reportsPage.customEndInputLocator();
+  const endInput = await getReportsCustomEndInputLocator({ page });
   await endInput.fill(end);
 }
 
@@ -120,16 +128,15 @@ test(
 
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
-    const reportsPage = new ReportsPage({ page });
-    const heading = await reportsPage.winLossHeadingLocator();
+    const heading = await getReportsWinLossHeadingLocator({ page });
     await expect(heading).toBeVisible({ timeout: 10_000 });
 
-    await applyCustomDateFilter(reportsPage, start, end);
-    await waitForReportLoaded(reportsPage);
+    await applyCustomDateFilter(page, start, end);
+    await waitForReportLoaded(page);
 
-    const wonCountEl = await reportsPage.wonCountValueLocator();
-    const lostCountEl = await reportsPage.lostCountValueLocator();
-    const winRateEl = await reportsPage.winRateValueLocator();
+    const wonCountEl = await getReportsWonCountValueLocator({ page });
+    const lostCountEl = await getReportsLostCountValueLocator({ page });
+    const winRateEl = await getReportsWinRateValueLocator({ page });
 
     const wonCountText = await wonCountEl.textContent();
     const lostCountText = await lostCountEl.textContent();
@@ -180,9 +187,8 @@ test(
 
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
-    const reportsPage = new ReportsPage({ page });
-    await applyCustomDateFilter(reportsPage, monthStart, monthEnd);
-    await waitForReportLoaded(reportsPage);
+    await applyCustomDateFilter(page, monthStart, monthEnd);
+    await waitForReportLoaded(page);
 
     // Verify via API that the current-month filter does not include the previous-month deal.
     const report = await getWinLossReport(restClient, monthStart, monthEnd);
@@ -199,7 +205,7 @@ test(
     expect(report.wonCount).toBeGreaterThanOrEqual(1);
 
     // The UI reflects the current-month filter result
-    const wonCountEl = await reportsPage.wonCountValueLocator();
+    const wonCountEl = await getReportsWonCountValueLocator({ page });
     const wonCountText = await wonCountEl.textContent();
     expect(parseInt(wonCountText ?? '0', 10)).toBeGreaterThanOrEqual(1);
   },
@@ -249,11 +255,10 @@ test(
 
     // UI assertion first — navigate and apply the same date filter
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
-    const reportsPage = new ReportsPage({ page });
-    await applyCustomDateFilter(reportsPage, start, end);
-    await waitForReportLoaded(reportsPage);
+    await applyCustomDateFilter(page, start, end);
+    await waitForReportLoaded(page);
 
-    const wonCountEl = await reportsPage.wonCountValueLocator();
+    const wonCountEl = await getReportsWonCountValueLocator({ page });
     const uiWonCount = parseInt((await wonCountEl.textContent()) ?? '0', 10);
 
     // UI must include at minimum our 3 seeded won deals (other tests may add more)
@@ -299,24 +304,23 @@ test(
     await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
 
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-    const reportsPage = new ReportsPage({ page });
 
     if (isMobile) {
       // On mobile the SubPageNav renders a <select> — the report content is
       // already shown (win-loss is the default view) so just check the select value.
-      const select = await reportsPage.tabListSelectLocator();
+      const select = await getReportsTabListSelectLocator({ page });
       if (select) {
         await expect(select).toHaveValue('win-loss');
       }
     }
 
-    await applyCustomDateFilter(reportsPage, start, end);
-    await waitForReportLoaded(reportsPage);
+    await applyCustomDateFilter(page, start, end);
+    await waitForReportLoaded(page);
 
-    const statCards = await reportsPage.statCardsLocator();
+    const statCards = await getReportsStatCardsLocator({ page });
     await expect(statCards).toBeVisible();
 
-    const winRateEl = await reportsPage.winRateValueLocator();
+    const winRateEl = await getReportsWinRateValueLocator({ page });
     await expect(winRateEl).toBeVisible();
     const winRateText = await winRateEl.textContent();
     expect(winRateText).toMatch(/\d+%/);
