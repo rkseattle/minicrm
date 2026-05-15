@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 
-// MINCRM-123: E2E_BASE_URL is the sole source of truth for target environment.
-// Set this to the deployed frontend URL in staging/production.
+// MINCRM-123: E2E_BASE_URL is the frontend origin Playwright navigates to.
+// E2E_API_URL is the backend API origin used by RestClient and globalSetup.
+// Set these to the deployed frontend/API URLs in staging/production.
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 
 const IS_CI = Boolean(process.env.CI);
