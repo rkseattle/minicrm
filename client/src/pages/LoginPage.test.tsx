@@ -1,6 +1,7 @@
 /**
  * Tests for the LoginPage component.
- * Covers: render, form interaction, failed login error state, redirect on success.
+ * Covers: render, form interaction, failed login error state, redirect on success,
+ * session-expired banner (MINCRM-365), and ?next= redirect after re-authentication.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -24,6 +25,26 @@ function renderLoginPage() {
       <Route path="/forgot-password" element={<div>Forgot password page</div>} />
     </Routes>,
     { initialEntries: ['/login'] },
+  );
+}
+
+/**
+ * Renders LoginPage with ?reason=session_expired (and optional ?next=) query params,
+ * simulating a redirect from the Axios 401 interceptor (MINCRM-365).
+ */
+function renderLoginPageSessionExpired(next?: string) {
+  const search = next
+    ? `?reason=session_expired&next=${encodeURIComponent(next)}`
+    : '?reason=session_expired';
+  return renderWithProviders(
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<div>Dashboard</div>} />
+      <Route path="/contacts" element={<div>Contacts page</div>} />
+      <Route path="/deals" element={<div>Deals page</div>} />
+      <Route path="/change-password" element={<div>Change password page</div>} />
+    </Routes>,
+    { initialEntries: [`/login${search}`] },
   );
 }
 
@@ -189,5 +210,54 @@ describe('LoginPage', () => {
     await user.click(submitButton);
 
     expect(submitButton).toBeDisabled();
+  });
+});
+
+// ── MINCRM-365: session-expired banner + ?next= redirect ────────────────────
+
+describe('LoginPage — session expired (MINCRM-365)', () => {
+  it('does not show the session-expired banner without ?reason=session_expired', () => {
+    renderLoginPage();
+    expect(screen.queryByTestId('session-expired-banner')).not.toBeInTheDocument();
+  });
+
+  it('shows the session-expired banner when ?reason=session_expired is present', () => {
+    renderLoginPageSessionExpired();
+    expect(screen.getByTestId('session-expired-banner')).toBeInTheDocument();
+  });
+
+  it('session-expired banner has role="status" for screen readers', () => {
+    renderLoginPageSessionExpired();
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('redirects to ?next= path after successful login (MINCRM-365)', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+
+    renderLoginPageSessionExpired('/deals');
+
+    await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await user.type(screen.getByTestId('login-password'), 'correct-password');
+    await user.click(screen.getByTestId('login-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Deals page')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects to dashboard when ?next= is /change-password (loop prevention)', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
+
+    renderLoginPageSessionExpired('/change-password');
+
+    await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await user.type(screen.getByTestId('login-password'), 'correct-password');
+    await user.click(screen.getByTestId('login-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
   });
 });

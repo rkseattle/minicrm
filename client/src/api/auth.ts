@@ -65,3 +65,12 @@ export async function resetPassword(token: string, password: string): Promise<Au
   });
   return response.data;
 }
+
+/**
+ * Refreshes the session JWT to reset the 30-minute idle timeout.
+ * Preserves the original login_at so the 8-hour absolute cap is unaffected.
+ * Called automatically by useSessionRefresh on user activity. (MINCRM-365)
+ */
+export async function refreshSession(): Promise<void> {
+  await apiClient.post('/auth/refresh');
+}

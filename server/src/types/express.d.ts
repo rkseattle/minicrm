@@ -14,6 +14,8 @@ export interface JwtTokenPayload {
   status: UserStatus;
   /** Present only on invite tokens */
   purpose?: string;
+  /** Unix timestamp (seconds) when the original session was created — used for absolute session cap (MINCRM-365) */
+  login_at?: number;
   iat?: number;
   exp?: number;
 }

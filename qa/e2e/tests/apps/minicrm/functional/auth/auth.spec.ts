@@ -33,12 +33,15 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
   login,
+  loginFromCurrentPage,
   loginAsAdmin,
   logoutViaApi,
   getCurrentUser,
   logout,
   changePassword,
   navigateToProtectedPage,
+  sessionExpiredBannerVisible,
+  navigateToLoginWithSessionExpired,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   inviteUserViaApi,
@@ -210,6 +213,49 @@ test('@functional F1-S2: cleared session → API returns 401 (AC3)', async ({ re
   }
 
   expect(caughtStatus, '/me after logout must return 401').toBe(401);
+});
+
+/**
+ * F1-S4: session-expired banner visible when 401 interceptor redirects to /login (MINCRM-365).
+ *
+ * When a mid-session API call returns 401, the Axios interceptor navigates to
+ * /login?reason=session_expired. The login page must display a contextual notice
+ * so the user understands why they were signed out.
+ */
+test('@functional F1-S4: session-expired banner visible on /login?reason=session_expired (MINCRM-365)', async ({
+  page,
+}) => {
+  await navigateToLoginWithSessionExpired('/contacts', { page });
+
+  const bannerVisible = await sessionExpiredBannerVisible({ page });
+  expect(bannerVisible, 'session-expired banner must be visible').toBe(true);
+});
+
+/**
+ * F1-S5: after session-expired redirect, logging in returns the user to the
+ * originally requested path preserved in the ?next= query param. (MINCRM-365)
+ *
+ * Uses loginFromCurrentPage instead of login so the ?next= query param is NOT
+ * stripped by a re-navigation to bare /login before the form is submitted.
+ */
+test('@functional F1-S5: login after session expiry returns user to ?next= path (MINCRM-365)', async ({
+  page,
+}) => {
+  // Navigate to login with session_expired reason and next=/contacts.
+  // The query params must remain in the URL when the form is submitted.
+  await navigateToLoginWithSessionExpired(PROTECTED_PATH, { page });
+
+  // Submit credentials without re-navigating (loginFromCurrentPage preserves the URL). (MINCRM-365)
+  const loginResult = await loginFromCurrentPage(
+    { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    { page },
+  );
+
+  expect(loginResult.success, 'login after session expiry should succeed').toBe(true);
+  expect(
+    new URL(loginResult.finalUrl).pathname,
+    `after re-authentication user should land on ${PROTECTED_PATH}`,
+  ).toBe(PROTECTED_PATH);
 });
 
 /**

@@ -35,7 +35,8 @@
     "passwordPlaceholder": "Votre mot de passe",
     "submitButton": "Se connecter",
     "submitting": "Connexion en cours…",
-    "forgotPassword": "Mot de passe oublié ?"
+    "forgotPassword": "Mot de passe oublié ?",
+    "sessionExpiredBanner": "Votre session a expiré. Veuillez vous reconnecter."
   },
   "forgotPassword": {
     "title": "Réinitialiser votre mot de passe",

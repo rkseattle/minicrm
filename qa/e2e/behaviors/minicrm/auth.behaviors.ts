@@ -166,6 +166,27 @@ export async function login(
   const loginPage = new LoginPage(context);
 
   await loginPage.navigate();
+  return loginFromCurrentPage(credentials, context, loginPage);
+}
+
+/**
+ * Submits login credentials on the currently-displayed login page WITHOUT
+ * navigating to /login first. Use this when the test has already navigated to
+ * a specific login URL (e.g. /login?reason=session_expired&next=/contacts) and
+ * must not lose the query params. (MINCRM-365)
+ *
+ * @param credentials - Email and password to submit.
+ * @param context - Playwright fixture context.
+ * @param loginPageInstance - Optional pre-constructed LoginPage (avoids double construction).
+ * @returns LoginResult describing the outcome of the login attempt.
+ */
+export async function loginFromCurrentPage(
+  credentials: LoginCredentials,
+  context: AuthBehaviorContext,
+  loginPageInstance?: LoginPage,
+): Promise<LoginResult> {
+  const loginPage = loginPageInstance ?? new LoginPage(context);
+
   await loginPage.fillEmail(credentials.email);
   await loginPage.fillPassword(credentials.password);
   await loginPage.submit();
@@ -550,6 +571,43 @@ export async function setPassword(
   const errorMessage = await setPasswordPage.errorMessage();
   const success = new URL(finalUrl).pathname !== '/set-password';
   return { success, finalUrl, errorMessage };
+}
+
+// ---------------------------------------------------------------------------
+// sessionExpiredBannerVisible() (MINCRM-365)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the session-expired notice is visible on the login page.
+ * Used by tests that simulate a mid-session expiry and expect the login page
+ * to show a contextual message rather than the blank form.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function sessionExpiredBannerVisible(context: AuthBehaviorContext): Promise<boolean> {
+  const loginPage = new LoginPage(context);
+  return loginPage.sessionExpiredBannerVisible();
+}
+
+// ---------------------------------------------------------------------------
+// navigateToLoginWithSessionExpired() (MINCRM-365)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates directly to /login?reason=session_expired&next=<path>, simulating
+ * what the Axios 401 interceptor does when it detects an expired session.
+ *
+ * @param next - The path the user was on when the session expired.
+ * @param context - Playwright fixture context.
+ */
+export async function navigateToLoginWithSessionExpired(
+  next: string,
+  context: AuthBehaviorContext,
+): Promise<void> {
+  const encoded = encodeURIComponent(next);
+  await context.page.goto(`/login?reason=session_expired&next=${encoded}`, {
+    waitUntil: 'networkidle',
+  });
 }
 
 // ---------------------------------------------------------------------------

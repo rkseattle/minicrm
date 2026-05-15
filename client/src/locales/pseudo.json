@@ -35,7 +35,8 @@
     "passwordPlaceholder": "[Yöür päŝŝwörd~~~~]",
     "submitButton": "[Ŝïgñ ïñ~~~]",
     "submitting": "[Ŝïgñïñg ïñ…~~~~]",
-    "forgotPassword": "[Förgöt yöür päŝŝwörd?~~~~~~~]"
+    "forgotPassword": "[Förgöt yöür päŝŝwörd?~~~~~~~]",
+    "sessionExpiredBanner": "[Yöür ŝëŝŝïöñ ħäŝ ëxpïrëd. Pléäŝë ŝïgñ ïñ ägäïñ.~~~~~~~~~~~~~]"
   },
   "forgotPassword": {
     "title": "[Rëŝët yöür päŝŝwörd~~~~~~]",

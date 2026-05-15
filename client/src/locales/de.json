@@ -35,7 +35,8 @@
     "passwordPlaceholder": "Ihr Passwort",
     "submitButton": "Anmelden",
     "submitting": "Anmeldung läuft…",
-    "forgotPassword": "Passwort vergessen?"
+    "forgotPassword": "Passwort vergessen?",
+    "sessionExpiredBanner": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
   },
   "forgotPassword": {
     "title": "Passwort zurücksetzen",

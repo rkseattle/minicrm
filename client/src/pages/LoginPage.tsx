@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import type { Location } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -22,11 +22,17 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   // MINCRM-147: ProtectedRoute/AdminRoute pass the blocked location as state
   // so we can return the user there after a successful login.
   const fromLocation = (location.state as { from?: Location } | null)?.from;
+
+  // MINCRM-365: the Axios 401 interceptor appends ?reason=session_expired and
+  // ?next=<encoded-path> when redirecting here after a session expiry.
+  const sessionExpired = searchParams.get('reason') === 'session_expired';
+  const nextPath = searchParams.get('next');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,14 +44,19 @@ export default function LoginPage() {
       if (data.mustChangePassword) {
         navigate('/change-password', { replace: true });
       } else {
-        // Return to the originally requested location when present; default to dashboard.
-        // Pass the full location object so search params and hash are preserved.
-        // Never redirect back to /change-password — that path is reserved for the
-        // forced-change flow and would create a confusing loop. (MINCRM-147)
+        // Priority order for redirect destination after login:
+        // 1. ?next= param (set by 401 interceptor after session expiry) — MINCRM-365
+        // 2. location.state.from (set by ProtectedRoute on unauthenticated access) — MINCRM-147
+        // 3. Dashboard (default)
+        // Never redirect back to /change-password — that path is reserved for the forced-change
+        // flow and would create a confusing loop. (MINCRM-147)
+        const decodedNext = nextPath ? decodeURIComponent(nextPath) : null;
         const destination =
-          fromLocation?.pathname && fromLocation.pathname !== '/change-password'
-            ? fromLocation
-            : '/';
+          decodedNext && decodedNext !== '/change-password'
+            ? decodedNext
+            : fromLocation?.pathname && fromLocation.pathname !== '/change-password'
+              ? fromLocation
+              : '/';
         navigate(destination, { replace: true });
       }
     },
@@ -64,6 +75,17 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
           <p className="text-gray-500 mt-1 text-sm">{t('login.tagline')}</p>
         </div>
+
+        {/* Session-expired notice (MINCRM-365) */}
+        {sessionExpired && (
+          <div
+            role="status"
+            data-testid="session-expired-banner"
+            className="mb-4 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800"
+          >
+            {t('login.sessionExpiredBanner')}
+          </div>
+        )}
 
         {/* Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">

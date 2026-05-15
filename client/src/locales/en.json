@@ -35,7 +35,8 @@
     "passwordPlaceholder": "Your password",
     "submitButton": "Sign in",
     "submitting": "Signing in…",
-    "forgotPassword": "Forgot your password?"
+    "forgotPassword": "Forgot your password?",
+    "sessionExpiredBanner": "Your session has expired. Please sign in again."
   },
   "forgotPassword": {
     "title": "Reset your password",
