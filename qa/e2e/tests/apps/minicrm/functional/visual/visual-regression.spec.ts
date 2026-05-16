@@ -42,7 +42,7 @@ import {
   createTestDeal,
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getPipelineBoardLocator,
   getPipelineMobileStageNameLocator,
@@ -115,14 +115,6 @@ async function resolveTimestampMasks(page: PageFacadeShape) {
   ]);
   return candidates.filter((c) => c !== null);
 }
-
-// ---------------------------------------------------------------------------
-// Setup — authenticate once for all tests in this file
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // V1 — Pipeline board, desktop viewport

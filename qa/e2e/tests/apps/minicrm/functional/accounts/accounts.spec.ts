@@ -45,17 +45,8 @@ import {
   getAccountLinkedContactsEmptyLocator,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getContactById, patchContactAccount } from '@behaviors/minicrm/contacts.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAccount, createTestContact, navigateToAccount } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Shared setup
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Create tests

@@ -12,13 +12,12 @@
  *   - No raw locators — all through page objects (dynamic UUID-keyed elements use
  *     single-strategy testId locates with eslint-disable per CLAUDE.md exception rule)
  *   - Test data created via restClient + TestDataManager (auto teardown)
- *   - Tests share a single admin login session via beforeAll
  *
  * MINCRM-276
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getCustomFieldDefinitions,
   createCustomFieldDefinition,
@@ -50,14 +49,6 @@ import { createTestContact } from '@apps/minicrm/helpers.js';
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[custom-fields-spec] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Test 1 — admin creates a text custom field for contacts

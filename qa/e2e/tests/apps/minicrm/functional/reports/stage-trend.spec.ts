@@ -16,7 +16,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   getReportsLoadingLocator,
@@ -34,14 +34,6 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[stage-trend-spec] E2E_ADMIN_PASSWORD is not set');
-
-// ---------------------------------------------------------------------------
-// Setup — authenticate once before all tests
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Helpers

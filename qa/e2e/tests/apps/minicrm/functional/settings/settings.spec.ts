@@ -11,7 +11,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   ensureSystemDefaults,
@@ -36,12 +36,8 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[settings-spec] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
-// Setup — admin auth + known-good system state before/after each test (MINCRM-358)
+// Setup — known-good system state before/after each test (MINCRM-358)
 // ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 test.beforeEach(async ({ restClient }) => {
   await ensureSystemDefaults(restClient);

@@ -59,14 +59,6 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 const REP_PASSWORD = 'BvtPassword1!';
 
 // ---------------------------------------------------------------------------
-// Shared setup — admin auth
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
-
-// ---------------------------------------------------------------------------
 // Create — F14-C
 // ---------------------------------------------------------------------------
 
