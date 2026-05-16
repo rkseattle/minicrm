@@ -8,6 +8,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
+import type { AuditNotification } from './auditEventBus.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -420,6 +421,37 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
   } catch (err) {
     logger.warn({ err }, 'writeAuditEntryBestEffort: failed to write audit entry');
   }
+}
+
+/**
+ * Applies GDPR read-time masking to a raw AuditNotification from the NOTIFY channel.
+ * The NOTIFY payload is emitted before the read-time SQL masking in getRecordAuditLog
+ * is applied, so subscribers that forward events to clients must call this first.
+ *
+ * When the record has a completed erasure in gdpr_deletion_log, old_value and
+ * new_value are replaced with '[GDPR deleted]'. (MINCRM-375, MINCRM-364)
+ *
+ * @param event - Raw audit notification from the auditEventBus
+ * @returns A copy of the event with values masked if the record has been erased
+ */
+export async function maskAuditEvent(event: AuditNotification): Promise<AuditNotification> {
+  if (!event.record_id) return event;
+
+  const result = await pool.query<{ erased: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM gdpr_deletion_log
+       WHERE record_id = $1 AND record_type = $2 AND completed_at IS NOT NULL
+     ) AS erased`,
+    [event.record_id, event.record_type],
+  );
+
+  if (!result.rows[0].erased) return event;
+
+  return {
+    ...event,
+    old_value: event.old_value !== null ? '[GDPR deleted]' : null,
+    new_value: event.new_value !== null ? '[GDPR deleted]' : null,
+  };
 }
 
 /**

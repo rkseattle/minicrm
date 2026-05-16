@@ -15,6 +15,7 @@ import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import pool from './db.js';
+import { auditEventBus } from './services/auditEventBus.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -92,6 +93,9 @@ async function shutdown(signal: string): Promise<void> {
     });
     logger.info('HTTP server closed');
 
+    await auditEventBus.stop();
+    logger.info('Audit event bus stopped');
+
     await pool.end();
     logger.info('Database pool closed');
 
@@ -107,18 +111,20 @@ async function shutdown(signal: string): Promise<void> {
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
-server.listen(port, () => {
-  logger.info(`MiniCRM API server listening on port ${port}`);
-  void (async () => {
-    try {
-      await runMigrations();
-      await seedDefaultAdmin();
-    } catch (err) {
-      logger.error({ err }, 'Startup initialization failed');
-      process.exit(1); // eslint-disable-line n/no-process-exit
-    }
-  })();
-});
+void (async () => {
+  try {
+    await runMigrations();
+    await seedDefaultAdmin();
+    await auditEventBus.start(pool);
+  } catch (err) {
+    logger.error({ err }, 'Startup initialization failed');
+    process.exit(1); // eslint-disable-line n/no-process-exit
+  }
+
+  server.listen(port, () => {
+    logger.info(`MiniCRM API server listening on port ${port}`);
+  });
+})();
 
 // Daily overdue task digest — runs at 08:00 server time every day (MINCRM-161).
 // In test/CI environments the cron is skipped to avoid side effects.
