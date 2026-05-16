@@ -10,6 +10,7 @@
 - **Auth:** JWT in httpOnly cookie (8-hour expiry)
 - **Infra:** Docker + Docker Compose, npm workspaces (`/client`, `/server`, `/shared`, `/qa`)
 - **Docs:** OpenAPI 3.0 via swagger-jsdoc, served at `/api-docs` (dev/staging only)
+- **gRPC:** `@grpc/grpc-js` + `@grpc/proto-loader`; audit streaming service alongside Express REST
 
 ---
 
@@ -21,7 +22,8 @@ server/src/
   controllers/   → request/response shaping ONLY — no pool.query() calls
   services/      → ALL business logic + ALL database queries
   middleware/    → auth.ts (JWT verify + status check), requireRole.ts, asyncHandler.ts
-  utils/         → csvUtils.ts, userUtils.ts
+  utils/         → shared server utilities
+  grpc/          → gRPC server bootstrap + RPC handlers + proto/ definitions
 
 client/src/
   api/           → one Axios wrapper file per resource; exports typed fns + QUERY_KEY constants
@@ -32,10 +34,12 @@ client/src/
 
 shared/schemas/  → Zod schemas imported by BOTH client and server
   *.ts sources only — compiled .js outputs are gitignored, never commit them
-  contactSchema.ts, accountSchema.ts, dealSchema.ts, leadSchema.ts
+  contactSchema.ts, accountSchema.ts, dealSchema.ts, leadSchema.ts, activitySchema.ts
   settingsSchema.ts  (SUPPORTED_LOCALES, NAV_LAYOUTS, SUPPORTED_CURRENCIES)
   paginationSchema.ts  (paginationParamsSchema, PaginatedResponse<T>)
   pipelineStageSchema.ts  (PipelineStageResponse, etc.)
+  auditSchema.ts, automationSchema.ts, brandingSchema.ts, customFieldSchema.ts
+  noteSchema.ts, tagSchema.ts, userSchema.ts, webhookSchema.ts
 
 db/migrations/   → sequential node-pg-migrate files
   run `ls db/migrations/ | tail -1` to find the last migration; increment by one for the next
@@ -130,6 +134,35 @@ system_settings  key (PK), value text, updated_at
         file_storage_secret (AES-256-GCM encrypted with NODE_ENCRYPTION_KEY)
 
 overdue_task_notifications  activity_id, notified_date  ← dedup guard for email digests
+
+notes
+  body text   visibility(private|internal|public)   author_id → users
+  polymorphic: contact_id nullable, account_id nullable, deal_id nullable, lead_id nullable
+  GIN index on body (pg_trgm full-text search, migration 049)
+
+custom_fields
+  field_type   table_name   column_name   label   required bool
+
+webhooks
+  url   secret   event_type   enabled bool   created_by
+
+import_jobs
+  source(csv|...)   row_count   status(pending|processing|complete|failed)   error_message nullable
+
+tags
+  name   color
+
+gdpr_deletion_log                              ← GDPR Art. 17 erasure tracking
+  record_type   record_id   requested_by_id   erasure_scope   completed_at nullable
+  UNIQUE on (record_type, record_id)
+
+audit_log.event_type also includes: note_created, note_updated, note_deleted, gdpr_erasure
+audit_log.record_type also includes: lead
+attachments.record_type also includes: lead
+contacts/accounts/deals/leads also have: version integer  (optimistic locking, migration 048)
+
+audit_log_after_insert trigger (migration 052) → pg_notify('audit_events', row JSON)
+  Used by auditEventBus.ts to stream real-time events over gRPC ServerStream
 ```
 
 **Migration rules:** Never modify an existing migration once it has been applied to any
@@ -430,13 +463,18 @@ npm run lint
 npm test --workspace=minicrm-server   # if server/ changed
 npm test --workspace=minicrm-client   # if client/ changed
 
-# Step 4 — E2E functional suite (ALWAYS — no scope exceptions)
+# Step 4 — QA static checks (when qa/ files changed)
+bash qa/scripts/check-framework-purity.sh   # if qa/e2e/framework/ changed
+bash qa/scripts/check-behavior-layer.sh     # if qa/e2e/tests/ changed
+bash qa/scripts/check-settings-mutations.sh # if any spec mutates system settings
+
+# Step 5 — E2E functional suite (ALWAYS — no scope exceptions)
 # Delete stale results first, then run once, then read results.xml.
 rm -rf qa/e2e/test-results/
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
 ```
 
-**All four green → `git commit` → `git push`.  
+**All steps green → `git commit` → `git push`.  
 Any step red → fix the code, then restart from Step 1.**
 
 The E2E suite requires the application to be running locally. The Vite dev server (port 5173),
@@ -533,6 +571,12 @@ under CI resource contention. Use DOM-state waits instead: `locator.waitFor({ st
 - **Spec location:** `qa/e2e/tests/apps/minicrm/functional/<domain>/<domain>.spec.ts`
 - **New spec files under `functional/` are picked up by CI automatically** — no CI changes needed
 - **Framework layer must have zero app-domain strings** — enforced by `check-framework-purity.sh`
+- **Specs must only import from `@behaviors/*`, `@apps/*`, `@framework/*`** — never directly
+  from `@pages/*`. Enforced by `check-behavior-layer.sh`.
+- **Tests that mutate system settings** must call `ensureSystemDefaults()` for cleanup.
+  Enforced by `check-settings-mutations.sh`.
+- **No `loginAsAdmin` in `test.beforeAll`** — pre-auth is handled by global `storageState` in
+  `playwright.config.ts`. Call `loginAsAdmin(restClient)` at the start of the test body instead.
 - **Every story must include or update a functional E2E spec.** Do not mark a ticket done
   without E2E coverage for the new behaviour.
 
@@ -567,6 +611,25 @@ For any UI displaying variable-length or numeric content: fluid font sizes on la
 (`clamp(1.25rem,3vw,2rem)`), `min-w-0` on flex children that contain text, `break-words`
 on all freetext fields. Test at 600px, 900px, and 1100px — not just mobile and full desktop.
 Leave a comment on any non-obvious `min-w-0` or `clamp()` for future maintainers.
+
+---
+
+## gRPC Layer
+
+`server/src/grpc/` runs alongside Express on a separate port (default `0.0.0.0:50051`).
+
+- **Proto:** `server/src/grpc/proto/audit.proto` — defines `AuditService` with two RPCs:
+  - `ListAuditEvents` (unary) — paginated query of the `audit_log` table
+  - `StreamAuditEvents` (server-streaming) — live stream via PostgreSQL LISTEN/NOTIFY
+- **Auth:** JWT extracted from gRPC call metadata key `authorization`; admin role required.
+  Use `extractGrpcUser(call.metadata)` from `auditGrpcService.ts` — same JWT secret as REST.
+- **Audit event bus:** `services/auditEventBus.ts` subscribes to the `audit_events` pg channel
+  (fired by `audit_log_after_insert` trigger). It is a Node `EventEmitter`; gRPC stream handlers
+  attach listeners on connect and remove them on disconnect.
+- **Lifecycle:** `startGrpcServer()` and `auditEventBus.start(pool)` are called in `server.ts`
+  before the HTTP server binds. Both are shut down gracefully on SIGTERM.
+- **E2E:** `qa/e2e/framework/clients/grpc-client.ts` — test client with proto reflection; use via
+  `grpcClientFixture`. Framework layer must remain zero app-domain-string (purity check applies).
 
 ---
 
@@ -615,3 +678,9 @@ Real patterns from past findings on this repo:
 - [ ] **OpenAPI spec** — `npm run lint:api` passes after any endpoint change.
 - [ ] **Framework coverage** — if `qa/e2e/framework/` was touched, run
       `npm run test:framework:coverage --workspace=minicrm-qa` and confirm 80% threshold.
+- [ ] **Framework purity** — if `qa/e2e/framework/` was touched, run
+      `bash qa/scripts/check-framework-purity.sh` (CI gate; zero app-domain strings allowed).
+- [ ] **Behavior layer** — if `qa/e2e/tests/` was touched, run
+      `bash qa/scripts/check-behavior-layer.sh` (specs must not import directly from `@pages/*`).
+- [ ] **Settings mutations** — if any spec calls `restClient.patch/put(.*settings`, run
+      `bash qa/scripts/check-settings-mutations.sh` (mutation must pair with `ensureSystemDefaults()`).
