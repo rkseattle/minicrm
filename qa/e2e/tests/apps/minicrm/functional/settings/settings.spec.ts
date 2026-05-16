@@ -11,7 +11,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   ensureSystemDefaults,
@@ -40,6 +40,7 @@ if (!ADMIN_PASSWORD) throw new Error('[settings-spec] E2E_ADMIN_PASSWORD is not 
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
   await ensureSystemDefaults(restClient);
 });
 

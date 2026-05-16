@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   getReportsHeadingLocator,
@@ -38,6 +38,10 @@ import {
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[reports-nav-spec] E2E_ADMIN_PASSWORD is not set');
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 // ---------------------------------------------------------------------------
 // Tests
