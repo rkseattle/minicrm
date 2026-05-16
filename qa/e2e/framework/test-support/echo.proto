@@ -1,13 +1,21 @@
 syntax = "proto3";
 package echo;
 
-message PingRequest  { string message = 1; }
-message PingResponse { string message = 1; }
+message PingRequest    { string message = 1; }
+message PingResponse   { string message = 1; }
 
 message StreamRequest  { string message = 1; int32 count = 2; }
 message StreamResponse { string message = 1; int32 index  = 2; }
 
+message CollectRequest  { string message = 1; }
+message CollectResponse { int32 count = 1; string last = 2; }
+
+message EchoRequest  { string message = 1; }
+message EchoResponse { string message = 1; }
+
 service EchoService {
-  rpc Ping   (PingRequest)  returns (PingResponse);
-  rpc Stream (StreamRequest) returns (stream StreamResponse);
+  rpc Ping    (PingRequest)           returns (PingResponse);
+  rpc Stream  (StreamRequest)         returns (stream StreamResponse);
+  rpc Collect (stream CollectRequest) returns (CollectResponse);
+  rpc Echo    (stream EchoRequest)    returns (stream EchoResponse);
 }

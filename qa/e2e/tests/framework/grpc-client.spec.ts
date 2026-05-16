@@ -1,10 +1,9 @@
 /**
  * CI tests for GrpcClient and grpcClient fixture.
  *
- * Verifies all Acceptance Criteria from MINCRM-128:
+ * Verifies all Acceptance Criteria from MINCRM-128, MINCRM-233, MINCRM-366:
  *
- * AC1 — grpcClient.call('Ping', { message: 'hello' }) returns a typed response
- *       from the echo stub.
+ * AC1 — grpcClient.call('Ping', { message: 'hello' }) returns a typed response.
  * AC2 — A non-OK gRPC status throws GrpcClientError with correct code + message.
  * AC3 — serverStream() returns an async iterator that yields all streamed messages.
  * AC4 — Channel is closed in fixture teardown even when the test throws.
@@ -16,14 +15,18 @@
  * AC-233-1 — clientStream() sends a stream of requests and receives a single response.
  * AC-233-2 — bidiStream() sends a stream of requests and yields each echoed response.
  *
+ * MINCRM-366 Acceptance Criteria:
+ * All four call patterns use protobuf binary encoding via @grpc/proto-loader.
+ * The echo stub uses echo.proto for real binary serialization.
+ *
  * The echo stub is spun up/torn down per test group — no live service required.
  *
- * MINCRM-128, MINCRM-233
+ * MINCRM-128, MINCRM-233, MINCRM-366
  */
 
 import { test, expect } from '@framework/fixtures';
 import { GrpcClient, GrpcClientError } from '@framework/clients';
-import { GrpcEchoServer, ProtoEchoServer } from '@framework/test-support/grpc-echo-server.js';
+import { ProtoEchoServer } from '@framework/test-support/grpc-echo-server.js';
 import type {
   PingRequest,
   PingResponse,
@@ -41,20 +44,25 @@ import * as grpc from '@grpc/grpc-js';
 // ---------------------------------------------------------------------------
 
 /**
- * Manages an echo server scoped to a describe block.
+ * Manages a proto-based echo server scoped to a describe block.
  * Returns the server and a factory that creates GrpcClient instances pointing at it.
  */
 async function withEchoServer(): Promise<{
-  server: GrpcEchoServer;
+  server: ProtoEchoServer;
   makeClient: (options?: { tls?: boolean }) => GrpcClient;
 }> {
-  const server = new GrpcEchoServer();
+  const server = new ProtoEchoServer();
   await server.start();
 
   return {
     server,
     makeClient: (options = {}) =>
-      new GrpcClient({ host: server.address, tls: options.tls ?? false }),
+      new GrpcClient({
+        host: server.address,
+        tls: options.tls ?? false,
+        protoPath: ProtoEchoServer.PROTO_PATH,
+        serviceName: ProtoEchoServer.SERVICE_NAME,
+      }),
   };
 }
 
@@ -63,7 +71,7 @@ async function withEchoServer(): Promise<{
 // ---------------------------------------------------------------------------
 
 test.describe('GrpcClient — Ping unary', () => {
-  let server: GrpcEchoServer;
+  let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 
   test.beforeAll(async () => {
@@ -92,7 +100,6 @@ test.describe('GrpcClient — Ping unary', () => {
       const response = await client.call<PingRequest, PingResponse>('/echo.EchoService/Ping', {
         message: 'framework-test',
       });
-      // Verify the response object has the expected shape.
       expect(typeof response.message).toBe('string');
       expect(response.message).toBe('framework-test');
     } finally {
@@ -129,7 +136,7 @@ test.describe('GrpcClientError on non-OK status', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('GrpcClient — Stream server-streaming', () => {
-  let server: GrpcEchoServer;
+  let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 
   test.beforeAll(async () => {
@@ -144,7 +151,7 @@ test.describe('GrpcClient — Stream server-streaming', () => {
     const client = makeClient();
     try {
       const messages: StreamResponse[] = [];
-      const iterator = client.serverStream<StreamRequest, StreamResponse>(
+      const iterator = await client.serverStream<StreamRequest, StreamResponse>(
         '/echo.EchoService/Stream',
         { message: 'ping', count: 3 },
       );
@@ -154,9 +161,9 @@ test.describe('GrpcClient — Stream server-streaming', () => {
       }
 
       expect(messages).toHaveLength(3);
-      expect(messages[0]).toEqual({ message: 'ping', index: 0 });
-      expect(messages[1]).toEqual({ message: 'ping', index: 1 });
-      expect(messages[2]).toEqual({ message: 'ping', index: 2 });
+      expect(messages[0]).toMatchObject({ message: 'ping', index: 0 });
+      expect(messages[1]).toMatchObject({ message: 'ping', index: 1 });
+      expect(messages[2]).toMatchObject({ message: 'ping', index: 2 });
     } finally {
       client.close();
     }
@@ -166,7 +173,7 @@ test.describe('GrpcClient — Stream server-streaming', () => {
     const client = makeClient();
     try {
       const messages: StreamResponse[] = [];
-      for await (const msg of client.serverStream<StreamRequest, StreamResponse>(
+      for await (const msg of await client.serverStream<StreamRequest, StreamResponse>(
         '/echo.EchoService/Stream',
         { message: 'single', count: 1 },
       )) {
@@ -174,7 +181,7 @@ test.describe('GrpcClient — Stream server-streaming', () => {
       }
 
       expect(messages).toHaveLength(1);
-      expect(messages[0]).toEqual({ message: 'single', index: 0 });
+      expect(messages[0]).toMatchObject({ message: 'single', index: 0 });
     } finally {
       client.close();
     }
@@ -184,7 +191,7 @@ test.describe('GrpcClient — Stream server-streaming', () => {
     const client = makeClient();
     try {
       const messages: StreamResponse[] = [];
-      for await (const msg of client.serverStream<StreamRequest, StreamResponse>(
+      for await (const msg of await client.serverStream<StreamRequest, StreamResponse>(
         '/echo.EchoService/Stream',
         { message: 'empty', count: 0 },
       )) {
@@ -200,15 +207,14 @@ test.describe('GrpcClient — Stream server-streaming', () => {
   test('serverStream() return() cancels an in-progress stream cleanly', async () => {
     const client = makeClient();
     try {
-      const iterator = client.serverStream<StreamRequest, StreamResponse>(
+      const iterator = await client.serverStream<StreamRequest, StreamResponse>(
         '/echo.EchoService/Stream',
         { message: 'cancel-test', count: 10 },
       );
 
-      // Read the first message then cancel — must not throw.
       const first = await iterator.next();
       expect(first.done).toBe(false);
-      expect(first.value.index).toBe(0);
+      expect((first.value as StreamResponse).index).toBe(0);
 
       const result = await iterator.return!();
       expect(result.done).toBe(true);
@@ -219,12 +225,11 @@ test.describe('GrpcClient — Stream server-streaming', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC4 — Channel closed in fixture teardown even when test throws
+// AC4 — Channel closed in fixture teardown even on test failure
 // ---------------------------------------------------------------------------
 
 test.describe('GrpcClient channel lifecycle', () => {
   test('close() can be called on a channel that was never used', () => {
-    // close() should be safe to call even before any RPC.
     const client = new GrpcClient({ host: 'localhost:1', tls: false });
     expect(() => client.close()).not.toThrow();
   });
@@ -242,7 +247,6 @@ test.describe('GrpcClient channel lifecycle', () => {
     const client = new GrpcClient({ host: 'localhost:1', tls: false });
     try {
       const state = client.getConnectivityState();
-      // IDLE (0) or CONNECTING (1) are both valid initial states.
       expect([
         grpc.connectivityState.IDLE,
         grpc.connectivityState.CONNECTING,
@@ -261,10 +265,6 @@ test.describe('GrpcClient channel lifecycle', () => {
 // ---------------------------------------------------------------------------
 
 test.describe.serial('grpcClient fixture teardown', () => {
-  // The grpcClient fixture (from @framework/fixtures) manages channel lifecycle.
-  // We verify it is injected and usable; teardown is exercised by Playwright
-  // running the fixture's finally block after each test.
-
   test('grpcClient fixture is injected from @framework/fixtures', async ({ grpcClient }) => {
     expect(grpcClient).toBeDefined();
     expect(typeof grpcClient.call).toBe('function');
@@ -273,8 +273,6 @@ test.describe.serial('grpcClient fixture teardown', () => {
   });
 
   test('grpcClient fixture provides independent instance each worker', async ({ grpcClient }) => {
-    // Two calls to getTarget() on the same worker-scoped instance must return
-    // the same value — the instance is stable within a worker.
     const t1 = grpcClient.getTarget();
     const t2 = grpcClient.getTarget();
     expect(t1).toBe(t2);
@@ -289,7 +287,6 @@ test.describe('TLS configuration', () => {
   test('tls=false creates an insecure channel (does not throw)', () => {
     const client = new GrpcClient({ host: 'localhost:50051', tls: false });
     try {
-      // Just verifying construction succeeds.
       expect(client.getTarget()).toBe('localhost:50051');
     } finally {
       client.close();
@@ -342,15 +339,20 @@ test.describe('TLS configuration', () => {
 // AC1 (echo integration) — Full round-trip: start stub, call, stop stub
 // ---------------------------------------------------------------------------
 
-test.describe('GrpcEchoServer — full fixture lifecycle', () => {
+test.describe('ProtoEchoServer — full fixture lifecycle', () => {
   test('starts, accepts a Ping call, and stops cleanly', async () => {
-    const server = new GrpcEchoServer();
+    const server = new ProtoEchoServer();
     const port = await server.start();
 
     expect(port).toBeGreaterThan(0);
     expect(server.address).toMatch(/^127\.0\.0\.1:\d+$/);
 
-    const client = new GrpcClient({ host: server.address, tls: false });
+    const client = new GrpcClient({
+      host: server.address,
+      tls: false,
+      protoPath: ProtoEchoServer.PROTO_PATH,
+      serviceName: ProtoEchoServer.SERVICE_NAME,
+    });
     try {
       const response = await client.call<PingRequest, PingResponse>('/echo.EchoService/Ping', {
         message: 'lifecycle-test',
@@ -363,9 +365,72 @@ test.describe('GrpcEchoServer — full fixture lifecycle', () => {
   });
 
   test('stop() resolves cleanly even with no in-flight calls', async () => {
-    const server = new GrpcEchoServer();
+    const server = new ProtoEchoServer();
     await server.start();
     await expect(server.stop()).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC2 — call() throws GrpcClientError on dead server
+// ---------------------------------------------------------------------------
+
+test.describe('GrpcClient — error on unreachable server', () => {
+  test('call() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
+    const client = new GrpcClient({
+      host: '127.0.0.1:1',
+      tls: false,
+      protoPath: ProtoEchoServer.PROTO_PATH,
+      serviceName: ProtoEchoServer.SERVICE_NAME,
+    });
+    try {
+      await expect(
+        client.call<PingRequest, PingResponse>('/echo.EchoService/Ping', {
+          message: 'unreachable',
+        }),
+      ).rejects.toBeInstanceOf(GrpcClientError);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('call() throws when service path not found in proto', async () => {
+    const server = new ProtoEchoServer();
+    await server.start();
+    const client = new GrpcClient({
+      host: server.address,
+      tls: false,
+      protoPath: ProtoEchoServer.PROTO_PATH,
+      serviceName: 'echo.NonExistentService',
+    });
+    try {
+      await expect(
+        client.call<PingRequest, PingResponse>('/echo.NonExistentService/Ping', {
+          message: 'bad',
+        }),
+      ).rejects.toThrow(/Service path not found in proto/);
+    } finally {
+      client.close();
+      await server.stop();
+    }
+  });
+
+  test('serverStream() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
+    const client = new GrpcClient({
+      host: '127.0.0.1:1',
+      tls: false,
+      protoPath: ProtoEchoServer.PROTO_PATH,
+      serviceName: ProtoEchoServer.SERVICE_NAME,
+    });
+    try {
+      const iterator = await client.serverStream<StreamRequest, StreamResponse>(
+        '/echo.EchoService/Stream',
+        { message: 'unreachable', count: 1 },
+      );
+      await expect(iterator.next()).rejects.toBeInstanceOf(GrpcClientError);
+    } finally {
+      client.close();
+    }
   });
 });
 
@@ -374,7 +439,7 @@ test.describe('GrpcEchoServer — full fixture lifecycle', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('GrpcClient — Collect client-streaming (MINCRM-233)', () => {
-  let server: GrpcEchoServer;
+  let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 
   test.beforeAll(async () => {
@@ -450,7 +515,7 @@ test.describe('GrpcClient — Collect client-streaming (MINCRM-233)', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => {
-  let server: GrpcEchoServer;
+  let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 
   test.beforeAll(async () => {
@@ -471,7 +536,7 @@ test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => 
       }
 
       const responses: EchoResponse[] = [];
-      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+      for await (const resp of await client.bidiStream<EchoRequest, EchoResponse>(
         '/echo.EchoService/Echo',
         requests(),
       )) {
@@ -495,7 +560,7 @@ test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => 
       }
 
       const responses: EchoResponse[] = [];
-      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+      for await (const resp of await client.bidiStream<EchoRequest, EchoResponse>(
         '/echo.EchoService/Echo',
         singleRequest(),
       )) {
@@ -517,7 +582,7 @@ test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => 
       }
 
       const responses: EchoResponse[] = [];
-      for await (const resp of client.bidiStream<EchoRequest, EchoResponse>(
+      for await (const resp of await client.bidiStream<EchoRequest, EchoResponse>(
         '/echo.EchoService/Echo',
         emptyRequests(),
       )) {
@@ -525,191 +590,6 @@ test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => 
       }
 
       expect(responses).toHaveLength(0);
-    } finally {
-      client.close();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// protoCall() — unary via proto-loader (MINCRM-376)
-// ---------------------------------------------------------------------------
-
-test.describe('GrpcClient — protoCall unary (MINCRM-376)', () => {
-  let server: ProtoEchoServer;
-
-  test.beforeAll(async () => {
-    server = new ProtoEchoServer();
-    await server.start();
-  });
-
-  test.afterAll(async () => {
-    await server.stop();
-  });
-
-  test('protoCall() echoes message back via proto codec', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      const response = await client.protoCall<PingRequest, PingResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Ping',
-        { message: 'proto-hello' },
-      );
-      expect(response.message).toBe('proto-hello');
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoCall() uses cached proto package on second call', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      // Two calls to the same proto path — second reuses the cached GrpcObject.
-      const r1 = await client.protoCall<PingRequest, PingResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Ping',
-        { message: 'first' },
-      );
-      const r2 = await client.protoCall<PingRequest, PingResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Ping',
-        { message: 'second' },
-      );
-      expect(r1.message).toBe('first');
-      expect(r2.message).toBe('second');
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoCall() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
-    const client = new GrpcClient({ host: '127.0.0.1:1', tls: false });
-    try {
-      await expect(
-        client.protoCall<PingRequest, PingResponse>(
-          ProtoEchoServer.PROTO_PATH,
-          ProtoEchoServer.SERVICE_NAME,
-          'Ping',
-          { message: 'unreachable' },
-        ),
-      ).rejects.toBeInstanceOf(GrpcClientError);
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoCall() throws when service path not found in proto', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      await expect(
-        client.protoCall<PingRequest, PingResponse>(
-          ProtoEchoServer.PROTO_PATH,
-          'echo.NonExistentService',
-          'Ping',
-          { message: 'bad-path' },
-        ),
-      ).rejects.toThrow(/Service path not found in proto/);
-    } finally {
-      client.close();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// protoServerStream() — server-streaming via proto-loader (MINCRM-376)
-// ---------------------------------------------------------------------------
-
-test.describe('GrpcClient — protoServerStream (MINCRM-376)', () => {
-  let server: ProtoEchoServer;
-
-  test.beforeAll(async () => {
-    server = new ProtoEchoServer();
-    await server.start();
-  });
-
-  test.afterAll(async () => {
-    await server.stop();
-  });
-
-  test('protoServerStream() yields all messages in order', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      const messages: StreamResponse[] = [];
-      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Stream',
-        { message: 'proto-stream', count: 3 },
-      );
-
-      for await (const msg of iterator) {
-        messages.push(msg);
-      }
-
-      expect(messages).toHaveLength(3);
-      expect(messages[0]).toMatchObject({ message: 'proto-stream', index: 0 });
-      expect(messages[1]).toMatchObject({ message: 'proto-stream', index: 1 });
-      expect(messages[2]).toMatchObject({ message: 'proto-stream', index: 2 });
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoServerStream() with count=0 yields no messages', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      const messages: StreamResponse[] = [];
-      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Stream',
-        { message: 'empty', count: 0 },
-      );
-
-      for await (const msg of iterator) {
-        messages.push(msg);
-      }
-
-      expect(messages).toHaveLength(0);
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoServerStream() return() cancels stream cleanly', async () => {
-    const client = new GrpcClient({ host: server.address, tls: false });
-    try {
-      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Stream',
-        { message: 'cancel', count: 10 },
-      );
-
-      const first = await iterator.next();
-      expect(first.done).toBe(false);
-
-      const result = await iterator.return!();
-      expect(result.done).toBe(true);
-    } finally {
-      client.close();
-    }
-  });
-
-  test('protoServerStream() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
-    const client = new GrpcClient({ host: '127.0.0.1:1', tls: false });
-    try {
-      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
-        ProtoEchoServer.PROTO_PATH,
-        ProtoEchoServer.SERVICE_NAME,
-        'Stream',
-        { message: 'unreachable', count: 1 },
-      );
-
-      await expect(iterator.next()).rejects.toBeInstanceOf(GrpcClientError);
     } finally {
       client.close();
     }

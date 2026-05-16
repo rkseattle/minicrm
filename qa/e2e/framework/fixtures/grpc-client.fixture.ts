@@ -49,7 +49,10 @@ export interface GrpcClientFixtures {
  */
 export const test = base.extend<GrpcClientFixtures>({
   grpcClient: async ({}, use) => {
-    const client = new GrpcClient();
+    const client = new GrpcClient({
+      protoPath: process.env['E2E_GRPC_PROTO_PATH'],
+      serviceName: process.env['E2E_GRPC_SERVICE_NAME'],
+    });
     try {
       await use(client);
     } finally {
