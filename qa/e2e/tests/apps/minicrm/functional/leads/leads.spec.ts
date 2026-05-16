@@ -38,6 +38,7 @@ import {
   getLeads,
   disqualifyLead,
   convertLeadViaApi,
+  loginAsAdmin,
   setUserLanguage,
   setSystemDefaultLanguage,
 } from '@behaviors/minicrm/index.js';
@@ -46,6 +47,7 @@ import {
 // i18n tests running concurrently on another worker cannot leave a non-English locale that
 // causes badge text assertions to receive translated strings (e.g. "Contactado" vs "Contacted").
 test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
   await setUserLanguage(restClient, null).catch(() => null);
   await setSystemDefaultLanguage(restClient, 'en').catch(() => null);
 });

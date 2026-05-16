@@ -44,6 +44,10 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 
 const REP_PASSWORD = 'BvtPassword1!';
 
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // Audit Log — F12-AL
 // ---------------------------------------------------------------------------

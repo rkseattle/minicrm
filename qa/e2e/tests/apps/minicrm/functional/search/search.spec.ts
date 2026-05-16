@@ -54,6 +54,11 @@ import {
   createNoteViaApi,
   type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 // ---------------------------------------------------------------------------
 // Result Coverage tests

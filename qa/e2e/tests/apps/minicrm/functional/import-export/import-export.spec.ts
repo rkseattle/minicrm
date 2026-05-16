@@ -146,6 +146,10 @@ interface ImportSummaryResponse {
   error_csv?: string | null;
 }
 
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // Import — Contacts (F11-IC)
 // ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createContactViaUI,
   navigateToContacts,
@@ -63,6 +64,10 @@ import {
 // ---------------------------------------------------------------------------
 // Shared error response bodies
 // ---------------------------------------------------------------------------
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 const SERVER_ERROR_BODY = JSON.stringify({
   error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' },

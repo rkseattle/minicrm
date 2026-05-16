@@ -59,6 +59,10 @@ import {
 
 const REP_PASSWORD = 'BvtPassword1!';
 
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // Upload — F10-U
 // ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   ensureSystemDefaults,
   navigateToAdminSettings,
@@ -45,6 +45,7 @@ if (!ADMIN_PASSWORD) throw new Error('[branding-spec] E2E_ADMIN_PASSWORD is not 
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
   await ensureSystemDefaults(restClient);
 });
 

@@ -46,7 +46,7 @@ import {
   createTestUser,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
-import { loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getActivityById,
   getActivities,
@@ -66,6 +66,10 @@ import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 // Fast-fail guard: checked early to give a clearer error before any test scaffolding runs.
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F5-activities] E2E_ADMIN_PASSWORD is not set');
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

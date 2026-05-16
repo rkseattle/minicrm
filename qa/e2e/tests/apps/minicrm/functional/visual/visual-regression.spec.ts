@@ -42,7 +42,7 @@ import {
   createTestDeal,
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
-import { login } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getPipelineBoardLocator,
   getPipelineMobileStageNameLocator,
@@ -66,6 +66,10 @@ import {
 const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[visual-regression] E2E_ADMIN_PASSWORD is not set');
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 // ---------------------------------------------------------------------------
 // Viewport sizes (match playwright.config.ts project definitions)
