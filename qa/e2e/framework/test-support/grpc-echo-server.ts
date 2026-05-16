@@ -368,6 +368,8 @@ export class ProtoEchoServer {
     this.server.addService(EchoService, {
       Ping: handlePing,
       Stream: handleStream,
+      Collect: handleCollect,
+      Echo: handleEcho,
     });
 
     return new Promise((resolve, reject) => {
