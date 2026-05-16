@@ -72,6 +72,7 @@ services:
       - /app/node_modules
     ports:
       - "3002:3002"
+      - "50051:50051"  # gRPC AuditService (MINCRM-376)
     depends_on:
       db:
         condition: service_healthy

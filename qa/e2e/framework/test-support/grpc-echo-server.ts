@@ -24,7 +24,9 @@
  *
  */
 
+import path from 'path';
 import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
 
 // ---------------------------------------------------------------------------
 // Message shapes (JSON-serialised over the wire)
@@ -316,6 +318,98 @@ export class GrpcEchoServer {
    *
    * @returns `127.0.0.1:<port>` string.
    */
+  get address(): string {
+    return `127.0.0.1:${this._port}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ProtoEchoServer — proto-loader-based echo server (MINCRM-376)
+// ---------------------------------------------------------------------------
+
+/**
+ * In-process gRPC echo server that loads the EchoService definition from
+ * `echo.proto` via `@grpc/proto-loader`. Used by framework tests that cover
+ * `GrpcClient.protoCall()` and `GrpcClient.protoServerStream()`.
+ *
+ * Exposes the same Ping (unary) and Stream (server-streaming) methods as
+ * `GrpcEchoServer`, but serialization is handled by the proto codec instead
+ * of raw JSON buffers.
+ */
+export class ProtoEchoServer {
+  private server: grpc.Server | null = null;
+  private _port = 0;
+
+  /** Absolute path to the echo.proto file co-located with this module. */
+  static readonly PROTO_PATH = path.join(__dirname, 'echo.proto');
+
+  /** Fully-qualified service name used with `GrpcClient.protoCall/protoServerStream`. */
+  static readonly SERVICE_NAME = 'echo.EchoService';
+
+  /**
+   * Starts the server on an OS-assigned port.
+   *
+   * @returns Promise resolving with the bound port number.
+   */
+  async start(): Promise<number> {
+    const packageDef = await protoLoader.load(ProtoEchoServer.PROTO_PATH, {
+      keepCase: true,
+      longs: Number,
+      enums: String,
+      defaults: true,
+      oneofs: true,
+    });
+
+    const grpcObject = grpc.loadPackageDefinition(packageDef);
+    const echoPackage = grpcObject['echo'] as grpc.GrpcObject;
+    const EchoService = (echoPackage['EchoService'] as grpc.ServiceClientConstructor).service;
+
+    this.server = new grpc.Server();
+    this.server.addService(EchoService, {
+      Ping: handlePing,
+      Stream: handleStream,
+    });
+
+    return new Promise((resolve, reject) => {
+      this.server!.bindAsync(
+        '127.0.0.1:0',
+        grpc.ServerCredentials.createInsecure(),
+        (err, port) => {
+          if (err !== null) {
+            reject(err);
+            return;
+          }
+          this._port = port;
+          resolve(port);
+        },
+      );
+    });
+  }
+
+  /**
+   * Stops the server and drains in-flight calls.
+   *
+   * @returns Promise that resolves when the server has shut down.
+   */
+  stop(): Promise<void> {
+    if (this.server === null) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      this.server!.tryShutdown((err) => {
+        if (err !== undefined && err !== null) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  /** The port the server is listening on. Only valid after `start()` resolves. */
+  get port(): number {
+    return this._port;
+  }
+
+  /** Convenience host:port string for connecting. */
   get address(): string {
     return `127.0.0.1:${this._port}`;
   }

@@ -9,6 +9,7 @@
  */
 
 import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
 
 // ---------------------------------------------------------------------------
 // Codec helpers (JSON ↔ Buffer)
@@ -95,6 +96,8 @@ export interface GrpcClientOptions {
 export class GrpcClient {
   private readonly stub: grpc.Client;
   private readonly target: string;
+  private readonly credentials: grpc.ChannelCredentials;
+  private readonly protoCache = new Map<string, grpc.GrpcObject>();
 
   /**
    * @param options - Optional host and TLS overrides. Reads from env vars
@@ -108,6 +111,7 @@ export class GrpcClient {
     const credentials = useTls ? grpc.credentials.createSsl() : grpc.credentials.createInsecure();
 
     this.target = host;
+    this.credentials = credentials;
     this.stub = new grpc.Client(host, credentials, {});
   }
 
@@ -430,6 +434,200 @@ export class GrpcClient {
     };
 
     return iterator;
+  }
+
+  /**
+   * Makes a unary gRPC call using a .proto file for serialization/deserialization.
+   *
+   * Unlike `call()`, which uses JSON on the wire, `protoCall()` loads the proto
+   * definition and uses the generated codec. The proto package is cached after
+   * first load.
+   *
+   * @template TRequest - Request message type (must match the proto schema).
+   * @template TResponse - Response message type (must match the proto schema).
+   * @param protoPath - Absolute path to the .proto file.
+   * @param serviceName - Fully-qualified service name (e.g. `minicrm.audit.v1.AuditService`).
+   * @param methodName - RPC method name (e.g. `ListAuditEvents`).
+   * @param request - Request message object.
+   * @param metadata - Optional gRPC metadata.
+   * @returns Promise resolving with the typed response.
+   * @throws GrpcClientError on non-OK status.
+   */
+  async protoCall<TRequest extends object, TResponse>(
+    protoPath: string,
+    serviceName: string,
+    methodName: string,
+    request: TRequest,
+    metadata?: grpc.Metadata,
+  ): Promise<TResponse> {
+    const meta = metadata ?? new grpc.Metadata();
+    const serviceClient = await this.loadProtoServiceClient(protoPath, serviceName);
+
+    return new Promise<TResponse>((resolve, reject) => {
+      const method = (serviceClient as Record<string, unknown>)[methodName] as (
+        req: TRequest,
+        meta: grpc.Metadata,
+        cb: (
+          err: (Error & { code?: grpc.status; details?: string }) | null,
+          res?: TResponse,
+        ) => void,
+      ) => void;
+
+      method.call(serviceClient, request, meta, (err, response) => {
+        if (err !== null && err !== undefined) {
+          reject(
+            new GrpcClientError(err.code ?? grpc.status.UNKNOWN, err.message, err.details ?? ''),
+          );
+          return;
+        }
+        if (response === undefined || response === null) {
+          reject(new GrpcClientError(grpc.status.UNKNOWN, 'Empty response', ''));
+          return;
+        }
+        resolve(response);
+      });
+    });
+  }
+
+  /**
+   * Makes a server-streaming gRPC call using a .proto file, returning an async iterator.
+   *
+   * @template TRequest - Request message type.
+   * @template TResponse - Response message type.
+   * @param protoPath - Absolute path to the .proto file.
+   * @param serviceName - Fully-qualified service name.
+   * @param methodName - RPC method name.
+   * @param request - Request message object.
+   * @param metadata - Optional gRPC metadata.
+   * @returns Promise resolving with an async iterator yielding each streamed response.
+   * @throws GrpcClientError on non-OK terminal status.
+   */
+  async protoServerStream<TRequest extends object, TResponse>(
+    protoPath: string,
+    serviceName: string,
+    methodName: string,
+    request: TRequest,
+    metadata?: grpc.Metadata,
+  ): Promise<AsyncIterableIterator<TResponse>> {
+    const meta = metadata ?? new grpc.Metadata();
+    const serviceClient = await this.loadProtoServiceClient(protoPath, serviceName);
+
+    const method = (serviceClient as Record<string, unknown>)[methodName] as (
+      req: TRequest,
+      meta: grpc.Metadata,
+    ) => grpc.ClientReadableStream<TResponse>;
+
+    const stream = method.call(serviceClient, request, meta);
+
+    const queue: TResponse[] = [];
+    let resolveNext: ((result: IteratorResult<TResponse>) => void) | null = null;
+    let rejectNext: ((err: unknown) => void) | null = null;
+    let done = false;
+    let terminalError: GrpcClientError | null = null;
+
+    stream.on('data', (message: TResponse) => {
+      if (resolveNext !== null) {
+        const res = resolveNext;
+        resolveNext = null;
+        rejectNext = null;
+        res({ value: message, done: false });
+      } else {
+        queue.push(message);
+      }
+    });
+
+    stream.on('end', () => {
+      done = true;
+      if (resolveNext !== null) {
+        const res = resolveNext;
+        resolveNext = null;
+        rejectNext = null;
+        res({ value: undefined as unknown as TResponse, done: true });
+      }
+    });
+
+    stream.on('error', (err: Error & { code?: grpc.status; details?: string }) => {
+      done = true;
+      terminalError = new GrpcClientError(
+        err.code ?? grpc.status.UNKNOWN,
+        err.message,
+        err.details ?? '',
+      );
+      if (rejectNext !== null) {
+        const rej = rejectNext;
+        resolveNext = null;
+        rejectNext = null;
+        rej(terminalError);
+      }
+    });
+
+    const iterator: AsyncIterableIterator<TResponse> = {
+      next(): Promise<IteratorResult<TResponse>> {
+        if (queue.length > 0) {
+          return Promise.resolve({ value: queue.shift()!, done: false });
+        }
+        if (done) {
+          if (terminalError !== null) {
+            return Promise.reject(terminalError);
+          }
+          return Promise.resolve({ value: undefined as unknown as TResponse, done: true });
+        }
+        if (resolveNext !== null) {
+          return Promise.reject(new Error('Concurrent calls to next() are not supported'));
+        }
+        return new Promise<IteratorResult<TResponse>>((resolve, reject) => {
+          resolveNext = resolve;
+          rejectNext = reject;
+        });
+      },
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+      return(): Promise<IteratorResult<TResponse>> {
+        stream.cancel();
+        return Promise.resolve({ value: undefined as unknown as TResponse, done: true });
+      },
+    };
+
+    return iterator;
+  }
+
+  /**
+   * Loads a proto-defined service client, caching the GrpcObject by proto path.
+   *
+   * @param protoPath - Absolute path to the .proto file.
+   * @param serviceName - Dot-separated service path (e.g. `minicrm.audit.v1.AuditService`).
+   * @returns A new service client instance using this channel's credentials.
+   */
+  private async loadProtoServiceClient(protoPath: string, serviceName: string): Promise<object> {
+    let grpcObject = this.protoCache.get(protoPath);
+
+    if (!grpcObject) {
+      const packageDef = await protoLoader.load(protoPath, {
+        keepCase: true,
+        longs: Number,
+        enums: String,
+        defaults: true,
+        oneofs: true,
+      });
+      grpcObject = grpc.loadPackageDefinition(packageDef);
+      this.protoCache.set(protoPath, grpcObject);
+    }
+
+    const parts = serviceName.split('.');
+    let node: grpc.GrpcObject | grpc.ServiceClientConstructor = grpcObject as
+      | grpc.GrpcObject
+      | grpc.ServiceClientConstructor;
+
+    for (const part of parts) {
+      node = (node as grpc.GrpcObject)[part] as grpc.GrpcObject | grpc.ServiceClientConstructor;
+      if (!node) {
+        throw new Error(`Service path not found in proto: ${serviceName} (failed at '${part}')`);
+      }
+    }
+
+    const ServiceConstructor = node as grpc.ServiceClientConstructor;
+    return new ServiceConstructor(this.target, this.credentials, {});
   }
 
   /**
