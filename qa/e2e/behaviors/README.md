@@ -171,6 +171,85 @@ import { login, navigateToContacts } from '@behaviors/minicrm/index.js';
 
 ---
 
+---
+
+## `test.beforeAll` usage rules (MINCRM-368)
+
+### The `storageState` + `restClient` relationship
+
+`playwright.config.ts` sets `storageState: ADMIN_STORAGE_STATE` for every project.
+This file is written by `globalSetup.ts` once before any worker starts and contains
+the browser cookies (including the admin JWT) for a pre-authenticated admin session.
+
+The `restClient` fixture used in test bodies is a REST API client that is separate from
+the browser context. **It does not automatically inherit the `storageState` cookies.**
+`loginAsAdmin(restClient)` authenticates the `restClient` so that REST calls made inside
+a test body (e.g. seeding data, calling admin APIs) carry an admin JWT.
+
+Because `restClient` is a **per-test** fixture (created fresh for each test), it starts
+unauthenticated. The `storageState` only applies to browser navigation — it does not
+pre-authenticate `restClient`.
+
+### Why `beforeAll` + `loginAsAdmin` is an anti-pattern
+
+`test.beforeAll` runs **once per worker**, but each individual test receives a **new
+`restClient` instance**. Calling `loginAsAdmin(restClient)` inside `beforeAll` authenticates
+the fixture instance that exists at `beforeAll` time — not the per-test instances.
+The call is therefore a no-op for all subsequent tests: it does not carry forward.
+
+More critically, any test that then calls `loginAs(restClient, ...)` to switch to a rep
+session does so on its own fresh `restClient` and correctly restores with
+`loginAsAdmin(restClient)` inside a `finally` block. The `beforeAll` call never provided
+safety here, and its presence created a false impression that auth state was shared.
+
+**Rule: do not call `loginAsAdmin(restClient)` in `test.beforeAll`.**
+
+If a test needs `restClient` to be admin-authenticated, call `loginAsAdmin(restClient)` at
+the start of that test body, or — the preferred pattern — use the `restClient` directly
+(it starts unauthenticated; the server will reject non-admin calls, and the test will fail
+with a clear 401/403 rather than silently using stale auth).
+
+### When is `test.beforeAll` acceptable?
+
+`test.beforeAll` is acceptable **only** for seeding immutable, read-only shared data that
+would be expensive to create per-test and that no test mutates. When used this way, add an
+inline comment explaining why the shared state is safe:
+
+```ts
+// Safe: seeds a pipeline stage that all tests in this file read but never modify.
+// Runs once per worker; stage is cleaned up in afterAll.
+test.beforeAll(async ({ restClient }) => {
+  sharedStage = await createPipelineStage(restClient, { name: 'Shared Stage' });
+});
+```
+
+### When is `loginAsAdmin(restClient)` in individual tests acceptable?
+
+`loginAsAdmin(restClient)` is correct and necessary when a test switches the `restClient`
+session to a non-admin user (via `loginAs`) and must restore admin credentials before
+performing teardown or subsequent API calls. This pattern always belongs in a `finally`
+block:
+
+```ts
+try {
+  await loginAs(restClient, rep.email, repPassword);
+  // ... test assertions
+} finally {
+  // Restore admin so teardown API calls (deactivateUser, etc.) succeed.
+  await loginAsAdmin(restClient);
+  await deactivateUser(restClient, rep.id);
+}
+```
+
+### CI enforcement (MINCRM-368)
+
+`scripts/check-e2e-beforeall.sh` (run in CI) rejects any spec file that calls
+`loginAsAdmin` inside a `test.beforeAll` block. If you believe your use case is an
+exception, add an `// MINCRM-368-ok: <reason>` comment on the same line as the call and
+the script will allow it.
+
+---
+
 ## Checklist before adding a behavior
 
 - [ ] Parameter object is a named typed interface (no loose `any`)

@@ -42,7 +42,6 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import {
-  loginAsAdmin,
   typeSearchQuery,
   getSearchResult,
   clickSearchResult,
@@ -55,14 +54,6 @@ import {
   createNoteViaApi,
   type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
-
-// ---------------------------------------------------------------------------
-// Shared setup
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Result Coverage tests

@@ -16,7 +16,6 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
 import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
 import {
   getContactSendEmailButtonLocator,
@@ -30,14 +29,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
-
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Tests

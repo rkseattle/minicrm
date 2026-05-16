@@ -25,7 +25,6 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
-  loginAsAdmin,
   createLeadViaUI,
   createLeadViaUIThenCreateAnyway,
   updateLeadStatus,
@@ -42,14 +41,6 @@ import {
   setUserLanguage,
   setSystemDefaultLanguage,
 } from '@behaviors/minicrm/index.js';
-
-// ---------------------------------------------------------------------------
-// Shared setup — admin auth + test name capture
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // Reset the admin user's language preference and system default before each test so that
 // i18n tests running concurrently on another worker cannot leave a non-English locale that

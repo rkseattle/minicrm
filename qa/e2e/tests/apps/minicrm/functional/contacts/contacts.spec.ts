@@ -51,17 +51,8 @@ import {
   getContactAccountLink,
   getContactsPaginationLocator,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestContact, createTestAccount, navigateToContact } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Shared setup
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 // ---------------------------------------------------------------------------
 // Create tests

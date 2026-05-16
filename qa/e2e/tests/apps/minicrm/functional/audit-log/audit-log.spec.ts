@@ -42,14 +42,6 @@ import {
 } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
-// ---------------------------------------------------------------------------
-// Shared setup — admin auth + test name capture
-// ---------------------------------------------------------------------------
-
-test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
-
 const REP_PASSWORD = 'BvtPassword1!';
 
 // ---------------------------------------------------------------------------
