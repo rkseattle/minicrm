@@ -23,7 +23,7 @@
 
 import { test, expect } from '@framework/fixtures';
 import { GrpcClient, GrpcClientError } from '@framework/clients';
-import { GrpcEchoServer } from '@framework/test-support/grpc-echo-server.js';
+import { GrpcEchoServer, ProtoEchoServer } from '@framework/test-support/grpc-echo-server.js';
 import type {
   PingRequest,
   PingResponse,
@@ -192,6 +192,26 @@ test.describe('GrpcClient — Stream server-streaming', () => {
       }
 
       expect(messages).toHaveLength(0);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('serverStream() return() cancels an in-progress stream cleanly', async () => {
+    const client = makeClient();
+    try {
+      const iterator = client.serverStream<StreamRequest, StreamResponse>(
+        '/echo.EchoService/Stream',
+        { message: 'cancel-test', count: 10 },
+      );
+
+      // Read the first message then cancel — must not throw.
+      const first = await iterator.next();
+      expect(first.done).toBe(false);
+      expect(first.value.index).toBe(0);
+
+      const result = await iterator.return!();
+      expect(result.done).toBe(true);
     } finally {
       client.close();
     }
@@ -505,6 +525,191 @@ test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => 
       }
 
       expect(responses).toHaveLength(0);
+    } finally {
+      client.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// protoCall() — unary via proto-loader (MINCRM-376)
+// ---------------------------------------------------------------------------
+
+test.describe('GrpcClient — protoCall unary (MINCRM-376)', () => {
+  let server: ProtoEchoServer;
+
+  test.beforeAll(async () => {
+    server = new ProtoEchoServer();
+    await server.start();
+  });
+
+  test.afterAll(async () => {
+    await server.stop();
+  });
+
+  test('protoCall() echoes message back via proto codec', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      const response = await client.protoCall<PingRequest, PingResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Ping',
+        { message: 'proto-hello' },
+      );
+      expect(response.message).toBe('proto-hello');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoCall() uses cached proto package on second call', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      // Two calls to the same proto path — second reuses the cached GrpcObject.
+      const r1 = await client.protoCall<PingRequest, PingResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Ping',
+        { message: 'first' },
+      );
+      const r2 = await client.protoCall<PingRequest, PingResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Ping',
+        { message: 'second' },
+      );
+      expect(r1.message).toBe('first');
+      expect(r2.message).toBe('second');
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoCall() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
+    const client = new GrpcClient({ host: '127.0.0.1:1', tls: false });
+    try {
+      await expect(
+        client.protoCall<PingRequest, PingResponse>(
+          ProtoEchoServer.PROTO_PATH,
+          ProtoEchoServer.SERVICE_NAME,
+          'Ping',
+          { message: 'unreachable' },
+        ),
+      ).rejects.toBeInstanceOf(GrpcClientError);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoCall() throws when service path not found in proto', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      await expect(
+        client.protoCall<PingRequest, PingResponse>(
+          ProtoEchoServer.PROTO_PATH,
+          'echo.NonExistentService',
+          'Ping',
+          { message: 'bad-path' },
+        ),
+      ).rejects.toThrow(/Service path not found in proto/);
+    } finally {
+      client.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// protoServerStream() — server-streaming via proto-loader (MINCRM-376)
+// ---------------------------------------------------------------------------
+
+test.describe('GrpcClient — protoServerStream (MINCRM-376)', () => {
+  let server: ProtoEchoServer;
+
+  test.beforeAll(async () => {
+    server = new ProtoEchoServer();
+    await server.start();
+  });
+
+  test.afterAll(async () => {
+    await server.stop();
+  });
+
+  test('protoServerStream() yields all messages in order', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      const messages: StreamResponse[] = [];
+      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Stream',
+        { message: 'proto-stream', count: 3 },
+      );
+
+      for await (const msg of iterator) {
+        messages.push(msg);
+      }
+
+      expect(messages).toHaveLength(3);
+      expect(messages[0]).toMatchObject({ message: 'proto-stream', index: 0 });
+      expect(messages[1]).toMatchObject({ message: 'proto-stream', index: 1 });
+      expect(messages[2]).toMatchObject({ message: 'proto-stream', index: 2 });
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoServerStream() with count=0 yields no messages', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      const messages: StreamResponse[] = [];
+      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Stream',
+        { message: 'empty', count: 0 },
+      );
+
+      for await (const msg of iterator) {
+        messages.push(msg);
+      }
+
+      expect(messages).toHaveLength(0);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoServerStream() return() cancels stream cleanly', async () => {
+    const client = new GrpcClient({ host: server.address, tls: false });
+    try {
+      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Stream',
+        { message: 'cancel', count: 10 },
+      );
+
+      const first = await iterator.next();
+      expect(first.done).toBe(false);
+
+      const result = await iterator.return!();
+      expect(result.done).toBe(true);
+    } finally {
+      client.close();
+    }
+  });
+
+  test('protoServerStream() throws GrpcClientError with UNAVAILABLE on dead server', async () => {
+    const client = new GrpcClient({ host: '127.0.0.1:1', tls: false });
+    try {
+      const iterator = await client.protoServerStream<StreamRequest, StreamResponse>(
+        ProtoEchoServer.PROTO_PATH,
+        ProtoEchoServer.SERVICE_NAME,
+        'Stream',
+        { message: 'unreachable', count: 1 },
+      );
+
+      await expect(iterator.next()).rejects.toBeInstanceOf(GrpcClientError);
     } finally {
       client.close();
     }

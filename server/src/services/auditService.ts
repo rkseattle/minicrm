@@ -262,6 +262,8 @@ export interface ListAuditLogOptions {
   userId?: string;
   /** Filter by record type */
   recordType?: AuditRecordType;
+  /** Filter by the UUID of the record that was changed */
+  recordId?: string;
   /** Filter by event type */
   eventType?: AuditEventType;
   /** 1-based page number; defaults to 1 */
@@ -327,7 +329,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
  * @returns Paginated audit log entries
  */
 export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<AuditLogPage> {
-  const { from, to, userId, recordType, eventType, page = 1, limit = 50 } = options;
+  const { from, to, userId, recordType, recordId, eventType, page = 1, limit = 50 } = options;
 
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -350,6 +352,11 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
   if (recordType) {
     values.push(recordType);
     conditions.push(`a.record_type = $${values.length}`);
+  }
+
+  if (recordId) {
+    values.push(recordId);
+    conditions.push(`a.record_id = $${values.length}`);
   }
 
   if (eventType) {

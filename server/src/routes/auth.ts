@@ -439,6 +439,27 @@ if (process.env.NODE_ENV !== 'production') {
       res.status(200).json({ token: plaintextToken });
     }),
   );
+
+  /**
+   * GET /api/v1/auth/dev/jwt — dev/test only.
+   * Returns the raw JWT from the httpOnly session cookie so E2E tests can pass it
+   * as gRPC metadata without reading cookies directly. Never available in production.
+   * (MINCRM-376)
+   */
+  router.get(
+    '/dev/jwt',
+    asyncHandler(async (req, res) => {
+      const { AUTH_COOKIE_NAME } = await import('../middleware/auth.js');
+      const token = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+      if (!token) {
+        res
+          .status(401)
+          .json({ error: { code: 'AUTH_MISSING_TOKEN', message: 'Not authenticated' } });
+        return;
+      }
+      res.status(200).json({ token });
+    }),
+  );
 }
 
 export default router;

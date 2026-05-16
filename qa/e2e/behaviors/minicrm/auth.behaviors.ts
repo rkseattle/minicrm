@@ -695,3 +695,22 @@ export async function navigateToForgotPasswordPage(context: AuthBehaviorContext)
   const po = new ForgotPasswordPage(context);
   await po.navigate();
 }
+
+// ---------------------------------------------------------------------------
+// getDevJwt() (MINCRM-376)
+// ---------------------------------------------------------------------------
+
+/**
+ * Retrieves the raw JWT from the dev-only endpoint GET /api/v1/auth/dev/jwt.
+ *
+ * The endpoint reads the httpOnly session cookie and returns the token as JSON,
+ * so the E2E suite can pass it as gRPC metadata without reading cookies directly.
+ * Only available in non-production environments.
+ *
+ * @param restClient - An authenticated RestClient (must have a valid session cookie).
+ * @returns The raw JWT string.
+ */
+export async function getDevJwt(restClient: RestClient): Promise<string> {
+  const res = await restClient.get<{ token: string }>('/api/v1/auth/dev/jwt');
+  return res.body.token;
+}
