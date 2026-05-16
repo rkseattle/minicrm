@@ -191,31 +191,22 @@ export async function listAuditEventsHandler(
  * Subscribes to auditEventBus and writes matching live events to the stream.
  * Applies GDPR masking before forwarding. Handles backpressure by dropping
  * events when the write buffer is full. Requires admin JWT in metadata.
+ *
+ * The handler is intentionally synchronous: grpc-js calls server-streaming
+ * handlers fire-and-forget (the return value is ignored), so declaring it
+ * async would mean the bus listener is registered only after the first await,
+ * creating a window where a NOTIFY could be missed before auth completes.
+ * Instead, the listener is registered immediately and guarded by authValidated.
  */
-export async function streamAuditEventsHandler(
+export function streamAuditEventsHandler(
   call: grpc.ServerWritableStream<AuditRequest, AuditEvent>,
-): Promise<void> {
-  const authResult = await validateAdminToken(call.metadata);
-  if (authResult === null) {
-    call.destroy(
-      Object.assign(new Error('Authentication required'), {
-        code: grpc.status.UNAUTHENTICATED,
-      }),
-    );
-    return;
-  }
-  if (authResult === 'PERMISSION_DENIED') {
-    call.destroy(
-      Object.assign(new Error('Admin role required'), {
-        code: grpc.status.PERMISSION_DENIED,
-      }),
-    );
-    return;
-  }
-
+): void {
   const req = call.request;
+  let authValidated = false;
 
   const listener = async (notification: AuditNotification): Promise<void> => {
+    // Drop events that arrive before auth completes.
+    if (!authValidated) return;
     if (!matchesStreamFilter(notification, req)) return;
 
     let masked: AuditNotification;
@@ -247,9 +238,9 @@ export async function streamAuditEventsHandler(
     void listener(n);
   };
 
+  // Register BEFORE any await so no NOTIFY can slip through during auth validation.
   auditEventBus.on('audit_event', busListener);
 
-  // Clean up the listener when the client cancels or the connection closes.
   const cleanup = (): void => {
     auditEventBus.removeListener('audit_event', busListener);
   };
@@ -260,4 +251,29 @@ export async function streamAuditEventsHandler(
   });
 
   call.on('close', cleanup);
+
+  // Auth runs async after the listener is already attached.
+  void (async () => {
+    const authResult = await validateAdminToken(call.metadata);
+    if (authResult === null) {
+      cleanup();
+      call.destroy(
+        Object.assign(new Error('Authentication required'), {
+          code: grpc.status.UNAUTHENTICATED,
+        }),
+      );
+      return;
+    }
+    if (authResult === 'PERMISSION_DENIED') {
+      cleanup();
+      call.destroy(
+        Object.assign(new Error('Admin role required'), {
+          code: grpc.status.PERMISSION_DENIED,
+        }),
+      );
+      return;
+    }
+    // Open the gate — events from this point forward will be forwarded.
+    authValidated = true;
+  })();
 }
