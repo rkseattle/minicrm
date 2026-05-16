@@ -324,7 +324,7 @@ export class GrpcEchoServer {
 }
 
 // ---------------------------------------------------------------------------
-// ProtoEchoServer — proto-loader-based echo server (MINCRM-376)
+// ProtoEchoServer — proto-loader-based echo server
 // ---------------------------------------------------------------------------
 
 /**

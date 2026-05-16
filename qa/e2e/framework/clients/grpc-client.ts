@@ -61,7 +61,7 @@ export interface GrpcClientOptions {
   protoPath?: string;
   /**
    * Fully-qualified service name as it appears in the proto package
-   * (e.g. `echo.EchoService` or `minicrm.audit.v1.AuditService`).
+   * (e.g. `echo.EchoService` or `acme.billing.v1.BillingService`).
    * Required for `call()`, `serverStream()`, `clientStream()`, and `bidiStream()`.
    * Defaults to `E2E_GRPC_SERVICE_NAME` environment variable.
    */
@@ -291,8 +291,8 @@ export class GrpcClient {
    * @template TRequest - Request message type (must match the proto schema).
    * @template TResponse - Response message type (must match the proto schema).
    * @param protoPath - Absolute path to the .proto file.
-   * @param serviceName - Fully-qualified service name (e.g. `minicrm.audit.v1.AuditService`).
-   * @param methodName - RPC method name (e.g. `ListAuditEvents`).
+   * @param serviceName - Fully-qualified service name (e.g. `acme.billing.v1.BillingService`).
+   * @param methodName - RPC method name (e.g. `GetInvoice`).
    * @param request - Request message object.
    * @param metadata - Optional gRPC metadata.
    * @returns Promise resolving with the typed response.
@@ -544,7 +544,7 @@ export class GrpcClient {
    * Loads a proto-defined service client, caching the GrpcObject by proto path.
    *
    * @param protoPath - Absolute path to the .proto file.
-   * @param serviceName - Dot-separated service path (e.g. `minicrm.audit.v1.AuditService`).
+   * @param serviceName - Dot-separated service path (e.g. `acme.billing.v1.BillingService`).
    * @returns A new service client instance using this channel's credentials.
    */
   private async loadProtoServiceClient(protoPath: string, serviceName: string): Promise<object> {
