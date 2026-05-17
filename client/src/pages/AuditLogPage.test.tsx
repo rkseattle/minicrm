@@ -6,7 +6,7 @@
  * Tests mock the auditClient module directly so no HTTP interception is needed.
  */
 
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import AuditLogPage from './AuditLogPage.js';
@@ -298,6 +298,41 @@ describe('AuditLogPage', () => {
       expect(screen.getByTestId(`audit-log-row-${live.id}`)).toBeInTheDocument();
       expect(screen.getByTestId(`audit-log-row-${existing.id}`)).toBeInTheDocument();
     });
+  });
+
+  it('reconnects the stream after a transient error and delivers subsequent events', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const eventAfterReconnect = makeProtoEvent({ id: '00000000-0000-0000-0000-cccccccccccc' });
+
+      // First call: throws immediately (simulates proxy timeout / network error).
+      // Second call: yields an event then hangs (simulates successful reconnect).
+      async function* failThenSucceed() {
+        throw new Error('simulated network error');
+      }
+      async function* streamAfterReconnect() {
+        yield eventAfterReconnect;
+        await new Promise(() => {});
+      }
+      mockStreamAuditEvents
+        .mockReturnValueOnce(failThenSucceed())
+        .mockReturnValue(streamAfterReconnect());
+
+      renderWithProviders(<AuditLogPage />);
+
+      // Advance past the initial 1 s backoff delay.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_100);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`audit-log-row-${eventAfterReconnect.id}`)).toBeInTheDocument();
+      });
+      expect(mockStreamAuditEvents).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('clears live events when a filter is applied', async () => {
