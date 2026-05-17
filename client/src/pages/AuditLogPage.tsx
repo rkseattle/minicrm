@@ -203,26 +203,42 @@ export default function AuditLogPage() {
   }, [appliedFilters, page]);
 
   // Open the stream only on the first unfiltered page.
+  // Reconnects automatically on transient failures (proxy timeout, network blip,
+  // server restart) with exponential backoff capped at 30 s.
   useEffect(() => {
     if (!isUnfilteredFirstPage) return;
 
     const abortController = new AbortController();
+    let retryDelay = 1_000;
 
     const runStream = async (): Promise<void> => {
-      try {
-        const stream = auditClient.streamAuditEvents({}, { signal: abortController.signal });
-        for await (const event of stream) {
-          setLiveEventsRef.current((prev) => [grpcEventToEntry(event), ...prev]);
+      while (!abortController.signal.aborted) {
+        try {
+          const stream = auditClient.streamAuditEvents({}, { signal: abortController.signal });
+          retryDelay = 1_000; // reset backoff on a successful connection
+          for await (const event of stream) {
+            setLiveEventsRef.current((prev) => [grpcEventToEntry(event), ...prev]);
+          }
+          // Server closed the stream cleanly — reconnect immediately.
+        } catch (err) {
+          if (abortController.signal.aborted) return;
+          if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+            queryClient.clear();
+            const next = encodeURIComponent(window.location.pathname);
+            navigate(`/login?reason=session_expired&next=${next}`);
+            return;
+          }
+          // Transient error (proxy timeout, network blip, server restart).
+          // Wait with exponential backoff before reconnecting.
+          await new Promise<void>((resolve) => {
+            const id = setTimeout(resolve, retryDelay);
+            abortController.signal.addEventListener('abort', () => {
+              clearTimeout(id);
+              resolve();
+            });
+          });
+          retryDelay = Math.min(retryDelay * 2, 30_000);
         }
-      } catch (err) {
-        if (err instanceof ConnectError && err.code === Code.Canceled) return;
-        if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-          queryClient.clear();
-          const next = encodeURIComponent(window.location.pathname);
-          navigate(`/login?reason=session_expired&next=${next}`);
-          return;
-        }
-        // Ignore other stream errors (server restart, network blip).
       }
     };
 
