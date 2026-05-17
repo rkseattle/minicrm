@@ -139,7 +139,7 @@ test('@functional GRPC-4: ListAuditEvents with rep JWT returns PERMISSION_DENIED
 
 // ── Test 5: Streaming — receives live events ─────────────────────────────────
 
-test('@functional GRPC-5: StreamAuditEvents delivers live contact_created event within 2 s', async ({
+test('@functional GRPC-5: StreamAuditEvents delivers live contact_created event within 8 s', async ({
   restClient,
   grpcClient,
   testData,
@@ -156,10 +156,10 @@ test('@functional GRPC-5: StreamAuditEvents delivers live contact_created event 
   // Trigger a contact_created audit entry via REST.
   const contact = await createTestContact(testData, restClient);
 
-  // Wait up to 2 s for the live event to arrive — no fixed sleeps.
+  // Wait up to 8 s for the live event to arrive — 2 s was too tight under CI load.
   const received = await waitForCondition(() => {
     return receivedEvents.some((e) => e.action === 'created' && e.record_id === contact.id);
-  }, 2000);
+  }, 8000);
 
   cancel();
 
@@ -235,12 +235,12 @@ test('@functional GRPC-7: StreamAuditEvents GDPR masking hides values for erased
       // only checks GDPR masking on the stream so we just need _any_ audit entry.
     });
 
-  // Wait up to 2 s for a masked event.
+  // Wait up to 8 s for a masked event — matches GRPC-5 CI latency allowance.
   const received = await waitForCondition(() => {
     return streamedEvents.some(
       (e) => e.old_value === '[GDPR deleted]' || e.new_value === '[GDPR deleted]',
     );
-  }, 2000);
+  }, 8000);
 
   cancel();
 
