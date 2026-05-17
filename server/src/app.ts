@@ -33,6 +33,8 @@ import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
 import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
 import gdprRoutes from './routes/gdpr.js';
+import { expressConnectMiddleware } from '@connectrpc/connect-express';
+import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
 
@@ -86,6 +88,12 @@ app.use(
     stream: { write: (message) => logger.info(message.trimEnd()) },
   }),
 );
+
+// ── ConnectRPC middleware (MINCRM-377) ─────────────────────────────────────────
+// Must be mounted BEFORE express.json() and cookieParser() so that Connect/gRPC-Web
+// requests are intercepted before any body-buffering middleware can consume the
+// raw request stream. The Connect protocol reads the body itself.
+app.use(expressConnectMiddleware({ routes: registerAuditService, requestPathPrefix: '/api' }));
 
 // ── Body parsing ───────────────────────────────────────────────────────────────
 app.use(express.json());

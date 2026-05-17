@@ -22,7 +22,8 @@
     "e2e:setup": "npx tsx scripts/e2e-setup.ts",
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
-    "audit:testids": "tsx qa/scripts/audit-testids.ts"
+    "audit:testids": "tsx qa/scripts/audit-testids.ts",
+    "generate:proto": "npx @bufbuild/buf generate"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

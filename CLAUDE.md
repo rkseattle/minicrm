@@ -10,7 +10,7 @@
 - **Auth:** JWT in httpOnly cookie (8-hour expiry)
 - **Infra:** Docker + Docker Compose, npm workspaces (`/client`, `/server`, `/shared`, `/qa`)
 - **Docs:** OpenAPI 3.0 via swagger-jsdoc, served at `/api-docs` (dev/staging only)
-- **gRPC:** `@grpc/grpc-js` + `@grpc/proto-loader`; audit streaming service alongside Express REST
+- **gRPC:** ConnectRPC (`@connectrpc/connect-express`) mounted on Express; browser uses `@connectrpc/connect-web`
 
 ---
 
@@ -23,7 +23,7 @@ server/src/
   services/      → ALL business logic + ALL database queries
   middleware/    → auth.ts (JWT verify + status check), requireRole.ts, asyncHandler.ts
   utils/         → shared server utilities
-  grpc/          → gRPC server bootstrap + RPC handlers + proto/ definitions
+  grpc/          → ConnectRPC service handler + proto/ definitions
 
 client/src/
   api/           → one Axios wrapper file per resource; exports typed fns + QUERY_KEY constants
@@ -614,22 +614,29 @@ Leave a comment on any non-obvious `min-w-0` or `clamp()` for future maintainers
 
 ---
 
-## gRPC Layer
+## gRPC / ConnectRPC Layer
 
-`server/src/grpc/` runs alongside Express on a separate port (default `0.0.0.0:50051`).
+`server/src/grpc/` contains the ConnectRPC service mounted directly on the Express app (MINCRM-377).
+No separate gRPC port — the AuditService is served on the same port as REST via `expressConnectMiddleware`.
 
 - **Proto:** `server/src/grpc/proto/audit.proto` — defines `AuditService` with two RPCs:
   - `ListAuditEvents` (unary) — paginated query of the `audit_log` table
   - `StreamAuditEvents` (server-streaming) — live stream via PostgreSQL LISTEN/NOTIFY
-- **Auth:** JWT extracted from gRPC call metadata key `authorization`; admin role required.
-  Use `extractGrpcUser(call.metadata)` from `auditGrpcService.ts` — same JWT secret as REST.
+- **Generated:** `shared/generated/audit_pb.ts` and `audit_connect.ts` — committed to the repo.
+  Regenerate with `npm run generate:proto` (requires `@bufbuild/buf`).
+- **Server implementation:** `server/src/grpc/auditConnectService.ts` — ConnectRPC handler.
+  Auth reads JWT from the httpOnly cookie (same as REST) or `Authorization: Bearer` header.
+- **Client:** `client/src/grpc/auditClient.ts` — `@connectrpc/connect-web` gRPC-Web transport.
+  Cookie auth is forwarded automatically on same-origin requests — no JS token access needed.
+- **Mounting:** `expressConnectMiddleware({ routes: registerAuditService, requestPathPrefix: '/api' })`
+  in `app.ts`. Mounted before REST routes so Connect/gRPC-Web requests are intercepted first.
 - **Audit event bus:** `services/auditEventBus.ts` subscribes to the `audit_events` pg channel
-  (fired by `audit_log_after_insert` trigger). It is a Node `EventEmitter`; gRPC stream handlers
-  attach listeners on connect and remove them on disconnect.
-- **Lifecycle:** `startGrpcServer()` and `auditEventBus.start(pool)` are called in `server.ts`
-  before the HTTP server binds. Both are shut down gracefully on SIGTERM.
-- **E2E:** `qa/e2e/framework/clients/grpc-client.ts` — test client with proto reflection; use via
-  `grpcClientFixture`. Framework layer must remain zero app-domain-string (purity check applies).
+  (fired by `audit_log_after_insert` trigger). Exposes `asyncIterator(signal)` for `for-await` use.
+- **Lifecycle:** `auditEventBus.start(pool)` is called in `server.ts` before the HTTP server binds.
+  Shut down gracefully on SIGTERM.
+- **E2E:** `qa/e2e/apps/minicrm/grpc/auditGrpcClient.ts` — calls ListAuditEvents via the Connect
+  protocol (JSON POST over HTTP/1.1) to `E2E_API_URL`. Uses `Authorization: Bearer <jwt>` header.
+  The framework `grpcClient` fixture is still available but not used by the audit E2E tests.
 
 ---
 

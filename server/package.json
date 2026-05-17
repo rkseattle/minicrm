@@ -21,12 +21,15 @@
     "create:e2e-db": "tsx src/scripts/create-e2e-db.ts"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^1.10.1",
+    "@connectrpc/connect": "^1.7.0",
+    "@connectrpc/connect-express": "^1.7.0",
+    "@connectrpc/connect-node": "^1.7.0",
     "@minicrm/shared": "*",
     "@sentry/node": "^10.51.0",
     "bcryptjs": "^3.0.3",
+    "cookie": "^0.7.2",
     "cookie-parser": "^1.4.6",
-    "@grpc/grpc-js": "^1.14.3",
-    "@grpc/proto-loader": "^0.8.1",
     "cors": "^2.8.5",
     "csv-parse": "^6.2.1",
     "dotenv": "^16.4.5",
@@ -49,7 +52,10 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^1.10.1",
+    "@connectrpc/protoc-gen-connect-es": "^1.7.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/cookie": "^0.6.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -68,8 +74,8 @@
     "eslint-plugin-jsdoc": "^62.8.1",
     "eslint-plugin-n": "^17.24.0",
     "nodemon": "^3.1.4",
-    "tsx": "^4.21.0",
     "supertest": "^7.0.0",
+    "tsx": "^4.21.0",
     "vitest": "^4.1.1"
   }
 }

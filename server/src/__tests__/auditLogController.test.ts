@@ -51,80 +51,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── GET /api/audit-log ────────────────────────────────────────────────────────
-
-describe('GET /api/audit-log', () => {
-  it('returns paginated entries with no filters', async () => {
-    const res = await request(app).get('/api/v1/audit-log').set('Cookie', adminCookie);
-
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
-    expect(typeof res.body.total).toBe('number');
-  });
-
-  it('accepts date range filters without error', async () => {
-    const res = await request(app)
-      .get('/api/v1/audit-log?from=2020-01-01&to=2030-01-01')
-      .set('Cookie', adminCookie);
-
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
-  });
-
-  it('filters by userId', async () => {
-    // Insert a known audit entry for the admin user directly
-    await pool.query(
-      `INSERT INTO audit_log (record_type, event_type, changed_by_id, changed_by_name)
-       VALUES ('user', 'login', $1, 'Audit Admin')`,
-      [adminId],
-    );
-
-    const res = await request(app)
-      .get(`/api/v1/audit-log?userId=${adminId}`)
-      .set('Cookie', adminCookie);
-
-    expect(res.status).toBe(200);
-    expect(typeof res.body.total).toBe('number');
-    expect(res.body.data.length).toBeGreaterThan(0);
-    // Every returned entry must be authored by the filtered user
-    for (const entry of res.body.data as Array<{ changed_by_id: string }>) {
-      expect(entry.changed_by_id).toBe(adminId);
-    }
-  });
-
-  it('filters by recordType', async () => {
-    const res = await request(app)
-      .get('/api/v1/audit-log?recordType=user')
-      .set('Cookie', adminCookie);
-
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
-    for (const entry of res.body.data as Array<{ record_type: string }>) {
-      expect(entry.record_type).toBe('user');
-    }
-  });
-
-  it('returns 400 for an invalid recordType', async () => {
-    const res = await request(app)
-      .get('/api/v1/audit-log?recordType=not_valid')
-      .set('Cookie', adminCookie);
-
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
-  });
-
-  it('returns 403 when a rep requests the audit log', async () => {
-    const res = await request(app).get('/api/v1/audit-log').set('Cookie', repCookie);
-
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).get('/api/v1/audit-log');
-
-    expect(res.status).toBe(401);
-  });
-});
+// Note: GET /api/audit-log was removed in MINCRM-377. The admin audit log page
+// now fetches via ConnectRPC (gRPC-Web) instead. The unary ListAuditEvents and
+// server-streaming StreamAuditEvents RPCs are tested by the E2E suite.
 
 // ── GET /api/audit-log/record ─────────────────────────────────────────────────
 

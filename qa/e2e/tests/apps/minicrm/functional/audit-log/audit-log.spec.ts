@@ -15,7 +15,7 @@
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - UI interaction via healPage.locate / click / fill with data-testid strategies only
  *
- * MINCRM-201
+ * MINCRM-201, MINCRM-377
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -24,7 +24,7 @@ import { filterAuditLog, getAuditLog } from '@behaviors/minicrm/audit-log.behavi
 import { patchContact, getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getAccountById } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
-import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginAs, getDevJwt } from '@behaviors/minicrm/auth.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   createLeadViaApi,
@@ -40,7 +40,9 @@ import {
   getAuditLogPaginationPrevLocator,
   collapseAuditLogFilters,
 } from '@behaviors/minicrm/audit-log.behaviors.js';
-import { RestClientError } from '@framework/clients/rest-client.js';
+import { listAuditEvents } from '@apps/minicrm/grpc/auditGrpcClient.js';
+import { GrpcClientError } from '@framework/clients/grpc-client.js';
+import * as grpc from '@grpc/grpc-js';
 
 const REP_PASSWORD = 'BvtPassword1!';
 
@@ -55,6 +57,7 @@ test.beforeEach(async ({ restClient }) => {
 test('@functional F12-AL1: Perform a tracked action — audit log shows entry with correct user and record type', async ({
   page,
   restClient,
+  grpcClient,
   testData,
 }) => {
   // Create a contact, then update it — both actions should generate audit entries
@@ -81,8 +84,8 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   // The audit list should show at least one entry
   await expect(await getAuditLogListLocator({ page })).toBeVisible({ timeout: 10_000 });
 
-  // Verify via API that the entry exists
-  const { entries, total } = await getAuditLog(restClient, { recordType: 'contact' });
+  // Verify via gRPC that the entry exists
+  const { entries, total } = await getAuditLog(restClient, grpcClient, { recordType: 'contact' });
   expect(total, 'audit log should have at least one contact entry').toBeGreaterThan(0);
 
   // Find the entry for our specific contact
@@ -93,6 +96,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
 test('@functional F12-AL2: Audit log — filter by record type shows only that type', async ({
   page,
   restClient,
+  grpcClient,
   testData,
 }) => {
   // Ensure there are at least one contact and one account action in the log
@@ -109,8 +113,8 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 
   await expect(await getAuditLogListLocator({ page })).toBeVisible({ timeout: 10_000 });
 
-  // Check via API that the filtered results only contain account entries
-  const { entries } = await getAuditLog(restClient, { recordType: 'account' });
+  // Check via gRPC that the filtered results only contain account entries
+  const { entries } = await getAuditLog(restClient, grpcClient, { recordType: 'account' });
   const nonAccountEntries = entries.filter((e) => e.record_type !== 'account');
   expect(nonAccountEntries.length, 'filtered audit log should only contain account entries').toBe(
     0,
@@ -120,6 +124,7 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
 test('@functional F12-AL3: Audit log — field-level change detail recorded for updated contact', async ({
   page,
   restClient,
+  grpcClient,
   testData,
 }) => {
   const contact = await createTestContact(testData, restClient, {
@@ -135,7 +140,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   });
 
   // Use the record-scoped query to avoid pagination gaps in the system-wide list.
-  const { entries } = await getAuditLog(restClient, {
+  const { entries } = await getAuditLog(restClient, grpcClient, {
     recordType: 'contact',
     recordId: contact.id,
   });
@@ -204,20 +209,26 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
   await expect(prevButton).toBeDisabled();
 });
 
-test('@functional F12-AL5: Rep navigating to audit log is blocked', async ({ restClient }) => {
+test('@functional F12-AL5: Rep accessing audit log via gRPC is blocked with PERMISSION_DENIED', async ({
+  restClient,
+  grpcClient,
+}) => {
   // Create a rep dynamically so this test does not depend on E2E_REP_PASSWORD being set
   const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
 
   try {
     await loginAs(restClient, rep.email, REP_PASSWORD);
+    const repJwt = await getDevJwt(restClient);
 
-    let got403 = false;
+    let caughtCode: grpc.status | null = null;
     try {
-      await restClient.get<unknown>('/api/v1/audit-log');
+      await listAuditEvents(grpcClient, {}, repJwt);
     } catch (err) {
-      if (err instanceof RestClientError && err.status === 403) got403 = true;
+      if (err instanceof GrpcClientError) caughtCode = err.code;
     }
-    expect(got403, 'rep should get 403 when accessing audit log').toBe(true);
+    expect(caughtCode, 'rep should get PERMISSION_DENIED from gRPC').toBe(
+      grpc.status.PERMISSION_DENIED,
+    );
   } finally {
     await loginAsAdmin(restClient);
     await deactivateUser(restClient, rep.id).catch(() => null);

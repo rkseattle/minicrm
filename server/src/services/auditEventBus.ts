@@ -45,6 +45,55 @@ class AuditEventBus extends EventEmitter {
   private pool: Pool | null = null;
 
   /**
+   * Returns an async iterator over live AuditNotification events.
+   *
+   * The iterator yields events until the provided AbortSignal fires (client
+   * disconnect or handler cancellation). Callers use this in a for-await loop;
+   * no manual listener cleanup is required.
+   *
+   * @param signal - AbortSignal from ConnectRPC HandlerContext; fires on client disconnect.
+   */
+  asyncIterator(signal: AbortSignal): AsyncGenerator<AuditNotification> {
+    // Use a closure queue + promise-resolve pair to bridge EventEmitter → async iterator.
+    const queue: AuditNotification[] = [];
+    let resolve: (() => void) | null = null;
+    let done = false;
+
+    const onEvent = (event: AuditNotification): void => {
+      queue.push(event);
+      resolve?.();
+      resolve = null;
+    };
+
+    const onAbort = (): void => {
+      done = true;
+      resolve?.();
+      resolve = null;
+      this.removeListener('audit_event', onEvent);
+    };
+
+    this.on('audit_event', onEvent);
+    signal.addEventListener('abort', onAbort, { once: true });
+
+    return (async function* () {
+      try {
+        while (!done) {
+          while (queue.length > 0) {
+            yield queue.shift()!; // Non-null: we just checked queue.length > 0
+          }
+          if (!done) {
+            await new Promise<void>((r) => {
+              resolve = r;
+            });
+          }
+        }
+      } finally {
+        signal.removeEventListener('abort', onAbort);
+      }
+    })();
+  }
+
+  /**
    * Acquires a dedicated connection from the pool, issues LISTEN, and wires
    * up notification and error handlers. Must be called once during server
    * startup, before HTTP connections are accepted.

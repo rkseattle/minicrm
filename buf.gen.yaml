@@ -1,0 +1,10 @@
+version: v2
+inputs:
+  - directory: server/src/grpc/proto
+plugins:
+  - local: node_modules/.bin/protoc-gen-es
+    out: shared/generated
+    opt: target=ts
+  - local: node_modules/.bin/protoc-gen-connect-es
+    out: shared/generated
+    opt: target=ts
