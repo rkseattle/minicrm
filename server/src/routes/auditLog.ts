@@ -1,9 +1,11 @@
 /**
  * Audit log routes. (MINCRM-170, MINCRM-171, MINCRM-172)
  *
- * GET /api/v1/audit-log         — admin only: paginated, filtered system-wide log
  * GET /api/v1/audit-log/record  — any authenticated user: entries for a specific record
  * GET /api/v1/audit-log/actors  — admin only: distinct users in the audit log
+ *
+ * Note: GET /api/v1/audit-log (paginated system-wide list) was removed in MINCRM-377.
+ * The admin audit log page now fetches via gRPC (ConnectRPC) instead.
  */
 
 import { Router } from 'express';
@@ -11,51 +13,11 @@ import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
-  listAuditLogHandler,
   getRecordAuditLogHandler,
   listAuditLogActorsHandler,
 } from '../controllers/auditLogController.js';
 
 const router = Router();
-
-/**
- * @openapi
- * /api/v1/audit-log:
- *   get:
- *     tags: [Audit]
- *     operationId: listAuditLog
- *     summary: List system-wide audit log entries (admin only)
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: query
- *         name: from
- *         schema: { type: string, format: date-time }
- *       - in: query
- *         name: to
- *         schema: { type: string, format: date-time }
- *       - in: query
- *         name: userId
- *         schema: { type: string, format: uuid }
- *       - in: query
- *         name: recordType
- *         schema: { type: string, enum: [contact, account, deal, user, system_settings] }
- *       - in: query
- *         name: eventType
- *         schema: { type: string }
- *       - in: query
- *         name: page
- *         schema: { type: integer, minimum: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, minimum: 1, maximum: 200 }
- *     responses:
- *       200:
- *         description: Paginated audit log entries
- *       403:
- *         description: Forbidden (rep role)
- */
-router.get('/', authenticate, requireRole('admin'), asyncHandler(listAuditLogHandler));
 
 /**
  * @openapi

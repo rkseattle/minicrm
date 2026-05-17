@@ -2,32 +2,62 @@
  * AuditLogPage — admin-only page showing the system-wide audit log.
  * Supports filtering by date range, user, record type, and event type.
  * Paginated at 50 entries per page, with expandable rows for field detail.
- * (MINCRM-172)
+ * (MINCRM-172, MINCRM-377)
+ *
+ * Data is fetched via ConnectRPC (gRPC-Web) instead of REST. On the first
+ * unfiltered page a live StreamAuditEvents stream prepends new events in real
+ * time. The stream is cancelled on unmount or when filters/page change.
  */
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listAuditLog, listAuditLogActors, AUDIT_LOG_ACTORS_QUERY_KEY } from '@/api/auditLog.js';
-import type { AuditLogFilters } from '@/api/auditLog.js';
+import { auditClient } from '@/grpc/auditClient.js';
+import { listAuditLogActors, AUDIT_LOG_ACTORS_QUERY_KEY } from '@/api/auditLog.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 import { AUDIT_RECORD_TYPES, AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
+import type { PlainMessage } from '@bufbuild/protobuf';
+import type { AuditEvent } from '@shared/generated/audit_pb.js';
 
 /** Number of entries per page */
 const PAGE_SIZE = 50;
 
+/** Maps a ConnectRPC AuditEvent to the AuditLogEntry shape used by the UI. */
+function grpcEventToEntry(event: PlainMessage<AuditEvent>): AuditLogEntry {
+  return {
+    id: event.id,
+    record_type: event.recordType as AuditLogEntry['record_type'],
+    record_id: event.recordId || null,
+    record_name: null,
+    event_type: event.action as AuditLogEntry['event_type'],
+    field_name: event.fieldName || null,
+    old_value: event.oldValue || null,
+    new_value: event.newValue || null,
+    changed_by_id: null,
+    changed_by_name: event.changedBy || null,
+    created_at: event.changedAt,
+  };
+}
+
+/** Filter parameters for the gRPC list call */
+interface AuditLogFilters {
+  recordType?: string;
+  recordId?: string;
+  from?: string;
+  to?: string;
+  userId?: string;
+  eventType?: string;
+}
+
 /**
  * Builds a human-readable one-line summary for an audit log entry row.
- *
- * @param entry - Audit log entry
- * @param t - i18n translation function
- * @returns Human-readable description
  */
 function buildRowSummary(
   entry: AuditLogEntry,
@@ -70,9 +100,6 @@ function buildRowSummary(
 
 /**
  * Formats an ISO timestamp for display.
- *
- * @param dateStr - ISO date string
- * @param locale - Active i18n locale
  */
 function formatTimestamp(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleString(locale, {
@@ -86,14 +113,15 @@ function formatTimestamp(dateStr: string, locale: string): string {
 
 /**
  * Admin-only system-wide audit log page.
- * (MINCRM-172)
+ * (MINCRM-172, MINCRM-377)
  */
 export default function AuditLogPage() {
   const { t, i18n } = useTranslation();
   const { isDesktop } = useBreakpoint();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // ── Filter state ──────────────────────────────────────────────────────────────
-  // Collapsed by default on mobile so filter fields don't consume most of the screen
   const [filtersOpen, setFiltersOpen] = useState(isDesktop);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -103,17 +131,55 @@ export default function AuditLogPage() {
   const [page, setPage] = useState(1);
 
   /** Active filters applied to the query (submitted state) */
-  const [appliedFilters, setAppliedFilters] = useState<AuditLogFilters>({ limit: PAGE_SIZE });
+  const [appliedFilters, setAppliedFilters] = useState<AuditLogFilters>({});
 
   /** Row UUIDs that are currently expanded */
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  /** Live events prepended to the top of the first unfiltered page */
+  const [liveEvents, setLiveEvents] = useState<AuditLogEntry[]>([]);
+
   // ── Data queries ──────────────────────────────────────────────────────────────
   const queryKey = ['audit-log', 'list', appliedFilters, page] as const;
 
+  const isUnfilteredFirstPage =
+    page === 1 &&
+    !appliedFilters.recordType &&
+    !appliedFilters.recordId &&
+    !appliedFilters.from &&
+    !appliedFilters.to &&
+    !appliedFilters.userId &&
+    !appliedFilters.eventType;
+
   const { data, isLoading, isError } = useQuery({
     queryKey,
-    queryFn: () => listAuditLog({ ...appliedFilters, page }),
+    queryFn: async () => {
+      try {
+        const result = await auditClient.listAuditEvents({
+          recordType: appliedFilters.recordType ?? '',
+          recordId: appliedFilters.recordId ?? '',
+          after: appliedFilters.from ?? '',
+          before: appliedFilters.to ?? '',
+          page,
+          limit: PAGE_SIZE,
+        });
+        return {
+          data: result.events.map(grpcEventToEntry),
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+        };
+      } catch (err) {
+        if (err instanceof ConnectError) {
+          if (err.code === Code.Unauthenticated) {
+            queryClient.clear();
+            const next = encodeURIComponent(window.location.pathname);
+            navigate(`/login?reason=session_expired&next=${next}`);
+          }
+        }
+        throw err;
+      }
+    },
   });
 
   const { data: actorsData } = useQuery({
@@ -125,31 +191,70 @@ export default function AuditLogPage() {
   const entries = data?.data ?? [];
   const total = data?.total ?? 0;
 
+  // ── Live stream ───────────────────────────────────────────────────────────────
+
+  // Use a ref so the stream loop closure always has the latest setter.
+  const setLiveEventsRef = useRef(setLiveEvents);
+  setLiveEventsRef.current = setLiveEvents;
+
+  // Clear live events whenever filter/page state changes.
+  useEffect(() => {
+    setLiveEvents([]);
+  }, [appliedFilters, page]);
+
+  // Open the stream only on the first unfiltered page.
+  useEffect(() => {
+    if (!isUnfilteredFirstPage) return;
+
+    const abortController = new AbortController();
+
+    const runStream = async (): Promise<void> => {
+      try {
+        const stream = auditClient.streamAuditEvents({}, { signal: abortController.signal });
+        for await (const event of stream) {
+          setLiveEventsRef.current((prev) => [grpcEventToEntry(event), ...prev]);
+        }
+      } catch (err) {
+        if (err instanceof ConnectError && err.code === Code.Canceled) return;
+        if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+          queryClient.clear();
+          const next = encodeURIComponent(window.location.pathname);
+          navigate(`/login?reason=session_expired&next=${next}`);
+          return;
+        }
+        // Ignore other stream errors (server restart, network blip).
+      }
+    };
+
+    void runStream();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [isUnfilteredFirstPage, navigate, queryClient]);
+
   // ── Handlers ──────────────────────────────────────────────────────────────────
 
-  function handleApplyFilters(): void {
-    const filters: AuditLogFilters = { limit: PAGE_SIZE };
+  const handleApplyFilters = useCallback((): void => {
+    const filters: AuditLogFilters = {};
     if (from) filters.from = from;
-    if (to) {
-      // Set to end-of-day for the "to" date
-      filters.to = `${to}T23:59:59.999Z`;
-    }
+    if (to) filters.to = `${to}T23:59:59.999Z`;
     if (userId) filters.userId = userId;
     if (recordType) filters.recordType = recordType;
     if (eventType) filters.eventType = eventType;
     setAppliedFilters(filters);
     setPage(1);
-  }
+  }, [from, to, userId, recordType, eventType]);
 
-  function handleClearFilters(): void {
+  const handleClearFilters = useCallback((): void => {
     setFrom('');
     setTo('');
     setUserId('');
     setRecordType('');
     setEventType('');
-    setAppliedFilters({ limit: PAGE_SIZE });
+    setAppliedFilters({});
     setPage(1);
-  }
+  }, []);
 
   function toggleExpanded(id: string): void {
     setExpandedIds((prev) => {
@@ -162,6 +267,15 @@ export default function AuditLogPage() {
       return next;
     });
   }
+
+  // Combine live events (prepended) with the paginated query results.
+  // De-duplicate by id in case a live event arrives before the next refetch.
+  const displayedEntries = (() => {
+    if (!isUnfilteredFirstPage || liveEvents.length === 0) return entries;
+    const existingIds = new Set(entries.map((e) => e.id));
+    const deduped = liveEvents.filter((e) => !existingIds.has(e.id));
+    return [...deduped, ...entries];
+  })();
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -360,7 +474,7 @@ export default function AuditLogPage() {
             </p>
           )}
 
-          {!isLoading && !isError && entries.length === 0 && (
+          {!isLoading && !isError && displayedEntries.length === 0 && (
             <p
               className="px-6 py-8 text-sm text-gray-500 text-center"
               data-testid="audit-log-empty"
@@ -369,7 +483,7 @@ export default function AuditLogPage() {
             </p>
           )}
 
-          {!isLoading && !isError && entries.length > 0 && (
+          {!isLoading && !isError && displayedEntries.length > 0 && (
             <>
               {/* Table header — sticky inside the scroll area */}
               <div className="hidden md:grid grid-cols-[160px_140px_120px_120px_1fr] gap-3 px-6 py-3 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide sticky top-0 z-10">
@@ -383,7 +497,7 @@ export default function AuditLogPage() {
               {/* Rows — scrollable */}
               <div className="flex-1 overflow-auto min-h-0">
                 <ul data-testid="audit-log-list">
-                  {entries.map((entry) => {
+                  {displayedEntries.map((entry) => {
                     const isExpanded = expandedIds.has(entry.id);
                     const hasDetail =
                       entry.event_type === 'updated' &&

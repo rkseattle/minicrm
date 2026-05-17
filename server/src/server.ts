@@ -16,7 +16,6 @@ import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
-import { startGrpcServer } from './grpc/server.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -67,9 +66,6 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 const server = http.createServer(app);
 
-/** Populated after gRPC server starts; called during graceful shutdown. */
-let stopGrpcServer: (() => Promise<void>) | null = null;
-
 /**
  * Gracefully shuts down the HTTP server.
  * Stops accepting new connections, waits up to SHUTDOWN_TIMEOUT_MS for in-flight
@@ -97,11 +93,6 @@ async function shutdown(signal: string): Promise<void> {
     });
     logger.info('HTTP server closed');
 
-    if (stopGrpcServer !== null) {
-      await stopGrpcServer();
-      logger.info('gRPC server stopped');
-    }
-
     await auditEventBus.stop();
     logger.info('Audit event bus stopped');
 
@@ -125,7 +116,6 @@ void (async () => {
     await runMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);
-    stopGrpcServer = await startGrpcServer();
   } catch (err) {
     logger.error({ err }, 'Startup initialization failed');
     process.exit(1); // eslint-disable-line n/no-process-exit

@@ -7,8 +7,11 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { GrpcClient } from '@framework/clients/grpc-client.js';
 import { AuditLogPage } from '@pages/minicrm/AuditLogPage.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
+import { listAuditEvents } from '@apps/minicrm/grpc/auditGrpcClient.js';
+import { getDevJwt } from '@behaviors/minicrm/auth.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Context
@@ -69,24 +72,43 @@ export interface AuditLogEntry {
 }
 
 /**
- * Fetches audit log entries, optionally filtered by record type and/or record ID.
+ * Fetches audit log entries via gRPC (ConnectRPC), optionally filtered by
+ * record type and/or record ID. REST endpoint was removed in MINCRM-377.
  *
- * @param restClient - Authenticated RestClient.
+ * @param restClient - Authenticated RestClient (used to obtain a dev JWT).
+ * @param grpcClient - Framework GrpcClient instance.
  * @param options - Optional filters.
  * @returns Object with entries array and total count.
  */
 export async function getAuditLog(
   restClient: RestClient,
+  grpcClient: GrpcClient,
   options: { recordType?: string; recordId?: string } = {},
 ): Promise<{ entries: AuditLogEntry[]; total: number }> {
-  const params = new URLSearchParams();
-  if (options.recordType) params.set('recordType', options.recordType);
-  if (options.recordId) params.set('recordId', options.recordId);
-  const query = params.toString() ? `?${params.toString()}` : '';
-  const res = await restClient.get<{ data: AuditLogEntry[]; total: number }>(
-    `/api/v1/audit-log${query}`,
+  const jwt = await getDevJwt(restClient);
+  const result = await listAuditEvents(
+    grpcClient,
+    {
+      record_type: options.recordType,
+      record_id: options.recordId,
+      limit: 100,
+    },
+    jwt,
   );
-  return { entries: res.body.data, total: res.body.total };
+  const entries: AuditLogEntry[] = result.events.map((e) => ({
+    id: e.id,
+    record_type: e.record_type,
+    record_id: e.record_id || null,
+    record_name: null,
+    event_type: e.action,
+    field_name: e.field_name || null,
+    old_value: e.old_value || null,
+    new_value: e.new_value || null,
+    changed_by_id: null,
+    changed_by_name: e.changed_by || null,
+    created_at: e.changed_at,
+  }));
+  return { entries, total: result.total };
 }
 
 // ---------------------------------------------------------------------------

@@ -72,7 +72,7 @@ services:
       - /app/node_modules
     ports:
       - "3002:3002"
-      - "50051:50051"  # gRPC AuditService (MINCRM-376)
+      # Port 50051 (grpc-js server) removed in MINCRM-377 — AuditService now served on port 3002 via ConnectRPC
     depends_on:
       db:
         condition: service_healthy

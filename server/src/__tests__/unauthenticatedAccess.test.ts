@@ -104,8 +104,7 @@ const PROTECTED_ROUTES: Array<{ method: string; path: string }> = [
   { method: 'GET', path: '/api/v1/attachments' },
   { method: 'DELETE', path: `/api/v1/attachments/${NIL_UUID}` },
 
-  // ── Audit log ─────────────────────────────────────────────────────────────
-  { method: 'GET', path: '/api/v1/audit-log' },
+  // Note: GET /api/v1/audit-log was removed in MINCRM-377 (now served via ConnectRPC).
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   { method: 'GET', path: '/api/v1/dashboard/summary' },

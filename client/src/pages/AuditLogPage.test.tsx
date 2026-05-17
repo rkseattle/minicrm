@@ -1,33 +1,80 @@
 /**
  * Tests for AuditLogPage.
- * (MINCRM-172)
+ * (MINCRM-172, MINCRM-377)
+ *
+ * The page fetches audit data via ConnectRPC (auditClient), not REST.
+ * Tests mock the auditClient module directly so no HTTP interception is needed.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
-import { http, HttpResponse } from 'msw';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
-import { server } from '@/test/setup.js';
 import AuditLogPage from './AuditLogPage.js';
-import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
+// Note: MSW server from setup.ts is still active for other API calls (actors endpoint).
 
-/** A minimal audit entry fixture for the page tests */
-function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
+// ── Mock auditClient ─────────────────────────────────────────────────────────
+
+const mockListAuditEvents = vi.fn();
+const mockStreamAuditEvents = vi.fn();
+
+vi.mock('@/grpc/auditClient.js', () => ({
+  auditClient: {
+    listAuditEvents: (...args: unknown[]) => mockListAuditEvents(...args),
+    streamAuditEvents: (...args: unknown[]) => mockStreamAuditEvents(...args),
+  },
+}));
+
+// ── Fixtures ─────────────────────────────────────────────────────────────────
+
+/** A minimal proto-shaped AuditEvent for use in listAuditEvents responses. */
+function makeProtoEvent(
+  overrides: Partial<{
+    id: string;
+    recordType: string;
+    recordId: string;
+    action: string;
+    fieldName: string;
+    oldValue: string;
+    newValue: string;
+    changedBy: string;
+    changedAt: string;
+  }> = {},
+) {
   return {
     id: '00000000-0000-0000-0000-000000000001',
-    record_type: 'contact',
-    record_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    record_name: 'Alice Smith',
-    event_type: 'created',
-    field_name: null,
-    old_value: null,
-    new_value: null,
-    changed_by_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    changed_by_name: 'Test Admin',
-    created_at: '2026-01-01T10:00:00.000Z',
+    recordType: 'contact',
+    recordId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    action: 'created',
+    fieldName: '',
+    oldValue: '',
+    newValue: '',
+    changedBy: 'Test Admin',
+    changedAt: '2026-01-01T10:00:00.000Z',
     ...overrides,
   };
 }
+
+/** Returns a resolved AuditResponse wrapping the given events. */
+function makeListResponse(events: ReturnType<typeof makeProtoEvent>[], total = events.length) {
+  return Promise.resolve({ events, total, page: 1, limit: 50 });
+}
+
+/** Returns an async generator that yields nothing (idle stream). */
+async function* idleStream() {
+  // Never yields — simulates a quiet live stream.
+  await new Promise(() => {});
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default: empty list, idle stream.
+  mockListAuditEvents.mockReturnValue(makeListResponse([]));
+  mockStreamAuditEvents.mockReturnValue(idleStream());
+});
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('AuditLogPage', () => {
   it('renders the page heading', async () => {
@@ -43,7 +90,6 @@ describe('AuditLogPage', () => {
   });
 
   it('shows empty state when there are no entries', async () => {
-    // default handler returns { data: [], total: 0, page: 1, limit: 50 }
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
       expect(screen.getByTestId('audit-log-empty')).toBeInTheDocument();
@@ -51,41 +97,29 @@ describe('AuditLogPage', () => {
   });
 
   it('renders entries from the API', async () => {
-    const entry = makeEntry();
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    const event = makeProtoEvent();
+    mockListAuditEvents.mockReturnValue(makeListResponse([event]));
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId(`audit-log-row-${entry.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-row-${event.id}`)).toBeInTheDocument();
     });
   });
 
   it('renders actor, event type, and record type columns', async () => {
-    const entry = makeEntry();
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    const event = makeProtoEvent();
+    mockListAuditEvents.mockReturnValue(makeListResponse([event]));
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId(`audit-log-actor-${entry.id}`)).toHaveTextContent('Test Admin');
-      expect(screen.getByTestId(`audit-log-record-type-${entry.id}`)).toBeInTheDocument();
-      expect(screen.getByTestId(`audit-log-event-${entry.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-actor-${event.id}`)).toHaveTextContent('Test Admin');
+      expect(screen.getByTestId(`audit-log-record-type-${event.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-event-${event.id}`)).toBeInTheDocument();
     });
   });
 
-  it('shows error state when the API call fails', async () => {
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ error: 'Server error' }, { status: 500 }),
-      ),
-    );
+  it('shows error state when the gRPC call fails', async () => {
+    mockListAuditEvents.mockRejectedValue(new Error('gRPC unavailable'));
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
@@ -95,11 +129,11 @@ describe('AuditLogPage', () => {
 
   it('renders the filter toggle button', () => {
     renderWithProviders(<AuditLogPage />);
-    // jsdom starts with isDesktop=false, so filters are collapsed; toggle is always visible
     expect(screen.getByTestId('filters-toggle')).toBeInTheDocument();
   });
 
   it('renders filter inputs after opening the filter panel', async () => {
+    // BreakpointProvider initialises isDesktop=false; click once to open the panel.
     renderWithProviders(<AuditLogPage />);
     fireEvent.click(screen.getByTestId('filters-toggle'));
     expect(screen.getByTestId('filter-from')).toBeInTheDocument();
@@ -114,59 +148,48 @@ describe('AuditLogPage', () => {
   it('includes "Lead" as a selectable option in the record-type filter (MINCRM-363)', async () => {
     renderWithProviders(<AuditLogPage />);
     fireEvent.click(screen.getByTestId('filters-toggle'));
-
     const select = screen.getByTestId('filter-record-type') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
     expect(optionValues).toContain('lead');
   });
 
   it('filters by lead record type when "Lead" is selected (MINCRM-363)', async () => {
-    let capturedUrl: string | undefined;
-    server.use(
-      http.get('/api/v1/audit-log', ({ request }) => {
-        capturedUrl = request.url;
-        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
-      }),
-    );
-
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));
-
     fireEvent.click(screen.getByTestId('filters-toggle'));
+
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'lead' } });
     fireEvent.click(screen.getByTestId('apply-filters-button'));
 
     await waitFor(() => {
-      expect(capturedUrl).toContain('recordType=lead');
+      const call = mockListAuditEvents.mock.calls.at(-1)?.[0] as
+        | { recordType?: string }
+        | undefined;
+      expect(call?.recordType).toBe('lead');
     });
   });
 
   it('applies filters when the Apply button is clicked', async () => {
-    let capturedUrl: string | undefined;
-    server.use(
-      http.get('/api/v1/audit-log', ({ request }) => {
-        capturedUrl = request.url;
-        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 50 });
-      }),
-    );
-
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));
-
     fireEvent.click(screen.getByTestId('filters-toggle'));
+
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
     fireEvent.click(screen.getByTestId('apply-filters-button'));
 
     await waitFor(() => {
-      expect(capturedUrl).toContain('recordType=contact');
+      const call = mockListAuditEvents.mock.calls.at(-1)?.[0] as
+        | { recordType?: string }
+        | undefined;
+      expect(call?.recordType).toBe('contact');
     });
   });
 
   it('clears filters when the Clear button is clicked', async () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));
-
     fireEvent.click(screen.getByTestId('filters-toggle'));
+
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
     fireEvent.click(screen.getByTestId('clear-filters-button'));
 
@@ -174,13 +197,12 @@ describe('AuditLogPage', () => {
   });
 
   it('shows pagination controls with next enabled when there are multiple pages (MINCRM-345)', async () => {
-    const entries = Array.from({ length: 2 }, (_, i) =>
-      makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i + 1).padStart(2, '0')}` }),
-    );
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: entries, total: 100, page: 1, limit: 50 }),
-      ),
+    const events = [
+      makeProtoEvent({ id: '00000000-0000-0000-0000-000000000001' }),
+      makeProtoEvent({ id: '00000000-0000-0000-0000-000000000002' }),
+    ];
+    mockListAuditEvents.mockReturnValue(
+      Promise.resolve({ events, total: 100, page: 1, limit: 50 }),
     );
 
     renderWithProviders(<AuditLogPage />);
@@ -192,80 +214,115 @@ describe('AuditLogPage', () => {
   });
 
   it('shows pagination controls even when all entries fit on one page (MINCRM-345)', async () => {
-    const entry = makeEntry();
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    const event = makeProtoEvent();
+    mockListAuditEvents.mockReturnValue(makeListResponse([event], 1));
 
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId(`audit-log-row-${entry.id}`));
+    await waitFor(() => screen.getByTestId(`audit-log-row-${event.id}`));
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.getByTestId('pagination-prev')).toBeDisabled();
     expect(screen.getByTestId('pagination-next')).toBeDisabled();
   });
 
   it('expands a row with field detail when the row button is clicked', async () => {
-    const entry = makeEntry({
-      event_type: 'updated',
-      field_name: 'email',
-      old_value: 'old@example.com',
-      new_value: 'new@example.com',
+    const event = makeProtoEvent({
+      action: 'updated',
+      fieldName: 'email',
+      oldValue: 'old@example.com',
+      newValue: 'new@example.com',
     });
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    mockListAuditEvents.mockReturnValue(makeListResponse([event]));
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId(`audit-log-row-${entry.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-row-${event.id}`)).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId(`audit-log-detail-${entry.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`audit-log-detail-${event.id}`)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId(`audit-log-row-button-${entry.id}`));
+    fireEvent.click(screen.getByTestId(`audit-log-row-button-${event.id}`));
 
-    expect(screen.getByTestId(`audit-log-detail-${entry.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`audit-log-detail-${event.id}`)).toBeInTheDocument();
   });
 
   it('collapses an expanded row when clicked again', async () => {
-    const entry = makeEntry({
-      event_type: 'updated',
-      field_name: 'email',
-      old_value: 'old@example.com',
-      new_value: 'new@example.com',
+    const event = makeProtoEvent({
+      action: 'updated',
+      fieldName: 'email',
+      oldValue: 'old@example.com',
+      newValue: 'new@example.com',
     });
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    mockListAuditEvents.mockReturnValue(makeListResponse([event]));
 
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId(`audit-log-row-${entry.id}`));
+    await waitFor(() => screen.getByTestId(`audit-log-row-${event.id}`));
 
-    const btn = screen.getByTestId(`audit-log-row-button-${entry.id}`);
+    const btn = screen.getByTestId(`audit-log-row-button-${event.id}`);
     fireEvent.click(btn);
-    expect(screen.getByTestId(`audit-log-detail-${entry.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`audit-log-detail-${event.id}`)).toBeInTheDocument();
 
     fireEvent.click(btn);
-    expect(screen.queryByTestId(`audit-log-detail-${entry.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`audit-log-detail-${event.id}`)).not.toBeInTheDocument();
   });
 
   it('renders the timestamp column', async () => {
-    const entry = makeEntry();
-    server.use(
-      http.get('/api/v1/audit-log', () =>
-        HttpResponse.json({ data: [entry], total: 1, page: 1, limit: 50 }),
-      ),
-    );
+    const event = makeProtoEvent();
+    mockListAuditEvents.mockReturnValue(makeListResponse([event]));
 
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId(`audit-log-time-${entry.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-time-${event.id}`)).toBeInTheDocument();
+    });
+  });
+
+  it('prepends live events from the stream to the top of the first unfiltered page', async () => {
+    const existing = makeProtoEvent({
+      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      changedBy: 'Existing',
+    });
+    const live = makeProtoEvent({
+      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      changedBy: 'Live Event',
+    });
+
+    mockListAuditEvents.mockReturnValue(makeListResponse([existing]));
+
+    async function* streamWithEvent() {
+      yield live;
+      await new Promise(() => {});
+    }
+    mockStreamAuditEvents.mockReturnValue(streamWithEvent());
+
+    renderWithProviders(<AuditLogPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`audit-log-row-${live.id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`audit-log-row-${existing.id}`)).toBeInTheDocument();
+    });
+  });
+
+  it('clears live events when a filter is applied', async () => {
+    const live = makeProtoEvent({ id: '00000000-0000-0000-0000-bbbbbbbbbbbb' });
+
+    async function* streamWithEvent() {
+      yield live;
+      await new Promise(() => {});
+    }
+    mockStreamAuditEvents.mockReturnValue(streamWithEvent());
+
+    renderWithProviders(<AuditLogPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`audit-log-row-${live.id}`)).toBeInTheDocument();
+    });
+
+    // Open the filter panel, select a record type, then apply.
+    fireEvent.click(screen.getByTestId('filters-toggle'));
+    await waitFor(() => screen.getByTestId('filter-record-type'));
+    fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
+    fireEvent.click(screen.getByTestId('apply-filters-button'));
+
+    // Live events are cleared when filters change.
+    await waitFor(() => {
+      expect(screen.queryByTestId(`audit-log-row-${live.id}`)).not.toBeInTheDocument();
     });
   });
 });

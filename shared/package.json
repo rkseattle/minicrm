@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    "./schemas/*": "./schemas/*"
+    "./schemas/*": "./schemas/*",
+    "./generated/*": "./generated/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^1.10.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

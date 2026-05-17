@@ -9,7 +9,8 @@
     "resolveJsonModule": true,
     "outDir": "./dist",
     "paths": {
-      "@minicrm/shared/schemas/*": ["../shared/schemas/*"]
+      "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
+      "@minicrm/shared/generated/*": ["../shared/generated/*"]
     }
   },
   "include": ["src/**/*", "vitest.config.ts"],

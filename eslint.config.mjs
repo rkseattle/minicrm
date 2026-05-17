@@ -28,6 +28,7 @@ const IGNORED = [
   '**/dist/**',
   '**/coverage/**',
   'db/migrations/**',
+  'shared/generated/**',
 ];
 
 // ── Base TypeScript config (all packages) ──────────────────────────────────────

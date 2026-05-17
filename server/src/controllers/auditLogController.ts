@@ -5,31 +5,8 @@
  */
 
 import type { Request, Response } from 'express';
-import {
-  listAuditLogParamsSchema,
-  recordAuditLogParamsSchema,
-} from '@minicrm/shared/schemas/auditSchema.js';
-import { listAuditLog, getRecordAuditLog, listAuditLogActors } from '../services/auditService.js';
-
-/**
- * GET /api/audit-log
- * Returns paginated, filtered system-wide audit log. Admin only.
- * Query params: from, to, userId, recordType, eventType, page, limit
- * (MINCRM-172)
- */
-export async function listAuditLogHandler(req: Request, res: Response): Promise<void> {
-  const parsed = listAuditLogParamsSchema.safeParse(req.query);
-
-  if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
-    return;
-  }
-
-  const result = await listAuditLog(parsed.data);
-  res.status(200).json(result);
-}
+import { recordAuditLogParamsSchema } from '@minicrm/shared/schemas/auditSchema.js';
+import { getRecordAuditLog, listAuditLogActors } from '../services/auditService.js';
 
 /**
  * GET /api/audit-log/record
