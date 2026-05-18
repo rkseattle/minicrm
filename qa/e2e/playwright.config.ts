@@ -51,6 +51,8 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: path.join(E2E_DIR, 'playwright-report') }],
     // HealingReporter — merges per-worker heal logs at run end (S2, MINCRM-124)
     ['./framework/healing/healing-reporter.ts'],
+    // MINCRM-369: PerfReporter — merges per-worker perf samples into perf-report.json.
+    ['./framework/performance/perf-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
     // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
     ['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }],
@@ -99,6 +101,19 @@ export default defineConfig({
         ...devices['Pixel 5'],
         // MINCRM-192: Load pre-authenticated admin session for all tests.
         // Auth-specific specs opt out via test.use({ storageState: undefined }).
+        storageState: ADMIN_STORAGE_STATE,
+      },
+    },
+    // MINCRM-369: Dedicated performance project. Runs only tests tagged @perf.
+    // Kept separate from functional tests so perf failures are unambiguous and
+    // do not slow down the main functional suite.
+    // Run with: npm run test:perf --workspace=minicrm-qa
+    {
+      name: 'perf',
+      grep: /@perf/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
         storageState: ADMIN_STORAGE_STATE,
       },
     },
