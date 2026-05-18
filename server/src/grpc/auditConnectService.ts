@@ -18,7 +18,7 @@ import cookieLib from 'cookie';
 import logger from '../logger.js';
 import { findUserById } from '../services/userService.js';
 import { listAuditLog, maskAuditEvent } from '../services/auditService.js';
-import type { AuditLogRow, AuditRecordType } from '../services/auditService.js';
+import type { AuditLogRow, AuditRecordType, AuditEventType } from '../services/auditService.js';
 import { auditEventBus } from '../services/auditEventBus.js';
 import type { AuditNotification } from '../services/auditEventBus.js';
 import type { JwtTokenPayload } from '../types/express.js';
@@ -139,6 +139,8 @@ export function registerAuditService(router: ConnectRouter): void {
           recordId: req.recordId || undefined,
           from: req.after || undefined,
           to: req.before || undefined,
+          eventType: (req.eventType || undefined) as AuditEventType | undefined,
+          userId: req.changedById || undefined,
           page,
           limit,
         });

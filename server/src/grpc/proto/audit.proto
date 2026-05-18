@@ -3,12 +3,14 @@ package minicrm.audit.v1;
 option java_package = "com.minicrm.audit.v1";
 
 message AuditRequest {
-  string record_type = 1;  // empty = all types
-  string record_id   = 2;  // empty = all records
-  string after       = 3;  // ISO 8601 lower bound
-  string before      = 4;  // ISO 8601 upper bound
-  int32  page        = 5;  // 1-based, unary RPC only
-  int32  limit       = 6;  // default 25, unary RPC only
+  string record_type   = 1;  // empty = all types
+  string record_id     = 2;  // empty = all records
+  string after         = 3;  // ISO 8601 lower bound
+  string before        = 4;  // ISO 8601 upper bound
+  int32  page          = 5;  // 1-based, unary RPC only
+  int32  limit         = 6;  // default 25, unary RPC only
+  string event_type    = 7;  // empty = all event types
+  string changed_by_id = 8;  // empty = all users
 }
 
 message AuditEvent {

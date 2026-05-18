@@ -160,6 +160,8 @@ export default function AuditLogPage() {
           recordId: appliedFilters.recordId ?? '',
           after: appliedFilters.from ?? '',
           before: appliedFilters.to ?? '',
+          eventType: appliedFilters.eventType ?? '',
+          changedById: appliedFilters.userId ?? '',
           page,
           limit: PAGE_SIZE,
         });
