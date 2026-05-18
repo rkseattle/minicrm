@@ -185,6 +185,20 @@ describe('AuditLogPage', () => {
     });
   });
 
+  it('passes eventType to the gRPC call when an event type is selected', async () => {
+    renderWithProviders(<AuditLogPage />);
+    await waitFor(() => screen.getByTestId('audit-log-empty'));
+    fireEvent.click(screen.getByTestId('filters-toggle'));
+
+    fireEvent.change(screen.getByTestId('filter-event-type'), { target: { value: 'created' } });
+    fireEvent.click(screen.getByTestId('apply-filters-button'));
+
+    await waitFor(() => {
+      const call = mockListAuditEvents.mock.calls.at(-1)?.[0] as { eventType?: string } | undefined;
+      expect(call?.eventType).toBe('created');
+    });
+  });
+
   it('clears filters when the Clear button is clicked', async () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty'));

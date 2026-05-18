@@ -59,6 +59,20 @@ export class AuditRequest extends Message<AuditRequest> {
    */
   limit = 0;
 
+  /**
+   * empty = all event types
+   *
+   * @generated from field: string event_type = 7;
+   */
+  eventType = '';
+
+  /**
+   * empty = all users
+   *
+   * @generated from field: string changed_by_id = 8;
+   */
+  changedById = '';
+
   constructor(data?: PartialMessage<AuditRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -73,6 +87,8 @@ export class AuditRequest extends Message<AuditRequest> {
     { no: 4, name: 'before', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
     { no: 5, name: 'page', kind: 'scalar', T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: 'limit', kind: 'scalar', T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: 'event_type', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: 'changed_by_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuditRequest {
