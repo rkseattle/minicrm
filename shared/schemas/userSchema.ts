@@ -142,6 +142,17 @@ export const userResponseSchema = z.object({
   created_at: z.string().or(z.date()),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+/** Envelope returned by GET /api/auth/me — { user } */
+export const authMeResponseEnvelopeSchema = z.object({ user: userResponseSchema });
+
+/** Envelope returned by POST /api/users/invite — { user, inviteToken } */
+export const inviteUserResponseEnvelopeSchema = z.object({
+  user: userResponseSchema,
+  inviteToken: z.string().min(1),
+});
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type UserRole = (typeof USER_ROLES)[number];

@@ -57,6 +57,10 @@ export const tagResponseSchema = z.object({
   updated_at: z.string().or(z.date()),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+export const tagResponseEnvelopeSchema = z.object({ tag: tagResponseSchema });
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type CreateTagInput = z.infer<typeof createTagSchema>;
