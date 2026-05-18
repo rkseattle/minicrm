@@ -169,14 +169,59 @@ export function truncateDomSnapshot(snapshot: string, selector: string): string 
 }
 
 /**
+ * JS snippet injected into the page (once per page) to install a PointerTracker.
+ *
+ * The tracker listens for `mouseover` and `click` events in capture phase and
+ * records the closest semantic ancestor (main, [role="dialog"], form) of the
+ * last interacted element as `window.__pointerTrackerContainer` (outerHTML string).
+ *
+ * Idempotent: a guard flag `window.__pointerTrackerInstalled` prevents duplicate
+ * listener registration if this snippet is evaluated multiple times on the same page.
+ *
+ * Cast as `() => void` — runs only inside page.evaluate (browser context, not Node).
+ */
+const injectPointerTracker = /* @__PURE__ */ (() => {
+  return new Function(`
+    if (window.__pointerTrackerInstalled) return;
+    window.__pointerTrackerInstalled = true;
+
+    function findSemanticAncestor(el) {
+      let node = el;
+      while (node && node !== document.body) {
+        const tag = node.tagName ? node.tagName.toLowerCase() : '';
+        const role = node.getAttribute ? node.getAttribute('role') : null;
+        if (tag === 'main' || tag === 'form' || role === 'dialog') {
+          return node.outerHTML;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    }
+
+    function onPointer(event) {
+      const container = findSemanticAncestor(event.target);
+      if (container !== null) {
+        window.__pointerTrackerContainer = container;
+      }
+    }
+
+    document.addEventListener('mouseover', onPointer, { capture: true, passive: true });
+    document.addEventListener('click',     onPointer, { capture: true, passive: true });
+  `) as () => void;
+})();
+
+/**
  * JS snippet injected into the page to extract a scoped DOM snapshot.
  *
  * Strategy (in order):
- * 1. Walk document.activeElement's ancestor chain for the nearest semantic
+ * 1. Use window.__pointerTrackerContainer — the semantic container of the last
+ *    clicked/hovered element, recorded by the PointerTracker. Accurate even when
+ *    Playwright click interactions do not transfer keyboard focus.
+ * 2. Walk document.activeElement's ancestor chain for the nearest semantic
  *    container (main, [role="dialog"], form). Accurate when focus is inside
  *    the container being healed.
- * 2. Fall back to the first matching semantic container in document order.
- * 3. Fall back to document.body.
+ * 3. Fall back to the first matching semantic container in document order.
+ * 4. Fall back to document.body.
  *
  * This function is serialized and evaluated in the browser context, so it must
  * be self-contained — no closure references.
@@ -188,7 +233,12 @@ const getScopedDomSnippet = /* @__PURE__ */ (() => {
   return new Function(`
     const scopeSelectors = ['main', '[role="dialog"]', 'form'];
 
-    // Walk activeElement ancestors for the nearest semantic container.
+    // 1. PointerTracker result — set by the injected tracker on click/mouseover.
+    if (window.__pointerTrackerContainer) {
+      return window.__pointerTrackerContainer;
+    }
+
+    // 2. Walk activeElement ancestors for the nearest semantic container.
     let node = document.activeElement && document.activeElement.parentElement;
     while (node && node !== document.body) {
       const tag = node.tagName.toLowerCase();
@@ -199,7 +249,7 @@ const getScopedDomSnippet = /* @__PURE__ */ (() => {
       node = node.parentElement;
     }
 
-    // Fall back to first matching container in document order.
+    // 3. Fall back to first matching container in document order.
     for (const sel of scopeSelectors) {
       const el = document.querySelector(sel);
       if (el) return el.outerHTML;
@@ -368,6 +418,16 @@ export class AiHealer {
     // Guard: opt-in only — no API call when AI_HEALING is absent.
     if (!process.env['AI_HEALING']) {
       return null;
+    }
+
+    // Inject the PointerTracker (idempotent) so that getScopedDomSnippet can
+    // read the last-interacted container even when Playwright clicks do not
+    // transfer keyboard focus.
+    try {
+      await page.evaluate(injectPointerTracker);
+    } catch {
+      // Non-fatal: tracker injection failure degrades gracefully to the
+      // activeElement and document-order fallbacks in getScopedDomSnippet.
     }
 
     // Extract a scoped DOM snapshot from the live page.
