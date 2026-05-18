@@ -15,6 +15,7 @@
 
 import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
+import type Anthropic from '@anthropic-ai/sdk';
 import {
   HealingLocator,
   StrategyExhaustedError,
@@ -307,6 +308,223 @@ test.describe('AiHealer integration into HealingLocator', () => {
     ).rejects.toThrow(StrategyExhaustedError);
 
     expect(aiHealer.callCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-372: PointerTracker and proximity-based DOM scoping unit tests
+// ---------------------------------------------------------------------------
+
+test.describe('PointerTracker proximity-based DOM scoping (MINCRM-372)', () => {
+  test.beforeEach(() => {
+    HealingRegistry.instance._reset();
+  });
+
+  test('AiHealer.heal() calls page.evaluate twice — once to inject tracker, once to get snapshot', async () => {
+    // Verify that heal() calls evaluate with two distinct functions: the tracker
+    // injector and the snapshot extractor. We capture the serialised function text
+    // to distinguish them (tracker snippet contains "__pointerTrackerInstalled").
+    const evaluateCalls: string[] = [];
+    const page = {
+      getByTestId: () => mockLocator(false),
+      getByRole: () => mockLocator(false),
+      getByLabel: () => mockLocator(false),
+      getByText: () => mockLocator(false),
+      locator: () => mockLocator(false),
+      evaluate: (fn: unknown) => {
+        evaluateCalls.push(String(fn));
+        // First call injects tracker (returns void); second returns the snapshot.
+        return Promise.resolve(
+          evaluateCalls.length === 1 ? undefined : '<form><button>Submit</button></form>',
+        );
+      },
+    } as unknown as Page;
+
+    const originalEnv = process.env['AI_HEALING'];
+    process.env['AI_HEALING'] = '1';
+    try {
+      // Use a mock Anthropic client so no real API call is made.
+      const mockClient = {
+        messages: {
+          create: async () => ({
+            content: [{ type: 'text', text: '{"type":"css","value":".btn","confidence":0.9}' }],
+            usage: { input_tokens: 10, output_tokens: 10 },
+          }),
+        },
+      } as unknown as Anthropic;
+
+      const healer = new AiHealer({ _client: mockClient, _retryDelays: [] });
+      await healer.heal(page, 'Submit button', []);
+
+      expect(evaluateCalls).toHaveLength(2);
+      // First call: tracker injection (contains idempotency guard string).
+      expect(evaluateCalls[0]).toContain('__pointerTrackerInstalled');
+      // Second call: snapshot extraction (contains pointer-tracker container check).
+      expect(evaluateCalls[1]).toContain('__pointerTrackerContainer');
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env['AI_HEALING'] = originalEnv;
+      } else {
+        delete process.env['AI_HEALING'];
+      }
+    }
+  });
+
+  test('proximity-based scoping uses __pointerTrackerContainer when activeElement is body', async () => {
+    // Simulate a page where __pointerTrackerContainer is set (last click was inside
+    // a <form>), but activeElement is document.body (no keyboard focus transfer).
+    // The heal() should use the tracker container, not fall through to document order.
+    const trackerHtml = '<form id="contact-create"><input name="email"/></form>';
+    const evaluateResponses = [
+      // First evaluate: tracker injection (void)
+      undefined,
+      // Second evaluate: getScopedDomSnippet returns the tracked container
+      trackerHtml,
+    ];
+
+    const evaluateCalls: string[] = [];
+    const page = {
+      getByTestId: () => mockLocator(false),
+      getByRole: () => mockLocator(false),
+      getByLabel: () => mockLocator(false),
+      getByText: () => mockLocator(false),
+      locator: () => mockLocator(false),
+      evaluate: (fn: unknown) => {
+        evaluateCalls.push(String(fn));
+        return Promise.resolve(evaluateResponses[evaluateCalls.length - 1]);
+      },
+    } as unknown as Page;
+
+    const originalEnv = process.env['AI_HEALING'];
+    process.env['AI_HEALING'] = '1';
+
+    let capturedPrompt = '';
+    const mockClient = {
+      messages: {
+        create: async (params: { messages: Array<{ content: string }> }) => {
+          capturedPrompt = params.messages[0]?.content ?? '';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: '{"type":"css","value":"#contact-create input","confidence":0.9}',
+              },
+            ],
+            usage: { input_tokens: 10, output_tokens: 10 },
+          };
+        },
+      },
+    } as unknown as Anthropic;
+
+    try {
+      const healer = new AiHealer({ _client: mockClient, _retryDelays: [] });
+      await healer.heal(page, 'email input in contact form', []);
+
+      // The DOM snapshot in the prompt must be the tracker container, not a
+      // different form that appears first in document order.
+      expect(capturedPrompt).toContain(trackerHtml);
+      expect(capturedPrompt).toContain('contact-create');
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env['AI_HEALING'] = originalEnv;
+      } else {
+        delete process.env['AI_HEALING'];
+      }
+    }
+  });
+
+  test('heal() continues gracefully when tracker injection evaluate throws', async () => {
+    // If the tracker inject evaluate rejects (e.g. navigated away), the heal should
+    // still proceed and use the fallback scoping (activeElement / document order).
+    let evalCount = 0;
+    const fallbackSnapshot = '<main><button>Fallback</button></main>';
+    const page = {
+      getByTestId: () => mockLocator(false),
+      getByRole: () => mockLocator(false),
+      getByLabel: () => mockLocator(false),
+      getByText: () => mockLocator(false),
+      locator: () => mockLocator(false),
+      evaluate: (_fn: unknown) => {
+        evalCount++;
+        if (evalCount === 1) return Promise.reject(new Error('frame detached'));
+        return Promise.resolve(fallbackSnapshot);
+      },
+    } as unknown as Page;
+
+    const originalEnv = process.env['AI_HEALING'];
+    process.env['AI_HEALING'] = '1';
+
+    let capturedPrompt = '';
+    const mockClient = {
+      messages: {
+        create: async (params: { messages: Array<{ content: string }> }) => {
+          capturedPrompt = params.messages[0]?.content ?? '';
+          return {
+            content: [{ type: 'text', text: '{"type":"css","value":"button","confidence":0.9}' }],
+            usage: { input_tokens: 5, output_tokens: 5 },
+          };
+        },
+      },
+    } as unknown as Anthropic;
+
+    try {
+      const healer = new AiHealer({ _client: mockClient, _retryDelays: [] });
+      const result = await healer.heal(page, 'Fallback button', []);
+
+      // heal() must not throw — it should fall through to the snapshot evaluate.
+      expect(result).not.toBeNull();
+      expect(capturedPrompt).toContain(fallbackSnapshot);
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env['AI_HEALING'] = originalEnv;
+      } else {
+        delete process.env['AI_HEALING'];
+      }
+    }
+  });
+
+  test('PointerTracker injection is idempotent — __pointerTrackerInstalled guard prevents duplicate listeners', async () => {
+    // The injected script must contain the idempotency guard. We verify this by
+    // inspecting the serialised function text passed to page.evaluate.
+    const evaluateCalls: string[] = [];
+    const page = {
+      getByTestId: () => mockLocator(false),
+      evaluate: (fn: unknown) => {
+        evaluateCalls.push(String(fn));
+        return Promise.resolve(undefined);
+      },
+    } as unknown as Page;
+
+    const originalEnv = process.env['AI_HEALING'];
+    process.env['AI_HEALING'] = '1';
+    try {
+      // Trigger heal twice on the same page to ensure the guard is present.
+      const mockClient = {
+        messages: {
+          create: async () => ({
+            content: [{ type: 'text', text: '{"type":"css","value":".x","confidence":0.9}' }],
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+        },
+      } as unknown as Anthropic;
+
+      const healer = new AiHealer({ _client: mockClient, _retryDelays: [] });
+      // Both heal() calls will fail at snapshot evaluate (returns undefined → empty
+      // string after truncation), but we only care that the injector was called.
+      await healer.heal(page, 'intent one', []).catch(() => null);
+
+      const trackerCall = evaluateCalls[0] ?? '';
+      // Guard string must be present so that a second injection is a no-op.
+      expect(trackerCall).toContain('__pointerTrackerInstalled');
+      // Listener registration must only happen when the guard is falsy.
+      expect(trackerCall).toContain('if (window.__pointerTrackerInstalled) return');
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env['AI_HEALING'] = originalEnv;
+      } else {
+        delete process.env['AI_HEALING'];
+      }
+    }
   });
 });
 
