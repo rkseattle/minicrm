@@ -73,6 +73,10 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Onboarding banner (MINCRM-256)', () => {
+  // Each test involves REST auth + browser login + networkidle + banner
+  // interactions — give 60 s per test to absorb CI resource contention.
+  test.setTimeout(60_000);
+
   test('@functional F-OB1: banner is visible for admin when is_first_run is true', async ({
     page,
     restClient,
