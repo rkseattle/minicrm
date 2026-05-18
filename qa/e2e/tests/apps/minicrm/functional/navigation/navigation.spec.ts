@@ -548,6 +548,10 @@ test.describe.serial('Layout-mutating tests', () => {
   // ── Layout switching ────────────────────────────────────────────────────────
 
   test.describe('Layout switching', () => {
+    // Layout-switch tests navigate to Admin Settings, trigger a PATCH, then
+    // reload — give each test 60 s to absorb CI resource contention.
+    test.setTimeout(60_000);
+
     test('@functional F8-LS1: switching layout in Settings renders the new nav immediately without full page reload', async ({
       page,
       restClient,
