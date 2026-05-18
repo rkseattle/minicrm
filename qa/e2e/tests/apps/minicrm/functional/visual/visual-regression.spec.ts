@@ -67,6 +67,10 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[visual-regression] E2E_ADMIN_PASSWORD is not set');
 
+// Visual tests involve browser login, page load, canvas rendering, and pixel-
+// diff computation — give each test 60 s to absorb CI resource contention.
+test.setTimeout(60_000);
+
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
 });
