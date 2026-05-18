@@ -109,6 +109,10 @@ export const activityResponseSchema = z.object({
   version: z.number().int(),
 });
 
+// ── Envelope schemas (for API response validation) ─────────────────────────────
+
+export const activityResponseEnvelopeSchema = z.object({ activity: activityResponseSchema });
+
 // ── Inferred types ─────────────────────────────────────────────────────────────
 
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

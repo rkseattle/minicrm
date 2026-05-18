@@ -24,6 +24,12 @@ import type { TestDataManager } from './test-data-manager.js';
 import { contactResponseEnvelopeSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import { accountResponseEnvelopeSchema } from '@minicrm/shared/schemas/accountSchema.js';
 import { dealResponseEnvelopeSchema } from '@minicrm/shared/schemas/dealSchema.js';
+import { tagResponseEnvelopeSchema } from '@minicrm/shared/schemas/tagSchema.js';
+import { activityResponseEnvelopeSchema } from '@minicrm/shared/schemas/activitySchema.js';
+import {
+  authMeResponseEnvelopeSchema,
+  inviteUserResponseEnvelopeSchema,
+} from '@minicrm/shared/schemas/userSchema.js';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -300,8 +306,10 @@ export async function createTestTag(
     name: overrides.name ?? `test-tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
 
-  // Server returns { tag: TagRow } on 201.
-  const response = await restClient.post<{ tag: TestTag }>('/api/v1/tags', payload);
+  // Server returns { tag: TagRow } on 201 — validate the envelope (MINCRM-370).
+  const response = await restClient.post<{ tag: TestTag }>('/api/v1/tags', payload, {
+    schema: tagResponseEnvelopeSchema,
+  });
   const tag = response.body.tag;
 
   // Tags require admin to delete (DELETE /api/tags/:id is admin-only).
@@ -375,8 +383,14 @@ export async function createTestActivity(
   if (overrides.notes !== undefined) payload['notes'] = overrides.notes;
   if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
 
-  // Server returns { activity: ActivityRow } — unwrap.
-  const response = await restClient.post<{ activity: TestActivity }>('/api/v1/activities', payload);
+  // Server returns { activity: ActivityRow } — validate the envelope (MINCRM-370).
+  const response = await restClient.post<{ activity: TestActivity }>(
+    '/api/v1/activities',
+    payload,
+    {
+      schema: activityResponseEnvelopeSchema,
+    },
+  );
   const activity = response.body.activity;
 
   testData.register('activity', activity.id, `/api/v1/activities/${activity.id}`);
@@ -433,10 +447,11 @@ export async function createTestUser(
     role: overrides.role ?? 'rep',
   };
 
-  // Server returns { user, inviteToken }.
+  // Server returns { user, inviteToken } — validate the envelope (MINCRM-370).
   const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
     '/api/v1/users/invite',
     payload,
+    { schema: inviteUserResponseEnvelopeSchema },
   );
   const { user, inviteToken } = response.body;
 
@@ -469,7 +484,9 @@ export async function loginAndVerify(
   password: string,
 ): Promise<void> {
   await restClient.post('/api/v1/auth/login', { email, password });
-  await restClient.get('/api/v1/auth/me');
+  // Validate the /me response envelope so a session-shape regression fails here
+  // immediately rather than surfacing as a type error in downstream helpers (MINCRM-370).
+  await restClient.get('/api/v1/auth/me', { schema: authMeResponseEnvelopeSchema });
 }
 
 // ---------------------------------------------------------------------------
