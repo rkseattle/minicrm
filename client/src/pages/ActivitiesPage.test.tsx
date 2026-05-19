@@ -53,7 +53,7 @@ describe('ActivitiesPage', () => {
     );
     renderWithProviders(<ActivitiesPage />);
     await waitFor(() => {
-      expect(screen.getByTestId('activities-page-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('activities-page-empty-state')).toBeInTheDocument();
     });
   });
 

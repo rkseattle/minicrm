@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -85,6 +86,22 @@ export default function LeadsPage() {
 
   const leads: LeadResponse[] = data?.data ?? [];
   const total = data?.total ?? 0;
+
+  const hasActiveFilters =
+    ownerFilter === 'me' ||
+    !!statusFilter ||
+    !!sourceFilter ||
+    includeDisqualified ||
+    includeConverted;
+
+  function clearFilters(): void {
+    setOwnerFilter('all');
+    setStatusFilter('');
+    setSourceFilter('');
+    setIncludeDisqualified(false);
+    setIncludeConverted(false);
+    setPage(1);
+  }
 
   const createMutation = useMutation({
     mutationFn: ({ values, force }: { values: LeadFormValues; force: boolean }) =>
@@ -351,11 +368,36 @@ export default function LeadsPage() {
           <div className="flex-1 flex flex-col min-h-0 mb-8">
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
               {leads.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-gray-500" data-testid="leads-empty">
-                    {t('leads.empty')}
-                  </p>
-                </div>
+                <EmptyState
+                  data-testid="leads-empty-state"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-12 w-12"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  }
+                  title={hasActiveFilters ? t('leads.filteredEmptyTitle') : t('leads.emptyTitle')}
+                  description={
+                    hasActiveFilters
+                      ? t('common.filteredEmptyDescription')
+                      : t('leads.emptyDescription')
+                  }
+                  action={
+                    hasActiveFilters
+                      ? { label: t('common.clearFilters'), onClick: clearFilters }
+                      : { label: t('leads.emptyAction'), onClick: () => setShowForm(true) }
+                  }
+                />
               ) : (
                 <div className="flex-1 overflow-auto min-h-0">
                   <table className="min-w-full divide-y divide-gray-200">

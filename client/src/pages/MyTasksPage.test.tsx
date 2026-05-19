@@ -33,7 +33,7 @@ describe('MyTasksPage', () => {
     renderWithProviders(<MyTasksPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('my-tasks-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('my-tasks-empty-state')).toBeInTheDocument();
     });
   });
 
@@ -226,7 +226,7 @@ describe('MyTasksPage', () => {
       renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
 
       await waitFor(() => {
-        expect(screen.getByTestId('my-tasks-empty')).toBeInTheDocument();
+        expect(screen.getByTestId('my-tasks-empty-state')).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId(`task-row-${MY_TASK_1.id}`)).not.toBeInTheDocument();

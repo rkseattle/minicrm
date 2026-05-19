@@ -47,7 +47,8 @@ describe('ContactsPage', () => {
     );
     renderWithProviders(<ContactsPage />);
     await waitFor(() => {
-      expect(screen.getByText('No contacts yet. Add one to get started.')).toBeInTheDocument();
+      expect(screen.getByTestId('contacts-empty-state')).toBeInTheDocument();
+      expect(screen.getByText('No contacts yet')).toBeInTheDocument();
     });
   });
 

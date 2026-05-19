@@ -71,7 +71,7 @@ describe('AutomationRulesPage', () => {
       );
       renderWithProviders(<AutomationRulesPage />);
       await waitFor(() => {
-        expect(screen.getByTestId('rules-empty')).toBeInTheDocument();
+        expect(screen.getByTestId('rules-empty-state')).toBeInTheDocument();
       });
     });
 

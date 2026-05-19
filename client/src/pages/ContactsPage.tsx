@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
@@ -212,6 +213,12 @@ export default function ContactsPage() {
   // Server handles sorting and pagination — use data as-is
   const contacts: ContactResponse[] = data?.data ?? [];
 
+  const hasActiveFilters =
+    !!debouncedSearch ||
+    !!debouncedAccountSearch ||
+    ownerFilter === 'me' ||
+    selectedTagIds.length > 0;
+
   // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
@@ -222,6 +229,21 @@ export default function ContactsPage() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, selectedTagKey]);
+
+  function clearFilters(): void {
+    setSearchInput('');
+    setAccountSearchInput('');
+    setSelectedTagIds([]);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('owner');
+        return next;
+      },
+      { replace: true },
+    );
+    setPage(1);
+  }
 
   const allVisibleIds = contacts.map((c) => c.id);
   const allVisibleSelected =
@@ -554,11 +576,43 @@ export default function ContactsPage() {
         {!isLoading && !isError && (
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
             {contacts.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-gray-500" data-testid="contacts-empty-state">
-                  {t('contacts.empty')}
-                </p>
-              </div>
+              <EmptyState
+                data-testid="contacts-empty-state"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                }
+                title={
+                  hasActiveFilters ? t('contacts.filteredEmptyTitle') : t('contacts.emptyTitle')
+                }
+                description={
+                  hasActiveFilters
+                    ? t('common.filteredEmptyDescription')
+                    : t('contacts.emptyDescription')
+                }
+                action={
+                  hasActiveFilters
+                    ? { label: t('common.clearFilters'), onClick: clearFilters }
+                    : { label: t('contacts.emptyAction'), onClick: () => setShowForm(true) }
+                }
+                secondaryAction={
+                  !hasActiveFilters && isAdmin
+                    ? { label: t('contacts.emptyImportAction'), to: '/admin/settings' }
+                    : undefined
+                }
+              />
             ) : (
               <div className="flex-1 overflow-auto min-h-0">
                 {isDesktop ? (

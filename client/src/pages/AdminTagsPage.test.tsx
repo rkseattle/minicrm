@@ -50,7 +50,7 @@ describe('AdminTagsPage', () => {
     );
     renderWithProviders(<AdminTagsPage />);
     await waitFor(() => {
-      expect(screen.getByTestId('admin-tags-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('admin-tags-empty-state')).toBeInTheDocument();
     });
   });
 
@@ -191,7 +191,7 @@ describe('AdminTagsPage', () => {
     });
     await userEvent.click(screen.getByTestId(`delete-tag-${TAG_1.id}`));
     await waitFor(() => {
-      expect(screen.getByTestId('admin-tags-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('admin-tags-empty-state')).toBeInTheDocument();
     });
   });
 

@@ -14,10 +14,11 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActivities, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
@@ -60,6 +61,7 @@ function linkedRecordPath(activity: ActivityResponse): string | null {
  */
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [searchParams] = useSearchParams();
@@ -99,6 +101,13 @@ export default function ActivitiesPage() {
   });
 
   const activities = data?.data ?? [];
+
+  const hasActiveFilters = !!(
+    typeParam ??
+    startParam ??
+    endParam ??
+    (isAdmin ? ownerParam : undefined)
+  );
 
   /** Build a human-readable description of active filters to show as a sub-heading. */
   const filterSummary = useMemo(() => {
@@ -144,11 +153,43 @@ export default function ActivitiesPage() {
         {!isLoading && !isError && (
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
             {activities.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-sm text-gray-500" data-testid="activities-page-empty">
-                  {t('activitiesPage.empty')}
-                </p>
-              </div>
+              <EmptyState
+                data-testid="activities-page-empty-state"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                }
+                title={
+                  hasActiveFilters
+                    ? t('activitiesPage.filteredEmptyTitle')
+                    : t('activitiesPage.emptyTitle')
+                }
+                description={
+                  hasActiveFilters
+                    ? t('common.filteredEmptyDescription')
+                    : t('activitiesPage.emptyDescription')
+                }
+                action={
+                  hasActiveFilters
+                    ? {
+                        label: t('common.clearFilters'),
+                        onClick: () => navigate('/activities', { replace: true }),
+                      }
+                    : undefined
+                }
+              />
             ) : (
               <div
                 className="flex-1 overflow-auto min-h-0"

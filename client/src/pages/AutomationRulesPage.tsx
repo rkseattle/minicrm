@@ -15,6 +15,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 import {
@@ -771,9 +772,28 @@ export default function AutomationRulesPage() {
           <div className="flex-1 flex flex-col min-h-0 mb-8">
             {data.data.length === 0 && !showForm ? (
               <div className="flex-1 flex items-center justify-center bg-white rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-500 text-center py-12" data-testid="rules-empty">
-                  {t('automation.empty')}
-                </p>
+                <EmptyState
+                  data-testid="rules-empty-state"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-12 w-12"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  }
+                  title={t('automation.emptyTitle')}
+                  description={t('automation.emptyDescription')}
+                  action={{ label: t('automation.emptyAction'), onClick: () => setShowForm(true) }}
+                />
               </div>
             ) : (
               <div

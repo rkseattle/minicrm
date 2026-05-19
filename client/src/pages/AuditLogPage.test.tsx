@@ -92,7 +92,7 @@ describe('AuditLogPage', () => {
   it('shows empty state when there are no entries', async () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => {
-      expect(screen.getByTestId('audit-log-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('audit-log-empty-state')).toBeInTheDocument();
     });
   });
 
@@ -155,7 +155,7 @@ describe('AuditLogPage', () => {
 
   it('filters by lead record type when "Lead" is selected (MINCRM-363)', async () => {
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId('audit-log-empty'));
+    await waitFor(() => screen.getByTestId('audit-log-empty-state'));
     fireEvent.click(screen.getByTestId('filters-toggle'));
 
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'lead' } });
@@ -171,7 +171,7 @@ describe('AuditLogPage', () => {
 
   it('applies filters when the Apply button is clicked', async () => {
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId('audit-log-empty'));
+    await waitFor(() => screen.getByTestId('audit-log-empty-state'));
     fireEvent.click(screen.getByTestId('filters-toggle'));
 
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });
@@ -187,7 +187,7 @@ describe('AuditLogPage', () => {
 
   it('passes eventType to the gRPC call when an event type is selected', async () => {
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId('audit-log-empty'));
+    await waitFor(() => screen.getByTestId('audit-log-empty-state'));
     fireEvent.click(screen.getByTestId('filters-toggle'));
 
     fireEvent.change(screen.getByTestId('filter-event-type'), { target: { value: 'created' } });
@@ -201,7 +201,7 @@ describe('AuditLogPage', () => {
 
   it('clears filters when the Clear button is clicked', async () => {
     renderWithProviders(<AuditLogPage />);
-    await waitFor(() => screen.getByTestId('audit-log-empty'));
+    await waitFor(() => screen.getByTestId('audit-log-empty-state'));
     fireEvent.click(screen.getByTestId('filters-toggle'));
 
     fireEvent.change(screen.getByTestId('filter-record-type'), { target: { value: 'contact' } });

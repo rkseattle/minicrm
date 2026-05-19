@@ -7,6 +7,7 @@
 
 import { useTranslation } from 'react-i18next';
 import DealCard from '@/components/DealCard.js';
+import EmptyState from '@/components/EmptyState.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 
@@ -38,6 +39,8 @@ interface StageColumnProps {
    * Used to disambiguate columns rendered in multiple views (e.g. "mobile-").
    */
   testIdPrefix?: string;
+  /** Called when the user clicks "Add deal" in the column's empty state */
+  onAddDeal?: () => void;
 }
 
 /** CSS classes for the column border and background */
@@ -150,6 +153,7 @@ export default function StageColumn({
   updatingDealIds,
   fullWidth = false,
   testIdPrefix = '',
+  onAddDeal,
 }: StageColumnProps) {
   const { t, i18n } = useTranslation();
   const slug = stageSlug(stage);
@@ -223,12 +227,28 @@ export default function StageColumn({
       {/* Deal cards */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-16">
         {deals.length === 0 ? (
-          <p
+          <EmptyState
             data-testid={`${testIdPrefix}stage-column-empty-${slug}`}
-            className="text-xs text-gray-600 text-center py-4"
-          >
-            {t('pipeline.emptyStage')}
-          </p>
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            }
+            title={t('deals.emptyTitle')}
+            description={t('deals.emptyDescription')}
+            action={onAddDeal ? { label: t('deals.emptyAction'), onClick: onAddDeal } : undefined}
+          />
         ) : (
           deals.map((deal) => (
             <DealCard

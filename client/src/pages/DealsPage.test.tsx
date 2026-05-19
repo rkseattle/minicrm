@@ -222,7 +222,8 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     await waitFor(() => {
-      expect(screen.getByText('No deals yet. Add one to get started.')).toBeInTheDocument();
+      expect(screen.getByTestId('deals-list-empty-state')).toBeInTheDocument();
+      expect(screen.getByText('No deals in your pipeline')).toBeInTheDocument();
     });
   });
 

@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
@@ -168,6 +169,13 @@ export default function AccountsPage() {
   // Server handles sorting and pagination — use data as-is
   const accounts: AccountResponse[] = data?.data ?? [];
 
+  const hasActiveFilters =
+    !!debouncedSearch ||
+    !!debouncedIndustry ||
+    ownerFilter === 'me' ||
+    !!accountTypeFilter ||
+    selectedTagIds.length > 0;
+
   // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
@@ -177,6 +185,22 @@ export default function AccountsPage() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [debouncedSearch, debouncedIndustry, ownerFilter, accountTypeFilter, page, selectedTagKey]);
+
+  function clearFilters(): void {
+    setSearchInput('');
+    setIndustryInput('');
+    setAccountTypeFilter('');
+    setSelectedTagIds([]);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('owner');
+        return next;
+      },
+      { replace: true },
+    );
+    setPage(1);
+  }
 
   const allVisibleIds = accounts.map((a) => a.id);
   const allVisibleSelected =
@@ -476,9 +500,38 @@ export default function AccountsPage() {
         {!isLoading && !isError && (
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
             {accounts.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-gray-500">{t('accounts.empty')}</p>
-              </div>
+              <EmptyState
+                data-testid="accounts-empty-state"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                }
+                title={
+                  hasActiveFilters ? t('accounts.filteredEmptyTitle') : t('accounts.emptyTitle')
+                }
+                description={
+                  hasActiveFilters
+                    ? t('common.filteredEmptyDescription')
+                    : t('accounts.emptyDescription')
+                }
+                action={
+                  hasActiveFilters
+                    ? { label: t('common.clearFilters'), onClick: clearFilters }
+                    : { label: t('accounts.emptyAction'), onClick: () => setShowForm(true) }
+                }
+              />
             ) : (
               <div className="flex-1 overflow-auto min-h-0">
                 {isDesktop ? (
