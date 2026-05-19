@@ -714,11 +714,11 @@
         "skipUnresolvableAccounts": "Ignorer les lignes dont le nom de compte ne correspond à aucun compte existant"
       }
     },
-    "onboarding": {
-      "resetTitle": "Réinitialiser l'intégration",
-      "resetHint": "Affiche à nouveau la bannière de configuration guidée au prochain chargement de page. Utile après une reconfiguration ou à des fins de démonstration.",
-      "resetButton": "Réinitialiser l'intégration",
-      "resetSuccess": "Intégration réinitialisée. La bannière de configuration réapparaîtra au prochain chargement de page.",
+    "setupChecklist": {
+      "resetTitle": "Réinitialiser la liste de configuration",
+      "resetHint": "Affiche à nouveau le widget de liste de configuration au prochain chargement de page. Utile après une reconfiguration ou à des fins de démonstration.",
+      "resetButton": "Réinitialiser la liste de configuration",
+      "resetSuccess": "Liste de configuration réinitialisée. Le widget réapparaîtra au prochain chargement de page.",
       "resetError": "Échec de la réinitialisation. Veuillez réessayer."
     },
     "branding": {
@@ -1350,38 +1350,39 @@
     "restrictToggleSaveError": "Échec de l'enregistrement du paramètre. Veuillez réessayer.",
     "tagNotFound": "Étiquette introuvable. Demandez à un administrateur de l'ajouter sur la page Gestion des étiquettes."
   },
-  "onboarding": {
-    "title": "Bienvenue sur MiniCRM",
-    "subtitle": "Configurons tout en quelques étapes rapides.",
-    "stepOf": "Étape {{current}} sur {{total}}",
-    "dismiss": "Fermer la configuration",
-    "step1": {
-      "heading": "Vérifier vos étapes du pipeline",
-      "description": "Ce sont les étapes par lesquelles vos affaires vont passer. Vous pouvez les personnaliser à tout moment.",
-      "looksGood": "C'est parfait",
-      "customiseStages": "Personnaliser les étapes"
-    },
-    "step2": {
-      "heading": "Invitez votre équipe",
-      "description": "Envoyez une invitation à un membre de l'équipe. Il recevra un e-mail pour définir son mot de passe.",
-      "emailLabel": "Adresse e-mail",
-      "emailPlaceholder": "collegue@exemple.com",
-      "roleLabel": "Rôle",
-      "roleAdmin": "Administrateur",
-      "roleRep": "Représentant",
-      "sendInvite": "Envoyer l'invitation",
-      "sending": "Envoi en cours…",
-      "inviteSent": "Invitation envoyée à {{email}}",
-      "skipForNow": "Ignorer pour l'instant",
-      "inviteError": "Échec de l'envoi. Veuillez réessayer."
-    },
-    "step3": {
-      "heading": "Tout est prêt !",
-      "description": "Choisissez comment vous souhaitez commencer.",
-      "loadDemoData": "Charger les données de démonstration",
-      "loadingDemo": "Chargement des données de démonstration…",
-      "addFirstContact": "Ajouter votre premier contact",
-      "startExploring": "Commencer à explorer"
+  "setupChecklist": {
+    "title": "Configurer MiniCRM",
+    "widgetLabel": "Liste de configuration",
+    "pillLabel": "Liste de configuration (réduite)",
+    "progress": "{{count}} tâche(s) sur {{total}} terminée(s)",
+    "progressBar": "Progression de la configuration",
+    "collapse": "Réduire la liste de configuration",
+    "expand": "Développer la liste de configuration",
+    "dismiss": "Fermer la liste de configuration",
+    "go": "Aller",
+    "goTo": "Aller à {{task}}",
+    "allDone": "Tout est prêt ! MiniCRM est prêt pour votre équipe.",
+    "task": {
+      "pipelineStages": {
+        "title": "Vérifier vos étapes du pipeline",
+        "description": "Personnalisez les étapes pour correspondre à votre processus de vente"
+      },
+      "inviteTeam": {
+        "title": "Inviter votre premier membre d'équipe",
+        "description": "Ajoutez un représentant pour commencer à collaborer"
+      },
+      "addContact": {
+        "title": "Ajouter votre premier contact",
+        "description": "Importez ou créez un contact pour démarrer"
+      },
+      "createDeal": {
+        "title": "Créer votre première affaire",
+        "description": "Suivez une opportunité dans votre pipeline"
+      },
+      "smtp": {
+        "title": "Configurer les notifications par e-mail",
+        "description": "Configurez SMTP pour recevoir les alertes de tâches et d'assignations"
+      }
     }
   },
   "customFields": {

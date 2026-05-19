@@ -41,6 +41,9 @@ const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
 /** The key used to store the onboarding completed flag (MINCRM-256) */
 const ONBOARDING_COMPLETED_KEY = 'onboarding_completed';
 
+/** The key used to track that the admin reviewed/saved pipeline stages (MINCRM-379) */
+const PIPELINE_STAGES_REVIEWED_KEY = 'pipeline_stages_reviewed';
+
 /**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
@@ -232,34 +235,88 @@ export async function setTagsRestrictCreation(restricted: boolean): Promise<bool
   return restricted;
 }
 
-// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+// ── Onboarding / Setup Checklist (MINCRM-256, MINCRM-379) ────────────────────
+
+/** Completion status for one setup checklist task (MINCRM-379) */
+export interface OnboardingTask {
+  id: string;
+  completed: boolean;
+}
 
 /** Shape returned by the onboarding status query */
 export interface OnboardingStatus {
   is_first_run: boolean;
   onboarding_completed: boolean;
+  /** Per-task completion, determined server-side (MINCRM-379) */
+  tasks: OnboardingTask[];
 }
 
 /**
- * Returns onboarding status.
- * `is_first_run` is true when contacts table is empty, users table has exactly
- * one user, and `onboarding_completed` is false. Admin only.
+ * Returns onboarding status including per-task completion for the setup
+ * checklist widget (MINCRM-379). Task completion is determined server-side:
+ *   1. pipeline_stages_reviewed — always true; user can manually mark done
+ *   2. team_member_invited     — any user other than the first admin exists
+ *   3. first_contact_added     — contacts table is non-empty
+ *   4. first_deal_created      — deals table is non-empty
+ *   5. smtp_configured         — smtp_host setting is non-empty
  *
  * @returns The current onboarding status.
  */
 export async function getOnboardingStatus(): Promise<OnboardingStatus> {
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [ONBOARDING_COMPLETED_KEY],
-  );
+  const [settingsResult, countsResult] = await Promise.all([
+    pool.query<SystemSettingRow>(`SELECT key, value FROM system_settings WHERE key = ANY($1)`, [
+      [ONBOARDING_COMPLETED_KEY, PIPELINE_STAGES_REVIEWED_KEY, 'smtp_host'],
+    ]),
+    pool.query<{
+      user_count: string;
+      contact_count: string;
+      deal_count: string;
+    }>(
+      `SELECT
+         (SELECT COUNT(*) FROM users WHERE status != 'inactive') AS user_count,
+         (SELECT COUNT(*) FROM contacts) AS contact_count,
+         (SELECT COUNT(*) FROM deals) AS deal_count`,
+    ),
+  ]);
 
-  const onboarding_completed = result.rows[0]?.value === 'true';
+  const settingsMap = Object.fromEntries(settingsResult.rows.map((r) => [r.key, r.value]));
 
-  // is_first_run mirrors the flag directly — the admin controls it explicitly
-  // via PUT /api/settings/onboarding or the Reset button in General Settings.
+  const onboarding_completed = settingsMap[ONBOARDING_COMPLETED_KEY] === 'true';
   const is_first_run = !onboarding_completed;
 
-  return { is_first_run, onboarding_completed };
+  const row = countsResult.rows[0];
+  const userCount = parseInt(row?.user_count ?? '0', 10);
+  const contactCount = parseInt(row?.contact_count ?? '0', 10);
+  const dealCount = parseInt(row?.deal_count ?? '0', 10);
+  const smtpHost = settingsMap['smtp_host'] ?? '';
+
+  const tasks: OnboardingTask[] = [
+    {
+      id: 'pipeline_stages_reviewed',
+      // Auto-completes when the admin explicitly marks it done via the checklist
+      // (MINCRM-379); also pre-completed after any pipeline stage save.
+      completed: settingsMap[PIPELINE_STAGES_REVIEWED_KEY] === 'true',
+    },
+    {
+      id: 'team_member_invited',
+      // More than one active/invited user means someone else has been added.
+      completed: userCount > 1,
+    },
+    {
+      id: 'first_contact_added',
+      completed: contactCount > 0,
+    },
+    {
+      id: 'first_deal_created',
+      completed: dealCount > 0,
+    },
+    {
+      id: 'smtp_configured',
+      completed: smtpHost.trim().length > 0,
+    },
+  ];
+
+  return { is_first_run, onboarding_completed, tasks };
 }
 
 /**
@@ -276,4 +333,17 @@ export async function setOnboardingCompleted(completed: boolean): Promise<boolea
     [ONBOARDING_COMPLETED_KEY, String(completed)],
   );
   return completed;
+}
+
+/**
+ * Marks the pipeline-stages-reviewed task as done in the setup checklist.
+ * Called after the admin saves a pipeline stage change (MINCRM-379).
+ */
+export async function markPipelineStagesReviewed(): Promise<void> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, 'true', now())
+     ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now()`,
+    [PIPELINE_STAGES_REVIEWED_KEY],
+  );
 }

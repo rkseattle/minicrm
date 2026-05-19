@@ -1,9 +1,9 @@
 /**
- * Tests for GeneralSettings — Reset onboarding section (MINCRM-256).
+ * Tests for GeneralSettings — Reset setup checklist section (MINCRM-256, MINCRM-379).
  *
  * Verifies:
- * - Reset onboarding section renders for admin users
- * - Reset onboarding section does not render for rep users
+ * - Reset setup checklist section renders for admin users
+ * - Reset setup checklist section does not render for rep users
  * - Clicking Reset calls PUT /api/settings/onboarding with false
  * - Success confirmation appears after reset
  */
@@ -49,7 +49,7 @@ function mockRepUser() {
   );
 }
 
-describe('GeneralSettings — reset onboarding', () => {
+describe('GeneralSettings — reset setup checklist', () => {
   it('shows the reset onboarding section for admin users', async () => {
     mockAdminUser();
     renderWithProviders(<GeneralSettings />);

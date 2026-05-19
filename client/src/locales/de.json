@@ -714,12 +714,12 @@
         "skipUnresolvableAccounts": "Zeilen überspringen, deren Kontoname keinem vorhandenen Konto entspricht"
       }
     },
-    "onboarding": {
-      "resetTitle": "Onboarding zurücksetzen",
-      "resetHint": "Zeigt das geführte Einrichtungs-Banner beim nächsten Seitenaufruf erneut an. Nützlich nach einer Neukonfiguration oder zu Demonstrationszwecken.",
-      "resetButton": "Onboarding zurücksetzen",
-      "resetSuccess": "Onboarding zurückgesetzt. Das Einrichtungs-Banner erscheint beim nächsten Seitenaufruf erneut.",
-      "resetError": "Onboarding konnte nicht zurückgesetzt werden. Bitte erneut versuchen."
+    "setupChecklist": {
+      "resetTitle": "Einrichtungsliste zurücksetzen",
+      "resetHint": "Zeigt das Einrichtungslisten-Widget beim nächsten Seitenaufruf erneut an. Nützlich nach einer Neukonfiguration oder zu Demonstrationszwecken.",
+      "resetButton": "Einrichtungsliste zurücksetzen",
+      "resetSuccess": "Einrichtungsliste zurückgesetzt. Das Widget erscheint beim nächsten Seitenaufruf erneut.",
+      "resetError": "Einrichtungsliste konnte nicht zurückgesetzt werden. Bitte erneut versuchen."
     },
     "branding": {
       "sectionTitle": "Eigenes Erscheinungsbild",
@@ -1350,38 +1350,39 @@
     "restrictToggleSaveError": "Einstellung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "tagNotFound": "Tag nicht gefunden. Bitten Sie einen Administrator, es auf der Tag-Verwaltungsseite hinzuzufügen."
   },
-  "onboarding": {
-    "title": "Willkommen bei MiniCRM",
-    "subtitle": "Lassen Sie uns die Einrichtung in wenigen Schritten abschließen.",
-    "stepOf": "Schritt {{current}} von {{total}}",
-    "dismiss": "Einrichtung schließen",
-    "step1": {
-      "heading": "Pipeline-Phasen überprüfen",
-      "description": "Dies sind die Phasen, die Ihre Deals durchlaufen werden. Sie können sie jederzeit anpassen.",
-      "looksGood": "Sieht gut aus",
-      "customiseStages": "Phasen anpassen"
-    },
-    "step2": {
-      "heading": "Ihr Team einladen",
-      "description": "Senden Sie eine Einladung an ein Teammitglied. Es erhält eine E-Mail zum Festlegen des Passworts.",
-      "emailLabel": "E-Mail-Adresse",
-      "emailPlaceholder": "kollege@beispiel.de",
-      "roleLabel": "Rolle",
-      "roleAdmin": "Administrator",
-      "roleRep": "Vertriebsmitarbeiter",
-      "sendInvite": "Einladung senden",
-      "sending": "Wird gesendet…",
-      "inviteSent": "Einladung gesendet an {{email}}",
-      "skipForNow": "Vorerst überspringen",
-      "inviteError": "Einladung konnte nicht gesendet werden. Bitte erneut versuchen."
-    },
-    "step3": {
-      "heading": "Alles bereit!",
-      "description": "Wählen Sie, wie Sie loslegen möchten.",
-      "loadDemoData": "Demodaten laden",
-      "loadingDemo": "Demodaten werden geladen…",
-      "addFirstContact": "Ersten Kontakt hinzufügen",
-      "startExploring": "Erkunden"
+  "setupChecklist": {
+    "title": "MiniCRM einrichten",
+    "widgetLabel": "Einrichtungsliste",
+    "pillLabel": "Einrichtungsliste (eingeklappt)",
+    "progress": "{{count}} von {{total}} Aufgaben erledigt",
+    "progressBar": "Einrichtungsfortschritt",
+    "collapse": "Einrichtungsliste einklappen",
+    "expand": "Einrichtungsliste ausklappen",
+    "dismiss": "Einrichtungsliste schließen",
+    "go": "Gehen",
+    "goTo": "Zu {{task}} gehen",
+    "allDone": "Alles bereit! MiniCRM ist für Ihr Team einsatzbereit.",
+    "task": {
+      "pipelineStages": {
+        "title": "Pipeline-Phasen überprüfen",
+        "description": "Passen Sie die Phasen an Ihren Verkaufsprozess an"
+      },
+      "inviteTeam": {
+        "title": "Erstes Teammitglied einladen",
+        "description": "Fügen Sie einen Vertriebsmitarbeiter hinzu, um die Zusammenarbeit zu starten"
+      },
+      "addContact": {
+        "title": "Ersten Kontakt hinzufügen",
+        "description": "Importieren oder erstellen Sie einen Kontakt, um loszulegen"
+      },
+      "createDeal": {
+        "title": "Ersten Deal erstellen",
+        "description": "Verfolgen Sie eine Chance in Ihrer Pipeline"
+      },
+      "smtp": {
+        "title": "E-Mail-Benachrichtigungen konfigurieren",
+        "description": "Richten Sie SMTP ein, um Aufgaben- und Zuweisungsbenachrichtigungen zu erhalten"
+      }
     }
   },
   "customFields": {

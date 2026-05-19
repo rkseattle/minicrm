@@ -887,15 +887,16 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *   get:
  *     tags: [Settings]
  *     operationId: getOnboardingStatus
- *     summary: Get first-run detection and onboarding status (admin only, MINCRM-256)
+ *     summary: Get setup checklist status (admin only, MINCRM-379)
  *     description: >
- *       Returns is_first_run (computed from contacts, users, and onboarding_completed)
- *       and the raw onboarding_completed flag. Admin only.
+ *       Returns is_first_run, onboarding_completed, and per-task completion for
+ *       the setup checklist widget. Task completion is determined server-side.
+ *       Admin only.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Onboarding status
+ *         description: Onboarding / checklist status
  *         content:
  *           application/json:
  *             schema:
@@ -903,6 +904,13 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *               properties:
  *                 is_first_run: { type: boolean }
  *                 onboarding_completed: { type: boolean }
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       completed: { type: boolean }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:

@@ -1,1 +1,32 @@
-{"updatedAt":"","entries":{}}
+{
+  "updatedAt": "2026-05-19T17:55:23.499Z",
+  "entries": {
+    "Unknown::unknown::testId::settings-heading": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "settings-heading",
+      "count": 1,
+      "firstSeenAt": "2026-05-19T17:40:30.631Z",
+      "lastSeenAt": "2026-05-19T17:40:30.631Z"
+    },
+    "Unknown::unknown::testId::accounts-empty-state": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "accounts-empty-state",
+      "count": 1,
+      "firstSeenAt": "2026-05-19T17:44:59.833Z",
+      "lastSeenAt": "2026-05-19T17:44:59.833Z"
+    },
+    "Unknown::unknown::testId::contact-link-b7900d6f-cd5b-484d-9631-74cbb118c5ba": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-b7900d6f-cd5b-484d-9631-74cbb118c5ba",
+      "count": 1,
+      "firstSeenAt": "2026-05-19T17:52:18.519Z",
+      "lastSeenAt": "2026-05-19T17:52:18.519Z"
+    }
+  }
+}

@@ -19,6 +19,7 @@ import {
   setDefaultCurrency,
   getOnboardingStatus,
   setOnboardingCompleted,
+  markPipelineStagesReviewed,
 } from '../services/settingsService.js';
 import pool from '../db.js';
 
@@ -231,33 +232,106 @@ describe('setDefaultCurrency', () => {
   });
 });
 
-// ── getOnboardingStatus / setOnboardingCompleted (MINCRM-256) ─────────────────
+// ── getOnboardingStatus / setOnboardingCompleted (MINCRM-256, MINCRM-379) ─────
+
+const TASK_IDS = [
+  'pipeline_stages_reviewed',
+  'team_member_invited',
+  'first_contact_added',
+  'first_deal_created',
+  'smtp_configured',
+];
 
 describe('getOnboardingStatus', () => {
   beforeEach(async () => {
-    await pool.query(`DELETE FROM system_settings WHERE key = 'onboarding_completed'`);
+    await pool.query(
+      `DELETE FROM system_settings WHERE key IN ('onboarding_completed','pipeline_stages_reviewed','smtp_host')`,
+    );
+    // Remove any seeded contacts/deals from test isolation
+    await pool.query('TRUNCATE contacts, deals RESTART IDENTITY CASCADE');
   });
 
-  it('returns is_first_run=true when flag is missing (defaults to false)', async () => {
+  it('returns is_first_run=true and five tasks when flag is absent', async () => {
     const status = await getOnboardingStatus();
     expect(status.is_first_run).toBe(true);
     expect(status.onboarding_completed).toBe(false);
+    expect(status.tasks.map((t) => t.id)).toEqual(TASK_IDS);
   });
 
   it('returns is_first_run=false when onboarding_completed is true', async () => {
     await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at)
-       VALUES ('onboarding_completed', 'true', now())`,
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('onboarding_completed', 'true', now())`,
     );
     const status = await getOnboardingStatus();
     expect(status.is_first_run).toBe(false);
     expect(status.onboarding_completed).toBe(true);
+    // Tasks still returned
+    expect(status.tasks).toHaveLength(5);
   });
 
-  it('returns is_first_run=true when flag is reset to false — regardless of contacts or users', async () => {
+  it('task pipeline_stages_reviewed is false by default', async () => {
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('task pipeline_stages_reviewed is true when setting flag is set', async () => {
     await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at)
-       VALUES ('onboarding_completed', 'false', now())`,
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('pipeline_stages_reviewed', 'true', now())`,
+    );
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('task team_member_invited is false when only one user exists', async () => {
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'team_member_invited');
+    // The test DB has exactly one admin user
+    expect(task?.completed).toBe(false);
+  });
+
+  it('task first_contact_added is false when contacts table is empty', async () => {
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'first_contact_added');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('task first_contact_added is true when a contact exists', async () => {
+    // Minimal contact insert — owner comes from first user in the test DB
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       SELECT 'Test','Contact','test@test.com', id FROM users LIMIT 1`,
+    );
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'first_contact_added');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('task first_deal_created is false when deals table is empty', async () => {
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'first_deal_created');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('task smtp_configured is false when smtp_host setting is absent', async () => {
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'smtp_configured');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('task smtp_configured is true when smtp_host setting is non-empty', async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('smtp_host', 'mail.example.com', now())`,
+    );
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'smtp_configured');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('returns is_first_run=true when flag is reset to false', async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('onboarding_completed', 'false', now())`,
     );
     const status = await getOnboardingStatus();
     expect(status.is_first_run).toBe(true);
@@ -283,5 +357,26 @@ describe('setOnboardingCompleted', () => {
     expect(result).toBe(false);
     const status = await getOnboardingStatus();
     expect(status.onboarding_completed).toBe(false);
+  });
+});
+
+describe('markPipelineStagesReviewed', () => {
+  beforeEach(async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'pipeline_stages_reviewed'`);
+  });
+
+  it('sets pipeline_stages_reviewed to true', async () => {
+    await markPipelineStagesReviewed();
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('is idempotent', async () => {
+    await markPipelineStagesReviewed();
+    await markPipelineStagesReviewed();
+    const status = await getOnboardingStatus();
+    const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
+    expect(task?.completed).toBe(true);
   });
 });

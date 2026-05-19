@@ -714,12 +714,12 @@
         "skipUnresolvableAccounts": "跳过客户名称无法匹配的行"
       }
     },
-    "onboarding": {
-      "resetTitle": "重置引导",
-      "resetHint": "在下次页面加载时重新显示引导设置横幅。适用于重新配置或演示目的。",
-      "resetButton": "重置引导",
-      "resetSuccess": "引导已重置。设置横幅将在下次页面加载时重新出现。",
-      "resetError": "重置引导失败，请重试。"
+    "setupChecklist": {
+      "resetTitle": "重置设置清单",
+      "resetHint": "在下次页面加载时重新显示设置清单小组件。适用于重新配置或演示目的。",
+      "resetButton": "重置设置清单",
+      "resetSuccess": "设置清单已重置。小组件将在下次页面加载时重新出现。",
+      "resetError": "重置设置清单失败，请重试。"
     },
     "branding": {
       "sectionTitle": "自定义品牌",
@@ -1350,38 +1350,39 @@
     "restrictToggleSaveError": "保存设置失败，请重试。",
     "tagNotFound": "未找到标签。请联系管理员在标签管理页面添加。"
   },
-  "onboarding": {
-    "title": "欢迎使用 MiniCRM",
-    "subtitle": "让我们通过几个简单步骤完成设置。",
-    "stepOf": "第 {{current}} 步，共 {{total}} 步",
-    "dismiss": "关闭设置",
-    "step1": {
-      "heading": "检查您的销售阶段",
-      "description": "这些是您的交易将经历的阶段。您可以随时自定义它们。",
-      "looksGood": "看起来不错",
-      "customiseStages": "自定义阶段"
-    },
-    "step2": {
-      "heading": "邀请您的团队",
-      "description": "向团队成员发送邀请，他们将收到设置密码的电子邮件。",
-      "emailLabel": "电子邮件地址",
-      "emailPlaceholder": "colleague@example.com",
-      "roleLabel": "角色",
-      "roleAdmin": "管理员",
-      "roleRep": "销售代表",
-      "sendInvite": "发送邀请",
-      "sending": "发送中…",
-      "inviteSent": "邀请已发送至 {{email}}",
-      "skipForNow": "暂时跳过",
-      "inviteError": "发送邀请失败，请重试。"
-    },
-    "step3": {
-      "heading": "一切准备就绪！",
-      "description": "选择您希望如何开始。",
-      "loadDemoData": "加载演示数据",
-      "loadingDemo": "正在加载演示数据…",
-      "addFirstContact": "添加第一个联系人",
-      "startExploring": "开始探索"
+  "setupChecklist": {
+    "title": "设置 MiniCRM",
+    "widgetLabel": "设置清单",
+    "pillLabel": "设置清单（已折叠）",
+    "progress": "{{count}}/{{total}} 项任务已完成",
+    "progressBar": "设置进度",
+    "collapse": "折叠设置清单",
+    "expand": "展开设置清单",
+    "dismiss": "关闭设置清单",
+    "go": "前往",
+    "goTo": "前往 {{task}}",
+    "allDone": "一切准备就绪！MiniCRM 已准备好供您的团队使用。",
+    "task": {
+      "pipelineStages": {
+        "title": "检查销售阶段",
+        "description": "自定义阶段以匹配您的销售流程"
+      },
+      "inviteTeam": {
+        "title": "邀请第一位团队成员",
+        "description": "添加销售代表开始协作"
+      },
+      "addContact": {
+        "title": "添加第一个联系人",
+        "description": "导入或创建联系人以开始使用"
+      },
+      "createDeal": {
+        "title": "创建第一笔交易",
+        "description": "在您的管道中跟踪商机"
+      },
+      "smtp": {
+        "title": "配置电子邮件通知",
+        "description": "设置 SMTP 以接收任务和分配提醒"
+      }
     }
   },
   "customFields": {

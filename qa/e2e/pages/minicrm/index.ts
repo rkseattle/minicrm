@@ -65,8 +65,8 @@ export type { NavPageContext } from './NavPage.js';
 export { AuditLogPage } from './AuditLogPage.js';
 export type { AuditLogPageContext } from './AuditLogPage.js';
 
-export { OnboardingPage } from './OnboardingPage.js';
-export type { OnboardingPageContext } from './OnboardingPage.js';
+export { SetupChecklistPage } from './SetupChecklistPage.js';
+export type { SetupChecklistPageContext } from './SetupChecklistPage.js';
 
 export { AccountDetailPage } from './AccountDetailPage.js';
 export type { AccountDetailPageContext } from './AccountDetailPage.js';

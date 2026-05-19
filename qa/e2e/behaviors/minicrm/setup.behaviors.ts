@@ -12,7 +12,7 @@
 
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
-import { OnboardingPage } from '@pages/minicrm/OnboardingPage.js';
+import { SetupChecklistPage } from '@pages/minicrm/SetupChecklistPage.js';
 import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
 
 // ---------------------------------------------------------------------------
@@ -338,53 +338,45 @@ export async function getOnboardingStatus(
 }
 
 // ---------------------------------------------------------------------------
-// Locator-accessor behaviors — wrap OnboardingPage / AutomationPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// Locator-accessor behaviors — wrap SetupChecklistPage / AutomationPage locators
+// so spec files never import @pages/* directly. (MINCRM-367, MINCRM-379)
 // ---------------------------------------------------------------------------
 
-/** Fixture context for onboarding and automation UI behaviors. */
+/** Fixture context for setup checklist and automation UI behaviors. */
 export interface SetupUIBehaviorContext {
   page: PageFacade;
 }
 
 /**
- * Returns a resolved locator for the onboarding banner container.
+ * Returns a resolved locator for the expanded setup checklist widget.
  */
-export async function getOnboardingBannerLocator(context: SetupUIBehaviorContext) {
-  const onboardingPage = new OnboardingPage(context);
-  return onboardingPage.bannerLocator();
+export async function getSetupChecklistWidgetLocator(context: SetupUIBehaviorContext) {
+  const checklistPage = new SetupChecklistPage(context);
+  return checklistPage.widgetLocator();
 }
 
 /**
- * Clicks the dismiss (X) button to close the onboarding banner.
+ * Returns a resolved locator for the collapsed setup checklist pill.
  */
-export async function dismissOnboardingBanner(context: SetupUIBehaviorContext): Promise<void> {
-  const onboardingPage = new OnboardingPage(context);
-  await onboardingPage.dismiss();
+export async function getSetupChecklistPillLocator(context: SetupUIBehaviorContext) {
+  const checklistPage = new SetupChecklistPage(context);
+  return checklistPage.pillLocator();
 }
 
 /**
- * Returns a resolved locator for onboarding step 1 content panel.
+ * Clicks the dismiss (X) button to permanently close the setup checklist widget.
  */
-export async function getOnboardingStep1Locator(context: SetupUIBehaviorContext) {
-  const onboardingPage = new OnboardingPage(context);
-  return onboardingPage.step1Locator();
+export async function dismissSetupChecklist(context: SetupUIBehaviorContext): Promise<void> {
+  const checklistPage = new SetupChecklistPage(context);
+  await checklistPage.dismiss();
 }
 
 /**
- * Returns a resolved locator for onboarding step 2 content panel.
+ * Clicks the collapse chevron to minimise the widget to a pill.
  */
-export async function getOnboardingStep2Locator(context: SetupUIBehaviorContext) {
-  const onboardingPage = new OnboardingPage(context);
-  return onboardingPage.step2Locator();
-}
-
-/**
- * Clicks the "Looks good" button on onboarding step 1.
- */
-export async function clickOnboardingLooksGood(context: SetupUIBehaviorContext): Promise<void> {
-  const onboardingPage = new OnboardingPage(context);
-  await onboardingPage.clickLooksGood();
+export async function clickSetupChecklistCollapse(context: SetupUIBehaviorContext): Promise<void> {
+  const checklistPage = new SetupChecklistPage(context);
+  await checklistPage.collapse();
 }
 
 /**

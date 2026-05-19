@@ -216,16 +216,16 @@ export default function GeneralSettings() {
         )}
       </div>
 
-      {/* Reset onboarding — admin only (MINCRM-256) */}
+      {/* Reset setup checklist — admin only (MINCRM-256, MINCRM-379) */}
       {user?.role === 'admin' && (
         <div
           className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="reset-onboarding-section"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            {t('settings.onboarding.resetTitle')}
+            {t('settings.setupChecklist.resetTitle')}
           </h2>
-          <p className="text-xs text-gray-500 mb-4">{t('settings.onboarding.resetHint')}</p>
+          <p className="text-xs text-gray-500 mb-4">{t('settings.setupChecklist.resetHint')}</p>
 
           <Button
             type="button"
@@ -239,7 +239,7 @@ export default function GeneralSettings() {
               resetOnboardingMutation.mutate();
             }}
           >
-            {t('settings.onboarding.resetButton')}
+            {t('settings.setupChecklist.resetButton')}
           </Button>
 
           {resetOnboardingSuccess && (
@@ -248,7 +248,7 @@ export default function GeneralSettings() {
               className="mt-3 text-sm text-green-700"
               data-testid="reset-onboarding-success"
             >
-              {t('settings.onboarding.resetSuccess')}
+              {t('settings.setupChecklist.resetSuccess')}
             </p>
           )}
           {resetOnboardingError && (
@@ -257,7 +257,7 @@ export default function GeneralSettings() {
               className="mt-3 text-sm text-red-600"
               data-testid="reset-onboarding-error"
             >
-              {t('settings.onboarding.resetError')}
+              {t('settings.setupChecklist.resetError')}
             </p>
           )}
         </div>
