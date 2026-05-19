@@ -36,7 +36,8 @@
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data via restClient + TestDataManager (auto teardown)
  *   - checkScreenshot() only — no direct expect(page).toHaveScreenshot() calls
- *   - System settings mutations paired with ensureSystemDefaults() in afterEach
+ *   - Nav layout mutations reset to 'top' in afterEach (not ensureSystemDefaults —
+ *     that resets onboarding_completed and races with the onboarding spec)
  *
  * MINCRM-371
  */
@@ -54,7 +55,6 @@ import {
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { getDealNameHeadingLocator } from '@behaviors/minicrm/deals.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
-import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   getContactsCreateFormLocator,
   getContactsConfirmDeleteModalLocator,
@@ -76,10 +76,13 @@ test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
 });
 
-// Tests that mutate system settings (nav layout) must restore defaults
-// unconditionally so later tests in the same worker see a clean slate.
+// Tests V13–V17 mutate the nav layout. Reset to 'top' after each test so
+// a failed teardown in one test cannot contaminate subsequent tests in the
+// same worker. Only the nav layout is reset here — calling ensureSystemDefaults
+// would also reset onboarding_completed, which races with the onboarding spec
+// (F-OB1) that explicitly sets onboarding_completed=false in parallel workers.
 test.afterEach(async ({ restClient }) => {
-  await ensureSystemDefaults(restClient);
+  await setNavLayoutViaAPI('top', restClient);
 });
 
 // ---------------------------------------------------------------------------
