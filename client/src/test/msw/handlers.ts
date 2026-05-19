@@ -1596,9 +1596,19 @@ export const handlers = [
     return HttpResponse.json({ branding: null });
   }),
 
-  /** Onboarding: GET /api/settings/onboarding — not first run by default (MINCRM-256) */
+  /** Setup checklist: GET /api/settings/onboarding — not first run by default (MINCRM-256, MINCRM-379) */
   http.get('/api/v1/settings/onboarding', () => {
-    return HttpResponse.json({ is_first_run: false, onboarding_completed: false });
+    return HttpResponse.json({
+      is_first_run: false,
+      onboarding_completed: false,
+      tasks: [
+        { id: 'pipeline_stages_reviewed', completed: false },
+        { id: 'team_member_invited', completed: false },
+        { id: 'first_contact_added', completed: false },
+        { id: 'first_deal_created', completed: false },
+        { id: 'smtp_configured', completed: false },
+      ],
+    });
   }),
 
   /** Onboarding: PUT /api/settings/onboarding — mark completed (MINCRM-256) */

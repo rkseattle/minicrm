@@ -714,12 +714,12 @@
         "skipUnresolvableAccounts": "Skip rows whose account name does not match any existing account"
       }
     },
-    "onboarding": {
-      "resetTitle": "Reset onboarding",
-      "resetHint": "Show the guided setup banner again on the next page load. Useful after a reconfiguration or for demonstration purposes.",
-      "resetButton": "Reset onboarding",
-      "resetSuccess": "Onboarding reset. The setup banner will reappear on the next page load.",
-      "resetError": "Failed to reset onboarding. Please try again."
+    "setupChecklist": {
+      "resetTitle": "Reset setup checklist",
+      "resetHint": "Show the setup checklist widget again on the next page load. Useful after a reconfiguration or for demonstration purposes.",
+      "resetButton": "Reset setup checklist",
+      "resetSuccess": "Setup checklist reset. The widget will reappear on the next page load.",
+      "resetError": "Failed to reset setup checklist. Please try again."
     },
     "branding": {
       "sectionTitle": "Custom Branding",
@@ -1350,38 +1350,39 @@
     "restrictToggleSaveError": "Failed to save setting. Please try again.",
     "tagNotFound": "Tag not found. Ask an admin to add it on the Tag Management page."
   },
-  "onboarding": {
-    "title": "Welcome to MiniCRM",
-    "subtitle": "Let’s get you set up in a few quick steps.",
-    "stepOf": "Step {{current}} of {{total}}",
-    "dismiss": "Dismiss setup",
-    "step1": {
-      "heading": "Review your pipeline stages",
-      "description": "These are the stages your deals will move through. You can customise them at any time.",
-      "looksGood": "Looks good",
-      "customiseStages": "Customise stages"
-    },
-    "step2": {
-      "heading": "Invite your team",
-      "description": "Send an invitation to a team member. They’ll receive an email to set their password.",
-      "emailLabel": "Email address",
-      "emailPlaceholder": "colleague@example.com",
-      "roleLabel": "Role",
-      "roleAdmin": "Admin",
-      "roleRep": "Rep",
-      "sendInvite": "Send invite",
-      "sending": "Sending…",
-      "inviteSent": "Invite sent to {{email}}",
-      "skipForNow": "Skip for now",
-      "inviteError": "Failed to send invite. Please try again."
-    },
-    "step3": {
-      "heading": "You’re all set!",
-      "description": "Choose how you’d like to get started.",
-      "loadDemoData": "Load demo data",
-      "loadingDemo": "Loading demo data…",
-      "addFirstContact": "Add your first contact",
-      "startExploring": "Start exploring"
+  "setupChecklist": {
+    "title": "Set up MiniCRM",
+    "widgetLabel": "Setup checklist",
+    "pillLabel": "Setup checklist (collapsed)",
+    "progress": "{{count}} of {{total}} tasks complete",
+    "progressBar": "Setup progress",
+    "collapse": "Collapse setup checklist",
+    "expand": "Expand setup checklist",
+    "dismiss": "Dismiss setup checklist",
+    "go": "Go",
+    "goTo": "Go to {{task}}",
+    "allDone": "You’re all set! MiniCRM is ready for your team.",
+    "task": {
+      "pipelineStages": {
+        "title": "Review your pipeline stages",
+        "description": "Customise the stages to match your sales process"
+      },
+      "inviteTeam": {
+        "title": "Invite your first team member",
+        "description": "Add a rep to start collaborating"
+      },
+      "addContact": {
+        "title": "Add your first contact",
+        "description": "Import or create a contact to get started"
+      },
+      "createDeal": {
+        "title": "Create your first deal",
+        "description": "Track an opportunity in your pipeline"
+      },
+      "smtp": {
+        "title": "Configure email notifications",
+        "description": "Set up SMTP to receive task and assignment alerts"
+      }
     }
   },
   "customFields": {

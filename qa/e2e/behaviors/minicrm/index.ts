@@ -408,6 +408,10 @@ export {
   setNavLayout,
   setOnboardingCompleted,
   getOnboardingStatus,
+  getSetupChecklistWidgetLocator,
+  getSetupChecklistPillLocator,
+  dismissSetupChecklist,
+  clickSetupChecklistCollapse,
 } from './setup.behaviors.js';
 
 export {

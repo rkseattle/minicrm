@@ -16,7 +16,7 @@ import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
 import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.js';
 import NavLeft from '@/components/NavLeft.js';
-import OnboardingBanner from '@/components/OnboardingBanner.js';
+import SetupChecklistWidget from '@/components/SetupChecklistWidget.js';
 import { useIsMobile } from '@/hooks/useIsMobile.js';
 
 // Page-level lazy imports — each becomes its own Vite chunk (MINCRM-281)
@@ -47,10 +47,10 @@ const AdminTagsPage = lazy(() => import('@/pages/AdminTagsPage.js'));
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
  * For top and hamburger layouts, each page renders its own NavBar inline,
- * so no wrapper is needed here.
- * On mobile (< 1024px) NavBar always renders NavTop regardless of layout setting,
- * so LayoutShell must not inject NavLeft or OnboardingBanner — NavBar already
- * renders the banner in that path. (MINCRM-256)
+ * so no wrapper is needed here. (MINCRM-133)
+ *
+ * SetupChecklistWidget is rendered once here — it is position:fixed so layout
+ * nesting doesn't affect its viewport placement. (MINCRM-379)
  */
 function LayoutShell() {
   const { layout } = useNavLayout();
@@ -58,12 +58,17 @@ function LayoutShell() {
   if (layout === 'left' && !isMobile) {
     return (
       <NavLeft>
-        <OnboardingBanner />
+        <SetupChecklistWidget />
         <Outlet />
       </NavLeft>
     );
   }
-  return <Outlet />;
+  return (
+    <>
+      <SetupChecklistWidget />
+      <Outlet />
+    </>
+  );
 }
 
 /**

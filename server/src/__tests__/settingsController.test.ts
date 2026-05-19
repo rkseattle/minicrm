@@ -236,15 +236,21 @@ describe('PATCH /api/settings/email-notifications', () => {
   });
 });
 
-// ── GET /api/settings/onboarding (MINCRM-256) ─────────────────────────────────
+// ── GET /api/settings/onboarding (MINCRM-256, MINCRM-379) ────────────────────
 
 describe('GET /api/settings/onboarding', () => {
-  it('returns 200 with is_first_run and onboarding_completed for admin', async () => {
+  it('returns 200 with is_first_run, onboarding_completed, and tasks for admin', async () => {
     const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', adminCookie);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.is_first_run).toBe('boolean');
     expect(typeof res.body.onboarding_completed).toBe('boolean');
+    expect(Array.isArray(res.body.tasks)).toBe(true);
+    expect(res.body.tasks).toHaveLength(5);
+    for (const task of res.body.tasks as { id: string; completed: boolean }[]) {
+      expect(typeof task.id).toBe('string');
+      expect(typeof task.completed).toBe('boolean');
+    }
   });
 
   it('returns 403 when a rep attempts to access', async () => {

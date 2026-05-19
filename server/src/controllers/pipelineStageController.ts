@@ -13,10 +13,12 @@ import {
   findPipelineStageById,
   toStageResponse,
 } from '../services/pipelineStageService.js';
+import { markPipelineStagesReviewed } from '../services/settingsService.js';
 import {
   createPipelineStageSchema,
   updatePipelineStageSchema,
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
+import logger from '../logger.js';
 
 /**
  * GET /api/settings/pipeline-stages
@@ -53,6 +55,10 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
   try {
     const stage = await createPipelineStage(parsed.data);
     res.status(201).json(toStageResponse(stage));
+    // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
+    void markPipelineStagesReviewed().catch((err: unknown) =>
+      logger.warn({ err }, 'markPipelineStagesReviewed failed after create'),
+    );
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === 'STAGE_NAME_CONFLICT') {
@@ -94,6 +100,10 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
       return;
     }
     res.status(200).json(toStageResponse(stage));
+    // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
+    void markPipelineStagesReviewed().catch((err: unknown) =>
+      logger.warn({ err }, 'markPipelineStagesReviewed failed after update'),
+    );
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === 'STAGE_FIXED') {
