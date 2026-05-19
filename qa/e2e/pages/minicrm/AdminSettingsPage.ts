@@ -367,15 +367,24 @@ export class AdminSettingsPage {
 
   /**
    * Clicks the email notifications toggle to switch its state.
+   *
+   * Waits for the toggle to be visible before clicking — the toggle is only
+   * rendered after the email-notifications query resolves, so visibility
+   * guarantees the component reflects actual server state (not the ?? true
+   * loading default).
    */
   async toggleEmailNotifications(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'email-notif-toggle' },
-        { type: 'css', value: '[data-testid="email-notif-toggle"]' },
-      ],
-      { intent: 'email notifications on/off toggle switch' },
-    );
+    const toggle = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'email-notif-toggle' },
+          { type: 'role', value: 'switch', options: { name: /email notifications/i } },
+        ],
+        { intent: 'email notifications on/off toggle switch' },
+      )
+      .resolve();
+    await toggle.waitFor({ state: 'visible' });
+    await toggle.click();
   }
 
   // ---------------------------------------------------------------------------
