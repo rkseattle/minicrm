@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -493,12 +494,35 @@ export default function AuditLogPage() {
           )}
 
           {!isLoading && !isError && displayedEntries.length === 0 && (
-            <p
-              className="px-6 py-8 text-sm text-gray-500 text-center"
-              data-testid="audit-log-empty"
-            >
-              {t('auditLog.table.noEntries')}
-            </p>
+            <EmptyState
+              data-testid="audit-log-empty-state"
+              icon={
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              }
+              title={
+                isUnfilteredFirstPage
+                  ? t('auditLog.table.noEntriesTitle')
+                  : t('auditLog.table.filteredTitle')
+              }
+              description={
+                isUnfilteredFirstPage
+                  ? t('auditLog.table.noEntriesDescription')
+                  : t('common.filteredEmptyDescription')
+              }
+            />
           )}
 
           {!isLoading && !isError && displayedEntries.length > 0 && (

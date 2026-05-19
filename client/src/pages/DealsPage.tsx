@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import DealForm from '@/components/DealForm.js';
 import StageColumn from '@/components/StageColumn.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
@@ -283,6 +284,15 @@ export default function DealsPage() {
 
   // Server handles sorting, pagination, and closed-stage filtering (MINCRM-176)
   const sortedDeals: DealResponse[] = listData?.data ?? [];
+
+  const hasActiveListFilters = ownerFilter === 'me' || !showClosed || selectedTagIds.length > 0;
+
+  function clearListFilters(): void {
+    setOwnerFilter('all');
+    setShowClosed(true);
+    setSelectedTagIds([]);
+    setListPage(1);
+  }
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -650,6 +660,7 @@ export default function DealsPage() {
                         onStageChange={handleStageChange}
                         onCloseRequested={handleCloseRequested}
                         updatingDealIds={updatingDealIds}
+                        onAddDeal={() => setShowForm(true)}
                       />
                     ))}
                   </div>
@@ -728,6 +739,7 @@ export default function DealsPage() {
                       updatingDealIds={updatingDealIds}
                       fullWidth
                       testIdPrefix="mobile-"
+                      onAddDeal={() => setShowForm(true)}
                     />
                   </div>
                 )}
@@ -943,9 +955,38 @@ export default function DealsPage() {
             {!isLoading && !isError && (
               <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
                 {sortedDeals.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <p className="text-sm text-gray-500">{t('deals.empty')}</p>
-                  </div>
+                  <EmptyState
+                    data-testid="deals-list-empty-state"
+                    icon={
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-12 w-12"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    }
+                    title={
+                      hasActiveListFilters ? t('deals.filteredEmptyTitle') : t('deals.emptyTitle')
+                    }
+                    description={
+                      hasActiveListFilters
+                        ? t('common.filteredEmptyDescription')
+                        : t('deals.emptyDescription')
+                    }
+                    action={
+                      hasActiveListFilters
+                        ? { label: t('common.clearFilters'), onClick: clearListFilters }
+                        : { label: t('deals.emptyAction'), onClick: () => setShowForm(true) }
+                    }
+                  />
                 ) : (
                   <div className="flex-1 overflow-auto min-h-0">
                     {isDesktop ? (

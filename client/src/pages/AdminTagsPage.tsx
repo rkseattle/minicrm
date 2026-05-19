@@ -8,10 +8,11 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listTags, updateTag, deleteTag, TAGS_QUERY_KEY } from '@/api/tags.js';
+import { listTags, createTag, updateTag, deleteTag, TAGS_QUERY_KEY } from '@/api/tags.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 import {
   getTagsRestrictCreation,
@@ -36,6 +37,33 @@ export default function AdminTagsPage() {
   });
 
   const tags = data?.data ?? [];
+
+  // ── Inline create form (shown from empty state action) ────────────────────────
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: (name: string) => createTag(name),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });
+      setNewTagName('');
+      setCreateError(null);
+      setShowCreateForm(false);
+    },
+    onError: () => {
+      setCreateError(t('tags.renameError'));
+    },
+  });
+
+  function handleCreateSubmit() {
+    const trimmed = newTagName.trim().toLowerCase();
+    if (!trimmed) {
+      setCreateError(t('tags.renameRequired'));
+      return;
+    }
+    createMutation.mutate(trimmed);
+  }
 
   // ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
 
@@ -212,10 +240,80 @@ export default function AdminTagsPage() {
           </div>
         )}
 
-        {!isLoading && !isError && tags.length === 0 && (
-          <p className="text-sm text-gray-500" data-testid="admin-tags-empty">
-            {t('tags.empty')}
-          </p>
+        {!isLoading && !isError && tags.length === 0 && !showCreateForm && (
+          <EmptyState
+            data-testid="admin-tags-empty-state"
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-12 w-12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+            }
+            title={t('tags.emptyTitle')}
+            description={t('tags.emptyDescription')}
+            action={{ label: t('tags.emptyAction'), onClick: () => setShowCreateForm(true) }}
+          />
+        )}
+
+        {!isLoading && !isError && tags.length === 0 && showCreateForm && (
+          <div
+            className="rounded-lg border border-gray-200 bg-white px-4 py-4"
+            data-testid="admin-tags-create-form"
+          >
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateSubmit();
+              }}
+            >
+              <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                aria-label={t('tags.emptyAction')}
+                placeholder={t('tags.emptyAction')}
+                data-testid="admin-tags-create-input"
+              />
+              {createError && (
+                <span className="text-xs text-red-600" role="alert">
+                  {createError}
+                </span>
+              )}
+              <Button
+                type="submit"
+                size="sm"
+                disabled={createMutation.isPending}
+                data-testid="admin-tags-create-save"
+              >
+                {createMutation.isPending ? t('tags.saving') : t('tags.save')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setNewTagName('');
+                  setCreateError(null);
+                }}
+                data-testid="admin-tags-create-cancel"
+              >
+                {t('tags.cancel')}
+              </Button>
+            </form>
+          </div>
         )}
 
         {!isLoading && !isError && (

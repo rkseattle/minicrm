@@ -21,6 +21,7 @@ import {
   type Attachment,
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
+import EmptyState from '@/components/EmptyState.js';
 
 /** Maximum file size in bytes (25 MB) — mirrored from server for pre-flight check. */
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -260,9 +261,31 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
           )}
 
           {!attachmentsLoading && !attachmentsError && attachments.length === 0 && (
-            <p className="text-sm text-gray-500" data-testid="attachments-empty">
-              {t('attachments.empty')}
-            </p>
+            <EmptyState
+              data-testid="attachments-empty-state"
+              icon={
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-10 w-10"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+              }
+              title={t('attachments.emptyTitle')}
+              description={t('attachments.emptyDescription')}
+              action={{
+                label: t('attachments.emptyAction'),
+                onClick: () => fileInputRef.current?.click(),
+              }}
+            />
           )}
 
           {!attachmentsLoading && !attachmentsError && attachments.length > 0 && (

@@ -45,7 +45,8 @@ describe('AccountsPage', () => {
     );
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {
-      expect(screen.getByText('No accounts yet. Add one to get started.')).toBeInTheDocument();
+      expect(screen.getByTestId('accounts-empty-state')).toBeInTheDocument();
+      expect(screen.getByText('No accounts yet')).toBeInTheDocument();
     });
   });
 

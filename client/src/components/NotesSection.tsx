@@ -69,6 +69,7 @@ import { listNotes, createNote, updateNote, deleteNote, notesQueryKey } from '@/
 import { uploadAttachment } from '@/api/attachments.js';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import type { NoteEntityType, NoteVisibility, NoteResponse } from '@shared/schemas/noteSchema.js';
@@ -908,11 +909,33 @@ export default function NotesSection({ entityType, entityId }: NotesSectionProps
       )}
 
       {!isLoading && !isError && notes.length === 0 && (
-        <div
-          className="rounded-lg border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500"
-          data-testid="notes-empty"
-        >
-          {t('notes.empty')}
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <EmptyState
+            data-testid="notes-empty-state"
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            }
+            title={t('notes.emptyTitle')}
+            description={t('notes.emptyDescription')}
+            action={
+              !isComposerOpen
+                ? { label: t('notes.emptyAction'), onClick: handleOpenComposer }
+                : undefined
+            }
+          />
         </div>
       )}
 

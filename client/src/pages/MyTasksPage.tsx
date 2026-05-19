@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
+import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
 import { Badge } from '@/components/ui/Badge.js';
 import { listMyTasks, updateActivity, MY_TASKS_QUERY_KEY } from '@/api/activities.js';
@@ -74,7 +75,7 @@ export default function MyTasksPage() {
   const { t, i18n } = useTranslation();
   const { isDesktop } = useBreakpoint();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   /** When navigated from the dashboard overdue link, pre-filter to overdue tasks only */
   const overdueFilter = searchParams.get('filter') === 'overdue';
   const [showCompleted, setShowCompleted] = useState(false);
@@ -152,11 +153,47 @@ export default function MyTasksPage() {
             {/* Open tasks table */}
             <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
               {visibleTasks.length === 0 && !showCompleted ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-gray-500" data-testid="my-tasks-empty">
-                    {t('myTasks.empty')}
-                  </p>
-                </div>
+                <EmptyState
+                  data-testid="my-tasks-empty-state"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-12 w-12"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                      />
+                    </svg>
+                  }
+                  title={overdueFilter ? t('myTasks.filteredEmptyTitle') : t('myTasks.emptyTitle')}
+                  description={
+                    overdueFilter
+                      ? t('myTasks.filteredEmptyDescription')
+                      : t('myTasks.emptyDescription')
+                  }
+                  action={
+                    overdueFilter
+                      ? {
+                          label: t('myTasks.clearFilters'),
+                          onClick: () =>
+                            setSearchParams(
+                              (prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.delete('filter');
+                                return next;
+                              },
+                              { replace: true },
+                            ),
+                        }
+                      : undefined
+                  }
+                />
               ) : visibleTasks.length > 0 ? (
                 isDesktop ? (
                   /* Desktop table */

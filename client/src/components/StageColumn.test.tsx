@@ -72,7 +72,7 @@ describe('StageColumn', () => {
     );
     expect(screen.getByTestId('stage-column-empty-prospecting')).toBeInTheDocument();
     expect(screen.getByTestId('stage-column-empty-prospecting')).toHaveTextContent(
-      'No deals in this stage',
+      'No deals in your pipeline',
     );
   });
 

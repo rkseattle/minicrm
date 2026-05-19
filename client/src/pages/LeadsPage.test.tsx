@@ -43,7 +43,8 @@ describe('LeadsPage', () => {
     );
     renderWithProviders(<LeadsPage />);
     await waitFor(() => {
-      expect(screen.getByText('No leads yet. Add one to get started.')).toBeInTheDocument();
+      expect(screen.getByTestId('leads-empty-state')).toBeInTheDocument();
+      expect(screen.getByText('No leads yet')).toBeInTheDocument();
     });
   });
 

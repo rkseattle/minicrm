@@ -86,7 +86,7 @@ describe('AttachmentsSection — storage configured', () => {
     renderWithProviders(<AttachmentsSection recordType="contact" recordId={CONTACT_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('attachments-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('attachments-empty-state')).toBeInTheDocument();
     });
   });
 

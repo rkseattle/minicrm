@@ -129,7 +129,7 @@ describe('NotesSection — async states', () => {
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('notes-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('notes-list')).not.toBeInTheDocument();
   });
@@ -223,7 +223,7 @@ describe('NotesSection — composer open/close', () => {
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('notes-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
@@ -260,7 +260,7 @@ describe('NotesSection — save note', () => {
     );
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -289,7 +289,7 @@ describe('NotesSection — save note', () => {
     );
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
     fireEvent.click(screen.getByTestId('notes-composer-save'));
@@ -307,7 +307,7 @@ describe('NotesSection — visibility selector', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -319,7 +319,7 @@ describe('NotesSection — visibility selector', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -336,7 +336,7 @@ describe('NotesSection — tag input', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -353,7 +353,7 @@ describe('NotesSection — tag input', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -368,7 +368,7 @@ describe('NotesSection — tag input', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -385,7 +385,7 @@ describe('NotesSection — tag input', () => {
     withNotes([]);
     renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
 
-    await waitFor(() => expect(screen.getByTestId('notes-empty')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('notes-add-button'));
 
@@ -511,7 +511,7 @@ describe('NotesSection — delete note', () => {
       expect(screen.queryByTestId('confirm-delete-modal')).not.toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(screen.getByTestId('notes-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('notes-empty-state')).toBeInTheDocument();
     });
   });
 
