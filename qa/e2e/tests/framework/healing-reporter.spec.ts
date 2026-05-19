@@ -9,8 +9,13 @@
  * 5. aiHealCount counts only wasAiHeal events. MINCRM-227
  * 6. Threshold warning is emitted when aiHealCount exceeds 50. MINCRM-227
  * 7. No warning emitted when aiHealCount equals the threshold (strictly greater than). MINCRM-227
+ * 8. heal-trends.json is created on first run with heal events. MINCRM-373
+ * 9. heal-trends.json accumulates counts across simulated repeated onEnd() calls. MINCRM-373
+ * 10. HEAL_QUARANTINE_THRESHOLD env var overrides default of 3. MINCRM-373
+ * 11. _checkQuarantine logs warning listing eligible locators. MINCRM-373
+ * 12. _checkQuarantine does not log when no candidates. MINCRM-373
  *
- * MINCRM-216, MINCRM-227
+ * MINCRM-216, MINCRM-227, MINCRM-373
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { HealingReporter } from '../../framework/healing/healing-reporter.js';
-import type { HealingReport, HealEvent } from '../../framework/healing/index.js';
+import type { HealingReport, HealEvent, HealTrendEntry } from '../../framework/healing/index.js';
 
 // Re-export the pattern from the module for testing by importing the compiled
 // value. We read the source to extract WORKER_FILE_PATTERN via a light import
@@ -241,6 +246,169 @@ test.describe('HealingReporter — threshold warning (MINCRM-227)', () => {
       expect(logs[0]).toContain('threshold: 10');
     } finally {
       console.log = originalLog;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-373: heal-trends.json accumulation across runs
+// ---------------------------------------------------------------------------
+
+test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', () => {
+  test.afterEach(() => {
+    delete process.env['HEAL_QUARANTINE_THRESHOLD'];
+  });
+
+  test('creates heal-trends.json on first run with heal events', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reporter-trends-first-'));
+    const events: HealEvent[] = [
+      makeHealEvent({
+        pageObject: 'ContactsPage',
+        method: 'saveButton',
+        originalStrategy: { type: 'testId', value: 'save-btn' },
+      }),
+    ];
+    const { reporter, restoreCwd } = setupReporterRun(events, tmpDir);
+    try {
+      reporter.onEnd({ status: 'passed' } as Parameters<typeof reporter.onEnd>[0]);
+      const trendsPath = path.join(tmpDir, 'test-results', 'heal-trends.json');
+      expect(fs.existsSync(trendsPath)).toBe(true);
+      const parsed = JSON.parse(fs.readFileSync(trendsPath, 'utf-8')) as {
+        entries: Record<string, HealTrendEntry>;
+      };
+      const key = 'ContactsPage::saveButton::testId::save-btn';
+      expect(parsed.entries[key]).toBeDefined();
+      expect(parsed.entries[key]!.count).toBe(1);
+    } finally {
+      restoreCwd();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('accumulates counts across three simulated consecutive onEnd() calls (AC #1 & #2)', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reporter-trends-accum-'));
+    const event = makeHealEvent({
+      pageObject: 'AccountsPage',
+      method: 'editButton',
+      originalStrategy: { type: 'testId', value: 'edit-btn' },
+    });
+    const trendsPath = path.join(tmpDir, 'test-results', 'heal-trends.json');
+
+    for (let run = 0; run < 3; run++) {
+      // Each call to setupReporterRun writes a fresh worker file in the same tmpDir.
+      const { reporter, restoreCwd } = setupReporterRun([event], tmpDir);
+      reporter.onEnd({ status: 'passed' } as Parameters<typeof reporter.onEnd>[0]);
+      restoreCwd();
+    }
+
+    const parsed = JSON.parse(fs.readFileSync(trendsPath, 'utf-8')) as {
+      entries: Record<string, HealTrendEntry>;
+    };
+    const key = 'AccountsPage::editButton::testId::edit-btn';
+    expect(parsed.entries[key]!.count).toBe(3);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test('does not write heal-trends.json when there are no heal events', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reporter-trends-empty-'));
+    const { reporter, restoreCwd } = setupReporterRun([], tmpDir);
+    try {
+      reporter.onEnd({ status: 'passed' } as Parameters<typeof reporter.onEnd>[0]);
+      expect(fs.existsSync(path.join(tmpDir, 'test-results', 'heal-trends.json'))).toBe(false);
+    } finally {
+      restoreCwd();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('HEAL_QUARANTINE_THRESHOLD env var overrides default of 3 (AC #3)', () => {
+    process.env['HEAL_QUARANTINE_THRESHOLD'] = '5';
+    const reporter = new HealingReporter();
+    expect(reporter._quarantineThreshold()).toBe(5);
+    delete process.env['HEAL_QUARANTINE_THRESHOLD'];
+    const reporter2 = new HealingReporter();
+    expect(reporter2._quarantineThreshold()).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-373: _checkQuarantine
+// ---------------------------------------------------------------------------
+
+test.describe('HealingReporter — _checkQuarantine (MINCRM-373)', () => {
+  test.afterEach(() => {
+    delete process.env['HEAL_QUARANTINE_THRESHOLD'];
+  });
+
+  function makeTrendEntry(overrides: Partial<HealTrendEntry> = {}): HealTrendEntry {
+    return {
+      pageObject: 'ContactsPage',
+      method: 'saveButton',
+      originalStrategyType: 'testId',
+      originalStrategyValue: 'save-btn',
+      count: 3,
+      firstSeenAt: '2026-01-01T00:00:00.000Z',
+      lastSeenAt: '2026-01-03T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  test('logs a warning block listing each quarantine-eligible locator', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      const reporter = new HealingReporter();
+      reporter._checkQuarantine([
+        makeTrendEntry({ pageObject: 'DealsPage', method: 'closeButton', count: 4 }),
+      ]);
+      expect(warnings.length).toBeGreaterThan(0);
+      const combined = warnings.join('\n');
+      expect(combined).toContain('quarantine-eligible');
+      expect(combined).toContain('DealsPage.closeButton');
+      expect(combined).toContain('4');
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('does not log when no candidates exist', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      const reporter = new HealingReporter();
+      reporter._checkQuarantine([]);
+      expect(warnings).toHaveLength(0);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  test('warning includes strategy type and value', () => {
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '));
+    };
+    try {
+      const reporter = new HealingReporter();
+      reporter._checkQuarantine([
+        makeTrendEntry({
+          originalStrategyType: 'label',
+          originalStrategyValue: 'First Name',
+        }),
+      ]);
+      const combined = warnings.join('\n');
+      expect(combined).toContain('label');
+      expect(combined).toContain('First Name');
+    } finally {
+      console.warn = originalWarn;
     }
   });
 });

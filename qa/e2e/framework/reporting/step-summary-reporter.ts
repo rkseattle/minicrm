@@ -9,6 +9,8 @@ import type {
   TestResult,
   TestStep,
 } from '@playwright/test/reporter';
+import type { HealTrendEntry } from '../healing/heal-trends.js';
+import { readTrends, quarantineCandidates } from '../healing/heal-trends.js';
 
 // Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
 const DEFAULT_SUITE_NAME = 'E2E Tests';
@@ -169,6 +171,37 @@ export class StepSummaryReporter implements Reporter {
     return `\n### Slowest Tests (> ${thresholdLabel})\n| Test | Duration |\n|------|----------|\n${rows}`;
   }
 
+  /**
+   * Builds the "Quarantine Candidates" section for the GitHub Step Summary.
+   * Reads heal-trends.json from the standard output directory and lists any locator
+   * whose accumulated count meets or exceeds HEAL_QUARANTINE_THRESHOLD.
+   * Returns an empty string when no candidates exist or when the trends file is absent.
+   */
+  private buildQuarantineSection(): string {
+    const threshold = parseInt(process.env['HEAL_QUARANTINE_THRESHOLD'] ?? '3', 10);
+    let entries: Record<string, HealTrendEntry> = {};
+    try {
+      entries = readTrends();
+    } catch {
+      return '';
+    }
+    const candidates = quarantineCandidates(entries, threshold);
+    if (candidates.length === 0) return '';
+    const rows = candidates
+      .sort((a, b) => b.count - a.count)
+      .map(
+        (e) =>
+          `| ${e.pageObject}.${e.method} | \`${e.originalStrategyType}="${e.originalStrategyValue}"\` | ${e.count} |\n`,
+      )
+      .join('');
+    return (
+      `\n### Quarantine Candidates (healed ≥ ${threshold} times)\n` +
+      `| Locator | Original Strategy | Heal Count |\n` +
+      `|---------|-------------------|------------|\n` +
+      rows
+    );
+  }
+
   generateSummary(): string {
     return (
       this.buildStatsTable() +
@@ -176,6 +209,7 @@ export class StepSummaryReporter implements Reporter {
       this.buildBulletSection('Flaky Tests', this.flakyTests) +
       this.buildBulletSection('Interrupted Tests', this.interruptedTests) +
       this.buildSlowTestsSection() +
+      this.buildQuarantineSection() +
       '\n---\n\n'
     );
   }
