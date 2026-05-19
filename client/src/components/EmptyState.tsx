@@ -76,7 +76,7 @@ export default function EmptyState({
     >
       <div className="mb-4 text-gray-300">{icon}</div>
       <h3 className="text-sm font-semibold text-gray-700 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 max-w-sm mb-6">{description}</p>
+      <p className="text-sm text-gray-600 max-w-sm mb-6">{description}</p>
       {(action ?? secondaryAction) && (
         <div className="flex items-center gap-3">
           {action && <ActionButton action={action} variant="primary" />}
