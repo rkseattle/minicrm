@@ -60,6 +60,8 @@ qa/node_modules/
 qa/dist/
 qa/playwright-report/
 qa/test-results/
+# MINCRM-373: heal-trends.json accumulates cross-run data and must be git-tracked
+!qa/test-results/heal-trends.json
 # MINCRM-192: storageState auth artifacts — never commit session cookies
 qa/e2e/.auth/
 

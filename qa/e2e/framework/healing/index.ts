@@ -27,3 +27,12 @@ export type { AiHealResult, AiHealerOptions } from './ai-healer.js';
 
 export { generatePatchSuggestions } from './patch-suggester.js';
 export type { PatchSuggestion } from './patch-suggester.js';
+
+export {
+  readTrends,
+  mergeTrends,
+  writeTrends,
+  quarantineCandidates,
+  buildTrendKey,
+} from './heal-trends.js';
+export type { HealTrendEntry, HealTrendsFile } from './heal-trends.js';

@@ -7,14 +7,18 @@
  * 2. Deduplication when the same method heals twice in one run.
  * 3. An empty report produces the "No heal events" output.
  * 4. buildSuggestionsMarkdown formats suggestions into valid markdown.
+ * 5. Trend-aware sorting: suggestions sorted by accumulated count descending. MINCRM-373
+ * 6. Trend-aware instruction: count prefix in instruction when trends present. MINCRM-373
+ * 7. No count prefix when accumulatedCount is 0 (no trends provided). MINCRM-373
  *
- * MINCRM-225
+ * MINCRM-225, MINCRM-373
  */
 
 import { test, expect } from '@playwright/test';
 import { generatePatchSuggestions } from '../../framework/healing/patch-suggester.js';
 import { buildSuggestionsMarkdown } from '../../framework/healing/healing-reporter.js';
 import type { HealingReport } from '../../framework/healing/healing-reporter.js';
+import type { HealTrendEntry } from '../../framework/healing/heal-trends.js';
 
 function makeReport(overrides: Partial<HealingReport> = {}): HealingReport {
   return {
@@ -230,6 +234,7 @@ test.describe('buildSuggestionsMarkdown', () => {
         method: 'saveButton',
         winningStrategyType: 'role',
         winningStrategyValue: 'button',
+        accumulatedCount: 0,
         instruction:
           'Move {"type":"role","value":"button"} to position 0 in the strategy array for ContactsPage.saveButton',
       },
@@ -245,6 +250,7 @@ test.describe('buildSuggestionsMarkdown', () => {
         method: 'saveButton',
         winningStrategyType: 'role',
         winningStrategyValue: 'button',
+        accumulatedCount: 0,
         instruction: 'instruction A',
       },
       {
@@ -252,6 +258,7 @@ test.describe('buildSuggestionsMarkdown', () => {
         method: 'cancelButton',
         winningStrategyType: 'css',
         winningStrategyValue: '.cancel',
+        accumulatedCount: 0,
         instruction: 'instruction B',
       },
     ]);
@@ -259,5 +266,138 @@ test.describe('buildSuggestionsMarkdown', () => {
     expect(md).toContain('instruction A');
     expect(md).toContain('## DealsPage.cancelButton');
     expect(md).toContain('instruction B');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-373: trend-aware suggestions — count sorting and instruction prefix
+// ---------------------------------------------------------------------------
+
+test.describe('generatePatchSuggestions — trend-aware (MINCRM-373)', () => {
+  function makeTrendEntry(count: number): HealTrendEntry {
+    return {
+      pageObject: 'P',
+      method: 'm',
+      originalStrategyType: 'testId',
+      originalStrategyValue: 'x',
+      count,
+      firstSeenAt: '2026-01-01T00:00:00.000Z',
+      lastSeenAt: '2026-01-01T00:00:00.000Z',
+    };
+  }
+
+  test('suggestions are sorted by accumulated count descending when trends provided (AC #4)', () => {
+    const report = makeReport({
+      totalHeals: 2,
+      staticHeals: 2,
+      events: [
+        {
+          timestamp: '2026-01-01T00:00:01.000Z',
+          testName: 'test A',
+          originalStrategy: { type: 'testId', value: 'low-btn' },
+          healedStrategy: { type: 'role', value: 'button' },
+          wasAiHeal: false,
+          pageObject: 'PageA',
+          method: 'lowButton',
+        },
+        {
+          timestamp: '2026-01-01T00:00:02.000Z',
+          testName: 'test B',
+          originalStrategy: { type: 'testId', value: 'high-btn' },
+          healedStrategy: { type: 'css', value: '.btn' },
+          wasAiHeal: false,
+          pageObject: 'PageB',
+          method: 'highButton',
+        },
+      ],
+    });
+
+    const trends: Record<string, HealTrendEntry> = {
+      'PageA::lowButton::testId::low-btn': makeTrendEntry(2),
+      'PageB::highButton::testId::high-btn': makeTrendEntry(7),
+    };
+
+    const suggestions = generatePatchSuggestions(report, trends);
+    expect(suggestions).toHaveLength(2);
+    // Higher count locator must appear first.
+    expect(suggestions[0]!.method).toBe('highButton');
+    expect(suggestions[0]!.accumulatedCount).toBe(7);
+    expect(suggestions[1]!.method).toBe('lowButton');
+    expect(suggestions[1]!.accumulatedCount).toBe(2);
+  });
+
+  test('instruction includes count prefix when accumulatedCount > 0 (AC #4)', () => {
+    const report = makeReport({
+      totalHeals: 1,
+      staticHeals: 1,
+      events: [
+        {
+          timestamp: '2026-01-01T00:00:01.000Z',
+          testName: 'test',
+          originalStrategy: { type: 'testId', value: 'save-btn' },
+          healedStrategy: { type: 'role', value: 'button' },
+          wasAiHeal: false,
+          pageObject: 'ContactsPage',
+          method: 'saveButton',
+        },
+      ],
+    });
+
+    const trends: Record<string, HealTrendEntry> = {
+      'ContactsPage::saveButton::testId::save-btn': makeTrendEntry(5),
+    };
+
+    const suggestions = generatePatchSuggestions(report, trends);
+    expect(suggestions[0]!.instruction).toContain('Healed 5 time(s) across runs.');
+    expect(suggestions[0]!.accumulatedCount).toBe(5);
+  });
+
+  test('no count prefix in instruction when no trends provided', () => {
+    const report = makeReport({
+      totalHeals: 1,
+      staticHeals: 1,
+      events: [
+        {
+          timestamp: '2026-01-01T00:00:01.000Z',
+          testName: 'test',
+          originalStrategy: { type: 'testId', value: 'save-btn' },
+          healedStrategy: { type: 'role', value: 'button' },
+          wasAiHeal: false,
+          pageObject: 'ContactsPage',
+          method: 'saveButton',
+        },
+      ],
+    });
+
+    const suggestions = generatePatchSuggestions(report);
+    expect(suggestions[0]!.instruction).not.toContain('Healed');
+    expect(suggestions[0]!.accumulatedCount).toBe(0);
+  });
+
+  test('accumulatedCount is 0 when locator key is absent from trends', () => {
+    const report = makeReport({
+      totalHeals: 1,
+      staticHeals: 1,
+      events: [
+        {
+          timestamp: '2026-01-01T00:00:01.000Z',
+          testName: 'test',
+          originalStrategy: { type: 'testId', value: 'missing-btn' },
+          healedStrategy: { type: 'role', value: 'button' },
+          wasAiHeal: false,
+          pageObject: 'SomePage',
+          method: 'someMethod',
+        },
+      ],
+    });
+
+    // Trends exist but the locator key is absent from them.
+    const trends: Record<string, HealTrendEntry> = {
+      'OtherPage::otherMethod::testId::other-btn': makeTrendEntry(3),
+    };
+
+    const suggestions = generatePatchSuggestions(report, trends);
+    expect(suggestions[0]!.accumulatedCount).toBe(0);
+    expect(suggestions[0]!.instruction).not.toContain('Healed');
   });
 });

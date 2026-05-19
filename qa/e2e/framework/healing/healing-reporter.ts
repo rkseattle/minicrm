@@ -27,6 +27,8 @@ import { HealingRegistry } from './healing-registry.js';
 import type { HealEvent } from './healing-registry.js';
 import { generatePatchSuggestions } from './patch-suggester.js';
 import type { PatchSuggestion } from './patch-suggester.js';
+import { readTrends, mergeTrends, writeTrends, quarantineCandidates } from './heal-trends.js';
+import type { HealTrendEntry } from './heal-trends.js';
 
 const OUTPUT_DIR = 'test-results';
 // Matches both the original format (healing-0.json) and the shard-aware format
@@ -46,6 +48,10 @@ export interface HealingReport {
   /** Sum of tokenCost across all AI heal events. Computed at report-generation time. */
   estimatedTokenCost: number;
   events: HealEvent[];
+  /** Accumulated heal counts across all runs, keyed by deduplicated locator key. */
+  trends?: Record<string, HealTrendEntry>;
+  /** Locators that meet or exceed the quarantine threshold this run. */
+  quarantineEligible?: HealTrendEntry[];
 }
 
 /**
@@ -120,6 +126,20 @@ export class HealingReporter implements Reporter {
     const staticHeals = allEvents.length - aiHeals;
     const estimatedTokenCost = aiHealEvents.reduce((sum, e) => sum + (e.tokenCost ?? 0), 0);
 
+    // Merge this run's events into the persistent cross-run trend store.
+    let mergedTrends: Record<string, HealTrendEntry> = {};
+    try {
+      const existing = readTrends();
+      mergedTrends = mergeTrends(existing, allEvents);
+      if (allEvents.length > 0) {
+        writeTrends(mergedTrends);
+      }
+    } catch (err) {
+      console.error(`[HealingReporter] Failed to update heal-trends.json: ${String(err)}`);
+    }
+
+    const eligible = quarantineCandidates(mergedTrends, this._quarantineThreshold());
+
     const report: HealingReport = {
       generatedAt: new Date().toISOString(),
       totalHeals: allEvents.length,
@@ -128,6 +148,8 @@ export class HealingReporter implements Reporter {
       aiHealCount: aiHeals,
       estimatedTokenCost,
       events: allEvents,
+      trends: mergedTrends,
+      quarantineEligible: eligible,
     };
 
     // Write the merged report.
@@ -143,6 +165,9 @@ export class HealingReporter implements Reporter {
 
     // Emit a warning when AI heal count exceeds the configured threshold.
     this._checkThreshold(report);
+
+    // Emit quarantine-eligible warnings.
+    this._checkQuarantine(eligible);
 
     // Log summary to CI output.
     this._logSummary(report);
@@ -179,13 +204,39 @@ export class HealingReporter implements Reporter {
     }
   }
 
+  /** Returns the configured quarantine threshold (default 3). */
+  _quarantineThreshold(): number {
+    return parseInt(process.env['HEAL_QUARANTINE_THRESHOLD'] ?? '3', 10);
+  }
+
+  /**
+   * Logs a warning block listing quarantine-eligible locators.
+   * A quarantine-eligible locator has accumulated heal count >= HEAL_QUARANTINE_THRESHOLD.
+   * Quarantine is a human decision — this method only surfaces the signal.
+   */
+  _checkQuarantine(eligible: HealTrendEntry[]): void {
+    if (eligible.length === 0) return;
+    const threshold = this._quarantineThreshold();
+    console.warn(
+      `\n[HealingReporter] ⚠ ${eligible.length} locator(s) are quarantine-eligible (healed ≥ ${threshold} times across runs):`,
+    );
+    for (const entry of eligible) {
+      console.warn(
+        `  - ${entry.pageObject}.${entry.method} [${entry.originalStrategyType}="${entry.originalStrategyValue}"] — healed ${entry.count} time(s)`,
+      );
+    }
+    console.warn(
+      `  Review these locators and update their strategy arrays. See healing-suggestions.md for details.\n`,
+    );
+  }
+
   /**
    * Generates patch suggestions from the report and writes healing-suggestions.md.
    * Always writes the file — an absent file is harder to distinguish from a CI
    * artifact upload failure than an empty one.
    */
   _writeSuggestions(report: HealingReport): void {
-    const suggestions = generatePatchSuggestions(report);
+    const suggestions = generatePatchSuggestions(report, report.trends);
     const markdown = buildSuggestionsMarkdown(suggestions);
     try {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });

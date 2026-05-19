@@ -9,8 +9,11 @@
  * 5. onEnd() — appends markdown to summaryPath when set
  * 6. onEnd() — no file I/O when summaryPath is null (local run)
  * 7. onBegin() — reads slowThreshold from config.reportSlowTests
+ * 8. generateSummary() — Quarantine Candidates section when candidates exist. MINCRM-373
+ * 9. generateSummary() — no Quarantine Candidates section when none exist. MINCRM-373
+ * 10. HEAL_QUARANTINE_THRESHOLD env var controls section visibility. MINCRM-373
  *
- * MINCRM-332
+ * MINCRM-332, MINCRM-373
  */
 
 import { test, expect } from '@playwright/test';
@@ -19,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { StepSummaryReporter } from '../../framework/reporting/step-summary-reporter.js';
 import type { FullConfig, FullResult, TestCase, TestResult } from '@playwright/test/reporter';
+import type { HealTrendsFile } from '../../framework/healing/heal-trends.js';
 
 // ---------------------------------------------------------------------------
 // Minimal stub factories — only the fields each test actually needs.
@@ -436,5 +440,155 @@ test.describe('StepSummaryReporter — reporter interface methods', () => {
   test('onError handles missing message gracefully', () => {
     const reporter = new StepSummaryReporter();
     expect(() => reporter.onError({} as never)).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MINCRM-373: Quarantine Candidates section in GitHub Step Summary
+// ---------------------------------------------------------------------------
+
+test.describe('StepSummaryReporter — Quarantine Candidates section (MINCRM-373)', () => {
+  /**
+   * Writes a minimal heal-trends.json into tmpDir/test-results/ and returns the
+   * tmpDir so tests can chdir into it.
+   */
+  function writeTrendsFile(tmpDir: string, entries: HealTrendsFile['entries']): void {
+    const dir = path.join(tmpDir, 'test-results');
+    fs.mkdirSync(dir, { recursive: true });
+    const file: HealTrendsFile = { updatedAt: new Date().toISOString(), entries };
+    fs.writeFileSync(path.join(dir, 'heal-trends.json'), JSON.stringify(file), 'utf-8');
+  }
+
+  test.afterEach(() => {
+    delete process.env['HEAL_QUARANTINE_THRESHOLD'];
+  });
+
+  test('includes Quarantine Candidates section when locator meets default threshold of 3 (AC #5)', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'step-summary-quarantine-'));
+    writeTrendsFile(tmpDir, {
+      'ContactsPage::saveButton::testId::save-btn': {
+        pageObject: 'ContactsPage',
+        method: 'saveButton',
+        originalStrategyType: 'testId',
+        originalStrategyValue: 'save-btn',
+        count: 3,
+        firstSeenAt: '2026-01-01T00:00:00.000Z',
+        lastSeenAt: '2026-01-03T00:00:00.000Z',
+      },
+    });
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const reporter = new StepSummaryReporter();
+      const summary = reporter.generateSummary();
+      expect(summary).toContain('### Quarantine Candidates');
+      expect(summary).toContain('ContactsPage.saveButton');
+      expect(summary).toContain('3');
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('omits Quarantine Candidates section when no locator meets threshold', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'step-summary-no-quarantine-'));
+    writeTrendsFile(tmpDir, {
+      'P::m::testId::x': {
+        pageObject: 'P',
+        method: 'm',
+        originalStrategyType: 'testId',
+        originalStrategyValue: 'x',
+        count: 2, // below default threshold of 3
+        firstSeenAt: '2026-01-01T00:00:00.000Z',
+        lastSeenAt: '2026-01-02T00:00:00.000Z',
+      },
+    });
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const reporter = new StepSummaryReporter();
+      expect(reporter.generateSummary()).not.toContain('### Quarantine Candidates');
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('omits Quarantine Candidates section when heal-trends.json is absent', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'step-summary-no-trends-'));
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const reporter = new StepSummaryReporter();
+      expect(reporter.generateSummary()).not.toContain('### Quarantine Candidates');
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('HEAL_QUARANTINE_THRESHOLD env var overrides default threshold in section', () => {
+    process.env['HEAL_QUARANTINE_THRESHOLD'] = '10';
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'step-summary-threshold-'));
+    writeTrendsFile(tmpDir, {
+      'P::m::testId::x': {
+        pageObject: 'P',
+        method: 'm',
+        originalStrategyType: 'testId',
+        originalStrategyValue: 'x',
+        count: 5, // meets threshold=3 but not threshold=10
+        firstSeenAt: '2026-01-01T00:00:00.000Z',
+        lastSeenAt: '2026-01-05T00:00:00.000Z',
+      },
+    });
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const reporter = new StepSummaryReporter();
+      // count=5 < threshold=10 → no section
+      expect(reporter.generateSummary()).not.toContain('### Quarantine Candidates');
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      delete process.env['HEAL_QUARANTINE_THRESHOLD'];
+    }
+  });
+
+  test('Quarantine Candidates table is sorted by heal count descending', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'step-summary-sorted-'));
+    writeTrendsFile(tmpDir, {
+      'P::low::testId::a': {
+        pageObject: 'P',
+        method: 'low',
+        originalStrategyType: 'testId',
+        originalStrategyValue: 'a',
+        count: 3,
+        firstSeenAt: '2026-01-01T00:00:00.000Z',
+        lastSeenAt: '2026-01-01T00:00:00.000Z',
+      },
+      'P::high::testId::b': {
+        pageObject: 'P',
+        method: 'high',
+        originalStrategyType: 'testId',
+        originalStrategyValue: 'b',
+        count: 9,
+        firstSeenAt: '2026-01-01T00:00:00.000Z',
+        lastSeenAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+    const originalCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      const reporter = new StepSummaryReporter();
+      const summary = reporter.generateSummary();
+      const highIdx = summary.indexOf('P.high');
+      const lowIdx = summary.indexOf('P.low');
+      expect(highIdx).toBeGreaterThan(-1);
+      expect(lowIdx).toBeGreaterThan(-1);
+      expect(highIdx).toBeLessThan(lowIdx);
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

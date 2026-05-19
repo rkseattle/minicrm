@@ -7,6 +7,8 @@
 
 import type { HealingReport } from './healing-reporter.js';
 import type { LocatorStrategyRecord } from './healing-registry.js';
+import type { HealTrendEntry } from './heal-trends.js';
+import { buildTrendKey } from './heal-trends.js';
 
 /** A single patch suggestion derived from a unique heal event. */
 export interface PatchSuggestion {
@@ -20,6 +22,8 @@ export interface PatchSuggestion {
   winningStrategyValue: string;
   /** Plain-English instruction for the developer. */
   instruction: string;
+  /** Accumulated cross-run heal count for this locator (0 when trends are unavailable). */
+  accumulatedCount: number;
 }
 
 function formatStrategy(strategy: LocatorStrategyRecord): string {
@@ -34,8 +38,15 @@ function formatStrategy(strategy: LocatorStrategyRecord): string {
  * strategy type (e.g. two testId strategies with different values) each get a suggestion.
  * When multiple heals for the same locator occur in one run, only the first winning
  * strategy is surfaced (earliest timestamp wins after sort).
+ *
+ * When `trends` is provided, suggestions are sorted by accumulated cross-run
+ * heal count descending so the most chronically-healed locators appear first.
+ * The count is prepended to each instruction for visibility.
  */
-export function generatePatchSuggestions(report: HealingReport): PatchSuggestion[] {
+export function generatePatchSuggestions(
+  report: HealingReport,
+  trends?: Record<string, HealTrendEntry>,
+): PatchSuggestion[] {
   const seen = new Set<string>();
   const suggestions: PatchSuggestion[] = [];
 
@@ -50,8 +61,12 @@ export function generatePatchSuggestions(report: HealingReport): PatchSuggestion
     if (seen.has(dedupKey)) continue;
     seen.add(dedupKey);
 
+    const trendKey = buildTrendKey(event);
+    const accumulatedCount = trends?.[trendKey]?.count ?? 0;
     const strategyLiteral = formatStrategy(event.healedStrategy);
-    const instruction = `Move ${strategyLiteral} to position 0 in the strategy array for ${pageObject}.${method}`;
+    const countPrefix =
+      accumulatedCount > 0 ? `Healed ${accumulatedCount} time(s) across runs. ` : '';
+    const instruction = `${countPrefix}Move ${strategyLiteral} to position 0 in the strategy array for ${pageObject}.${method}`;
 
     suggestions.push({
       pageObject,
@@ -59,8 +74,13 @@ export function generatePatchSuggestions(report: HealingReport): PatchSuggestion
       winningStrategyType: event.healedStrategy.type,
       winningStrategyValue: event.healedStrategy.value,
       instruction,
+      accumulatedCount,
     });
   }
+
+  // Sort by accumulated cross-run count descending so the most-healed locators
+  // appear first in healing-suggestions.md.
+  suggestions.sort((a, b) => b.accumulatedCount - a.accumulatedCount);
 
   return suggestions;
 }
