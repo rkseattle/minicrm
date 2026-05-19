@@ -61,6 +61,24 @@ export class LeadsPage {
     await this.page.goto(LeadsPage.PATH);
   }
 
+  /**
+   * Selects 100 rows per page from the pagination size selector so that all
+   * leads are visible on a single page. Useful in tests that need to find a
+   * specific lead row when the DB has accumulated rows from prior runs.
+   */
+  async setPageSizeToMax(): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pagination-limit-select' },
+          { type: 'role', value: 'combobox', options: { name: /rows per page/i } },
+        ],
+        { intent: 'rows-per-page selector to show more leads per page' },
+      )
+      .resolve()
+      .then((el) => el.selectOption('100'));
+  }
+
   // ---------------------------------------------------------------------------
   // List interactions
   // ---------------------------------------------------------------------------

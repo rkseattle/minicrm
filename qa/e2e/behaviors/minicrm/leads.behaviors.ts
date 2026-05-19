@@ -236,6 +236,9 @@ export async function showDisqualifiedLeads(
 ): Promise<ShowDisqualifiedLeadsResult> {
   const leadsPage = new LeadsPage(context);
   await leadsPage.navigate();
+  // Use max page size so the target lead is visible even when the DB has
+  // accumulated rows from prior test runs.
+  await leadsPage.setPageSizeToMax();
 
   await leadsPage.showDisqualified();
 
@@ -271,6 +274,9 @@ export async function showConvertedLeads(
 ): Promise<ShowConvertedLeadsResult> {
   const leadsPage = new LeadsPage(context);
   await leadsPage.navigate();
+  // Use max page size so the target lead is visible even when the DB has
+  // accumulated rows from prior test runs.
+  await leadsPage.setPageSizeToMax();
 
   await leadsPage.showConverted();
 
@@ -514,8 +520,12 @@ export async function getLeads(
   const params = new URLSearchParams();
   if (options.includeDisqualified) params.set('includeDisqualified', 'true');
   if (options.includeConverted) params.set('includeConverted', 'true');
-  const query = params.toString() ? `?${params.toString()}` : '';
-  const res = await restClient.get<{ data: LeadListRow[]; total: number }>(`/api/v1/leads${query}`);
+  // Use max page size (100) so newly created leads are found even when the DB has
+  // accumulated rows from previous test runs that weren't cleaned up.
+  params.set('limit', '100');
+  const res = await restClient.get<{ data: LeadListRow[]; total: number }>(
+    `/api/v1/leads?${params.toString()}`,
+  );
   return { data: res.body.data, total: res.body.total };
 }
 
