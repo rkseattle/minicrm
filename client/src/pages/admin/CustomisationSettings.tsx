@@ -11,6 +11,7 @@ import {
   createPipelineStage,
   updatePipelineStage,
   deletePipelineStage,
+  reorderPipelineStages,
   PIPELINE_STAGES_QUERY_KEY,
 } from '@/api/pipelineStages.js';
 import {
@@ -116,10 +117,9 @@ export default function CustomisationSettings() {
   });
 
   const reorderStageMutation = useMutation({
-    mutationFn: ({ id, sort_order }: { id: string; sort_order: number }) =>
-      updatePipelineStage(id, { sort_order }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
+    mutationFn: (orderedIds: string[]) => reorderPipelineStages({ stages: orderedIds }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(PIPELINE_STAGES_QUERY_KEY, data);
     },
     onError: () => {
       setStagesSectionFeedback({ type: 'error', key: 'settings.pipelineStages.reorderError' });
@@ -148,24 +148,22 @@ export default function CustomisationSettings() {
     },
   });
 
+  function buildReorderedIds(fromIndex: number, toIndex: number): string[] {
+    const ids = stages.map((s) => s.id);
+    const moved = ids[fromIndex];
+    const without = ids.filter((_, i) => i !== fromIndex);
+    without.splice(toIndex, 0, moved);
+    return without;
+  }
+
   function handleMoveUp(index: number): void {
     if (index === 0) return;
-    const current = stages[index];
-    const above = stages[index - 1];
-    void (async () => {
-      await reorderStageMutation.mutateAsync({ id: current.id, sort_order: above.sort_order });
-      await reorderStageMutation.mutateAsync({ id: above.id, sort_order: current.sort_order });
-    })();
+    reorderStageMutation.mutate(buildReorderedIds(index, index - 1));
   }
 
   function handleMoveDown(index: number): void {
     if (index === stages.length - 1) return;
-    const current = stages[index];
-    const below = stages[index + 1];
-    void (async () => {
-      await reorderStageMutation.mutateAsync({ id: current.id, sort_order: below.sort_order });
-      await reorderStageMutation.mutateAsync({ id: below.id, sort_order: current.sort_order });
-    })();
+    reorderStageMutation.mutate(buildReorderedIds(index, index + 1));
   }
 
   function startEditing(stage: PipelineStageResponse): void {

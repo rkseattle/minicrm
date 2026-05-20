@@ -56,3 +56,16 @@ export const updatePipelineStageSchema = z
   });
 
 export type UpdatePipelineStageInput = z.infer<typeof updatePipelineStageSchema>;
+
+/**
+ * Request body for atomically reordering all pipeline stages (MINCRM-381).
+ * The client sends the full ordered array of stage IDs; the server assigns
+ * sort_order 1..N in that order within a single transaction.
+ */
+export const reorderPipelineStagesSchema = z.object({
+  stages: z
+    .array(z.string().uuid('Each stage ID must be a valid UUID'))
+    .min(1, 'At least one stage ID is required'),
+});
+
+export type ReorderPipelineStagesInput = z.infer<typeof reorderPipelineStagesSchema>;

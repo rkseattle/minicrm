@@ -345,6 +345,46 @@ export async function getAdminSettingsBrandingResetSuccessLocator(
 }
 
 // ---------------------------------------------------------------------------
+// Pipeline stages — customisation tab (MINCRM-381)
+// ---------------------------------------------------------------------------
+
+/** Returns a resolved locator for the pipeline stages table. */
+export async function getPipelineStagesTableLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).pipelineStagesTableLocator();
+}
+
+/**
+ * Returns a resolved locator for the move-up button of a stage row.
+ *
+ * @param context - Behavior context containing page.
+ * @param stageId - UUID of the pipeline stage.
+ */
+export async function getPipelineStageMoveUpLocator(
+  context: AdminSettingsBehaviorContext,
+  stageId: string,
+) {
+  return new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
+}
+
+/**
+ * Returns a resolved locator for the move-down button of a stage row.
+ *
+ * @param context - Behavior context containing page.
+ * @param stageId - UUID of the pipeline stage.
+ */
+export async function getPipelineStageMoveDownLocator(
+  context: AdminSettingsBehaviorContext,
+  stageId: string,
+) {
+  return new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
+}
+
+/** Returns a resolved locator for the pipeline stages feedback status message. */
+export async function getPipelineStagesFeedbackLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).pipelineStagesFeedbackLocator();
+}
+
+// ---------------------------------------------------------------------------
 // ensureSystemDefaults
 // ---------------------------------------------------------------------------
 

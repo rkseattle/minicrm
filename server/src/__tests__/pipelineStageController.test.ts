@@ -156,6 +156,87 @@ describe('POST /api/settings/pipeline-stages — admin only', () => {
   });
 });
 
+// ── PUT /api/settings/pipeline-stages/reorder ────────────────────────────────
+
+describe('PUT /api/settings/pipeline-stages/reorder — admin only', () => {
+  it('returns 200 and stages in the new order', async () => {
+    const listRes = await request(app)
+      .get('/api/v1/settings/pipeline-stages')
+      .set('Cookie', adminCookie);
+    const stageIds: string[] = (listRes.body.stages as { id: string }[]).map((s) => s.id);
+    const reversed = [...stageIds].reverse();
+
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', adminCookie)
+      .send({ stages: reversed });
+
+    expect(res.status).toBe(200);
+    expect((res.body.stages as { id: string }[]).map((s) => s.id)).toEqual(reversed);
+  });
+
+  it('assigns sort_order 1..N to the stages in the submitted order', async () => {
+    const listRes = await request(app)
+      .get('/api/v1/settings/pipeline-stages')
+      .set('Cookie', adminCookie);
+    const stageIds: string[] = (listRes.body.stages as { id: string }[]).map((s) => s.id);
+
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', adminCookie)
+      .send({ stages: stageIds });
+
+    const sortOrders: number[] = (res.body.stages as { sort_order: number }[]).map(
+      (s) => s.sort_order,
+    );
+    expect(sortOrders).toEqual(stageIds.map((_, i) => i + 1));
+  });
+
+  it('returns 400 VALIDATION_ERROR when stages array is missing', async () => {
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', adminCookie)
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 VALIDATION_ERROR when stages array contains a non-UUID', async () => {
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', adminCookie)
+      .send({ stages: ['not-a-uuid'] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 STAGE_NOT_FOUND when a supplied ID does not exist', async () => {
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', adminCookie)
+      .send({ stages: ['00000000-0000-0000-0000-000000000000'] });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('STAGE_NOT_FOUND');
+  });
+
+  it('returns 403 when a rep attempts to reorder stages', async () => {
+    const listRes = await request(app)
+      .get('/api/v1/settings/pipeline-stages')
+      .set('Cookie', adminCookie);
+    const stageIds: string[] = (listRes.body.stages as { id: string }[]).map((s) => s.id);
+
+    const res = await request(app)
+      .put('/api/v1/settings/pipeline-stages/reorder')
+      .set('Cookie', repCookie)
+      .send({ stages: stageIds });
+
+    expect(res.status).toBe(403);
+  });
+});
+
 // ── PATCH /api/settings/pipeline-stages/:id ──────────────────────────────────
 
 describe('PATCH /api/settings/pipeline-stages/:id', () => {

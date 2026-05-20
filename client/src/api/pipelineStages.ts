@@ -9,6 +9,7 @@ import type {
   PipelineStageResponse,
   CreatePipelineStageInput,
   UpdatePipelineStageInput,
+  ReorderPipelineStagesInput,
 } from '@shared/schemas/pipelineStageSchema.js';
 
 /** React Query cache key for the pipeline stages list */
@@ -65,5 +66,22 @@ export async function updatePipelineStage(
  */
 export async function deletePipelineStage(id: string): Promise<{ id: string }> {
   const response = await apiClient.delete<{ id: string }>(`/settings/pipeline-stages/${id}`);
+  return response.data;
+}
+
+/**
+ * Atomically reorders all pipeline stages. Admin only (MINCRM-381).
+ * Sends the full ordered array of stage IDs; the server assigns sort_order 1..N
+ * in a single transaction, eliminating transient unique-constraint conflicts.
+ *
+ * @param params - Ordered array of stage UUIDs
+ */
+export async function reorderPipelineStages(
+  params: ReorderPipelineStagesInput,
+): Promise<PipelineStagesListResponse> {
+  const response = await apiClient.put<PipelineStagesListResponse>(
+    '/settings/pipeline-stages/reorder',
+    params,
+  );
   return response.data;
 }

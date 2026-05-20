@@ -36,6 +36,7 @@ import {
   createPipelineStageHandler,
   updatePipelineStageHandler,
   deletePipelineStageHandler,
+  reorderPipelineStagesHandler,
 } from '../controllers/pipelineStageController.js';
 import {
   getSmtpConfigHandler,
@@ -600,6 +601,58 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(createPipelineStageHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/pipeline-stages/reorder:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: reorderPipelineStages
+ *     summary: Atomically reorder all pipeline stages (admin only, MINCRM-381)
+ *     description: >
+ *       Accepts the full ordered array of stage UUIDs and assigns sort_order 1..N
+ *       in a single transaction. Replaces the two-PATCH sequential swap that caused
+ *       transient 409 STAGE_SORT_ORDER_CONFLICT errors.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [stages]
+ *             properties:
+ *               stages:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Stages in new order
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PipelineStageResponse'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.put(
+  '/pipeline-stages/reorder',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(reorderPipelineStagesHandler),
 );
 
 /**

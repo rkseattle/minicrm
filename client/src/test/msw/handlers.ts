@@ -1430,6 +1430,25 @@ export const handlers = [
     return HttpResponse.json({ id: params.id });
   }),
 
+  /** Pipeline stages: PUT /api/settings/pipeline-stages/reorder — batch reorder (MINCRM-381) */
+  http.put('/api/v1/settings/pipeline-stages/reorder', async ({ request }) => {
+    const body = (await request.json()) as { stages: string[] };
+    const reordered = body.stages.map((id, i) => {
+      const existing = PIPELINE_STAGES_FIXTURE.find((s) => s.id === id);
+      if (!existing) {
+        return null;
+      }
+      return { ...existing, sort_order: i + 1 };
+    });
+    if (reordered.some((s) => s === null)) {
+      return HttpResponse.json(
+        { error: { code: 'STAGE_NOT_FOUND', message: 'Pipeline stage not found' } },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json({ stages: reordered });
+  }),
+
   // ── Bulk operations (MINCRM-188) ─────────────────────────────────────────────
 
   /** Bulk: POST /api/contacts/bulk — returns affected count */

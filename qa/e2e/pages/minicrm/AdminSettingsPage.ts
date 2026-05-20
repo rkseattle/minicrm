@@ -946,4 +946,72 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  // ---------------------------------------------------------------------------
+  // Pipeline stages — customisation tab (MINCRM-381)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the pipeline stages table.
+   */
+  async pipelineStagesTableLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pipeline-stages-table' },
+          { type: 'role', value: 'table' },
+        ],
+        { intent: 'table listing all pipeline stages on the customisation tab' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the move-up button of a stage row by stage ID.
+   *
+   * @param stageId - UUID of the stage row.
+   */
+  async pipelineStageMoveUpLocator(stageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `pipeline-stage-move-up-${stageId}` },
+          { type: 'role', value: 'button', options: { name: /move .+ up/i } },
+        ],
+        { intent: `move-up button for pipeline stage ${stageId}` },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the move-down button of a stage row by stage ID.
+   *
+   * @param stageId - UUID of the stage row.
+   */
+  async pipelineStageMoveDownLocator(stageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `pipeline-stage-move-down-${stageId}` },
+          { type: 'role', value: 'button', options: { name: /move .+ down/i } },
+        ],
+        { intent: `move-down button for pipeline stage ${stageId}` },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the pipeline stages feedback status message.
+   */
+  async pipelineStagesFeedbackLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pipeline-stages-feedback' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success or error feedback message in the pipeline stages section' },
+      )
+      .resolve();
+  }
 }
