@@ -11,12 +11,14 @@ import {
   updatePipelineStage,
   deletePipelineStage,
   findPipelineStageById,
+  reorderPipelineStages,
   toStageResponse,
 } from '../services/pipelineStageService.js';
 import { markPipelineStagesReviewed } from '../services/settingsService.js';
 import {
   createPipelineStageSchema,
   updatePipelineStageSchema,
+  reorderPipelineStagesSchema,
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import logger from '../logger.js';
 
@@ -53,7 +55,9 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
   }
 
   try {
-    const stage = await createPipelineStage(parsed.data);
+    // req.user is guaranteed by the authenticate middleware on this route
+    const actor = { id: req.user!.id, name: req.user!.name };
+    const stage = await createPipelineStage(parsed.data, actor);
     res.status(201).json(toStageResponse(stage));
     // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
     void markPipelineStagesReviewed().catch((err: unknown) =>
@@ -94,7 +98,9 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
   }
 
   try {
-    const stage = await updatePipelineStage(id, parsed.data);
+    // req.user is guaranteed by the authenticate middleware on this route
+    const actor = { id: req.user!.id, name: req.user!.name };
+    const stage = await updatePipelineStage(id, parsed.data, actor);
     if (!stage) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Pipeline stage not found' } });
       return;
@@ -127,6 +133,42 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
 }
 
 /**
+ * PUT /api/settings/pipeline-stages/reorder
+ * Atomically reorders all pipeline stages. Admin only (MINCRM-381).
+ * Accepts { stages: [id1, id2, ...] } in desired order and writes all
+ * sort_order values in a single transaction — no transient unique conflicts.
+ *
+ * @param req - Express request with body { stages: string[] }.
+ * @param res - Express response with { stages: PipelineStageResponse[] }.
+ */
+export async function reorderPipelineStagesHandler(req: Request, res: Response): Promise<void> {
+  const parsed = reorderPipelineStagesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
+    });
+    return;
+  }
+
+  try {
+    // req.user is guaranteed by the authenticate middleware on this route
+    const actor = { id: req.user!.id, name: req.user!.name };
+    const rows = await reorderPipelineStages(parsed.data, actor);
+    res.status(200).json({ stages: rows.map(toStageResponse) });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'STAGE_NOT_FOUND') {
+      res.status(404).json({ error: { code: 'STAGE_NOT_FOUND', message: (err as Error).message } });
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * DELETE /api/settings/pipeline-stages/:id
  * Deletes a pipeline stage. Admin only.
  * Blocked if the stage is fixed or has open deals.
@@ -145,7 +187,9 @@ export async function deletePipelineStageHandler(req: Request, res: Response): P
   }
 
   try {
-    await deletePipelineStage(id);
+    // req.user is guaranteed by the authenticate middleware on this route
+    const actor = { id: req.user!.id, name: req.user!.name };
+    await deletePipelineStage(id, actor);
     res.status(200).json({ id });
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;

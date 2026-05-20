@@ -1,7 +1,14 @@
 /**
- * Tests for CustomisationSettings — custom fields section (MINCRM-276)
+ * Tests for CustomisationSettings — pipeline stages reorder (MINCRM-381) and
+ * custom fields section (MINCRM-276).
  *
- * Covers:
+ * Pipeline stages covers:
+ *  - Stages table renders with move-up / move-down buttons
+ *  - Move-up sends a PUT /reorder request with the new order
+ *  - Move-down sends a PUT /reorder request with the new order
+ *  - Reorder error shows a feedback toast
+ *
+ * Custom fields covers:
  *  - Custom fields section renders with entity type selector
  *  - Add field form appears when Add Field is clicked
  *  - Fields table renders when definitions exist
@@ -16,8 +23,113 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import CustomisationSettings from './CustomisationSettings.js';
+import { PIPELINE_STAGES_FIXTURE } from '../../test/msw/handlers.js';
 
 const FIELD_ID = '00000000-0000-0000-0000-000000000099';
+
+// ── Pipeline stages section ──────────────────────────────────────────────────
+
+describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () => {
+  it('renders the pipeline stages table with move-up and move-down buttons', async () => {
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+    });
+
+    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
+    const secondId = PIPELINE_STAGES_FIXTURE[1].id;
+    expect(screen.getByTestId(`pipeline-stage-move-up-${firstId}`)).toBeDisabled();
+    expect(screen.getByTestId(`pipeline-stage-move-down-${firstId}`)).not.toBeDisabled();
+    expect(screen.getByTestId(`pipeline-stage-move-up-${secondId}`)).not.toBeDisabled();
+  });
+
+  it('sends PUT /reorder with swapped order when move-up is clicked', async () => {
+    const capturedBodies: { stages: string[] }[] = [];
+    server.use(
+      http.put('/api/v1/settings/pipeline-stages/reorder', async ({ request }) => {
+        const body = (await request.json()) as { stages: string[] };
+        capturedBodies.push(body);
+        return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
+      }),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+    });
+
+    const secondId = PIPELINE_STAGES_FIXTURE[1].id;
+    fireEvent.click(screen.getByTestId(`pipeline-stage-move-up-${secondId}`));
+
+    await waitFor(() => expect(capturedBodies).toHaveLength(1));
+
+    // Moving index 1 up: expected order swaps index 0 and 1
+    const expectedOrder = [
+      PIPELINE_STAGES_FIXTURE[1].id,
+      PIPELINE_STAGES_FIXTURE[0].id,
+      ...PIPELINE_STAGES_FIXTURE.slice(2).map((s) => s.id),
+    ];
+    expect(capturedBodies[0].stages).toEqual(expectedOrder);
+  });
+
+  it('sends PUT /reorder with swapped order when move-down is clicked', async () => {
+    const capturedBodies: { stages: string[] }[] = [];
+    server.use(
+      http.put('/api/v1/settings/pipeline-stages/reorder', async ({ request }) => {
+        const body = (await request.json()) as { stages: string[] };
+        capturedBodies.push(body);
+        return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
+      }),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+    });
+
+    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
+    fireEvent.click(screen.getByTestId(`pipeline-stage-move-down-${firstId}`));
+
+    await waitFor(() => expect(capturedBodies).toHaveLength(1));
+
+    // Moving index 0 down: expected order swaps index 0 and 1
+    const expectedOrder = [
+      PIPELINE_STAGES_FIXTURE[1].id,
+      PIPELINE_STAGES_FIXTURE[0].id,
+      ...PIPELINE_STAGES_FIXTURE.slice(2).map((s) => s.id),
+    ];
+    expect(capturedBodies[0].stages).toEqual(expectedOrder);
+  });
+
+  it('shows error toast when reorder request fails', async () => {
+    server.use(
+      http.put('/api/v1/settings/pipeline-stages/reorder', () =>
+        HttpResponse.json(
+          { error: { code: 'STAGE_NOT_FOUND', message: 'not found' } },
+          { status: 404 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+    });
+
+    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
+    fireEvent.click(screen.getByTestId(`pipeline-stage-move-down-${firstId}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pipeline-stages-feedback')).toBeInTheDocument();
+    });
+  });
+});
+
+// ── Custom fields section ─────────────────────────────────────────────────────
 
 function mockEmptyCustomFields() {
   server.use(

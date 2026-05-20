@@ -459,6 +459,10 @@ export {
   getAdminSettingsBrandingResetButtonLocator,
   getAdminSettingsBrandingResetConfirmLocator,
   getAdminSettingsBrandingResetSuccessLocator,
+  getPipelineStagesTableLocator,
+  getPipelineStageMoveUpLocator,
+  getPipelineStageMoveDownLocator,
+  getPipelineStagesFeedbackLocator,
 } from './settings.behaviors.js';
 export type { AdminSettingsBehaviorContext } from './settings.behaviors.js';
 export type {
