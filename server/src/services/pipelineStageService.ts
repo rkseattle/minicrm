@@ -390,6 +390,13 @@ export async function reorderPipelineStages(
   try {
     await client.query('BEGIN');
 
+    // Serialize concurrent reorders with a transaction-scoped advisory lock
+    // (MINCRM-387). Without this, two parallel reorder transactions can observe
+    // each other's intermediate negative sort_order values and race on the same
+    // rows, producing spurious unique-constraint violations or incorrect final
+    // orderings when workers restore state concurrently during E2E teardown.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('pipeline_stages_reorder'))");
+
     // Temporarily set all sort_orders to large negative values to vacate the
     // unique index slots before writing the final values.
     for (let i = 0; i < orderedIds.length; i++) {

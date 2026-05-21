@@ -111,9 +111,24 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
 
   const moveUpButton = await getPipelineStageMoveUpLocator({ page }, secondStageId);
   await expect(moveUpButton).toBeEnabled();
-  await moveUpButton.click();
 
-  await page.waitForLoadState('networkidle');
+  // Capture the reorder response directly to validate the server-committed order
+  // without a networkidle delay that a concurrent worker's afterEach restore could
+  // win against (MINCRM-387).
+  const [reorderResp] = await Promise.all([
+    page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/pipeline-stages/reorder') &&
+        resp.request().method() === 'PUT' &&
+        resp.status() === 200,
+    ),
+    moveUpButton.click(),
+  ]);
+
+  const reorderBody = (await reorderResp.json()) as StageListResponse;
+  expect(reorderBody.stages[0].id, 'reorder response: moved stage should be first').toBe(
+    secondStageId,
+  );
 
   const stagesAfter = await fetchStages(restClient);
   expect(stagesAfter[0].id, 'stage moved up should now be first').toBe(secondStageId);
@@ -137,9 +152,27 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
 
   const moveDownButton = await getPipelineStageMoveDownLocator({ page }, firstStageId);
   await expect(moveDownButton).toBeEnabled();
-  await moveDownButton.click();
 
-  await page.waitForLoadState('networkidle');
+  // Capture the reorder response directly — avoids the race where a concurrent
+  // worker's afterEach restore could overwrite the DB before fetchStages runs
+  // (MINCRM-387).
+  const [reorderResp] = await Promise.all([
+    page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/pipeline-stages/reorder') &&
+        resp.request().method() === 'PUT' &&
+        resp.status() === 200,
+    ),
+    moveDownButton.click(),
+  ]);
+
+  const reorderBody = (await reorderResp.json()) as StageListResponse;
+  expect(reorderBody.stages[0].id, 'reorder response: second stage should be first').toBe(
+    secondStageId,
+  );
+  expect(reorderBody.stages[1].id, 'reorder response: first stage should be second').toBe(
+    firstStageId,
+  );
 
   const stagesAfter = await fetchStages(restClient);
   expect(stagesAfter[0].id, 'second stage should now be first').toBe(secondStageId);

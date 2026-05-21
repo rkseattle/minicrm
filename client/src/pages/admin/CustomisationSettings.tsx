@@ -118,7 +118,10 @@ export default function CustomisationSettings() {
 
   const reorderStageMutation = useMutation({
     mutationFn: (orderedIds: string[]) => reorderPipelineStages({ stages: orderedIds }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // Cancel any in-flight background refetch before seeding the cache so a
+      // stale GET cannot overwrite the authoritative reorder result (MINCRM-387).
+      await queryClient.cancelQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
       queryClient.setQueryData(PIPELINE_STAGES_QUERY_KEY, data);
     },
     onError: () => {
