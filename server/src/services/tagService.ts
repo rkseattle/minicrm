@@ -10,6 +10,8 @@ import type {
   AttachTagInput,
 } from '@minicrm/shared/schemas/tagSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
+import { writeAuditEntryBestEffort } from './auditService.js';
+import type { AuditActor, AuditRecordType } from './auditService.js';
 
 /** Shape of a tag row returned from the database */
 export interface TagRow {
@@ -21,6 +23,13 @@ export interface TagRow {
 
 /** Valid entity types that support tagging */
 type TaggableEntity = 'contact' | 'account' | 'deal';
+
+/** Maps taggable entity type to its AuditRecordType for audit log entries */
+const ENTITY_AUDIT_TYPE: Record<TaggableEntity, AuditRecordType> = {
+  contact: 'contact',
+  account: 'account',
+  deal: 'deal',
+};
 
 /** Maps entity type to its junction table and FK column name */
 const ENTITY_TABLE: Record<TaggableEntity, { table: string; fkCol: string }> = {
@@ -140,12 +149,14 @@ export async function listEntityTags(entity: TaggableEntity, entityId: string): 
  * @param entity - Entity type
  * @param entityId - UUID of the record
  * @param params - Tag name (lowercased, trimmed by schema)
+ * @param actor - Optional user performing the action (for audit log)
  * @returns The tag row
  */
 export async function attachTag(
   entity: TaggableEntity,
   entityId: string,
   params: AttachTagInput,
+  actor?: AuditActor,
 ): Promise<TagRow> {
   const { table, fkCol } = ENTITY_TABLE[entity];
   const client = await pool.connect();
@@ -163,12 +174,25 @@ export async function attachTag(
     const tag = tagResult.rows[0];
 
     // Attach to entity (idempotent)
-    await client.query(
+    const attachResult = await client.query<{ rowcount: string }>(
       `INSERT INTO ${table} (${fkCol}, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [entityId, tag.id],
     );
 
     await client.query('COMMIT');
+
+    if (actor && (attachResult.rowCount ?? 0) > 0) {
+      void writeAuditEntryBestEffort({
+        recordType: ENTITY_AUDIT_TYPE[entity],
+        recordId: entityId,
+        eventType: 'updated',
+        fieldName: 'tags',
+        newValue: tag.name,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
     return tag;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -184,17 +208,40 @@ export async function attachTag(
  * @param entity - Entity type
  * @param entityId - UUID of the record
  * @param tagId - Tag UUID
+ * @param actor - Optional user performing the action (for audit log)
  * @returns true if removed, false if the association did not exist
  */
 export async function detachTag(
   entity: TaggableEntity,
   entityId: string,
   tagId: string,
+  actor?: AuditActor,
 ): Promise<boolean> {
   const { table, fkCol } = ENTITY_TABLE[entity];
+
+  // Fetch tag name before deletion for the audit entry
+  const tagRow = actor
+    ? await pool.query<{ name: string }>('SELECT name FROM tags WHERE id = $1 LIMIT 1', [tagId])
+    : null;
+  const tagName = tagRow?.rows[0]?.name ?? null;
+
   const result = await pool.query(`DELETE FROM ${table} WHERE ${fkCol} = $1 AND tag_id = $2`, [
     entityId,
     tagId,
   ]);
-  return (result.rowCount ?? 0) > 0;
+  const removed = (result.rowCount ?? 0) > 0;
+
+  if (actor && removed && tagName) {
+    void writeAuditEntryBestEffort({
+      recordType: ENTITY_AUDIT_TYPE[entity],
+      recordId: entityId,
+      eventType: 'updated',
+      fieldName: 'tags',
+      oldValue: tagName,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+  }
+
+  return removed;
 }

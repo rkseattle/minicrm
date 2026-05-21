@@ -141,7 +141,8 @@ export async function attachContactTagHandler(req: Request, res: Response): Prom
     });
     return;
   }
-  const tag = await attachTag('contact', String(req.params['id']), parsed.data);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const tag = await attachTag('contact', String(req.params['id']), parsed.data, actor);
   res.status(201).json({ tag });
 }
 
@@ -153,7 +154,8 @@ export async function attachAccountTagHandler(req: Request, res: Response): Prom
     });
     return;
   }
-  const tag = await attachTag('account', String(req.params['id']), parsed.data);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const tag = await attachTag('account', String(req.params['id']), parsed.data, actor);
   res.status(201).json({ tag });
 }
 
@@ -165,7 +167,8 @@ export async function attachDealTagHandler(req: Request, res: Response): Promise
     });
     return;
   }
-  const tag = await attachTag('deal', String(req.params['id']), parsed.data);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const tag = await attachTag('deal', String(req.params['id']), parsed.data, actor);
   res.status(201).json({ tag });
 }
 
@@ -176,17 +179,20 @@ export async function attachDealTagHandler(req: Request, res: Response): Promise
  * Detaches a tag from the record.
  */
 export async function detachContactTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('contact', String(req.params['id']), String(req.params['tagId']));
+  const actor = { id: req.user!.id, name: req.user!.name };
+  await detachTag('contact', String(req.params['id']), String(req.params['tagId']), actor);
   res.status(204).end();
 }
 
 export async function detachAccountTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('account', String(req.params['id']), String(req.params['tagId']));
+  const actor = { id: req.user!.id, name: req.user!.name };
+  await detachTag('account', String(req.params['id']), String(req.params['tagId']), actor);
   res.status(204).end();
 }
 
 export async function detachDealTagHandler(req: Request, res: Response): Promise<void> {
-  await detachTag('deal', String(req.params['id']), String(req.params['tagId']));
+  const actor = { id: req.user!.id, name: req.user!.name };
+  await detachTag('deal', String(req.params['id']), String(req.params['tagId']), actor);
   res.status(204).end();
 }
 
