@@ -28,7 +28,14 @@ export const SYSTEM_ACTOR: AuditActor = {
 };
 
 /** Record types that can appear in the audit log */
-export type AuditRecordType = 'contact' | 'account' | 'deal' | 'user' | 'system_settings' | 'lead';
+export type AuditRecordType =
+  | 'contact'
+  | 'account'
+  | 'deal'
+  | 'user'
+  | 'system_settings'
+  | 'lead'
+  | 'activity';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
