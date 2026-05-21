@@ -668,3 +668,71 @@ describe('fireAutomationTrigger — send_notification', () => {
     expect(activities.rows).toHaveLength(0);
   });
 });
+
+// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+
+const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000003', name: 'Automation Audit Actor' };
+
+describe('audit log entries for automation rules (MINCRM-382)', () => {
+  beforeEach(async () => {
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [AUDIT_ACTOR.id]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  });
+
+  it('createAutomationRule writes an audit entry with event_type=created', async () => {
+    const rule = await createAutomationRule(
+      { ...BASE_RULE, name: 'Audit create rule', created_by: adminId },
+      AUDIT_ACTOR,
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+      [rule.id, AUDIT_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('system_settings');
+    expect(result.rows[0].event_type).toBe('created');
+    expect(result.rows[0].record_name).toBe('Audit create rule');
+  });
+
+  it('updateAutomationRule writes an audit entry with event_type=updated', async () => {
+    const rule = await createAutomationRule(
+      { ...BASE_RULE, name: 'Audit update rule', created_by: adminId },
+      AUDIT_ACTOR,
+    );
+
+    await updateAutomationRule(rule.id, { enabled: false }, AUDIT_ACTOR);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'updated'`,
+      [rule.id, AUDIT_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('system_settings');
+  });
+
+  it('deleteAutomationRule writes an audit entry with event_type=deleted', async () => {
+    const rule = await createAutomationRule(
+      { ...BASE_RULE, name: 'Audit delete rule', created_by: adminId },
+      AUDIT_ACTOR,
+    );
+    const ruleId = rule.id;
+
+    await deleteAutomationRule(ruleId, AUDIT_ACTOR);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
+      [ruleId, AUDIT_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('system_settings');
+    expect(result.rows[0].record_name).toBe('Audit delete rule');
+  });
+});

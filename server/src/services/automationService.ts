@@ -11,6 +11,8 @@ import type {
   UpdateAutomationRuleInput,
   AutomationTriggerType,
 } from '@minicrm/shared/schemas/automationSchema.js';
+import { writeAuditEntryBestEffort, SYSTEM_ACTOR } from './auditService.js';
+import type { AuditActor } from './auditService.js';
 import {
   dealStageChangedConfigSchema,
   createTaskActionConfigSchema,
@@ -71,10 +73,12 @@ export interface TriggerContext {
  * Creates a new automation rule.
  *
  * @param params - Rule fields plus the creating admin's user ID
+ * @param actor - User performing the action (for audit log)
  * @returns The inserted rule row
  */
 export async function createAutomationRule(
   params: CreateAutomationRuleInput & { created_by: string },
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<AutomationRuleRow> {
   const { name, enabled, trigger_type, trigger_config, action_type, action_config, created_by } =
     params;
@@ -95,7 +99,19 @@ export async function createAutomationRule(
     ],
   );
 
-  return (await findAutomationRuleById(insertResult.rows[0].id))!;
+  const rule = (await findAutomationRuleById(insertResult.rows[0].id))!;
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordId: rule.id,
+    recordName: rule.name,
+    eventType: 'created',
+    newValue: `trigger: ${rule.trigger_type}, action: ${rule.action_type}`,
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
+
+  return rule;
 }
 
 /**
@@ -150,18 +166,22 @@ export async function listAutomationRules(
  *
  * @param id - Rule UUID
  * @param params - Fields to update (at least one required)
+ * @param actor - User performing the action (for audit log)
  * @returns The updated rule row, or null if not found
  */
 export async function updateAutomationRule(
   id: string,
   params: UpdateAutomationRuleInput,
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<AutomationRuleRow | null> {
+  const before = await findAutomationRuleById(id);
+
   const fields = (Object.keys(params) as (keyof UpdateAutomationRuleInput)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field),
   );
 
   if (fields.length === 0) {
-    return findAutomationRuleById(id);
+    return before;
   }
 
   const setClauses = fields
@@ -191,16 +211,39 @@ export async function updateAutomationRule(
   );
 
   if (!updateResult.rows[0]) return null;
-  return findAutomationRuleById(updateResult.rows[0].id);
+  const updated = await findAutomationRuleById(updateResult.rows[0].id);
+
+  if (updated && before) {
+    const changedSummary = fields
+      .filter((f) => f !== 'trigger_config' && f !== 'action_config')
+      .map((f) => `${f}: ${String(before[f as keyof AutomationRuleRow])} → ${String(params[f])}`)
+      .join(', ');
+
+    void writeAuditEntryBestEffort({
+      recordType: 'system_settings',
+      recordId: updated.id,
+      recordName: updated.name,
+      eventType: 'updated',
+      newValue: changedSummary || `trigger_config or action_config updated`,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+  }
+
+  return updated;
 }
 
 /**
  * Deletes an automation rule and its associated logs (via CASCADE).
  *
  * @param id - Rule UUID
+ * @param actor - User performing the action (for audit log)
  * @returns The deleted rule row, or null if not found
  */
-export async function deleteAutomationRule(id: string): Promise<AutomationRuleRow | null> {
+export async function deleteAutomationRule(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<AutomationRuleRow | null> {
   const existing = await findAutomationRuleById(id);
   if (!existing) return null;
 
@@ -209,6 +252,17 @@ export async function deleteAutomationRule(id: string): Promise<AutomationRuleRo
     [id],
   );
   if (!deleteResult.rows[0]) return null;
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordId: existing.id,
+    recordName: existing.name,
+    eventType: 'deleted',
+    oldValue: `trigger: ${existing.trigger_type}, action: ${existing.action_type}`,
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
+
   return existing;
 }
 
