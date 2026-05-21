@@ -882,3 +882,79 @@ describe('deleteActivity', () => {
     expect(result).toBeNull();
   });
 });
+
+// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+
+const TEST_ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Audit Test Actor' };
+
+describe('audit log entries (MINCRM-382)', () => {
+  beforeEach(async () => {
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TEST_ACTOR.id]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  });
+
+  it('createActivity writes an audit entry with record_type=activity and event_type=created', async () => {
+    const activity = await createActivity(
+      { type: 'Note', subject: 'Audit create test', contact_id: contactId, owner_id: ownerId },
+      TEST_ACTOR,
+    );
+
+    // writeAuditEntryBestEffort is fire-and-forget; give it a tick to resolve
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+      [activity.id, TEST_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('activity');
+    expect(result.rows[0].event_type).toBe('created');
+    expect(result.rows[0].record_name).toBe('Audit create test');
+  });
+
+  it('updateActivity writes field-level audit entries within the transaction', async () => {
+    const activity = await createActivity(
+      { type: 'Note', subject: 'Before update', contact_id: contactId, owner_id: ownerId },
+      TEST_ACTOR,
+    );
+
+    await updateActivity(
+      activity.id,
+      { subject: 'After update', version: activity.version },
+      TEST_ACTOR,
+    );
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'updated'`,
+      [activity.id, TEST_ACTOR.id],
+    );
+    expect(result.rows.length).toBeGreaterThan(0);
+    const subjectEntry = result.rows.find(
+      (r: { field_name: string }) => r.field_name === 'subject',
+    );
+    expect(subjectEntry).toBeDefined();
+    expect(subjectEntry.old_value).toBe('Before update');
+    expect(subjectEntry.new_value).toBe('After update');
+  });
+
+  it('deleteActivity writes an audit entry with event_type=deleted', async () => {
+    const activity = await createActivity(
+      { type: 'Task', subject: 'To be deleted audit', contact_id: contactId, owner_id: ownerId },
+      TEST_ACTOR,
+    );
+    const activityId = activity.id;
+
+    await deleteActivity(activityId, TEST_ACTOR);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
+      [activityId, TEST_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('activity');
+    expect(result.rows[0].record_name).toBe('To be deleted audit');
+  });
+});

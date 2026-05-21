@@ -44,7 +44,8 @@ export async function createActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const activity = await createActivity({ ...parsed.data, owner_id: req.user!.id });
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const activity = await createActivity({ ...parsed.data, owner_id: req.user!.id }, actor);
   res.status(201).json({ activity });
 }
 
@@ -211,9 +212,10 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   let activity;
   try {
-    activity = await updateActivity(id, parsed.data);
+    activity = await updateActivity(id, parsed.data, actor);
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
@@ -251,6 +253,7 @@ export async function deleteActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
-  await deleteActivity(id);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  await deleteActivity(id, actor);
   res.status(204).send();
 }

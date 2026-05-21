@@ -11,6 +11,13 @@ import type {
 } from '@minicrm/shared/schemas/activitySchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { dispatchWebhookEvent } from './webhookService.js';
+import {
+  writeAuditEntryBestEffort,
+  writeAuditEntries,
+  diffFields,
+  SYSTEM_ACTOR,
+} from './auditService.js';
+import type { AuditActor } from './auditService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -74,10 +81,12 @@ const SELECT_COLS_WITH_OWNER =
  * Creates a new activity record.
  *
  * @param params - Activity fields plus the owner's user ID
+ * @param actor - User performing the action (for audit log)
  * @returns The inserted activity row
  */
 export async function createActivity(
   params: CreateActivityInput & { owner_id: string },
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<ActivityRow> {
   const {
     type,
@@ -113,6 +122,15 @@ export async function createActivity(
   const activity = (await findActivityById(insertResult.rows[0].id))!;
 
   void dispatchWebhookEvent('activity.created', activity as unknown as Record<string, unknown>);
+
+  void writeAuditEntryBestEffort({
+    recordType: 'activity',
+    recordId: activity.id,
+    recordName: activity.subject,
+    eventType: 'created',
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
 
   return activity;
 }
@@ -215,11 +233,13 @@ export async function listActivities(
  *
  * @param id - Activity UUID
  * @param params - Fields to update (at least one required)
+ * @param actor - User performing the action (for audit log)
  * @returns The updated activity row, or null if not found
  */
 export async function updateActivity(
   id: string,
   params: UpdateActivityInput,
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<ActivityRow | null> {
   const { version, ...rest } = params;
   const fields = (Object.keys(rest) as (keyof typeof rest)[]).filter((field) =>
@@ -234,6 +254,8 @@ export async function updateActivity(
   // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
   const versionParam = fields.length + 2;
+
+  const before = await findActivityById(id);
 
   const client: PoolClient = await pool.connect();
   try {
@@ -266,6 +288,20 @@ export async function updateActivity(
           recordId: id,
         },
       );
+    }
+
+    if (before) {
+      const after = Object.fromEntries(fields.map((f) => [f, rest[f as keyof typeof rest]]));
+      const auditEntries = diffFields(before as unknown as Record<string, unknown>, after, {
+        recordType: 'activity',
+        recordId: id,
+        recordName: before.subject,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+      if (auditEntries.length > 0) {
+        await writeAuditEntries(client, auditEntries);
+      }
     }
 
     await client.query('COMMIT');
@@ -369,9 +405,13 @@ export async function listMyTasks(
  * Deletes an activity by its UUID.
  *
  * @param id - Activity UUID
+ * @param actor - User performing the action (for audit log)
  * @returns The deleted activity row, or null if not found
  */
-export async function deleteActivity(id: string): Promise<ActivityRow | null> {
+export async function deleteActivity(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<ActivityRow | null> {
   const existing = await findActivityById(id);
   if (!existing) return null;
 
@@ -380,5 +420,15 @@ export async function deleteActivity(id: string): Promise<ActivityRow | null> {
     [id],
   );
   if (!deleteResult.rows[0]) return null; // deleted by a concurrent request
+
+  void writeAuditEntryBestEffort({
+    recordType: 'activity',
+    recordId: existing.id,
+    recordName: existing.subject,
+    eventType: 'deleted',
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
+
   return existing;
 }
