@@ -33,6 +33,7 @@ import {
   pruneOldJobs,
   type ImportJobType,
 } from '../services/importJobService.js';
+import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { z } from 'zod';
 
 // ── Parse handlers (Step 1: upload → headers + preview) ───────────────────────
@@ -148,7 +149,7 @@ const dealMappingSchema = z.object({
 
 /**
  * Validates file and CSV, creates the job row, responds 202, then kicks off the
- * background runner via setImmediate.
+ * background runner via setImmediate. Writes a summary audit entry after completion.
  *
  * @param jobType - The entity type ('accounts' | 'contacts' | 'deals').
  * @param req - Express request (file already attached by multer).
@@ -195,7 +196,9 @@ async function startImportJob(
     console.error('Failed to prune old import jobs:', pruneErr);
   });
 
-  const job = await createJob(jobType, csvData.rows.length, req.user!.id);
+  const actorId = req.user!.id;
+  const actorName = req.user!.name;
+  const job = await createJob(jobType, csvData.rows.length, actorId);
 
   // Respond immediately — the client polls GET /api/admin/import/jobs/:job_id for progress
   res.status(202).json({ job_id: job.id, status: 'pending' });
@@ -224,6 +227,15 @@ async function startImportJob(
           importResult.failed.length,
           errorCsv,
         );
+
+        void writeAuditEntryBestEffort({
+          recordType: 'system_settings',
+          recordName: `Import: ${jobType}`,
+          eventType: 'created',
+          newValue: `${importResult.created} records imported, ${importResult.skipped} skipped, ${importResult.failed.length} failed`,
+          changedById: actorId,
+          changedByName: actorName,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error during import';
         await failJob(job.id, message);
