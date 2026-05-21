@@ -93,7 +93,8 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
     return;
   }
 
-  const rule = await createAutomationRule({ ...parsed.data, created_by: req.user!.id });
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const rule = await createAutomationRule({ ...parsed.data, created_by: req.user!.id }, actor);
   res.status(201).json({ rule });
 }
 
@@ -169,7 +170,8 @@ export async function updateAutomationRuleHandler(req: Request, res: Response): 
     return;
   }
 
-  const rule = await updateAutomationRule(id, parsed.data);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const rule = await updateAutomationRule(id, parsed.data, actor);
   if (!rule) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Automation rule not found' } });
     return;
@@ -184,7 +186,8 @@ export async function updateAutomationRuleHandler(req: Request, res: Response): 
  */
 export async function deleteAutomationRuleHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
-  const deleted = await deleteAutomationRule(id);
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const deleted = await deleteAutomationRule(id, actor);
 
   if (!deleted) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Automation rule not found' } });
