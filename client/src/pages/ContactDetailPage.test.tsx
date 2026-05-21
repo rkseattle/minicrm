@@ -465,6 +465,189 @@ describe('ContactDetailPage', () => {
     });
   });
 
+  describe('optimistic-locking conflict resolution (MINCRM-385)', () => {
+    // CONTACT_1 is at version 1; the background write bumps it to version 2 with first_name='Theirs'.
+    // The UI has first_name='Mine' (user changed it) — a true conflict on first_name.
+    const CONTACT_AT_V2 = { ...CONTACT_1, first_name: 'Theirs', version: 2 };
+    const CONTACT_AT_V3 = { ...CONTACT_1, first_name: 'Mine', version: 3 };
+
+    it('opens the FieldMergeModal when a PATCH returns OPTIMISTIC_LOCK_CONFLICT', async () => {
+      server.use(
+        http.patch('/api/v1/contacts/:id', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'OPTIMISTIC_LOCK_CONFLICT',
+                message: 'Conflict',
+                current: CONTACT_AT_V2,
+              },
+            },
+            { status: 409 },
+          ),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('contact-form-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('field-merge-modal')).toBeInTheDocument();
+      });
+    });
+
+    it('re-submits with conflictTheirs.version (mine-wins) so the re-save uses the correct version', async () => {
+      let patchCallCount = 0;
+      let secondPatchVersion: number | undefined;
+
+      server.use(
+        http.patch('/api/v1/contacts/:id', async ({ request }) => {
+          patchCallCount++;
+          const body = (await request.json()) as Record<string, unknown>;
+
+          if (patchCallCount === 1) {
+            // First PATCH — simulate conflict; CONTACT_1 is at v1, server is at v2
+            return HttpResponse.json(
+              {
+                error: {
+                  code: 'OPTIMISTIC_LOCK_CONFLICT',
+                  message: 'Conflict',
+                  current: CONTACT_AT_V2,
+                },
+              },
+              { status: 409 },
+            );
+          }
+
+          // Second PATCH — conflict resolution re-submit
+          secondPatchVersion = body.version as number;
+          return HttpResponse.json({ contact: CONTACT_AT_V3 });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      // Change first_name so mine differs from base — creates a true conflict with CONTACT_AT_V2's 'Theirs'
+      await user.clear(screen.getByTestId('contact-first-name'));
+      await user.type(screen.getByTestId('contact-first-name'), 'Mine');
+      await user.click(screen.getByTestId('contact-form-submit'));
+
+      // Modal should appear with first_name as a true conflict (mine='Mine', theirs='Theirs')
+      await waitFor(() => {
+        expect(screen.getByTestId('field-merge-modal')).toBeInTheDocument();
+      });
+
+      // Switch to "mine" for first_name and save resolved
+      await user.click(screen.getByTestId('field-merge-radio-first_name-mine'));
+      await user.click(screen.getByTestId('field-merge-save-button'));
+
+      // Wait for the modal to close (re-submit succeeded)
+      await waitFor(() => {
+        expect(screen.queryByTestId('field-merge-modal')).not.toBeInTheDocument();
+      });
+
+      // The re-submit must have used version from conflictTheirs (v2), not the stale cache (v1)
+      expect(secondPatchVersion).toBe(2);
+    });
+
+    it('seeds the cache from the conflict-resolution PATCH response so a subsequent save uses the post-resolve version (MINCRM-385)', async () => {
+      let patchCallCount = 0;
+      const capturedVersions: number[] = [];
+      // Simulate server state: GET reflects the latest committed version after each PATCH
+      let serverContact = { ...CONTACT_1 };
+
+      server.use(
+        http.get('/api/v1/contacts/:id', ({ params }) => {
+          if (params.id === CONTACT_1.id) {
+            return HttpResponse.json({ contact: serverContact });
+          }
+          return HttpResponse.json(
+            { error: { code: 'NOT_FOUND', message: 'Contact not found' } },
+            { status: 404 },
+          );
+        }),
+        http.patch('/api/v1/contacts/:id', async ({ request }) => {
+          patchCallCount++;
+          const body = (await request.json()) as Record<string, unknown>;
+          capturedVersions.push(body.version as number);
+
+          if (patchCallCount === 1) {
+            // Background write already bumped server to v2; return conflict
+            serverContact = CONTACT_AT_V2;
+            return HttpResponse.json(
+              {
+                error: {
+                  code: 'OPTIMISTIC_LOCK_CONFLICT',
+                  message: 'Conflict',
+                  current: CONTACT_AT_V2,
+                },
+              },
+              { status: 409 },
+            );
+          }
+          if (patchCallCount === 2) {
+            // Conflict resolution re-submit at v2 → server commits v3
+            serverContact = CONTACT_AT_V3;
+            return HttpResponse.json({ contact: CONTACT_AT_V3 });
+          }
+          // Third PATCH — subsequent clean edit at v3 → server commits v4
+          const v4 = { ...CONTACT_AT_V3, first_name: 'PostResolve', version: 4 };
+          serverContact = v4;
+          return HttpResponse.json({ contact: v4 });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+
+      // --- First edit: triggers conflict ---
+      await waitFor(() => expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument());
+      await user.click(screen.getByTestId('edit-contact-button'));
+      // Change first_name so it conflicts with CONTACT_AT_V2's 'Theirs'
+      await user.clear(screen.getByTestId('contact-first-name'));
+      await user.type(screen.getByTestId('contact-first-name'), 'Mine');
+      await user.click(screen.getByTestId('contact-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('field-merge-modal')).toBeInTheDocument();
+      });
+
+      // Resolve with "mine" — radio buttons appear because it's a true conflict
+      await user.click(screen.getByTestId('field-merge-radio-first_name-mine'));
+      await user.click(screen.getByTestId('field-merge-save-button'));
+
+      // Wait for page to return to read mode after conflict resolution
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('field-merge-modal')).not.toBeInTheDocument();
+
+      // --- Second edit: must save cleanly at version 3 ---
+      await user.click(screen.getByTestId('edit-contact-button'));
+      await user.click(screen.getByTestId('contact-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-contact-button')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('field-merge-modal')).not.toBeInTheDocument();
+
+      // The subsequent save must use the post-resolve version (3), not the stale pre-conflict version (1)
+      expect(capturedVersions[2]).toBe(3);
+    });
+  });
+
   it('shows the merge button and opens the merge panel when clicked', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ContactDetailPage />, {
