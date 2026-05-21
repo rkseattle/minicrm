@@ -40,7 +40,7 @@ import {
   saveContact,
   isContactDetailLoaded,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { createTestContact } from '@apps/minicrm/helpers.js';
+import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -122,9 +122,8 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   restClient,
   testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-
-  // Create a text custom field definition via REST
+  // restClient is admin-authenticated from beforeEach — use it to create the
+  // custom field definition (admin-only) and to invite a rep user.
   const fieldName = `Persist Test Field ${Date.now()}`;
   const definition = await createCustomFieldDefinition(restClient, {
     entity_type: 'contact',
@@ -138,8 +137,20 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
     `/api/v1/custom-fields/definitions/${definitionId}`,
   );
 
-  // Create a contact via REST
+  // Create a rep user to act as the browser session subject. (MINCRM-386)
+  const repPassword = 'RepPassword1!';
+  const rep = await createTestUser(restClient, { role: 'rep', password: repPassword });
+
+  // Authenticate restClient as the rep so the contact is created with rep as owner.
+  // The server always sets owner_id = req.user.id, so we must request as the rep.
+  await restClient.post('/api/v1/auth/login', { email: rep.email, password: repPassword });
   const contact = await createTestContact(testData, restClient);
+
+  // Re-authenticate restClient as admin so teardown (definition delete) can run.
+  await loginAsAdmin(restClient);
+
+  // Log the browser in as the rep — this is the user who will set the custom field.
+  await login({ email: rep.email, password: repPassword }, { page });
 
   // Navigate to the contact detail page
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
@@ -182,6 +193,10 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
     .resolve();
   await expect(fieldLabel).toBeVisible();
   await expect(readGrid).toContainText('Test Value 123');
+
+  // Deactivate the rep user — users cannot be hard-deleted, so deactivate via
+  // the admin API. restClient is already authenticated as admin from above. (MINCRM-386)
+  await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {});
 });
 
 // ---------------------------------------------------------------------------
