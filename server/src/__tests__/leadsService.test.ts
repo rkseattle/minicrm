@@ -527,3 +527,64 @@ describe('searchAccountsForConversion', () => {
     expect(results).toHaveLength(0);
   });
 });
+
+// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+
+const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000002', name: 'Lead Audit Actor' };
+
+describe('audit log entries for leads (MINCRM-382)', () => {
+  beforeEach(async () => {
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [AUDIT_ACTOR.id]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  });
+
+  it('updateLead writes field-level audit entries in the transaction', async () => {
+    const lead = await createLead(
+      {
+        first_name: 'Audit',
+        last_name: 'Update',
+        email: `lead-audit-update-${Date.now()}@example.com`,
+        owner_id: ownerId,
+      },
+      AUDIT_ACTOR,
+    );
+
+    await updateLead(lead.id, { first_name: 'Updated', version: lead.version }, AUDIT_ACTOR);
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'updated'`,
+      [lead.id, AUDIT_ACTOR.id],
+    );
+    expect(result.rows.length).toBeGreaterThan(0);
+    const nameEntry = result.rows.find(
+      (r: { field_name: string }) => r.field_name === 'first_name' || r.field_name === 'First Name',
+    );
+    expect(nameEntry).toBeDefined();
+  });
+
+  it('deleteLead writes an audit entry with event_type=deleted', async () => {
+    const lead = await createLead(
+      {
+        first_name: 'Audit',
+        last_name: 'Delete',
+        email: `lead-audit-delete-${Date.now()}@example.com`,
+        owner_id: ownerId,
+      },
+      AUDIT_ACTOR,
+    );
+    const leadId = lead.id;
+
+    await deleteLead(leadId, AUDIT_ACTOR);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
+      [leadId, AUDIT_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('contact');
+    expect(result.rows[0].record_name).toBe('Audit Delete');
+  });
+});

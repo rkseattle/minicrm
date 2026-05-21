@@ -207,7 +207,7 @@ export async function deleteLeadHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  await deleteLead(id);
+  await deleteLead(id, { id: req.user!.id, name: req.user!.name });
   res.status(204).send();
 }
 
