@@ -301,6 +301,29 @@ describe('FieldMergeModal', () => {
     expect(within(row).getByTestId('field-merge-radio-notes-mine')).toBeInTheDocument();
   });
 
+  it('resolves all conflict fields to mine values when every choice is switched to Mine', () => {
+    const onResolve = vi.fn();
+    renderWithProviders(
+      <FieldMergeModal
+        isOpen={true}
+        onClose={noop}
+        entityType="contact"
+        base={BASE}
+        theirs={{ ...BASE, first_name: 'TheirFirst', last_name: 'TheirLast' }}
+        mine={{ ...BASE, first_name: 'MyFirst', last_name: 'MyLast' }}
+        fieldLabels={FIELD_LABELS}
+        onResolve={onResolve}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('field-merge-radio-first_name-mine'));
+    fireEvent.click(screen.getByTestId('field-merge-radio-last_name-mine'));
+    fireEvent.click(screen.getByTestId('field-merge-save-button'));
+    expect(onResolve).toHaveBeenCalledOnce();
+    const resolved = onResolve.mock.calls[0][0] as Record<string, unknown>;
+    expect(resolved.first_name).toBe('MyFirst');
+    expect(resolved.last_name).toBe('MyLast');
+  });
+
   it('resets conflict choices to Theirs when reopened with new data', () => {
     const { rerender } = renderWithProviders(
       <FieldMergeModal

@@ -175,8 +175,9 @@ export default function ContactDetailPage() {
           1,
       }),
     onSuccess: async (data) => {
-      // Seed the cache immediately with the PATCH response so the version is correct before
-      // any subsequent edit — invalidateQueries is async and may lose the race (MINCRM-351)
+      // Cancel any in-flight refetch (e.g. from the 409 onError invalidation) before seeding
+      // the cache so a stale refetch cannot overwrite the authoritative PATCH version (MINCRM-385)
+      await queryClient.cancelQueries({ queryKey: contactQueryKey });
       queryClient.setQueryData(contactQueryKey, data);
       // Save custom field values after core record is saved (MINCRM-276)
       if (customFieldValues.length > 0) {
