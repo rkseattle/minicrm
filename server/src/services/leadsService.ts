@@ -12,7 +12,12 @@ import type {
   ConvertLeadInput,
 } from '@minicrm/shared/schemas/leadSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
-import { writeAuditEntry } from './auditService.js';
+import {
+  writeAuditEntry,
+  writeAuditEntries,
+  writeAuditEntryBestEffort,
+  diffFields,
+} from './auditService.js';
 import type { AuditActor } from './auditService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -335,6 +340,23 @@ export async function updateLead(
       );
     }
 
+    if (lead) {
+      const auditEntries = diffFields(
+        before as unknown as Record<string, unknown>,
+        lead as unknown as Record<string, unknown>,
+        {
+          recordType: 'contact', // leads share 'contact' record type in the audit log
+          recordId: lead.id,
+          recordName: `${lead.first_name}${lead.last_name ? ' ' + lead.last_name : ''}`,
+          changedById: actor.id,
+          changedByName: actor.name,
+        },
+      );
+      if (auditEntries.length > 0) {
+        await writeAuditEntries(client, auditEntries);
+      }
+    }
+
     await client.query('COMMIT');
     return lead;
   } catch (error) {
@@ -350,11 +372,28 @@ export async function updateLead(
  * Deletion does not create any associated contact, account, or deal. (MINCRM-173)
  *
  * @param id - Lead UUID
+ * @param actor - User performing the action (for audit log)
  * @returns The deleted lead row, or null if not found
  */
-export async function deleteLead(id: string): Promise<LeadRow | null> {
+export async function deleteLead(
+  id: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<LeadRow | null> {
   const result = await pool.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]);
-  return result.rows[0] ?? null;
+  const deleted = result.rows[0] ?? null;
+
+  if (deleted) {
+    void writeAuditEntryBestEffort({
+      recordType: 'contact', // leads share 'contact' record type in the audit log
+      recordId: deleted.id,
+      recordName: `${deleted.first_name}${deleted.last_name ? ' ' + deleted.last_name : ''}`,
+      eventType: 'deleted',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+  }
+
+  return deleted;
 }
 
 /**
