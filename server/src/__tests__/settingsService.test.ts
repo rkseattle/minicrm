@@ -284,11 +284,40 @@ describe('getOnboardingStatus', () => {
     expect(task?.completed).toBe(true);
   });
 
-  it('task team_member_invited is false when only one user exists', async () => {
-    const status = await getOnboardingStatus();
-    const task = status.tasks.find((t) => t.id === 'team_member_invited');
-    // The test DB has exactly one admin user
-    expect(task?.completed).toBe(false);
+  it('task team_member_invited is true when more than one active user exists', async () => {
+    // Insert a test user to guarantee at least 2 active users exist, then verify true.
+    // This test does NOT assert the false case since the DB user count is shared across
+    // concurrent parallel test files and is not reliably controllable.
+    await pool.query(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-extra@test.com', 'Extra User', 'rep', 'active', 'x')`,
+    );
+    try {
+      const status = await getOnboardingStatus();
+      const task = status.tasks.find((t) => t.id === 'team_member_invited');
+      expect(task?.completed).toBe(true);
+    } finally {
+      await pool.query(`DELETE FROM users WHERE email = 'settings-svc-extra@test.com'`);
+    }
+  });
+
+  it('task team_member_invited excludes inactive users from the count', async () => {
+    // Insert an inactive user — it must not count toward team_member_invited.
+    // First capture baseline count to compare against.
+    const before = await getOnboardingStatus();
+    const taskBefore = before.tasks.find((t) => t.id === 'team_member_invited');
+    await pool.query(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-inactive@test.com', 'Inactive User', 'rep', 'inactive', 'x')`,
+    );
+    try {
+      const after = await getOnboardingStatus();
+      const taskAfter = after.tasks.find((t) => t.id === 'team_member_invited');
+      // Inactive users must not change the completed state
+      expect(taskAfter?.completed).toBe(taskBefore?.completed);
+    } finally {
+      await pool.query(`DELETE FROM users WHERE email = 'settings-svc-inactive@test.com'`);
+    }
   });
 
   it('task first_contact_added is false when contacts table is empty', async () => {
