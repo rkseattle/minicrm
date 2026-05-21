@@ -321,6 +321,16 @@ export async function updateCurrenciesHandler(req: Request, res: Response): Prom
   await updateCurrencies(parsed.data, homeName, homeSymbol);
   const config = await getCurrencies();
   res.status(200).json(config);
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Currencies',
+    eventType: 'updated',
+    fieldName: 'currencies',
+    newValue: `home: ${parsed.data.home_currency}, ${parsed.data.currencies.length} non-home currencies`,
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
 // ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
