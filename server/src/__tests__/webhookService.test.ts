@@ -9,8 +9,10 @@
  */
 
 import 'dotenv/config';
+import dns from 'dns';
 import http from 'http';
 import type { AddressInfo } from 'net';
+import { vi } from 'vitest';
 import {
   createWebhookSubscription,
   findWebhookSubscriptionById,
@@ -20,6 +22,8 @@ import {
   listWebhookDeliveryLogs,
   dispatchWebhookEvent,
   signPayload,
+  validateWebhookUrl,
+  WebhookUrlNotAllowedError,
 } from '../services/webhookService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -36,6 +40,9 @@ const ADMIN_USER = {
 
 let adminId: string;
 let adminActor: { id: string; name: string };
+
+/** Public IP returned by default DNS mock so test URLs pass SSRF validation. */
+const MOCK_PUBLIC_IPV4: dns.LookupAddress[] = [{ address: '93.184.216.34', family: 4 }];
 
 beforeAll(async () => {
   // Clean up any leftovers from prior runs
@@ -57,6 +64,13 @@ beforeEach(async () => {
      WHERE created_by = $1`,
     [adminId],
   );
+  // Default: all DNS lookups return a public IP so CRUD tests aren't blocked by SSRF validation.
+  // Individual tests that need specific DNS behaviour call vi.spyOn(...) to override.
+  vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -235,6 +249,144 @@ describe('signPayload', () => {
   });
 });
 
+// ── validateWebhookUrl ─────────────────────────────────────────────────────────
+
+describe('validateWebhookUrl', () => {
+  const blockedCases: Array<{ label: string; url: string; resolves?: dns.LookupAddress[] }> = [
+    {
+      label: 'localhost (127.0.0.1)',
+      url: 'https://localhost/hook',
+      resolves: [{ address: '127.0.0.1', family: 4 }],
+    },
+    {
+      label: 'loopback range 127.x',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '127.99.0.1', family: 4 }],
+    },
+    {
+      label: 'AWS metadata 169.254.169.254',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '169.254.169.254', family: 4 }],
+    },
+    {
+      label: 'link-local 169.254.0.1',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '169.254.0.1', family: 4 }],
+    },
+    {
+      label: 'RFC 1918 10.x',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '10.0.0.1', family: 4 }],
+    },
+    {
+      label: 'RFC 1918 172.16.x',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '172.16.0.1', family: 4 }],
+    },
+    {
+      label: 'RFC 1918 172.31.x',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '172.31.255.255', family: 4 }],
+    },
+    {
+      label: 'RFC 1918 192.168.x',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '192.168.1.1', family: 4 }],
+    },
+    {
+      label: 'IPv6 loopback ::1',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: '::1', family: 6 }],
+    },
+    {
+      label: 'IPv6 ULA fc00::1',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: 'fc00::1', family: 6 }],
+    },
+    {
+      label: 'IPv6 ULA fd00::1',
+      url: 'https://evil.internal/hook',
+      resolves: [{ address: 'fd00::1', family: 6 }],
+    },
+  ];
+
+  for (const { label, url, resolves } of blockedCases) {
+    it(`rejects ${label}`, async () => {
+      if (resolves) {
+        vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(resolves as never);
+      }
+      await expect(validateWebhookUrl(url)).rejects.toBeInstanceOf(WebhookUrlNotAllowedError);
+    });
+  }
+
+  it('rejects HTTP URL in production', async () => {
+    const original = process.env['NODE_ENV'];
+    process.env['NODE_ENV'] = 'production';
+    try {
+      vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(MOCK_PUBLIC_IPV4 as never);
+      await expect(validateWebhookUrl('http://example.com/hook')).rejects.toBeInstanceOf(
+        WebhookUrlNotAllowedError,
+      );
+    } finally {
+      process.env['NODE_ENV'] = original;
+    }
+  });
+
+  it('accepts HTTPS URL with a public IP', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(MOCK_PUBLIC_IPV4 as never);
+    await expect(validateWebhookUrl('https://example.com/hook')).resolves.toBeUndefined();
+  });
+
+  it('accepts HTTP URL in non-production environments', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(MOCK_PUBLIC_IPV4 as never);
+    await expect(validateWebhookUrl('http://example.com/hook')).resolves.toBeUndefined();
+  });
+
+  it('rejects when DNS resolution fails', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockRejectedValueOnce(new Error('ENOTFOUND') as never);
+    await expect(validateWebhookUrl('https://no-such-host.invalid/hook')).rejects.toBeInstanceOf(
+      WebhookUrlNotAllowedError,
+    );
+  });
+
+  it('rejects createWebhookSubscription with a private URL', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce([
+      { address: '10.0.0.1', family: 4 },
+    ] as never);
+    await expect(
+      createWebhookSubscription(
+        {
+          url: 'https://internal.example.com/hook',
+          events: ['contact.created'],
+          created_by: adminId,
+        },
+        adminActor,
+      ),
+    ).rejects.toBeInstanceOf(WebhookUrlNotAllowedError);
+  });
+
+  it('rejects updateWebhookSubscription with a private URL', async () => {
+    // First create a valid subscription (mock DNS to allow it)
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(MOCK_PUBLIC_IPV4 as never);
+    const { subscription } = await createWebhookSubscription(
+      { url: 'https://example.com/hook', events: ['contact.created'], created_by: adminId },
+      adminActor,
+    );
+
+    // Then attempt to update to a private URL
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce([
+      { address: '192.168.1.1', family: 4 },
+    ] as never);
+    await expect(
+      updateWebhookSubscription(
+        subscription.id,
+        { url: 'https://internal.example.com/hook' },
+        adminActor,
+      ),
+    ).rejects.toBeInstanceOf(WebhookUrlNotAllowedError);
+  });
+});
+
 // ── dispatchWebhookEvent delivery ─────────────────────────────────────────────
 
 describe('dispatchWebhookEvent', () => {
@@ -259,6 +411,9 @@ describe('dispatchWebhookEvent', () => {
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as AddressInfo;
     const url = `http://127.0.0.1:${port}/hook`;
+
+    // The beforeEach mock already returns MOCK_PUBLIC_IPV4 for all DNS lookups,
+    // so the local 127.0.0.1 test server passes SSRF validation throughout the test.
 
     const { subscription, plaintextSecret } = await createWebhookSubscription(
       { url, events: ['contact.created'], created_by: adminId },

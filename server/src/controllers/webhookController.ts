@@ -17,6 +17,7 @@ import {
   updateWebhookSubscription,
   deleteWebhookSubscription,
   listWebhookDeliveryLogs,
+  WebhookUrlNotAllowedError,
 } from '../services/webhookService.js';
 
 /**
@@ -24,10 +25,7 @@ import {
  * Creates a new webhook subscription. Returns the subscription and the plaintext
  * signing secret (shown once — not retrievable again). Admin only.
  */
-export async function createWebhookSubscriptionHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function createWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const parsed = createWebhookSubscriptionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -37,10 +35,20 @@ export async function createWebhookSubscriptionHandler(
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
-  const { subscription, plaintextSecret } = await createWebhookSubscription(
-    { ...parsed.data, created_by: req.user!.id },
-    actor,
-  );
+  let subscription;
+  let plaintextSecret;
+  try {
+    ({ subscription, plaintextSecret } = await createWebhookSubscription(
+      { ...parsed.data, created_by: req.user!.id },
+      actor,
+    ));
+  } catch (err) {
+    if (err instanceof WebhookUrlNotAllowedError) {
+      res.status(422).json({ error: { code: err.code, message: err.message } });
+      return;
+    }
+    throw err;
+  }
 
   // Expose safe fields only — never return secret_hash
   res.status(201).json({
@@ -60,10 +68,7 @@ export async function createWebhookSubscriptionHandler(
  * GET /api/admin/webhooks
  * Lists all webhook subscriptions. Admin only.
  */
-export async function listWebhookSubscriptionsHandler(
-  _req: Request,
-  res: Response,
-): Promise<void> {
+export async function listWebhookSubscriptionsHandler(_req: Request, res: Response): Promise<void> {
   const rows = await listWebhookSubscriptions();
   const subscriptions = rows.map((s) => ({
     id: s.id,
@@ -80,10 +85,7 @@ export async function listWebhookSubscriptionsHandler(
  * GET /api/admin/webhooks/:id
  * Returns a single webhook subscription. Admin only.
  */
-export async function getWebhookSubscriptionHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function getWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
   const sub = await findWebhookSubscriptionById(id);
 
@@ -110,10 +112,7 @@ export async function getWebhookSubscriptionHandler(
  * PATCH /api/admin/webhooks/:id
  * Updates a webhook subscription (url, events, status). Admin only.
  */
-export async function updateWebhookSubscriptionHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function updateWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateWebhookSubscriptionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -124,7 +123,16 @@ export async function updateWebhookSubscriptionHandler(
 
   const id = String(req.params['id']);
   const actor = { id: req.user!.id, name: req.user!.name };
-  const sub = await updateWebhookSubscription(id, parsed.data, actor);
+  let sub;
+  try {
+    sub = await updateWebhookSubscription(id, parsed.data, actor);
+  } catch (err) {
+    if (err instanceof WebhookUrlNotAllowedError) {
+      res.status(422).json({ error: { code: err.code, message: err.message } });
+      return;
+    }
+    throw err;
+  }
 
   if (!sub) {
     res
@@ -149,10 +157,7 @@ export async function updateWebhookSubscriptionHandler(
  * DELETE /api/admin/webhooks/:id
  * Deletes a webhook subscription and its delivery logs. Admin only.
  */
-export async function deleteWebhookSubscriptionHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function deleteWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
   const actor = { id: req.user!.id, name: req.user!.name };
   const deleted = await deleteWebhookSubscription(id, actor);
@@ -171,10 +176,7 @@ export async function deleteWebhookSubscriptionHandler(
  * GET /api/admin/webhooks/:id/logs
  * Returns paginated delivery logs for a subscription. Admin only.
  */
-export async function listWebhookDeliveryLogsHandler(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function listWebhookDeliveryLogsHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
 
   const sub = await findWebhookSubscriptionById(id);

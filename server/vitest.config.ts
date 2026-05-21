@@ -78,6 +78,10 @@ const SERIAL_FILES = [
   // delivery attempts against subscriptions being deleted by webhookController's
   // afterAll, producing FK violations on webhook_delivery_logs.
   'src/__tests__/webhookController.test.ts',
+  // webhookService.dispatchWebhookEvent fires async deliveries that race with vi.spyOn
+  // DNS mocks in parallel workers; the delivery picks up ALL active subscriptions in the
+  // shared test DB, so cross-file subscription state causes status_code: null failures.
+  'src/__tests__/webhookService.test.ts',
 ];
 
 const sharedResolve = {
