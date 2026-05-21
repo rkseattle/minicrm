@@ -21,6 +21,11 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+
+// Pipeline stage reorder tests mutate shared global state (sort_order column).
+// Serial mode ensures no two tests race on the same shared rows simultaneously.
+test.describe.configure({ mode: 'serial' });
+
 import { loginAsAdmin, login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
