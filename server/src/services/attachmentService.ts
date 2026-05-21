@@ -10,6 +10,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { uploadObject, getObjectStream, deleteObject } from './storageService.js';
 import { createActivity } from './activityService.js';
+import { writeAuditEntryBestEffort } from './auditService.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ export interface UploadAttachmentInput {
   mimeType: string;
   buffer: Buffer;
   uploaderId: string;
+  uploaderName: string;
 }
 
 /**
@@ -149,7 +151,8 @@ export interface UploadAttachmentInput {
  * @throws With code 'STORAGE_CAP_EXCEEDED' if the cap would be reached.
  */
 export async function uploadAttachment(input: UploadAttachmentInput): Promise<AttachmentRow> {
-  const { recordType, recordId, filename, fileSize, mimeType, buffer, uploaderId } = input;
+  const { recordType, recordId, filename, fileSize, mimeType, buffer, uploaderId, uploaderName } =
+    input;
 
   // Check 100 MB per-record cap
   const currentBytes = await getTotalStorageBytes(recordType, recordId);
@@ -206,6 +209,16 @@ export async function uploadAttachment(input: UploadAttachmentInput): Promise<At
     logger.error({ activityErr }, 'Failed to create activity for attachment upload');
   }
 
+  void writeAuditEntryBestEffort({
+    recordType,
+    recordId,
+    eventType: 'updated',
+    fieldName: 'attachment',
+    newValue: filename,
+    changedById: uploaderId,
+    changedByName: uploaderName,
+  });
+
   return row;
 }
 
@@ -241,12 +254,14 @@ export async function downloadAttachment(
  * @param id - UUID of the attachment.
  * @param requesterId - ID of the requesting user.
  * @param requesterRole - Role of the requesting user.
+ * @param requesterName - Display name of the requesting user (for audit log).
  * @throws 404 if not found; 403 if not authorized.
  */
 export async function deleteAttachment(
   id: string,
   requesterId: string,
   requesterRole: string,
+  requesterName: string,
 ): Promise<void> {
   const attachment = await findAttachmentById(id);
   if (!attachment) {
@@ -268,4 +283,14 @@ export async function deleteAttachment(
 
   // Delete from object storage
   await deleteObject(attachment.storage_key);
+
+  void writeAuditEntryBestEffort({
+    recordType: attachment.record_type,
+    recordId: attachment.record_id,
+    eventType: 'updated',
+    fieldName: 'attachment',
+    oldValue: attachment.filename,
+    changedById: requesterId,
+    changedByName: requesterName,
+  });
 }

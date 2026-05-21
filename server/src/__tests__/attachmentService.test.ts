@@ -174,7 +174,7 @@ describe('deleteAttachment — ownership', () => {
       status: 'active',
     });
 
-    await expect(deleteAttachment(id, otherUser.id, 'rep')).rejects.toMatchObject({
+    await expect(deleteAttachment(id, otherUser.id, 'rep', 'Other Rep')).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
 
@@ -185,7 +185,7 @@ describe('deleteAttachment — ownership', () => {
 
   it('throws NOT_FOUND for a non-existent attachment', async () => {
     await expect(
-      deleteAttachment('00000000-0000-0000-0000-000000000000', uploaderId, 'rep'),
+      deleteAttachment('00000000-0000-0000-0000-000000000000', uploaderId, 'rep', 'Test User'),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
@@ -225,6 +225,7 @@ describe('uploadAttachment — storage cap logic', () => {
         mimeType: 'application/pdf',
         buffer: Buffer.alloc(0),
         uploaderId,
+        uploaderName: 'Test User',
       }),
     ).rejects.toMatchObject({ code: 'STORAGE_CAP_EXCEEDED' });
   });
