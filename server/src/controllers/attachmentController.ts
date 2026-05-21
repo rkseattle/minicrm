@@ -104,6 +104,7 @@ export async function uploadAttachmentHandler(req: Request, res: Response): Prom
       mimeType: req.file.mimetype,
       buffer: req.file.buffer,
       uploaderId: req.user!.id,
+      uploaderName: req.user!.name,
     });
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
@@ -174,7 +175,7 @@ export async function deleteAttachmentHandler(req: Request, res: Response): Prom
   const id = req.params.id as string;
 
   try {
-    await deleteAttachment(id, req.user!.id, req.user!.role);
+    await deleteAttachment(id, req.user!.id, req.user!.role, req.user!.name);
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === 'NOT_FOUND') {
