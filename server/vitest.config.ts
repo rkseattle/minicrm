@@ -61,6 +61,17 @@ const SERIAL_FILES = [
   // running in parallel with auditService races on the trigger's enabled/disabled state.
   // (MINCRM-364)
   'src/__tests__/gdprService.test.ts',
+  // activityService, auditService, and leadsService write to audit_log; when
+  // noteService/gdprService disable the audit_log_no_modify trigger mid-run,
+  // the immutability check fires P0001 on concurrent INSERT attempts.
+  'src/__tests__/activityService.test.ts',
+  'src/__tests__/auditService.test.ts',
+  'src/__tests__/leadsService.test.ts',
+  // customFieldService and customFieldController query global custom_field_definitions;
+  // demoService/demoController (serial) create definitions that pollute the table when
+  // running simultaneously with the parallel project.
+  'src/__tests__/customFieldService.test.ts',
+  'src/__tests__/customFieldController.test.ts',
   // contactController's send-email tests check that an Email activity is created;
   // smtpSettingsService running in parallel can set smtp_host mid-test which causes
   // the activity query to return 0 results if the write races with the read.
