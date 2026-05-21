@@ -317,3 +317,82 @@ describe('tag cascade delete', () => {
     expect(accountTags.map((t) => t.name)).not.toContain(`${FILE_PREFIX}-cascade-test`);
   });
 });
+
+// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+
+const TAG_AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000004', name: 'Tag Audit Actor' };
+
+describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
+  beforeEach(async () => {
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TAG_AUDIT_ACTOR.id]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  });
+
+  it('attachTag writes an audit entry with fieldName=tags and newValue=tag name', async () => {
+    const tag = await attachTag(
+      'contact',
+      contactId,
+      { name: `${FILE_PREFIX}-audit-attach` },
+      TAG_AUDIT_ACTOR,
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+      [contactId, TAG_AUDIT_ACTOR.id],
+    );
+    expect(result.rows.length).toBeGreaterThan(0);
+    const entry = result.rows.find((r: { new_value: string }) => r.new_value === tag.name);
+    expect(entry).toBeDefined();
+    expect(entry.record_type).toBe('contact');
+    expect(entry.event_type).toBe('updated');
+    expect(entry.field_name).toBe('tags');
+  });
+
+  it('detachTag writes an audit entry with fieldName=tags and oldValue=tag name', async () => {
+    const tag = await attachTag('contact', contactId, { name: `${FILE_PREFIX}-audit-detach` });
+    const tagName = tag.name;
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TAG_AUDIT_ACTOR.id]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+
+    await detachTag('contact', contactId, tag.id, TAG_AUDIT_ACTOR);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const result = await pool.query(
+      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+      [contactId, TAG_AUDIT_ACTOR.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].record_type).toBe('contact');
+    expect(result.rows[0].event_type).toBe('updated');
+    expect(result.rows[0].field_name).toBe('tags');
+    expect(result.rows[0].old_value).toBe(tagName);
+  });
+
+  it('attachTag with no actor writes no audit entry', async () => {
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    const before = await pool.query(
+      `SELECT COUNT(*) AS count FROM audit_log WHERE record_id = $1`,
+      [contactId],
+    );
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+
+    await attachTag('contact', contactId, { name: `${FILE_PREFIX}-no-actor` });
+    await new Promise((r) => setTimeout(r, 50));
+
+    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    const after = await pool.query(`SELECT COUNT(*) AS count FROM audit_log WHERE record_id = $1`, [
+      contactId,
+    ]);
+    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+
+    expect(parseInt(after.rows[0].count)).toBe(parseInt(before.rows[0].count));
+  });
+});
