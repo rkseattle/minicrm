@@ -77,7 +77,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const urlInput = await getAdminSettingsWebhookUrlInputLocator({ page });
-  await urlInput.fill('https://wh02.example.com/hook');
+  await urlInput.fill('https://example.com/hook/wh02');
 
   // Select the contact.created event
   await clickAdminSettingsWebhookEvent('contact.created', { page });
@@ -98,7 +98,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
 
   // Find and register the newly created subscription for teardown
   const subscriptions = await listWebhookSubscriptions(restClient);
-  const created = subscriptions.find((s) => s.url === 'https://wh02.example.com/hook');
+  const created = subscriptions.find((s) => s.url === 'https://example.com/hook/wh02');
   if (created) {
     testData.register('webhook_subscription', created.id, `/api/v1/admin/webhooks/${created.id}`);
   }
@@ -116,7 +116,7 @@ test('@functional WH-03: created subscription appears in the list with correct d
   await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
-  const hookUrl = `https://wh03-${suffix}.example.com/hook`;
+  const hookUrl = `https://example.com/hook/wh03-${suffix}`;
 
   const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
@@ -150,7 +150,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
-  const hookUrl = `https://wh04-${suffix}.example.com/hook`;
+  const hookUrl = `https://example.com/hook/wh04-${suffix}`;
 
   const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
@@ -179,7 +179,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
-  const hookUrl = `https://wh05-${suffix}.example.com/hook`;
+  const hookUrl = `https://example.com/hook/wh05-${suffix}`;
 
   const { subscription: sub } = await createWebhookSubscription(restClient, {
     url: hookUrl,
