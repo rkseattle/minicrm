@@ -275,6 +275,8 @@ export class AdminSettingsPage {
 
   /**
    * Returns true when the email notifications toggle has aria-checked="true".
+   * Waits for the toggle to be visible (i.e., the email-notif query has resolved
+   * and the component is no longer in the loading state) before reading.
    */
   async emailNotificationsIsEnabled(): Promise<boolean> {
     try {
@@ -287,6 +289,9 @@ export class AdminSettingsPage {
           { intent: 'email notifications toggle to read enabled state' },
         )
         .resolve();
+      // Wait for visible — toggle is only rendered after emailNotifLoading is false,
+      // so visibility confirms the query has settled and aria-checked is authoritative.
+      await resolved.waitFor({ state: 'visible', timeout: 5_000 });
       const ariaChecked = await resolved.getAttribute('aria-checked');
       return ariaChecked === 'true';
     } catch {
@@ -352,20 +357,6 @@ export class AdminSettingsPage {
       .resolve()
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
-  }
-
-  /**
-   * Waits for the email notifications toggle to reach the given aria-checked state.
-   * Used after clicking the toggle to confirm the mutation completed before reading
-   * isEnabled — avoids a race where a stale success message resolves the wait early.
-   *
-   * @param enabled - Expected post-click enabled state.
-   * @param timeout - Maximum ms to wait.
-   */
-  async waitForEmailNotifToggleState(enabled: boolean, timeout = 5_000): Promise<void> {
-    // String expression avoids TypeScript dom-lib errors while running in browser context.
-    const expr = `document.querySelector('[data-testid="email-notif-toggle"]')?.getAttribute('aria-checked') === '${String(enabled)}'`;
-    await this.page.waitForFunction(expr, null, { timeout });
   }
 
   /**
