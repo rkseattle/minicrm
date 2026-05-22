@@ -501,10 +501,11 @@ export class ContactsPage {
    * Clicks the "Delete" button in the bulk action bar.
    *
    * @param force - When true, bypasses Playwright's actionability checks.
-   *   Use on desktop where the button sits inside a full-viewport overflow-auto
-   *   container and the normal scroll-into-view loop does not settle.
+   *   Defaults to true because the bar re-renders immediately after the checkbox
+   *   selection state settles, detaching the button briefly on both desktop and
+   *   mobile CI runners.
    */
-  async clickBulkDelete(force = false): Promise<void> {
+  async clickBulkDelete(force = true): Promise<void> {
     const el = await this.page
       .locate(
         [
