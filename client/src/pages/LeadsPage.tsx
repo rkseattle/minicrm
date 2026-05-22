@@ -146,7 +146,23 @@ export default function LeadsPage() {
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, version }: { id: string; status: string; version: number }) =>
       updateLead(id, { status: status as LeadResponse['status'], version }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Update the cached lead list optimistically so the badge reflects the
+      // new status immediately without waiting for a full refetch (MINCRM-388).
+      queryClient.setQueriesData<{ data: LeadResponse[]; total: number }>(
+        { queryKey: LEADS_QUERY_KEY },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((l) =>
+              l.id === variables.id
+                ? { ...l, status: variables.status as LeadResponse['status'] }
+                : l,
+            ),
+          };
+        },
+      );
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setEditingStatusId(null);
     },
@@ -470,7 +486,6 @@ export default function LeadsPage() {
                                       version: lead.version,
                                     });
                                   }}
-                                  onBlur={() => setEditingStatusId(null)}
                                   className="rounded border border-gray-300 py-0.5 text-xs"
                                   data-testid={`status-select-${lead.id}`}
                                 >

@@ -389,4 +389,38 @@ describe('inline status update', () => {
       expect(patchedStatus).toBe('Contacted');
     });
   });
+
+  // MINCRM-388: badge must display the new status after the mutation succeeds
+  it('updates the status badge text after inline status change', async () => {
+    const updatedLead = { ...LEAD_1, status: 'Contacted' as const };
+    // Override PATCH handler; GET still returns LEAD_1 (status: New) on initial load.
+    server.use(
+      http.patch(`/api/v1/leads/${LEAD_1.id}`, async ({ request }) => {
+        const body = (await request.json()) as { status?: string };
+        // Once the PATCH fires, switch the GET to return the updated lead so the
+        // post-invalidation refetch reflects the new status (MINCRM-388).
+        server.use(
+          http.get('/api/v1/leads', () =>
+            HttpResponse.json({ data: [updatedLead], total: 1, page: 1, limit: 50 }),
+          ),
+        );
+        return HttpResponse.json({ lead: { ...LEAD_1, status: body.status ?? LEAD_1.status } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toHaveTextContent('New');
+
+    await user.click(screen.getByTestId(`status-badge-${LEAD_1.id}`));
+    await user.selectOptions(screen.getByTestId(`status-select-${LEAD_1.id}`), 'Contacted');
+
+    // Badge should now show the new status (MINCRM-388)
+    await waitFor(() => {
+      expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toHaveTextContent('Contacted');
+    });
+  });
 });

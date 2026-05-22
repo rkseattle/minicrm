@@ -46,6 +46,7 @@ import {
   clickContactsBulkReassign,
   getContactsBulkReassignModalLocator,
   cancelContactsBulkReassign,
+  filterContactsByTerm,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import {
@@ -236,6 +237,8 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
   await page.waitForLoadState('networkidle');
+  // Filter to the unique contact so it appears on page 1 regardless of DB volume.
+  await filterContactsByTerm(contact.email, { page });
 
   // Select the seeded contact row to enable the bulk action bar.
   await waitForBulkCheckbox(contact.id, { page });
@@ -262,6 +265,8 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
   await page.waitForLoadState('networkidle');
+  // Filter to the unique contact so it appears on page 1 regardless of DB volume.
+  await filterContactsByTerm(contact.email, { page });
 
   // Select the seeded contact row to enable the bulk action bar.
   await waitForBulkCheckbox(contact.id, { page });
