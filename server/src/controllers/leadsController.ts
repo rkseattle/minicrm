@@ -118,7 +118,7 @@ export async function listLeadsHandler(req: Request, res: Response): Promise<voi
   const sort = (LEAD_SORT_COLUMNS as readonly string[]).includes(sortRaw)
     ? (sortRaw as (typeof LEAD_SORT_COLUMNS)[number])
     : undefined;
-  const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
+  const dir = req.query.dir === 'asc' ? ('ASC' as const) : ('DESC' as const);
 
   const result = await listLeads({
     ownerId,

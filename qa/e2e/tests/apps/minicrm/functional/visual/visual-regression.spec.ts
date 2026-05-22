@@ -240,7 +240,6 @@ test(
     const contact = await createTestContact(testData, restClient, {
       first_name: 'Visual',
       last_name: 'DashboardUser',
-      email: 'vr-v3@example.com',
       account_id: account.id,
     });
     await createTestDeal(testData, restClient, {
@@ -294,7 +293,6 @@ test(
     const contact = await createTestContact(testData, restClient, {
       first_name: 'Visual',
       last_name: 'ContactDetail',
-      email: 'vr-v4@example.com',
       phone: '+1-555-0100',
       title: 'Senior Engineer',
       department: 'Engineering',

@@ -200,6 +200,9 @@ export async function updateLeadStatus(
 ): Promise<UpdateLeadStatusResult> {
   const leadsPage = new LeadsPage(context);
   await leadsPage.navigate();
+  // Use max page size so the target lead is visible even when the DB has
+  // accumulated rows from prior test runs.
+  await leadsPage.setPageSizeToMax();
 
   await leadsPage.clickStatusBadge(leadId);
   await leadsPage.selectStatus(leadId, status);
