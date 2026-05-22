@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-21T21:49:11.050Z",
+  "updatedAt": "2026-05-21T23:40:11.435Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -63,6 +63,15 @@
       "count": 1,
       "firstSeenAt": "2026-05-21T21:46:47.475Z",
       "lastSeenAt": "2026-05-21T21:46:47.475Z"
+    },
+    "Unknown::unknown::css::[data-testid=\"stage-column-qualification\"] [data-testid=\"deal-card-f31d5ca4-5da2-4ad1-ba9b-c3329f291588\"]": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "css",
+      "originalStrategyValue": "[data-testid=\"stage-column-qualification\"] [data-testid=\"deal-card-f31d5ca4-5da2-4ad1-ba9b-c3329f291588\"]",
+      "count": 1,
+      "firstSeenAt": "2026-05-21T23:37:57.031Z",
+      "lastSeenAt": "2026-05-21T23:37:57.031Z"
     }
   }
 }
