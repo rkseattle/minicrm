@@ -355,6 +355,20 @@ export class AdminSettingsPage {
   }
 
   /**
+   * Waits for the email notifications toggle to reach the given aria-checked state.
+   * Used after clicking the toggle to confirm the mutation completed before reading
+   * isEnabled — avoids a race where a stale success message resolves the wait early.
+   *
+   * @param enabled - Expected post-click enabled state.
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForEmailNotifToggleState(enabled: boolean, timeout = 5_000): Promise<void> {
+    // String expression avoids TypeScript dom-lib errors while running in browser context.
+    const expr = `document.querySelector('[data-testid="email-notif-toggle"]')?.getAttribute('aria-checked') === '${String(enabled)}'`;
+    await this.page.waitForFunction(expr, null, { timeout });
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {
