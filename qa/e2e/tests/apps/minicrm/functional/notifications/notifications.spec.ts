@@ -39,7 +39,7 @@ import {
   loginAsAdmin,
   patchNotificationPreferences,
   getEmailNotificationsEnabled,
-  setEmailNotificationsEnabled,
+  ensureSystemDefaults,
 } from '@behaviors/minicrm/index.js';
 
 // ---------------------------------------------------------------------------
@@ -170,7 +170,18 @@ test.describe.serial('Profile page — notification preferences', () => {
 // Admin Settings — global email notifications
 // ---------------------------------------------------------------------------
 
-test.describe('Admin Settings — global email notifications', () => {
+// Serial: AS3 mutates the email-notifications system setting. Parallel workers
+// would race against each other and corrupt the shared state mid-test.
+test.describe.serial('Admin Settings — global email notifications', () => {
+  test.beforeEach(async ({ restClient }) => {
+    await loginAsAdmin(restClient);
+    await ensureSystemDefaults(restClient);
+  });
+
+  test.afterEach(async ({ restClient }) => {
+    await ensureSystemDefaults(restClient);
+  });
+
   test('@functional F10-AS1: email notifications section is visible in admin settings', async ({
     page,
   }) => {
@@ -190,12 +201,7 @@ test.describe('Admin Settings — global email notifications', () => {
     page,
     restClient,
   }) => {
-    // Authenticate restClient to use API for setup/teardown
-    await loginAsAdmin(restClient);
-    // Ensure enabled at start
-    await setEmailNotificationsEnabled(restClient, true);
-
-    // Navigate to settings — toggle should show as enabled.
+    // Navigate to settings — toggle should show as enabled (ensured by beforeEach).
     const initial = await navigateToAdminSettings({ page });
     expect(initial.toggleVisible, 'toggle should be visible').toBe(true);
 
