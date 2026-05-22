@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-22T22:20:22.091Z",
+  "updatedAt": "2026-05-22T22:48:04.406Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -204,9 +204,18 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "contact-link-559aae65-ac60-4499-ac05-0a4ab7035721",
-      "count": 1,
+      "count": 2,
       "firstSeenAt": "2026-05-22T22:17:06.730Z",
       "lastSeenAt": "2026-05-22T22:17:06.730Z"
+    },
+    "Unknown::unknown::testId::contact-link-99597a9b-1dc2-4ff8-b277-b391b015d0c8": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-99597a9b-1dc2-4ff8-b277-b391b015d0c8",
+      "count": 1,
+      "firstSeenAt": "2026-05-22T22:44:45.438Z",
+      "lastSeenAt": "2026-05-22T22:44:45.438Z"
     }
   }
 }
