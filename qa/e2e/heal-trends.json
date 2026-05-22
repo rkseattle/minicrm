@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-22T18:11:41.585Z",
+  "updatedAt": "2026-05-22T22:20:22.091Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -42,9 +42,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "deal-name",
-      "count": 1,
+      "count": 3,
       "firstSeenAt": "2026-05-20T03:45:10.147Z",
-      "lastSeenAt": "2026-05-20T03:45:10.147Z"
+      "lastSeenAt": "2026-05-22T21:14:14.185Z"
     },
     "Unknown::unknown::testId::contact-link-bea84bb6-cc15-48d6-90c2-689c1c8b8338": {
       "pageObject": "Unknown",
@@ -159,9 +159,54 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "contact-link-c40e2eaf-a629-4cd4-a717-11f5047fb811",
-      "count": 1,
+      "count": 3,
       "firstSeenAt": "2026-05-22T18:08:34.624Z",
       "lastSeenAt": "2026-05-22T18:08:34.624Z"
+    },
+    "Unknown::unknown::testId::contact-link-d3f1b2cd-5409-4aaf-8879-1ab46c3df214": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-d3f1b2cd-5409-4aaf-8879-1ab46c3df214",
+      "count": 2,
+      "firstSeenAt": "2026-05-22T19:47:24.759Z",
+      "lastSeenAt": "2026-05-22T19:47:24.759Z"
+    },
+    "Unknown::unknown::testId::contact-link-bba88cfa-fe26-42c9-8b1a-2506f656422e": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-bba88cfa-fe26-42c9-8b1a-2506f656422e",
+      "count": 2,
+      "firstSeenAt": "2026-05-22T19:58:23.167Z",
+      "lastSeenAt": "2026-05-22T19:58:23.167Z"
+    },
+    "Unknown::unknown::testId::contact-link-a17db760-ecee-445a-9bc7-ac7b7b4daf81": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-a17db760-ecee-445a-9bc7-ac7b7b4daf81",
+      "count": 2,
+      "firstSeenAt": "2026-05-22T20:10:16.360Z",
+      "lastSeenAt": "2026-05-22T20:10:16.360Z"
+    },
+    "Unknown::unknown::testId::contact-link-03cde6f1-b879-48f1-9f0f-a965be20c95e": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-03cde6f1-b879-48f1-9f0f-a965be20c95e",
+      "count": 2,
+      "firstSeenAt": "2026-05-22T22:07:40.338Z",
+      "lastSeenAt": "2026-05-22T22:07:40.338Z"
+    },
+    "Unknown::unknown::testId::contact-link-559aae65-ac60-4499-ac05-0a4ab7035721": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-559aae65-ac60-4499-ac05-0a4ab7035721",
+      "count": 1,
+      "firstSeenAt": "2026-05-22T22:17:06.730Z",
+      "lastSeenAt": "2026-05-22T22:17:06.730Z"
     }
   }
 }

@@ -287,13 +287,10 @@ export async function toggleAdminEmailNotifications(
   const adminSettings = new AdminSettingsPage(context);
   await adminSettings.navigate('notifications');
 
-  // Read current state before clicking so we know which aria-checked value to
-  // wait for — avoids a race where a stale success message resolves the wait early.
-  const wasPreviouslyEnabled = await adminSettings.emailNotificationsIsEnabled();
   await adminSettings.toggleEmailNotifications();
 
-  // Wait for the toggle to reach the flipped state before reading success message.
-  await adminSettings.waitForEmailNotifToggleState(!wasPreviouslyEnabled);
+  // The success message is set in onSuccess, which fires only after the server
+  // PATCH has completed. Waiting for it is sufficient to confirm the write landed.
   await adminSettings.waitForEmailNotifSuccessVisible();
 
   const saved = await adminSettings.successMessageIsVisible();

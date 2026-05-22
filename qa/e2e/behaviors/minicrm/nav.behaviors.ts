@@ -123,16 +123,15 @@ export interface OpenHamburgerMenuResult {
 export async function openHamburgerMenu(
   context: NavBehaviorContext,
 ): Promise<OpenHamburgerMenuResult> {
-  // Wait for the toggle to be stable before clicking — after a route navigation
-  // NavHamburger remounts and resets menuOpen to false. Clicking before the new
-  // instance has fully mounted either fires on the old instance (ignored) or
-  // before setMenuOpen is wired up, so the drawer never appears.
-  await context.page.waitFor(
-    [
-      { type: 'testId', value: 'nav-menu-toggle' },
-      { type: 'role', value: 'button', options: { name: 'Menu', exact: false } },
-    ],
-    'visible',
+  // Wait for the toggle to be both in the DOM and CSS-visible before clicking.
+  // NavTop also renders a nav-menu-toggle button with lg:hidden on desktop, so
+  // a testId wait alone can resolve against that hidden button before NavHamburger
+  // has mounted. waitForFunction polls until offsetParent !== null, which is only
+  // true when the element is CSS-visible (lg:hidden sets display:none → null).
+  await context.page.waitForFunction(
+    'document.querySelector(\'[data-testid="nav-menu-toggle"]\')?.offsetParent !== null',
+    null,
+    { timeout: 10_000 },
   );
   const navPage = new NavPage(context);
   await navPage.clickMenuToggle();
