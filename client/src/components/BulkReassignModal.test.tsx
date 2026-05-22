@@ -47,6 +47,23 @@ describe('BulkReassignModal', () => {
     expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
+  it('is a dialog element with aria-modal and aria-labelledby', () => {
+    renderWithProviders(
+      <BulkReassignModal
+        isOpen={true}
+        selectedCount={2}
+        users={USERS}
+        isPending={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    const dialog = screen.getByTestId('bulk-reassign-modal');
+    expect(dialog.tagName.toLowerCase()).toBe('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-labelledby', 'bulk-reassign-title');
+  });
+
   it('confirm button is disabled when no owner is selected', () => {
     renderWithProviders(
       <BulkReassignModal
@@ -108,7 +125,7 @@ describe('BulkReassignModal', () => {
         onCancel={onCancel}
       />,
     );
-    fireEvent.click(screen.getByTestId('bulk-reassign-modal'));
+    fireEvent.click(screen.getByTestId('bulk-reassign-modal-overlay'));
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
@@ -124,7 +141,7 @@ describe('BulkReassignModal', () => {
         onCancel={onCancel}
       />,
     );
-    fireEvent.keyDown(screen.getByTestId('bulk-reassign-modal'), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('bulk-reassign-modal-overlay'), { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
@@ -156,7 +173,7 @@ describe('BulkReassignModal', () => {
         onCancel={onCancel}
       />,
     );
-    fireEvent.keyDown(screen.getByTestId('bulk-reassign-modal'), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('bulk-reassign-modal-overlay'), { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
   });
 
@@ -172,7 +189,7 @@ describe('BulkReassignModal', () => {
         onCancel={onCancel}
       />,
     );
-    fireEvent.click(screen.getByTestId('bulk-reassign-modal'));
+    fireEvent.click(screen.getByTestId('bulk-reassign-modal-overlay'));
     expect(onCancel).not.toHaveBeenCalled();
   });
 });

@@ -70,7 +70,7 @@ export default function BulkReassignModal({
     <div
       role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      data-testid="bulk-reassign-modal"
+      data-testid="bulk-reassign-modal-overlay"
       onClick={isPending ? undefined : onCancel}
       onKeyDown={handleKeyDown}
     >
@@ -78,6 +78,7 @@ export default function BulkReassignModal({
         open
         aria-modal="true"
         aria-labelledby="bulk-reassign-title"
+        data-testid="bulk-reassign-modal"
         className="relative w-full max-w-sm mx-4 p-0"
       >
         <div
