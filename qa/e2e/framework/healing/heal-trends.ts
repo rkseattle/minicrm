@@ -1,9 +1,9 @@
 /**
  * HealTrendStore — persistent cross-run heal count accumulator.
  *
- * Reads and writes `qa/test-results/heal-trends.json`, a git-tracked file that
- * accumulates per-locator heal counts across runs. Unlike per-run worker files,
- * this file is never gitignored so trend data can be committed and reviewed.
+ * Reads and writes `qa/e2e/heal-trends.json`, a git-tracked file that
+ * accumulates per-locator heal counts across runs. Stored outside test-results/
+ * so it is never gitignored and survives across CI runs without force-adding.
  *
  * Deduplication key: `pageObject::method::originalStrategy.type::originalStrategy.value`
  * — the same key used by PatchSuggester, ensuring the two systems agree on
@@ -14,8 +14,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { HealEvent } from './healing-registry.js';
 
-const OUTPUT_DIR = 'test-results';
-const TRENDS_FILE = path.join(OUTPUT_DIR, 'heal-trends.json');
+// Resolve relative to this source file so the path is correct regardless of
+// the working directory from which Playwright is invoked.
+const E2E_DIR = path.resolve(__dirname, '..', '..');
+const TRENDS_FILE = path.join(E2E_DIR, 'heal-trends.json');
 
 /** Per-locator trend entry stored in heal-trends.json. */
 export interface HealTrendEntry {
@@ -104,7 +106,7 @@ export function writeTrends(entries: Record<string, HealTrendEntry>): void {
     updatedAt: new Date().toISOString(),
     entries,
   };
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.mkdirSync(E2E_DIR, { recursive: true });
   fs.writeFileSync(TRENDS_FILE, JSON.stringify(file, null, 2), 'utf-8');
 }
 
