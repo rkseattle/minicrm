@@ -27,6 +27,8 @@ import {
   writeTrends,
   quarantineCandidates,
   buildTrendKey,
+  setTrendsFileForTesting,
+  resetTrendsFileForTesting,
 } from '../../framework/healing/heal-trends.js';
 import type { HealEvent } from '../../framework/healing/healing-registry.js';
 import type { HealTrendEntry } from '../../framework/healing/heal-trends.js';
@@ -49,17 +51,17 @@ function makeHealEvent(overrides: Partial<HealEvent> = {}): HealEvent {
 }
 
 /**
- * Runs a callback with cwd changed to tmpDir, then restores cwd.
- * heal-trends.ts uses `'test-results'` as a relative path so cwd determines
- * where the file lands.
+ * Redirects heal-trends I/O to a temp file for the duration of fn(), then
+ * restores the production path and cleans up.
  */
-function withTmpDir<T>(tmpDir: string, fn: () => T): T {
-  const original = process.cwd();
-  process.chdir(tmpDir);
+function withTmpTrendsFile<T>(tmpDir: string, fn: (trendsPath: string) => T): T {
+  const trendsPath = path.join(tmpDir, 'heal-trends.json');
+  setTrendsFileForTesting(trendsPath);
   try {
-    return fn();
+    return fn(trendsPath);
   } finally {
-    process.chdir(original);
+    resetTrendsFileForTesting();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
@@ -96,40 +98,29 @@ test.describe('buildTrendKey', () => {
 test.describe('readTrends', () => {
   test('returns empty object when heal-trends.json does not exist', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-absent-'));
-    try {
-      const result = withTmpDir(tmpDir, () => readTrends());
-      expect(result).toEqual({});
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    withTmpTrendsFile(tmpDir, () => {
+      expect(readTrends()).toEqual({});
+    });
   });
 
   test('returns empty object when file content is malformed JSON', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-bad-json-'));
-    try {
-      fs.mkdirSync(path.join(tmpDir, 'test-results'), { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, 'test-results', 'heal-trends.json'), 'NOT JSON', 'utf-8');
-      const result = withTmpDir(tmpDir, () => readTrends());
-      expect(result).toEqual({});
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    withTmpTrendsFile(tmpDir, (trendsPath) => {
+      fs.writeFileSync(trendsPath, 'NOT JSON', 'utf-8');
+      expect(readTrends()).toEqual({});
+    });
   });
 
   test('returns empty object when file has no entries field', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-no-entries-'));
-    try {
-      fs.mkdirSync(path.join(tmpDir, 'test-results'), { recursive: true });
+    withTmpTrendsFile(tmpDir, (trendsPath) => {
       fs.writeFileSync(
-        path.join(tmpDir, 'test-results', 'heal-trends.json'),
+        trendsPath,
         JSON.stringify({ updatedAt: new Date().toISOString() }),
         'utf-8',
       );
-      const result = withTmpDir(tmpDir, () => readTrends());
-      expect(result).toEqual({});
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+      expect(readTrends()).toEqual({});
+    });
   });
 });
 
@@ -221,50 +212,47 @@ test.describe('mergeTrends', () => {
 test.describe('writeTrends + readTrends', () => {
   test('writes valid JSON and reads it back correctly', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-write-'));
-    try {
-      const event = makeHealEvent({
-        pageObject: 'LeadsPage',
-        method: 'submitButton',
-        originalStrategy: { type: 'testId', value: 'submit-btn' },
-      });
-      const key = buildTrendKey(event);
-      const entries = mergeTrends({}, [event]);
+    const event = makeHealEvent({
+      pageObject: 'LeadsPage',
+      method: 'submitButton',
+      originalStrategy: { type: 'testId', value: 'submit-btn' },
+    });
+    const key = buildTrendKey(event);
+    const entries = mergeTrends({}, [event]);
 
-      withTmpDir(tmpDir, () => {
-        writeTrends(entries);
-        const readBack = readTrends();
-        expect(readBack[key]).toBeDefined();
-        expect(readBack[key]!.count).toBe(1);
-        expect(readBack[key]!.pageObject).toBe('LeadsPage');
-      });
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    withTmpTrendsFile(tmpDir, (trendsPath) => {
+      writeTrends(entries);
+      expect(fs.existsSync(trendsPath)).toBe(true);
+      const readBack = readTrends();
+      expect(readBack[key]).toBeDefined();
+      expect(readBack[key]!.count).toBe(1);
+      expect(readBack[key]!.pageObject).toBe('LeadsPage');
+    });
   });
 
-  test('creates the test-results directory when absent', () => {
+  test('creates parent directory when absent', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-mkdir-'));
+    const nestedDir = path.join(tmpDir, 'subdir');
+    const trendsPath = path.join(nestedDir, 'heal-trends.json');
+    setTrendsFileForTesting(trendsPath);
     try {
-      expect(fs.existsSync(path.join(tmpDir, 'test-results'))).toBe(false);
-      withTmpDir(tmpDir, () => writeTrends({}));
-      expect(fs.existsSync(path.join(tmpDir, 'test-results', 'heal-trends.json'))).toBe(true);
+      expect(fs.existsSync(nestedDir)).toBe(false);
+      writeTrends({});
+      expect(fs.existsSync(trendsPath)).toBe(true);
     } finally {
+      resetTrendsFileForTesting();
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
   test('written file includes updatedAt timestamp', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-trends-ts-'));
-    try {
-      withTmpDir(tmpDir, () => {
-        writeTrends({});
-        const raw = fs.readFileSync(path.join(tmpDir, 'test-results', 'heal-trends.json'), 'utf-8');
-        const parsed = JSON.parse(raw) as { updatedAt: string };
-        expect(() => new Date(parsed.updatedAt).toISOString()).not.toThrow();
-      });
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    withTmpTrendsFile(tmpDir, (trendsPath) => {
+      writeTrends({});
+      const raw = fs.readFileSync(trendsPath, 'utf-8');
+      const parsed = JSON.parse(raw) as { updatedAt: string };
+      expect(() => new Date(parsed.updatedAt).toISOString()).not.toThrow();
+    });
   });
 });
 

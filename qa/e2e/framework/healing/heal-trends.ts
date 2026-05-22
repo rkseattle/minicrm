@@ -17,7 +17,23 @@ import type { HealEvent } from './healing-registry.js';
 // Resolve relative to this source file so the path is correct regardless of
 // the working directory from which Playwright is invoked.
 const E2E_DIR = path.resolve(__dirname, '..', '..');
-const TRENDS_FILE = path.join(E2E_DIR, 'heal-trends.json');
+let trendsFile = path.join(E2E_DIR, 'heal-trends.json');
+
+const DEFAULT_TRENDS_FILE = trendsFile;
+
+/**
+ * Override the trends file path. For testing only — never call in production code.
+ */
+export function setTrendsFileForTesting(p: string): void {
+  trendsFile = p;
+}
+
+/**
+ * Restore the trends file path to its production default. For testing only.
+ */
+export function resetTrendsFileForTesting(): void {
+  trendsFile = DEFAULT_TRENDS_FILE;
+}
 
 /** Per-locator trend entry stored in heal-trends.json. */
 export interface HealTrendEntry {
@@ -55,7 +71,7 @@ export function buildTrendKey(event: HealEvent): string {
  */
 export function readTrends(): Record<string, HealTrendEntry> {
   try {
-    const raw = fs.readFileSync(TRENDS_FILE, 'utf-8');
+    const raw = fs.readFileSync(trendsFile, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<HealTrendsFile>;
     if (parsed.entries && typeof parsed.entries === 'object') {
       return parsed.entries;
@@ -106,8 +122,8 @@ export function writeTrends(entries: Record<string, HealTrendEntry>): void {
     updatedAt: new Date().toISOString(),
     entries,
   };
-  fs.mkdirSync(E2E_DIR, { recursive: true });
-  fs.writeFileSync(TRENDS_FILE, JSON.stringify(file, null, 2), 'utf-8');
+  fs.mkdirSync(path.dirname(trendsFile), { recursive: true });
+  fs.writeFileSync(trendsFile, JSON.stringify(file, null, 2), 'utf-8');
 }
 
 /**

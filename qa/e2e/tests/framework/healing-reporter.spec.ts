@@ -24,6 +24,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { HealingReporter } from '../../framework/healing/healing-reporter.js';
 import type { HealingReport, HealEvent, HealTrendEntry } from '../../framework/healing/index.js';
+import {
+  setTrendsFileForTesting,
+  resetTrendsFileForTesting,
+} from '../../framework/healing/heal-trends.js';
 
 // Re-export the pattern from the module for testing by importing the compiled
 // value. We read the source to extract WORKER_FILE_PATTERN via a light import
@@ -101,11 +105,16 @@ function setupReporterRun(
     JSON.stringify({ workerId: '0', events }),
     'utf-8',
   );
+  // Direct the trends file to tmpDir so tests don't touch the real qa/e2e/heal-trends.json.
+  setTrendsFileForTesting(path.join(tmpDir, 'heal-trends.json'));
   const originalCwd = process.cwd();
   process.chdir(tmpDir);
   return {
     reporter: new HealingReporter(),
-    restoreCwd: () => process.chdir(originalCwd),
+    restoreCwd: () => {
+      process.chdir(originalCwd);
+      resetTrendsFileForTesting();
+    },
   };
 }
 
@@ -271,7 +280,7 @@ test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', 
     const { reporter, restoreCwd } = setupReporterRun(events, tmpDir);
     try {
       reporter.onEnd({ status: 'passed' } as Parameters<typeof reporter.onEnd>[0]);
-      const trendsPath = path.join(tmpDir, 'test-results', 'heal-trends.json');
+      const trendsPath = path.join(tmpDir, 'heal-trends.json');
       expect(fs.existsSync(trendsPath)).toBe(true);
       const parsed = JSON.parse(fs.readFileSync(trendsPath, 'utf-8')) as {
         entries: Record<string, HealTrendEntry>;
@@ -292,7 +301,7 @@ test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', 
       method: 'editButton',
       originalStrategy: { type: 'testId', value: 'edit-btn' },
     });
-    const trendsPath = path.join(tmpDir, 'test-results', 'heal-trends.json');
+    const trendsPath = path.join(tmpDir, 'heal-trends.json');
 
     for (let run = 0; run < 3; run++) {
       // Each call to setupReporterRun writes a fresh worker file in the same tmpDir.
@@ -315,7 +324,7 @@ test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', 
     const { reporter, restoreCwd } = setupReporterRun([], tmpDir);
     try {
       reporter.onEnd({ status: 'passed' } as Parameters<typeof reporter.onEnd>[0]);
-      expect(fs.existsSync(path.join(tmpDir, 'test-results', 'heal-trends.json'))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, 'heal-trends.json'))).toBe(false);
     } finally {
       restoreCwd();
       fs.rmSync(tmpDir, { recursive: true, force: true });
