@@ -422,15 +422,23 @@ export class ContactsPage {
 
   /**
    * Clicks the "Reassign" button in the bulk action bar.
+   *
+   * Uses force: true for the same reason as clickBulkDelete — the action bar
+   * re-renders after checkbox selection settles, briefly detaching the button
+   * on CI runners.
    */
   async clickBulkReassign(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'bulk-reassign-button' },
-        { type: 'role', value: 'button', options: { name: /reassign/i } },
-      ],
-      { intent: 'reassign button in the bulk action bar' },
-    );
+    const el = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'bulk-reassign-button' },
+          { type: 'role', value: 'button', options: { name: /reassign/i } },
+        ],
+        { intent: 'reassign button in the bulk action bar' },
+      )
+      .resolve();
+    await el.waitFor({ state: 'visible', timeout: 8_000 });
+    await el.click({ force: true });
   }
 
   /**
