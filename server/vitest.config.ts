@@ -93,6 +93,10 @@ const SERIAL_FILES = [
   // DNS mocks in parallel workers; the delivery picks up ALL active subscriptions in the
   // shared test DB, so cross-file subscription state causes status_code: null failures.
   'src/__tests__/webhookService.test.ts',
+  // loginLockoutService uses a module-level in-memory Map. _resetStoreForTesting() clears
+  // it in beforeEach, but parallel workers share the same Node process and can fire
+  // concurrent login requests that pollute the counter mid-test.
+  'src/__tests__/loginLockout.test.ts',
 ];
 
 const sharedResolve = {
