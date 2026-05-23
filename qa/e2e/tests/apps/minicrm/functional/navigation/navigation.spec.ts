@@ -618,7 +618,14 @@ test.describe.serial('Layout-mutating tests', () => {
         const leftNavLink = await getNavLinkLocator('left', 'contacts', { page });
         await expect(leftNavLink).toBeVisible();
 
-        // Full page reload.
+        // Re-assert the layout via API immediately before reload so the server
+        // write is as close in time as possible to the reload fetch. This
+        // minimises the race window where a parallel worker calling
+        // ensureSystemDefaults can reset nav_layout to 'top' between our
+        // initial setNavLayoutViaAPI call and the page.reload() GET. (MINCRM-390)
+        await setNavLayoutViaAPI('left', restClient);
+
+        // Full page reload — React Query cache is cleared; fresh GET is issued.
         await page.reload({ waitUntil: 'networkidle' });
 
         // Left sidebar must still be active after reload — not reverted to default.
@@ -643,7 +650,12 @@ test.describe.serial('Layout-mutating tests', () => {
         const hamburgerToggle = await getMenuToggleLocator({ page });
         await expect(hamburgerToggle).toBeVisible();
 
-        // Full page reload.
+        // Re-assert the layout via API immediately before reload to minimise the
+        // race window where a parallel worker can reset nav_layout to 'top'.
+        // (MINCRM-390)
+        await setNavLayoutViaAPI('hamburger', restClient);
+
+        // Full page reload — React Query cache is cleared; fresh GET is issued.
         await page.reload({ waitUntil: 'networkidle' });
 
         // Hamburger layout must still be active after reload.

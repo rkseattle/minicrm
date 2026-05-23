@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-22T22:48:04.406Z",
+  "updatedAt": "2026-05-23T01:05:48.868Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -42,9 +42,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "deal-name",
-      "count": 3,
+      "count": 7,
       "firstSeenAt": "2026-05-20T03:45:10.147Z",
-      "lastSeenAt": "2026-05-22T21:14:14.185Z"
+      "lastSeenAt": "2026-05-23T00:56:02.507Z"
     },
     "Unknown::unknown::testId::contact-link-bea84bb6-cc15-48d6-90c2-689c1c8b8338": {
       "pageObject": "Unknown",
@@ -213,7 +213,7 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "contact-link-99597a9b-1dc2-4ff8-b277-b391b015d0c8",
-      "count": 1,
+      "count": 2,
       "firstSeenAt": "2026-05-22T22:44:45.438Z",
       "lastSeenAt": "2026-05-22T22:44:45.438Z"
     }
