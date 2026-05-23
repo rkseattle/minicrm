@@ -54,12 +54,13 @@
     "newPasswordPlaceholder": "[Ñëw päŝŝwörd~~~~]",
     "confirmPasswordLabel": "[Ĉöñfïrm päŝŝwörd~~~~~]",
     "confirmPasswordPlaceholder": "[Ĉöñfïrm ñëw päŝŝwörd~~~~~~]",
-    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, äñd öñë ñümbër.~~~~~~~~~~~~~~~~~]",
+    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~]",
     "submitButton": "[Ŝët ñëw päŝŝwörd~~~~~]",
     "submitting": "[Ŝävïñg…~~~]",
     "passwordMismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
     "passwordTooShort": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ.~~~~~~~~~~~~~~]",
     "passwordComplexity": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~]",
+    "passwordSpecial": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~~]",
     "tokenMissing": "[Thïŝ rëŝët lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~]",
     "requestNewLink": "[Rëqüëŝt ä ñëw rëŝët lïñk~~~~~~~~]"
   },
@@ -69,12 +70,13 @@
     "newPasswordPlaceholder": "[Päŝŝwörd~~~~]",
     "confirmPasswordLabel": "[Ĉöñfïrm päŝŝwörd~~~~~]",
     "confirmPasswordPlaceholder": "[Ĉöñfïrm päŝŝwörd~~~~~]",
-    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, äñd öñë ñümbër.~~~~~~~~~~~~~~~~~]",
+    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~]",
     "submitButton": "[Ŝët päŝŝwörd~~~~]",
     "submitting": "[Ŝävïñg…~~~]",
     "passwordMismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
     "passwordTooShort": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ.~~~~~~~~~~~~~~]",
     "passwordComplexity": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~]",
+    "passwordSpecial": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~~]",
     "tokenMissing": "[Thïŝ ïñvïtë lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~~]",
     "tokenAlreadyUsed": "[Thïŝ äĉĉöüñt häŝ älrëädy bëëñ äĉtïvätëd.~~~~~~~~~~~~~~~]",
     "successRedirect": "[Päŝŝwörd ŝët. Yöü ĉäñ ñöw lög ïñ.~~~~~~~~~~~]",
@@ -117,12 +119,12 @@
       "passwordPlaceholder": "[Ñëw päŝŝwörd~~~~]",
       "confirmLabel": "[Ĉöñfïrm päŝŝwörd~~~~~]",
       "confirmPlaceholder": "[Ĉöñfïrm päŝŝwörd~~~~~]",
-      "hint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, äñd öñë ñümbër. Thë üŝër wïll bë prömptëd tö ĉhäñgë ït öñ ñëxt lögïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "hint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër. Thë üŝër wïll bë prömptëd tö ĉhäñgë ït öñ ñëxt lögïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
       "submit": "[Ŝët päŝŝwörd~~~~]",
       "submitting": "[Ŝävïñg…~~~]",
       "success": "[Päŝŝwörd ŝët. Thë üŝër wïll bë prömptëd tö ĉhäñgë ït öñ ñëxt lögïñ.~~~~~~~~~~~~~~~~~~~~~]",
       "mismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
-      "complexity": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ äñd ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
+      "complexity": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ äñd ĉöñtäïñ ät lëäŝt öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
     }
   },
   "changePassword": {
@@ -135,12 +137,13 @@
     "newPasswordPlaceholder": "[Ñëw päŝŝwörd~~~~]",
     "confirmPasswordLabel": "[Ĉöñfïrm ñëw päŝŝwörd~~~~~~]",
     "confirmPasswordPlaceholder": "[Ĉöñfïrm ñëw päŝŝwörd~~~~~~]",
-    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, äñd öñë ñümbër.~~~~~~~~~~~~~~~~~]",
+    "passwordHint": "[Ät lëäŝt {{min}} ĉhäräĉtërŝ, öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~]",
     "submitButton": "[Ĉhäñgë päŝŝwörd~~~~~]",
     "submitting": "[Ŝävïñg…~~~]",
     "passwordMismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
     "passwordTooShort": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ.~~~~~~~~~~~~~~]",
-    "passwordComplexity": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~]"
+    "passwordComplexity": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë lëttër äñd öñë ñümbër.~~~~~~~~~~~~~~~~~~]",
+    "passwordSpecial": "[Päŝŝwörd müŝt ĉöñtäïñ ät lëäŝt öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~~]"
   },
   "dashboard": {
     "welcome": "[Wëlĉömë, {{name}}~~~~~~]",

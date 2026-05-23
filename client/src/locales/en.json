@@ -54,12 +54,13 @@
     "newPasswordPlaceholder": "New password",
     "confirmPasswordLabel": "Confirm password",
     "confirmPasswordPlaceholder": "Confirm new password",
-    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "passwordHint": "At least {{min}} characters, one letter, one number, and one special character.",
     "submitButton": "Set new password",
     "submitting": "Saving…",
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least {{min}} characters.",
     "passwordComplexity": "Password must contain at least one letter and one number.",
+    "passwordSpecial": "Password must contain at least one special character.",
     "tokenMissing": "This reset link is invalid or has expired.",
     "requestNewLink": "Request a new reset link"
   },
@@ -69,12 +70,13 @@
     "newPasswordPlaceholder": "Password",
     "confirmPasswordLabel": "Confirm password",
     "confirmPasswordPlaceholder": "Confirm password",
-    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "passwordHint": "At least {{min}} characters, one letter, one number, and one special character.",
     "submitButton": "Set password",
     "submitting": "Saving…",
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least {{min}} characters.",
     "passwordComplexity": "Password must contain at least one letter and one number.",
+    "passwordSpecial": "Password must contain at least one special character.",
     "tokenMissing": "This invite link is invalid or has expired.",
     "tokenAlreadyUsed": "This account has already been activated.",
     "successRedirect": "Password set. You can now log in.",
@@ -117,12 +119,12 @@
       "passwordPlaceholder": "New password",
       "confirmLabel": "Confirm password",
       "confirmPlaceholder": "Confirm password",
-      "hint": "At least {{min}} characters, one letter, and one number. The user will be prompted to change it on next login.",
+      "hint": "At least {{min}} characters, one letter, one number, and one special character. The user will be prompted to change it on next login.",
       "submit": "Set password",
       "submitting": "Saving…",
       "success": "Password set. The user will be prompted to change it on next login.",
       "mismatch": "Passwords do not match.",
-      "complexity": "Password must be at least {{min}} characters and contain at least one letter and one number."
+      "complexity": "Password must be at least {{min}} characters and contain at least one letter, one number, and one special character."
     }
   },
   "changePassword": {
@@ -135,12 +137,13 @@
     "newPasswordPlaceholder": "New password",
     "confirmPasswordLabel": "Confirm new password",
     "confirmPasswordPlaceholder": "Confirm new password",
-    "passwordHint": "At least {{min}} characters, one letter, and one number.",
+    "passwordHint": "At least {{min}} characters, one letter, one number, and one special character.",
     "submitButton": "Change password",
     "submitting": "Saving…",
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least {{min}} characters.",
-    "passwordComplexity": "Password must contain at least one letter and one number."
+    "passwordComplexity": "Password must contain at least one letter and one number.",
+    "passwordSpecial": "Password must contain at least one special character."
   },
   "dashboard": {
     "welcome": "Welcome, {{name}}",

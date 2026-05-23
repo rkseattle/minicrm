@@ -63,8 +63,8 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'Abc1');
-    await user.type(screen.getByTestId('change-password-confirm'), 'Abc1');
+    await user.type(screen.getByTestId('change-password-new'), 'Abc1!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'Abc1!');
     await user.click(screen.getByTestId('change-password-submit'));
 
     expect(screen.getByRole('alert')).toHaveTextContent('at least');
@@ -75,11 +75,23 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'alllowercase');
-    await user.type(screen.getByTestId('change-password-confirm'), 'alllowercase');
+    await user.type(screen.getByTestId('change-password-new'), 'alllowercase!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'alllowercase!');
     await user.click(screen.getByTestId('change-password-submit'));
 
     expect(screen.getByRole('alert')).toHaveTextContent('letter and one number');
+  });
+
+  it('shows an error when the new password lacks a special character', async () => {
+    const user = userEvent.setup();
+    renderChangePasswordPage();
+
+    await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'ValidPass1234');
+    await user.type(screen.getByTestId('change-password-confirm'), 'ValidPass1234');
+    await user.click(screen.getByTestId('change-password-submit'));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('special character');
   });
 
   it('redirects to home on successful submission', async () => {
@@ -87,8 +99,8 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('change-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('change-password-submit'));
 
     await waitFor(() => {
@@ -109,8 +121,8 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('change-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'NewP@ssw0rd!');
 
     const submitButton = screen.getByTestId('change-password-submit');
     await user.click(submitButton);
@@ -133,8 +145,8 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'WrongPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('change-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('change-password-submit'));
 
     await waitFor(() => {
@@ -154,8 +166,8 @@ describe('ChangePasswordPage', () => {
     renderChangePasswordPage();
 
     await user.type(screen.getByTestId('change-password-current'), 'OldPass1');
-    await user.type(screen.getByTestId('change-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('change-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('change-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('change-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('change-password-submit'));
 
     await waitFor(() => {

@@ -66,7 +66,7 @@ describe('MINCRM-87 — invite token expiry', () => {
 
     const res = await request(app)
       .post('/api/v1/users/set-password')
-      .send({ token: expiredToken, password: 'NewPass1' });
+      .send({ token: expiredToken, password: 'NewP@ssw0rd!' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('AUTH_INVALID_TOKEN');
@@ -106,14 +106,14 @@ describe('MINCRM-87 — invite token is single-use', () => {
     // First use — should succeed
     const firstUse = await request(app)
       .post('/api/v1/users/set-password')
-      .send({ token: inviteToken, password: 'NewPass1' });
+      .send({ token: inviteToken, password: 'NewP@ssw0rd!' });
 
     expect(firstUse.status).toBe(200);
 
     // Second use — same token, same password — should be rejected
     const secondUse = await request(app)
       .post('/api/v1/users/set-password')
-      .send({ token: inviteToken, password: 'AnotherPass1' });
+      .send({ token: inviteToken, password: 'AnotherP@ss1!' });
 
     expect(secondUse.status).toBe(409);
     expect(secondUse.body.error.code).toBe('USER_ALREADY_ACTIVATED');
@@ -133,7 +133,7 @@ describe('MINCRM-87 — invite token cannot be substituted with an auth JWT', ()
 
     const res = await request(app)
       .post('/api/v1/users/set-password')
-      .send({ token: sessionToken, password: 'NewPass1' });
+      .send({ token: sessionToken, password: 'NewP@ssw0rd!' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('AUTH_INVALID_TOKEN');

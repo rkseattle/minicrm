@@ -11,6 +11,7 @@
  *   Session  — expired/cleared session redirect, redirect-back URL (AC2), API-layer 401
  *   Logout   — cookie cleared → API 401, back-button after logout
  *   Password — forced change on first login, mismatched confirmation validation
+ *   Lockout  — 10 consecutive failures → 429 ACCOUNT_TEMPORARILY_LOCKED (MINCRM-391)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -97,7 +98,7 @@ async function createUserWithForcedPasswordChange(
 
   // Use set-password with the invite token to activate the account first
   // (required before admin-set-password will accept the user id).
-  const activationPassword = 'Activate1!';
+  const activationPassword = 'Activ@te1234!';
   await setUserPassword(restClient, inviteToken, activationPassword);
 
   // admin-set-password sets must_change_password=true so the user is forced
@@ -350,8 +351,8 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
   page,
   restClient,
 }) => {
-  const TEMP_PASSWORD = 'TempPass1!';
-  const NEW_PASSWORD = 'NewPass2@';
+  const TEMP_PASSWORD = 'TempP@ss1234!';
+  const NEW_PASSWORD = 'NewP@ssw0rd!2';
 
   // Authenticate restClient as admin to create the test user.
   await loginAsAdmin(restClient);
@@ -416,7 +417,7 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
   page,
   restClient,
 }) => {
-  const TEMP_PASSWORD = 'TempPass1!';
+  const TEMP_PASSWORD = 'TempP@ss1234!';
 
   // Authenticate restClient as admin to create the test user.
   await loginAsAdmin(restClient);
@@ -433,8 +434,8 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
     const result = await changePassword(
       {
         currentPassword: TEMP_PASSWORD,
-        newPassword: 'NewPass2@',
-        confirmPassword: 'DifferentPass3@', // deliberate mismatch
+        newPassword: 'NewP@ssw0rd!2',
+        confirmPassword: 'DifferentP@ss3!', // deliberate mismatch
       },
       { page },
     );
@@ -454,6 +455,67 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
       await loginAsAdmin(restClient).catch(() => null);
       await deactivateUser(restClient, userId).catch((err: unknown) => {
         console.error(`[F1-P2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
+      });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lockout tests (MINCRM-391)
+// ---------------------------------------------------------------------------
+
+/**
+ * Attempts to login with the given credentials, returning the HTTP status.
+ * Catches RestClientError so callers can assert on expected 4xx/5xx responses.
+ */
+async function attemptLogin(
+  restClient: Parameters<typeof loginAsAdmin>[0],
+  email: string,
+  password: string,
+): Promise<number> {
+  try {
+    const res = await restClient.post<unknown>('/api/v1/auth/login', { email, password });
+    return res.status;
+  } catch (err: unknown) {
+    if (err instanceof RestClientError) return err.status;
+    throw err;
+  }
+}
+
+test('@functional F1-LO1: 10 consecutive failed logins → 11th attempt returns 429 ACCOUNT_TEMPORARILY_LOCKED (MINCRM-391)', async ({
+  restClient,
+}) => {
+  await loginAsAdmin(restClient);
+
+  let userId: string | null = null;
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const email = `f1-lockout-${uniqueSuffix}@example.com`;
+  const correctPassword = 'L0ckoutT3st!';
+
+  try {
+    // Create a fresh user so the lockout counter starts at zero.
+    const { user, inviteToken } = await inviteUserViaApi(restClient, {
+      name: `F1 Lockout ${uniqueSuffix}`,
+      email,
+      role: 'rep',
+    });
+    userId = user.id;
+    await setUserPassword(restClient, inviteToken, correctPassword);
+
+    // Submit 10 consecutive failures to trigger the lockout.
+    for (let i = 0; i < 10; i++) {
+      const status = await attemptLogin(restClient, email, 'WrongP@ss!999');
+      expect(status, `attempt ${i + 1} should return 401 before lockout`).toBe(401);
+    }
+
+    // The 11th attempt must be rejected with 429 regardless of the password supplied.
+    const lockedStatus = await attemptLogin(restClient, email, 'WrongP@ss!999');
+    expect(lockedStatus, 'account must be locked after 10 failures').toBe(429);
+  } finally {
+    if (userId) {
+      await loginAsAdmin(restClient).catch(() => null);
+      await deactivateUser(restClient, userId).catch((err: unknown) => {
+        console.error(`[F1-LO1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
       });
     }
   }

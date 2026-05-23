@@ -54,12 +54,13 @@
     "newPasswordPlaceholder": "Neues Passwort",
     "confirmPasswordLabel": "Passwort bestätigen",
     "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
-    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe, eine Zahl und ein Sonderzeichen.",
     "submitButton": "Neues Passwort festlegen",
     "submitting": "Wird gespeichert…",
     "passwordMismatch": "Passwörter stimmen nicht überein.",
     "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen lang sein.",
     "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten.",
+    "passwordSpecial": "Das Passwort muss mindestens ein Sonderzeichen enthalten.",
     "tokenMissing": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "requestNewLink": "Neuen Zurücksetzungslink anfordern"
   },
@@ -69,12 +70,13 @@
     "newPasswordPlaceholder": "Passwort",
     "confirmPasswordLabel": "Passwort bestätigen",
     "confirmPasswordPlaceholder": "Passwort bestätigen",
-    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe, eine Zahl und ein Sonderzeichen.",
     "submitButton": "Passwort festlegen",
     "submitting": "Wird gespeichert…",
     "passwordMismatch": "Passwörter stimmen nicht überein.",
     "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen lang sein.",
     "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten.",
+    "passwordSpecial": "Das Passwort muss mindestens ein Sonderzeichen enthalten.",
     "tokenMissing": "Dieser Einladungslink ist ungültig oder abgelaufen.",
     "tokenAlreadyUsed": "Dieses Konto wurde bereits aktiviert.",
     "successRedirect": "Passwort festgelegt. Sie können sich jetzt anmelden.",
@@ -117,12 +119,12 @@
       "passwordPlaceholder": "Neues Passwort",
       "confirmLabel": "Passwort bestätigen",
       "confirmPlaceholder": "Passwort bestätigen",
-      "hint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
+      "hint": "Mindestens {{min}} Zeichen, ein Buchstabe, eine Zahl und ein Sonderzeichen. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
       "submit": "Passwort setzen",
       "submitting": "Speichern…",
       "success": "Passwort gesetzt. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
       "mismatch": "Die Passwörter stimmen nicht überein.",
-      "complexity": "Das Passwort muss mindestens {{min}} Zeichen enthalten und mindestens einen Buchstaben und eine Zahl."
+      "complexity": "Das Passwort muss mindestens {{min}} Zeichen enthalten und mindestens einen Buchstaben, eine Zahl und ein Sonderzeichen."
     }
   },
   "changePassword": {
@@ -135,12 +137,13 @@
     "newPasswordPlaceholder": "Neues Passwort",
     "confirmPasswordLabel": "Neues Passwort bestätigen",
     "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
-    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe und eine Zahl.",
+    "passwordHint": "Mindestens {{min}} Zeichen, ein Buchstabe, eine Zahl und ein Sonderzeichen.",
     "submitButton": "Passwort ändern",
     "submitting": "Speichern…",
     "passwordMismatch": "Die Passwörter stimmen nicht überein.",
     "passwordTooShort": "Das Passwort muss mindestens {{min}} Zeichen enthalten.",
-    "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten."
+    "passwordComplexity": "Das Passwort muss mindestens einen Buchstaben und eine Zahl enthalten.",
+    "passwordSpecial": "Das Passwort muss mindestens ein Sonderzeichen enthalten."
   },
   "dashboard": {
     "welcome": "Willkommen, {{name}}",

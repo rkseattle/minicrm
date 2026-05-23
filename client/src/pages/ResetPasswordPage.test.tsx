@@ -74,8 +74,8 @@ describe('ResetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderResetPasswordPage('abc123token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'Ab1');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'Ab1');
+    await user.type(screen.getByTestId('reset-password-new'), 'Ab1!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'Ab1!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
     expect(screen.getByTestId('reset-password-error')).toHaveTextContent('at least');
@@ -85,19 +85,30 @@ describe('ResetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderResetPasswordPage('abc123token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'alllowercase');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'alllowercase');
+    await user.type(screen.getByTestId('reset-password-new'), 'alllowercase!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'alllowercase!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
     expect(screen.getByTestId('reset-password-error')).toHaveTextContent('letter and one number');
+  });
+
+  it('shows an error when the password lacks a special character', async () => {
+    const user = userEvent.setup();
+    renderResetPasswordPage('abc123token');
+
+    await user.type(screen.getByTestId('reset-password-new'), 'ValidPass1234');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'ValidPass1234');
+    await user.click(screen.getByTestId('reset-password-submit'));
+
+    expect(screen.getByTestId('reset-password-error')).toHaveTextContent('special character');
   });
 
   it('redirects to home on successful submission', async () => {
     const user = userEvent.setup();
     renderResetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('reset-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
     await waitFor(() => {
@@ -124,8 +135,8 @@ describe('ResetPasswordPage — with token', () => {
 
     renderResetPasswordPage('expired-token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('reset-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
     await waitFor(() => {
@@ -158,8 +169,8 @@ describe('ResetPasswordPage — with token', () => {
 
     renderResetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('reset-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
 
     const submitButton = screen.getByTestId('reset-password-submit');
     await user.click(submitButton);
@@ -178,8 +189,8 @@ describe('ResetPasswordPage — with token', () => {
 
     renderResetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('reset-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('reset-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('reset-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
     await waitFor(() => {

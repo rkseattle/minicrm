@@ -75,6 +75,11 @@ export default function SetPasswordPage() {
       return;
     }
 
+    if (!/[^a-zA-Z0-9]/.test(newPassword)) {
+      setLocalError(t('setPassword.passwordSpecial'));
+      return;
+    }
+
     mutation.mutate();
   };
 

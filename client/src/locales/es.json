@@ -54,12 +54,13 @@
     "newPasswordPlaceholder": "Nueva contraseña",
     "confirmPasswordLabel": "Confirmar contraseña",
     "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
-    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "passwordHint": "Al menos {{min}} caracteres, una letra, un número y un carácter especial.",
     "submitButton": "Establecer nueva contraseña",
     "submitting": "Guardando…",
     "passwordMismatch": "Las contraseñas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
     "passwordComplexity": "La contraseña debe contener al menos una letra y un número.",
+    "passwordSpecial": "La contraseña debe contener al menos un carácter especial.",
     "tokenMissing": "Este enlace de restablecimiento es inválido o ha expirado.",
     "requestNewLink": "Solicitar un nuevo enlace de restablecimiento"
   },
@@ -69,12 +70,13 @@
     "newPasswordPlaceholder": "Contraseña",
     "confirmPasswordLabel": "Confirmar contraseña",
     "confirmPasswordPlaceholder": "Confirmar contraseña",
-    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "passwordHint": "Al menos {{min}} caracteres, una letra, un número y un carácter especial.",
     "submitButton": "Establecer contraseña",
     "submitting": "Guardando…",
     "passwordMismatch": "Las contraseñas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
     "passwordComplexity": "La contraseña debe contener al menos una letra y un número.",
+    "passwordSpecial": "La contraseña debe contener al menos un carácter especial.",
     "tokenMissing": "Este enlace de invitación es inválido o ha expirado.",
     "tokenAlreadyUsed": "Esta cuenta ya ha sido activada.",
     "successRedirect": "Contraseña establecida. Ya puede iniciar sesión.",
@@ -117,12 +119,12 @@
       "passwordPlaceholder": "Nueva contraseña",
       "confirmLabel": "Confirmar contraseña",
       "confirmPlaceholder": "Confirmar contraseña",
-      "hint": "Al menos {{min}} caracteres, una letra y un número. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
+      "hint": "Al menos {{min}} caracteres, una letra, un número y un carácter especial. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
       "submit": "Establecer contraseña",
       "submitting": "Guardando…",
       "success": "Contraseña establecida. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
       "mismatch": "Las contraseñas no coinciden.",
-      "complexity": "La contraseña debe tener al menos {{min}} caracteres y contener al menos una letra y un número."
+      "complexity": "La contraseña debe tener al menos {{min}} caracteres y contener al menos una letra, un número y un carácter especial."
     }
   },
   "changePassword": {
@@ -135,12 +137,13 @@
     "newPasswordPlaceholder": "Nueva contraseña",
     "confirmPasswordLabel": "Confirmar nueva contraseña",
     "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
-    "passwordHint": "Al menos {{min}} caracteres, una letra y un número.",
+    "passwordHint": "Al menos {{min}} caracteres, una letra, un número y un carácter especial.",
     "submitButton": "Cambiar contraseña",
     "submitting": "Guardando…",
     "passwordMismatch": "Las contraseñas no coinciden.",
     "passwordTooShort": "La contraseña debe tener al menos {{min}} caracteres.",
-    "passwordComplexity": "La contraseña debe contener al menos una letra y un número."
+    "passwordComplexity": "La contraseña debe contener al menos una letra y un número.",
+    "passwordSpecial": "La contraseña debe contener al menos un carácter especial."
   },
   "dashboard": {
     "welcome": "Bienvenido, {{name}}",

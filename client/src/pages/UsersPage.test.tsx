@@ -460,6 +460,20 @@ describe('UsersPage', () => {
       });
     });
 
+    it('shows a complexity error when the password has no special character', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openSetPasswordForm(user);
+
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'ValidPass1234');
+      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), 'ValidPass1234');
+      await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+    });
+
     it('submits successfully with a valid password and shows the success banner', async () => {
       server.use(
         http.post(`/api/v1/users/${ADMIN_USER.id}/admin-set-password`, () =>
@@ -471,8 +485,11 @@ describe('UsersPage', () => {
       renderWithProviders(<UsersPage />);
       await openSetPasswordForm(user);
 
-      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'ValidPass1');
-      await user.type(screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`), 'ValidPass1');
+      await user.type(screen.getByTestId(`set-password-input-${ADMIN_USER.id}`), 'ValidP@ss1234!');
+      await user.type(
+        screen.getByTestId(`set-password-confirm-${ADMIN_USER.id}`),
+        'ValidP@ss1234!',
+      );
       await user.click(screen.getByTestId(`set-password-submit-${ADMIN_USER.id}`));
 
       await waitFor(() => {
