@@ -171,6 +171,10 @@ async function activateHamburgerLayout(page: PageFacade, restClient: RestClient)
       {},
       10_000,
     );
+    // Re-assert via API immediately before the goto to minimise the race window
+    // where a parallel worker's ensureSystemDefaults can reset nav_layout to
+    // 'top' between the UI PATCH and the fresh GET triggered by navigateToDashboard.
+    await setNavLayoutViaAPI('hamburger', restClient);
     await navigateToDashboard(page);
   }
 }
@@ -646,13 +650,22 @@ test.describe.serial('Layout-mutating tests', () => {
       await activateHamburgerLayout(page, restClient);
 
       try {
-        // Hamburger toggle must be visible.
+        // Re-assert via API + reload before testing persistence. A parallel
+        // worker's ensureSystemDefaults may have reset nav_layout to 'top'
+        // between activateHamburgerLayout's final API call and here. The reload
+        // forces a fresh GET so NavHamburger renders with certainty. (MINCRM-391)
+        await setNavLayoutViaAPI('hamburger', restClient);
+        await page.reload({ waitUntil: 'networkidle' });
+
         const hamburgerToggle = await getMenuToggleLocator({ page });
+
+        // Hamburger toggle must be visible after the assertion-reload above.
         await expect(hamburgerToggle).toBeVisible();
 
-        // Re-assert the layout via API immediately before reload to minimise the
-        // race window where a parallel worker can reset nav_layout to 'top'.
-        // (MINCRM-390)
+        // Re-assert the layout via API immediately before the second reload to
+        // minimise the race window where a parallel worker can reset nav_layout
+        // to 'top' between our setNavLayoutViaAPI call and the page.reload GET.
+        // (MINCRM-390, MINCRM-391)
         await setNavLayoutViaAPI('hamburger', restClient);
 
         // Full page reload — React Query cache is cleared; fresh GET is issued.
