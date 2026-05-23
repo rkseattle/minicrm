@@ -72,7 +72,7 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
 
   try {
     // Activate the user so they can request a password reset.
-    await setUserPassword(restClient, inviteRes.inviteToken, 'InitPass1!');
+    await setUserPassword(restClient, inviteRes.inviteToken, 'InitP@ss1234!');
 
     // Trigger the forgot-password flow.
     await forgotPassword(restClient, testEmail);

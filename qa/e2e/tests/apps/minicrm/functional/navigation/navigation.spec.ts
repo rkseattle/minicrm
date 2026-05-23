@@ -1019,7 +1019,7 @@ test.describe('Rep deep-link redirect', () => {
     // Create a rep user for this test.
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const repEmail = `f8-rep-${uniqueSuffix}@example.com`;
-    const repPassword = 'F8RepPass1!';
+    const repPassword = 'F8RepP@ss1234!';
 
     const inviteRes = await inviteUserViaApi(restClient, {
       name: `F8 Rep ${uniqueSuffix}`,

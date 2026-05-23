@@ -58,8 +58,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('abc123token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'DifferentPass1');
+    await user.type(screen.getByTestId('set-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'DifferentP@ss!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     expect(screen.getByTestId('set-password-error')).toHaveTextContent('do not match');
@@ -69,8 +69,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('abc123token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'Ab1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'Ab1');
+    await user.type(screen.getByTestId('set-password-new'), 'Ab1!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'Ab1!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     expect(screen.getByTestId('set-password-error')).toHaveTextContent('at least');
@@ -80,11 +80,22 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('abc123token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'alllowercase');
-    await user.type(screen.getByTestId('set-password-confirm'), 'alllowercase');
+    await user.type(screen.getByTestId('set-password-new'), 'alllowercase!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'alllowercase!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     expect(screen.getByTestId('set-password-error')).toHaveTextContent('letter and one number');
+  });
+
+  it('shows a special-character error when password has no special character', async () => {
+    const user = userEvent.setup();
+    renderSetPasswordPage('abc123token');
+
+    await user.type(screen.getByTestId('set-password-new'), 'ValidPass1234');
+    await user.type(screen.getByTestId('set-password-confirm'), 'ValidPass1234');
+    await user.click(screen.getByTestId('set-password-submit'));
+
+    expect(screen.getByTestId('set-password-error')).toHaveTextContent('special character');
   });
 
   it('redirects to /login on successful submission', async () => {
@@ -97,8 +108,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('set-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     await waitFor(() => {
@@ -124,8 +135,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('used-token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('set-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     await waitFor(() => {
@@ -145,8 +156,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('set-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     expect(screen.getByTestId('set-password-submit')).toBeDisabled();
@@ -162,8 +173,8 @@ describe('SetPasswordPage — with token', () => {
     const user = userEvent.setup();
     renderSetPasswordPage('valid-token');
 
-    await user.type(screen.getByTestId('set-password-new'), 'NewPass1');
-    await user.type(screen.getByTestId('set-password-confirm'), 'NewPass1');
+    await user.type(screen.getByTestId('set-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('set-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('set-password-submit'));
 
     await waitFor(() => {

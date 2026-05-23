@@ -10,13 +10,19 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  PASSWORD_MIN_LENGTH,
+  passwordComplexitySchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
+import {
+  isLockedOut,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  secondsUntilUnlocked,
+} from '../services/loginLockoutService.js';
 import logger from '../logger.js';
 
 /**
@@ -49,8 +55,23 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const { email, password } = parseResult.data;
 
+  // Account lockout check (MINCRM-391): reject before any DB or bcrypt work.
+  if (isLockedOut(email)) {
+    const retryAfter = secondsUntilUnlocked(email);
+    res.setHeader('Retry-After', String(retryAfter));
+    res.status(429).json({
+      error: {
+        code: 'ACCOUNT_TEMPORARILY_LOCKED',
+        message:
+          'Your account is temporarily locked due to too many failed login attempts. Please try again later.',
+      },
+    });
+    return;
+  }
+
   const user = await userService.findUserByEmail(email);
   if (!user) {
+    recordFailedAttempt(email);
     res.status(401).json({
       error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' },
     });
@@ -79,11 +100,14 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
   if (!passwordMatch) {
+    recordFailedAttempt(email);
     res.status(401).json({
       error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid email or password' },
     });
     return;
   }
+
+  clearFailedAttempts(email);
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const tokenPayload = {
@@ -183,15 +207,12 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     return;
   }
 
-  if (
-    newPassword.length < PASSWORD_MIN_LENGTH ||
-    !/[a-zA-Z]/.test(newPassword) ||
-    !/[0-9]/.test(newPassword)
-  ) {
+  const complexityResult = passwordComplexitySchema.safeParse(newPassword);
+  if (!complexityResult.success) {
     res.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters and contain at least one letter and one number`,
+        message: complexityResult.error.errors[0].message,
       },
     });
     return;

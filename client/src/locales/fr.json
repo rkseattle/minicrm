@@ -54,12 +54,13 @@
     "newPasswordPlaceholder": "Nouveau mot de passe",
     "confirmPasswordLabel": "Confirmer le mot de passe",
     "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
-    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "passwordHint": "Au moins {{min}} caractères, une lettre, un chiffre et un caractère spécial.",
     "submitButton": "Définir le nouveau mot de passe",
     "submitting": "Enregistrement…",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordTooShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
     "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "passwordSpecial": "Le mot de passe doit contenir au moins un caractère spécial.",
     "tokenMissing": "Ce lien de réinitialisation est invalide ou a expiré.",
     "requestNewLink": "Demander un nouveau lien de réinitialisation"
   },
@@ -69,12 +70,13 @@
     "newPasswordPlaceholder": "Mot de passe",
     "confirmPasswordLabel": "Confirmer le mot de passe",
     "confirmPasswordPlaceholder": "Confirmer le mot de passe",
-    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "passwordHint": "Au moins {{min}} caractères, une lettre, un chiffre et un caractère spécial.",
     "submitButton": "Définir le mot de passe",
     "submitting": "Enregistrement…",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordTooShort": "Le mot de passe doit contenir au moins {{min}} caractères.",
     "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "passwordSpecial": "Le mot de passe doit contenir au moins un caractère spécial.",
     "tokenMissing": "Ce lien d'invitation est invalide ou a expiré.",
     "tokenAlreadyUsed": "Ce compte a déjà été activé.",
     "successRedirect": "Mot de passe défini. Vous pouvez maintenant vous connecter.",
@@ -117,12 +119,12 @@
       "passwordPlaceholder": "Nouveau mot de passe",
       "confirmLabel": "Confirmer le mot de passe",
       "confirmPlaceholder": "Confirmer le mot de passe",
-      "hint": "Au moins {{min}} caractères, une lettre et un chiffre. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
+      "hint": "Au moins {{min}} caractères, une lettre, un chiffre et un caractère spécial. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
       "submit": "Définir le mot de passe",
       "submitting": "Enregistrement…",
       "success": "Mot de passe défini. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
       "mismatch": "Les mots de passe ne correspondent pas.",
-      "complexity": "Le mot de passe doit comporter au moins {{min}} caractères et contenir au moins une lettre et un chiffre."
+      "complexity": "Le mot de passe doit comporter au moins {{min}} caractères et contenir au moins une lettre, un chiffre et un caractère spécial."
     }
   },
   "changePassword": {
@@ -135,12 +137,13 @@
     "newPasswordPlaceholder": "Nouveau mot de passe",
     "confirmPasswordLabel": "Confirmer le nouveau mot de passe",
     "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
-    "passwordHint": "Au moins {{min}} caractères, une lettre et un chiffre.",
+    "passwordHint": "Au moins {{min}} caractères, une lettre, un chiffre et un caractère spécial.",
     "submitButton": "Changer le mot de passe",
     "submitting": "Enregistrement…",
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordTooShort": "Le mot de passe doit comporter au moins {{min}} caractères.",
-    "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre."
+    "passwordComplexity": "Le mot de passe doit contenir au moins une lettre et un chiffre.",
+    "passwordSpecial": "Le mot de passe doit contenir au moins un caractère spécial."
   },
   "dashboard": {
     "welcome": "Bienvenue, {{name}}",

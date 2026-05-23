@@ -115,9 +115,14 @@ test('@functional F1-PR2: forgot-password form — unknown email shows same succ
 test('@functional F1-PR3: reset-password — invalid token shows error with re-request link', async ({
   page,
 }) => {
-  const result = await resetPassword('completely-invalid-token-xyz', 'NewPass1', 'NewPass1', {
-    page,
-  });
+  const result = await resetPassword(
+    'completely-invalid-token-xyz',
+    'NewP@ssw0rd!2',
+    'NewP@ssw0rd!2',
+    {
+      page,
+    },
+  );
 
   expect(result.success, 'invalid token reset should not succeed').toBe(false);
   expect(result.errorMessage, 'error message should be present').not.toBeNull();
@@ -130,7 +135,7 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
   page,
   restClient,
 }) => {
-  const INITIAL_PASSWORD = 'InitPass1!';
+  const INITIAL_PASSWORD = 'InitP@ss1234!';
 
   await loginAsAdmin(restClient);
 
@@ -164,8 +169,8 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
   page,
   restClient,
 }) => {
-  const INITIAL_PASSWORD = 'InitPass1!';
-  const NEW_PASSWORD = 'NewPass2@';
+  const INITIAL_PASSWORD = 'InitP@ss1234!';
+  const NEW_PASSWORD = 'NewP@ssw0rd!2';
 
   await loginAsAdmin(restClient);
 
@@ -199,7 +204,7 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
     // Navigate away first so we can test the old token.
     await logout({ page });
 
-    const replayResult = await resetPassword(token, 'AnotherPass3@', 'AnotherPass3@', {
+    const replayResult = await resetPassword(token, 'AnotherP@ss3!4', 'AnotherP@ss3!4', {
       page,
     });
     expect(replayResult.success, 'replaying used token should fail').toBe(false);
@@ -218,8 +223,8 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
   page,
   restClient,
 }) => {
-  const INITIAL_PASSWORD = 'InitPass1!';
-  const NEW_PASSWORD = 'NewPass2@';
+  const INITIAL_PASSWORD = 'InitP@ss1234!';
+  const NEW_PASSWORD = 'NewP@ssw0rd!2';
 
   await loginAsAdmin(restClient);
 

@@ -42,18 +42,19 @@ export const inviteUserSchema = z.object({
   }),
 });
 
-/** Minimum password length */
-export const PASSWORD_MIN_LENGTH = 8;
+/** Minimum password length (MINCRM-391) */
+export const PASSWORD_MIN_LENGTH = 12;
 
 /**
- * Validates that a password meets the minimum complexity requirements:
- * at least 8 characters, at least one letter, and at least one number.
+ * Validates password complexity per NIST 800-63B aligned rules (MINCRM-391):
+ * at least 12 characters, one letter, one number, and one special character.
  */
 export const passwordComplexitySchema = z
   .string({ required_error: 'Password is required' })
   .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
   .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
-  .regex(/[0-9]/, 'Password must contain at least one number');
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character');
 
 /**
  * Schema for the set-password request body (used in the invite acceptance flow).

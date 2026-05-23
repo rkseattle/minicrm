@@ -120,7 +120,7 @@ async function createUserWithForcedPasswordChange(
   });
 
   // Activate the account first (required before admin-set-password).
-  await setUserPassword(restClient, inviteToken, 'Activate1!');
+  await setUserPassword(restClient, inviteToken, 'Activ@te1234!');
 
   // admin-set-password sets must_change_password=true.
   await adminSetUserPassword(restClient, user.id, tempPassword);
@@ -341,7 +341,7 @@ test.describe('First login tests', () => {
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
-    const NEW_PASSWORD = 'F6NewPass2@';
+    const NEW_PASSWORD = 'F6NewP@ss2!3';
 
     let userId: string | null = null;
     try {

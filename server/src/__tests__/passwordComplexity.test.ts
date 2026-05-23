@@ -11,7 +11,7 @@
  *   - POST /api/auth/reset-password    (password reset via token — unauthenticated)
  *   - POST /api/users/:id/admin-set-password  (admin only)
  *
- * PASSWORD_MIN_LENGTH is 8 (from shared/schemas/userSchema.ts).
+ * PASSWORD_MIN_LENGTH is 12 (from shared/schemas/userSchema.ts — raised by MINCRM-391).
  *
  * Runs against a real PostgreSQL test database via supertest.
  */
@@ -29,14 +29,15 @@ const BASE_USER = {
   status: 'active' as const,
 };
 
-/** A password that satisfies all complexity requirements */
-const VALID_PASSWORD = 'ValidPass1';
+/** A password that satisfies all complexity requirements (MINCRM-391: 12+ chars, letter, digit, special) */
+const VALID_PASSWORD = 'ValidPass1!@#';
 
 /** Passwords that must be rejected by the server */
 const WEAK_PASSWORDS = [
-  { label: 'too short', value: 'Ab1' },
-  { label: 'letters only', value: 'abcdefgh' },
-  { label: 'numbers only', value: '12345678' },
+  { label: 'too short', value: 'Ab1!' },
+  { label: 'letters only', value: 'abcdefghijkl' },
+  { label: 'numbers only', value: '123456789012' },
+  { label: 'no special character', value: 'ValidPass1234' },
   { label: 'empty string', value: '' },
 ];
 
@@ -226,7 +227,7 @@ describe('MINCRM-246 — POST /api/users/:id/admin-set-password password complex
   });
 });
 
-// Export PASSWORD_MIN_LENGTH assertion so the test documents the constant value
+// Sanity check: documents that the constant matches the updated NIST 800-63B requirement (MINCRM-391)
 test(`PASSWORD_MIN_LENGTH is ${PASSWORD_MIN_LENGTH} (sanity check for test assumptions)`, () => {
-  expect(PASSWORD_MIN_LENGTH).toBe(8);
+  expect(PASSWORD_MIN_LENGTH).toBe(12);
 });

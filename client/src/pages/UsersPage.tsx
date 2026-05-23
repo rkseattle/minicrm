@@ -253,7 +253,8 @@ function SetPasswordForm({ userId, onClose }: SetPasswordFormProps) {
     if (
       password.length < PASSWORD_MIN_LENGTH ||
       !/[a-zA-Z]/.test(password) ||
-      !/[0-9]/.test(password)
+      !/[0-9]/.test(password) ||
+      !/[^a-zA-Z0-9]/.test(password)
     ) {
       setLocalError(t('users.setPassword.complexity', { min: PASSWORD_MIN_LENGTH }));
       return;

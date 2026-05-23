@@ -143,7 +143,7 @@ describe('resetPasswordWithToken', () => {
     const user = await createTestUser('reset-success');
     const { plaintextToken } = await createPasswordResetToken(user.id);
 
-    const updated = await resetPasswordWithToken(plaintextToken, 'NewPass1');
+    const updated = await resetPasswordWithToken(plaintextToken, 'NewP@ssw0rd!');
     expect(updated).not.toBeNull();
     expect(updated!.id).toBe(user.id);
 
@@ -165,7 +165,7 @@ describe('resetPasswordWithToken', () => {
       [user.id],
     );
 
-    const updated = await resetPasswordWithToken(plaintextToken, 'NewPass1');
+    const updated = await resetPasswordWithToken(plaintextToken, 'NewP@ssw0rd!');
     expect(updated).toBeNull();
   });
 
@@ -241,7 +241,7 @@ describe('POST /api/auth/reset-password', () => {
 
     const res = await request(app)
       .post('/api/v1/auth/reset-password')
-      .send({ token: plaintextToken, password: 'NewPass1' });
+      .send({ token: plaintextToken, password: 'NewP@ssw0rd!' });
 
     expect(res.status).toBe(200);
     expect(res.body.user).toBeDefined();
@@ -262,7 +262,7 @@ describe('POST /api/auth/reset-password', () => {
 
     const res = await request(app)
       .post('/api/v1/auth/reset-password')
-      .send({ token: plaintextToken, password: 'NewPass1' });
+      .send({ token: plaintextToken, password: 'NewP@ssw0rd!' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('RESET_TOKEN_INVALID');
@@ -271,7 +271,7 @@ describe('POST /api/auth/reset-password', () => {
   it('returns 400 with RESET_TOKEN_INVALID for an unknown token', async () => {
     const res = await request(app)
       .post('/api/v1/auth/reset-password')
-      .send({ token: '0'.repeat(64), password: 'NewPass1' });
+      .send({ token: '0'.repeat(64), password: 'NewP@ssw0rd!' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('RESET_TOKEN_INVALID');

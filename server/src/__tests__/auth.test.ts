@@ -130,7 +130,7 @@ describe('MINCRM-74 — must_change_password enforcement', () => {
     const res = await request(app)
       .post('/api/v1/auth/change-password')
       .set('Cookie', mustChangeCookie)
-      .send({ currentPassword: 'wrong', newPassword: 'NewPass1' });
+      .send({ currentPassword: 'wrong', newPassword: 'NewP@ssw0rd!' });
 
     // 401 means the route was reached (middleware passed); a 403 would mean it was blocked
     expect(res.status).toBe(401);
