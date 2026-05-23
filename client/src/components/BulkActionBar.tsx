@@ -34,7 +34,7 @@ interface BulkActionBarProps {
 /**
  * Action bar shown while rows are selected.
  * Desktop: inline bar above the list.
- * Mobile: fixed bottom sheet (z-50, safe-area-aware).
+ * Mobile: fixed bottom sheet (z-[60], safe-area-aware).
  *
  * Uses clamp() on the count label to stay legible at narrow widths (MINCRM-208).
  */
@@ -97,8 +97,9 @@ export default function BulkActionBar({
       data-testid="bulk-action-bar"
       className={[
         'min-w-0',
-        // Mobile: fixed bottom sheet
-        'fixed bottom-0 start-0 end-0 z-50',
+        // Mobile: fixed bottom sheet — z-[60] beats SetupChecklistWidget's z-50 so
+        // bulk action buttons remain clickable when the widget is open. (MINCRM-391)
+        'fixed bottom-0 start-0 end-0 z-[60]',
         'bg-white border-t border-gray-200 shadow-lg px-4 py-3',
         // Desktop: inline bar
         'md:static md:flex md:items-center',
