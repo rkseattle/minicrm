@@ -132,6 +132,15 @@ async function resolveTimestampMasks(page: PageFacadeShape) {
     tryResolve(page, [{ type: 'css', value: '[data-testid^="user-joined-"]' }], {
       intent: 'user management table joined date cells',
     }),
+    // SetupChecklistWidget — position:fixed overlay whose task-completion state
+    // changes as test data accumulates; mask to prevent non-deterministic diffs
+    // across runs. (MINCRM-391)
+    tryResolve(page, [{ type: 'testId', value: 'setup-checklist-widget' }], {
+      intent: 'floating setup checklist widget overlay',
+    }),
+    tryResolve(page, [{ type: 'testId', value: 'setup-checklist-pill' }], {
+      intent: 'collapsed setup checklist pill',
+    }),
   ]);
   return candidates.filter((c) => c !== null);
 }
