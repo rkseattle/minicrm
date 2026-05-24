@@ -2,9 +2,9 @@
  * Tests for ProfilePage.
  *
  * Covers: loading states, language preference form, notification preferences form,
- * save success/error feedback, and checkbox toggling.
+ * save success/error feedback, checkbox toggling, and MFA section (MINCRM-392).
  *
- * MINCRM-161, MINCRM-162, MINCRM-163
+ * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-392
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -224,6 +224,123 @@ describe('ProfilePage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('profile-prefs-save')).toBeDisabled();
       });
+    });
+  });
+
+  describe('MFA section (MINCRM-392)', () => {
+    it('renders the MFA section', async () => {
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-section')).toBeInTheDocument();
+      });
+    });
+
+    it('shows loading while MFA status is fetching', () => {
+      server.use(http.get('/api/v1/auth/mfa/status', () => new Promise(() => {})));
+      renderWithProviders(<ProfilePage />);
+      expect(screen.getByTestId('profile-mfa-loading')).toBeInTheDocument();
+    });
+
+    it('shows error when MFA status fails to load', async () => {
+      server.use(
+        http.get('/api/v1/auth/mfa/status', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-error')).toBeInTheDocument();
+      });
+    });
+
+    it('shows "Disabled" badge when MFA is not enabled', async () => {
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-status-badge')).toHaveTextContent('Disabled');
+      });
+    });
+
+    it('shows "Enabled" badge when MFA is enabled', async () => {
+      server.use(
+        http.get('/api/v1/auth/mfa/status', () =>
+          HttpResponse.json({ enabled: true, recoveryCodesRemaining: 6 }),
+        ),
+      );
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-status-badge')).toHaveTextContent('Enabled');
+      });
+    });
+
+    it('shows recovery codes count when MFA is enabled', async () => {
+      server.use(
+        http.get('/api/v1/auth/mfa/status', () =>
+          HttpResponse.json({ enabled: true, recoveryCodesRemaining: 5 }),
+        ),
+      );
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-recovery-count')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the Enable 2FA button when MFA is disabled', async () => {
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-enable-button')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the Disable button when MFA is enabled', async () => {
+      server.use(
+        http.get('/api/v1/auth/mfa/status', () =>
+          HttpResponse.json({ enabled: true, recoveryCodesRemaining: 8 }),
+        ),
+      );
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-disable-button')).toBeInTheDocument();
+      });
+    });
+
+    it('opens the setup modal when Enable 2FA is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() =>
+        expect(screen.getByTestId('profile-mfa-enable-button')).toBeInTheDocument(),
+      );
+      await user.click(screen.getByTestId('profile-mfa-enable-button'));
+      expect(screen.getByTestId('mfa-setup-modal')).toBeInTheDocument();
+    });
+
+    it('opens the disable modal when Disable is clicked', async () => {
+      server.use(
+        http.get('/api/v1/auth/mfa/status', () =>
+          HttpResponse.json({ enabled: true, recoveryCodesRemaining: 8 }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() =>
+        expect(screen.getByTestId('profile-mfa-disable-button')).toBeInTheDocument(),
+      );
+      await user.click(screen.getByTestId('profile-mfa-disable-button'));
+      expect(screen.getByTestId('mfa-disable-modal')).toBeInTheDocument();
+    });
+
+    it('shows the org-MFA-required banner when mfa_setup_required=1 is in the URL', async () => {
+      renderWithProviders(<ProfilePage />, {
+        initialEntries: ['/profile?mfa_setup_required=1'],
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-mfa-required-banner')).toBeInTheDocument();
+      });
+    });
+
+    it('does not show the org-MFA-required banner without the query param', async () => {
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => expect(screen.getByTestId('profile-mfa-section')).toBeInTheDocument());
+      expect(screen.queryByTestId('profile-mfa-required-banner')).not.toBeInTheDocument();
     });
   });
 });

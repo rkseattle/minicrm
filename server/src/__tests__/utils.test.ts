@@ -100,11 +100,19 @@ describe('sanitizeUser', () => {
       password_reset_token_hash: null,
       password_reset_expires_at: null,
       password_changed_at: null,
+      // MFA fields (MINCRM-392)
+      mfa_enabled: false,
+      mfa_secret: null,
+      mfa_pending_secret: null,
+      mfa_recovery_codes: [],
       created_at: new Date(),
       updated_at: new Date(),
     };
     const safe = sanitizeUser(row);
     expect(safe).not.toHaveProperty('password_hash');
+    expect(safe).not.toHaveProperty('mfa_secret');
+    expect(safe).not.toHaveProperty('mfa_pending_secret');
+    expect(safe).not.toHaveProperty('mfa_recovery_codes');
     expect(safe.email).toBe('a@b.com');
   });
 });

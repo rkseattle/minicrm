@@ -57,7 +57,10 @@ export type AuditEventType =
   | 'note_deleted'
   | 'note_visibility_changed'
   /** GDPR Art. 17 erasure (MINCRM-364) */
-  | 'gdpr_erasure';
+  | 'gdpr_erasure'
+  /** MFA enabled/disabled by user (MINCRM-392) */
+  | 'mfa_enabled'
+  | 'mfa_disabled';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

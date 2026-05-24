@@ -1800,4 +1800,62 @@ export const handlers = [
   http.post('/api/v1/leads/:id/gdpr-erase', () => {
     return HttpResponse.json({ success: true, erasedAt: new Date().toISOString() });
   }),
+
+  // ── MFA (MINCRM-392) ─────────────────────────────────────────────────────────
+
+  /** MFA: GET /api/auth/mfa/status — MFA disabled by default */
+  http.get('/api/v1/auth/mfa/status', () => {
+    return HttpResponse.json({ enabled: false, recoveryCodesRemaining: 0 });
+  }),
+
+  /** MFA: POST /api/auth/mfa/setup — returns a dummy QR code */
+  http.post('/api/v1/auth/mfa/setup', () => {
+    return HttpResponse.json({
+      otpauthUrl: 'otpauth://totp/MiniCRM:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=MiniCRM',
+      qrDataUrl:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    });
+  }),
+
+  /** MFA: POST /api/auth/mfa/verify-setup — succeeds with dummy recovery codes */
+  http.post('/api/v1/auth/mfa/verify-setup', () => {
+    return HttpResponse.json({
+      recoveryCodes: [
+        'AAAA-1111',
+        'BBBB-2222',
+        'CCCC-3333',
+        'DDDD-4444',
+        'EEEE-5555',
+        'FFFF-6666',
+        'GGGG-7777',
+        'HHHH-8888',
+      ],
+    });
+  }),
+
+  /** MFA: POST /api/auth/mfa/disable — succeeds */
+  http.post('/api/v1/auth/mfa/disable', () => {
+    return HttpResponse.json({ message: 'Two-factor authentication has been disabled.' });
+  }),
+
+  /** MFA: POST /api/auth/mfa/verify-login — succeeds */
+  http.post('/api/v1/auth/mfa/verify-login', () => {
+    return HttpResponse.json({ user: ADMIN_USER, mustChangePassword: false });
+  }),
+
+  /** MFA: POST /api/auth/mfa/recovery-login — succeeds */
+  http.post('/api/v1/auth/mfa/recovery-login', () => {
+    return HttpResponse.json({ user: ADMIN_USER, mustChangePassword: false });
+  }),
+
+  /** Settings: GET /api/settings/mfa-required — MFA not required by default (MINCRM-392) */
+  http.get('/api/v1/settings/mfa-required', () => {
+    return HttpResponse.json({ mfa_required: false });
+  }),
+
+  /** Settings: PATCH /api/settings/mfa-required (MINCRM-392) */
+  http.patch('/api/v1/settings/mfa-required', async ({ request }) => {
+    const body = (await request.json()) as { mfa_required: boolean };
+    return HttpResponse.json({ mfa_required: body.mfa_required });
+  }),
 ];

@@ -1,7 +1,8 @@
 /**
  * Tests for the AdminSettingsPage component.
  * Covers: loading state, load error state, default language display, save action,
- * validation rejection (400), success/error feedback, and demo data section (MINCRM-103).
+ * validation rejection (400), success/error feedback, demo data section (MINCRM-103),
+ * and MFA enforcement toggle (MINCRM-392).
  */
 
 import { screen, waitFor, act } from '@testing-library/react';
@@ -797,6 +798,57 @@ describe('AdminSettingsPage', () => {
         expect(screen.getByTestId('demo-feedback')).toHaveTextContent(
           'Failed to remove demo data. Please try again.',
         );
+      });
+    });
+  });
+
+  describe('MFA enforcement (MINCRM-392)', () => {
+    it('renders the MFA required section for admin users', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-required-section')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the MFA checkbox unchecked by default', async () => {
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-required-checkbox')).not.toBeChecked();
+      });
+    });
+
+    it('shows the MFA checkbox checked when mfa_required is true', async () => {
+      server.use(
+        http.get('/api/v1/settings/mfa-required', () => HttpResponse.json({ mfa_required: true })),
+      );
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-required-checkbox')).toBeChecked();
+      });
+    });
+
+    it('shows success message after toggling the MFA checkbox', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => expect(screen.getByTestId('mfa-required-checkbox')).toBeInTheDocument());
+      await user.click(screen.getByTestId('mfa-required-checkbox'));
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-required-success')).toBeInTheDocument();
+      });
+    });
+
+    it('shows error message when the MFA toggle save fails', async () => {
+      server.use(
+        http.patch('/api/v1/settings/mfa-required', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<AdminSettingsPage />);
+      await waitFor(() => expect(screen.getByTestId('mfa-required-checkbox')).toBeInTheDocument());
+      await user.click(screen.getByTestId('mfa-required-checkbox'));
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-required-error')).toBeInTheDocument();
       });
     });
   });

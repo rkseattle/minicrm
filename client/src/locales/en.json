@@ -1052,7 +1052,9 @@
     "deleting": "Deleting…",
     "cancel": "Cancel",
     "filteredEmptyDescription": "Try adjusting or clearing your filters.",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "next": "Next",
+    "back": "Back"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",
@@ -1507,5 +1509,70 @@
       "erasing": "Erasing…"
     },
     "statusErased": "Erased"
+  },
+  "mfa": {
+    "sectionTitle": "Two-Factor Authentication",
+    "sectionHint": "Add an extra layer of security to your account by requiring a verification code from your authenticator app when you sign in.",
+    "statusEnabled": "Enabled",
+    "statusDisabled": "Disabled",
+    "enableButton": "Set up two-factor authentication",
+    "disableButton": "Disable two-factor authentication",
+    "recoveryCodesRemaining": "{{count}} recovery codes remaining",
+    "setupModal": {
+      "title": "Set up two-factor authentication",
+      "step1Title": "Scan the QR code",
+      "step1Hint": "Open your authenticator app (Google Authenticator, Authy, etc.) and scan this QR code.",
+      "step2Title": "Enter the verification code",
+      "step2Hint": "Enter the 6-digit code from your authenticator app to confirm setup.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verify and enable",
+      "verifying": "Verifying…",
+      "invalidCode": "Invalid code. Please try again."
+    },
+    "recoveryCodesModal": {
+      "title": "Save your recovery codes",
+      "hint": "Store these recovery codes somewhere safe. Each code can only be used once if you lose access to your authenticator app. You will not be able to see them again.",
+      "doneButton": "I have saved my recovery codes",
+      "copyButton": "Copy all codes",
+      "copied": "Copied!"
+    },
+    "disableModal": {
+      "title": "Disable two-factor authentication",
+      "hint": "Enter your current password to confirm you want to disable two-factor authentication.",
+      "passwordLabel": "Current password",
+      "confirmButton": "Disable 2FA",
+      "confirming": "Disabling…",
+      "invalidPassword": "Incorrect password. Please try again."
+    },
+    "loginModal": {
+      "title": "Two-factor authentication required",
+      "hint": "Enter the 6-digit code from your authenticator app.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verify",
+      "verifying": "Verifying…",
+      "useRecoveryCode": "Use a recovery code instead",
+      "invalidCode": "Invalid code. Please try again."
+    },
+    "recoveryLoginModal": {
+      "title": "Use a recovery code",
+      "hint": "Enter one of your single-use recovery codes.",
+      "codePlaceholder": "e.g. a1b2c3d4e5f6g7h8",
+      "verifyButton": "Sign in",
+      "verifying": "Signing in…",
+      "useTotp": "Use authenticator app instead",
+      "invalidCode": "Invalid or already-used recovery code."
+    },
+    "setupRequired": {
+      "banner": "Your organisation requires two-factor authentication. Please set it up to continue.",
+      "setupButton": "Set up 2FA now"
+    },
+    "adminSetting": {
+      "label": "Require two-factor authentication",
+      "hint": "When enabled, all users must set up TOTP authentication before accessing the application.",
+      "saveButton": "Save",
+      "saving": "Saving…",
+      "saveSuccess": "Setting saved.",
+      "saveError": "Failed to save. Please try again."
+    }
   }
 }

@@ -19,6 +19,7 @@ import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
 import { ResetPasswordPage } from '@pages/minicrm/ResetPasswordPage.js';
 import { SetPasswordPage } from '@pages/minicrm/SetPasswordPage.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
+import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -713,4 +714,328 @@ export async function navigateToForgotPasswordPage(context: AuthBehaviorContext)
 export async function getDevJwt(restClient: RestClient): Promise<string> {
   const res = await restClient.get<{ token: string }>('/api/v1/auth/dev/jwt');
   return res.body.token;
+}
+
+// ---------------------------------------------------------------------------
+// MFA behaviors (MINCRM-392)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches the current TOTP code for the authenticated user via the dev-only
+ * endpoint GET /api/v1/auth/mfa/dev/totp-code.
+ *
+ * Only available in non-production environments. The authenticated user must
+ * have MFA enabled (active secret). Used by E2E tests to complete the TOTP
+ * verification step without a real authenticator app.
+ *
+ * @param restClient - An authenticated RestClient with an active MFA secret.
+ * @returns The current 6-digit TOTP code string.
+ */
+export async function getDevTotpCode(restClient: RestClient): Promise<string> {
+  const res = await restClient.get<{ code: string }>('/api/v1/auth/mfa/dev/totp-code');
+  return res.body.code;
+}
+
+/** Result returned by the enableMfa behavior. */
+export interface EnableMfaResult {
+  /** True when the MFA enabled badge is visible after completing setup. */
+  enabled: boolean;
+  /** True when the recovery codes modal was shown after setup. */
+  recoveryCodesShown: boolean;
+}
+
+/**
+ * Navigates to the profile page and completes the full MFA setup flow:
+ * 1. Clicks Enable MFA → MFA setup modal opens.
+ * 2. Waits for the QR code to load, then clicks Next.
+ * 3. Fetches the current TOTP code via the dev endpoint (requires restClient
+ *    to be authenticated as the same user).
+ * 4. Enters the code and clicks Verify.
+ * 5. Waits for the recovery codes modal to appear, then closes it.
+ * 6. Returns whether the enabled badge is now visible.
+ *
+ * @param restClient - Authenticated RestClient for the user enabling MFA.
+ * @param context - Playwright fixture context.
+ * @returns EnableMfaResult.
+ */
+export async function enableMfa(
+  restClient: RestClient,
+  context: AuthBehaviorContext,
+): Promise<EnableMfaResult> {
+  const profilePage = new ProfilePage(context);
+  await profilePage.navigate();
+
+  await profilePage.clickEnableMfa();
+  await profilePage.waitForMfaSetupQrLoaded();
+  await profilePage.clickMfaSetupNext();
+
+  // The verify step is now visible. Fetch the current TOTP code from the
+  // dev endpoint — the pending secret was stored when setup was initiated.
+  const code = await getDevTotpCode(restClient);
+  await profilePage.fillMfaSetupCode(code);
+  await profilePage.clickMfaSetupVerify();
+
+  // Setup success: recovery codes modal should appear.
+  await profilePage.waitForRecoveryCodesModal();
+  const recoveryCodesShown = await profilePage.recoveryCodesModalIsVisible();
+
+  await profilePage.closeMfaRecoveryCodesModal();
+
+  // Wait for the React state to propagate and the MFA section to reflect the
+  // new enabled status. Navigation is not needed — the modal close triggers
+  // an MFA status refetch via the React Query invalidation.
+  await context.page.waitForLoadState('networkidle').catch(() => null);
+  const enabled = await profilePage.mfaEnabledBadgeIsVisible();
+
+  return { enabled, recoveryCodesShown };
+}
+
+/** Result returned by the disableMfa behavior. */
+export interface DisableMfaResult {
+  /** True when the MFA disabled badge is visible after completing disable. */
+  disabled: boolean;
+}
+
+/**
+ * Navigates to the profile page and completes the MFA disable flow:
+ * 1. Clicks Disable MFA → the disable confirmation modal opens.
+ * 2. Enters the user's current password and clicks Confirm.
+ * 3. Returns whether the disabled badge is now visible.
+ *
+ * @param password - The user's current password.
+ * @param context - Playwright fixture context.
+ * @returns DisableMfaResult.
+ */
+export async function disableMfa(
+  password: string,
+  context: AuthBehaviorContext,
+): Promise<DisableMfaResult> {
+  const profilePage = new ProfilePage(context);
+  await profilePage.navigate();
+
+  await profilePage.clickDisableMfa();
+  await profilePage.fillMfaDisablePassword(password);
+  await profilePage.confirmMfaDisable();
+
+  // Wait for the modal to close and the profile page to re-render.
+  await context.page.waitForLoadState('networkidle').catch(() => null);
+
+  const disabled = await profilePage.mfaDisabledBadgeIsVisible();
+  return { disabled };
+}
+
+/**
+ * Enables MFA for a user via the REST API directly (no UI).
+ * Calls POST /api/v1/auth/mfa/setup then POST /api/v1/auth/mfa/verify-setup
+ * using the dev TOTP code endpoint to get a valid code.
+ *
+ * Used by tests that need MFA pre-enabled without going through the UI flow.
+ *
+ * @param restClient - Authenticated RestClient for the user.
+ * @returns The plaintext recovery codes.
+ */
+export async function enableMfaViaApi(
+  restClient: RestClient,
+): Promise<{ recoveryCodes: string[] }> {
+  await restClient.post('/api/v1/auth/mfa/setup', {});
+  const totpRes = await restClient.get<{ code: string }>('/api/v1/auth/mfa/dev/totp-code');
+  const code = totpRes.body.code;
+  const verifyRes = await restClient.post<{ recoveryCodes: string[] }>(
+    '/api/v1/auth/mfa/verify-setup',
+    { code },
+  );
+  return { recoveryCodes: verifyRes.body.recoveryCodes };
+}
+
+/**
+ * Disables MFA for a user via the REST API directly (no UI).
+ *
+ * @param restClient - Authenticated RestClient for the user.
+ * @param password - The user's current password.
+ */
+export async function disableMfaViaApi(restClient: RestClient, password: string): Promise<void> {
+  await restClient.post('/api/v1/auth/mfa/disable', { currentPassword: password });
+}
+
+// ---------------------------------------------------------------------------
+// Browser login helpers (MINCRM-392)
+// ---------------------------------------------------------------------------
+
+/**
+ * Submits the login form in the browser for a user whose MFA is NOT enabled.
+ * Navigates to /login, fills credentials, submits, and waits for navigation away.
+ *
+ * @param email - User email.
+ * @param password - User password.
+ * @param context - Playwright fixture context.
+ */
+export async function loginViaBrowser(
+  email: string,
+  password: string,
+  context: AuthBehaviorContext,
+): Promise<void> {
+  const loginPage = new LoginPage(context);
+  await loginPage.navigate();
+  await loginPage.fillEmail(email);
+  await loginPage.fillPassword(password);
+  await loginPage.submit();
+  await context.page
+    .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: 10_000 })
+    .catch(() => null);
+}
+
+/** Result returned by loginWithMfaChallenge. */
+export interface LoginWithMfaResult {
+  /** True when the browser navigated away from /login after TOTP submission. */
+  success: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Performs a full MFA-gated browser login:
+ * 1. Navigates to /login and submits credentials.
+ * 2. Waits for the MFA challenge modal.
+ * 3. Fetches the current TOTP code via the dev endpoint.
+ * 4. Enters the code and submits.
+ * 5. Waits for navigation away from /login.
+ *
+ * Requires restClient to be authenticated as the same user (for the dev TOTP endpoint).
+ *
+ * @param email - User email.
+ * @param password - User password.
+ * @param restClient - Authenticated RestClient for the user.
+ * @param context - Playwright fixture context.
+ * @returns LoginWithMfaResult.
+ */
+export async function loginWithMfaChallenge(
+  email: string,
+  password: string,
+  restClient: RestClient,
+  context: AuthBehaviorContext,
+): Promise<LoginWithMfaResult> {
+  const loginPage = new LoginPage(context);
+  await loginPage.navigate();
+  await loginPage.fillEmail(email);
+  await loginPage.fillPassword(password);
+  await loginPage.submit();
+
+  // Wait for MFA modal.
+  const mfaModal = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-login-modal' },
+        { type: 'css', value: '[data-testid="mfa-login-modal"]' },
+      ],
+      { intent: 'MFA login challenge modal after password is accepted' },
+    )
+    .resolve();
+  await mfaModal.waitFor({ state: 'visible', timeout: 10_000 });
+
+  const code = await getDevTotpCode(restClient);
+
+  await context.page.fill(
+    code,
+    [
+      { type: 'testId', value: 'mfa-login-code-input' },
+      { type: 'role', value: 'textbox' },
+    ],
+    { intent: 'TOTP code input in the MFA login modal' },
+  );
+
+  await context.page.click(
+    [
+      { type: 'testId', value: 'mfa-login-submit' },
+      { type: 'role', value: 'button', options: { name: /verify|submit/i } },
+    ],
+    { intent: 'submit button in the MFA login modal' },
+  );
+
+  await context.page
+    .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: 10_000 })
+    .catch(() => null);
+
+  const finalUrl = context.page.url();
+  const success = new URL(finalUrl).pathname !== '/login';
+  return { success, finalUrl };
+}
+
+/** Result returned by loginWithRecoveryCode. */
+export interface LoginWithRecoveryCodeResult {
+  /** True when the browser navigated away from /login. */
+  success: boolean;
+  /** The URL the browser settled on. */
+  finalUrl: string;
+}
+
+/**
+ * Performs an MFA-gated browser login using a single-use recovery code.
+ * 1. Navigates to /login and submits credentials.
+ * 2. Waits for the MFA challenge modal.
+ * 3. Switches to recovery code mode.
+ * 4. Enters the recovery code and submits.
+ * 5. Waits for navigation away from /login.
+ *
+ * @param email - User email.
+ * @param password - User password.
+ * @param recoveryCode - Single-use plaintext recovery code.
+ * @param context - Playwright fixture context.
+ * @returns LoginWithRecoveryCodeResult.
+ */
+export async function loginWithRecoveryCode(
+  email: string,
+  password: string,
+  recoveryCode: string,
+  context: AuthBehaviorContext,
+): Promise<LoginWithRecoveryCodeResult> {
+  const loginPage = new LoginPage(context);
+  await loginPage.navigate();
+  await loginPage.fillEmail(email);
+  await loginPage.fillPassword(password);
+  await loginPage.submit();
+
+  const mfaModal = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-login-modal' },
+        { type: 'css', value: '[data-testid="mfa-login-modal"]' },
+      ],
+      { intent: 'MFA login challenge modal after password is accepted' },
+    )
+    .resolve();
+  await mfaModal.waitFor({ state: 'visible', timeout: 10_000 });
+
+  // Switch to recovery code mode.
+  await context.page.click(
+    [
+      { type: 'testId', value: 'mfa-login-switch-mode' },
+      { type: 'role', value: 'button', options: { name: /recovery/i } },
+    ],
+    { intent: 'button to switch from TOTP to recovery code mode in the MFA modal' },
+  );
+
+  await context.page.fill(
+    recoveryCode,
+    [
+      { type: 'testId', value: 'mfa-login-code-input' },
+      { type: 'role', value: 'textbox' },
+    ],
+    { intent: 'recovery code input in the MFA login modal' },
+  );
+
+  await context.page.click(
+    [
+      { type: 'testId', value: 'mfa-login-submit' },
+      { type: 'role', value: 'button', options: { name: /verify|submit/i } },
+    ],
+    { intent: 'submit button in the MFA login modal (recovery mode)' },
+  );
+
+  await context.page
+    .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: 10_000 })
+    .catch(() => null);
+
+  const finalUrl = context.page.url();
+  const success = new URL(finalUrl).pathname !== '/login';
+  return { success, finalUrl };
 }

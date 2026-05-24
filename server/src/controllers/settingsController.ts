@@ -17,6 +17,8 @@ import {
   setTagsRestrictCreation,
   getOnboardingStatus,
   setOnboardingCompleted,
+  getMfaRequired,
+  setMfaRequired,
 } from '../services/settingsService.js';
 import { getCurrencies, updateCurrencies } from '../services/currencyService.js';
 import {
@@ -375,4 +377,43 @@ export async function setOnboardingCompletedHandler(req: Request, res: Response)
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write onboarding audit entry'));
+}
+
+// ── MFA enforcement (MINCRM-392) ──────────────────────────────────────────────
+
+/**
+ * GET /api/v1/settings/mfa-required
+ * Returns whether org-wide MFA enforcement is active. Admin only.
+ */
+export async function getMfaRequiredHandler(_req: Request, res: Response): Promise<void> {
+  const required = await getMfaRequired();
+  res.status(200).json({ mfa_required: required });
+}
+
+/**
+ * PATCH /api/v1/settings/mfa-required
+ * Sets the org-wide MFA enforcement flag. Admin only.
+ */
+export async function setMfaRequiredHandler(req: Request, res: Response): Promise<void> {
+  if (typeof req.body.mfa_required !== 'boolean') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'mfa_required must be a boolean' },
+    });
+    return;
+  }
+
+  const previous = await getMfaRequired();
+  const current = await setMfaRequired(req.body.mfa_required as boolean);
+  res.status(200).json({ mfa_required: current });
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'MFA Enforcement',
+    eventType: 'updated',
+    fieldName: 'mfa_required',
+    oldValue: String(previous),
+    newValue: String(current),
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write MFA settings audit entry'));
 }

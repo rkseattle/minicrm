@@ -1087,7 +1087,9 @@
     "deleting": "Wird gelöscht…",
     "cancel": "Abbrechen",
     "filteredEmptyDescription": "Versuchen Sie, Ihre Filter anzupassen oder zu löschen.",
-    "clearFilters": "Filter löschen"
+    "clearFilters": "Filter löschen",
+    "next": "Weiter",
+    "back": "Zurück"
   },
   "errors": {
     "boundaryTitle": "Etwas ist schiefgelaufen",
@@ -1507,5 +1509,70 @@
       "erasing": "Wird gelöscht…"
     },
     "statusErased": "Gelöscht"
+  },
+  "mfa": {
+    "sectionTitle": "Zwei-Faktor-Authentifizierung",
+    "sectionHint": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu, indem Sie beim Anmelden einen Bestätigungscode aus Ihrer Authentifikator-App anfordern.",
+    "statusEnabled": "Aktiviert",
+    "statusDisabled": "Deaktiviert",
+    "enableButton": "Zwei-Faktor-Authentifizierung einrichten",
+    "disableButton": "Zwei-Faktor-Authentifizierung deaktivieren",
+    "recoveryCodesRemaining": "{{count}} Wiederherstellungscodes verbleibend",
+    "setupModal": {
+      "title": "Zwei-Faktor-Authentifizierung einrichten",
+      "step1Title": "QR-Code scannen",
+      "step1Hint": "Öffnen Sie Ihre Authentifikator-App (Google Authenticator, Authy usw.) und scannen Sie diesen QR-Code.",
+      "step2Title": "Bestätigungscode eingeben",
+      "step2Hint": "Geben Sie den 6-stelligen Code aus Ihrer Authentifikator-App ein, um die Einrichtung zu bestätigen.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verifizieren und aktivieren",
+      "verifying": "Verifizierung…",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut."
+    },
+    "recoveryCodesModal": {
+      "title": "Wiederherstellungscodes speichern",
+      "hint": "Bewahren Sie diese Wiederherstellungscodes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden, falls Sie keinen Zugriff mehr auf Ihre Authentifikator-App haben. Sie können sie danach nicht mehr einsehen.",
+      "doneButton": "Ich habe meine Wiederherstellungscodes gespeichert",
+      "copyButton": "Alle Codes kopieren",
+      "copied": "Kopiert!"
+    },
+    "disableModal": {
+      "title": "Zwei-Faktor-Authentifizierung deaktivieren",
+      "hint": "Geben Sie Ihr aktuelles Passwort ein, um die Deaktivierung zu bestätigen.",
+      "passwordLabel": "Aktuelles Passwort",
+      "confirmButton": "2FA deaktivieren",
+      "confirming": "Deaktivierung…",
+      "invalidPassword": "Falsches Passwort. Bitte versuchen Sie es erneut."
+    },
+    "loginModal": {
+      "title": "Zwei-Faktor-Authentifizierung erforderlich",
+      "hint": "Geben Sie den 6-stelligen Code aus Ihrer Authentifikator-App ein.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verifizieren",
+      "verifying": "Verifizierung…",
+      "useRecoveryCode": "Wiederherstellungscode verwenden",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut."
+    },
+    "recoveryLoginModal": {
+      "title": "Wiederherstellungscode verwenden",
+      "hint": "Geben Sie einen Ihrer Einmal-Wiederherstellungscodes ein.",
+      "codePlaceholder": "z.B. a1b2c3d4e5f6g7h8",
+      "verifyButton": "Anmelden",
+      "verifying": "Anmeldung…",
+      "useTotp": "Authentifikator-App verwenden",
+      "invalidCode": "Ungültiger oder bereits verwendeter Wiederherstellungscode."
+    },
+    "setupRequired": {
+      "banner": "Ihre Organisation erfordert eine Zwei-Faktor-Authentifizierung. Bitte richten Sie diese ein, um fortzufahren.",
+      "setupButton": "2FA jetzt einrichten"
+    },
+    "adminSetting": {
+      "label": "Zwei-Faktor-Authentifizierung erfordern",
+      "hint": "Wenn aktiviert, müssen alle Benutzer die TOTP-Authentifizierung einrichten, bevor sie auf die Anwendung zugreifen können.",
+      "saveButton": "Speichern",
+      "saving": "Speichern…",
+      "saveSuccess": "Einstellung gespeichert.",
+      "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut."
+    }
   }
 }

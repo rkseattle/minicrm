@@ -1087,7 +1087,9 @@
     "deleting": "删除中…",
     "cancel": "取消",
     "filteredEmptyDescription": "请尝试调整或清除筛选条件。",
-    "clearFilters": "清除筛选"
+    "clearFilters": "清除筛选",
+    "next": "下一步",
+    "back": "返回"
   },
   "errors": {
     "boundaryTitle": "出现了问题",
@@ -1507,5 +1509,70 @@
       "erasing": "正在删除…"
     },
     "statusErased": "已删除"
+  },
+  "mfa": {
+    "sectionTitle": "双重身份验证",
+    "sectionHint": "通过在登录时要求验证器应用提供验证码，为您的账户增加额外的安全保障。",
+    "statusEnabled": "已启用",
+    "statusDisabled": "已禁用",
+    "enableButton": "设置双重身份验证",
+    "disableButton": "禁用双重身份验证",
+    "recoveryCodesRemaining": "剩余 {{count}} 个恢复码",
+    "setupModal": {
+      "title": "设置双重身份验证",
+      "step1Title": "扫描二维码",
+      "step1Hint": "打开您的验证器应用（Google Authenticator、Authy 等），扫描此二维码。",
+      "step2Title": "输入验证码",
+      "step2Hint": "输入验证器应用中的 6 位数字码以确认设置。",
+      "codePlaceholder": "000000",
+      "verifyButton": "验证并启用",
+      "verifying": "验证中…",
+      "invalidCode": "验证码无效，请重试。"
+    },
+    "recoveryCodesModal": {
+      "title": "保存恢复码",
+      "hint": "请将这些恢复码保存在安全的地方。如果您无法访问验证器应用，每个恢复码只能使用一次。此后将无法再次查看。",
+      "doneButton": "我已保存恢复码",
+      "copyButton": "复制所有恢复码",
+      "copied": "已复制！"
+    },
+    "disableModal": {
+      "title": "禁用双重身份验证",
+      "hint": "输入您的当前密码以确认禁用双重身份验证。",
+      "passwordLabel": "当前密码",
+      "confirmButton": "禁用双重验证",
+      "confirming": "禁用中…",
+      "invalidPassword": "密码不正确，请重试。"
+    },
+    "loginModal": {
+      "title": "需要双重身份验证",
+      "hint": "输入验证器应用中的 6 位数字码。",
+      "codePlaceholder": "000000",
+      "verifyButton": "验证",
+      "verifying": "验证中…",
+      "useRecoveryCode": "改用恢复码",
+      "invalidCode": "验证码无效，请重试。"
+    },
+    "recoveryLoginModal": {
+      "title": "使用恢复码",
+      "hint": "输入您的一次性恢复码之一。",
+      "codePlaceholder": "例如 a1b2c3d4e5f6g7h8",
+      "verifyButton": "登录",
+      "verifying": "登录中…",
+      "useTotp": "改用验证器应用",
+      "invalidCode": "恢复码无效或已使用。"
+    },
+    "setupRequired": {
+      "banner": "您的组织要求进行双重身份验证。请完成设置后继续。",
+      "setupButton": "立即设置双重验证"
+    },
+    "adminSetting": {
+      "label": "要求双重身份验证",
+      "hint": "启用后，所有用户在访问应用前必须设置 TOTP 身份验证。",
+      "saveButton": "保存",
+      "saving": "保存中…",
+      "saveSuccess": "设置已保存。",
+      "saveError": "保存失败，请重试。"
+    }
   }
 }
