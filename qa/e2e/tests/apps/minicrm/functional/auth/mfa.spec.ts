@@ -36,7 +36,7 @@ const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F8-mfa] E2E_ADMIN_PASSWORD is not set');
 
 /** Password used for all test users created in this suite. */
-const USER_PASSWORD = 'MfaTest1!';
+const USER_PASSWORD = 'MfaTest1!Secure';
 
 // ---------------------------------------------------------------------------
 // MFA setup tests
