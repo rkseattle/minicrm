@@ -1087,7 +1087,9 @@
     "deleting": "Eliminando…",
     "cancel": "Cancelar",
     "filteredEmptyDescription": "Intenta ajustar o borrar tus filtros.",
-    "clearFilters": "Borrar filtros"
+    "clearFilters": "Borrar filtros",
+    "next": "Siguiente",
+    "back": "Volver"
   },
   "errors": {
     "boundaryTitle": "Algo salió mal",
@@ -1507,5 +1509,70 @@
       "erasing": "Borrando…"
     },
     "statusErased": "Borrado"
+  },
+  "mfa": {
+    "sectionTitle": "Autenticación en dos pasos",
+    "sectionHint": "Agrega una capa extra de seguridad a tu cuenta requiriendo un código de verificación de tu aplicación autenticadora al iniciar sesión.",
+    "statusEnabled": "Activado",
+    "statusDisabled": "Desactivado",
+    "enableButton": "Configurar autenticación en dos pasos",
+    "disableButton": "Desactivar autenticación en dos pasos",
+    "recoveryCodesRemaining": "{{count}} códigos de recuperación restantes",
+    "setupModal": {
+      "title": "Configurar autenticación en dos pasos",
+      "step1Title": "Escanear el código QR",
+      "step1Hint": "Abre tu aplicación autenticadora (Google Authenticator, Authy, etc.) y escanea este código QR.",
+      "step2Title": "Ingresar el código de verificación",
+      "step2Hint": "Ingresa el código de 6 dígitos de tu aplicación autenticadora para confirmar la configuración.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verificar y activar",
+      "verifying": "Verificando…",
+      "invalidCode": "Código inválido. Por favor, inténtalo de nuevo."
+    },
+    "recoveryCodesModal": {
+      "title": "Guardar tus códigos de recuperación",
+      "hint": "Guarda estos códigos de recuperación en un lugar seguro. Cada código solo puede usarse una vez si pierdes acceso a tu aplicación autenticadora. No podrás verlos nuevamente.",
+      "doneButton": "He guardado mis códigos de recuperación",
+      "copyButton": "Copiar todos los códigos",
+      "copied": "¡Copiado!"
+    },
+    "disableModal": {
+      "title": "Desactivar autenticación en dos pasos",
+      "hint": "Ingresa tu contraseña actual para confirmar que deseas desactivar la autenticación en dos pasos.",
+      "passwordLabel": "Contraseña actual",
+      "confirmButton": "Desactivar 2FA",
+      "confirming": "Desactivando…",
+      "invalidPassword": "Contraseña incorrecta. Por favor, inténtalo de nuevo."
+    },
+    "loginModal": {
+      "title": "Se requiere autenticación en dos pasos",
+      "hint": "Ingresa el código de 6 dígitos de tu aplicación autenticadora.",
+      "codePlaceholder": "000000",
+      "verifyButton": "Verificar",
+      "verifying": "Verificando…",
+      "useRecoveryCode": "Usar un código de recuperación",
+      "invalidCode": "Código inválido. Por favor, inténtalo de nuevo."
+    },
+    "recoveryLoginModal": {
+      "title": "Usar un código de recuperación",
+      "hint": "Ingresa uno de tus códigos de recuperación de un solo uso.",
+      "codePlaceholder": "ej. a1b2c3d4e5f6g7h8",
+      "verifyButton": "Iniciar sesión",
+      "verifying": "Iniciando sesión…",
+      "useTotp": "Usar aplicación autenticadora",
+      "invalidCode": "Código de recuperación inválido o ya utilizado."
+    },
+    "setupRequired": {
+      "banner": "Tu organización requiere autenticación en dos pasos. Por favor, configúrala para continuar.",
+      "setupButton": "Configurar 2FA ahora"
+    },
+    "adminSetting": {
+      "label": "Requerir autenticación en dos pasos",
+      "hint": "Cuando está activado, todos los usuarios deben configurar la autenticación TOTP antes de acceder a la aplicación.",
+      "saveButton": "Guardar",
+      "saving": "Guardando…",
+      "saveSuccess": "Configuración guardada.",
+      "saveError": "Error al guardar. Por favor, inténtalo de nuevo."
+    }
   }
 }

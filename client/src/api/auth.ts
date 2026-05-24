@@ -9,6 +9,12 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 interface AuthResponse {
   user: UserResponse;
   mustChangePassword?: boolean;
+  /** True when MFA is enabled; session cookie not yet issued. (MINCRM-392) */
+  mfaRequired?: boolean;
+  /** Short-lived pre-auth token to complete MFA challenge. Present when mfaRequired:true. (MINCRM-392) */
+  mfaToken?: string;
+  /** True when org requires MFA but this user hasn't set it up. (MINCRM-392) */
+  mfaSetupRequired?: boolean;
 }
 
 interface LogoutResponse {

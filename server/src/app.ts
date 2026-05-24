@@ -33,6 +33,7 @@ import customFieldDefinitionRoutes from './routes/customFieldDefinitions.js';
 import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
 import gdprRoutes from './routes/gdpr.js';
+import mfaRoutes from './routes/mfa.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -129,6 +130,8 @@ app.use(`${API_V1}/custom-fields`, customFieldValueRoutes);
 app.use(`${API_V1}/:entityType/:entityId/notes`, noteRoutes);
 // GDPR erasure and export endpoints (MINCRM-364)
 app.use(`${API_V1}/gdpr`, gdprRoutes);
+// MFA (TOTP two-factor authentication) endpoints (MINCRM-392)
+app.use(`${API_V1}/auth/mfa`, mfaRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the

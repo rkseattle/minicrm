@@ -36,6 +36,11 @@ export interface UserRow {
   password_reset_token_hash: string | null;
   password_reset_expires_at: Date | null;
   password_changed_at: Date | null;
+  // MFA fields (MINCRM-392)
+  mfa_enabled: boolean;
+  mfa_secret: string | null;
+  mfa_pending_secret: string | null;
+  mfa_recovery_codes: string[];
   created_at: Date;
   updated_at: Date;
 }

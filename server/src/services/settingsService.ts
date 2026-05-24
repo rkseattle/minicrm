@@ -347,3 +347,33 @@ export async function markPipelineStagesReviewed(): Promise<void> {
     [PIPELINE_STAGES_REVIEWED_KEY],
   );
 }
+
+/** The key used to store the org-wide MFA enforcement setting (MINCRM-392) */
+const REQUIRE_MFA_KEY = 'require_mfa';
+
+/**
+ * Returns whether MFA is required for all users org-wide. (MINCRM-392)
+ */
+export async function getMfaRequired(): Promise<boolean> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [REQUIRE_MFA_KEY],
+  );
+  return result.rows[0]?.value === 'true';
+}
+
+/**
+ * Sets the org-wide MFA enforcement flag. Admin only. (MINCRM-392)
+ *
+ * @param required - Whether to require MFA for all users.
+ * @returns The persisted value.
+ */
+export async function setMfaRequired(required: boolean): Promise<boolean> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [REQUIRE_MFA_KEY, String(required)],
+  );
+  return required;
+}

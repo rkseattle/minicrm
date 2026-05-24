@@ -23,6 +23,8 @@ import {
   clearFailedAttempts,
   secondsUntilUnlocked,
 } from '../services/loginLockoutService.js';
+import { issueMfaToken } from '../services/mfaService.js';
+import { getMfaRequired } from '../services/settingsService.js';
 import logger from '../logger.js';
 
 /**
@@ -109,6 +111,20 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   clearFailedAttempts(email);
 
+  // MFA challenge: if user has MFA enabled, issue a short-lived pre-auth token
+  // instead of the session cookie. The client completes login via /auth/mfa/verify-login. (MINCRM-392)
+  if (user.mfa_enabled) {
+    const mfaToken = issueMfaToken(user.id);
+    res.status(200).json({ mfaRequired: true, mfaToken });
+    return;
+  }
+
+  // If MFA is org-required but user has not set it up, return a flag so the
+  // client can redirect to the setup flow. Session cookie is still issued so
+  // the user can complete setup without being fully locked out.
+  const mfaRequired = await getMfaRequired();
+  const mfaSetupRequired = mfaRequired && !user.mfa_enabled;
+
   const nowSeconds = Math.floor(Date.now() / 1000);
   const tokenPayload = {
     id: user.id,
@@ -135,6 +151,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   res.status(200).json({
     user: sanitizeUser(user),
     mustChangePassword: user.must_change_password,
+    mfaSetupRequired,
   });
 
   // Fire-and-forget: audit login event — failure must not block the login response (MINCRM-170)

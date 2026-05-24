@@ -1,7 +1,8 @@
 /**
  * Tests for the LoginPage component.
  * Covers: render, form interaction, failed login error state, redirect on success,
- * session-expired banner (MINCRM-365), and ?next= redirect after re-authentication.
+ * session-expired banner (MINCRM-365), ?next= redirect after re-authentication,
+ * and MFA challenge / org-MFA-required flows (MINCRM-392).
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -23,6 +24,7 @@ function renderLoginPage() {
       <Route path="/contacts" element={<div>Contacts page</div>} />
       <Route path="/change-password" element={<div>Change password page</div>} />
       <Route path="/forgot-password" element={<div>Forgot password page</div>} />
+      <Route path="/profile" element={<div data-testid="profile-page">Profile</div>} />
     </Routes>,
     { initialEntries: ['/login'] },
   );
@@ -258,6 +260,41 @@ describe('LoginPage — session expired (MINCRM-365)', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    });
+  });
+
+  describe('MFA challenge flow (MINCRM-392)', () => {
+    it('shows the MFA modal when login returns mfaRequired:true', async () => {
+      server.use(
+        http.post('/api/v1/auth/login', () =>
+          HttpResponse.json({ mfaRequired: true, mfaToken: 'test-mfa-token' }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderLoginPage();
+      await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+      await user.type(screen.getByTestId('login-password'), 'correct-password');
+      await user.click(screen.getByTestId('login-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('mfa-login-modal')).toBeInTheDocument();
+      });
+    });
+
+    it('redirects to /profile?mfa_setup_required=1 when login returns mfaSetupRequired:true', async () => {
+      server.use(
+        http.post('/api/v1/auth/login', () =>
+          HttpResponse.json({ user: ADMIN_USER, mfaSetupRequired: true }),
+        ),
+        http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })),
+      );
+      const user = userEvent.setup();
+      renderLoginPage();
+      await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+      await user.type(screen.getByTestId('login-password'), 'correct-password');
+      await user.click(screen.getByTestId('login-submit'));
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-page')).toBeInTheDocument();
+      });
     });
   });
 });

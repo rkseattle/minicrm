@@ -2,6 +2,7 @@
  * LoginPage component.
  * Renders the email/password login form.
  * On success, invalidates the auth query and redirects to the dashboard.
+ * When the server returns mfaRequired:true, shows the MFA challenge modal. (MINCRM-392)
  */
 
 import { useState } from 'react';
@@ -14,9 +15,12 @@ import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { resolveApiError } from '@/utils/apiError.js';
+import MfaLoginModal from '@/components/MfaLoginModal.js';
+import type { MfaLoginResponse } from '@/api/mfa.js';
 
 /**
  * Login page with email and password form.
+ * Handles both direct login and MFA challenge flow. (MINCRM-392)
  */
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -37,30 +41,54 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // MFA challenge state — set when login returns mfaRequired:true (MINCRM-392)
+  const [pendingMfaToken, setPendingMfaToken] = useState<string | null>(null);
+
+  function completeLogin(mustChangePassword: boolean): void {
+    void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+    if (mustChangePassword) {
+      navigate('/change-password', { replace: true });
+    } else {
+      // Priority order for redirect destination after login:
+      // 1. ?next= param (set by 401 interceptor after session expiry) — MINCRM-365
+      // 2. location.state.from (set by ProtectedRoute on unauthenticated access) — MINCRM-147
+      // 3. Dashboard (default)
+      // Never redirect back to /change-password — that path is reserved for the forced-change
+      // flow and would create a confusing loop. (MINCRM-147)
+      const decodedNext = nextPath ? decodeURIComponent(nextPath) : null;
+      const destination =
+        decodedNext && decodedNext !== '/change-password'
+          ? decodedNext
+          : fromLocation?.pathname && fromLocation.pathname !== '/change-password'
+            ? fromLocation
+            : '/';
+      navigate(destination, { replace: true });
+    }
+  }
+
   const loginMutation = useMutation({
     mutationFn: () => login(email, password),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      if (data.mustChangePassword) {
-        navigate('/change-password', { replace: true });
-      } else {
-        // Priority order for redirect destination after login:
-        // 1. ?next= param (set by 401 interceptor after session expiry) — MINCRM-365
-        // 2. location.state.from (set by ProtectedRoute on unauthenticated access) — MINCRM-147
-        // 3. Dashboard (default)
-        // Never redirect back to /change-password — that path is reserved for the forced-change
-        // flow and would create a confusing loop. (MINCRM-147)
-        const decodedNext = nextPath ? decodeURIComponent(nextPath) : null;
-        const destination =
-          decodedNext && decodedNext !== '/change-password'
-            ? decodedNext
-            : fromLocation?.pathname && fromLocation.pathname !== '/change-password'
-              ? fromLocation
-              : '/';
-        navigate(destination, { replace: true });
+      if ('mfaRequired' in data && data.mfaRequired && 'mfaToken' in data) {
+        // MFA challenge: server hasn't issued a session cookie yet (MINCRM-392)
+        setPendingMfaToken(data.mfaToken as string);
+        return;
       }
+      // Org-wide MFA is required but this user hasn't set it up. Session cookie
+      // is issued so the user can reach the profile page to complete setup. (MINCRM-392)
+      if (data.mfaSetupRequired) {
+        void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        navigate('/profile?mfa_setup_required=1', { replace: true });
+        return;
+      }
+      completeLogin(data.mustChangePassword ?? false);
     },
   });
+
+  function handleMfaSuccess(data: MfaLoginResponse): void {
+    setPendingMfaToken(null);
+    completeLogin(data.mustChangePassword);
+  }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -146,6 +174,14 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* MFA challenge modal (MINCRM-392) */}
+      <MfaLoginModal
+        isOpen={pendingMfaToken !== null}
+        mfaToken={pendingMfaToken ?? ''}
+        onSuccess={handleMfaSuccess}
+        onCancel={() => setPendingMfaToken(null)}
+      />
     </div>
   );
 }

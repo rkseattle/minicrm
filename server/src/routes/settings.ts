@@ -23,6 +23,8 @@ import {
   setTagsRestrictCreationHandler,
   getOnboardingStatusHandler,
   setOnboardingCompletedHandler,
+  getMfaRequiredHandler,
+  setMfaRequiredHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -1107,5 +1109,72 @@ router.put('/branding', authenticate, requireRole('admin'), asyncHandler(putBran
  *         $ref: '#/components/responses/Forbidden'
  */
 router.delete('/branding', authenticate, requireRole('admin'), asyncHandler(deleteBrandingHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/mfa-required:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getMfaRequired
+ *     summary: Get org-wide MFA enforcement status (admin only, MINCRM-392)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: MFA enforcement status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mfa_required:
+ *                   type: boolean
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/mfa-required',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getMfaRequiredHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/mfa-required:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setMfaRequired
+ *     summary: Enable or disable org-wide MFA enforcement (admin only, MINCRM-392)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [mfa_required]
+ *             properties:
+ *               mfa_required:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Updated MFA enforcement status
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/mfa-required',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setMfaRequiredHandler),
+);
 
 export default router;

@@ -3,12 +3,14 @@
  * Allows authenticated users to manage their personal preferences:
  *   - Preferred language
  *   - Email notification preferences (MINCRM-163)
+ *   - Two-factor authentication (MINCRM-392)
  *
  * Accessible at /profile for all authenticated users.
  */
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
@@ -23,13 +25,36 @@ import type { NotificationPrefs } from '@/api/users.js';
 import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { getDefaultLanguage, DEFAULT_LANGUAGE_QUERY_KEY } from '@/api/settings.js';
+import { getMfaStatus, MFA_STATUS_QUERY_KEY } from '@/api/mfa.js';
+import MfaSetupModal from '@/components/MfaSetupModal.js';
+import MfaRecoveryCodesModal from '@/components/MfaRecoveryCodesModal.js';
+import MfaDisableModal from '@/components/MfaDisableModal.js';
 
 /**
- * Profile settings page — language preference and email notification toggles.
+ * Profile settings page — language preference, email notification toggles, and MFA. (MINCRM-392)
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+
+  // True when the user was redirected here because org-wide MFA is required. (MINCRM-392)
+  const mfaSetupRequired = searchParams.get('mfa_setup_required') === '1';
+
+  // ── MFA section state ────────────────────────────────────────────────────────
+  const [mfaSetupOpen, setMfaSetupOpen] = useState(false);
+  const [mfaRecoveryOpen, setMfaRecoveryOpen] = useState(false);
+  const [mfaDisableOpen, setMfaDisableOpen] = useState(false);
+  const [recoveryCodesOnce, setRecoveryCodesOnce] = useState<string[]>([]);
+
+  const {
+    data: mfaData,
+    isLoading: mfaLoading,
+    isError: mfaError,
+  } = useQuery({
+    queryKey: MFA_STATUS_QUERY_KEY,
+    queryFn: getMfaStatus,
+  });
 
   // ── Language preference ──────────────────────────────────────────────────────
 
@@ -325,7 +350,108 @@ export default function ProfilePage() {
             </form>
           )}
         </div>
+        {/* ── Two-factor authentication section ───────────────────────────── */}
+        <div
+          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          data-testid="profile-mfa-section"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="profile-mfa-title">
+            {t('mfa.sectionTitle')}
+          </h2>
+          {mfaSetupRequired && (
+            <div
+              role="alert"
+              data-testid="profile-mfa-required-banner"
+              className="mb-3 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800"
+            >
+              {t('mfa.setupRequired.banner')}
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mb-4">{t('mfa.sectionHint')}</p>
+
+          {mfaLoading && (
+            <p className="text-sm text-gray-500" data-testid="profile-mfa-loading">
+              {t('profileSettings.loading')}
+            </p>
+          )}
+
+          {mfaError && (
+            <p role="alert" className="text-sm text-red-600" data-testid="profile-mfa-error">
+              {t('profileSettings.loadError')}
+            </p>
+          )}
+
+          {!mfaLoading && !mfaError && mfaData && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    mfaData.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                  }`}
+                  data-testid="profile-mfa-status-badge"
+                >
+                  {mfaData.enabled ? t('mfa.statusEnabled') : t('mfa.statusDisabled')}
+                </span>
+                {mfaData.enabled && (
+                  <span className="text-xs text-gray-500" data-testid="profile-mfa-recovery-count">
+                    {t('mfa.recoveryCodesRemaining', { count: mfaData.recoveryCodesRemaining })}
+                  </span>
+                )}
+              </div>
+
+              {!mfaData.enabled && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setMfaSetupOpen(true)}
+                  data-testid="profile-mfa-enable-button"
+                >
+                  {t('mfa.enableButton')}
+                </Button>
+              )}
+
+              {mfaData.enabled && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="md"
+                  onClick={() => setMfaDisableOpen(true)}
+                  data-testid="profile-mfa-disable-button"
+                >
+                  {t('mfa.disableButton')}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </main>
+
+      <MfaSetupModal
+        isOpen={mfaSetupOpen}
+        onSuccess={(codes) => {
+          setMfaSetupOpen(false);
+          setRecoveryCodesOnce(codes);
+          setMfaRecoveryOpen(true);
+          void queryClient.invalidateQueries({ queryKey: MFA_STATUS_QUERY_KEY });
+        }}
+        onCancel={() => setMfaSetupOpen(false)}
+      />
+
+      <MfaRecoveryCodesModal
+        isOpen={mfaRecoveryOpen}
+        recoveryCodes={recoveryCodesOnce}
+        onDone={() => setMfaRecoveryOpen(false)}
+      />
+
+      <MfaDisableModal
+        isOpen={mfaDisableOpen}
+        onSuccess={() => {
+          setMfaDisableOpen(false);
+          void queryClient.invalidateQueries({ queryKey: MFA_STATUS_QUERY_KEY });
+        }}
+        onCancel={() => setMfaDisableOpen(false)}
+      />
     </div>
   );
 }
