@@ -326,6 +326,12 @@ test(
     const editButton = await getContactEditButtonLocator({ page });
     await editButton.waitFor({ state: 'visible' });
 
+    // Wait for networkidle a second time so the SetupChecklistWidget's async
+    // data fetch has settled before resolveTimestampMasks tries to locate it.
+    // Without this, the widget may not yet be in the DOM when masks are resolved,
+    // causing it to be unmasked and producing non-deterministic pixel diffs.
+    await page.waitForLoadState('networkidle');
+
     const masks = await resolveTimestampMasks(page);
     await page.checkScreenshot('contact-detail.png', { mask: masks });
   },
