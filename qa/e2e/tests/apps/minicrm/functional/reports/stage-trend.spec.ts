@@ -5,8 +5,9 @@
  * reach it via the reports nav link, interact with the date range filter, and see
  * the expected UI elements after the report loads.
  *
- * Updated for MINCRM-294: stage trend is now served at /reports?view=pipeline-stage
- * via the Reports shell page. The old /reports/stage-trend route redirects there.
+ * Navigation tests (nav link, direct URL, redirect) were removed in MINCRM-409
+ * because they duplicate coverage in reports-nav.spec.ts.
+ * This file now covers only filter interaction and data rendering.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -17,12 +18,10 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   getReportsLoadingLocator,
   getReportsStageTrendTableLocator,
   getReportsStageTrendEmptyLocator,
-  getReportsStageTrendHeadingLocator,
   getReportsDaysSelectLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -65,64 +64,6 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-
-test('stage trend report: nav link navigates to /reports @functional', async ({
-  page,
-  restClient,
-}) => {
-  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-  test.skip(isMobile, 'left nav not rendered on mobile — mobile always uses NavTop');
-
-  // Use left layout so links are always visible regardless of viewport width
-  await setNavLayoutViaAPI('left', restClient);
-  try {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.waitForLoadState('networkidle');
-    // The left-nav layout is applied via a React Query setting; the nav link may
-    // not be in the DOM immediately after networkidle if the setting fetch is still
-    // in flight. Wait explicitly before attempting the click.
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'nav-left-reports' },
-        { type: 'css', value: '[data-testid="nav-left-reports"]' },
-      ],
-      'visible',
-      { intent: 'Reports nav link in left navigation bar' },
-      10_000,
-    );
-
-    // Nav now has a single "Reports" link (MINCRM-294)
-    const result = await navigateViaNavLink('left', 'reports', { page });
-
-    expect(result.linkClicked).toBe(true);
-    expect(new URL(result.finalUrl).pathname).toBe('/reports');
-  } finally {
-    await setNavLayoutViaAPI('top', restClient).catch(() => null);
-  }
-});
-
-test('stage trend report: direct URL /reports?view=pipeline-stage shows heading and filter @functional', async ({
-  page,
-}) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
-
-  const heading = await getReportsStageTrendHeadingLocator({ page });
-  await expect(heading).toBeVisible({ timeout: 10_000 });
-
-  const daysSelect = await getReportsDaysSelectLocator({ page });
-  await expect(daysSelect).toBeVisible();
-  await expect(daysSelect).toHaveValue('30');
-});
-
-test('stage trend report: old URL /reports/stage-trend redirects to /reports @functional', async ({
-  page,
-}) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-  await page.goto('/reports/stage-trend', { waitUntil: 'networkidle' });
-
-  expect(new URL(page.url()).pathname).toBe('/reports');
-});
 
 test('stage trend report: table or empty state visible after load @functional', async ({
   page,
