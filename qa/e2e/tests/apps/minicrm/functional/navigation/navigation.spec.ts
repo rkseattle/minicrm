@@ -459,94 +459,112 @@ test.describe.serial('Layout-mutating tests', () => {
     });
   }); // end Hamburger Nav layout
 
-  // ── Admin section divider (MINCRM-261) ─────────────────────────────────────
+  // ── Admin section divider (MINCRM-261) — parametrized across all layouts ────
+  //
+  // F8-AD1 through F8-AD4 were four separate tests checking the same assertion
+  // in four nav layouts. Merged into one parametrized test in MINCRM-409.
 
   test.describe('Admin section divider', () => {
-    test('@functional F8-AD1: left nav — admin sees Administration divider before Users link', async ({
-      page,
-      restClient,
-    }) => {
-      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(isMobile, 'F8-AD1: NavLeft is not rendered on mobile — mobile always uses NavTop');
+    type DividerVariant = {
+      label: string;
+      layout: 'left' | 'top' | 'hamburger' | 'top-mobile';
+      skipOnMobile: boolean;
+      skipOnDesktop: boolean;
+      setup: (
+        page: Parameters<Parameters<typeof test>[2]>[0]['page'],
+        restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
+      ) => Promise<void>;
+      teardown: (
+        page: Parameters<Parameters<typeof test>[2]>[0]['page'],
+        restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
+      ) => Promise<void>;
+    };
 
-      await setNavLayoutViaAPI('left', restClient);
-      await navigateToDashboard(page);
+    const DIVIDER_VARIANTS: DividerVariant[] = [
+      {
+        label: 'left nav',
+        layout: 'left',
+        skipOnMobile: true,
+        skipOnDesktop: false,
+        setup: async (_page, restClient) => {
+          await setNavLayoutViaAPI('left', restClient);
+          await navigateToDashboard(_page);
+        },
+        teardown: async (_page, restClient) => {
+          await resetNavLayout(restClient, 'F8-AD1-left');
+        },
+      },
+      {
+        label: 'top nav (desktop)',
+        layout: 'top',
+        skipOnMobile: true,
+        skipOnDesktop: false,
+        setup: async (_page, restClient) => {
+          await setNavLayoutViaAPI('top', restClient);
+          await navigateToDashboard(_page);
+        },
+        teardown: async (_page, restClient) => {
+          await resetNavLayout(restClient, 'F8-AD1-top');
+        },
+      },
+      {
+        label: 'hamburger nav',
+        layout: 'hamburger',
+        skipOnMobile: true,
+        skipOnDesktop: false,
+        setup: async (_page, restClient) => {
+          await activateHamburgerLayout(_page, restClient);
+          await openHamburgerMenu({ page: _page });
+        },
+        teardown: async (_page, restClient) => {
+          await closeHamburgerMenuViaCloseButton({ page: _page }).catch(() => undefined);
+          await resetNavLayout(restClient, 'F8-AD1-hamburger');
+        },
+      },
+      {
+        label: 'mobile drawer',
+        layout: 'top-mobile',
+        skipOnMobile: false,
+        skipOnDesktop: true,
+        setup: async (_page, _restClient) => {
+          await navigateToDashboard(_page);
+          await openMobileNav({ page: _page });
+        },
+        teardown: async (_page, _restClient) => {
+          await closeMobileNavViaToggle({ page: _page }).catch(() => undefined);
+        },
+      },
+    ];
 
-      try {
-        const divider = await getAdminSectionDividerLocator('left', { page });
-        await expect(
-          divider,
-          'Administration divider should be visible in left nav for admin',
-        ).toBeVisible();
-      } finally {
-        await resetNavLayout(restClient, 'F8-AD1');
-      }
-    });
+    for (const variant of DIVIDER_VARIANTS) {
+      test(
+        `@functional F8-AD1: admin sees Administration divider across all layouts — ${variant.label}`,
+        { tag: ['@functional'] },
+        async ({ page, restClient }) => {
+          const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+          if (variant.skipOnMobile && isMobile) {
+            test.skip(true, `F8-AD1 [${variant.label}]: not applicable on mobile-web viewport`);
+          }
+          if (variant.skipOnDesktop && !isMobile) {
+            test.skip(
+              true,
+              `F8-AD1 [${variant.label}]: only runs under the mobile-web Playwright project`,
+            );
+          }
 
-    test('@functional F8-AD2: top nav (desktop) — admin sees Administration divider before Users link', async ({
-      page,
-      restClient,
-    }) => {
-      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(isMobile, 'F8-AD2: desktop top nav divider is not visible on mobile-web viewport');
-
-      await setNavLayoutViaAPI('top', restClient);
-      await navigateToDashboard(page);
-
-      try {
-        const divider = await getAdminSectionDividerLocator('top', { page });
-        await expect(
-          divider,
-          'Administration divider should be visible in top nav for admin',
-        ).toBeVisible();
-      } finally {
-        await resetNavLayout(restClient, 'F8-AD2');
-      }
-    });
-
-    test('@functional F8-AD3: hamburger nav — admin sees Administration divider in open drawer', async ({
-      page,
-      restClient,
-    }) => {
-      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(isMobile, 'F8-AD3: NavHamburger is desktop-only; mobile always renders NavTop');
-
-      await activateHamburgerLayout(page, restClient);
-
-      try {
-        await openHamburgerMenu({ page });
-
-        const divider = await getAdminSectionDividerLocator('hamburger', { page });
-        await expect(
-          divider,
-          'Administration divider should be visible in hamburger drawer for admin',
-        ).toBeVisible();
-
-        await closeHamburgerMenuViaCloseButton({ page });
-      } finally {
-        await resetNavLayout(restClient, 'F8-AD3');
-      }
-    });
-
-    test('@functional F8-AD4: mobile drawer — admin sees Administration divider', async ({
-      page,
-    }) => {
-      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(!isMobile, 'F8-AD4 only runs under the mobile-web Playwright project');
-
-      await navigateToDashboard(page);
-
-      const result = await openMobileNav({ page });
-      expect(result.drawerVisible, 'mobile nav drawer should open').toBe(true);
-
-      const divider = await getAdminSectionDividerLocator('top-mobile', { page });
-      await expect(
-        divider,
-        'Administration divider should be visible in mobile drawer for admin',
-      ).toBeVisible();
-
-      await closeMobileNavViaToggle({ page });
-    });
+          await variant.setup(page, restClient);
+          try {
+            const divider = await getAdminSectionDividerLocator(variant.layout, { page });
+            await expect(
+              divider,
+              `Administration divider should be visible in ${variant.label} for admin`,
+            ).toBeVisible();
+          } finally {
+            await variant.teardown(page, restClient);
+          }
+        },
+      );
+    }
   }); // end Admin section divider
 
   // ── Layout switching ────────────────────────────────────────────────────────
@@ -607,84 +625,93 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-LS2: selected layout persists after page refresh', async ({
-      page,
-      restClient,
-    }) => {
-      const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-      test.skip(isMobile, 'F8-LS2: NavLeft is not rendered on mobile — mobile always uses NavTop');
+    // F8-LS2 and F8-LS3 were the same test with different layout inputs. Merged
+    // into one parametrized test in MINCRM-409.
+    const PERSISTENCE_VARIANTS: Array<{
+      layout: 'left' | 'hamburger';
+      label: string;
+      skipOnMobile: boolean;
+      activate: (
+        page: Parameters<Parameters<typeof test>[2]>[0]['page'],
+        restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
+      ) => Promise<void>;
+      assertActive: (
+        page: Parameters<Parameters<typeof test>[2]>[0]['page'],
+        restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
+      ) => Promise<void>;
+    }> = [
+      {
+        layout: 'left',
+        label: 'left layout',
+        skipOnMobile: true,
+        activate: async (_page, restClient) => {
+          await setNavLayoutViaAPI('left', restClient);
+          await navigateToDashboard(_page);
+        },
+        assertActive: async (_page, restClient) => {
+          const leftNavLink = await getNavLinkLocator('left', 'contacts', { page: _page });
+          await expect(leftNavLink).toBeVisible();
+          // Re-assert before reload to minimise the race window (MINCRM-390)
+          await setNavLayoutViaAPI('left', restClient);
+          await _page.reload({ waitUntil: 'networkidle' });
+          await expect(leftNavLink).toBeVisible();
+          expect(
+            await _page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+            'nav-top-contacts should not be visible after reload in left layout',
+          ).toBe(true);
+        },
+      },
+      {
+        layout: 'hamburger',
+        label: 'hamburger layout',
+        skipOnMobile: false,
+        activate: async (_page, restClient) => {
+          await activateHamburgerLayout(_page, restClient);
+        },
+        assertActive: async (_page, restClient) => {
+          // Re-assert via API + reload before persistence check (MINCRM-391)
+          await setNavLayoutViaAPI('hamburger', restClient);
+          await _page.reload({ waitUntil: 'networkidle' });
+          const hamburgerToggle = await getMenuToggleLocator({ page: _page });
+          await expect(hamburgerToggle).toBeVisible();
+          // Second re-assert + reload to confirm it sticks (MINCRM-390, MINCRM-391)
+          await setNavLayoutViaAPI('hamburger', restClient);
+          await _page.reload({ waitUntil: 'networkidle' });
+          await expect(hamburgerToggle).toBeVisible();
+          expect(
+            await _page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+            'nav-top-contacts should not be visible in hamburger layout',
+          ).toBe(true);
+          expect(
+            await _page.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
+            'nav-left-contacts should not be visible in hamburger layout',
+          ).toBe(true);
+        },
+      },
+    ];
 
-      await setNavLayoutViaAPI('left', restClient);
-      await navigateToDashboard(page);
+    for (const variant of PERSISTENCE_VARIANTS) {
+      test(
+        `@functional F8-LS2: selected layout persists after page refresh — ${variant.label}`,
+        { tag: ['@functional'] },
+        async ({ page, restClient }) => {
+          const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+          if (variant.skipOnMobile && isMobile) {
+            test.skip(
+              true,
+              `F8-LS2 [${variant.label}]: NavLeft is not rendered on mobile — mobile always uses NavTop`,
+            );
+          }
 
-      try {
-        // Verify the left sidebar is active.
-        const leftNavLink = await getNavLinkLocator('left', 'contacts', { page });
-        await expect(leftNavLink).toBeVisible();
-
-        // Re-assert the layout via API immediately before reload so the server
-        // write is as close in time as possible to the reload fetch. This
-        // minimises the race window where a parallel worker calling
-        // ensureSystemDefaults can reset nav_layout to 'top' between our
-        // initial setNavLayoutViaAPI call and the page.reload() GET. (MINCRM-390)
-        await setNavLayoutViaAPI('left', restClient);
-
-        // Full page reload — React Query cache is cleared; fresh GET is issued.
-        await page.reload({ waitUntil: 'networkidle' });
-
-        // Left sidebar must still be active after reload — not reverted to default.
-        await expect(leftNavLink).toBeVisible();
-        expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
-          'nav-top-contacts should not be visible after reload in left layout',
-        ).toBe(true);
-      } finally {
-        await resetNavLayout(restClient, 'F8-LS2');
-      }
-    });
-
-    test('@functional F8-LS3: hamburger layout persists after page refresh', async ({
-      page,
-      restClient,
-    }) => {
-      await activateHamburgerLayout(page, restClient);
-
-      try {
-        // Re-assert via API + reload before testing persistence. A parallel
-        // worker's ensureSystemDefaults may have reset nav_layout to 'top'
-        // between activateHamburgerLayout's final API call and here. The reload
-        // forces a fresh GET so NavHamburger renders with certainty. (MINCRM-391)
-        await setNavLayoutViaAPI('hamburger', restClient);
-        await page.reload({ waitUntil: 'networkidle' });
-
-        const hamburgerToggle = await getMenuToggleLocator({ page });
-
-        // Hamburger toggle must be visible after the assertion-reload above.
-        await expect(hamburgerToggle).toBeVisible();
-
-        // Re-assert the layout via API immediately before the second reload to
-        // minimise the race window where a parallel worker can reset nav_layout
-        // to 'top' between our setNavLayoutViaAPI call and the page.reload GET.
-        // (MINCRM-390, MINCRM-391)
-        await setNavLayoutViaAPI('hamburger', restClient);
-
-        // Full page reload — React Query cache is cleared; fresh GET is issued.
-        await page.reload({ waitUntil: 'networkidle' });
-
-        // Hamburger layout must still be active after reload.
-        await expect(hamburgerToggle).toBeVisible();
-        expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
-          'nav-top-contacts should not be visible in hamburger layout',
-        ).toBe(true);
-        expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
-          'nav-left-contacts should not be visible in hamburger layout',
-        ).toBe(true);
-      } finally {
-        await resetNavLayout(restClient, 'F8-LS3');
-      }
-    });
+          await variant.activate(page, restClient);
+          try {
+            await variant.assertActive(page, restClient);
+          } finally {
+            await resetNavLayout(restClient, `F8-LS2-${variant.layout}`);
+          }
+        },
+      );
+    }
   }); // end Layout switching
 
   // ── Hamburger Menu mechanics (mobile-web only) ─────────────────────────────
