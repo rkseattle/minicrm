@@ -23,7 +23,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, login } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestContact } from '@apps/minicrm/helpers.js';
 import { navigateToContactDetail, getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getRecordAuditLog } from '@behaviors/minicrm/notes.behaviors.js';
@@ -32,6 +32,7 @@ import { getRecordAuditLog } from '@behaviors/minicrm/notes.behaviors.js';
 // Environment
 // ---------------------------------------------------------------------------
 
+const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[gdpr-spec] E2E_ADMIN_PASSWORD is not set');
 
@@ -47,6 +48,12 @@ test(
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
     await loginAsAdmin(restClient);
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+
+    // The GDPR erasure modal contains substantial content (PII field list, warning
+    // sections, two inputs) that exceeds the default 720px viewport height. Expand
+    // the viewport so Playwright can click the confirm button without it being clipped.
+    await page.setViewportSize({ width: 1280, height: 900 });
 
     const contact = await createTestContact(testData, restClient, {
       first_name: 'Erasure',
@@ -95,7 +102,7 @@ test(
       { intent: 'confirmation input that accepts ERASE to enable the submit button' },
     );
 
-    // Submit the erasure
+    // Submit the erasure — viewport is pre-expanded to 900px so the button is in range
     await page.click(
       [
         { type: 'testId', value: 'gdpr-erase-confirm-button' },
@@ -127,7 +134,9 @@ test(
       .resolve();
     await expect(nameEl).toContainText('[GDPR deleted]');
 
-    // The email detail field should also show [GDPR deleted]
+    // The email field is replaced with a scrambled sentinel (gdpr-deleted-UUID@gdpr.invalid)
+    // to satisfy the unique constraint — it will NOT contain "[GDPR deleted]".
+    // Verify it no longer contains the original contact email domain instead.
     const emailEl = await page
       .locate(
         [
@@ -137,7 +146,10 @@ test(
         { intent: 'email value field on the contact detail page' },
       )
       .resolve();
-    await expect(emailEl).toContainText('[GDPR deleted]');
+    const emailText = (await emailEl.textContent()) ?? '';
+    expect(emailText, 'erased email must use the gdpr.invalid sentinel domain').toMatch(
+      /gdpr-deleted-.+@gdpr\.invalid/,
+    );
 
     // The audit log for this contact must contain a gdpr_erasure entry
     const { entries } = await getRecordAuditLog(restClient, 'contact', contact.id, true);
