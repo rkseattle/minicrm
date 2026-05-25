@@ -56,6 +56,17 @@ if (encryptionKey.length !== ENCRYPTION_KEY_HEX_LENGTH || !/^[0-9a-fA-F]+$/.test
   );
 }
 
+// MINCRM-396: Warn when SMTP_FROM is configured but DKIM signing is absent.
+// Without DKIM, outbound mail from a custom domain is likely to land in spam.
+// This is a non-fatal advisory — the server continues to start normally.
+if (process.env.SMTP_FROM && !process.env.SMTP_DKIM_PRIVATE_KEY) {
+  logger.warn(
+    'SMTP_FROM is set but SMTP_DKIM_PRIVATE_KEY is not configured. ' +
+      'Outbound emails may be rejected or delivered to spam. ' +
+      'See docs/operations.md#email-deliverability for SPF/DKIM/DMARC setup instructions.',
+  );
+}
+
 // Log and report unhandled promise rejections (e.g. from fire-and-forget automation triggers — MINCRM-122)
 process.on('unhandledRejection', (reason) => {
   captureException(reason);

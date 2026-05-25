@@ -38,6 +38,8 @@ docker-compose.override.yml
 # Local Postgres data volume if mounted to a local directory
 db/data/
 *.sql.bak
+# Backup dumps written by scripts/backup.sh (MINCRM-393)
+backups/
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 logs/
