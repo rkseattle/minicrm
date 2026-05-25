@@ -424,7 +424,8 @@
     "probabilityOverriddenHint": "Überschreibung aktiv — Phasenstandard ignoriert",
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "Wahrscheinlichkeit muss eine ganze Zahl zwischen 0 und 100 sein",
-    "currencyLabel": "Währung"
+    "currencyLabel": "Währung",
+    "pipelineSelector": "Pipeline"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",
@@ -806,6 +807,27 @@
       "saveError": "Fehler beim Speichern. Bitte erneut versuchen.",
       "deleteSuccess": "Feld gelöscht.",
       "deleteError": "Fehler beim Löschen. Bitte erneut versuchen."
+    },
+    "pipelines": {
+      "sectionTitle": "Pipelines",
+      "addButton": "Neue Pipeline",
+      "namePlaceholder": "Pipeline-Name",
+      "editButton": "Umbenennen",
+      "saveButton": "Speichern",
+      "cancelButton": "Abbrechen",
+      "deleteButton": "Löschen",
+      "defaultBadge": "Standard",
+      "deleteConfirmTitle": "Pipeline löschen?",
+      "deleteBlocked": "Kann nicht gelöscht werden — {{count}} Deal muss zuerst in eine andere Pipeline verschoben werden.",
+      "deleteBlocked_other": "Kann nicht gelöscht werden — {{count}} Deals müssen zuerst in eine andere Pipeline verschoben werden.",
+      "defaultDeleteBlocked": "Die Standard-Pipeline kann nicht gelöscht werden.",
+      "nameRequiredError": "Pipeline-Name ist erforderlich.",
+      "nameTooLongError": "Pipeline-Name darf höchstens 100 Zeichen lang sein.",
+      "nameConflictError": "Eine Pipeline mit diesem Namen existiert bereits.",
+      "saveSuccess": "Pipeline gespeichert.",
+      "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+      "deleteSuccess": "Pipeline gelöscht.",
+      "deleteError": "Löschen fehlgeschlagen. Bitte erneut versuchen."
     }
   },
   "import": {

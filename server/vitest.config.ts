@@ -15,6 +15,14 @@ const SERIAL_FILES = [
   'src/__tests__/currencyService.test.ts',
   'src/__tests__/currencyConversion.test.ts',
   'src/__tests__/pipelineStageService.test.ts',
+  // pipelineService mutates the pipelines table globally (creates non-default pipelines,
+  // renames the default pipeline); running in parallel with pipelineStageService or
+  // dealService causes cross-file pipeline-id collisions and constraint violations.
+  'src/__tests__/pipelineService.test.ts',
+  // pipelineController creates non-default pipelines; running it in parallel with
+  // pipelineService (which also creates/deletes pipelines) causes race conditions
+  // on the pipelines table that produce spurious name-conflict or NOT_FOUND errors.
+  'src/__tests__/pipelineController.test.ts',
   'src/__tests__/demoService.test.ts',
   'src/__tests__/demoController.test.ts',
   'src/__tests__/demoSeed.test.ts',
@@ -80,10 +88,18 @@ const SERIAL_FILES = [
   // parallel with other tests that read the live stage list (e.g. dealController)
   // can cause unexpected stage counts or name conflicts.
   'src/__tests__/pipelineStageController.test.ts',
+  // dealService relies on pipeline_stages being fully populated (probability JOINs,
+  // excludeClosedStages subquery). pipelineStageService.test.ts deletes and re-seeds
+  // stages in beforeEach, causing race conditions with parallel dealService queries.
+  'src/__tests__/dealService.test.ts',
   // dealController creates deals that are not owner-scoped in exportDealsForCsv();
   // running in parallel with dealService causes the "returns an empty array" assertion
   // to see leaked rows from the controller tests.
   'src/__tests__/dealController.test.ts',
+  // bulkService and bulkController validate stage names via getStageNames(); pipelineStageService
+  // deletes/re-seeds stages in beforeEach, causing stage-not-found errors in parallel runs.
+  'src/__tests__/bulkService.test.ts',
+  'src/__tests__/bulkController.test.ts',
   // webhookController creates active webhook subscriptions that fire real async
   // deliveries on any contact/deal creation. Parallel tests creating contacts cause
   // delivery attempts against subscriptions being deleted by webhookController's

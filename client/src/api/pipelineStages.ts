@@ -12,7 +12,17 @@ import type {
   ReorderPipelineStagesInput,
 } from '@shared/schemas/pipelineStageSchema.js';
 
-/** React Query cache key for the pipeline stages list */
+/**
+ * Returns a React Query cache key scoped to a specific pipeline (MINCRM-397).
+ * When pipelineId is undefined the key represents the default pipeline's stages.
+ */
+export function pipelineStagesQueryKey(pipelineId?: string) {
+  return pipelineId
+    ? (['settings', 'pipelineStages', pipelineId] as const)
+    : (['settings', 'pipelineStages'] as const);
+}
+
+/** React Query cache key for the default pipeline stages list (backward compat) */
 export const PIPELINE_STAGES_QUERY_KEY = ['settings', 'pipelineStages'] as const;
 
 /** Shape returned by GET /api/settings/pipeline-stages */
@@ -21,11 +31,14 @@ export interface PipelineStagesListResponse {
 }
 
 /**
- * Returns all pipeline stages in sort_order order.
- * Called at app startup to populate stage selectors.
+ * Returns all pipeline stages for the specified pipeline in sort_order order.
+ * When pipelineId is omitted the default pipeline's stages are returned.
  */
-export async function listPipelineStages(): Promise<PipelineStagesListResponse> {
-  const response = await apiClient.get<PipelineStagesListResponse>('/settings/pipeline-stages');
+export async function listPipelineStages(pipelineId?: string): Promise<PipelineStagesListResponse> {
+  const params = pipelineId ? { pipelineId } : undefined;
+  const response = await apiClient.get<PipelineStagesListResponse>('/settings/pipeline-stages', {
+    params,
+  });
   return response.data;
 }
 
@@ -35,7 +48,7 @@ export async function listPipelineStages(): Promise<PipelineStagesListResponse> 
  * @param params - Stage fields
  */
 export async function createPipelineStage(
-  params: CreatePipelineStageInput,
+  params: CreatePipelineStageInput & { pipeline_id?: string },
 ): Promise<PipelineStageResponse> {
   const response = await apiClient.post<PipelineStageResponse>('/settings/pipeline-stages', params);
   return response.data;

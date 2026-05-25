@@ -1,19 +1,21 @@
 /**
- * Hook that returns the live pipeline stages list fetched from the API (MINCRM-180).
+ * Hook that returns the live pipeline stages list for a specific pipeline (MINCRM-180, MINCRM-397).
  *
  * Stages are cached by React Query and revalidated when the window regains focus.
+ * When pipelineId is omitted the default pipeline's stages are returned.
  * Components that render stage selectors or board columns should use this hook
  * instead of the hardcoded PIPELINE_STAGES constant.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { listPipelineStages, PIPELINE_STAGES_QUERY_KEY } from '@/api/pipelineStages.js';
+import { listPipelineStages, pipelineStagesQueryKey } from '@/api/pipelineStages.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
 
 /** Fallback seed stages used while the API response is loading */
 const SEED_STAGES: PipelineStageResponse[] = PIPELINE_STAGES.map((name, index) => ({
   id: `seed-${index}`,
+  pipeline_id: 'seed',
   name,
   sort_order: (index + 1) * 10,
   probability:
@@ -27,7 +29,7 @@ const SEED_STAGES: PipelineStageResponse[] = PIPELINE_STAGES.map((name, index) =
             ? 50
             : name === 'Negotiation'
               ? 75
-              : 0, // Closed Lost and any unexpected seed name
+              : 0,
   is_terminal: name === 'Closed Won' || name === 'Closed Lost',
   is_fixed: name === 'Closed Won' || name === 'Closed Lost',
 }));
@@ -47,12 +49,15 @@ export interface UsePipelineStagesResult {
 }
 
 /**
- * Returns the live pipeline stages list. Falls back to seed stages while loading.
+ * Returns the live pipeline stages for the given pipeline.
+ * Falls back to seed stages while loading.
+ *
+ * @param pipelineId - UUID of the pipeline to fetch stages for; defaults to the default pipeline
  */
-export function usePipelineStages(): UsePipelineStagesResult {
+export function usePipelineStages(pipelineId?: string): UsePipelineStagesResult {
   const { data, isLoading, isError } = useQuery({
-    queryKey: PIPELINE_STAGES_QUERY_KEY,
-    queryFn: listPipelineStages,
+    queryKey: pipelineStagesQueryKey(pipelineId),
+    queryFn: () => listPipelineStages(pipelineId),
     // Override global staleTime: 0 — pipeline stage definitions change rarely (admin-only). (MINCRM-348)
     staleTime: 5 * 60 * 1000,
   });

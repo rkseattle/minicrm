@@ -424,7 +424,8 @@
     "probabilityOverriddenHint": "Remplacement actif — défaut ignoré",
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "La probabilité doit être un nombre entier compris entre 0 et 100",
-    "currencyLabel": "Devise"
+    "currencyLabel": "Devise",
+    "pipelineSelector": "Pipeline"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",
@@ -805,6 +806,27 @@
       "saveSuccess": "Champ enregistré.",
       "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
       "deleteSuccess": "Champ supprimé.",
+      "deleteError": "Échec de la suppression. Veuillez réessayer."
+    },
+    "pipelines": {
+      "sectionTitle": "Pipelines",
+      "addButton": "Nouveau pipeline",
+      "namePlaceholder": "Nom du pipeline",
+      "editButton": "Renommer",
+      "saveButton": "Enregistrer",
+      "cancelButton": "Annuler",
+      "deleteButton": "Supprimer",
+      "defaultBadge": "Défaut",
+      "deleteConfirmTitle": "Supprimer le pipeline ?",
+      "deleteBlocked": "Impossible de supprimer — {{count}} affaire doit être déplacée vers un autre pipeline.",
+      "deleteBlocked_other": "Impossible de supprimer — {{count}} affaires doivent être déplacées vers un autre pipeline.",
+      "defaultDeleteBlocked": "Le pipeline par défaut ne peut pas être supprimé.",
+      "nameRequiredError": "Le nom du pipeline est obligatoire.",
+      "nameTooLongError": "Le nom du pipeline doit comporter 100 caractères ou moins.",
+      "nameConflictError": "Un pipeline avec ce nom existe déjà.",
+      "saveSuccess": "Pipeline enregistré.",
+      "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+      "deleteSuccess": "Pipeline supprimé.",
       "deleteError": "Échec de la suppression. Veuillez réessayer."
     }
   },

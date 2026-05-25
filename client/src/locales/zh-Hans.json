@@ -424,7 +424,8 @@
     "probabilityOverriddenHint": "覆盖已激活 — 阶段默认值已忽略",
     "probabilityPct": "{{pct}}%",
     "probabilityInvalid": "概率必须是 0 到 100 之间的整数",
-    "currencyLabel": "货币"
+    "currencyLabel": "货币",
+    "pipelineSelector": "管道"
   },
   "pipeline": {
     "pageTitle": "管道看板",
@@ -805,6 +806,27 @@
       "saveSuccess": "字段已保存。",
       "saveError": "保存失败，请重试。",
       "deleteSuccess": "字段已删除。",
+      "deleteError": "删除失败，请重试。"
+    },
+    "pipelines": {
+      "sectionTitle": "销售管道",
+      "addButton": "新建管道",
+      "namePlaceholder": "管道名称",
+      "editButton": "重命名",
+      "saveButton": "保存",
+      "cancelButton": "取消",
+      "deleteButton": "删除",
+      "defaultBadge": "默认",
+      "deleteConfirmTitle": "删除管道？",
+      "deleteBlocked": "无法删除——{{count}}个商机必须先移至其他管道。",
+      "deleteBlocked_other": "无法删除——{{count}}个商机必须先移至其他管道。",
+      "defaultDeleteBlocked": "默认管道无法删除。",
+      "nameRequiredError": "管道名称为必填项。",
+      "nameTooLongError": "管道名称不得超过100个字符。",
+      "nameConflictError": "该名称的管道已存在。",
+      "saveSuccess": "管道已保存。",
+      "saveError": "保存失败，请重试。",
+      "deleteSuccess": "管道已删除。",
       "deleteError": "删除失败，请重试。"
     }
   },

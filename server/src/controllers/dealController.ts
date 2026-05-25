@@ -48,8 +48,8 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Validate stage against live pipeline_stages table (MINCRM-180)
-  const validStages = await getStageNames();
+  // Validate stage against live pipeline_stages table for the specified pipeline (MINCRM-180, MINCRM-397)
+  const validStages = await getStageNames(parsed.data.pipeline_id);
   if (!validStages.includes(parsed.data.stage)) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
@@ -107,10 +107,17 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
           .filter(Boolean)
       : undefined;
 
+  // Optional ?pipelineId= filters the board to a specific pipeline (MINCRM-397)
+  const pipelineId =
+    typeof req.query['pipelineId'] === 'string' && req.query['pipelineId'].length > 0
+      ? req.query['pipelineId']
+      : undefined;
+
   const result = await listDeals({
     ownerId,
     accountId,
     excludeClosedStages,
+    pipelineId,
     sort,
     dir,
     tagIds,
@@ -164,9 +171,9 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Validate stage against live pipeline_stages table when stage is being updated (MINCRM-180)
+  // Validate stage against live pipeline_stages for this deal's pipeline (MINCRM-180, MINCRM-397)
   if (parsed.data.stage !== undefined) {
-    const validStages = await getStageNames();
+    const validStages = await getStageNames(existing.pipeline_id);
     if (!validStages.includes(parsed.data.stage)) {
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
@@ -177,11 +184,11 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 
   // MINCRM-121: reject a future close_date even when stage is not in the payload —
   // use existing.stage to determine if the deal is already in a terminal stage.
-  // Use live terminal stage list so custom terminal stages are respected (MINCRM-180).
+  // Use live terminal stage list so custom terminal stages are respected (MINCRM-180, MINCRM-397).
   if (parsed.data.close_date) {
     const effectiveStage = parsed.data.stage ?? existing.stage;
     const today = new Date().toISOString().split('T')[0];
-    const terminalStages = await getTerminalStageNames();
+    const terminalStages = await getTerminalStageNames(existing.pipeline_id);
     if (terminalStages.includes(effectiveStage) && parsed.data.close_date > today) {
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'Close date cannot be in the future' },

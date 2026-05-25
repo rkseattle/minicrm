@@ -77,6 +77,11 @@ interface DealFormProps {
   error?: string;
   /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
   triggerRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * UUID of the pipeline to scope the stage selector to (MINCRM-397).
+   * When omitted, defaults to the default pipeline's stages.
+   */
+  pipelineId?: string;
 }
 
 /**
@@ -118,9 +123,10 @@ export default function DealForm({
   submitLabel,
   error,
   triggerRef,
+  pipelineId,
 }: DealFormProps) {
   const { t } = useTranslation();
-  const { stageNames, terminalStageNames, stages } = usePipelineStages();
+  const { stageNames, terminalStageNames, stages } = usePipelineStages(pipelineId);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const { data: defaultCurrencyData } = useQuery({

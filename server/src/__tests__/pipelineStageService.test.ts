@@ -19,6 +19,7 @@ import {
   deletePipelineStage,
   reorderPipelineStages,
 } from '../services/pipelineStageService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
 const FILE_PREFIX = 'pipeline-stage-svc';
@@ -35,27 +36,47 @@ async function clearPipelineStageAuditLog(): Promise<void> {
 
 /** Re-seeds the six default pipeline stages before each test */
 async function resetStages(): Promise<void> {
-  await pool.query('DELETE FROM pipeline_stages');
-  await pool.query(`
-    INSERT INTO pipeline_stages (name, sort_order, probability, is_terminal, is_fixed) VALUES
-      ('Prospecting',  10, 10,  false, false),
-      ('Qualification',20, 25,  false, false),
-      ('Proposal',     30, 50,  false, false),
-      ('Negotiation',  40, 75,  false, false),
-      ('Closed Won',   50, 100, true,  true),
-      ('Closed Lost',  60, 0,   true,  true)
-  `);
+  const defaultPipelineId = await getDefaultPipelineId();
+  // Also delete any stages that lost their pipeline_id (left by failed test runs before MINCRM-397)
+  await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1 OR pipeline_id IS NULL', [
+    defaultPipelineId,
+  ]);
+  await pool.query(
+    `
+    INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability, is_terminal, is_fixed) VALUES
+      ($1, 'Prospecting',  10, 10,  false, false),
+      ($1, 'Qualification',20, 25,  false, false),
+      ($1, 'Proposal',     30, 50,  false, false),
+      ($1, 'Negotiation',  40, 75,  false, false),
+      ($1, 'Closed Won',   50, 100, true,  true),
+      ($1, 'Closed Lost',  60, 0,   true,  true)
+  `,
+    [defaultPipelineId],
+  );
 }
 
 beforeEach(async () => {
   await pool.query(
-    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
-    [`${FILE_PREFIX}-%`],
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email IN ($1, $2, $3)))',
+    [
+      `${FILE_PREFIX}-rename@example.com`,
+      'pipeline-stage-svc-rename@example.com',
+      'delete-block@example.com',
+    ],
   );
   await pool.query(
-    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
-    [`${FILE_PREFIX}-%`],
+    'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email IN ($1, $2, $3))',
+    [
+      `${FILE_PREFIX}-rename@example.com`,
+      'pipeline-stage-svc-rename@example.com',
+      'delete-block@example.com',
+    ],
   );
+  await pool.query('DELETE FROM users WHERE email IN ($1, $2, $3)', [
+    `${FILE_PREFIX}-rename@example.com`,
+    'pipeline-stage-svc-rename@example.com',
+    'delete-block@example.com',
+  ]);
   await clearPipelineStageAuditLog();
   await resetStages();
 });
@@ -214,8 +235,8 @@ describe('updatePipelineStage', () => {
     const ownerId = userResult.rows[0].id;
 
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id) VALUES ('Test Deal', 'Proposal', $1)`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Test Deal', 'Proposal', $1, $2)`,
+      [ownerId, proposal.pipeline_id],
     );
 
     await updatePipelineStage(proposal.id, { name: 'Solution Review' });
@@ -421,8 +442,8 @@ describe('deletePipelineStage', () => {
     const ownerId = userResult.rows[0].id;
 
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id) VALUES ('Blocking Deal', 'Negotiation', $1)`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Blocking Deal', 'Negotiation', $1, $2)`,
+      [ownerId, negotiation.pipeline_id],
     );
 
     let thrownError: (Error & { code?: string; dealCount?: number }) | null = null;

@@ -424,7 +424,8 @@
     "probabilityOverriddenHint": "Override active — stage default ignored",
     "probabilityPct": "{{pct}}%",
     "probabilityInvalid": "Probability must be a whole number between 0 and 100",
-    "currencyLabel": "Currency"
+    "currencyLabel": "Currency",
+    "pipelineSelector": "Pipeline"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",
@@ -805,6 +806,27 @@
       "saveSuccess": "Field saved.",
       "saveError": "Failed to save. Please try again.",
       "deleteSuccess": "Field deleted.",
+      "deleteError": "Failed to delete. Please try again."
+    },
+    "pipelines": {
+      "sectionTitle": "Pipelines",
+      "addButton": "New Pipeline",
+      "namePlaceholder": "Pipeline name",
+      "editButton": "Rename",
+      "saveButton": "Save",
+      "cancelButton": "Cancel",
+      "deleteButton": "Delete",
+      "defaultBadge": "Default",
+      "deleteConfirmTitle": "Delete pipeline?",
+      "deleteBlocked": "Cannot delete — {{count}} deal must be moved to another pipeline first.",
+      "deleteBlocked_other": "Cannot delete — {{count}} deals must be moved to another pipeline first.",
+      "defaultDeleteBlocked": "The default pipeline cannot be deleted.",
+      "nameRequiredError": "Pipeline name is required.",
+      "nameTooLongError": "Pipeline name must be 100 characters or fewer.",
+      "nameConflictError": "A pipeline with this name already exists.",
+      "saveSuccess": "Pipeline saved.",
+      "saveError": "Failed to save. Please try again.",
+      "deleteSuccess": "Pipeline deleted.",
       "deleteError": "Failed to delete. Please try again."
     }
   },

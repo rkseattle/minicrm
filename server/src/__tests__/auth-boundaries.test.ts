@@ -318,6 +318,36 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
 
     expect(res.status).toBe(200);
   });
+
+  it('returns 403 AUTH_FORBIDDEN when rep POSTs to /api/v1/pipelines (MINCRM-397)', async () => {
+    const res = await request(app)
+      .post('/api/v1/pipelines')
+      .set('Cookie', repBCookie)
+      .send({ name: 'Rep Should Not Create' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when rep PATCHes a pipeline (MINCRM-397)', async () => {
+    // Use a known-valid UUID pattern — 404 would mean the route is accessible
+    const res = await request(app)
+      .patch('/api/v1/pipelines/00000000-0000-0000-0000-000000000000')
+      .set('Cookie', repBCookie)
+      .send({ name: 'Rep Should Not Rename' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when rep DELETEs a pipeline (MINCRM-397)', async () => {
+    const res = await request(app)
+      .delete('/api/v1/pipelines/00000000-0000-0000-0000-000000000000')
+      .set('Cookie', repBCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
 });
 
 // ── MINCRM-81: Horizontal privilege enforcement (contacts + accounts) ──────────

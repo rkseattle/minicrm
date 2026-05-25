@@ -421,7 +421,8 @@
     "probabilityOverriddenHint": "[Övërrïdë äĉtïvë — ŝtägë dëfäült ïgñörëd~~~~~~~~~~~~]",
     "probabilityPct": "[{{pct}}%~~~]",
     "probabilityInvalid": "[Pröbäbïlïty müŝt bë ä whölë ñümbër bëtwëëñ 0 äñd 100~~~~~~~~~~~~~~~~]",
-    "currencyLabel": "[Ĉürrëñĉy~~~]"
+    "currencyLabel": "[Ĉürrëñĉy~~~]",
+    "pipelineSelector": "[Ƥïƥéłïñé]"
   },
   "pipeline": {
     "pageTitle": "[Pïpëlïñë Böärd~~~~~]",
@@ -678,6 +679,27 @@
       "resetButton": "[Яéşéţ şéţúр čħéčкļιşţ]",
       "resetSuccess": "[Şéţúр čħéčкļιşţ řéşéţ. Ţħé ŵιðĝéţ ŵιļļ řéåррéåř öɳ ţħé ɳéхţ рåĝé ļöåð.]",
       "resetError": "[Ƒåιļéð ţö řéşéţ şéţúр čħéčкļιşţ. Рļéåşé ţřÿ åĝåιɳ.]"
+    },
+    "pipelines": {
+      "sectionTitle": "[Ƥïƥéłïñéš]",
+      "addButton": "[Ñéω Ƥïƥéłïñé]",
+      "namePlaceholder": "[Ƥïƥéłïñé ñàɱé]",
+      "editButton": "[Ʀéñàɱé]",
+      "saveButton": "[Šàṽé]",
+      "cancelButton": "[Çàñçéł]",
+      "deleteButton": "[Ðéłéţé]",
+      "defaultBadge": "[Ðéƒàüłţ]",
+      "deleteConfirmTitle": "[Ðéłéţé ƥïƥéłïñé?]",
+      "deleteBlocked": "[Çàññöţ ðéłéţé — {{count}} ðéàł ɱüšţ ƀé ɱöṽéð ƒïʀšţ.]",
+      "deleteBlocked_other": "[Çàññöţ ðéłéţé — {{count}} ðéàłš ɱüšţ ƀé ɱöṽéð ƒïʀšţ.]",
+      "defaultDeleteBlocked": "[Ţhé ðéƒàüłţ ƥïƥéłïñé çàññöţ ƀé ðéłéţéð.]",
+      "nameRequiredError": "[Ƥïƥéłïñé ñàɱé ïš ʀéqüïʀéð.]",
+      "nameTooLongError": "[Ƥïƥéłïñé ñàɱé ɱüšţ ƀé 100 çhàʀàçţéʀš öʀ ƒéωéʀ.]",
+      "nameConflictError": "[À ƥïƥéłïñé ωïţh ţhïš ñàɱé àłʀéàðÿ éχïšţš.]",
+      "saveSuccess": "[Ƥïƥéłïñé šàṽéð.]",
+      "saveError": "[Ƒàïłéð ţö šàṽé. Ƥłéàšé ţʀÿ àɠàïñ.]",
+      "deleteSuccess": "[Ƥïƥéłïñé ðéłéţéð.]",
+      "deleteError": "[Ƒàïłéð ţö ðéłéţé. Ƥłéàšé ţʀÿ àɠàïñ.]"
     }
   },
   "profileSettings": {

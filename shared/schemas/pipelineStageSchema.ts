@@ -10,6 +10,8 @@ import { z } from 'zod';
  */
 export const pipelineStageResponseSchema = z.object({
   id: z.string().uuid(),
+  /** UUID of the pipeline this stage belongs to (MINCRM-397) */
+  pipeline_id: z.string().uuid(),
   name: z.string(),
   sort_order: z.number().int(),
   probability: z.number().int().min(0).max(100),

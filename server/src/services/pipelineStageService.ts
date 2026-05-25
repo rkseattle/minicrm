@@ -1,5 +1,6 @@
 /**
  * Pipeline stage service — business logic for pipeline stage configuration (MINCRM-180).
+ * All operations are scoped to a specific pipeline (MINCRM-397).
  * All database access for pipeline_stages goes through this module.
  */
 
@@ -13,10 +14,12 @@ import type {
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import { writeAuditEntry, writeAuditEntries, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
+import { getDefaultPipelineId } from './pipelineService.js';
 
 /** Shape of a pipeline_stages row as stored in the database */
 export interface PipelineStageRow {
   id: string;
+  pipeline_id: string;
   name: string;
   sort_order: number;
   probability: number;
@@ -28,51 +31,54 @@ export interface PipelineStageRow {
 
 /** Columns to SELECT for stage list queries */
 const STAGE_SELECT =
-  'id, name, sort_order, probability, is_terminal, is_fixed, created_at, updated_at';
+  'id, pipeline_id, name, sort_order, probability, is_terminal, is_fixed, created_at, updated_at';
 
 /**
- * Returns all pipeline stages ordered by sort_order ascending.
- *
- * @returns Array of stage rows
+ * Resolves a pipeline_id, falling back to the default pipeline when not supplied.
  */
-export async function listPipelineStages(): Promise<PipelineStageRow[]> {
+async function resolvePipelineId(pipelineId?: string): Promise<string> {
+  return pipelineId ?? getDefaultPipelineId();
+}
+
+/**
+ * Returns all pipeline stages for the given pipeline, ordered by sort_order ASC.
+ */
+export async function listPipelineStages(pipelineId?: string): Promise<PipelineStageRow[]> {
+  const pid = await resolvePipelineId(pipelineId);
   const result = await pool.query<PipelineStageRow>(
-    `SELECT ${STAGE_SELECT} FROM pipeline_stages ORDER BY sort_order ASC`,
+    `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC`,
+    [pid],
   );
   return result.rows;
 }
 
 /**
- * Returns just the stage names in pipeline order. Used by the deal controller
- * to validate that a submitted stage value is in the live stage list.
- *
- * @returns Array of stage name strings, ordered by sort_order ASC
+ * Returns the stage names in pipeline order for the given pipeline.
+ * Used by the deal controller to validate submitted stage values.
  */
-export async function getStageNames(): Promise<string[]> {
+export async function getStageNames(pipelineId?: string): Promise<string[]> {
+  const pid = await resolvePipelineId(pipelineId);
   const result = await pool.query<{ name: string }>(
-    'SELECT name FROM pipeline_stages ORDER BY sort_order ASC',
+    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC',
+    [pid],
   );
   return result.rows.map((r) => r.name);
 }
 
 /**
- * Returns the terminal stage names (is_terminal = true) in pipeline order.
- * Used by the deal controller to enforce close-date requirements.
- *
- * @returns Array of terminal stage name strings
+ * Returns the terminal stage names (is_terminal = true) for the given pipeline.
  */
-export async function getTerminalStageNames(): Promise<string[]> {
+export async function getTerminalStageNames(pipelineId?: string): Promise<string[]> {
+  const pid = await resolvePipelineId(pipelineId);
   const result = await pool.query<{ name: string }>(
-    'SELECT name FROM pipeline_stages WHERE is_terminal = true ORDER BY sort_order ASC',
+    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 AND is_terminal = true ORDER BY sort_order ASC',
+    [pid],
   );
   return result.rows.map((r) => r.name);
 }
 
 /**
- * Finds a single pipeline stage by its UUID.
- *
- * @param id - Stage UUID
- * @returns The stage row, or null if not found
+ * Finds a single pipeline stage by its UUID (pipeline-agnostic lookup).
  */
 export async function findPipelineStageById(id: string): Promise<PipelineStageRow | null> {
   const result = await pool.query<PipelineStageRow>(
@@ -83,29 +89,22 @@ export async function findPipelineStageById(id: string): Promise<PipelineStageRo
 }
 
 /**
- * Creates a new pipeline stage.
+ * Creates a new pipeline stage within the specified pipeline.
  *
- * sort_order is auto-assigned as MAX(sort_order) + 10, appending after all
- * existing stages. The INSERT and audit entry are written in the same
- * transaction so a failed audit write rolls back the stage creation.
- *
- * Name uniqueness is enforced by the DB unique index (case-insensitive). A 23505
- * violation is caught and re-thrown as STAGE_NAME_CONFLICT.
- *
- * @param params - Stage fields from the validated request (no sort_order)
- * @param actor - User performing the create (for audit log)
- * @returns The inserted stage row
- * @throws Error with code STAGE_NAME_CONFLICT if the name is already in use
+ * sort_order is auto-assigned as MAX(sort_order within that pipeline) + 10.
+ * Name uniqueness is enforced per-pipeline by the DB unique index.
+ * A 23505 violation is caught and re-thrown as STAGE_NAME_CONFLICT.
  */
 export async function createPipelineStage(
-  params: CreatePipelineStageInput,
+  params: CreatePipelineStageInput & { pipeline_id?: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<PipelineStageRow> {
-  const { name, probability } = params;
+  const { name, probability, pipeline_id: pipelineIdParam } = params;
+  const pipelineId = await resolvePipelineId(pipelineIdParam);
 
-  // Auto-assign sort_order: append after all existing stages (admin can reorder afterward)
   const maxResult = await pool.query<{ max: number | null }>(
-    'SELECT MAX(sort_order) AS max FROM pipeline_stages',
+    'SELECT MAX(sort_order) AS max FROM pipeline_stages WHERE pipeline_id = $1',
+    [pipelineId],
   );
   const sortOrder = (maxResult.rows[0].max ?? 0) + 10;
 
@@ -114,10 +113,10 @@ export async function createPipelineStage(
     await client.query('BEGIN');
 
     const result = await client.query<PipelineStageRow>(
-      `INSERT INTO pipeline_stages (name, sort_order, probability)
-       VALUES ($1, $2, $3)
+      `INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability)
+       VALUES ($1, $2, $3, $4)
        RETURNING ${STAGE_SELECT}`,
-      [name, sortOrder, probability ?? 0],
+      [pipelineId, name, sortOrder, probability ?? 0],
     );
     const stage = result.rows[0];
 
@@ -135,7 +134,7 @@ export async function createPipelineStage(
   } catch (err) {
     await client.query('ROLLBACK');
     if ((err as NodeJS.ErrnoException).code === '23505') {
-      const e = new Error(`A stage named "${name}" already exists`);
+      const e = new Error(`A stage named "${name}" already exists in this pipeline`);
       (e as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
       throw e;
     }
@@ -148,24 +147,10 @@ export async function createPipelineStage(
 /**
  * Updates an existing pipeline stage.
  *
- * When the name changes, all deals currently in the old stage name are updated to
- * the new name atomically in the same transaction (MINCRM-180: rename is atomic).
+ * When the name changes, all deals in the same pipeline currently at the old
+ * stage name are updated atomically in the same transaction.
  *
  * Fixed stages (is_fixed = true) may not have their name changed.
- *
- * Name and sort_order uniqueness are enforced by DB unique indexes. A 23505
- * violation is caught and re-thrown as STAGE_NAME_CONFLICT or
- * STAGE_SORT_ORDER_CONFLICT depending on which constraint fired.
- *
- * Per-field audit entries are written inside the same transaction.
- *
- * @param id - Stage UUID
- * @param params - Fields to update
- * @param actor - User performing the update (for audit log)
- * @returns The updated stage row, or null if not found
- * @throws Error with code STAGE_FIXED if attempting to rename a fixed stage
- * @throws Error with code STAGE_NAME_CONFLICT if the new name is already in use
- * @throws Error with code STAGE_SORT_ORDER_CONFLICT if the sort_order is already in use
  */
 export async function updatePipelineStage(
   id: string,
@@ -185,11 +170,12 @@ export async function updatePipelineStage(
   try {
     await client.query('BEGIN');
 
-    // If renaming, atomically update all deals in the old stage
+    // If renaming, atomically update all deals in the same pipeline at the old stage
     if (params.name !== undefined && params.name !== existing.name) {
-      await client.query('UPDATE deals SET stage = $1 WHERE stage = $2', [
+      await client.query('UPDATE deals SET stage = $1 WHERE stage = $2 AND pipeline_id = $3', [
         params.name,
         existing.name,
+        existing.pipeline_id,
       ]);
     }
 
@@ -274,7 +260,7 @@ export async function updatePipelineStage(
         (e as NodeJS.ErrnoException).code = 'STAGE_SORT_ORDER_CONFLICT';
         throw e;
       }
-      const e = new Error(`A stage named "${params.name}" already exists`);
+      const e = new Error(`A stage named "${params.name}" already exists in this pipeline`);
       (e as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
       throw e;
     }
@@ -289,17 +275,7 @@ export async function updatePipelineStage(
  *
  * Deletion is blocked if:
  * - The stage is fixed (is_fixed = true)
- * - Any deals with a non-terminal stage currently reference this stage name
- *   (open deals must be moved first)
- *
- * The DELETE and audit entry are written in the same transaction.
- *
- * @param id - Stage UUID
- * @param actor - User performing the delete (for audit log)
- * @returns The deleted stage row, or null if not found
- * @throws Error with code STAGE_FIXED if the stage is fixed
- * @throws Error with code STAGE_HAS_OPEN_DEALS if open deals block deletion;
- *   the error has a `dealCount` property with the count
+ * - Any open deals within the same pipeline are currently in this stage
  */
 export async function deletePipelineStage(
   id: string,
@@ -314,18 +290,27 @@ export async function deletePipelineStage(
     throw err;
   }
 
-  // Count open deals (not in a terminal stage) currently in this stage
+  // Count open deals (not in a terminal stage) within the same pipeline
   const terminalResult = await pool.query<{ name: string }>(
-    'SELECT name FROM pipeline_stages WHERE is_terminal = true',
+    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 AND is_terminal = true',
+    [existing.pipeline_id],
   );
   const terminalNames = terminalResult.rows.map((r) => r.name);
 
-  const dealCountResult = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM deals
-     WHERE stage = $1
-       AND stage NOT IN (${terminalNames.map((_, i) => `$${i + 2}`).join(', ')})`,
-    [existing.name, ...terminalNames],
-  );
+  // When a pipeline has no terminal stages, "NOT IN ()" is invalid SQL — omit the clause.
+  const dealCountResult =
+    terminalNames.length === 0
+      ? await pool.query<{ count: string }>(
+          `SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1 AND stage = $2`,
+          [existing.pipeline_id, existing.name],
+        )
+      : await pool.query<{ count: string }>(
+          `SELECT COUNT(*) AS count FROM deals
+           WHERE pipeline_id = $1
+             AND stage = $2
+             AND stage NOT IN (${terminalNames.map((_, i) => `$${i + 3}`).join(', ')})`,
+          [existing.pipeline_id, existing.name, ...terminalNames],
+        );
   const openDealCount = parseInt(dealCountResult.rows[0].count, 10);
 
   if (openDealCount > 0) {
@@ -369,16 +354,10 @@ export async function deletePipelineStage(
 }
 
 /**
- * Atomically reorders all pipeline stages by assigning sort_order 1..N in the
- * provided ID order, all within a single transaction (MINCRM-381).
+ * Atomically reorders all pipeline stages within the specified pipeline by assigning
+ * sort_order 1..N in the provided ID order (MINCRM-381).
  *
- * All IDs must reference existing stages; if any ID is unknown the transaction
- * is rolled back and an error with code STAGE_NOT_FOUND is thrown.
- *
- * @param params - Ordered array of stage UUIDs
- * @param actor - User performing the reorder (for audit log)
- * @returns Updated stages in the new order
- * @throws Error with code STAGE_NOT_FOUND if any supplied ID does not exist
+ * All IDs must reference stages within the same pipeline.
  */
 export async function reorderPipelineStages(
   params: ReorderPipelineStagesInput,
@@ -390,15 +369,10 @@ export async function reorderPipelineStages(
   try {
     await client.query('BEGIN');
 
-    // Serialize concurrent reorders with a transaction-scoped advisory lock
-    // (MINCRM-387). Without this, two parallel reorder transactions can observe
-    // each other's intermediate negative sort_order values and race on the same
-    // rows, producing spurious unique-constraint violations or incorrect final
-    // orderings when workers restore state concurrently during E2E teardown.
+    // Serialize concurrent reorders with a transaction-scoped advisory lock (MINCRM-387)
     await client.query("SELECT pg_advisory_xact_lock(hashtext('pipeline_stages_reorder'))");
 
-    // Temporarily set all sort_orders to large negative values to vacate the
-    // unique index slots before writing the final values.
+    // Temporarily set all sort_orders to large negative values to vacate unique index slots
     for (let i = 0; i < orderedIds.length; i++) {
       const tempOrder = -(i + 1);
       const res = await client.query<{ id: string }>(
@@ -412,7 +386,7 @@ export async function reorderPipelineStages(
       }
     }
 
-    // Assign the final 1-based sort orders and read back the updated rows.
+    // Assign the final 1-based sort orders
     for (let i = 0; i < orderedIds.length; i++) {
       await client.query(
         'UPDATE pipeline_stages SET sort_order = $1, updated_at = now() WHERE id = $2',
@@ -420,8 +394,16 @@ export async function reorderPipelineStages(
       );
     }
 
+    // Determine the pipeline_id from the first stage to scope the SELECT
+    const firstStage = await client.query<{ pipeline_id: string }>(
+      'SELECT pipeline_id FROM pipeline_stages WHERE id = $1',
+      [orderedIds[0]],
+    );
+    const pipelineId = firstStage.rows[0]?.pipeline_id;
+
     const result = await client.query<PipelineStageRow>(
-      `SELECT ${STAGE_SELECT} FROM pipeline_stages ORDER BY sort_order ASC`,
+      `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC`,
+      [pipelineId],
     );
 
     await writeAuditEntry(client, {
@@ -447,13 +429,11 @@ export async function reorderPipelineStages(
 
 /**
  * Maps a PipelineStageRow to the API response shape.
- *
- * @param row - Database row
- * @returns API-safe stage object
  */
 export function toStageResponse(row: PipelineStageRow): PipelineStageResponse {
   return {
     id: row.id,
+    pipeline_id: row.pipeline_id,
     name: row.name,
     sort_order: row.sort_order,
     probability: row.probability,

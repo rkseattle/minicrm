@@ -414,9 +414,9 @@ describe('AdminSettingsPage', () => {
     it('renders the pipeline stages table with seed stage names', async () => {
       renderOnTab('customisation');
       await waitFor(() => {
-        expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+        // Wait for stages to load (requires both pipelines and stages queries to resolve)
+        expect(screen.getByText('Prospecting')).toBeInTheDocument();
       });
-      expect(screen.getByText('Prospecting')).toBeInTheDocument();
       expect(screen.getByText('Closed Won')).toBeInTheDocument();
     });
 
@@ -436,8 +436,9 @@ describe('AdminSettingsPage', () => {
       );
       const user = userEvent.setup();
       renderOnTab('customisation');
+      // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
-        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+        expect(screen.getByText('Prospecting')).toBeInTheDocument();
       });
       await user.click(screen.getByTestId('add-stage-button'));
       await user.type(screen.getByTestId('add-stage-name-input'), 'Demo');
@@ -451,7 +452,8 @@ describe('AdminSettingsPage', () => {
       const user = userEvent.setup();
       renderOnTab('customisation');
       await waitFor(() => {
-        expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+        // Wait for stages to load (requires both pipelines and stages queries to resolve)
+        expect(screen.getByTestId('pipeline-stage-edit-ps-5')).toBeInTheDocument();
       });
       // Click edit on Closed Won (is_fixed: true)
       await user.click(screen.getByTestId('pipeline-stage-edit-ps-5'));
@@ -491,8 +493,9 @@ describe('AdminSettingsPage', () => {
     it('shows success feedback after successfully adding a stage', async () => {
       const user = userEvent.setup();
       renderOnTab('customisation');
+      // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
-        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+        expect(screen.getByText('Prospecting')).toBeInTheDocument();
       });
       await user.click(screen.getByTestId('add-stage-button'));
       await user.type(screen.getByTestId('add-stage-name-input'), 'Discovery');
@@ -510,8 +513,9 @@ describe('AdminSettingsPage', () => {
       );
       const user = userEvent.setup();
       renderOnTab('customisation');
+      // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
-        expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
+        expect(screen.getByText('Prospecting')).toBeInTheDocument();
       });
       await user.click(screen.getByTestId('add-stage-button'));
       await user.type(screen.getByTestId('add-stage-name-input'), 'Discovery');
