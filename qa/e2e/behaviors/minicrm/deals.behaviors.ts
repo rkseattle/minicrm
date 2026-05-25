@@ -443,6 +443,7 @@ export async function createDealViaApi(
     value?: number | string;
     currency?: string;
     owner_id?: string;
+    pipeline_id?: string;
   },
 ): Promise<DealRow> {
   const res = await restClient.post<{ deal: DealRow }>('/api/v1/deals', params);
