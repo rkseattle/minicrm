@@ -810,3 +810,48 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
   });
   expect(patched.type, 'type is updated to Meeting by current implementation').toBe('Meeting');
 });
+
+// ---------------------------------------------------------------------------
+// F5-P1 — Pagination: different entries on page 1 vs page 2 (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('@functional F5-P1: activities paginate correctly — page 2 has different entries than page 1', async ({
+  testData,
+  restClient,
+}) => {
+  const account = await createTestAccount(testData, restClient, {
+    name: `F5P1-Account-${Date.now()}`,
+  });
+
+  // Create 3 activities for the same account so we have more than one page (limit 2)
+  const subjects: string[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const subject = `F5P1-Activity-${Date.now()}-${i}`;
+    subjects.push(subject);
+    await createTestActivity(testData, restClient, {
+      type: 'Task',
+      subject,
+      account_id: account.id,
+    });
+  }
+
+  // Fetch page 1 (limit 2)
+  const page1Res = await restClient.get<{ data: ActivityRow[]; total: number }>(
+    `/api/v1/activities?account=${account.id}&page=1&limit=2`,
+  );
+  // Fetch page 2 (limit 2)
+  const page2Res = await restClient.get<{ data: ActivityRow[]; total: number }>(
+    `/api/v1/activities?account=${account.id}&page=2&limit=2`,
+  );
+
+  const page1Ids = page1Res.body.data.map((a) => a.id);
+  const page2Ids = page2Res.body.data.map((a) => a.id);
+
+  expect(page1Ids.length, 'page 1 must have exactly 2 activities (limit=2)').toBe(2);
+  expect(page2Ids.length, 'page 2 must have at least 1 activity').toBeGreaterThanOrEqual(1);
+  expect(page1Res.body.total, 'total must be ≥ 3').toBeGreaterThanOrEqual(3);
+
+  // No overlap between pages
+  const overlap = page1Ids.filter((id) => page2Ids.includes(id));
+  expect(overlap, 'pages must contain distinct activity IDs').toHaveLength(0);
+});
