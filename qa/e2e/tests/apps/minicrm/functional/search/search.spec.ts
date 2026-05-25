@@ -317,22 +317,9 @@ test('@functional @search F9-ES1: query with no matching records shows explicit 
   void testData;
 });
 
-test('@functional @search F9-ES2: empty state is not a blank area — it contains text', async ({
-  page,
-  testData,
-}) => {
-  await navigateToDashboard(page);
-
-  const result = await getSearchEmptyState('zzzF9ES2NothingHereAtAll', { page });
-
-  expect(result.emptyStateVisible, 'empty state element must be visible').toBe(true);
-  expect(
-    result.emptyStateText?.trim().length ?? 0,
-    'empty state element must contain text',
-  ).toBeGreaterThan(0);
-
-  void testData; // suppress unused warning
-});
+// F9-ES2 ("empty state is not a blank area — it contains text") was removed in
+// MINCRM-409 because F9-ES1 already asserts on specific text content via
+// result.emptyStateText, making ES2 fully redundant.
 
 // ---------------------------------------------------------------------------
 // Result Navigation tests
