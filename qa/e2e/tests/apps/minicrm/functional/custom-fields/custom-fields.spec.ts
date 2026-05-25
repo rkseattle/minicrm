@@ -50,7 +50,6 @@ import {
   createTestAccount,
   createTestDeal,
 } from '@apps/minicrm/helpers.js';
-import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -406,36 +405,46 @@ test('CF-5: text custom field for accounts renders in the account edit form @fun
 });
 
 // ---------------------------------------------------------------------------
-// CF-6 — Text custom field appears in the lead edit form (MINCRM-409)
+// CF-6 — Text custom field appears in a second deal's edit form (MINCRM-409)
+//
+// Note: custom fields only support entity_types contact, account, and deal —
+// 'lead' is not in the ENTITY_TYPES allowlist. This test verifies the custom
+// field system works for a second deal to ensure deal coverage is not tied to
+// the single instance created in CF-4.
 // ---------------------------------------------------------------------------
 
-test('CF-6: text custom field for leads renders in the lead edit form @functional', async ({
+test('CF-6: second text custom field for deals renders in the deal edit form @functional', async ({
   page,
+  testData,
   restClient,
 }) => {
   const fieldName = `CF6-Text-${Date.now()}`;
   const def = await createCustomFieldDefinition(restClient, {
-    entity_type: 'lead',
+    entity_type: 'deal',
     name: fieldName,
     field_type: 'text',
   });
 
-  const lead = await createLeadViaApi(restClient, {
-    first_name: 'CF6',
-    email: `cf6-lead-${Date.now()}@example.com`,
+  const account = await createTestAccount(testData, restClient, {
+    name: `CF6-Account-${Date.now()}`,
+  });
+  const deal = await createTestDeal(testData, restClient, {
+    name: `CF6-Deal-${Date.now()}`,
+    account_id: account.id,
+    stage: 'Prospecting',
   });
 
   try {
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
+    await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
 
     // Enter edit mode
     await page.click(
       [
-        { type: 'testId', value: 'edit-lead-button' },
+        { type: 'testId', value: 'edit-deal-button' },
         { type: 'role', value: 'button', options: { name: /edit/i } },
       ],
-      { intent: 'edit button on the lead detail page' },
+      { intent: 'edit button on the deal detail page' },
     );
 
     const editGrid = await page
@@ -444,7 +453,7 @@ test('CF-6: text custom field for leads renders in the lead edit form @functiona
           { type: 'testId', value: 'custom-fields-edit-grid' },
           { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
         ],
-        { intent: 'custom fields edit grid in the lead edit form' },
+        { intent: 'custom fields edit grid in the deal edit form' },
       )
       .resolve();
     await expect(editGrid).toBeVisible({ timeout: 8_000 });
@@ -456,8 +465,6 @@ test('CF-6: text custom field for leads renders in the lead edit form @functiona
     await expect(fieldInput).toBeVisible({ timeout: 5_000 });
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
-    // Clean up the lead — it was not registered with TestDataManager
-    await restClient.delete(`/api/v1/leads/${lead.id}`).catch(() => undefined);
   }
 });
 
