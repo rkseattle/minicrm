@@ -36,6 +36,8 @@ export const createDealSchema = z.object({
     .string({ required_error: 'Deal name is required' })
     .min(1, 'Deal name is required')
     .trim(),
+  /** UUID of the pipeline this deal belongs to (MINCRM-397). Defaults to the default pipeline. */
+  pipeline_id: z.string().uuid('Pipeline must be a valid UUID').optional(),
   /**
    * Stage is validated as a non-empty string at the schema level.
    * The server additionally validates the value against the live pipeline_stages
@@ -124,6 +126,8 @@ export const updateDealSchema = createDealSchema
  */
 export const dealResponseSchema = z.object({
   id: z.string().uuid(),
+  /** UUID of the pipeline this deal belongs to (MINCRM-397) */
+  pipeline_id: z.string().uuid(),
   name: z.string(),
   stage: z.string(),
   value: z.string().nullable(), // pg returns numeric as string

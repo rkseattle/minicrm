@@ -22,6 +22,7 @@ const DEAL_DEFAULT_PROB: DealResponse = {
   loss_reason: null,
   account_id: null,
   owner_id: '00000000-0000-0000-0000-000000000001',
+  pipeline_id: '00000000-0000-0000-0000-000000000001',
   effective_probability: 10,
   probability_is_overridden: false,
   created_at: '2026-01-01T00:00:00.000Z',

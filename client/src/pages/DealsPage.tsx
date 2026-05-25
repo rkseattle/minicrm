@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { listDeals, createDeal, updateDeal, exportDealsCsv, DEALS_QUERY_KEY } from '@/api/deals.js';
+import { usePipelines } from '@/hooks/usePipelines.js';
 import { bulkDeals } from '@/api/bulk.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
@@ -52,6 +53,9 @@ type ViewMode = 'board' | 'list';
 
 /** sessionStorage key used to persist the selected view mode across navigation (MINCRM-146) */
 const VIEW_MODE_STORAGE_KEY = 'deals.viewMode';
+
+/** sessionStorage key to persist the selected pipeline across navigation (MINCRM-397) */
+const SELECTED_PIPELINE_KEY = 'deals.selectedPipelineId';
 
 /** State captured while the user has selected a terminal stage but not yet confirmed */
 interface PendingClose {
@@ -93,8 +97,26 @@ export default function DealsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  // Live stage list — replaces hardcoded PIPELINE_STAGES (MINCRM-180)
-  const { stages: pipelineStages, stageNames, terminalStageNames } = usePipelineStages();
+  // Pipeline selector — persisted in sessionStorage (MINCRM-397)
+  const { pipelines, defaultPipeline } = usePipelines();
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | undefined>(() => {
+    return sessionStorage.getItem(SELECTED_PIPELINE_KEY) ?? undefined;
+  });
+
+  // Fall back to the default pipeline once loaded if no selection is stored
+  const activePipelineId = selectedPipelineId ?? defaultPipeline?.id;
+
+  function handlePipelineChange(pipelineId: string): void {
+    sessionStorage.setItem(SELECTED_PIPELINE_KEY, pipelineId);
+    setSelectedPipelineId(pipelineId);
+  }
+
+  // Live stage list scoped to the active pipeline (MINCRM-180, MINCRM-397)
+  const {
+    stages: pipelineStages,
+    stageNames,
+    terminalStageNames,
+  } = usePipelineStages(activePipelineId);
   const openStages = pipelineStages.filter((s) => !s.is_terminal);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -162,16 +184,18 @@ export default function DealsPage() {
 
   // Board view: fetch ALL deals (no pagination — board needs every deal in every column).
   // List view: fetch one page at a time with server-side sort.
-  const boardQueryKey =
-    ownerFilter === 'me'
-      ? ([...DEALS_QUERY_KEY, 'board', { owner: 'me' }] as const)
-      : ([...DEALS_QUERY_KEY, 'board'] as const);
+  const boardQueryKey = [
+    ...DEALS_QUERY_KEY,
+    'board',
+    { owner: ownerFilter === 'me' ? 'me' : undefined, pipeline: activePipelineId },
+  ] as const;
 
   const listQueryKey = [
     ...DEALS_QUERY_KEY,
     'list',
     {
       owner: ownerFilter === 'me' ? 'me' : undefined,
+      pipeline: activePipelineId,
       hideClosed: !showClosed,
       sort: sortCol,
       dir: sortDir,
@@ -190,6 +214,7 @@ export default function DealsPage() {
     queryFn: () =>
       listDeals({
         owner: ownerFilter === 'me' ? 'me' : undefined,
+        pipelineId: activePipelineId,
         limit: PAGINATION_MAX_BOARD_LIMIT,
       }),
     enabled: viewMode === 'board',
@@ -204,6 +229,7 @@ export default function DealsPage() {
     queryFn: () =>
       listDeals({
         owner: ownerFilter === 'me' ? 'me' : undefined,
+        pipelineId: activePipelineId,
         hideClosed: !showClosed || undefined,
         sort: sortCol,
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
@@ -307,6 +333,8 @@ export default function DealsPage() {
         account_id: values.account_id || undefined,
         // Pass probability override only when the field is non-empty (MINCRM-179)
         probability: values.probability !== '' ? parseInt(values.probability, 10) : undefined,
+        // Associate the deal with the currently selected pipeline (MINCRM-397)
+        pipeline_id: activePipelineId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
@@ -581,6 +609,7 @@ export default function DealsPage() {
               triggerRef={newDealButtonRef}
               accounts={accounts}
               accountRequired
+              pipelineId={activePipelineId}
               onSubmit={(values) => {
                 setCreateError(null);
                 createMutation.mutate(values);
@@ -595,6 +624,31 @@ export default function DealsPage() {
               error={createError ?? undefined}
             />
           </section>
+        )}
+
+        {/* ── Pipeline selector — shown above both board and list views (MINCRM-397) */}
+        {pipelines.length > 1 && (
+          <div className="mb-4 flex items-center gap-2">
+            <label
+              htmlFor="pipeline-selector"
+              className="text-sm font-medium text-gray-700 shrink-0"
+            >
+              {t('deals.pipelineSelector')}
+            </label>
+            <select
+              id="pipeline-selector"
+              data-testid="pipeline-selector"
+              value={activePipelineId ?? ''}
+              onChange={(e) => handlePipelineChange(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              {pipelines.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         {/* ── Board view ──────────────────────────────────────────────────── */}

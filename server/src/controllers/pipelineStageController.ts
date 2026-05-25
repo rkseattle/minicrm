@@ -30,8 +30,11 @@ import logger from '../logger.js';
  * @param _req - Express request (unused).
  * @param res - Express response.
  */
-export async function listPipelineStagesHandler(_req: Request, res: Response): Promise<void> {
-  const stages = await listPipelineStages();
+export async function listPipelineStagesHandler(req: Request, res: Response): Promise<void> {
+  // Optional ?pipelineId= query param scopes the response to a specific pipeline (MINCRM-397)
+  const pipelineId =
+    typeof req.query['pipelineId'] === 'string' ? req.query['pipelineId'] : undefined;
+  const stages = await listPipelineStages(pipelineId);
   res.status(200).json({ stages: stages.map(toStageResponse) });
 }
 
@@ -57,7 +60,11 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
   try {
     // req.user is guaranteed by the authenticate middleware on this route
     const actor = { id: req.user!.id, name: req.user!.name };
-    const stage = await createPipelineStage(parsed.data, actor);
+    // Accept pipeline_id from body or query string (MINCRM-397)
+    const pipelineId =
+      (typeof req.body['pipeline_id'] === 'string' ? req.body['pipeline_id'] : undefined) ??
+      (typeof req.query['pipelineId'] === 'string' ? req.query['pipelineId'] : undefined);
+    const stage = await createPipelineStage({ ...parsed.data, pipeline_id: pipelineId }, actor);
     res.status(201).json(toStageResponse(stage));
     // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
     void markPipelineStagesReviewed().catch((err: unknown) =>

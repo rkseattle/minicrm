@@ -18,6 +18,7 @@ const STAGES: PipelineStageResponse[] = [
     probability: 10,
     is_terminal: false,
     is_fixed: true,
+    pipeline_id: '00000000-0000-0000-0000-000000000001',
   },
   {
     id: 's2',
@@ -26,6 +27,7 @@ const STAGES: PipelineStageResponse[] = [
     probability: 25,
     is_terminal: false,
     is_fixed: true,
+    pipeline_id: '00000000-0000-0000-0000-000000000001',
   },
 ];
 

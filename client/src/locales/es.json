@@ -424,7 +424,8 @@
     "probabilityOverriddenHint": "Anulación activa — valor predeterminado ignorado",
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "La probabilidad debe ser un número entero entre 0 y 100",
-    "currencyLabel": "Moneda"
+    "currencyLabel": "Moneda",
+    "pipelineSelector": "Pipeline"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",
@@ -806,6 +807,27 @@
       "saveError": "Error al guardar. Por favor, inténtelo de nuevo.",
       "deleteSuccess": "Campo eliminado.",
       "deleteError": "Error al eliminar. Por favor, inténtelo de nuevo."
+    },
+    "pipelines": {
+      "sectionTitle": "Pipelines",
+      "addButton": "Nueva pipeline",
+      "namePlaceholder": "Nombre de la pipeline",
+      "editButton": "Renombrar",
+      "saveButton": "Guardar",
+      "cancelButton": "Cancelar",
+      "deleteButton": "Eliminar",
+      "defaultBadge": "Predeterminada",
+      "deleteConfirmTitle": "¿Eliminar pipeline?",
+      "deleteBlocked": "No se puede eliminar — {{count}} trato debe moverse a otra pipeline primero.",
+      "deleteBlocked_other": "No se puede eliminar — {{count}} tratos deben moverse a otra pipeline primero.",
+      "defaultDeleteBlocked": "La pipeline predeterminada no se puede eliminar.",
+      "nameRequiredError": "El nombre de la pipeline es obligatorio.",
+      "nameTooLongError": "El nombre de la pipeline debe tener 100 caracteres o menos.",
+      "nameConflictError": "Ya existe una pipeline con este nombre.",
+      "saveSuccess": "Pipeline guardada.",
+      "saveError": "Error al guardar. Inténtelo de nuevo.",
+      "deleteSuccess": "Pipeline eliminada.",
+      "deleteError": "Error al eliminar. Inténtelo de nuevo."
     }
   },
   "import": {

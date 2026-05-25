@@ -12,6 +12,7 @@ import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultCurrency } from './settingsService.js';
+import { getDefaultPipelineId } from './pipelineService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -31,6 +32,8 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
 /** Shape of a deal row returned from the database */
 export interface DealRow {
   id: string;
+  /** UUID of the pipeline this deal belongs to (MINCRM-397) */
+  pipeline_id: string;
   name: string;
   stage: string;
   value: string | null; // pg returns numeric as string
@@ -69,8 +72,10 @@ interface ListDealsOptions {
   ownerId?: string;
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
-  /** When true, Closed Won and Closed Lost deals are excluded (MINCRM-176) */
+  /** When true, terminal-stage deals are excluded (MINCRM-176) */
   excludeClosedStages?: boolean;
+  /** When provided, only deals belonging to this pipeline are returned (MINCRM-397) */
+  pipelineId?: string;
   /** Column to sort by; defaults to 'created_at' */
   sort?: DealSortColumn;
   /** Sort direction; defaults to 'ASC' */
@@ -95,10 +100,22 @@ export async function createDeal(
   params: CreateDealInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<DealRow> {
-  const { name, stage, value, currency, close_date, account_id, owner_id, probability } = params;
+  const {
+    name,
+    stage,
+    value,
+    currency,
+    close_date,
+    account_id,
+    owner_id,
+    probability,
+    pipeline_id: pipelineIdParam,
+  } = params;
 
   // Fall back to the system default currency when not specified on the deal (MINCRM-189)
   const resolvedCurrency = currency ?? (await getDefaultCurrency());
+  // Fall back to the default pipeline when not specified (MINCRM-397)
+  const resolvedPipelineId = pipelineIdParam ?? (await getDefaultPipelineId());
 
   const client: PoolClient = await pool.connect();
   try {
@@ -108,10 +125,11 @@ export async function createDeal(
     // effective_probability and probability_is_overridden are resolved correctly.
     // (MINCRM-179)
     const insertResult = await client.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, value, currency, close_date, account_id, owner_id, probability)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO deals (pipeline_id, name, stage, value, currency, close_date, account_id, owner_id, probability)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
+        resolvedPipelineId,
         name,
         stage,
         value ?? null,
@@ -184,13 +202,13 @@ export async function findDealById(id: string): Promise<DealRow | null> {
  * probability_is_overridden = true when d.probability IS NOT NULL.
  * (MINCRM-179)
  */
-const DEAL_SELECT = `d.id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
+const DEAL_SELECT = `d.id, d.pipeline_id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
   COALESCE(d.probability, ps.probability, 0) AS effective_probability,
   (d.probability IS NOT NULL) AS probability_is_overridden,
   d.created_at, d.updated_at, d.version`;
 
-/** FROM clause that joins pipeline_stages for probability resolution */
-const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.name = d.stage`;
+/** FROM clause that joins pipeline_stages scoped to the same pipeline for probability resolution (MINCRM-397) */
+const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.name = d.stage AND ps.pipeline_id = d.pipeline_id`;
 
 /**
  * Returns a paginated list of deals, optionally scoped by owner and/or account.
@@ -214,8 +232,16 @@ export async function listDeals(
     conditions.push(`d.account_id = $${values.length}`);
   }
 
+  if (options.pipelineId) {
+    values.push(options.pipelineId);
+    conditions.push(`d.pipeline_id = $${values.length}`);
+  }
+
   if (options.excludeClosedStages) {
-    conditions.push(`d.stage NOT IN ('Closed Won', 'Closed Lost')`);
+    // Exclude terminal stages for this pipeline (MINCRM-397: no longer hardcoded stage names)
+    conditions.push(
+      `d.stage NOT IN (SELECT name FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true)`,
+    );
   }
 
   // Tag filter (MINCRM-186) — any-match: deal must have at least one of the given tag IDs
@@ -509,13 +535,13 @@ export async function deleteDeal(
          DELETE FROM deals WHERE id = $1 RETURNING *
        )
        SELECT
-         deleted.id, deleted.name, deleted.stage, deleted.value, deleted.currency,
+         deleted.id, deleted.pipeline_id, deleted.name, deleted.stage, deleted.value, deleted.currency,
          deleted.close_date::text, deleted.loss_reason, deleted.account_id, deleted.owner_id,
          COALESCE(deleted.probability, ps.probability, 0) AS effective_probability,
          (deleted.probability IS NOT NULL) AS probability_is_overridden,
          deleted.created_at, deleted.updated_at
        FROM deleted
-       LEFT JOIN pipeline_stages ps ON ps.name = deleted.stage`,
+       LEFT JOIN pipeline_stages ps ON ps.name = deleted.stage AND ps.pipeline_id = deleted.pipeline_id`,
       [id],
     );
 

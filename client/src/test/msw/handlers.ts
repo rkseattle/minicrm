@@ -25,11 +25,25 @@ import type {
 import type { SearchResponse } from '@/api/search.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
+import type { PipelineResponse } from '@shared/schemas/pipelineSchema.js';
+
+/** Default pipeline ID used in test fixtures */
+export const DEFAULT_PIPELINE_ID = '00000000-0000-0000-0000-000000000001';
+
+/** Default pipeline fixture for tests */
+export const DEFAULT_PIPELINE_FIXTURE: PipelineResponse = {
+  id: DEFAULT_PIPELINE_ID,
+  name: 'Default',
+  is_default: true,
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
 
 /** Reusable fixture: the six default pipeline stages */
 export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   {
     id: 'ps-1',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Prospecting',
     sort_order: 10,
     probability: 10,
@@ -38,6 +52,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   },
   {
     id: 'ps-2',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Qualification',
     sort_order: 20,
     probability: 25,
@@ -46,6 +61,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   },
   {
     id: 'ps-3',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Proposal',
     sort_order: 30,
     probability: 50,
@@ -54,6 +70,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   },
   {
     id: 'ps-4',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Negotiation',
     sort_order: 40,
     probability: 75,
@@ -62,6 +79,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   },
   {
     id: 'ps-5',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Closed Won',
     sort_order: 50,
     probability: 100,
@@ -70,6 +88,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   },
   {
     id: 'ps-6',
+    pipeline_id: DEFAULT_PIPELINE_ID,
     name: 'Closed Lost',
     sort_order: 60,
     probability: 0,
@@ -316,6 +335,7 @@ export const CONTACT_2: ContactResponse = {
 /** Reusable fixture: a deal record */
 export const DEAL_1: DealResponse = {
   id: '00000000-0000-0000-0000-000000000301',
+  pipeline_id: DEFAULT_PIPELINE_ID,
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000.00',
@@ -1393,6 +1413,42 @@ export const handlers = [
     return HttpResponse.json({ actors: [] });
   }),
 
+  // ── Pipelines (MINCRM-397) ────────────────────────────────────────────────────
+
+  /** Pipelines: GET /api/pipelines — returns the single default pipeline */
+  http.get('/api/v1/pipelines', () => {
+    return HttpResponse.json({ pipelines: [DEFAULT_PIPELINE_FIXTURE] });
+  }),
+
+  /** Pipelines: POST /api/pipelines — creates a new pipeline */
+  http.post('/api/v1/pipelines', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    const newPipeline: PipelineResponse = {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: body.name,
+      is_default: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    return HttpResponse.json(newPipeline, { status: 201 });
+  }),
+
+  /** Pipelines: PATCH /api/pipelines/:id — renames a pipeline */
+  http.patch('/api/v1/pipelines/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { name?: string };
+    return HttpResponse.json({
+      ...DEFAULT_PIPELINE_FIXTURE,
+      id: params.id as string,
+      ...body,
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  /** Pipelines: DELETE /api/pipelines/:id — deletes a pipeline */
+  http.delete('/api/v1/pipelines/:id', ({ params }) => {
+    return HttpResponse.json({ id: params.id });
+  }),
+
   /** Pipeline stages: GET /api/settings/pipeline-stages — returns six seed stages */
   http.get('/api/v1/settings/pipeline-stages', () => {
     return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
@@ -1408,6 +1464,7 @@ export const handlers = [
       probability: body.probability ?? 0,
       is_terminal: false,
       is_fixed: false,
+      pipeline_id: DEFAULT_PIPELINE_ID,
     };
     return HttpResponse.json(newStage, { status: 201 });
   }),

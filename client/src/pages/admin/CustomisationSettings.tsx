@@ -12,8 +12,16 @@ import {
   updatePipelineStage,
   deletePipelineStage,
   reorderPipelineStages,
-  PIPELINE_STAGES_QUERY_KEY,
+  pipelineStagesQueryKey,
 } from '@/api/pipelineStages.js';
+import {
+  listPipelines,
+  createPipeline,
+  updatePipeline,
+  deletePipeline,
+  PIPELINES_QUERY_KEY,
+} from '@/api/pipelines.js';
+import type { PipelineResponse } from '@shared/schemas/pipelineSchema.js';
 import {
   listCustomFieldDefinitions,
   createCustomFieldDefinition,
@@ -34,13 +42,120 @@ export default function CustomisationSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
+  // ── Pipeline management (MINCRM-397) ──────────────────────────────────────
+  const { data: pipelinesData, isLoading: pipelinesLoading } = useQuery({
+    queryKey: PIPELINES_QUERY_KEY,
+    queryFn: listPipelines,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pipelines: PipelineResponse[] = pipelinesData?.pipelines ?? [];
+  const defaultPipeline = pipelines.find((p) => p.is_default);
+
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | undefined>(undefined);
+
+  // selectedPipelineId is set only when the user explicitly picks a pipeline;
+  // falls back to the default pipeline once query data arrives.
+  const activePipelineId = selectedPipelineId ?? defaultPipeline?.id;
+
+  const [showAddPipeline, setShowAddPipeline] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState('');
+  const [addPipelineError, setAddPipelineError] = useState<string | null>(null);
+  const [editingPipelineId, setEditingPipelineId] = useState<string | null>(null);
+  const [editPipelineName, setEditPipelineName] = useState('');
+  const [editPipelineError, setEditPipelineError] = useState<string | null>(null);
+  const [deletingPipelineId, setDeletingPipelineId] = useState<string | null>(null);
+  const [deletePipelineBlockedMessage, setDeletePipelineBlockedMessage] = useState<string | null>(
+    null,
+  );
+  const [pipelinesFeedback, setPipelinesFeedback] = useState<{
+    type: 'success' | 'error';
+    key: string;
+  } | null>(null);
+
+  const pipelinesFeedbackRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (pipelinesFeedback) pipelinesFeedbackRef.current?.focus();
+  }, [pipelinesFeedback]);
+
+  const addPipelineInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (showAddPipeline) addPipelineInputRef.current?.focus();
+  }, [showAddPipeline]);
+
+  const createPipelineMutation = useMutation({
+    mutationFn: (name: string) => createPipeline({ name }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PIPELINES_QUERY_KEY });
+      setShowAddPipeline(false);
+      setNewPipelineName('');
+      setAddPipelineError(null);
+      setPipelinesFeedback({ type: 'success', key: 'settings.pipelines.saveSuccess' });
+    },
+    onError: (err: { response?: { data?: { error?: { code?: string } } } }) => {
+      const code = err.response?.data?.error?.code;
+      if (code === 'PIPELINE_NAME_CONFLICT') {
+        setAddPipelineError(t('settings.pipelines.nameConflictError'));
+      } else {
+        setAddPipelineError(t('settings.pipelines.saveError'));
+      }
+    },
+  });
+
+  const updatePipelineMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updatePipeline(id, { name }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PIPELINES_QUERY_KEY });
+      setEditingPipelineId(null);
+      setEditPipelineName('');
+      setEditPipelineError(null);
+      setPipelinesFeedback({ type: 'success', key: 'settings.pipelines.saveSuccess' });
+    },
+    onError: (err: { response?: { data?: { error?: { code?: string } } } }) => {
+      const code = err.response?.data?.error?.code;
+      if (code === 'PIPELINE_NAME_CONFLICT') {
+        setEditPipelineError(t('settings.pipelines.nameConflictError'));
+      } else {
+        setEditPipelineError(t('settings.pipelines.saveError'));
+      }
+    },
+  });
+
+  const deletePipelineMutation = useMutation({
+    mutationFn: (id: string) => deletePipeline(id),
+    onSuccess: (_, deletedId) => {
+      void queryClient.invalidateQueries({ queryKey: PIPELINES_QUERY_KEY });
+      setDeletingPipelineId(null);
+      setDeletePipelineBlockedMessage(null);
+      if (selectedPipelineId === deletedId) {
+        setSelectedPipelineId(defaultPipeline?.id);
+      }
+      setPipelinesFeedback({ type: 'success', key: 'settings.pipelines.deleteSuccess' });
+    },
+    onError: (err: { response?: { data?: { error?: { code?: string; dealCount?: number } } } }) => {
+      const code = err.response?.data?.error?.code;
+      const dealCount = err.response?.data?.error?.dealCount ?? 0;
+      if (code === 'PIPELINE_DEFAULT') {
+        setDeletePipelineBlockedMessage(t('settings.pipelines.defaultDeleteBlocked'));
+      } else if (code === 'PIPELINE_HAS_DEALS') {
+        setDeletePipelineBlockedMessage(
+          t('settings.pipelines.deleteBlocked', { count: dealCount }),
+        );
+      } else {
+        setDeletePipelineBlockedMessage(t('settings.pipelines.deleteError'));
+      }
+    },
+  });
+
+  // ── Per-pipeline stage list ────────────────────────────────────────────────
   const {
     data: stagesData,
     isLoading: stagesLoading,
     isError: stagesError,
   } = useQuery({
-    queryKey: PIPELINE_STAGES_QUERY_KEY,
-    queryFn: listPipelineStages,
+    queryKey: pipelineStagesQueryKey(activePipelineId),
+    queryFn: () => listPipelineStages(activePipelineId),
+    enabled: !!activePipelineId,
   });
 
   const stages: PipelineStageResponse[] = stagesData?.stages ?? [];
@@ -76,9 +191,10 @@ export default function CustomisationSettings() {
   }, [showAddStage]);
 
   const createStageMutation = useMutation({
-    mutationFn: (params: { name: string; probability: number }) => createPipelineStage(params),
+    mutationFn: (params: { name: string; probability: number }) =>
+      createPipelineStage({ ...params, pipeline_id: activePipelineId }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: pipelineStagesQueryKey(activePipelineId) });
       setShowAddStage(false);
       setAddStageName('');
       setAddStageProbability('0');
@@ -99,7 +215,7 @@ export default function CustomisationSettings() {
     mutationFn: ({ id, name, probability }: { id: string; name?: string; probability?: number }) =>
       updatePipelineStage(id, { name, probability }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: pipelineStagesQueryKey(activePipelineId) });
       setEditingStageId(null);
       setEditRowError(null);
       setStagesSectionFeedback({ type: 'success', key: 'settings.pipelineStages.saveSuccess' });
@@ -121,8 +237,9 @@ export default function CustomisationSettings() {
     onSuccess: async (data) => {
       // Cancel any in-flight background refetch before seeding the cache so a
       // stale GET cannot overwrite the authoritative reorder result (MINCRM-387).
-      await queryClient.cancelQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
-      queryClient.setQueryData(PIPELINE_STAGES_QUERY_KEY, data);
+      const qk = pipelineStagesQueryKey(activePipelineId);
+      await queryClient.cancelQueries({ queryKey: qk });
+      queryClient.setQueryData(qk, data);
     },
     onError: () => {
       setStagesSectionFeedback({ type: 'error', key: 'settings.pipelineStages.reorderError' });
@@ -132,7 +249,7 @@ export default function CustomisationSettings() {
   const deleteStageMutation = useMutation({
     mutationFn: (id: string) => deletePipelineStage(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PIPELINE_STAGES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: pipelineStagesQueryKey(activePipelineId) });
       setDeletingStageId(null);
       setDeleteBlockedMessage(null);
       setStagesSectionFeedback({ type: 'success', key: 'settings.pipelineStages.deleteSuccess' });
@@ -373,17 +490,266 @@ export default function CustomisationSettings() {
 
   return (
     <>
+      {/* ── Pipelines section (MINCRM-397) ───────────────────────────────── */}
+      <div
+        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl mb-6"
+        data-testid="pipelines-section"
+      >
+        <h2
+          className="text-lg font-semibold text-gray-900 mb-1"
+          data-testid="pipelines-section-title"
+        >
+          {t('settings.pipelines.sectionTitle')}
+        </h2>
+
+        {pipelinesFeedback && (
+          <p
+            ref={pipelinesFeedbackRef}
+            tabIndex={-1}
+            role="status"
+            data-testid="pipelines-feedback"
+            className={`mb-3 text-sm rounded px-3 py-2 ${pipelinesFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+          >
+            {t(pipelinesFeedback.key)}
+          </p>
+        )}
+
+        {!pipelinesLoading && (
+          <ul className="divide-y divide-gray-100 mb-4" data-testid="pipelines-list">
+            {pipelines.map((pipeline) => (
+              <li
+                key={pipeline.id}
+                className="py-3 flex items-center gap-3"
+                data-testid={`pipeline-row-${pipeline.id}`}
+              >
+                {editingPipelineId === pipeline.id ? (
+                  <>
+                    <input
+                      type="text"
+                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      value={editPipelineName}
+                      onChange={(e) => setEditPipelineName(e.target.value)}
+                      data-testid={`pipeline-edit-input-${pipeline.id}`}
+                      aria-label={t('settings.pipelines.namePlaceholder')}
+                    />
+                    {editPipelineError && (
+                      <span className="text-xs text-red-600">{editPipelineError}</span>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      data-testid={`pipeline-save-button-${pipeline.id}`}
+                      onClick={() => {
+                        const trimmed = editPipelineName.trim();
+                        if (!trimmed) {
+                          setEditPipelineError(t('settings.pipelines.nameRequiredError'));
+                          return;
+                        }
+                        if (trimmed.length > 100) {
+                          setEditPipelineError(t('settings.pipelines.nameTooLongError'));
+                          return;
+                        }
+                        updatePipelineMutation.mutate({ id: pipeline.id, name: trimmed });
+                      }}
+                      disabled={updatePipelineMutation.isPending}
+                    >
+                      {t('settings.pipelines.saveButton')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`pipeline-cancel-button-${pipeline.id}`}
+                      onClick={() => {
+                        setEditingPipelineId(null);
+                        setEditPipelineError(null);
+                      }}
+                    >
+                      {t('settings.pipelines.cancelButton')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className="flex-1 text-sm text-gray-900"
+                      data-testid={`pipeline-name-${pipeline.id}`}
+                    >
+                      {pipeline.name}
+                    </span>
+                    {pipeline.is_default && (
+                      <span
+                        className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5"
+                        data-testid={`pipeline-default-badge-${pipeline.id}`}
+                      >
+                        {t('settings.pipelines.defaultBadge')}
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`pipeline-edit-button-${pipeline.id}`}
+                      onClick={() => {
+                        setEditingPipelineId(pipeline.id);
+                        setEditPipelineName(pipeline.name);
+                        setEditPipelineError(null);
+                      }}
+                    >
+                      {t('settings.pipelines.editButton')}
+                    </Button>
+                    {!pipeline.is_default && (
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        data-testid={`pipeline-delete-button-${pipeline.id}`}
+                        onClick={() => {
+                          setDeletingPipelineId(pipeline.id);
+                          setDeletePipelineBlockedMessage(null);
+                        }}
+                      >
+                        {t('settings.pipelines.deleteButton')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {showAddPipeline ? (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              ref={addPipelineInputRef}
+              type="text"
+              className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              placeholder={t('settings.pipelines.namePlaceholder')}
+              value={newPipelineName}
+              onChange={(e) => setNewPipelineName(e.target.value)}
+              data-testid="new-pipeline-name-input"
+            />
+            {addPipelineError && <span className="text-xs text-red-600">{addPipelineError}</span>}
+            <Button
+              type="button"
+              size="sm"
+              data-testid="create-pipeline-submit-button"
+              onClick={() => {
+                const trimmed = newPipelineName.trim();
+                if (!trimmed) {
+                  setAddPipelineError(t('settings.pipelines.nameRequiredError'));
+                  return;
+                }
+                if (trimmed.length > 100) {
+                  setAddPipelineError(t('settings.pipelines.nameTooLongError'));
+                  return;
+                }
+                createPipelineMutation.mutate(trimmed);
+              }}
+              disabled={createPipelineMutation.isPending}
+            >
+              {t('settings.pipelines.saveButton')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="create-pipeline-cancel-button"
+              onClick={() => {
+                setShowAddPipeline(false);
+                setNewPipelineName('');
+                setAddPipelineError(null);
+              }}
+            >
+              {t('settings.pipelines.cancelButton')}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            data-testid="add-pipeline-button"
+            onClick={() => {
+              setShowAddPipeline(true);
+              setPipelinesFeedback(null);
+            }}
+          >
+            {t('settings.pipelines.addButton')}
+          </Button>
+        )}
+
+        {/* Delete pipeline confirmation */}
+        {deletingPipelineId && (
+          <div
+            className="mt-4 rounded-md bg-red-50 border border-red-200 p-4"
+            data-testid="pipeline-delete-confirm"
+          >
+            <p className="text-sm font-medium text-red-900 mb-3">
+              {t('settings.pipelines.deleteConfirmTitle')}
+            </p>
+            {deletePipelineBlockedMessage && (
+              <p className="text-sm text-red-700 mb-2">{deletePipelineBlockedMessage}</p>
+            )}
+            <div className="flex gap-2">
+              {!deletePipelineBlockedMessage && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  data-testid="pipeline-delete-confirm-button"
+                  disabled={deletePipelineMutation.isPending}
+                  onClick={() => deletePipelineMutation.mutate(deletingPipelineId)}
+                >
+                  {t('settings.pipelines.deleteButton')}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                data-testid="pipeline-delete-cancel-button"
+                onClick={() => {
+                  setDeletingPipelineId(null);
+                  setDeletePipelineBlockedMessage(null);
+                }}
+              >
+                {t('settings.pipelines.cancelButton')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Pipeline Stages section (MINCRM-180) ─────────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="pipeline-stages-section"
       >
-        <h2
-          className="text-lg font-semibold text-gray-900 mb-1"
-          data-testid="pipeline-stages-section-title"
-        >
-          {t('settings.pipelineStages.sectionTitle')}
-        </h2>
+        <div className="flex items-center gap-3 mb-1">
+          <h2
+            className="text-lg font-semibold text-gray-900"
+            data-testid="pipeline-stages-section-title"
+          >
+            {t('settings.pipelineStages.sectionTitle')}
+          </h2>
+          {/* Pipeline selector for stage management (MINCRM-397) */}
+          {pipelines.length > 1 && (
+            <select
+              aria-label={t('settings.pipelines.sectionTitle')}
+              data-testid="pipeline-stages-pipeline-selector"
+              value={activePipelineId ?? ''}
+              onChange={(e) => setSelectedPipelineId(e.target.value)}
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              {pipelines.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         <p className="text-xs text-gray-500 mb-4">{t('settings.pipelineStages.sectionHint')}</p>
 
         {stagesSectionFeedback && (

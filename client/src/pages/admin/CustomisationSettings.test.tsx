@@ -33,12 +33,14 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
   it('renders the pipeline stages table with move-up and move-down buttons', async () => {
     renderWithProviders(<CustomisationSettings />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
-    });
-
     const firstId = PIPELINE_STAGES_FIXTURE[0].id;
     const secondId = PIPELINE_STAGES_FIXTURE[1].id;
+
+    // Wait for stages to load (requires both pipelines and stages queries to resolve)
+    await waitFor(() => {
+      expect(screen.getByTestId(`pipeline-stage-move-up-${firstId}`)).toBeInTheDocument();
+    });
+
     expect(screen.getByTestId(`pipeline-stage-move-up-${firstId}`)).toBeDisabled();
     expect(screen.getByTestId(`pipeline-stage-move-down-${firstId}`)).not.toBeDisabled();
     expect(screen.getByTestId(`pipeline-stage-move-up-${secondId}`)).not.toBeDisabled();
@@ -56,11 +58,13 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
 
     renderWithProviders(<CustomisationSettings />);
 
+    const secondId = PIPELINE_STAGES_FIXTURE[1].id;
+
+    // Wait for stages to load (requires both pipelines and stages queries to resolve)
     await waitFor(() => {
-      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+      expect(screen.getByTestId(`pipeline-stage-move-up-${secondId}`)).toBeInTheDocument();
     });
 
-    const secondId = PIPELINE_STAGES_FIXTURE[1].id;
     fireEvent.click(screen.getByTestId(`pipeline-stage-move-up-${secondId}`));
 
     await waitFor(() => expect(capturedBodies).toHaveLength(1));
@@ -86,11 +90,13 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
 
     renderWithProviders(<CustomisationSettings />);
 
+    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
+
+    // Wait for stages to load (requires both pipelines and stages queries to resolve)
     await waitFor(() => {
-      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+      expect(screen.getByTestId(`pipeline-stage-move-down-${firstId}`)).toBeInTheDocument();
     });
 
-    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
     fireEvent.click(screen.getByTestId(`pipeline-stage-move-down-${firstId}`));
 
     await waitFor(() => expect(capturedBodies).toHaveLength(1));
@@ -116,11 +122,13 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
 
     renderWithProviders(<CustomisationSettings />);
 
+    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
+
+    // Wait for stages to load (requires both pipelines and stages queries to resolve)
     await waitFor(() => {
-      expect(screen.getByTestId('pipeline-stages-table')).toBeInTheDocument();
+      expect(screen.getByTestId(`pipeline-stage-move-down-${firstId}`)).toBeInTheDocument();
     });
 
-    const firstId = PIPELINE_STAGES_FIXTURE[0].id;
     fireEvent.click(screen.getByTestId(`pipeline-stage-move-down-${firstId}`));
 
     await waitFor(() => {
