@@ -4,6 +4,7 @@
  * All exports are safe to call unconditionally — they no-op when Sentry is not active.
  */
 
+import { createHash } from 'node:crypto';
 import * as Sentry from '@sentry/node';
 import type { ErrorEvent } from '@sentry/node';
 import logger from './logger.js';
@@ -11,10 +12,15 @@ import logger from './logger.js';
 const SENTRY_DSN = process.env.SENTRY_DSN;
 const IS_TEST = process.env.NODE_ENV === 'test';
 
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 /**
- * Strips PII from a Sentry event before transmission (MINCRM-394).
+ * Redacts PII from a Sentry event before transmission (MINCRM-394).
  * - Removes POST body (request.data) to prevent credential/payload leakage
- * - Removes user.email, user.username, user.name to comply with GDPR
+ * - Hashes user.email, user.username, user.name (SHA-256) so errors can be
+ *   correlated to a specific user without exposing the raw value
  * - Removes all extra fields which may contain arbitrary app-level PII
  */
 export function redactPiiFromEvent(event: ErrorEvent): ErrorEvent {
@@ -25,8 +31,13 @@ export function redactPiiFromEvent(event: ErrorEvent): ErrorEvent {
   }
 
   if (redacted.user) {
-    const { email: _email, username: _username, name: _name, ...safeUser } = redacted.user;
-    redacted.user = safeUser;
+    const { email, username, name, ...safeUser } = redacted.user;
+    redacted.user = {
+      ...safeUser,
+      ...(email !== undefined && { email: sha256Hex(email) }),
+      ...(username !== undefined && { username: sha256Hex(username) }),
+      ...(name !== undefined && { name: sha256Hex(name) }),
+    };
   }
 
   if (redacted.extra !== undefined) {
