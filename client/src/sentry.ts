@@ -10,13 +10,22 @@ import type { ErrorEvent } from '@sentry/core';
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const IS_TEST = import.meta.env.MODE === 'test';
 
+async function sha256Hex(value: string): Promise<string> {
+  const encoded = new TextEncoder().encode(value);
+  const buffer = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 /**
- * Strips PII from a Sentry event before transmission (MINCRM-394).
+ * Redacts PII from a Sentry event before transmission (MINCRM-394).
  * - Removes POST body (request.data) to prevent credential/payload leakage
- * - Removes user.email, user.username, user.name to comply with GDPR
+ * - Hashes user.email, user.username, user.name (SHA-256) so errors can be
+ *   correlated to a specific user without exposing the raw value
  * - Removes all extra fields which may contain arbitrary app-level PII
  */
-export function redactPiiFromEvent(event: ErrorEvent): ErrorEvent {
+export async function redactPiiFromEvent(event: ErrorEvent): Promise<ErrorEvent> {
   const redacted = { ...event };
 
   if (redacted.request) {
@@ -24,8 +33,13 @@ export function redactPiiFromEvent(event: ErrorEvent): ErrorEvent {
   }
 
   if (redacted.user) {
-    const { email: _email, username: _username, name: _name, ...safeUser } = redacted.user;
-    redacted.user = safeUser;
+    const { email, username, name, ...safeUser } = redacted.user;
+    redacted.user = {
+      ...safeUser,
+      ...(email !== undefined && { email: await sha256Hex(email) }),
+      ...(username !== undefined && { username: await sha256Hex(username) }),
+      ...(name !== undefined && { name: await sha256Hex(name) }),
+    };
   }
 
   if (redacted.extra !== undefined) {
