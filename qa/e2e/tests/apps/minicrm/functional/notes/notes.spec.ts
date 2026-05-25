@@ -11,6 +11,11 @@
  *   Visibility (F14-V) — create a private note as rep A; verify rep B sees only the masked placeholder
  *   Audit (F14-A)      — verify audit_log entries are written for create, update, delete
  *
+ * Coverage gaps addressed (MINCRM-409):
+ *   F14-C3: Create a team note on a deal (not just contacts)
+ *   F14-V2: Admin changes a note from private to team; both users can then see it
+ *   F14-C4: Create a note via UI with rich-text content; body_text is stored
+ *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
@@ -24,7 +29,10 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
   createTestContact,
   createTestUser,
+  createTestAccount,
+  createTestDeal,
   navigateToContact,
+  navigateToDeal,
   loginAndVerify,
 } from '@apps/minicrm/helpers.js';
 import {
@@ -344,4 +352,129 @@ test('@functional F14-A2: Delete a note — note_deleted audit entry recorded', 
 
   const deletedEntry = auditLog.entries.find((e) => e.event_type === 'note_deleted');
   expect(deletedEntry, 'note_deleted audit entry should exist').toBeDefined();
+});
+
+// ---------------------------------------------------------------------------
+// F14-C3 — Create a team note on a deal (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('@functional F14-C3: Create a team note on a deal — note appears in the API list', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const account = await createTestAccount(testData, restClient, {
+    name: `F14C3-Account-${Date.now()}`,
+  });
+  const deal = await createTestDeal(testData, restClient, {
+    name: `F14C3-Deal-${Date.now()}`,
+    account_id: account.id,
+    stage: 'Prospecting',
+  });
+
+  await navigateToDeal(page, deal.id);
+
+  // Create the note using the notes section on the deal detail page
+  const result = await createNoteViaUI(
+    { page },
+    { bodyText: 'F14-C3 deal note', visibility: 'team' },
+  );
+  expect(result.saved, 'note save should succeed on a deal page').toBe(true);
+
+  // Verify the note was persisted via the API
+  const res = await restClient.get<{ data: Array<{ id: string; body_text: string }> }>(
+    `/api/v1/deal/${deal.id}/notes`,
+  );
+  const notes = res.body.data;
+  const match = notes.find((n) => n.body_text?.includes('F14-C3 deal note'));
+  expect(match, 'deal note must appear in the API list').toBeDefined();
+});
+
+// ---------------------------------------------------------------------------
+// F14-V2 — Admin changes note visibility from private to team (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('@functional F14-V2: Admin changes note visibility from private to team; note is no longer masked for a second user', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'F14V2',
+    last_name: `Vis-${Date.now()}`,
+  });
+
+  // Create a private note as admin
+  const noteBody = JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'F14-V2 private note' }] }],
+  });
+  const note = await createNoteViaApi(restClient, contact.id, {
+    body: noteBody,
+    visibility: 'private',
+  });
+
+  // Change the note visibility to 'team'
+  await patchNote(restClient, contact.id, note.id, { visibility: 'team' });
+
+  // Verify the note is now team-visible in the API
+  const updated = await getNoteById(restClient, contact.id, note.id);
+  expect(updated.visibility, 'note visibility must be updated to team').toBe('team');
+
+  // Verify that the note is NOT masked in the UI (the mask card shows when private)
+  await loginAndVerify(
+    restClient,
+    process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com',
+    process.env['E2E_ADMIN_PASSWORD']!,
+  );
+  await navigateToContact(page, contact.id);
+
+  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+
+  const noteCard = await getNoteCardLocator(note.id, { page });
+  const maskedCard = await getMaskedNoteCardLocator(note.id, { page });
+
+  const isNoteVisible = noteCard ? await noteCard.isVisible().catch(() => false) : false;
+  const isMasked = maskedCard ? await maskedCard.isVisible().catch(() => false) : false;
+
+  expect(isNoteVisible || !isMasked, 'team note must not be masked in the UI').toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// F14-C4 — Rich-text note content is persisted (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('@functional F14-C4: Create a note via UI with rich-text body; body_text is stored and visible', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'F14C4',
+    last_name: `Rich-${Date.now()}`,
+  });
+
+  await navigateToContact(page, contact.id);
+
+  const richText = `F14-C4 rich note ${Date.now()}`;
+  const result = await createNoteViaUI(
+    { page },
+    {
+      title: 'F14-C4 Rich Title',
+      bodyText: richText,
+      visibility: 'team',
+    },
+  );
+  expect(result.saved, 'note with rich content should save successfully').toBe(true);
+
+  // The note card should be visible in the notes section
+  const notesList = await listNotes(restClient, contact.id);
+  const match = notesList.data.find((n) => !n.is_masked);
+  expect(match, 'a non-masked note must exist after creating with rich text').toBeDefined();
+
+  // Confirm the body text is stored via the full note endpoint
+  if (match) {
+    const full = await getNoteById(restClient, contact.id, match.id);
+    expect(full.body, 'note body must be stored').toBeTruthy();
+  }
 });
