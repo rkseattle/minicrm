@@ -453,3 +453,334 @@ you want to restore.
 **Test your restores.** Run the restore procedure against a staging instance at least
 once before you need it in an emergency. A backup that has never been tested is not a
 backup.
+
+---
+
+### Backup scripts (host-side)
+
+Two shell scripts in `scripts/` perform backups and restores directly against a
+PostgreSQL instance accessible from the host — useful when you are not using the
+Docker-based automated service or when you need a one-off backup before an upgrade.
+
+Both scripts read the same environment variables as `docker-compose.yml`.
+Set them in your shell or prefix the command:
+
+```bash
+export DB_HOST=localhost DB_PORT=5432 DB_USER=minicrm DB_NAME=minicrm
+export DB_PASSWORD=<your-password>
+
+# Or use a single DATABASE_URL:
+export DATABASE_URL=postgres://minicrm:<password>@localhost:5432/minicrm
+```
+
+#### Create a host-side backup
+
+```bash
+# Default destination: ./backups/minicrm-backup-YYYYMMDD-HHMMSS.dump.gz
+./scripts/backup.sh
+
+# Custom destination
+BACKUP_DIR=/mnt/nas/minicrm-backups ./scripts/backup.sh
+```
+
+The script writes a pg_dump custom-format file and gzip-compresses it.
+The compressed file can be restored with `scripts/restore.sh` (see below).
+
+#### Restore from a host-side backup
+
+```bash
+./scripts/restore.sh ./backups/minicrm-backup-YYYYMMDD-HHMMSS.dump.gz
+```
+
+The script prompts for confirmation before overwriting any data. `.gz` files
+are decompressed automatically to a temp file and cleaned up on exit. Plain
+uncompressed `.dump` files are also accepted.
+
+---
+
+### Backup schedule recommendation
+
+| Environment | Recommended schedule                         |
+| ----------- | -------------------------------------------- |
+| Production  | Daily minimum; hourly if deal volume is high |
+| Staging     | Before each deployment                       |
+| Development | On demand / before schema experiments        |
+
+For production, set `BACKUP_SCHEDULE=@daily` (or a cron expression such as
+`0 2 * * *` for 02:00 daily) and `BACKUP_RETENTION_DAYS=7` in your `.env`.
+Keep at least two weeks of backups if your pipeline value justifies it.
+
+Off-site copies are strongly recommended: copy the compressed dump files to a
+separate storage location (S3, a remote NAS, or a different cloud region) so a
+host-level failure does not destroy both your data and your backups.
+
+---
+
+### How to verify a backup is valid
+
+A backup file that exists on disk is not the same as a backup you can restore.
+Verify at least once per week (ideally after every backup run) that the dump is
+readable:
+
+```bash
+# 1. Check the file is a valid pg_dump custom-format archive.
+#    This reads the table of contents without touching the database.
+pg_restore --list ./backups/minicrm-backup-YYYYMMDD-HHMMSS.dump.gz | head -20
+
+# 2. Perform a full test restore against a throw-away database.
+createdb minicrm_verify
+DB_NAME=minicrm_verify ./scripts/restore.sh ./backups/minicrm-backup-YYYYMMDD-HHMMSS.dump.gz
+# (confirm with "yes" when prompted)
+
+# 3. Spot-check row counts.
+psql -d minicrm_verify -c "SELECT COUNT(*) FROM contacts;"
+psql -d minicrm_verify -c "SELECT COUNT(*) FROM deals;"
+
+# 4. Drop the verification database.
+dropdb minicrm_verify
+```
+
+If step 1 fails (`pg_restore: error: did not find magic string in file header`)
+the dump is corrupt — run a fresh backup immediately and investigate the cause
+before the corrupt file is the only copy you have.
+
+---
+
+## Email Deliverability
+
+Self-hosted MiniCRM sends transactional emails (password resets, assignment
+notifications, overdue task digests). Without correct DNS records, these will
+reliably be rejected or delivered to spam. This section explains the three DNS
+records required and how to verify them.
+
+### Why deliverability fails
+
+Receiving mail servers run reputation checks against the sending domain. The
+three mechanisms work together:
+
+| Record | Purpose                                                     |
+| ------ | ----------------------------------------------------------- |
+| SPF    | Lists IP addresses authorised to send mail for your domain  |
+| DKIM   | Cryptographic signature proving the message was not altered |
+| DMARC  | Policy telling receivers what to do when SPF or DKIM fails  |
+
+If any of the three is absent or misconfigured, major providers (Gmail, Outlook,
+Yahoo) may silently bin the message or reject it at the SMTP level.
+
+### Startup warning
+
+When `SMTP_FROM` is set in the environment but `SMTP_DKIM_PRIVATE_KEY` is not,
+the server logs an advisory warning at startup:
+
+```
+WARN: SMTP_FROM is set but SMTP_DKIM_PRIVATE_KEY is not configured.
+Outbound emails may be rejected or delivered to spam.
+See docs/operations.md#email-deliverability for SPF/DKIM/DMARC setup instructions.
+```
+
+This is non-fatal — the server starts normally. Resolve it by following the
+steps below.
+
+---
+
+### Step 1 — SPF record
+
+SPF is a TXT record on your sending domain that lists the mail servers allowed
+to send on its behalf. If you are using an SMTP relay (see
+[Recommended SMTP relays](#recommended-smtp-relays)), the relay provider
+supplies the SPF include.
+
+**Example (SendGrid):**
+
+```
+yourdomain.com.  IN  TXT  "v=spf1 include:sendgrid.net ~all"
+```
+
+**Example (Amazon SES, us-east-1):**
+
+```
+yourdomain.com.  IN  TXT  "v=spf1 include:amazonses.com ~all"
+```
+
+**Example (self-hosted Postfix on a dedicated IP):**
+
+```
+yourdomain.com.  IN  TXT  "v=spf1 ip4:203.0.113.10 ~all"
+```
+
+Replace `203.0.113.10` with the public IP of your mail server. The `~all`
+softfail is the recommended starting policy; harden to `-all` once you have
+confirmed all legitimate senders are covered.
+
+**Verify:**
+
+```bash
+nslookup -type=TXT yourdomain.com
+# or
+dig TXT yourdomain.com +short
+```
+
+The output should include `v=spf1 …`.
+
+---
+
+### Step 2 — DKIM record
+
+DKIM signs outgoing messages with a private key. Receiving servers look up the
+corresponding public key via DNS and verify the signature.
+
+#### Using an SMTP relay (recommended)
+
+Most SMTP relays (SendGrid, Mailgun, SES) generate the key pair for you and
+give you a TXT record to publish. Follow your relay's DKIM setup guide — the
+record is usually in the form:
+
+```
+<selector>._domainkey.yourdomain.com.  IN  TXT  "v=DKIM1; k=rsa; p=<public-key>"
+```
+
+The relay handles signing; you do not need to configure `SMTP_DKIM_PRIVATE_KEY`
+on the MiniCRM server in this case. Clear the startup warning by setting:
+
+```env
+# Set this to any non-empty string to acknowledge that DKIM is handled by your relay.
+SMTP_DKIM_PRIVATE_KEY=relay-managed
+```
+
+#### Self-managed DKIM (advanced)
+
+If you are running Postfix and signing at the MTA level (e.g. with OpenDKIM),
+no additional MiniCRM configuration is required beyond publishing the DNS record.
+Set `SMTP_DKIM_PRIVATE_KEY=postfix-managed` to silence the startup warning.
+
+**Verify (after publishing the DNS record):**
+
+```bash
+nslookup -type=TXT <selector>._domainkey.yourdomain.com
+# or
+dig TXT <selector>._domainkey.yourdomain.com +short
+```
+
+The output should include `v=DKIM1`.
+
+---
+
+### Step 3 — DMARC record
+
+DMARC builds on SPF and DKIM to tell receiving servers what to do when either
+check fails. Start with a monitoring-only policy (`p=none`) and tighten it once
+you have reviewed a few days of aggregate reports.
+
+**Recommended starting record:**
+
+```
+_dmarc.yourdomain.com.  IN  TXT  "v=DMARC1; p=none; rua=mailto:dmarc-reports@yourdomain.com"
+```
+
+- `p=none` — take no action on failures; report only
+- `rua=` — aggregate report recipient (can be a dedicated mailbox or a DMARC
+  monitoring service such as Postmark's free DMARC monitoring, Dmarcian, or
+  MxToolbox)
+
+**Tighten after reviewing reports:**
+
+```
+"v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@yourdomain.com"
+"v=DMARC1; p=reject;     rua=mailto:dmarc-reports@yourdomain.com"
+```
+
+**Verify:**
+
+```bash
+nslookup -type=TXT _dmarc.yourdomain.com
+# or
+dig TXT _dmarc.yourdomain.com +short
+```
+
+The output should include `v=DMARC1`.
+
+---
+
+### Recommended SMTP relays
+
+Configuring a dedicated SMTP relay is the fastest path to good deliverability
+on a self-hosted instance. The relay handles IP reputation, DKIM signing, bounce
+handling, and feedback loops.
+
+#### SendGrid (recommended for most deployments)
+
+1. Create a free SendGrid account and verify your sending domain under
+   **Settings → Sender Authentication → Domain Authentication**. SendGrid
+   walks you through publishing SPF and DKIM records.
+
+2. Generate an API key under **Settings → API Keys** with **Mail Send** scope.
+
+3. Configure MiniCRM:
+
+   ```env
+   SMTP_HOST=smtp.sendgrid.net
+   SMTP_PORT=587
+   SMTP_USER=apikey
+   SMTP_PASS=<your-sendgrid-api-key>
+   SMTP_FROM=MiniCRM <notifications@yourdomain.com>
+   SMTP_DKIM_PRIVATE_KEY=relay-managed
+   ```
+
+4. Send a test email from the **Admin Settings → SMTP → Send Test Email** button
+   to confirm delivery.
+
+#### Amazon SES
+
+1. Verify your sending domain in the AWS SES console (**Configuration →
+   Verified identities**). SES generates DKIM records for you to publish.
+
+2. Create SMTP credentials under **Account dashboard → Create SMTP credentials**.
+
+3. Configure MiniCRM:
+
+   ```env
+   SMTP_HOST=email-smtp.<region>.amazonaws.com
+   SMTP_PORT=587
+   SMTP_USER=<ses-smtp-username>
+   SMTP_PASS=<ses-smtp-password>
+   SMTP_FROM=MiniCRM <notifications@yourdomain.com>
+   SMTP_DKIM_PRIVATE_KEY=relay-managed
+   ```
+
+#### Mailgun
+
+1. Add and verify your domain in the Mailgun dashboard under **Sending → Domains**.
+   Mailgun provides SPF and DKIM records to publish.
+
+2. Generate an SMTP password under your domain's SMTP credentials.
+
+3. Configure MiniCRM:
+
+   ```env
+   SMTP_HOST=smtp.mailgun.org
+   SMTP_PORT=587
+   SMTP_USER=postmaster@yourdomain.com
+   SMTP_PASS=<mailgun-smtp-password>
+   SMTP_FROM=MiniCRM <notifications@yourdomain.com>
+   SMTP_DKIM_PRIVATE_KEY=relay-managed
+   ```
+
+---
+
+### End-to-end verification checklist
+
+After publishing your DNS records and configuring an SMTP relay, run through
+this checklist before declaring email deliverability production-ready:
+
+- [ ] SPF record returns `v=spf1 …` for your domain
+- [ ] DKIM `_domainkey` record returns `v=DKIM1 …`
+- [ ] DMARC `_dmarc` record returns `v=DMARC1 …`
+- [ ] Server startup log contains no DKIM warning
+- [ ] Admin Settings → SMTP → Send Test Email delivers successfully
+- [ ] The test email lands in the inbox (not spam) of an external Gmail or Outlook
+      address
+- [ ] DMARC aggregate reports show `pass` for SPF and DKIM after 24–48 hours
+
+Use [MxToolbox Email Deliverability Check](https://mxtoolbox.com/deliverability)
+or [mail-tester.com](https://www.mail-tester.com) to get a scored report before
+going live.
