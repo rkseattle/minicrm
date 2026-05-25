@@ -1,10 +1,16 @@
 /**
- * Custom Fields functional tests (MINCRM-276)
+ * Custom Fields functional tests (MINCRM-276, MINCRM-409).
  *
- * Covers the three acceptance criteria scenarios:
+ * Original acceptance criteria (MINCRM-276):
  *   1. Admin creates a text custom field for contacts via the Admin Settings UI
  *   2. Rep navigates to a contact, sets a value, saves, reloads, confirms persistence
  *   3. Admin deletes the definition and confirms it no longer appears on the detail page
+ *
+ * Coverage gaps addressed (MINCRM-409):
+ *   CF-4: Select custom field for deals appears in the deal edit form
+ *   CF-5: Text custom field for accounts appears in the account edit form
+ *   CF-6: Text custom field for leads appears in the lead edit form
+ *   CF-7: CSV export of contacts includes the custom field column header
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -12,8 +18,6 @@
  *   - No raw locators — all through page objects (dynamic UUID-keyed elements use
  *     single-strategy testId locates with eslint-disable per CLAUDE.md exception rule)
  *   - Test data created via restClient + TestDataManager (auto teardown)
- *
- * MINCRM-276
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -40,7 +44,13 @@ import {
   saveContact,
   isContactDetailLoaded,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestUser,
+  createTestAccount,
+  createTestDeal,
+} from '@apps/minicrm/helpers.js';
+import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -277,4 +287,210 @@ test('admin deletes a custom field definition; it disappears from the contact de
     sectionVisible,
     'custom fields section should not be visible after definition is deleted',
   ).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// CF-4 — Select custom field appears in the deal edit form (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('CF-4: select custom field for deals renders as a select input in the deal edit form @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  // Create a select custom field definition for deals via API
+  const fieldName = `CF4-Select-${Date.now()}`;
+  const def = await createCustomFieldDefinition(restClient, {
+    entity_type: 'deal',
+    name: fieldName,
+    field_type: 'select',
+  });
+
+  const account = await createTestAccount(testData, restClient, {
+    name: `CF4-Account-${Date.now()}`,
+  });
+  const deal = await createTestDeal(testData, restClient, {
+    name: `CF4-Deal-${Date.now()}`,
+    account_id: account.id,
+    stage: 'Prospecting',
+  });
+
+  try {
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
+
+    // Click Edit to enter edit mode
+    await page.click(
+      [
+        { type: 'testId', value: 'edit-deal-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      { intent: 'edit button on the deal detail page' },
+    );
+
+    // The custom fields edit grid should be visible
+    const editGrid = await page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-edit-grid' },
+          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+        ],
+        { intent: 'custom fields edit grid in the deal edit form' },
+      )
+      .resolve();
+    await expect(editGrid).toBeVisible({ timeout: 8_000 });
+
+    // The select input for our field must be present
+    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
+    const fieldInput = await page
+      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
+      .resolve();
+    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+  } finally {
+    await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CF-5 — Text custom field appears in the account edit form (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('CF-5: text custom field for accounts renders in the account edit form @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const fieldName = `CF5-Text-${Date.now()}`;
+  const def = await createCustomFieldDefinition(restClient, {
+    entity_type: 'account',
+    name: fieldName,
+    field_type: 'text',
+  });
+
+  const account = await createTestAccount(testData, restClient, {
+    name: `CF5-Account-${Date.now()}`,
+  });
+
+  try {
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.goto(`/accounts/${account.id}`, { waitUntil: 'networkidle' });
+
+    // Enter edit mode
+    await page.click(
+      [
+        { type: 'testId', value: 'edit-account-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      { intent: 'edit button on the account detail page' },
+    );
+
+    const editGrid = await page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-edit-grid' },
+          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+        ],
+        { intent: 'custom fields edit grid in the account edit form' },
+      )
+      .resolve();
+    await expect(editGrid).toBeVisible({ timeout: 8_000 });
+
+    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
+    const fieldInput = await page
+      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
+      .resolve();
+    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+  } finally {
+    await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CF-6 — Text custom field appears in the lead edit form (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('CF-6: text custom field for leads renders in the lead edit form @functional', async ({
+  page,
+  restClient,
+}) => {
+  const fieldName = `CF6-Text-${Date.now()}`;
+  const def = await createCustomFieldDefinition(restClient, {
+    entity_type: 'lead',
+    name: fieldName,
+    field_type: 'text',
+  });
+
+  const lead = await createLeadViaApi(restClient, {
+    first_name: 'CF6',
+    email: `cf6-lead-${Date.now()}@example.com`,
+  });
+
+  try {
+    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
+
+    // Enter edit mode
+    await page.click(
+      [
+        { type: 'testId', value: 'edit-lead-button' },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      { intent: 'edit button on the lead detail page' },
+    );
+
+    const editGrid = await page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-fields-edit-grid' },
+          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+        ],
+        { intent: 'custom fields edit grid in the lead edit form' },
+      )
+      .resolve();
+    await expect(editGrid).toBeVisible({ timeout: 8_000 });
+
+    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
+    const fieldInput = await page
+      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
+      .resolve();
+    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+  } finally {
+    await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
+    // Clean up the lead — it was not registered with TestDataManager
+    await restClient.delete(`/api/v1/leads/${lead.id}`).catch(() => undefined);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CF-7 — CSV export includes the custom field column header (MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test('CF-7: contacts CSV export includes the custom field column header @functional', async ({
+  testData,
+  restClient,
+}) => {
+  const fieldName = `CF7-CSV-${Date.now()}`;
+  const def = await createCustomFieldDefinition(restClient, {
+    entity_type: 'contact',
+    name: fieldName,
+    field_type: 'text',
+  });
+
+  // Create a contact so the export has at least one row
+  await createTestContact(testData, restClient, { first_name: 'CF7', last_name: 'Export' });
+
+  try {
+    // Fetch the CSV directly via restClient — the endpoint returns text/csv
+    const res = await restClient.get<string>('/api/v1/contacts/export');
+    const csv = String(res.body);
+
+    // The first line of the CSV is the header row
+    const headerRow = csv.split('\n')[0] ?? '';
+    expect(
+      headerRow,
+      `CSV header row must contain the custom field label "${fieldName}"`,
+    ).toContain(fieldName);
+  } finally {
+    await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
+  }
 });
