@@ -353,7 +353,7 @@ test(
       name: `P5-Deal-${Date.now()}`,
       account_id: account.id,
       stage: 'Pipeline 5 Stage',
-      // pipeline_id must be passed as extra field — createDealViaApi sends the raw body
+      pipeline_id: pipeline.id,
     });
     // Register for cleanup
     testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
@@ -443,6 +443,7 @@ test(
       name: `P7-Deal-${Date.now()}`,
       account_id: account.id,
       stage: 'Block Stage',
+      pipeline_id: pipeline.id,
     });
     testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
 
