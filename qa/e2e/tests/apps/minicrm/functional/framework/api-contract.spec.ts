@@ -1,5 +1,6 @@
 /**
  * API Contract PoC — MINCRM-370
+ * Framework BVT absorbed from bvt-framework.spec.ts — MINCRM-409
  *
  * Purpose: demonstrate that Zod schema validation in restClient helpers catches
  * plausible API regressions before any domain assertion is reached.
@@ -23,17 +24,19 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createTestTag,
   createTestContact,
   createTestActivity,
   createTestUser,
 } from '@apps/minicrm/helpers.js';
+import { navigateToContacts, searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import { authMeResponseEnvelopeSchema } from '@minicrm/shared/schemas/userSchema.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { z } from 'zod';
 
+const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[api-contract] E2E_ADMIN_PASSWORD is not set');
 
@@ -186,3 +189,59 @@ test(
     throw new Error('Expected RestClientError was not thrown');
   },
 );
+
+// ---------------------------------------------------------------------------
+// BVT — MiniCRM E2E framework integration (absorbed from bvt-framework.spec.ts)
+//
+// Validates that every layer of the E2E framework stack works together:
+//   TestDataManager, restClient, behavior abstraction, HealingLocator,
+//   fixture wiring, and CI artifact generation. (MINCRM-131, MINCRM-193, MINCRM-409)
+// ---------------------------------------------------------------------------
+
+test.describe('BVT — MiniCRM E2E framework integration', () => {
+  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // from loading. `undefined` does not override the project config — an explicit empty
+  // object is required to start each test with a fresh, unauthenticated browser context.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test(
+    '@bvt @smoke @functional framework stack validates end-to-end: setup → login → navigate → assert → teardown',
+    { tag: ['@bvt', '@smoke', '@functional'] },
+    async ({ page, restClient, testData }) => {
+      // ── Step 0: Authenticate the REST client ────────────────────────────
+      await loginAsAdmin(restClient);
+
+      // ── Step 1: Confirm the contacts endpoint is reachable ──────────────
+      await searchContactsViaApi(restClient, '');
+
+      // ── Step 2: Create test contact via API ──────────────────────────────
+      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const contact = await createTestContact(testData, restClient, {
+        first_name: 'BVT',
+        last_name: `Run-${uniqueSuffix}`,
+      });
+
+      // ── Step 3: Login via behavior ───────────────────────────────────────
+      const loginResult = await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
+
+      expect(loginResult.success).toBe(true);
+      expect(loginResult.errorMessage).toBeNull();
+
+      // ── Step 4: Navigate to contacts via behavior ────────────────────────
+      const navResult = await navigateToContacts({ page });
+
+      expect(navResult.loaded).toBe(true);
+      expect(navResult.finalUrl).toContain('/contacts');
+
+      // ── Step 5: Assert setup data appears in the contacts list ───────────
+      const searchResponse = await searchContactsViaApi(restClient, contact.last_name);
+      expect(searchResponse.total).toBe(1);
+      expect(searchResponse.data[0]!.id).toBe(contact.id);
+
+      // ── Step 6: Explicit teardown ────────────────────────────────────────
+      const teardownResults = await testData.teardown(restClient);
+      const failed = teardownResults.filter((r) => !r.success);
+      expect(failed).toHaveLength(0);
+    },
+  );
+});
