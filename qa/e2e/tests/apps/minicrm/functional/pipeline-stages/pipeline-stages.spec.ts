@@ -345,11 +345,12 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
 }) => {
   // Create a throwaway stage via API to avoid touching any seeded data
   const stageName = `PS4-Delete-${Date.now()}`;
-  const createRes = await restClient.post<{ stage: PipelineStage }>(
-    '/api/v1/settings/pipeline-stages',
-    { name: stageName, probability: 10 },
-  );
-  const stageId = createRes.body.stage.id;
+  // POST /api/settings/pipeline-stages returns the stage object directly (not wrapped)
+  const createRes = await restClient.post<PipelineStage>('/api/v1/settings/pipeline-stages', {
+    name: stageName,
+    probability: 10,
+  });
+  const stageId = createRes.body.id;
 
   await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await navigateToAdminSettings({ page }, 'customisation');
@@ -357,21 +358,41 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
 
-  // Click the delete button for the throwaway stage
+  // Click the delete button for the throwaway stage — this opens a confirmation dialog
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback
   await page
     .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
     .resolve()
     .then((el) => el.click());
 
-  // Wait for feedback to confirm deletion
+  // Wait for the confirmation dialog to appear, then confirm the deletion
   await page.waitFor(
     [
-      { type: 'testId', value: 'pipeline-stages-feedback' },
-      { type: 'role', value: 'status' },
+      { type: 'testId', value: 'delete-stage-confirm-dialog' },
+      { type: 'role', value: 'dialog', options: { name: /delete/i } },
     ],
     'visible',
-    { intent: 'success feedback after deleting the pipeline stage' },
+    { intent: 'confirmation dialog for deleting a pipeline stage' },
+    5_000,
+  );
+
+  await page.click(
+    [
+      { type: 'testId', value: 'delete-stage-confirm' },
+      { type: 'role', value: 'button', options: { name: /delete/i } },
+    ],
+    { intent: 'confirm button inside the delete stage confirmation dialog' },
+  );
+
+  // Wait for the confirmation dialog to close
+  await page.waitFor(
+    [
+      { type: 'testId', value: 'delete-stage-confirm-dialog' },
+      { type: 'role', value: 'dialog', options: { name: /delete/i } },
+    ],
+    'hidden',
+    { intent: 'confirmation dialog for deleting a pipeline stage' },
+    5_000,
   );
 
   // Verify the stage no longer appears in the API list
