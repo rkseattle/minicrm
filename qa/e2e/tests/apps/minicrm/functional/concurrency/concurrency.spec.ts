@@ -24,6 +24,8 @@
  *   F-CC6  Bulk reassign is exempt from version checking
  *   F-CC7  Accept "theirs" in conflict modal → subsequent edit saves cleanly
  *   F-CC8  Accept "mine" in conflict modal → subsequent edit saves cleanly
+ *   F-CC9  Activity — version increments on update; stale version returns 409
+ *           (absorbed from optimistic-locking.spec.ts OL4 — MINCRM-409)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -41,6 +43,7 @@ import {
   createTestContact,
   createTestDeal,
   createTestAccount,
+  createTestActivity,
   createTestUser,
   loginAndVerify,
 } from '@apps/minicrm/helpers.js';
@@ -55,6 +58,7 @@ import {
   patchContact,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
+import { patchActivity } from '@behaviors/minicrm/activities.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   simulateConcurrentEdit,
@@ -627,6 +631,35 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       const afterEdit = await getContactById(restClient, contact.id);
       expect(afterEdit.version, 'version should be 4 after clean subsequent save').toBe(4);
       expect(afterEdit.first_name, 'subsequent edit value should be saved').toBe('CC8-PostResolve');
+    },
+  );
+
+  test(
+    'F-CC9: activity — version increments on update; stale version returns 409 (MINCRM-409)',
+    { tag: ['@functional'] },
+    async ({ testData, restClient }) => {
+      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+      const account = await createTestAccount(testData, restClient, { name: 'CC9 Account' });
+      const activity = await createTestActivity(testData, restClient, {
+        type: 'Note',
+        subject: 'CC9 Activity',
+        account_id: account.id,
+      });
+      expect(activity.version, 'freshly created activity should be at version 1').toBe(1);
+
+      // Successful update with current version — version increments to 2
+      const updated = await patchActivity(restClient, activity.id, {
+        subject: 'CC9 Updated',
+        version: activity.version,
+      });
+      expect(updated.version, 'version should increment to 2 on successful PATCH').toBe(2);
+
+      // Stale PATCH with original version 1 must be rejected with 409
+      await assertStaleVersionRejected(restClient, `/api/v1/activities/${activity.id}`, {
+        subject: 'CC9 Stale',
+        version: activity.version, // original version 1 is now stale
+      });
     },
   );
 });
