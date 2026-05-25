@@ -1349,12 +1349,14 @@ jobs:
           E2E: true
 
       - name: Commit and push updated snapshots
+        id: commit-snapshots
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add qa/e2e/snapshots/
           if git diff --cached --quiet; then
             echo "No snapshot changes to commit."
+            echo "baselines_changed=false" >> "$GITHUB_OUTPUT"
           else
             CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
             git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
@@ -1365,11 +1367,20 @@ jobs:
             git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
             git push origin HEAD:${{ github.head_ref }}
             echo "Pushed $CHANGED updated snapshot file(s) to ${{ github.head_ref }}."
+            # Signal to the verify steps that new baselines were just committed.
+            # They must not run now — the re-trigger commit above will run CI
+            # again on the stable baselines, and the verify steps will run then.
+            echo "baselines_changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Verify visual snapshots — desktop
-        # MINCRM-324: Run without --update-snapshots so any pixel diff fails the job.
-        # This ensures committed baselines actually match the rendered output on Linux.
+        # Skip when baselines were just generated this run. The re-trigger commit
+        # pushes above will cause CI to run again; on that second run no new
+        # baselines are written (baselines_changed=false) and the verify steps
+        # run against stable committed PNGs. Running verify immediately after
+        # generate produces false pixel diffs from render non-determinism between
+        # the two sequential Playwright processes. (MINCRM-324)
+        if: steps.commit-snapshots.outputs.baselines_changed == 'false'
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
@@ -1384,6 +1395,7 @@ jobs:
           E2E: true
 
       - name: Verify visual snapshots — mobile-web
+        if: steps.commit-snapshots.outputs.baselines_changed == 'false'
         run: >
           npx playwright test
           --config=qa/e2e/playwright.config.ts
