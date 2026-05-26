@@ -218,6 +218,8 @@ export {
   deactivateUser,
   reactivateUser,
   changeUserRole,
+  resetOnboardingViaUI,
+  suppressUserOnboarding,
 } from './users.behaviors.js';
 export type {
   UsersBehaviorContext,
@@ -226,6 +228,7 @@ export type {
   UserIsVisibleInListResult,
   UserRow,
   InviteUserResponse,
+  ResetOnboardingViaUIResult,
 } from './users.behaviors.js';
 
 export {
@@ -408,6 +411,7 @@ export {
   setNavLayout,
   setOnboardingCompleted,
   getOnboardingStatus,
+  resetUserOnboardingViaApi,
   getSetupChecklistWidgetLocator,
   getSetupChecklistPillLocator,
   dismissSetupChecklist,

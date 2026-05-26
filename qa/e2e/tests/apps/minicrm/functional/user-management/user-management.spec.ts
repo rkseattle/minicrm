@@ -52,6 +52,7 @@ import {
   deactivateUser,
   reactivateUser,
   changeUserRole,
+  suppressUserOnboarding,
   type UserRow,
 } from '@behaviors/minicrm/users.behaviors.js';
 
@@ -120,7 +121,12 @@ async function createUserWithForcedPasswordChange(
   });
 
   // Activate the account first (required before admin-set-password).
-  await setUserPassword(restClient, inviteToken, 'Activ@te1234!');
+  const activationPassword = 'Activ@te1234!';
+  await setUserPassword(restClient, inviteToken, activationPassword);
+
+  // Suppress the onboarding widget so it does not intercept pointer events
+  // when tests navigate the UI as this user. (MINCRM-410)
+  await suppressUserOnboarding(restClient, user.email, activationPassword);
 
   // admin-set-password sets must_change_password=true.
   await adminSetUserPassword(restClient, user.id, tempPassword);

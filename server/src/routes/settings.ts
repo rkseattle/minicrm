@@ -942,11 +942,12 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *   get:
  *     tags: [Settings]
  *     operationId: getOnboardingStatus
- *     summary: Get setup checklist status (admin only, MINCRM-379)
+ *     summary: Get setup checklist status (MINCRM-379, MINCRM-410)
  *     description: >
  *       Returns is_first_run, onboarding_completed, and per-task completion for
  *       the setup checklist widget. Task completion is determined server-side.
- *       Admin only.
+ *       Admin users receive 5 org-wide tasks; rep users receive 4 per-user tasks.
+ *       Visible to both admin and rep users (MINCRM-410).
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -968,15 +969,9 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *                       completed: { type: boolean }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
  */
-router.get(
-  '/onboarding',
-  authenticate,
-  requireRole('admin'),
-  asyncHandler(getOnboardingStatusHandler),
-);
+// Visible to both admin and rep users (MINCRM-410)
+router.get('/onboarding', authenticate, asyncHandler(getOnboardingStatusHandler));
 
 /**
  * @openapi
@@ -984,10 +979,10 @@ router.get(
  *   put:
  *     tags: [Settings]
  *     operationId: setOnboardingCompleted
- *     summary: Mark onboarding as completed (admin only, MINCRM-256)
+ *     summary: Mark onboarding as completed (MINCRM-256, MINCRM-410)
  *     description: >
- *       Sets the onboarding_completed flag. Once set to true the onboarding banner
- *       will not appear again. Admin only.
+ *       Sets the onboarding_completed flag on the calling user's own row.
+ *       Available to all authenticated users — writes to the caller's own user row (MINCRM-410).
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -1012,15 +1007,9 @@ router.get(
  *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
  */
-router.put(
-  '/onboarding',
-  authenticate,
-  requireRole('admin'),
-  asyncHandler(setOnboardingCompletedHandler),
-);
+// Available to all authenticated users — writes to the caller's own user row (MINCRM-410)
+router.put('/onboarding', authenticate, asyncHandler(setOnboardingCompletedHandler));
 
 // ── Branding (MINCRM-356) ─────────────────────────────────────────────────────
 

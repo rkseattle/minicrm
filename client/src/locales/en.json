@@ -114,6 +114,12 @@
     "empty": "No users yet.",
     "cancel": "Cancel",
     "actionSetPassword": "Set password",
+    "actionResetOnboarding": "Reset onboarding",
+    "resetOnboardingConfirmTitle": "Reset onboarding checklist?",
+    "resetOnboardingConfirmMessage": "{{name}} will see the setup checklist on their next login.",
+    "resetOnboardingConfirmButton": "Reset",
+    "resetOnboardingSuccess": "Onboarding checklist reset for {{name}}.",
+    "resetOnboardingSuccessDismiss": "Dismiss",
     "setPassword": {
       "passwordLabel": "New password",
       "passwordPlaceholder": "New password",
@@ -1451,6 +1457,14 @@
       "smtp": {
         "title": "Configure email notifications",
         "description": "Set up SMTP to receive task and assignment alerts"
+      },
+      "createAccount": {
+        "title": "Create your first account",
+        "description": "Add a company or organization to track"
+      },
+      "logActivity": {
+        "title": "Log your first activity",
+        "description": "Record a call, meeting, or task to stay on top of your pipeline"
       }
     }
   },

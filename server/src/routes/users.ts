@@ -20,6 +20,7 @@ import {
   getMyNotificationPrefs,
   updateMyNotificationPrefs,
   getNotificationRecipientCount,
+  resetOnboardingHandler,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -839,5 +840,43 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
  *                 message: User not found
  */
 router.post('/:id/admin-set-password', asyncHandler(adminSetPassword));
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/reset-onboarding:
+ *   post:
+ *     tags: [Users]
+ *     operationId: resetUserOnboarding
+ *     summary: Reset a user's onboarding checklist (admin only, MINCRM-410)
+ *     description: >
+ *       Resets onboarding_completed to false for the specified user, causing their
+ *       setup checklist widget to reappear. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Onboarding reset
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.post('/:id/reset-onboarding', asyncHandler(resetOnboardingHandler));
 
 export default router;

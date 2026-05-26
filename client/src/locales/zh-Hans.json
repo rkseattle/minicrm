@@ -114,6 +114,12 @@
     "empty": "暂无用户。",
     "cancel": "取消",
     "actionSetPassword": "设置密码",
+    "actionResetOnboarding": "重置引导流程",
+    "resetOnboardingConfirmTitle": "重置引导清单？",
+    "resetOnboardingConfirmMessage": "{{name}} 下次登录时将看到设置清单。",
+    "resetOnboardingConfirmButton": "重置",
+    "resetOnboardingSuccess": "已为 {{name}} 重置引导清单。",
+    "resetOnboardingSuccessDismiss": "关闭",
     "setPassword": {
       "passwordLabel": "新密码",
       "passwordPlaceholder": "新密码",
@@ -1451,6 +1457,14 @@
       "smtp": {
         "title": "配置电子邮件通知",
         "description": "设置 SMTP 以接收任务和分配提醒"
+      },
+      "createAccount": {
+        "title": "创建第一个客户",
+        "description": "添加一家公司或组织以进行跟踪"
+      },
+      "logActivity": {
+        "title": "记录第一条活动",
+        "description": "记录通话、会议或任务以掌握跟进进度"
       }
     }
   },

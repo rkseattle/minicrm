@@ -1,10 +1,16 @@
 /**
- * Unit tests for csvUtils and userUtils. (MINCRM-295)
+ * Unit tests for csvUtils, userUtils, and reset-onboarding HTTP endpoint. (MINCRM-295, MINCRM-410)
  */
 
-import { describe, it, expect } from 'vitest';
+import 'dotenv/config';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import request from 'supertest';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { sanitizeUser } from '../utils/userUtils.js';
+import app from '../app.js';
+import { createUser } from '../services/userService.js';
+import pool from '../db.js';
+import { makeAuthCookie } from './testUtils.js';
 
 // ── serializeToCsv ────────────────────────────────────────────────────────────
 
@@ -78,6 +84,81 @@ describe('csvFilename', () => {
   it('includes todays date', () => {
     const today = new Date().toISOString().split('T')[0];
     expect(csvFilename('deals')).toContain(today);
+  });
+});
+
+// ── POST /api/v1/users/:id/reset-onboarding (MINCRM-410) ─────────────────────
+
+describe('POST /api/v1/users/:id/reset-onboarding', () => {
+  const ADMIN_EMAIL = 'utils-test-admin@example.com';
+  const REP_EMAIL = 'utils-test-rep@example.com';
+
+  let adminCookie: string;
+  let repCookie: string;
+  let repUserId: string;
+
+  beforeAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+
+    const admin = await createUser({
+      email: ADMIN_EMAIL,
+      name: 'Utils Admin',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    adminCookie = makeAuthCookie({
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: admin.role,
+    });
+
+    const rep = await createUser({
+      email: REP_EMAIL,
+      name: 'Utils Rep',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    repUserId = rep.id;
+    repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  });
+
+  it('returns 200 with { success: true } when admin resets another user', async () => {
+    const res = await request(app)
+      .post(`/api/v1/users/${repUserId}/reset-onboarding`)
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('returns 404 when target user does not exist', async () => {
+    const res = await request(app)
+      .post('/api/v1/users/00000000-0000-0000-0000-999999999999/reset-onboarding')
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('USER_NOT_FOUND');
+  });
+
+  it('returns 403 for a rep (route is under admin-only middleware)', async () => {
+    const res = await request(app)
+      .post(`/api/v1/users/${repUserId}/reset-onboarding`)
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).post(`/api/v1/users/${repUserId}/reset-onboarding`);
+
+    expect(res.status).toBe(401);
   });
 });
 

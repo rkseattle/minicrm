@@ -38,9 +38,6 @@ const DEFAULT_CURRENCY_KEY = 'default_currency';
 /** The key used to store the tag creation restriction setting (MINCRM-263) */
 const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
 
-/** The key used to store the onboarding completed flag (MINCRM-256) */
-const ONBOARDING_COMPLETED_KEY = 'onboarding_completed';
-
 /** The key used to track that the admin reviewed/saved pipeline stages (MINCRM-379) */
 const PIPELINE_STAGES_REVIEWED_KEY = 'pipeline_stages_reviewed';
 
@@ -235,7 +232,7 @@ export async function setTagsRestrictCreation(restricted: boolean): Promise<bool
   return restricted;
 }
 
-// ── Onboarding / Setup Checklist (MINCRM-256, MINCRM-379) ────────────────────
+// ── Onboarding / Setup Checklist (MINCRM-256, MINCRM-379, MINCRM-410) ────────
 
 /** Completion status for one setup checklist task (MINCRM-379) */
 export interface OnboardingTask {
@@ -251,41 +248,55 @@ export interface OnboardingStatus {
   tasks: OnboardingTask[];
 }
 
+/** Caller identity required for per-user onboarding status (MINCRM-410) */
+export interface OnboardingCaller {
+  id: string;
+  role: 'admin' | 'rep';
+}
+
 /**
- * Returns onboarding status including per-task completion for the setup
- * checklist widget (MINCRM-379). Task completion is determined server-side:
- *   1. pipeline_stages_reviewed — always true; user can manually mark done
- *   2. team_member_invited     — any user other than the first admin exists
- *   3. first_contact_added     — contacts table is non-empty
- *   4. first_deal_created      — deals table is non-empty
+ * Returns admin-specific onboarding status. Task completion is based on
+ * global (org-wide) counts. The onboarding_completed flag is read from the
+ * caller's own user row. (MINCRM-410)
+ *
+ * Tasks:
+ *   1. pipeline_stages_reviewed — admin reviewed/saved pipeline stages
+ *   2. team_member_invited     — at least one active non-admin user exists
+ *   3. first_contact_added     — any non-demo contact exists
+ *   4. first_deal_created      — any non-demo deal exists
  *   5. smtp_configured         — smtp_host setting is non-empty
  *
- * @returns The current onboarding status.
+ * @param callerId - UUID of the admin user making the request.
+ * @returns The admin's onboarding status.
  */
-export async function getOnboardingStatus(): Promise<OnboardingStatus> {
-  const [settingsResult, countsResult] = await Promise.all([
+async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingStatus> {
+  const [userResult, settingsResult, countsResult] = await Promise.all([
+    pool.query<{ onboarding_completed: boolean }>(
+      'SELECT onboarding_completed FROM users WHERE id = $1 LIMIT 1',
+      [callerId],
+    ),
     pool.query<SystemSettingRow>(`SELECT key, value FROM system_settings WHERE key = ANY($1)`, [
-      [ONBOARDING_COMPLETED_KEY, PIPELINE_STAGES_REVIEWED_KEY, 'smtp_host'],
+      [PIPELINE_STAGES_REVIEWED_KEY, 'smtp_host'],
     ]),
     pool.query<{
-      user_count: string;
+      non_admin_count: string;
       contact_count: string;
       deal_count: string;
     }>(
       `SELECT
-         (SELECT COUNT(*) FROM users WHERE status != 'inactive') AS user_count,
-         (SELECT COUNT(*) FROM contacts) AS contact_count,
-         (SELECT COUNT(*) FROM deals) AS deal_count`,
+         (SELECT COUNT(*) FROM users WHERE status = 'active' AND role != 'admin') AS non_admin_count,
+         (SELECT COUNT(*) FROM contacts WHERE is_demo = false) AS contact_count,
+         (SELECT COUNT(*) FROM deals WHERE is_demo = false) AS deal_count`,
     ),
   ]);
 
-  const settingsMap = Object.fromEntries(settingsResult.rows.map((r) => [r.key, r.value]));
-
-  const onboarding_completed = settingsMap[ONBOARDING_COMPLETED_KEY] === 'true';
+  const onboarding_completed = userResult.rows[0]?.onboarding_completed ?? false;
   const is_first_run = !onboarding_completed;
 
+  const settingsMap = Object.fromEntries(settingsResult.rows.map((r) => [r.key, r.value]));
   const row = countsResult.rows[0];
-  const userCount = parseInt(row?.user_count ?? '0', 10);
+
+  const nonAdminCount = parseInt(row?.non_admin_count ?? '0', 10);
   const contactCount = parseInt(row?.contact_count ?? '0', 10);
   const dealCount = parseInt(row?.deal_count ?? '0', 10);
   const smtpHost = settingsMap['smtp_host'] ?? '';
@@ -299,8 +310,8 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
     },
     {
       id: 'team_member_invited',
-      // More than one active/invited user means someone else has been added.
-      completed: userCount > 1,
+      // At least one active non-admin user means someone has been invited.
+      completed: nonAdminCount > 0,
     },
     {
       id: 'first_contact_added',
@@ -320,17 +331,89 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 }
 
 /**
- * Sets the onboarding_completed flag. Admin only. (MINCRM-256)
+ * Returns rep-specific onboarding status. Task completion is based on the
+ * rep's own records (owner_id = callerId). (MINCRM-410)
  *
+ * Tasks:
+ *   1. first_contact_added   — rep has at least one contact
+ *   2. first_account_created — rep has at least one account
+ *   3. first_deal_created    — rep has at least one deal
+ *   4. logged_first_activity — rep has at least one activity
+ *
+ * @param callerId - UUID of the rep user making the request.
+ * @returns The rep's onboarding status.
+ */
+async function getRepOnboardingStatus(callerId: string): Promise<OnboardingStatus> {
+  const result = await pool.query<{
+    onboarding_completed: boolean;
+    contact_count: string;
+    account_count: string;
+    deal_count: string;
+    activity_count: string;
+  }>(
+    `SELECT
+       u.onboarding_completed,
+       (SELECT COUNT(*) FROM contacts  WHERE owner_id = $1) AS contact_count,
+       (SELECT COUNT(*) FROM accounts  WHERE owner_id = $1) AS account_count,
+       (SELECT COUNT(*) FROM deals     WHERE owner_id = $1) AS deal_count,
+       (SELECT COUNT(*) FROM activities WHERE owner_id = $1) AS activity_count
+     FROM users u WHERE u.id = $1 LIMIT 1`,
+    [callerId],
+  );
+
+  const row = result.rows[0];
+  const onboarding_completed = row?.onboarding_completed ?? false;
+  const is_first_run = !onboarding_completed;
+
+  const contactCount = parseInt(row?.contact_count ?? '0', 10);
+  const accountCount = parseInt(row?.account_count ?? '0', 10);
+  const dealCount = parseInt(row?.deal_count ?? '0', 10);
+  const activityCount = parseInt(row?.activity_count ?? '0', 10);
+
+  const tasks: OnboardingTask[] = [
+    { id: 'first_contact_added', completed: contactCount > 0 },
+    { id: 'first_account_created', completed: accountCount > 0 },
+    { id: 'first_deal_created', completed: dealCount > 0 },
+    { id: 'logged_first_activity', completed: activityCount > 0 },
+  ];
+
+  return { is_first_run, onboarding_completed, tasks };
+}
+
+/**
+ * Returns onboarding status for the calling user. Branches on role:
+ * - admin → global org-wide task completion (5 tasks)
+ * - rep   → per-user record ownership (4 tasks)
+ * (MINCRM-256, MINCRM-379, MINCRM-410)
+ *
+ * @param caller - The authenticated user making the request.
+ * @returns The caller's onboarding status.
+ */
+export async function getOnboardingStatus(caller: OnboardingCaller): Promise<OnboardingStatus> {
+  if (caller.role === 'admin') {
+    return getAdminOnboardingStatus(caller.id);
+  }
+  return getRepOnboardingStatus(caller.id);
+}
+
+/**
+ * Sets the onboarding_completed flag on the caller's own user row. (MINCRM-256, MINCRM-410)
+ *
+ * @param callerId - UUID of the user whose flag to update.
  * @param completed - Whether onboarding has been completed.
  * @returns The persisted value.
  */
-export async function setOnboardingCompleted(completed: boolean): Promise<boolean> {
+export async function setOnboardingCompleted(
+  callerId: string,
+  completed: boolean,
+): Promise<boolean> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [ONBOARDING_COMPLETED_KEY, String(completed)],
+    `UPDATE users
+     SET onboarding_completed = $2,
+         onboarding_completed_at = CASE WHEN $2 THEN now() ELSE NULL END,
+         updated_at = now()
+     WHERE id = $1`,
+    [callerId, completed],
   );
   return completed;
 }

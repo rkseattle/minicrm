@@ -323,6 +323,22 @@ export async function setOnboardingCompleted(
 }
 
 /**
+ * Resets a target user's onboarding checklist via the admin API (MINCRM-410).
+ *
+ * Sets onboarding_completed=false on the target user so the checklist widget
+ * reappears on their next login.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param userId - UUID of the user whose onboarding should be reset.
+ */
+export async function resetUserOnboardingViaApi(
+  restClient: RestClient,
+  userId: string,
+): Promise<void> {
+  await restClient.post(`/api/v1/users/${userId}/reset-onboarding`);
+}
+
+/**
  * Fetches the onboarding status from the admin API.
  *
  * @param restClient - Admin-authenticated RestClient.

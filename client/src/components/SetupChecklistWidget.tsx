@@ -21,7 +21,6 @@ import {
 import type { OnboardingTask } from '@/api/onboarding.js';
 
 const LS_KEY = 'minicrm_setup_checklist_expanded';
-const TASK_COUNT = 5;
 const COMPLETION_FADE_DELAY_MS = 3000;
 
 /** Read the collapsed/expanded preference from localStorage (defaults to expanded). */
@@ -94,6 +93,45 @@ function TaskRow({ task, title, description, href }: TaskRowProps) {
   );
 }
 
+/** Task definitions by task ID — supports both admin (5 tasks) and rep (4 tasks) */
+const TASK_DEF_MAP: Record<string, { titleKey: string; descKey: string; href: string }> = {
+  pipeline_stages_reviewed: {
+    titleKey: 'setupChecklist.task.pipelineStages.title',
+    descKey: 'setupChecklist.task.pipelineStages.description',
+    href: '/admin/settings?tab=customisation',
+  },
+  team_member_invited: {
+    titleKey: 'setupChecklist.task.inviteTeam.title',
+    descKey: 'setupChecklist.task.inviteTeam.description',
+    href: '/users',
+  },
+  first_contact_added: {
+    titleKey: 'setupChecklist.task.addContact.title',
+    descKey: 'setupChecklist.task.addContact.description',
+    href: '/contacts',
+  },
+  first_account_created: {
+    titleKey: 'setupChecklist.task.createAccount.title',
+    descKey: 'setupChecklist.task.createAccount.description',
+    href: '/accounts',
+  },
+  first_deal_created: {
+    titleKey: 'setupChecklist.task.createDeal.title',
+    descKey: 'setupChecklist.task.createDeal.description',
+    href: '/deals',
+  },
+  smtp_configured: {
+    titleKey: 'setupChecklist.task.smtp.title',
+    descKey: 'setupChecklist.task.smtp.description',
+    href: '/admin/settings?tab=notifications',
+  },
+  logged_first_activity: {
+    titleKey: 'setupChecklist.task.logActivity.title',
+    descKey: 'setupChecklist.task.logActivity.description',
+    href: '/activities',
+  },
+};
+
 export default function SetupChecklistWidget() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -106,7 +144,8 @@ export default function SetupChecklistWidget() {
   const { data, isLoading } = useQuery({
     queryKey: ONBOARDING_STATUS_QUERY_KEY,
     queryFn: getOnboardingStatus,
-    enabled: user?.role === 'admin',
+    // Visible to both admin and rep users (MINCRM-410)
+    enabled: user?.role === 'admin' || user?.role === 'rep',
     staleTime: 0,
   });
 
@@ -117,8 +156,10 @@ export default function SetupChecklistWidget() {
     },
   });
 
+  // Task count is driven by the server response — supports role-specific task lists (MINCRM-410)
+  const taskCount = data?.tasks?.length ?? 0;
   const completedCount = data?.tasks?.filter((t) => t.completed).length ?? 0;
-  const allDone = data !== undefined && completedCount === TASK_COUNT;
+  const allDone = data !== undefined && taskCount > 0 && completedCount === taskCount;
 
   // When all tasks are done: auto-dismiss after COMPLETION_FADE_DELAY_MS
   useEffect(() => {
@@ -152,43 +193,19 @@ export default function SetupChecklistWidget() {
     dismissMutation.mutate();
   }
 
-  // Not an admin, or still loading, or already completed/dismissed — render nothing
-  if (user?.role !== 'admin') return null;
+  // Not an authenticated user, still loading, or already completed/dismissed — render nothing
+  if (user?.role !== 'admin' && user?.role !== 'rep') return null;
   if (isLoading || !data) return null;
   if (!data.is_first_run) return null;
 
-  const taskDefs: Array<{ id: string; titleKey: string; descKey: string; href: string }> = [
-    {
-      id: 'pipeline_stages_reviewed',
-      titleKey: 'setupChecklist.task.pipelineStages.title',
-      descKey: 'setupChecklist.task.pipelineStages.description',
-      href: '/admin/settings?tab=customisation',
-    },
-    {
-      id: 'team_member_invited',
-      titleKey: 'setupChecklist.task.inviteTeam.title',
-      descKey: 'setupChecklist.task.inviteTeam.description',
-      href: '/users',
-    },
-    {
-      id: 'first_contact_added',
-      titleKey: 'setupChecklist.task.addContact.title',
-      descKey: 'setupChecklist.task.addContact.description',
-      href: '/contacts',
-    },
-    {
-      id: 'first_deal_created',
-      titleKey: 'setupChecklist.task.createDeal.title',
-      descKey: 'setupChecklist.task.createDeal.description',
-      href: '/deals',
-    },
-    {
-      id: 'smtp_configured',
-      titleKey: 'setupChecklist.task.smtp.title',
-      descKey: 'setupChecklist.task.smtp.description',
-      href: '/admin/settings?tab=notifications',
-    },
-  ];
+  // Build ordered task defs from the server's task list (preserving server order)
+  const taskDefs = (data.tasks ?? [])
+    .map((task) => {
+      const def = TASK_DEF_MAP[task.id];
+      // Fall back gracefully if we receive an unknown task id
+      return def ? { id: task.id, ...def } : null;
+    })
+    .filter((def): def is NonNullable<typeof def> => def !== null);
 
   const taskMap = Object.fromEntries((data.tasks ?? []).map((t) => [t.id, t]));
 
@@ -213,7 +230,7 @@ export default function SetupChecklistWidget() {
             {'M'}
           </span>
           <span className="text-gray-600 text-xs" aria-hidden="true">
-            {t('setupChecklist.progress', { count: completedCount, total: TASK_COUNT })}
+            {t('setupChecklist.progress', { count: completedCount, total: taskCount })}
           </span>
           <svg
             className="w-3.5 h-3.5 text-gray-400"
@@ -231,7 +248,7 @@ export default function SetupChecklistWidget() {
   }
 
   // Progress bar width
-  const progressPct = Math.round((completedCount / TASK_COUNT) * 100);
+  const progressPct = taskCount > 0 ? Math.round((completedCount / taskCount) * 100) : 0;
 
   return (
     <div
@@ -296,7 +313,7 @@ export default function SetupChecklistWidget() {
           <div className="px-4 pb-2">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-gray-500">
-                {t('setupChecklist.progress', { count: completedCount, total: TASK_COUNT })}
+                {t('setupChecklist.progress', { count: completedCount, total: taskCount })}
               </span>
             </div>
             <div
@@ -304,7 +321,7 @@ export default function SetupChecklistWidget() {
               role="progressbar"
               aria-valuenow={completedCount}
               aria-valuemin={0}
-              aria-valuemax={TASK_COUNT}
+              aria-valuemax={taskCount}
               aria-label={t('setupChecklist.progressBar')}
             >
               <div

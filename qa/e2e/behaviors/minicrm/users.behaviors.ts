@@ -14,6 +14,8 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { UsersPage } from '@pages/minicrm/UsersPage.js';
+import { loginAs, loginAsAdmin } from './auth.behaviors.js';
+import { setOnboardingCompleted } from './setup.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -273,4 +275,82 @@ export async function changeUserRole(
 ): Promise<UserRow> {
   const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/role`, { role });
   return res.body.user;
+}
+
+// ---------------------------------------------------------------------------
+// suppressUserOnboarding() (MINCRM-410)
+// ---------------------------------------------------------------------------
+
+/**
+ * Marks a user's onboarding checklist as completed so the widget does not
+ * appear when tests log in as that user.
+ *
+ * New users start with onboarding_completed=false (migration 058 default) — the
+ * widget is the whole point of MINCRM-410. Tests that create ephemeral users and
+ * navigate the UI as them must call this after activation to prevent the fixed
+ * z-50 overlay from intercepting pointer events on other elements.
+ *
+ * Authenticates the restClient as the target user, sets the flag, then
+ * re-authenticates as admin.
+ *
+ * @param restClient - RestClient (will be mutated to authenticate as the user then admin).
+ * @param email - Email of the activated user.
+ * @param password - Password of the activated user.
+ */
+export async function suppressUserOnboarding(
+  restClient: RestClient,
+  email: string,
+  password: string,
+): Promise<void> {
+  await loginAs(restClient, email, password);
+  await setOnboardingCompleted(restClient, true);
+  await loginAsAdmin(restClient);
+}
+
+// ---------------------------------------------------------------------------
+// resetOnboardingViaUI() (MINCRM-410)
+// ---------------------------------------------------------------------------
+
+/** Result returned by resetOnboardingViaUI. */
+export interface ResetOnboardingViaUIResult {
+  /** True when the success toast appeared after confirming the reset. */
+  successToastVisible: boolean;
+}
+
+/**
+ * Resets a user's onboarding checklist via the Users page actions menu.
+ *
+ * Opens the meatball menu for the given user, clicks Reset onboarding,
+ * and confirms the dialog. Navigates to the users page if not already there.
+ *
+ * Note: task completion is based on live record counts, so already-completed
+ * tasks will still show as checked after reset. The reset only causes the
+ * checklist widget to reappear on the user's next login.
+ *
+ * @param userId - UUID of the user whose onboarding should be reset.
+ * @param context - Playwright fixture context.
+ * @returns ResetOnboardingViaUIResult.
+ */
+export async function resetOnboardingViaUI(
+  userId: string,
+  context: UsersBehaviorContext,
+): Promise<ResetOnboardingViaUIResult> {
+  const usersPage = new UsersPage(context);
+
+  if (!context.page.url().includes(UsersPage.PATH)) {
+    await usersPage.navigate();
+    await usersPage.isLoaded();
+  }
+
+  await usersPage.openActionsMenu(userId);
+  await usersPage.clickResetOnboarding(userId);
+  await usersPage.resetOnboardingDialogLocator();
+  await usersPage.confirmResetOnboarding();
+
+  try {
+    await usersPage.resetOnboardingSuccessLocator();
+    return { successToastVisible: true };
+  } catch {
+    return { successToastVisible: false };
+  }
 }

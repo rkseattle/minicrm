@@ -114,6 +114,12 @@
     "empty": "Aucun utilisateur pour l'instant.",
     "cancel": "Annuler",
     "actionSetPassword": "Définir le mot de passe",
+    "actionResetOnboarding": "Réinitialiser l'intégration",
+    "resetOnboardingConfirmTitle": "Réinitialiser la liste d'intégration ?",
+    "resetOnboardingConfirmMessage": "{{name}} verra la liste de configuration à sa prochaine connexion.",
+    "resetOnboardingConfirmButton": "Réinitialiser",
+    "resetOnboardingSuccess": "Liste d'intégration réinitialisée pour {{name}}.",
+    "resetOnboardingSuccessDismiss": "Fermer",
     "setPassword": {
       "passwordLabel": "Nouveau mot de passe",
       "passwordPlaceholder": "Nouveau mot de passe",
@@ -1451,6 +1457,14 @@
       "smtp": {
         "title": "Configurer les notifications par e-mail",
         "description": "Configurez SMTP pour recevoir les alertes de tâches et d'assignations"
+      },
+      "createAccount": {
+        "title": "Créer votre premier compte",
+        "description": "Ajoutez une entreprise ou organisation à suivre"
+      },
+      "logActivity": {
+        "title": "Enregistrer votre première activité",
+        "description": "Notez un appel, une réunion ou une tâche pour rester organisé"
       }
     }
   },

@@ -159,6 +159,17 @@ export async function adminSetPassword(id: string, password: string): Promise<Us
   return response.data;
 }
 
+/**
+ * Resets a user's onboarding checklist so they see it again on next login.
+ * Admin only. (MINCRM-410)
+ *
+ * @param id - Target user UUID
+ */
+export async function resetUserOnboarding(id: string): Promise<{ success: boolean }> {
+  const response = await apiClient.post<{ success: boolean }>(`/users/${id}/reset-onboarding`);
+  return response.data;
+}
+
 // ── Notification preferences (MINCRM-163) ────────────────────────────────────
 
 /** Shape of the notification preference flags */

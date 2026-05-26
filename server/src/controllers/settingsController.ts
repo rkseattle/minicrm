@@ -339,19 +339,24 @@ export async function updateCurrenciesHandler(req: Request, res: Response): Prom
 
 /**
  * GET /api/settings/onboarding
- * Returns first-run detection status and onboarding_completed flag. Admin only.
+ * Returns first-run detection status and onboarding_completed flag.
+ * Visible to both admin and rep users (MINCRM-410).
  *
- * @param _req - Express request (unused).
- * @param res  - Express response.
+ * @param req - Express request.
+ * @param res - Express response.
  */
-export async function getOnboardingStatusHandler(_req: Request, res: Response): Promise<void> {
-  const status = await getOnboardingStatus();
+export async function getOnboardingStatusHandler(req: Request, res: Response): Promise<void> {
+  const status = await getOnboardingStatus({
+    id: req.user!.id,
+    role: req.user!.role as 'admin' | 'rep',
+  });
   res.status(200).json(status);
 }
 
 /**
  * PUT /api/settings/onboarding
- * Updates the onboarding_completed flag. Admin only. (MINCRM-256)
+ * Updates the onboarding_completed flag for the calling user. (MINCRM-256, MINCRM-410)
+ * Available to all authenticated users — writes to the caller's own user row.
  *
  * @param req - Express request with body `{ onboarding_completed: boolean }`.
  * @param res - Express response.
@@ -364,7 +369,10 @@ export async function setOnboardingCompletedHandler(req: Request, res: Response)
     return;
   }
 
-  const completed = await setOnboardingCompleted(req.body.onboarding_completed as boolean);
+  const completed = await setOnboardingCompleted(
+    req.user!.id,
+    req.body.onboarding_completed as boolean,
+  );
   res.status(200).json({ onboarding_completed: completed });
 
   void writeAuditEntryBestEffort({

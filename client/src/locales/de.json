@@ -114,6 +114,12 @@
     "empty": "Noch keine Benutzer.",
     "cancel": "Abbrechen",
     "actionSetPassword": "Passwort setzen",
+    "actionResetOnboarding": "Onboarding zurücksetzen",
+    "resetOnboardingConfirmTitle": "Onboarding-Checkliste zurücksetzen?",
+    "resetOnboardingConfirmMessage": "{{name}} wird die Einrichtungs-Checkliste bei der nächsten Anmeldung sehen.",
+    "resetOnboardingConfirmButton": "Zurücksetzen",
+    "resetOnboardingSuccess": "Onboarding-Checkliste für {{name}} zurückgesetzt.",
+    "resetOnboardingSuccessDismiss": "Schließen",
     "setPassword": {
       "passwordLabel": "Neues Passwort",
       "passwordPlaceholder": "Neues Passwort",
@@ -1451,6 +1457,14 @@
       "smtp": {
         "title": "E-Mail-Benachrichtigungen konfigurieren",
         "description": "Richten Sie SMTP ein, um Aufgaben- und Zuweisungsbenachrichtigungen zu erhalten"
+      },
+      "createAccount": {
+        "title": "Erstes Unternehmen anlegen",
+        "description": "Fügen Sie ein Unternehmen oder eine Organisation hinzu"
+      },
+      "logActivity": {
+        "title": "Erste Aktivität erfassen",
+        "description": "Notieren Sie einen Anruf, ein Meeting oder eine Aufgabe"
       }
     }
   },

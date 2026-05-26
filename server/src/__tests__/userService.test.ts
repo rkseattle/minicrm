@@ -28,6 +28,7 @@ import {
   listUsersOptedIn,
   countActiveNotificationRecipients,
   seedDefaultAdmin,
+  resetUserOnboarding,
 } from '../services/userService.js';
 import pool from '../db.js';
 
@@ -716,5 +717,58 @@ describe('countActiveNotificationRecipients', () => {
       [user.id],
     );
     expect(parseInt(rows[0].count, 10)).toBe(0);
+  });
+});
+
+// ── resetUserOnboarding (MINCRM-410) ──────────────────────────────────────────
+
+describe('resetUserOnboarding', () => {
+  const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
+
+  it('resets onboarding_completed to false for the target user', async () => {
+    const user = await createUser(BASE_USER);
+
+    // First mark as completed
+    await pool.query(
+      `UPDATE users SET onboarding_completed = true, onboarding_completed_at = now() WHERE id = $1`,
+      [user.id],
+    );
+
+    await resetUserOnboarding(user.id, ACTOR);
+
+    const result = await pool.query<{
+      onboarding_completed: boolean;
+      onboarding_completed_at: Date | null;
+    }>(`SELECT onboarding_completed, onboarding_completed_at FROM users WHERE id = $1`, [user.id]);
+    expect(result.rows[0].onboarding_completed).toBe(false);
+    expect(result.rows[0].onboarding_completed_at).toBeNull();
+  });
+
+  it('throws USER_NOT_FOUND for a non-existent user', async () => {
+    await expect(
+      resetUserOnboarding('00000000-0000-0000-0000-999999999999', ACTOR),
+    ).rejects.toMatchObject({ code: 'USER_NOT_FOUND' });
+  });
+
+  it('writes an audit entry', async () => {
+    const user = await createUser(BASE_USER);
+
+    await pool.query(
+      `UPDATE users SET onboarding_completed = true, onboarding_completed_at = now() WHERE id = $1`,
+      [user.id],
+    );
+
+    await resetUserOnboarding(user.id, ACTOR);
+
+    const audit = await pool.query<{ field_name: string; old_value: string; new_value: string }>(
+      `SELECT field_name, old_value, new_value
+       FROM audit_log
+       WHERE record_type = 'user' AND record_id = $1 AND field_name = 'onboarding_completed'
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id],
+    );
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0].old_value).toBe('true');
+    expect(audit.rows[0].new_value).toBe('false');
   });
 });

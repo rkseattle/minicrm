@@ -232,9 +232,9 @@ describe('setDefaultCurrency', () => {
   });
 });
 
-// ── getOnboardingStatus / setOnboardingCompleted (MINCRM-256, MINCRM-379) ─────
+// ── getOnboardingStatus / setOnboardingCompleted (MINCRM-256, MINCRM-379, MINCRM-410) ──
 
-const TASK_IDS = [
+const ADMIN_TASK_IDS = [
   'pipeline_stages_reviewed',
   'team_member_invited',
   'first_contact_added',
@@ -242,27 +242,52 @@ const TASK_IDS = [
   'smtp_configured',
 ];
 
-describe('getOnboardingStatus', () => {
+const REP_TASK_IDS = [
+  'first_contact_added',
+  'first_account_created',
+  'first_deal_created',
+  'logged_first_activity',
+];
+
+/** IDs for test users created in this describe block */
+let adminUserId: string;
+let repUserId: string;
+
+describe('getOnboardingStatus — admin caller', () => {
+  beforeAll(async () => {
+    // Create a dedicated admin user for these tests
+    const adminResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-admin@test.com', 'Settings Admin', 'admin', 'active', 'x')
+       RETURNING id`,
+    );
+    adminUserId = adminResult.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-admin@test.com'`);
+  });
+
   beforeEach(async () => {
     await pool.query(
-      `DELETE FROM system_settings WHERE key IN ('onboarding_completed','pipeline_stages_reviewed','smtp_host')`,
+      `DELETE FROM system_settings WHERE key IN ('pipeline_stages_reviewed','smtp_host')`,
     );
+    // Ensure admin's onboarding flag is false before each test
+    await pool.query(`UPDATE users SET onboarding_completed = false WHERE id = $1`, [adminUserId]);
     // Remove any seeded contacts/deals from test isolation
-    await pool.query('TRUNCATE contacts, deals RESTART IDENTITY CASCADE');
+    await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
   });
 
-  it('returns is_first_run=true and five tasks when flag is absent', async () => {
-    const status = await getOnboardingStatus();
+  it('returns is_first_run=true and five tasks when flag is false', async () => {
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     expect(status.is_first_run).toBe(true);
     expect(status.onboarding_completed).toBe(false);
-    expect(status.tasks.map((t) => t.id)).toEqual(TASK_IDS);
+    expect(status.tasks.map((t) => t.id)).toEqual(ADMIN_TASK_IDS);
   });
 
-  it('returns is_first_run=false when onboarding_completed is true', async () => {
-    await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at) VALUES ('onboarding_completed', 'true', now())`,
-    );
-    const status = await getOnboardingStatus();
+  it('returns is_first_run=false when onboarding_completed is true on user row', async () => {
+    await pool.query(`UPDATE users SET onboarding_completed = true WHERE id = $1`, [adminUserId]);
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     expect(status.is_first_run).toBe(false);
     expect(status.onboarding_completed).toBe(true);
     // Tasks still returned
@@ -270,7 +295,7 @@ describe('getOnboardingStatus', () => {
   });
 
   it('task pipeline_stages_reviewed is false by default', async () => {
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
     expect(task?.completed).toBe(false);
   });
@@ -279,21 +304,18 @@ describe('getOnboardingStatus', () => {
     await pool.query(
       `INSERT INTO system_settings (key, value, updated_at) VALUES ('pipeline_stages_reviewed', 'true', now())`,
     );
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
     expect(task?.completed).toBe(true);
   });
 
-  it('task team_member_invited is true when more than one active user exists', async () => {
-    // Insert a test user to guarantee at least 2 active users exist, then verify true.
-    // This test does NOT assert the false case since the DB user count is shared across
-    // concurrent parallel test files and is not reliably controllable.
+  it('task team_member_invited is true when an active non-admin user exists', async () => {
     await pool.query(
       `INSERT INTO users (email, name, role, status, password_hash)
-       VALUES ('settings-svc-extra@test.com', 'Extra User', 'rep', 'active', 'x')`,
+       VALUES ('settings-svc-extra@test.com', 'Extra Rep', 'rep', 'active', 'x')`,
     );
     try {
-      const status = await getOnboardingStatus();
+      const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
       const task = status.tasks.find((t) => t.id === 'team_member_invited');
       expect(task?.completed).toBe(true);
     } finally {
@@ -302,49 +324,50 @@ describe('getOnboardingStatus', () => {
   });
 
   it('task team_member_invited excludes inactive users from the count', async () => {
-    // Insert an inactive user — it must not count toward team_member_invited.
-    // First capture baseline count to compare against.
-    const before = await getOnboardingStatus();
-    const taskBefore = before.tasks.find((t) => t.id === 'team_member_invited');
+    // Temporarily deactivate all non-admin users (other describe blocks may have created active
+    // rep users via beforeAll that are still present in the DB during this test).
+    await pool.query(`UPDATE users SET status = 'inactive' WHERE role != 'admin'`);
     await pool.query(
       `INSERT INTO users (email, name, role, status, password_hash)
        VALUES ('settings-svc-inactive@test.com', 'Inactive User', 'rep', 'inactive', 'x')`,
     );
     try {
-      const after = await getOnboardingStatus();
-      const taskAfter = after.tasks.find((t) => t.id === 'team_member_invited');
-      // Inactive users must not change the completed state
-      expect(taskAfter?.completed).toBe(taskBefore?.completed);
+      const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
+      const task = status.tasks.find((t) => t.id === 'team_member_invited');
+      // Inactive users must not count toward team_member_invited
+      expect(task?.completed).toBe(false);
     } finally {
       await pool.query(`DELETE FROM users WHERE email = 'settings-svc-inactive@test.com'`);
+      // Restore any non-admin users to active
+      await pool.query(`UPDATE users SET status = 'active' WHERE role != 'admin'`);
     }
   });
 
   it('task first_contact_added is false when contacts table is empty', async () => {
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'first_contact_added');
     expect(task?.completed).toBe(false);
   });
 
-  it('task first_contact_added is true when a contact exists', async () => {
-    // Minimal contact insert — owner comes from first user in the test DB
+  it('task first_contact_added is true when a non-demo contact exists', async () => {
     await pool.query(
-      `INSERT INTO contacts (first_name, last_name, email, owner_id)
-       SELECT 'Test','Contact','test@test.com', id FROM users LIMIT 1`,
+      `INSERT INTO contacts (first_name, last_name, email, owner_id, is_demo)
+       VALUES ('Test','Contact','test@test.com', $1, false)`,
+      [adminUserId],
     );
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'first_contact_added');
     expect(task?.completed).toBe(true);
   });
 
   it('task first_deal_created is false when deals table is empty', async () => {
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'first_deal_created');
     expect(task?.completed).toBe(false);
   });
 
   it('task smtp_configured is false when smtp_host setting is absent', async () => {
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'smtp_configured');
     expect(task?.completed).toBe(false);
   });
@@ -353,50 +376,147 @@ describe('getOnboardingStatus', () => {
     await pool.query(
       `INSERT INTO system_settings (key, value, updated_at) VALUES ('smtp_host', 'mail.example.com', now())`,
     );
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'smtp_configured');
     expect(task?.completed).toBe(true);
   });
+});
 
-  it('returns is_first_run=true when flag is reset to false', async () => {
-    await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at) VALUES ('onboarding_completed', 'false', now())`,
+describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
+  beforeAll(async () => {
+    const repResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-rep@test.com', 'Settings Rep', 'rep', 'active', 'x')
+       RETURNING id`,
     );
-    const status = await getOnboardingStatus();
+    repUserId = repResult.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
+  });
+
+  beforeEach(async () => {
+    await pool.query(`UPDATE users SET onboarding_completed = false WHERE id = $1`, [repUserId]);
+    await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
+  });
+
+  it('returns four rep-specific tasks', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    expect(status.tasks).toHaveLength(4);
+    expect(status.tasks.map((t) => t.id)).toEqual(REP_TASK_IDS);
+  });
+
+  it('returns is_first_run=true when rep onboarding_completed is false', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
     expect(status.is_first_run).toBe(true);
     expect(status.onboarding_completed).toBe(false);
   });
+
+  it('first_contact_added is false when rep has no contacts', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_contact_added');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('first_contact_added is true only when the rep owns a contact', async () => {
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Rep','Contact','rep-contact@test.com', $1)`,
+      [repUserId],
+    );
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_contact_added');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('first_account_created is false when rep has no accounts', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_account_created');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('first_account_created is true only when the rep owns an account', async () => {
+    await pool.query(`INSERT INTO accounts (name, owner_id) VALUES ('Rep Account', $1)`, [
+      repUserId,
+    ]);
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_account_created');
+    expect(task?.completed).toBe(true);
+  });
+
+  it('first_deal_created is false when rep has no deals', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_deal_created');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('logged_first_activity is false when rep has no activities', async () => {
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'logged_first_activity');
+    expect(task?.completed).toBe(false);
+  });
 });
 
-describe('setOnboardingCompleted', () => {
+describe('setOnboardingCompleted (MINCRM-410)', () => {
+  let testUserId: string;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-onboarding@test.com', 'Onboarding User', 'rep', 'active', 'x')
+       RETURNING id`,
+    );
+    testUserId = result.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-onboarding@test.com'`);
+  });
+
   beforeEach(async () => {
-    await pool.query(`DELETE FROM system_settings WHERE key = 'onboarding_completed'`);
+    await pool.query(`UPDATE users SET onboarding_completed = false WHERE id = $1`, [testUserId]);
   });
 
   it('persists true and returns true', async () => {
-    const result = await setOnboardingCompleted(true);
+    const result = await setOnboardingCompleted(testUserId, true);
     expect(result).toBe(true);
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: testUserId, role: 'rep' });
     expect(status.onboarding_completed).toBe(true);
   });
 
   it('persists false and returns false', async () => {
-    await setOnboardingCompleted(true);
-    const result = await setOnboardingCompleted(false);
+    await setOnboardingCompleted(testUserId, true);
+    const result = await setOnboardingCompleted(testUserId, false);
     expect(result).toBe(false);
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: testUserId, role: 'rep' });
     expect(status.onboarding_completed).toBe(false);
   });
 });
 
 describe('markPipelineStagesReviewed', () => {
+  let markTestAdminId: string;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, status, password_hash)
+       VALUES ('settings-svc-mark-admin@test.com', 'Mark Admin', 'admin', 'active', 'x')
+       RETURNING id`,
+    );
+    markTestAdminId = result.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-mark-admin@test.com'`);
+  });
+
   beforeEach(async () => {
     await pool.query(`DELETE FROM system_settings WHERE key = 'pipeline_stages_reviewed'`);
   });
 
   it('sets pipeline_stages_reviewed to true', async () => {
     await markPipelineStagesReviewed();
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: markTestAdminId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
     expect(task?.completed).toBe(true);
   });
@@ -404,7 +524,7 @@ describe('markPipelineStagesReviewed', () => {
   it('is idempotent', async () => {
     await markPipelineStagesReviewed();
     await markPipelineStagesReviewed();
-    const status = await getOnboardingStatus();
+    const status = await getOnboardingStatus({ id: markTestAdminId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
     expect(task?.completed).toBe(true);
   });

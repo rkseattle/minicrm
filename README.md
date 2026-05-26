@@ -710,12 +710,32 @@ All demo records have `is_demo = true`. The remove script deletes **only** rows 
 
 ### Onboarding
 
-- First-time installation shows an onboarding checklist to guide the admin through initial setup (invite users, create pipeline stages, configure SMTP, seed demo data)
-- The banner dismisses permanently when the admin clicks **Complete Setup** or when all steps are done; state persists in `system_settings` (`onboarding_completed` key)
-- Auth-specific specs and `globalSetup` mark onboarding completed via `PUT /api/settings/onboarding` so the banner does not appear during E2E test runs
-- API endpoint:
-  - `PUT /api/settings/onboarding` — body `{ onboarding_completed: true }`; marks setup complete (auth required)
-- Database migration: `039_add_onboarding_completed.js` seeds the `onboarding_completed = 'false'` default row
+Each user has their own onboarding checklist that appears as a widget until they dismiss it. Tasks are role-specific:
+
+**Admin tasks (org-wide progress):**
+
+1. Invite a team member
+2. Create a pipeline stage
+3. Configure SMTP
+4. Seed demo data
+5. Review pipeline stages
+
+**Rep tasks (personal progress):**
+
+1. Add a contact
+2. Create an account
+3. Create a deal
+4. Log an activity
+
+Task completion is determined live from actual record counts — there is no separate per-task flag stored. This means that if an admin resets a user's onboarding checklist, tasks that reflect work the user has already done (contacts added, deals created, etc.) will still appear checked. The reset only causes the checklist widget to reappear on the user's next login; it does not undo their work.
+
+- State persists in the `onboarding_completed` and `onboarding_completed_at` columns on the `users` table (migration `058_add_onboarding_to_users.js`)
+- Admins can reset another user's checklist from **User Management → ⋯ menu → Reset onboarding**
+- Auth-specific specs and `globalSetup` mark onboarding completed via `PUT /api/v1/settings/onboarding` so the widget does not appear during E2E test runs
+- API endpoints:
+  - `GET /api/v1/settings/onboarding` — returns current user's checklist status and task list (auth required)
+  - `PUT /api/v1/settings/onboarding` — body `{ onboarding_completed: true }`; marks checklist complete for the authenticated user (auth required)
+  - `POST /api/v1/users/:id/reset-onboarding` — resets the target user's `onboarding_completed` flag to false (admin only)
 
 ## API Documentation
 

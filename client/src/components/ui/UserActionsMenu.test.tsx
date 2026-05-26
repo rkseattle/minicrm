@@ -57,6 +57,8 @@ function defaultProps(overrides: Partial<Parameters<typeof UserActionsMenu>[0]> 
     onSetPassword: vi.fn(),
     onDeactivate: vi.fn(),
     onReactivate: vi.fn(),
+    onResetOnboarding: vi.fn(),
+    currentUserId: 'other-admin-id',
     isOpen: false,
     onToggle: vi.fn(),
     ...overrides,
@@ -118,9 +120,7 @@ describe('UserActionsMenu', () => {
 
     it('clicking Make Admin calls onRoleChange with admin', () => {
       const onRoleChange = vi.fn();
-      renderWithProviders(
-        <UserActionsMenu {...defaultProps({ isOpen: true, onRoleChange })} />,
-      );
+      renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true, onRoleChange })} />);
 
       fireEvent.click(screen.getByTestId(`make-admin-${ACTIVE_REP.id}`));
 
@@ -130,16 +130,12 @@ describe('UserActionsMenu', () => {
     it('shows Set Password option for active rep', () => {
       renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true })} />);
 
-      expect(
-        screen.getByTestId(`set-password-toggle-${ACTIVE_REP.id}`),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(`set-password-toggle-${ACTIVE_REP.id}`)).toBeInTheDocument();
     });
 
     it('clicking Set Password calls onSetPassword', () => {
       const onSetPassword = vi.fn();
-      renderWithProviders(
-        <UserActionsMenu {...defaultProps({ isOpen: true, onSetPassword })} />,
-      );
+      renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true, onSetPassword })} />);
 
       fireEvent.click(screen.getByTestId(`set-password-toggle-${ACTIVE_REP.id}`));
 
@@ -154,9 +150,7 @@ describe('UserActionsMenu', () => {
 
     it('clicking Deactivate calls onDeactivate', () => {
       const onDeactivate = vi.fn();
-      renderWithProviders(
-        <UserActionsMenu {...defaultProps({ isOpen: true, onDeactivate })} />,
-      );
+      renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true, onDeactivate })} />);
 
       fireEvent.click(screen.getByTestId(`deactivate-${ACTIVE_REP.id}`));
 
@@ -176,9 +170,7 @@ describe('UserActionsMenu', () => {
     it('clicking Make Rep calls onRoleChange with rep', () => {
       const onRoleChange = vi.fn();
       renderWithProviders(
-        <UserActionsMenu
-          {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true, onRoleChange })}
-        />,
+        <UserActionsMenu {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true, onRoleChange })} />,
       );
 
       fireEvent.click(screen.getByTestId(`make-rep-${ACTIVE_ADMIN.id}`));
@@ -209,9 +201,7 @@ describe('UserActionsMenu', () => {
     it('clicking Reactivate calls onReactivate', () => {
       const onReactivate = vi.fn();
       renderWithProviders(
-        <UserActionsMenu
-          {...defaultProps({ user: INACTIVE_REP, isOpen: true, onReactivate })}
-        />,
+        <UserActionsMenu {...defaultProps({ user: INACTIVE_REP, isOpen: true, onReactivate })} />,
       );
 
       fireEvent.click(screen.getByTestId(`reactivate-${INACTIVE_REP.id}`));
@@ -222,13 +212,51 @@ describe('UserActionsMenu', () => {
 
   it('Escape key on the menu triggers onToggle to close', () => {
     const onToggle = vi.fn();
-    renderWithProviders(
-      <UserActionsMenu {...defaultProps({ isOpen: true, onToggle })} />,
-    );
+    renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true, onToggle })} />);
 
     const menu = screen.getByRole('menu');
     fireEvent.keyDown(menu, { key: 'Escape' });
 
     expect(onToggle).toHaveBeenCalledWith(ACTIVE_REP.id);
+  });
+
+  describe('Reset onboarding action (MINCRM-410)', () => {
+    it('shows Reset onboarding when user is not the current user', () => {
+      renderWithProviders(
+        <UserActionsMenu
+          {...defaultProps({ user: ACTIVE_REP, currentUserId: 'other-admin-id', isOpen: true })}
+        />,
+      );
+
+      expect(screen.getByTestId(`reset-onboarding-${ACTIVE_REP.id}`)).toBeInTheDocument();
+    });
+
+    it('hides Reset onboarding for the current admin own row', () => {
+      renderWithProviders(
+        <UserActionsMenu
+          {...defaultProps({ user: ACTIVE_REP, currentUserId: ACTIVE_REP.id, isOpen: true })}
+        />,
+      );
+
+      expect(screen.queryByTestId(`reset-onboarding-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
+    });
+
+    it('clicking Reset onboarding calls onResetOnboarding with user id', () => {
+      const onResetOnboarding = vi.fn();
+      renderWithProviders(
+        <UserActionsMenu
+          {...defaultProps({
+            user: ACTIVE_REP,
+            currentUserId: 'other-admin-id',
+            isOpen: true,
+            onResetOnboarding,
+          })}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId(`reset-onboarding-${ACTIVE_REP.id}`));
+
+      expect(onResetOnboarding).toHaveBeenCalledWith(ACTIVE_REP.id);
+    });
   });
 });

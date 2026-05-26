@@ -49,6 +49,7 @@ import {
   setUserPassword,
   adminSetUserPassword,
   deactivateUser,
+  suppressUserOnboarding,
 } from '@behaviors/minicrm/users.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -100,6 +101,10 @@ async function createUserWithForcedPasswordChange(
   // (required before admin-set-password will accept the user id).
   const activationPassword = 'Activ@te1234!';
   await setUserPassword(restClient, inviteToken, activationPassword);
+
+  // Suppress the onboarding widget so it does not intercept pointer events
+  // when tests navigate the UI as this user. (MINCRM-410)
+  await suppressUserOnboarding(restClient, user.email, activationPassword);
 
   // admin-set-password sets must_change_password=true so the user is forced
   // to change password on next login.

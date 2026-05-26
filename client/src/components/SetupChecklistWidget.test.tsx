@@ -48,6 +48,14 @@ const ALL_INCOMPLETE_TASKS = [
 
 const ALL_COMPLETE_TASKS = ALL_INCOMPLETE_TASKS.map((t) => ({ ...t, completed: true }));
 
+// MINCRM-410: rep task list (4 tasks, no admin-only tasks)
+const REP_INCOMPLETE_TASKS = [
+  { id: 'first_contact_added', completed: false },
+  { id: 'first_account_created', completed: false },
+  { id: 'first_deal_created', completed: false },
+  { id: 'logged_first_activity', completed: false },
+];
+
 function mockAdminUser() {
   server.use(
     http.get('/api/v1/auth/me', () =>
@@ -126,15 +134,24 @@ describe('SetupChecklistWidget', () => {
     });
   });
 
-  it('does not render for rep users', async () => {
+  // MINCRM-410: reps now have their own onboarding checklist
+  it('renders widget for rep users when is_first_run is true', async () => {
     mockRepUser();
-    mockFirstRun();
+    server.use(
+      http.get('/api/v1/settings/onboarding', () =>
+        HttpResponse.json({
+          is_first_run: true,
+          onboarding_completed: false,
+          tasks: REP_INCOMPLETE_TASKS,
+        }),
+      ),
+    );
 
     renderWithProviders(<SetupChecklistWidget />);
 
-    await new Promise((r) => setTimeout(r, 100));
-    expect(screen.queryByTestId('setup-checklist-widget')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('setup-checklist-pill')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-checklist-widget')).toBeInTheDocument();
+    });
   });
 
   it('does not render when onboarding_completed is true', async () => {

@@ -38,6 +38,7 @@ import {
   inviteUserViaApi,
   setUserPassword,
   deactivateUser,
+  suppressUserOnboarding,
 } from '@behaviors/minicrm/users.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
@@ -83,6 +84,10 @@ async function createActiveTestUser(
   });
 
   await setUserPassword(restClient, inviteToken, initialPassword);
+
+  // Suppress the onboarding widget so it does not intercept pointer events
+  // when tests navigate the UI as this user. (MINCRM-410)
+  await suppressUserOnboarding(restClient, user.email, initialPassword);
 
   return { userId: user.id, email: user.email };
 }
