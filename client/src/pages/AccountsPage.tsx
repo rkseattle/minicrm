@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
+import { PagedListLayout } from '@/components/PagedListLayout.js';
 import AccountForm from '@/components/AccountForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
@@ -324,99 +325,6 @@ export default function AccountsPage() {
           </section>
         )}
 
-        {/* Filters */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Input
-            id="accounts-search"
-            data-testid="accounts-search"
-            type="search"
-            placeholder={t('accounts.searchPlaceholder')}
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
-              setPage(1);
-            }}
-            className="w-full sm:w-auto"
-          />
-          <Input
-            id="accounts-industry-filter"
-            data-testid="accounts-industry-filter"
-            type="search"
-            placeholder={t('accounts.industryFilterPlaceholder')}
-            value={industryInput}
-            onChange={(e) => {
-              setIndustryInput(e.target.value);
-              setPage(1);
-            }}
-            className="w-full sm:w-auto"
-          />
-          {/* Account type filter (MINCRM-183) */}
-          <Select
-            id="accounts-type-filter"
-            data-testid="accounts-type-filter"
-            value={accountTypeFilter}
-            onChange={(e) => {
-              setAccountTypeFilter(e.target.value as AccountType | '');
-              setPage(1);
-            }}
-            className="w-full sm:w-auto"
-          >
-            <option value="">{t('accounts.accountTypeFilterAll')}</option>
-            {ACCOUNT_TYPE_VALUES.map((type) => (
-              <option key={type} value={type}>
-                {t(`accounts.accountType.${type}`)}
-              </option>
-            ))}
-          </Select>
-          <OwnerToggle
-            value={ownerFilter}
-            onChange={setOwnerFilter}
-            testIdPrefix="accounts-owner-filter"
-          />
-          {/* Tag filter (MINCRM-186) */}
-          {tagsData && tagsData.tags.length > 0 && (
-            <select
-              aria-label={t('tags.sectionTitle')}
-              data-testid="accounts-tag-filter"
-              value=""
-              onChange={(e) => {
-                const tagId = e.target.value;
-                if (tagId && !selectedTagIds.includes(tagId)) {
-                  setSelectedTagIds((prev) => [...prev, tagId]);
-                  setPage(1);
-                }
-              }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="">{t('tags.sectionTitle')}</option>
-              {tagsData.tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {/* Active tag filter chips */}
-          {selectedTagIds.length > 0 && (
-            <div className="flex flex-wrap gap-1" data-testid="accounts-active-tag-filters">
-              {selectedTagIds.map((tagId) => {
-                const tag = tagsData?.tags.find((tg) => tg.id === tagId);
-                if (!tag) return null;
-                return (
-                  <TagBadge
-                    key={tag.id}
-                    tag={tag}
-                    onRemove={(id) => {
-                      setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
-                      setPage(1);
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         {/* Loading state */}
         {isLoading && (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
@@ -498,8 +406,102 @@ export default function AccountsPage() {
 
         {/* Accounts list */}
         {!isLoading && !isError && (
-          <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-            {accounts.length === 0 ? (
+          <PagedListLayout
+            toolbar={
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  id="accounts-search"
+                  data-testid="accounts-search"
+                  type="search"
+                  placeholder={t('accounts.searchPlaceholder')}
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full sm:w-auto"
+                />
+                <Input
+                  id="accounts-industry-filter"
+                  data-testid="accounts-industry-filter"
+                  type="search"
+                  placeholder={t('accounts.industryFilterPlaceholder')}
+                  value={industryInput}
+                  onChange={(e) => {
+                    setIndustryInput(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full sm:w-auto"
+                />
+                {/* Account type filter (MINCRM-183) */}
+                <Select
+                  id="accounts-type-filter"
+                  data-testid="accounts-type-filter"
+                  value={accountTypeFilter}
+                  onChange={(e) => {
+                    setAccountTypeFilter(e.target.value as AccountType | '');
+                    setPage(1);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <option value="">{t('accounts.accountTypeFilterAll')}</option>
+                  {ACCOUNT_TYPE_VALUES.map((type) => (
+                    <option key={type} value={type}>
+                      {t(`accounts.accountType.${type}`)}
+                    </option>
+                  ))}
+                </Select>
+                <OwnerToggle
+                  value={ownerFilter}
+                  onChange={setOwnerFilter}
+                  testIdPrefix="accounts-owner-filter"
+                />
+                {/* Tag filter (MINCRM-186) */}
+                {tagsData && tagsData.tags.length > 0 && (
+                  <select
+                    aria-label={t('tags.sectionTitle')}
+                    data-testid="accounts-tag-filter"
+                    value=""
+                    onChange={(e) => {
+                      const tagId = e.target.value;
+                      if (tagId && !selectedTagIds.includes(tagId)) {
+                        setSelectedTagIds((prev) => [...prev, tagId]);
+                        setPage(1);
+                      }
+                    }}
+                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">{t('tags.sectionTitle')}</option>
+                    {tagsData.tags.map((tag) => (
+                      <option key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {/* Active tag filter chips */}
+                {selectedTagIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1" data-testid="accounts-active-tag-filters">
+                    {selectedTagIds.map((tagId) => {
+                      const tag = tagsData?.tags.find((tg) => tg.id === tagId);
+                      if (!tag) return null;
+                      return (
+                        <TagBadge
+                          key={tag.id}
+                          tag={tag}
+                          onRemove={(id) => {
+                            setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
+                            setPage(1);
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            }
+            isEmpty={accounts.length === 0}
+            emptyState={
               <EmptyState
                 data-testid="accounts-empty-state"
                 icon={
@@ -532,231 +534,229 @@ export default function AccountsPage() {
                     : { label: t('accounts.emptyAction'), onClick: () => setShowForm(true) }
                 }
               />
-            ) : (
-              <div className="flex-1 overflow-auto min-h-0">
-                {isDesktop ? (
-                  /* Desktop table */
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        {/* Bulk select-all checkbox (MINCRM-188) */}
-                        <th className="w-10 ps-4 py-3">
-                          <input
-                            type="checkbox"
-                            data-testid="bulk-select-all"
-                            checked={allVisibleSelected}
-                            onChange={toggleSelectAll}
-                            aria-label={t('bulk.selectAll')}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                        </th>
-                        <th
-                          className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
-                          aria-sort={sortDir}
+            }
+            pagination={
+              data && (
+                <Pagination
+                  page={data.page}
+                  limit={data.limit}
+                  total={data.total}
+                  onPageChange={setPage}
+                  onLimitChange={handleLimitChange}
+                />
+              )
+            }
+          >
+            <div className="flex-1 overflow-auto min-h-0">
+              {isDesktop ? (
+                /* Desktop table */
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      {/* Bulk select-all checkbox (MINCRM-188) */}
+                      <th className="w-10 ps-4 py-3">
+                        <input
+                          type="checkbox"
+                          data-testid="bulk-select-all"
+                          checked={allVisibleSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t('bulk.selectAll')}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </th>
+                      <th
+                        className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
+                        aria-sort={sortDir}
+                      >
+                        <button
+                          type="button"
+                          onClick={handleSortName}
+                          className="inline-flex items-center gap-1 hover:text-gray-700"
+                          data-testid="accounts-sort-name"
                         >
-                          <button
-                            type="button"
-                            onClick={handleSortName}
-                            className="inline-flex items-center gap-1 hover:text-gray-700"
-                            data-testid="accounts-sort-name"
+                          {t('accounts.columnName')}
+                          <svg
+                            aria-label={
+                              sortDir === 'ascending' ? t('common.sortAsc') : t('common.sortDesc')
+                            }
+                            className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
                           >
-                            {t('accounts.columnName')}
-                            <svg
-                              aria-label={
-                                sortDir === 'ascending' ? t('common.sortAsc') : t('common.sortDesc')
-                              }
-                              className={`w-3 h-3 inline-block ms-1 transition-transform ${sortDir === 'ascending' ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M19 9l-7 7-7-7"
-                              />
-                            </svg>
-                          </button>
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnType')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnIndustry')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnWebsite')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnEmployeeRange')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnRevenueRange')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('accounts.columnOwner')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                          {t('tags.sectionTitle')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {accounts.map((account) => (
-                        <tr
-                          key={account.id}
-                          data-selected={selectedIds.has(account.id) || undefined}
-                          className={`group hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
-                        >
-                          {/* Row checkbox (MINCRM-188) */}
-                          <td className="w-10 ps-4 py-3">
-                            <input
-                              type="checkbox"
-                              data-testid={`bulk-select-${account.id}`}
-                              checked={selectedIds.has(account.id)}
-                              onChange={() => toggleRow(account.id)}
-                              aria-label={account.name}
-                              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                          </td>
-                          <td className="px-4 py-3 font-medium text-primary-600">
-                            <Link
-                              to={`/accounts/${account.id}`}
-                              data-testid={`account-link-${account.id}`}
-                              className="hover:underline"
-                            >
-                              {account.name}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3" data-testid={`account-type-${account.id}`}>
-                            {account.account_type ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
-                                {t(`accounts.accountType.${account.account_type}`)}
-                              </span>
-                            ) : (
-                              <span className="text-gray-500 group-data-[selected]:text-gray-600">
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
-                            {account.industry ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
-                            {account.website ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
-                            {account.employee_range ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
-                            {account.revenue_range ?? '—'}
-                          </td>
-                          <td
-                            className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
-                            data-testid={`account-owner-${account.id}`}
-                          >
-                            {resolveOwnerName(
-                              account.owner_id,
-                              activeUsers,
-                              t('accounts.ownerUnknown'),
-                            )}
-                          </td>
-                          <td className="px-4 py-3" data-testid={`account-tags-${account.id}`}>
-                            <div className="flex flex-wrap gap-1">
-                              {account.tags?.map((tag) => (
-                                <TagBadge key={tag.id} tag={tag} />
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  /* Mobile card view */
-                  <>
-                    <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
-                      <input
-                        type="checkbox"
-                        data-testid="bulk-select-all"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={t('bulk.selectAll')}
-                        className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-xs text-gray-500">
-                        {t('bulk.selectedCount', { count: selectedIds.size })}
-                      </span>
-                    </div>
-                    <ul className="divide-y divide-gray-100">
-                      {accounts.map((account) => (
-                        <li
-                          key={account.id}
-                          className={`px-4 py-3 flex items-start gap-3${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
-                          data-testid={`account-card-${account.id}`}
-                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnType')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnIndustry')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnWebsite')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnEmployeeRange')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnRevenueRange')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('accounts.columnOwner')}
+                      </th>
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('tags.sectionTitle')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {accounts.map((account) => (
+                      <tr
+                        key={account.id}
+                        data-selected={selectedIds.has(account.id) || undefined}
+                        className={`group hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
+                      >
+                        {/* Row checkbox (MINCRM-188) */}
+                        <td className="w-10 ps-4 py-3">
                           <input
                             type="checkbox"
                             data-testid={`bulk-select-${account.id}`}
                             checked={selectedIds.has(account.id)}
                             onChange={() => toggleRow(account.id)}
                             aria-label={account.name}
-                            className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
-                          <div className="min-w-0 flex-1">
-                            <Link
-                              to={`/accounts/${account.id}`}
-                              data-testid={`account-card-link-${account.id}`}
-                              className="block font-medium text-primary-600 hover:underline mb-1"
-                            >
-                              {account.name}
-                            </Link>
-                            {account.industry && (
-                              <p className="text-sm text-gray-500">{account.industry}</p>
-                            )}
-                            {account.website && (
-                              <p className="text-sm text-gray-500">{account.website}</p>
-                            )}
-                            <p
-                              className="text-xs text-gray-500 mt-1"
-                              data-testid={`account-card-owner-${account.id}`}
-                            >
-                              {t('accounts.columnOwner')}:{' '}
-                              {resolveOwnerName(
-                                account.owner_id,
-                                activeUsers,
-                                t('accounts.ownerUnknown'),
-                              )}
-                            </p>
-                            {account.tags && account.tags.length > 0 && (
-                              <div
-                                className="flex flex-wrap gap-1 mt-1"
-                                data-testid={`account-card-tags-${account.id}`}
-                              >
-                                {account.tags.map((tag) => (
-                                  <TagBadge key={tag.id} tag={tag} />
-                                ))}
-                              </div>
-                            )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-primary-600">
+                          <Link
+                            to={`/accounts/${account.id}`}
+                            data-testid={`account-link-${account.id}`}
+                            className="hover:underline"
+                          >
+                            {account.name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3" data-testid={`account-type-${account.id}`}>
+                          {account.account_type ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
+                              {t(`accounts.accountType.${account.account_type}`)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500 group-data-[selected]:text-gray-600">
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                          {account.industry ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                          {account.website ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                          {account.employee_range ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                          {account.revenue_range ?? '—'}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
+                          data-testid={`account-owner-${account.id}`}
+                        >
+                          {resolveOwnerName(
+                            account.owner_id,
+                            activeUsers,
+                            t('accounts.ownerUnknown'),
+                          )}
+                        </td>
+                        <td className="px-4 py-3" data-testid={`account-tags-${account.id}`}>
+                          <div className="flex flex-wrap gap-1">
+                            {account.tags?.map((tag) => (
+                              <TagBadge key={tag.id} tag={tag} />
+                            ))}
                           </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
-            {data && (
-              <Pagination
-                page={data.page}
-                limit={data.limit}
-                total={data.total}
-                onPageChange={setPage}
-                onLimitChange={handleLimitChange}
-              />
-            )}
-          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                /* Mobile card view */
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                    <input
+                      type="checkbox"
+                      data-testid="bulk-select-all"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t('bulk.selectAll')}
+                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {t('bulk.selectedCount', { count: selectedIds.size })}
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-gray-100">
+                    {accounts.map((account) => (
+                      <li
+                        key={account.id}
+                        className={`px-4 py-3 flex items-start gap-3${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
+                        data-testid={`account-card-${account.id}`}
+                      >
+                        <input
+                          type="checkbox"
+                          data-testid={`bulk-select-${account.id}`}
+                          checked={selectedIds.has(account.id)}
+                          onChange={() => toggleRow(account.id)}
+                          aria-label={account.name}
+                          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            to={`/accounts/${account.id}`}
+                            data-testid={`account-card-link-${account.id}`}
+                            className="block font-medium text-primary-600 hover:underline mb-1"
+                          >
+                            {account.name}
+                          </Link>
+                          {account.industry && (
+                            <p className="text-sm text-gray-500">{account.industry}</p>
+                          )}
+                          {account.website && (
+                            <p className="text-sm text-gray-500">{account.website}</p>
+                          )}
+                          <p
+                            className="text-xs text-gray-500 mt-1"
+                            data-testid={`account-card-owner-${account.id}`}
+                          >
+                            {t('accounts.columnOwner')}:{' '}
+                            {resolveOwnerName(
+                              account.owner_id,
+                              activeUsers,
+                              t('accounts.ownerUnknown'),
+                            )}
+                          </p>
+                          {account.tags && account.tags.length > 0 && (
+                            <div
+                              className="flex flex-wrap gap-1 mt-1"
+                              data-testid={`account-card-tags-${account.id}`}
+                            >
+                              {account.tags.map((tag) => (
+                                <TagBadge key={tag.id} tag={tag} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          </PagedListLayout>
         )}
       </main>
     </div>

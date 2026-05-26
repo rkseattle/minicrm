@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
+import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { Button } from '@/components/ui/Button.js';
 import { Badge } from '@/components/ui/Badge.js';
 import { listMyTasks, updateActivity, MY_TASKS_QUERY_KEY } from '@/api/activities.js';
@@ -151,8 +152,10 @@ export default function MyTasksPage() {
             )}
 
             {/* Open tasks table */}
-            <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-              {visibleTasks.length === 0 && !showCompleted ? (
+            <PagedListLayout
+              toolbar={null}
+              isEmpty={visibleTasks.length === 0 && !showCompleted}
+              emptyState={
                 <EmptyState
                   data-testid="my-tasks-empty-state"
                   icon={
@@ -194,7 +197,20 @@ export default function MyTasksPage() {
                       : undefined
                   }
                 />
-              ) : visibleTasks.length > 0 ? (
+              }
+              pagination={
+                data && (
+                  <Pagination
+                    page={data.page}
+                    limit={data.limit}
+                    total={data.total}
+                    onPageChange={setPage}
+                    onLimitChange={handleLimitChange}
+                  />
+                )
+              }
+            >
+              {visibleTasks.length > 0 ? (
                 isDesktop ? (
                   /* Desktop table */
                   <div className="flex-1 overflow-auto min-h-0">
@@ -430,16 +446,7 @@ export default function MyTasksPage() {
                   </ul>
                 )
               ) : null}
-              {data && (
-                <Pagination
-                  page={data.page}
-                  limit={data.limit}
-                  total={data.total}
-                  onPageChange={setPage}
-                  onLimitChange={handleLimitChange}
-                />
-              )}
-            </div>
+            </PagedListLayout>
 
             {/* Completed tasks empty state when toggle is on */}
             {showCompleted && completedTasks.length === 0 && (
