@@ -82,9 +82,20 @@ test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
     await loginAsAdmin(restClient);
     await setOnboardingCompleted(restClient, false);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    // Do NOT wait for networkidle — when allDone=true the auto-dismiss fires
-    // a PUT then a GET that extends networkidle past the widget's 3s lifetime.
-    // The widget locator's 10s fallbackTimeout is sufficient to wait for render.
+    // Wait for the dashboard heading before resolving the widget locator — ensures
+    // React has mounted and the widget's onboarding query has been initiated.
+    // Do NOT use waitForLoadState('networkidle') here: when allDone=true the
+    // auto-dismiss fires a PUT then GET that extends networkidle past the widget's
+    // 3s auto-dismiss lifetime. (MINCRM-410)
+    await page.waitFor(
+      [
+        { type: 'testId', value: 'dashboard-heading' },
+        { type: 'role', value: 'heading', options: { name: /dashboard/i } },
+      ],
+      'visible',
+      {},
+      10_000,
+    );
     const widget = await getSetupChecklistWidgetLocator({ page });
     await expect(widget).toBeVisible({ timeout: 10_000 });
   });
