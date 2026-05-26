@@ -686,3 +686,63 @@ export async function resetPasswordWithToken(
 
   return result.rows[0] ?? null;
 }
+
+// ── Onboarding reset (MINCRM-410) ─────────────────────────────────────────────
+
+/**
+ * Resets the onboarding_completed flag to false for a target user.
+ * Writes an audit entry in the same transaction.
+ * Admin only — the route is protected by requireRole('admin'). (MINCRM-410)
+ *
+ * @param targetUserId - UUID of the user whose flag to reset.
+ * @param actor - Admin performing the action.
+ * @throws {{ message: string; code: string }} when the user is not found.
+ */
+export async function resetUserOnboarding(targetUserId: string, actor: AuditActor): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // CTE captures the pre-update values so we can write a meaningful audit entry.
+    const result = await client.query<{ name: string; old_completed: boolean }>(
+      `WITH before AS (
+         SELECT name, onboarding_completed FROM users WHERE id = $1
+       )
+       UPDATE users
+         SET onboarding_completed = false,
+             onboarding_completed_at = NULL,
+             updated_at = now()
+       FROM before
+       WHERE users.id = $1
+       RETURNING before.name, before.onboarding_completed AS old_completed`,
+      [targetUserId],
+    );
+
+    if (result.rows.length === 0) {
+      const notFoundError = new Error('User not found') as Error & { code: string };
+      notFoundError.code = 'USER_NOT_FOUND';
+      throw notFoundError;
+    }
+
+    const user = result.rows[0];
+
+    await writeAuditEntry(client, {
+      recordType: 'user',
+      recordId: targetUserId,
+      recordName: user.name,
+      eventType: 'updated',
+      fieldName: 'onboarding_completed',
+      oldValue: String(user.old_completed),
+      newValue: 'false',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}

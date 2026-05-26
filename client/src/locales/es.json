@@ -114,6 +114,12 @@
     "empty": "Aún no hay usuarios.",
     "cancel": "Cancelar",
     "actionSetPassword": "Establecer contraseña",
+    "actionResetOnboarding": "Restablecer incorporación",
+    "resetOnboardingConfirmTitle": "¿Restablecer lista de incorporación?",
+    "resetOnboardingConfirmMessage": "{{name}} verá la lista de configuración en su próximo inicio de sesión.",
+    "resetOnboardingConfirmButton": "Restablecer",
+    "resetOnboardingSuccess": "Lista de incorporación restablecida para {{name}}.",
+    "resetOnboardingSuccessDismiss": "Descartar",
     "setPassword": {
       "passwordLabel": "Nueva contraseña",
       "passwordPlaceholder": "Nueva contraseña",
@@ -1451,6 +1457,14 @@
       "smtp": {
         "title": "Configurar notificaciones por correo",
         "description": "Configura SMTP para recibir alertas de tareas y asignaciones"
+      },
+      "createAccount": {
+        "title": "Crear tu primera cuenta",
+        "description": "Añade una empresa u organización para seguir"
+      },
+      "logActivity": {
+        "title": "Registrar tu primera actividad",
+        "description": "Registra una llamada, reunión o tarea para mantenerte al día"
       }
     }
   },

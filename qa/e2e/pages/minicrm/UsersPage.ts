@@ -131,6 +131,94 @@ export class UsersPage {
   }
 
   /**
+   * Opens the actions menu for a given user row.
+   *
+   * @param userId - User UUID.
+   */
+  async openActionsMenu(userId: string): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: `user-actions-${userId}` },
+        { type: 'role', value: 'button', options: { name: /actions/i } },
+      ],
+      { intent: 'meatball actions menu trigger button for a user row' },
+    );
+  }
+
+  /**
+   * Clicks the Reset onboarding menu item for a given user.
+   * The actions menu must already be open.
+   *
+   * @param userId - User UUID.
+   */
+  async clickResetOnboarding(userId: string): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: `reset-onboarding-${userId}` },
+        { type: 'role', value: 'menuitem', options: { name: /reset onboarding/i } },
+      ],
+      { intent: 'reset onboarding menu item in the user actions menu' },
+    );
+  }
+
+  /**
+   * Returns a resolved locator for the reset onboarding confirmation dialog.
+   */
+  async resetOnboardingDialogLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reset-onboarding-dialog' },
+          { type: 'role', value: 'dialog', options: { name: /reset onboarding/i } },
+        ],
+        { intent: 'confirmation dialog for resetting a user onboarding checklist' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Clicks the confirm button in the reset onboarding confirmation dialog.
+   */
+  async confirmResetOnboarding(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'reset-onboarding-confirm' },
+        { type: 'role', value: 'button', options: { name: /reset/i } },
+      ],
+      { intent: 'confirm button in the reset onboarding confirmation dialog' },
+    );
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Clicks the cancel button in the reset onboarding confirmation dialog.
+   */
+  async cancelResetOnboarding(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'reset-onboarding-cancel' },
+        { type: 'role', value: 'button', options: { name: /cancel/i } },
+      ],
+      { intent: 'cancel button in the reset onboarding confirmation dialog' },
+    );
+  }
+
+  /**
+   * Returns a resolved locator for the reset onboarding success toast.
+   */
+  async resetOnboardingSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'reset-onboarding-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success toast shown after resetting a user onboarding checklist' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

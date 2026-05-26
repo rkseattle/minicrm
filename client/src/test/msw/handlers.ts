@@ -562,6 +562,11 @@ export const handlers = [
     });
   }),
 
+  /** Users: POST /api/users/:id/reset-onboarding — admin resets a user's onboarding checklist */
+  http.post('/api/v1/users/:id/reset-onboarding', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
   /** Users: POST /api/users/:id/admin-set-password — admin sets a user's password */
   http.post('/api/v1/users/:id/admin-set-password', ({ params }) => {
     return HttpResponse.json({

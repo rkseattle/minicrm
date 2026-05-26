@@ -347,6 +347,33 @@ export async function getNotificationRecipientCount(_req: Request, res: Response
 }
 
 /**
+ * POST /api/users/:id/reset-onboarding
+ * Admin resets a user's onboarding_completed flag to false. Admin only. (MINCRM-410)
+ *
+ * @param req - Express request with `id` param (target user UUID).
+ * @param res - Express response.
+ */
+export async function resetOnboardingHandler(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const actor = { id: req.user!.id, name: req.user!.name };
+
+  try {
+    await userService.resetUserOnboarding(id as string, actor);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      'code' in err &&
+      (err as { code: string }).code === 'USER_NOT_FOUND'
+    ) {
+      res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * POST /api/users/:id/admin-set-password
  * Admin sets a user's password directly, without requiring an invite token.
  * The target user will be prompted to change their password on next login.

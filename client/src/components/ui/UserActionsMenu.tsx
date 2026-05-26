@@ -23,6 +23,10 @@ export interface UserActionsMenuProps {
   onDeactivate: (id: string) => void;
   /** Called when the admin selects Reactivate. */
   onReactivate: (id: string) => void;
+  /** Called when the admin selects Reset onboarding. Hidden for the admin's own row. (MINCRM-410) */
+  onResetOnboarding: (id: string) => void;
+  /** UUID of the currently logged-in admin — hides Reset Onboarding on the admin's own row. (MINCRM-410) */
+  currentUserId: string;
   /** Whether the menu should be forced open (e.g. another menu is opening this one). */
   isOpen: boolean;
   /** Called when the menu is toggled open or closed. */
@@ -47,6 +51,8 @@ export function UserActionsMenu({
   onSetPassword,
   onDeactivate,
   onReactivate,
+  onResetOnboarding,
+  currentUserId,
   isOpen,
   onToggle,
   testIdPrefix = '',
@@ -132,6 +138,19 @@ export function UserActionsMenu({
                 onClick={() => closeAndRun(() => onSetPassword(user.id))}
               >
                 {t('users.actionSetPassword')}
+              </button>
+            )}
+
+            {/* Reset onboarding — hidden for the admin's own row (MINCRM-410) */}
+            {user.id !== currentUserId && (
+              <button
+                type="button"
+                role="menuitem"
+                data-testid={`${testIdPrefix}reset-onboarding-${user.id}`}
+                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => closeAndRun(() => onResetOnboarding(user.id))}
+              >
+                {t('users.actionResetOnboarding')}
               </button>
             )}
           </div>

@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/Select.js';
 import { Badge } from '@/components/ui/Badge.js';
 import { UserActionsMenu } from '@/components/ui/UserActionsMenu.js';
 import { Pagination } from '@/components/ui/Pagination.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import {
   listUsers,
   inviteUser,
@@ -22,6 +23,7 @@ import {
   deactivateUser,
   reactivateUser,
   adminSetPassword,
+  resetUserOnboarding,
 } from '@/api/users.js';
 import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
@@ -355,12 +357,18 @@ export default function UsersPage() {
   const { t } = useTranslation();
   const { isDesktop } = useBreakpoint();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
 
   const [setPasswordUserId, setSetPasswordUserId] = useState<string | null>(null);
   const [setMobilePasswordUserId, setSetMobilePasswordUserId] = useState<string | null>(null);
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
   const [openMobileMenuUserId, setOpenMobileMenuUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  /** ID of the user whose onboarding reset confirmation dialog is open (MINCRM-410) */
+  const [resetOnboardingUserId, setResetOnboardingUserId] = useState<string | null>(null);
+  const [resetOnboardingSuccessUserId, setResetOnboardingSuccessUserId] = useState<string | null>(
+    null,
+  );
 
   /**
    * Toggles the desktop action menu for the given user.
@@ -402,6 +410,14 @@ export default function UsersPage() {
   const reactivateMutation = useMutation({
     mutationFn: (id: string) => reactivateUser(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
+  });
+
+  const resetOnboardingMutation = useMutation({
+    mutationFn: (id: string) => resetUserOnboarding(id),
+    onSuccess: (_data, id) => {
+      setResetOnboardingUserId(null);
+      setResetOnboardingSuccessUserId(id);
+    },
   });
 
   const users: UserResponse[] = data?.data ?? [];
@@ -502,6 +518,8 @@ export default function UsersPage() {
                                   }
                                   onDeactivate={(id) => deactivateMutation.mutate(id)}
                                   onReactivate={(id) => reactivateMutation.mutate(id)}
+                                  onResetOnboarding={(id) => setResetOnboardingUserId(id)}
+                                  currentUserId={currentUser?.id ?? ''}
                                 />
                               </td>
                             </tr>
@@ -565,6 +583,8 @@ export default function UsersPage() {
                                 }
                                 onDeactivate={(id) => deactivateMutation.mutate(id)}
                                 onReactivate={(id) => reactivateMutation.mutate(id)}
+                                onResetOnboarding={(id) => setResetOnboardingUserId(id)}
+                                currentUserId={currentUser?.id ?? ''}
                                 testIdPrefix="mobile-"
                               />
                             </div>
@@ -590,6 +610,84 @@ export default function UsersPage() {
                 onPageChange={setPage}
               />
             )}
+          </div>
+        )}
+
+        {/* Reset onboarding confirmation (MINCRM-410) */}
+        {resetOnboardingUserId && (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            data-testid="reset-onboarding-overlay"
+            onClick={() => setResetOnboardingUserId(null)}
+          >
+            <dialog
+              open
+              aria-modal="true"
+              aria-labelledby="reset-onboarding-dialog-title"
+              data-testid="reset-onboarding-dialog"
+              className="relative w-full max-w-sm mx-4 p-0"
+            >
+              <div
+                role="presentation"
+                className="rounded-lg bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2
+                  id="reset-onboarding-dialog-title"
+                  className="text-base font-semibold text-gray-900 mb-2"
+                >
+                  {t('users.resetOnboardingConfirmTitle')}
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  {t('users.resetOnboardingConfirmMessage', {
+                    name: users.find((u) => u.id === resetOnboardingUserId)?.name ?? '',
+                  })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    data-testid="reset-onboarding-confirm"
+                    disabled={resetOnboardingMutation.isPending}
+                    onClick={() => resetOnboardingMutation.mutate(resetOnboardingUserId)}
+                  >
+                    {t('users.resetOnboardingConfirmButton')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="reset-onboarding-cancel"
+                    disabled={resetOnboardingMutation.isPending}
+                    onClick={() => setResetOnboardingUserId(null)}
+                  >
+                    {t('users.cancel')}
+                  </Button>
+                </div>
+              </div>
+            </dialog>
+          </div>
+        )}
+
+        {/* Reset onboarding success toast (MINCRM-410) */}
+        {resetOnboardingSuccessUserId && (
+          <div
+            role="status"
+            data-testid="reset-onboarding-success"
+            className="fixed bottom-6 start-1/2 -translate-x-1/2 z-50 rounded-md bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm text-emerald-800 shadow-md"
+          >
+            {t('users.resetOnboardingSuccess', {
+              name: users.find((u) => u.id === resetOnboardingSuccessUserId)?.name ?? '',
+            })}
+            <button
+              type="button"
+              className="ms-3 text-emerald-600 hover:text-emerald-800 font-medium"
+              data-testid="reset-onboarding-success-dismiss"
+              onClick={() => setResetOnboardingSuccessUserId(null)}
+              aria-label={t('users.resetOnboardingSuccessDismiss')}
+            >
+              {t('users.resetOnboardingSuccessDismiss')}
+            </button>
           </div>
         )}
       </main>

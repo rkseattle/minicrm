@@ -114,6 +114,12 @@
     "empty": "[Ñö üŝërŝ yët.~~~~]",
     "cancel": "[Ĉäñĉël~~]",
     "actionSetPassword": "[Ŝët päŝŝwörd~~~~]",
+    "actionResetOnboarding": "[Rëŝët öñböärdïñg~~~~~~~~]",
+    "resetOnboardingConfirmTitle": "[Rëŝët öñböärdïñg ĉhëĉklïŝt?~~~~~~~~~~]",
+    "resetOnboardingConfirmMessage": "[{{name}} wïll ŝëë thë ŝëtüp ĉhëĉklïŝt öñ thëïr ñëxt lögïñ.~~~~~~~~~~~~~~~~~~]",
+    "resetOnboardingConfirmButton": "[Rëŝët~~]",
+    "resetOnboardingSuccess": "[Öñböärdïñg ĉhëĉklïŝt rëŝët för {{name}}.~~~~~~~~~~~~]",
+    "resetOnboardingSuccessDismiss": "[Dïŝmïŝŝ~~~]",
     "setPassword": {
       "passwordLabel": "[Ñëw päŝŝwörd~~~~]",
       "passwordPlaceholder": "[Ñëw päŝŝwörd~~~~]",
@@ -1340,6 +1346,14 @@
       "smtp": {
         "title": "[Čöɳƒιĝúřé éмåιļ ɳöţιƒιčåţιöɳş]",
         "description": "[Şéţ úр ŞМŢР ţö řéčéινé ţåşк åɳð åşşιĝɳмéɳţ åļéřţş]"
+      },
+      "createAccount": {
+        "title": "[Čřéåţé ÿöúř ƒιřşţ åččöúɳţ]",
+        "description": "[Áðð å čöмрåɳÿ öř öřĝåɳιžåţιöɳ ţö ţřåčƙ]"
+      },
+      "logActivity": {
+        "title": "[Łöĝ ÿöúř ƒιřşţ åčţινιţÿ]",
+        "description": "[Řéčöřð å čåłł, мééţιɳĝ öř ţåşƙ ţö şţåÿ öɳ ţöр öƒ ÿöúř рιрéłιɳé]"
       }
     }
   },

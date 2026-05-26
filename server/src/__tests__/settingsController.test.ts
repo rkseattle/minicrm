@@ -253,10 +253,11 @@ describe('GET /api/settings/onboarding', () => {
     }
   });
 
-  it('returns 403 when a rep attempts to access', async () => {
+  it('returns 200 with 4 rep-specific tasks when a rep accesses (MINCRM-410)', async () => {
     const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', repCookie);
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.tasks).toHaveLength(4);
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -266,16 +267,14 @@ describe('GET /api/settings/onboarding', () => {
   });
 });
 
-// ── PUT /api/settings/onboarding (MINCRM-256) ─────────────────────────────────
+// ── PUT /api/settings/onboarding (MINCRM-256, MINCRM-410) ────────────────────
 
 describe('PUT /api/settings/onboarding', () => {
   afterEach(async () => {
-    // Reset flag after each test
-    await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at)
-       VALUES ('onboarding_completed', 'false', now())
-       ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = now()`,
-    );
+    // Reset flag on both test users after each test (MINCRM-410 — flag now lives on user row)
+    await pool.query(`UPDATE users SET onboarding_completed = false WHERE email = ANY($1)`, [
+      [ADMIN_EMAIL, REP_EMAIL],
+    ]);
   });
 
   it('sets onboarding_completed to true and returns 200', async () => {
@@ -298,13 +297,14 @@ describe('PUT /api/settings/onboarding', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns 403 when a rep attempts to update', async () => {
+  it('returns 200 when a rep updates their own onboarding_completed (MINCRM-410)', async () => {
     const res = await request(app)
       .put('/api/v1/settings/onboarding')
       .set('Cookie', repCookie)
       .send({ onboarding_completed: true });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body.onboarding_completed).toBe(true);
   });
 
   it('returns 401 when unauthenticated', async () => {

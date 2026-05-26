@@ -509,4 +509,115 @@ describe('UsersPage', () => {
       });
     });
   });
+
+  describe('Reset onboarding (MINCRM-410)', () => {
+    async function openMenuForRep(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${REP_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`user-actions-${REP_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId(`reset-onboarding-${REP_USER.id}`)).toBeInTheDocument();
+      });
+    }
+
+    it('Reset onboarding option is hidden for the current user own row', async () => {
+      renderWithProviders(<UsersPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${ADMIN_USER.id}`)).toBeInTheDocument();
+      });
+      const user = userEvent.setup();
+      await user.click(screen.getByTestId(`user-actions-${ADMIN_USER.id}`));
+      expect(screen.queryByTestId(`reset-onboarding-${ADMIN_USER.id}`)).not.toBeInTheDocument();
+    });
+
+    it('clicking Reset onboarding opens the confirmation dialog', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openMenuForRep(user);
+
+      await user.click(screen.getByTestId(`reset-onboarding-${REP_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-onboarding-dialog')).toBeInTheDocument();
+      });
+    });
+
+    it('canceling the confirmation dialog closes it without calling the API', async () => {
+      let apiCalled = false;
+      server.use(
+        http.post(`/api/v1/users/${REP_USER.id}/reset-onboarding`, () => {
+          apiCalled = true;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openMenuForRep(user);
+      await user.click(screen.getByTestId(`reset-onboarding-${REP_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-onboarding-dialog')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('reset-onboarding-cancel'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('reset-onboarding-dialog')).not.toBeInTheDocument();
+      });
+      expect(apiCalled).toBe(false);
+    });
+
+    it('confirming calls the reset API and shows the success toast', async () => {
+      let apiCalled = false;
+      server.use(
+        http.post(`/api/v1/users/${REP_USER.id}/reset-onboarding`, () => {
+          apiCalled = true;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openMenuForRep(user);
+      await user.click(screen.getByTestId(`reset-onboarding-${REP_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-onboarding-dialog')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('reset-onboarding-confirm'));
+
+      await waitFor(() => {
+        expect(apiCalled).toBe(true);
+        expect(screen.getByTestId('reset-onboarding-success')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('reset-onboarding-dialog')).not.toBeInTheDocument();
+    });
+
+    it('dismissing the success toast hides it', async () => {
+      server.use(
+        http.post(`/api/v1/users/${REP_USER.id}/reset-onboarding`, () =>
+          HttpResponse.json({ success: true }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openMenuForRep(user);
+      await user.click(screen.getByTestId(`reset-onboarding-${REP_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-onboarding-dialog')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('reset-onboarding-confirm'));
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-onboarding-success')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('reset-onboarding-success-dismiss'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('reset-onboarding-success')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

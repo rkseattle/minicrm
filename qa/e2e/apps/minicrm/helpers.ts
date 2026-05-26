@@ -463,6 +463,15 @@ export async function createTestUser(
   const password = overrides.password ?? 'BvtPassword1!';
   await restClient.post('/api/v1/users/set-password', { token: inviteToken, password });
 
+  // Suppress the onboarding widget for this test user so it does not appear
+  // as a z-50 fixed overlay and intercept pointer events in other tests. (MINCRM-410)
+  await restClient.post('/api/v1/auth/login', { email: user.email, password });
+  await restClient.put('/api/v1/settings/onboarding', { onboarding_completed: true });
+  // Re-authenticate as admin so the caller's restClient is still in admin context.
+  const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
+  const adminPassword = process.env['E2E_ADMIN_PASSWORD'] ?? '';
+  await restClient.post('/api/v1/auth/login', { email: adminEmail, password: adminPassword });
+
   return { ...user, status: 'active' };
 }
 
