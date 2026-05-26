@@ -268,13 +268,20 @@ export class ProfilePage {
    * Clicks the "Save" button to persist notification preferences.
    */
   async savePreferences(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'profile-prefs-save' },
-        { type: 'role', value: 'button', options: { name: t('profile.save'), exact: false } },
-      ],
-      { intent: 'save button to persist notification preferences' },
-    );
+    const el = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'profile-prefs-save' },
+          { type: 'role', value: 'button', options: { name: t('profile.save'), exact: false } },
+        ],
+        { intent: 'save button to persist notification preferences' },
+      )
+      .resolve();
+    // force:true bypasses the setup-checklist-widget fixed overlay that can
+    // intercept pointer events at the bottom-end corner on smaller viewports.
+    // The button is confirmed visible and enabled by resolve(); the only blocker
+    // is the fixed overlay. (MINCRM-404)
+    await el.click({ force: true });
   }
 
   // ---------------------------------------------------------------------------

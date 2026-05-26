@@ -206,11 +206,15 @@ export class ContactsPage {
     await checkbox.scrollIntoViewIfNeeded();
     await checkbox.click();
     // Wait for React to flush the selection state update. The bulk-action-bar
-    // appearing in the DOM is the authoritative signal that toggleRow has run.
-    // waitForFunction polls until the element exists before locate().resolve(),
-    // because resolve() throws StrategyExhaustedError immediately when absent.
+    // having a non-zero painted height is the authoritative signal that toggleRow
+    // has run and the bar is CSS-visible. Checking only DOM presence (`!== null`)
+    // is insufficient: on a loaded CI runner Playwright can resolve the bar during
+    // a paint cycle before it has a rendered size, leaving bulk-reassign-button
+    // reporting not-visible. getBoundingClientRect().height > 0 works for both
+    // the mobile fixed sheet and the desktop inline bar (unlike offsetParent,
+    // which is null for position:fixed elements). (MINCRM-404)
     await this.page.waitForFunction(
-      `document.querySelector('[data-testid="bulk-action-bar"]') !== null`,
+      `(() => { const el = document.querySelector('[data-testid="bulk-action-bar"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
       undefined,
       { timeout: 5_000 },
     );
