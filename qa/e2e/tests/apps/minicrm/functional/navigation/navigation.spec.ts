@@ -74,7 +74,10 @@ import {
   getContactNameLocator,
   getContactNotFoundLocator,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { getDealNameHeadingLocator } from '@behaviors/minicrm/deals.behaviors.js';
+import {
+  getDealNameHeadingLocator,
+  pipelineBoardIsLoaded,
+} from '@behaviors/minicrm/deals.behaviors.js';
 import {
   createTestContact,
   createTestDeal,
@@ -421,8 +424,15 @@ test.describe.serial('Layout-mutating tests', () => {
         // The hamburger link click uses force:true (bypasses actionability), so
         // React Router's location update may not be committed by the time
         // openHamburgerMenu triggers a fresh popover mount — waiting for the
-        // URL guarantees NavLink sees the correct active location on first render.
+        // URL guarantees the browser location is correct.
         await page.waitForURL('**/deals', { timeout: 10_000 });
+
+        // With v7_startTransition enabled, React Router wraps location updates in
+        // startTransition — the browser URL changes before React commits the new
+        // location to NavLink. Confirm the pipeline board is rendered before
+        // re-opening the menu; this guarantees React has committed the /deals route
+        // so NavLink sees the correct active location on the next render. (MINCRM-404)
+        await pipelineBoardIsLoaded({ page });
 
         // Wait for the page to fully settle after navigation. NavHamburger
         // remounts on route change and resets menuOpen to false. Without this

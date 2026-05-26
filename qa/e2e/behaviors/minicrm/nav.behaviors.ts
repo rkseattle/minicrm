@@ -128,8 +128,16 @@ export async function openHamburgerMenu(
   // a testId wait alone can resolve against that hidden button before NavHamburger
   // has mounted. waitForFunction polls until offsetParent !== null, which is only
   // true when the element is CSS-visible (lg:hidden sets display:none → null).
+  //
+  // Also wait for the drawer to be absent from the DOM before clicking the toggle.
+  // If the previous NavHamburger instance still has menuOpen=true (e.g. after a
+  // navigation that re-mounted the component), clicking the toggle would close the
+  // drawer instead of opening it, causing a StrategyExhaustedError on the
+  // subsequent visibility wait. Polling for drawer absence confirms the component
+  // has settled into its closed state before we issue the open click. (MINCRM-404)
   await context.page.waitForFunction(
-    'document.querySelector(\'[data-testid="nav-menu-toggle"]\')?.offsetParent !== null',
+    `document.querySelector('[data-testid="nav-menu-toggle"]')?.offsetParent !== null &&
+     !document.querySelector('[data-testid="nav-hamburger-drawer"]')`,
     null,
     { timeout: 10_000 },
   );
