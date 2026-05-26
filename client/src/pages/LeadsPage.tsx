@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
+import { PagedListLayout } from '@/components/PagedListLayout.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -274,101 +275,6 @@ export default function LeadsPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          {/* Owner toggle */}
-          <div className="flex rounded-md border border-gray-300 text-sm">
-            <button
-              type="button"
-              onClick={() => {
-                setOwnerFilter('all');
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
-              data-testid="filter-owner-all"
-            >
-              {t('leads.filterAll')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOwnerFilter('me');
-                setPage(1);
-              }}
-              className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
-              data-testid="filter-owner-me"
-            >
-              {t('leads.filterMine')}
-            </button>
-          </div>
-
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
-            data-testid="filter-status"
-          >
-            <option value="">{t('leads.filterStatusAll')}</option>
-            {LEAD_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(`leads.status${s}`)}
-              </option>
-            ))}
-          </select>
-
-          {/* Source filter */}
-          <select
-            value={sourceFilter}
-            onChange={(e) => {
-              setSourceFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
-            data-testid="filter-source"
-          >
-            <option value="">{t('leads.filterSourceAll')}</option>
-            {LEAD_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {t(`leads.source${s.replace(/\s+/g, '')}`)}
-              </option>
-            ))}
-          </select>
-
-          {/* Show disqualified toggle */}
-          <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={includeDisqualified}
-              onChange={(e) => {
-                setIncludeDisqualified(e.target.checked);
-                setPage(1);
-              }}
-              className="rounded border-gray-300"
-              data-testid="toggle-disqualified"
-            />
-            {t('leads.showDisqualified')}
-          </label>
-
-          {/* Show converted toggle */}
-          <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={includeConverted}
-              onChange={(e) => {
-                setIncludeConverted(e.target.checked);
-                setPage(1);
-              }}
-              className="rounded border-gray-300"
-              data-testid="toggle-converted"
-            />
-            {t('leads.showConverted')}
-          </label>
-        </div>
-
         {/* Table */}
         {isLoading && (
           <p className="text-gray-500" data-testid="leads-loading">
@@ -381,165 +287,136 @@ export default function LeadsPage() {
           </p>
         )}
         {!isLoading && !isError && (
-          <div className="flex-1 flex flex-col min-h-0 mb-8">
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-              {leads.length === 0 ? (
-                <EmptyState
-                  data-testid="leads-empty-state"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={1}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  }
-                  title={hasActiveFilters ? t('leads.filteredEmptyTitle') : t('leads.emptyTitle')}
-                  description={
-                    hasActiveFilters
-                      ? t('common.filteredEmptyDescription')
-                      : t('leads.emptyDescription')
-                  }
-                  action={
-                    hasActiveFilters
-                      ? { label: t('common.clearFilters'), onClick: clearFilters }
-                      : { label: t('leads.emptyAction'), onClick: () => setShowForm(true) }
-                  }
-                />
-              ) : (
-                <div className="flex-1 overflow-auto min-h-0">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="sticky top-0 z-10 bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnName')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnCompany')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnSource')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnStatus')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnOwner')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnCreated')}
-                        </th>
-                        <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                          {t('leads.columnActions')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {leads.map((lead) => {
-                        const isConverted = Boolean(lead.converted_at);
-                        return (
-                          <tr
-                            key={lead.id}
-                            className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
-                            data-testid={`lead-row-${lead.id}`}
-                          >
-                            <td className="px-4 py-3 text-sm font-medium text-primary-600">
-                              <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
-                                {lead.first_name}
-                                {lead.last_name ? ` ${lead.last_name}` : ''}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {lead.company_name ?? '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {lead.lead_source
-                                ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
-                                : '—'}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              {isConverted ? (
-                                <span
-                                  className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
-                                  data-testid={`badge-converted-${lead.id}`}
-                                >
-                                  {t('leads.statusConverted')}
-                                </span>
-                              ) : editingStatusId === lead.id ? (
-                                <select
-                                  ref={(el) => {
-                                    el?.focus();
-                                  }}
-                                  defaultValue={lead.status}
-                                  onChange={(e) => {
-                                    updateStatusMutation.mutate({
-                                      id: lead.id,
-                                      status: e.target.value,
-                                      version: lead.version,
-                                    });
-                                  }}
-                                  className="rounded border border-gray-300 py-0.5 text-xs"
-                                  data-testid={`status-select-${lead.id}`}
-                                >
-                                  {LEAD_STATUSES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {t(`leads.status${s}`)}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingStatusId(lead.id)}
-                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
-                                  data-testid={`status-badge-${lead.id}`}
-                                  title={t('leads.clickToUpdateStatus')}
-                                >
-                                  {t(`leads.status${lead.status}`)}
-                                </button>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              {resolveOwnerName(
-                                lead.owner_id,
-                                activeUsers,
-                                t('leads.ownerUnknown'),
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
-                              {new Date(lead.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (window.confirm(t('leads.confirmDelete'))) {
-                                    deleteMutation.mutate(lead.id);
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                disabled={deleteMutation.isPending}
-                                data-testid={`delete-lead-${lead.id}`}
-                                aria-label={t('leads.delete')}
-                              >
-                                {t('leads.delete')}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+          <PagedListLayout
+            toolbar={
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Owner toggle */}
+                <div className="flex rounded-md border border-gray-300 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnerFilter('all');
+                      setPage(1);
+                    }}
+                    className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
+                    data-testid="filter-owner-all"
+                  >
+                    {t('leads.filterAll')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnerFilter('me');
+                      setPage(1);
+                    }}
+                    className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
+                    data-testid="filter-owner-me"
+                  >
+                    {t('leads.filterMine')}
+                  </button>
                 </div>
-              )}
+
+                {/* Status filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+                  data-testid="filter-status"
+                >
+                  <option value="">{t('leads.filterStatusAll')}</option>
+                  {LEAD_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`leads.status${s}`)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Source filter */}
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => {
+                    setSourceFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+                  data-testid="filter-source"
+                >
+                  <option value="">{t('leads.filterSourceAll')}</option>
+                  {LEAD_SOURCES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`leads.source${s.replace(/\s+/g, '')}`)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Show disqualified toggle */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={includeDisqualified}
+                    onChange={(e) => {
+                      setIncludeDisqualified(e.target.checked);
+                      setPage(1);
+                    }}
+                    className="rounded border-gray-300"
+                    data-testid="toggle-disqualified"
+                  />
+                  {t('leads.showDisqualified')}
+                </label>
+
+                {/* Show converted toggle */}
+                <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={includeConverted}
+                    onChange={(e) => {
+                      setIncludeConverted(e.target.checked);
+                      setPage(1);
+                    }}
+                    className="rounded border-gray-300"
+                    data-testid="toggle-converted"
+                  />
+                  {t('leads.showConverted')}
+                </label>
+              </div>
+            }
+            isEmpty={leads.length === 0}
+            emptyState={
+              <EmptyState
+                data-testid="leads-empty-state"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                }
+                title={hasActiveFilters ? t('leads.filteredEmptyTitle') : t('leads.emptyTitle')}
+                description={
+                  hasActiveFilters
+                    ? t('common.filteredEmptyDescription')
+                    : t('leads.emptyDescription')
+                }
+                action={
+                  hasActiveFilters
+                    ? { label: t('common.clearFilters'), onClick: clearFilters }
+                    : { label: t('leads.emptyAction'), onClick: () => setShowForm(true) }
+                }
+              />
+            }
+            pagination={
               <Pagination
                 page={page}
                 limit={limit}
@@ -547,8 +424,129 @@ export default function LeadsPage() {
                 onPageChange={setPage}
                 onLimitChange={handleLimitChange}
               />
+            }
+          >
+            <div className="flex-1 overflow-auto min-h-0">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="sticky top-0 z-10 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnName')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnCompany')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnSource')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnStatus')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnOwner')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnCreated')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnActions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {leads.map((lead) => {
+                    const isConverted = Boolean(lead.converted_at);
+                    return (
+                      <tr
+                        key={lead.id}
+                        className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
+                        data-testid={`lead-row-${lead.id}`}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-primary-600">
+                          <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
+                            {lead.first_name}
+                            {lead.last_name ? ` ${lead.last_name}` : ''}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {lead.company_name ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {lead.lead_source
+                            ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {isConverted ? (
+                            <span
+                              className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
+                              data-testid={`badge-converted-${lead.id}`}
+                            >
+                              {t('leads.statusConverted')}
+                            </span>
+                          ) : editingStatusId === lead.id ? (
+                            <select
+                              ref={(el) => {
+                                el?.focus();
+                              }}
+                              defaultValue={lead.status}
+                              onChange={(e) => {
+                                updateStatusMutation.mutate({
+                                  id: lead.id,
+                                  status: e.target.value,
+                                  version: lead.version,
+                                });
+                              }}
+                              className="rounded border border-gray-300 py-0.5 text-xs"
+                              data-testid={`status-select-${lead.id}`}
+                            >
+                              {LEAD_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {t(`leads.status${s}`)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingStatusId(lead.id)}
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                              data-testid={`status-badge-${lead.id}`}
+                              title={t('leads.clickToUpdateStatus')}
+                            >
+                              {t(`leads.status${lead.status}`)}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(t('leads.confirmDelete'))) {
+                                deleteMutation.mutate(lead.id);
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                            disabled={deleteMutation.isPending}
+                            data-testid={`delete-lead-${lead.id}`}
+                            aria-label={t('leads.delete')}
+                          >
+                            {t('leads.delete')}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </PagedListLayout>
         )}
       </main>
     </div>
