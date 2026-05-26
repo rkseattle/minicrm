@@ -551,6 +551,10 @@ test.describe('Key Pages', () => {
         .resolve();
       await newBtn.waitFor({ state: 'visible' });
 
+      // Second networkidle wait so the SetupChecklistWidget's async data fetch
+      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
+      await page.waitForLoadState('networkidle');
+
       const masks = await resolveTimestampMasks(page);
       await page.checkScreenshot('contacts-list-desktop.png', { mask: masks });
     },
@@ -631,6 +635,10 @@ test.describe('Key Pages', () => {
         )
         .resolve();
       await newBtn.waitFor({ state: 'visible' });
+
+      // Second networkidle wait so the SetupChecklistWidget's async data fetch
+      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
+      await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);
       await page.checkScreenshot('leads-list-desktop.png', { mask: masks });
@@ -1109,6 +1117,10 @@ test.describe('Key Pages', () => {
       // Wait for the modal to become visible before snapshotting
       const modal = await getContactsConfirmDeleteModalLocator({ page });
       await modal.waitFor({ state: 'visible' });
+
+      // Second networkidle wait so the SetupChecklistWidget's async data fetch
+      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
+      await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);
       await page.checkScreenshot('confirm-delete-modal.png', { mask: masks });

@@ -136,9 +136,12 @@ export class UsersPage {
    * @param userId - User UUID.
    */
   async openActionsMenu(userId: string): Promise<void> {
+    // Desktop renders data-testid="user-actions-{id}"; mobile prefixes with "mobile-".
+    // Both are in the DOM simultaneously but only one is visible at the current viewport.
     await this.page.click(
       [
         { type: 'testId', value: `user-actions-${userId}` },
+        { type: 'testId', value: `mobile-user-actions-${userId}` },
         { type: 'role', value: 'button', options: { name: /actions/i } },
       ],
       { intent: 'meatball actions menu trigger button for a user row' },
