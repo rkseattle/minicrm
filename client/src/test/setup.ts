@@ -22,6 +22,24 @@ class ResizeObserverStub {
 }
 global.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
 
+// jsdom does not implement ProgressEvent. The MSW XHR interceptor fires one
+// when a mocked response completes, causing an unhandled rejection that fails
+// the vitest run even when all test assertions pass. Stub it with the
+// Event constructor so the interceptor can construct and dispatch it safely.
+if (typeof globalThis.ProgressEvent === 'undefined') {
+  globalThis.ProgressEvent = class ProgressEvent extends Event {
+    readonly lengthComputable: boolean;
+    readonly loaded: number;
+    readonly total: number;
+    constructor(type: string, init?: ProgressEventInit) {
+      super(type, init);
+      this.lengthComputable = init?.lengthComputable ?? false;
+      this.loaded = init?.loaded ?? 0;
+      this.total = init?.total ?? 0;
+    }
+  } as unknown as typeof ProgressEvent;
+}
+
 // jsdom does not implement window.matchMedia. Default to desktop (>= 768 px) so
 // components that use useBreakpoint() render their desktop subtree in tests,
 // keeping all existing test assertions valid. Individual tests that need to
