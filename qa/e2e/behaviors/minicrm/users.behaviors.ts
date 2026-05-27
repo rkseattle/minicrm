@@ -342,6 +342,11 @@ export async function resetOnboardingViaUI(
     await usersPage.isLoaded();
   }
 
+  // Wait for the target user's row to be visible before clicking its menu.
+  // isLoaded() waits for the invite form, which is a separate query from the
+  // user list — the row may not yet be in the DOM when the form is ready.
+  await usersPage.userCardIsVisible(userId);
+
   await usersPage.openActionsMenu(userId);
   await usersPage.clickResetOnboarding(userId);
   await usersPage.resetOnboardingDialogLocator();

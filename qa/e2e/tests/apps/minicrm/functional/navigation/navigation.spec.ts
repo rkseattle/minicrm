@@ -188,9 +188,11 @@ test.beforeEach(async ({ restClient }) => {
   await ensureSystemDefaults(restClient);
 });
 
-test.afterEach(async ({ restClient }) => {
-  await ensureSystemDefaults(restClient);
-});
+// afterEach intentionally omitted — every layout-mutating test resets its own
+// state in a finally block via resetNavLayout(). A file-level afterEach calling
+// ensureSystemDefaults() fires between every test in the serial block and races
+// with parallel workers also calling ensureSystemDefaults(), resetting nav_layout
+// to 'top' while the next test's activateHamburgerLayout is running. (MINCRM-415)
 
 // ---------------------------------------------------------------------------
 // Layout-mutating tests — single outer serial block
