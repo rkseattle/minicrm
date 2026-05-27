@@ -325,3 +325,45 @@ describe('PUT /api/settings/onboarding', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ── DELETE /api/settings/pipeline-stages-reviewed (MINCRM-410) ───────────────
+
+describe('DELETE /api/v1/settings/pipeline-stages-reviewed', () => {
+  beforeEach(async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at) VALUES ('pipeline_stages_reviewed', 'true', now())
+       ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now()`,
+    );
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM system_settings WHERE key = 'pipeline_stages_reviewed'`);
+  });
+
+  it('clears the flag and returns 204', async () => {
+    const res = await request(app)
+      .delete('/api/v1/settings/pipeline-stages-reviewed')
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(204);
+
+    const check = await pool.query(
+      `SELECT value FROM system_settings WHERE key = 'pipeline_stages_reviewed'`,
+    );
+    expect(check.rows).toHaveLength(0);
+  });
+
+  it('returns 403 when a rep attempts to delete', async () => {
+    const res = await request(app)
+      .delete('/api/v1/settings/pipeline-stages-reviewed')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).delete('/api/v1/settings/pipeline-stages-reviewed');
+
+    expect(res.status).toBe(401);
+  });
+});

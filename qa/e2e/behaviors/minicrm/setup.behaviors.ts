@@ -353,6 +353,16 @@ export async function getOnboardingStatus(
   return res.body;
 }
 
+/**
+ * Clears the pipeline_stages_reviewed flag so the onboarding widget's first task
+ * is incomplete, preventing allDone=true auto-dismiss during F-OB1. (MINCRM-410)
+ *
+ * Must be called by an admin-authenticated restClient.
+ */
+export async function resetPipelineStagesReviewed(restClient: RestClient): Promise<void> {
+  await restClient.delete('/api/v1/settings/pipeline-stages-reviewed');
+}
+
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap SetupChecklistPage / AutomationPage locators
 // so spec files never import @pages/* directly. (MINCRM-367, MINCRM-379)

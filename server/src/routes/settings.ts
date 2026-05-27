@@ -23,6 +23,7 @@ import {
   setTagsRestrictCreationHandler,
   getOnboardingStatusHandler,
   setOnboardingCompletedHandler,
+  deletePipelineStagesReviewedHandler,
   getMfaRequiredHandler,
   setMfaRequiredHandler,
 } from '../controllers/settingsController.js';
@@ -1010,6 +1011,34 @@ router.get('/onboarding', authenticate, asyncHandler(getOnboardingStatusHandler)
  */
 // Available to all authenticated users — writes to the caller's own user row (MINCRM-410)
 router.put('/onboarding', authenticate, asyncHandler(setOnboardingCompletedHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/pipeline-stages-reviewed:
+ *   delete:
+ *     tags: [Settings]
+ *     operationId: deletePipelineStagesReviewed
+ *     summary: Clear the pipeline_stages_reviewed flag (admin only, MINCRM-410)
+ *     description: >
+ *       Removes the pipeline_stages_reviewed flag from system_settings so the
+ *       onboarding checklist task reappears. Primarily used by E2E test setup
+ *       (ensureSystemDefaults) to ensure a clean onboarding state.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       204:
+ *         description: Flag cleared
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not admin
+ */
+router.delete(
+  '/pipeline-stages-reviewed',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(deletePipelineStagesReviewedHandler),
+);
 
 // ── Branding (MINCRM-356) ─────────────────────────────────────────────────────
 

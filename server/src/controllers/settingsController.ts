@@ -17,6 +17,7 @@ import {
   setTagsRestrictCreation,
   getOnboardingStatus,
   setOnboardingCompleted,
+  resetPipelineStagesReviewed,
   getMfaRequired,
   setMfaRequired,
 } from '../services/settingsService.js';
@@ -397,6 +398,19 @@ export async function setOnboardingCompletedHandler(req: Request, res: Response)
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write onboarding audit entry'));
+}
+
+/**
+ * DELETE /api/v1/settings/pipeline-stages-reviewed
+ * Clears the pipeline_stages_reviewed flag so the onboarding task reappears.
+ * Admin only. Primarily used by E2E test setup (ensureSystemDefaults). (MINCRM-410)
+ */
+export async function deletePipelineStagesReviewedHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  await resetPipelineStagesReviewed();
+  res.status(204).end();
 }
 
 // ── MFA enforcement (MINCRM-392) ──────────────────────────────────────────────

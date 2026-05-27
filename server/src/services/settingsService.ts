@@ -431,6 +431,10 @@ export async function markPipelineStagesReviewed(): Promise<void> {
   );
 }
 
+export async function resetPipelineStagesReviewed(): Promise<void> {
+  await pool.query(`DELETE FROM system_settings WHERE key = $1`, [PIPELINE_STAGES_REVIEWED_KEY]);
+}
+
 /** The key used to store the org-wide MFA enforcement setting (MINCRM-392) */
 const REQUIRE_MFA_KEY = 'require_mfa';
 
