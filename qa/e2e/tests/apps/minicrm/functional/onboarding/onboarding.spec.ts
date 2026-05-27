@@ -80,24 +80,31 @@ test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
     restClient,
   }) => {
     await loginAsAdmin(restClient);
-    await setOnboardingCompleted(restClient, false);
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    // Wait for the dashboard heading before resolving the widget locator — ensures
-    // React has mounted and the widget's onboarding query has been initiated.
-    // Do NOT use waitForLoadState('networkidle') here: when allDone=true the
-    // auto-dismiss fires a PUT then GET that extends networkidle past the widget's
-    // 3s auto-dismiss lifetime. (MINCRM-410)
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'dashboard-heading' },
-        { type: 'role', value: 'heading', options: { name: /dashboard/i } },
-      ],
-      'visible',
-      {},
-      10_000,
-    );
-    const widget = await getSetupChecklistWidgetLocator({ page });
-    await expect(widget).toBeVisible({ timeout: 10_000 });
+    // Restore true in finally so parallel workers never observe false on the
+    // shared admin account after this test completes. (MINCRM-415)
+    try {
+      await setOnboardingCompleted(restClient, false);
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      // Wait for the dashboard heading before resolving the widget locator — ensures
+      // React has mounted and the widget's onboarding query has been initiated.
+      // Do NOT use waitForLoadState('networkidle') here: when allDone=true the
+      // auto-dismiss fires a PUT then GET that extends networkidle past the widget's
+      // 3s auto-dismiss lifetime. (MINCRM-410)
+      await page.waitFor(
+        [
+          { type: 'testId', value: 'dashboard-heading' },
+          { type: 'role', value: 'heading', options: { name: /dashboard/i } },
+        ],
+        'visible',
+        {},
+        10_000,
+      );
+      const widget = await getSetupChecklistWidgetLocator({ page });
+      await expect(widget).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await loginAsAdmin(restClient);
+      await setOnboardingCompleted(restClient, true);
+    }
   });
 
   test('@functional F-OB2: widget is NOT visible when onboarding_completed is true', async ({
@@ -121,23 +128,30 @@ test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
     restClient,
   }) => {
     await loginAsAdmin(restClient);
-    await setOnboardingCompleted(restClient, false);
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.waitForLoadState('networkidle');
+    // Restore true in finally so parallel workers never observe false on the
+    // shared admin account after this test completes. (MINCRM-415)
+    try {
+      await setOnboardingCompleted(restClient, false);
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      await page.waitForLoadState('networkidle');
 
-    const widget = await getSetupChecklistWidgetLocator({ page });
-    await expect(widget).toBeVisible({ timeout: 10_000 });
+      const widget = await getSetupChecklistWidgetLocator({ page });
+      await expect(widget).toBeVisible({ timeout: 10_000 });
 
-    await dismissSetupChecklist({ page });
+      await dismissSetupChecklist({ page });
 
-    expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
-      true,
-    );
+      expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
+        true,
+      );
 
-    // Verify persistence via API
-    const status = await getOnboardingStatus(restClient);
-    expect(status.onboarding_completed).toBe(true);
-    expect(status.is_first_run).toBe(false);
+      // Verify persistence via API
+      const status = await getOnboardingStatus(restClient);
+      expect(status.onboarding_completed).toBe(true);
+      expect(status.is_first_run).toBe(false);
+    } finally {
+      await loginAsAdmin(restClient);
+      await setOnboardingCompleted(restClient, true);
+    }
   });
 
   test('@functional F-OB4: widget collapses to pill when collapse button is clicked', async ({
@@ -145,46 +159,60 @@ test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
     restClient,
   }) => {
     await loginAsAdmin(restClient);
-    await setOnboardingCompleted(restClient, false);
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.waitForLoadState('networkidle');
+    // Restore true in finally so parallel workers never observe false on the
+    // shared admin account after this test completes. (MINCRM-415)
+    try {
+      await setOnboardingCompleted(restClient, false);
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      await page.waitForLoadState('networkidle');
 
-    const widget = await getSetupChecklistWidgetLocator({ page });
-    await expect(widget).toBeVisible({ timeout: 10_000 });
+      const widget = await getSetupChecklistWidgetLocator({ page });
+      await expect(widget).toBeVisible({ timeout: 10_000 });
 
-    await clickSetupChecklistCollapse({ page });
+      await clickSetupChecklistCollapse({ page });
 
-    const pill = await getSetupChecklistPillLocator({ page });
-    await expect(pill).toBeVisible({ timeout: 5_000 });
-    expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
-      true,
-    );
+      const pill = await getSetupChecklistPillLocator({ page });
+      await expect(pill).toBeVisible({ timeout: 5_000 });
+      expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
+        true,
+      );
+    } finally {
+      await loginAsAdmin(restClient);
+      await setOnboardingCompleted(restClient, true);
+    }
   });
 
   test('@functional F-OB5: task list shows five tasks', async ({ page, restClient }) => {
     await loginAsAdmin(restClient);
-    await setOnboardingCompleted(restClient, false);
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-    await page.waitForLoadState('networkidle');
+    // Restore true in finally so parallel workers never observe false on the
+    // shared admin account after this test completes. (MINCRM-415)
+    try {
+      await setOnboardingCompleted(restClient, false);
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      await page.waitForLoadState('networkidle');
 
-    await getSetupChecklistWidgetLocator({ page });
+      await getSetupChecklistWidgetLocator({ page });
 
-    const taskList = await page
-      .locate(
-        [
-          { type: 'testId', value: 'setup-checklist-task-list' },
-          { type: 'role', value: 'list' },
-        ],
-        { intent: 'setup checklist task list showing five setup tasks' },
-      )
-      .resolve();
+      const taskList = await page
+        .locate(
+          [
+            { type: 'testId', value: 'setup-checklist-task-list' },
+            { type: 'role', value: 'list' },
+          ],
+          { intent: 'setup checklist task list showing five setup tasks' },
+        )
+        .resolve();
 
-    await expect(taskList).toBeVisible({ timeout: 10_000 });
+      await expect(taskList).toBeVisible({ timeout: 10_000 });
 
-    // Count li elements via innerHTML — SafeLocator.locator() is forbidden
-    const html = await taskList.innerHTML();
-    const liCount = (html.match(/<li/g) ?? []).length;
-    expect(liCount).toBe(5);
+      // Count li elements via innerHTML — SafeLocator.locator() is forbidden
+      const html = await taskList.innerHTML();
+      const liCount = (html.match(/<li/g) ?? []).length;
+      expect(liCount).toBe(5);
+    } finally {
+      await loginAsAdmin(restClient);
+      await setOnboardingCompleted(restClient, true);
+    }
   });
 }); // end describe.serial
 
