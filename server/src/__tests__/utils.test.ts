@@ -155,6 +155,21 @@ describe('POST /api/v1/users/:id/reset-onboarding', () => {
     expect(res.status).toBe(403);
   });
 
+  it('returns 403 when admin tries to reset their own onboarding', async () => {
+    // Retrieve the admin's own ID from the DB so we can pass it as the target.
+    const adminRow = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
+      ADMIN_EMAIL,
+    ]);
+    const adminId = adminRow.rows[0].id;
+
+    const res = await request(app)
+      .post(`/api/v1/users/${adminId}/reset-onboarding`)
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app).post(`/api/v1/users/${repUserId}/reset-onboarding`);
 

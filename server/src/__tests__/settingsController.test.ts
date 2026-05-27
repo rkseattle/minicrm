@@ -297,7 +297,7 @@ describe('PUT /api/settings/onboarding', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns 200 when a rep updates their own onboarding_completed (MINCRM-410)', async () => {
+  it('returns 200 when a rep updates their own onboarding_completed to true (MINCRM-410)', async () => {
     const res = await request(app)
       .put('/api/v1/settings/onboarding')
       .set('Cookie', repCookie)
@@ -305,6 +305,16 @@ describe('PUT /api/settings/onboarding', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.onboarding_completed).toBe(true);
+  });
+
+  it('returns 403 when a rep tries to set onboarding_completed to false (self-reset)', async () => {
+    const res = await request(app)
+      .put('/api/v1/settings/onboarding')
+      .set('Cookie', repCookie)
+      .send({ onboarding_completed: false });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('returns 401 when unauthenticated', async () => {

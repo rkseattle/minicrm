@@ -357,6 +357,13 @@ export async function resetOnboardingHandler(req: Request, res: Response): Promi
   const { id } = req.params;
   const actor = { id: req.user!.id, name: req.user!.name };
 
+  if (id === req.user!.id) {
+    res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'Admins cannot reset their own onboarding checklist' },
+    });
+    return;
+  }
+
   try {
     await userService.resetUserOnboarding(id as string, actor);
     res.status(200).json({ success: true });

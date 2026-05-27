@@ -353,10 +353,10 @@ async function getRepOnboardingStatus(callerId: string): Promise<OnboardingStatu
   }>(
     `SELECT
        u.onboarding_completed,
-       (SELECT COUNT(*) FROM contacts  WHERE owner_id = $1) AS contact_count,
-       (SELECT COUNT(*) FROM accounts  WHERE owner_id = $1) AS account_count,
-       (SELECT COUNT(*) FROM deals     WHERE owner_id = $1) AS deal_count,
-       (SELECT COUNT(*) FROM activities WHERE owner_id = $1) AS activity_count
+       (SELECT COUNT(*) FROM contacts  WHERE owner_id = $1 AND is_demo = false) AS contact_count,
+       (SELECT COUNT(*) FROM accounts  WHERE owner_id = $1 AND is_demo = false) AS account_count,
+       (SELECT COUNT(*) FROM deals     WHERE owner_id = $1 AND is_demo = false) AS deal_count,
+       (SELECT COUNT(*) FROM activities WHERE owner_id = $1 AND is_demo = false) AS activity_count
      FROM users u WHERE u.id = $1 LIMIT 1`,
     [callerId],
   );

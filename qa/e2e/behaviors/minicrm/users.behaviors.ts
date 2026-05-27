@@ -290,10 +290,11 @@ export async function changeUserRole(
  * navigate the UI as them must call this after activation to prevent the fixed
  * z-50 overlay from intercepting pointer events on other elements.
  *
- * Authenticates the restClient as the target user, sets the flag, then
- * re-authenticates as admin.
+ * Logs in as the target user to set the flag, then always re-authenticates as
+ * admin — even if the flag write throws — so the caller's restClient is never
+ * left in the target user's session.
  *
- * @param restClient - RestClient (will be mutated to authenticate as the user then admin).
+ * @param restClient - RestClient (will be mutated; is always back in admin context on return).
  * @param email - Email of the activated user.
  * @param password - Password of the activated user.
  */
@@ -303,8 +304,11 @@ export async function suppressUserOnboarding(
   password: string,
 ): Promise<void> {
   await loginAs(restClient, email, password);
-  await setOnboardingCompleted(restClient, true);
-  await loginAsAdmin(restClient);
+  try {
+    await setOnboardingCompleted(restClient, true);
+  } finally {
+    await loginAsAdmin(restClient);
+  }
 }
 
 // ---------------------------------------------------------------------------
