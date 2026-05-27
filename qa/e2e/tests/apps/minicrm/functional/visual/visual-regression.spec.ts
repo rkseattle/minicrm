@@ -66,6 +66,7 @@ import {
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
 import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { setOnboardingCompleted } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   getPipelineBoardLocator,
   getPipelineMobileStageNameLocator,
@@ -103,13 +104,18 @@ test.setTimeout(60_000);
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
+  // Ensure the admin's onboarding is marked complete before every visual test
+  // so the SetupChecklistWidget never renders and cannot produce pixel diffs.
+  // F-OB1–F-OB5 previously left onboarding_completed=false on the shared admin
+  // for the duration of the test; those tests now restore the flag in a finally
+  // block, eliminating the race. This call is a belt-and-suspenders guard for
+  // any future test that mutates the flag. (MINCRM-415)
+  await setOnboardingCompleted(restClient, true);
 });
 
 // Tests V13–V17 mutate the nav layout. Reset to 'top' after each test so
 // a failed teardown in one test cannot contaminate subsequent tests in the
-// same worker. Only the nav layout is reset here — calling ensureSystemDefaults
-// would also reset onboarding_completed, which races with the onboarding spec
-// (F-OB1) that explicitly sets onboarding_completed=false in parallel workers.
+// same worker.
 test.afterEach(async ({ restClient }) => {
   await setNavLayoutViaAPI('top', restClient);
 });
