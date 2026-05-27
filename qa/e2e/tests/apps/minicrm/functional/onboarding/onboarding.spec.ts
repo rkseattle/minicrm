@@ -91,20 +91,11 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       // stages (setting the flag), so reset it here — not just in beforeEach. (MINCRM-410)
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      // Wait for the dashboard heading before resolving the widget locator — ensures
-      // React has mounted and the widget's onboarding query has been initiated.
-      // Do NOT use waitForLoadState('networkidle') here: when allDone=true the
-      // auto-dismiss fires a PUT then GET that extends networkidle past the widget's
-      // 3s auto-dismiss lifetime. (MINCRM-410)
-      await page.waitFor(
-        [
-          { type: 'testId', value: 'dashboard-heading' },
-          { type: 'role', value: 'heading', options: { name: /dashboard/i } },
-        ],
-        'visible',
-        {},
-        10_000,
-      );
+      // Assert the widget is visible as soon as the page loads — do NOT wait for
+      // dashboard-heading first. The widget is mounted immediately on render; if we
+      // wait for the heading and allDone=true the 3 s auto-dismiss may have already
+      // fired before we look. The 10 s timeout gives enough time for the initial
+      // React render without extending past the auto-dismiss window. (MINCRM-410)
       const widget = await getSetupChecklistWidgetLocator({ page });
       await expect(widget).toBeVisible({ timeout: 10_000 });
     } finally {
