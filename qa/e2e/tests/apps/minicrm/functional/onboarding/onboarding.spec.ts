@@ -72,7 +72,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 // another test's state mid-run.
 // ---------------------------------------------------------------------------
 
-test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
+test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   test.setTimeout(60_000);
 
   test('@functional F-OB1: widget is visible for admin when is_first_run is true', async ({
@@ -214,14 +214,13 @@ test.describe.serial('Setup checklist widget (MINCRM-379)', () => {
       await setOnboardingCompleted(restClient, true);
     }
   });
-}); // end describe.serial
+  // ---------------------------------------------------------------------------
+  // Per-user onboarding tests (MINCRM-410)
+  // These tests create ephemeral rep users and clean up in finally blocks.
+  // Kept inside the same describe.serial as the setup-checklist widget tests
+  // to prevent cross-block races on the shared admin onboarding_completed flag.
+  // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Per-user onboarding tests (MINCRM-410)
-// These tests create ephemeral rep users and clean up in finally blocks.
-// ---------------------------------------------------------------------------
-
-test.describe.serial('Per-user onboarding checklist (MINCRM-410)', () => {
   test.setTimeout(90_000);
 
   test('@functional F-OB7: rep user sees four-task checklist when onboarding is incomplete', async ({
@@ -353,4 +352,4 @@ test.describe.serial('Per-user onboarding checklist (MINCRM-410)', () => {
       await deactivateUser(restClient, user.id);
     }
   });
-}); // end describe.serial — per-user onboarding
+}); // end describe.serial — onboarding (MINCRM-379, MINCRM-410)

@@ -222,6 +222,53 @@ export class UsersPage {
   }
 
   /**
+   * Paginates through the user list until the card for userId is visible,
+   * then stops. Throws if the card is not found after exhausting all pages.
+   *
+   * The user list is sorted oldest-first, so a newly-created ephemeral user
+   * in a shared E2E DB may appear on a page beyond the first. This method
+   * handles that case so callers don't need to know which page the user is on.
+   *
+   * @param userId - User UUID to find.
+   */
+  async navigateToUserCard(userId: string): Promise<void> {
+    await this.page.waitForLoadState('networkidle');
+    const MAX_PAGES = 20;
+    for (let pageNum = 1; pageNum <= MAX_PAGES; pageNum++) {
+      // Check if the card is visible on the current page.
+      try {
+        const card = await this.page
+          .locate(
+            [
+              { type: 'testId', value: `user-card-${userId}` },
+              { type: 'css', value: `[data-testid="user-card-${userId}"]` },
+            ],
+            { intent: 'user card in the users management list', fallbackTimeout: 2_000 },
+          )
+          .resolve();
+        if ((await card.count()) > 0) return;
+      } catch {
+        // Card not on this page — try next.
+      }
+
+      // Click "Next" if available; otherwise the card doesn't exist.
+      try {
+        await this.page.click(
+          [
+            { type: 'testId', value: 'pagination-next' },
+            { type: 'role', value: 'button', options: { name: /next/i } },
+          ],
+          { intent: 'next page button in user list pagination', fallbackTimeout: 3_000 },
+        );
+        await this.page.waitForLoadState('networkidle');
+      } catch {
+        throw new Error(`[UsersPage] User card ${userId} not found after ${pageNum} page(s)`);
+      }
+    }
+    throw new Error(`[UsersPage] User card ${userId} not found after ${MAX_PAGES} pages`);
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {
