@@ -674,7 +674,7 @@ export default function UsersPage() {
           <div
             role="status"
             data-testid="reset-onboarding-success"
-            className="fixed bottom-6 start-1/2 -translate-x-1/2 z-50 rounded-md bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm text-emerald-800 shadow-md"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm text-emerald-800 shadow-md"
           >
             {t('users.resetOnboardingSuccess', {
               name: users.find((u) => u.id === resetOnboardingSuccessUserId)?.name ?? '',

@@ -369,6 +369,18 @@ export async function setOnboardingCompletedHandler(req: Request, res: Response)
     return;
   }
 
+  // Non-admin users may only dismiss their own checklist (true), not re-open it (false).
+  // Admins can reset any user's checklist via POST /api/v1/users/:id/reset-onboarding.
+  if (!req.body.onboarding_completed && req.user!.role !== 'admin') {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Only admins can reset the onboarding checklist',
+      },
+    });
+    return;
+  }
+
   const completed = await setOnboardingCompleted(
     req.user!.id,
     req.body.onboarding_completed as boolean,

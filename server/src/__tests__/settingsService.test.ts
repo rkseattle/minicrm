@@ -384,6 +384,8 @@ describe('getOnboardingStatus — admin caller', () => {
 
 describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
   beforeAll(async () => {
+    await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
+    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
     const repResult = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, status, password_hash)
        VALUES ('settings-svc-rep@test.com', 'Settings Rep', 'rep', 'active', 'x')
@@ -393,6 +395,7 @@ describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
   });
 
   afterAll(async () => {
+    await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
     await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
   });
 
@@ -454,6 +457,29 @@ describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
   it('logged_first_activity is false when rep has no activities', async () => {
     const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
     const task = status.tasks.find((t) => t.id === 'logged_first_activity');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('first_contact_added is false when the rep only owns demo contacts (is_demo filter)', async () => {
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id, is_demo)
+       VALUES ('Demo','Contact','rep-demo-contact@test.com', $1, true)`,
+      [repUserId],
+    );
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_contact_added');
+    expect(task?.completed).toBe(false);
+  });
+
+  it('first_deal_created is false when the rep only owns demo deals (is_demo filter)', async () => {
+    const stageRow = await pool.query<{ name: string }>(`SELECT name FROM pipeline_stages LIMIT 1`);
+    const stage = stageRow.rows[0].name;
+    await pool.query(
+      `INSERT INTO deals (name, stage, owner_id, is_demo) VALUES ('Demo Deal', $1, $2, true)`,
+      [stage, repUserId],
+    );
+    const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
+    const task = status.tasks.find((t) => t.id === 'first_deal_created');
     expect(task?.completed).toBe(false);
   });
 });
