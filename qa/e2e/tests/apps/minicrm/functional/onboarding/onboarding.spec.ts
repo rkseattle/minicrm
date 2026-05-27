@@ -273,6 +273,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     page,
     restClient,
   }) => {
+    test.setTimeout(120_000); // browser login + pagination + UI reset + API verify
     await loginAsAdmin(restClient);
 
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -296,10 +297,13 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       const before = await getOnboardingStatus(restClient);
       expect(before.onboarding_completed, 'onboarding should be completed before reset').toBe(true);
 
-      // Switch back to admin and reset via the UI.
+      // Switch back to admin for both the REST client and the browser session.
+      // test.use({ storageState: { cookies: [], origins: [] } }) at the top of this
+      // file clears the pre-auth storageState, so the page fixture is unauthenticated.
+      // We must log in via the browser before navigating to /users. (MINCRM-410)
       await loginAsAdmin(restClient);
+      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-      // The page fixture uses the pre-authenticated admin storageState — navigate directly.
       const result = await resetOnboardingViaUI(user.id, { page });
       expect(result.successToastVisible, 'success toast should appear after reset').toBe(true);
 
