@@ -222,20 +222,29 @@ export class UsersPage {
   }
 
   /**
-   * Paginates through the user list until the card for userId is visible,
-   * then stops. Throws if the card is not found after exhausting all pages.
+   * Finds the user card for userId in the user list, starting from the last page.
+   * Newly-created ephemeral users are always at the end (oldest-first sort).
    *
-   * The user list is sorted oldest-first, so a newly-created ephemeral user
-   * in a shared E2E DB may appear on a page beyond the first. This method
-   * handles that case so callers don't need to know which page the user is on.
+   * First switches to the maximum page size (100) to reduce total page count,
+   * then jumps to the last page and searches backwards.
    *
    * @param userId - User UUID to find.
    */
   async navigateToUserCard(userId: string): Promise<void> {
     await this.page.waitForLoadState('networkidle');
-    const MAX_PAGES = 20;
-    for (let pageNum = 1; pageNum <= MAX_PAGES; pageNum++) {
-      // Check if the card is visible on the current page.
+
+    // Switch to the largest page size to minimise page count (100 rows/page).
+    await this._setPageSize(100);
+
+    // Read "Page N of M" and jump to the last page.
+    const totalPages = await this._readTotalPages();
+    if (totalPages > 1) {
+      await this._jumpToPage(totalPages);
+    }
+
+    // Paginate backwards from the last page — new users are always near the end.
+    const MAX_BACK = 20;
+    for (let attempt = 0; attempt < MAX_BACK; attempt++) {
       try {
         const card = await this.page
           .locate(
@@ -248,24 +257,87 @@ export class UsersPage {
           .resolve();
         if ((await card.count()) > 0) return;
       } catch {
-        // Card not on this page — try next.
+        // Card not on this page — try previous.
       }
 
-      // Click "Next" if available; otherwise the card doesn't exist.
+      try {
+        await this.page.click(
+          [
+            { type: 'testId', value: 'pagination-prev' },
+            { type: 'role', value: 'button', options: { name: /previous/i } },
+          ],
+          { intent: 'previous page button in user list pagination', fallbackTimeout: 3_000 },
+        );
+        await this.page.waitForLoadState('networkidle');
+      } catch {
+        throw new Error(
+          `[UsersPage] User card ${userId} not found after searching ${attempt + 1} page(s) from the end`,
+        );
+      }
+    }
+    throw new Error(
+      `[UsersPage] User card ${userId} not found after ${MAX_BACK} pages from the end`,
+    );
+  }
+
+  /** Sets the pagination page-size select to the given value. */
+  private async _setPageSize(size: number): Promise<void> {
+    try {
+      const select = await this.page
+        .locate(
+          [
+            { type: 'testId', value: 'pagination-limit-select' },
+            { type: 'css', value: '[data-testid="pagination-limit-select"]' },
+          ],
+          { intent: 'pagination page size selector', fallbackTimeout: 3_000 },
+        )
+        .resolve();
+      await select.selectOption(String(size));
+      await this.page.waitForLoadState('networkidle');
+    } catch {
+      // Page-size selector may not be rendered — continue with default size.
+    }
+  }
+
+  /** Returns the total number of pages from the pagination-page-indicator ("Page N of M"). */
+  private async _readTotalPages(): Promise<number> {
+    try {
+      const indicator = await this.page
+        .locate(
+          [
+            { type: 'testId', value: 'pagination-page-indicator' },
+            { type: 'css', value: '[data-testid="pagination-page-indicator"]' },
+          ],
+          {
+            intent: 'pagination page indicator showing current and total pages',
+            fallbackTimeout: 3_000,
+          },
+        )
+        .resolve();
+      const text = await indicator.textContent();
+      const match = text?.match(/(\d+)\s*$/);
+      return match ? parseInt(match[1], 10) : 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  /** Clicks Next repeatedly until the target page is reached. */
+  private async _jumpToPage(targetPage: number): Promise<void> {
+    for (let p = 1; p < targetPage; p++) {
       try {
         await this.page.click(
           [
             { type: 'testId', value: 'pagination-next' },
             { type: 'role', value: 'button', options: { name: /next/i } },
           ],
-          { intent: 'next page button in user list pagination', fallbackTimeout: 3_000 },
+          { intent: 'next page button to jump to last page', fallbackTimeout: 3_000 },
         );
         await this.page.waitForLoadState('networkidle');
       } catch {
-        throw new Error(`[UsersPage] User card ${userId} not found after ${pageNum} page(s)`);
+        break;
       }
     }
-    throw new Error(`[UsersPage] User card ${userId} not found after ${MAX_PAGES} pages`);
   }
 
   /**
