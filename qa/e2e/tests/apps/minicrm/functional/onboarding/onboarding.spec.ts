@@ -30,6 +30,7 @@ import {
   setOnboardingCompleted,
   getOnboardingStatus,
   resetUserOnboardingViaApi,
+  resetPipelineStagesReviewed,
   getSetupChecklistWidgetLocator,
   dismissSetupChecklist,
   getSetupChecklistPillLocator,
@@ -84,6 +85,11 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     // shared admin account after this test completes. (MINCRM-415)
     try {
       await setOnboardingCompleted(restClient, false);
+      // Ensure pipeline_stages_reviewed is false so at least one admin task is
+      // incomplete. If allDone=true the widget auto-dismisses after 3 s before we
+      // can assert it's visible. This races with other workers that save pipeline
+      // stages (setting the flag), so reset it here — not just in beforeEach. (MINCRM-410)
+      await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
       // Wait for the dashboard heading before resolving the widget locator — ensures
       // React has mounted and the widget's onboarding query has been initiated.
@@ -132,6 +138,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     // shared admin account after this test completes. (MINCRM-415)
     try {
       await setOnboardingCompleted(restClient, false);
+      await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
       await page.waitForLoadState('networkidle');
 
@@ -163,6 +170,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     // shared admin account after this test completes. (MINCRM-415)
     try {
       await setOnboardingCompleted(restClient, false);
+      await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
       await page.waitForLoadState('networkidle');
 
@@ -188,6 +196,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     // shared admin account after this test completes. (MINCRM-415)
     try {
       await setOnboardingCompleted(restClient, false);
+      await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
       await page.waitForLoadState('networkidle');
 
