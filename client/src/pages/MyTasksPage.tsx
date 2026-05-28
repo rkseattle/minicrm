@@ -83,7 +83,7 @@ export default function MyTasksPage() {
   const [completeError, setCompleteError] = useState<string | null>(null);
   const { page, limit, setPage, handleLimitChange } = usePagination();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: [...MY_TASKS_QUERY_KEY, page, limit],
     queryFn: () => listMyTasks(page, limit),
   });
@@ -143,6 +143,14 @@ export default function MyTasksPage() {
           <p className="text-sm text-gray-500" data-testid="my-tasks-loading">
             {t('myTasks.loading')}
           </p>
+        ) : isError ? (
+          <div
+            role="alert"
+            className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+            data-testid="my-tasks-error"
+          >
+            {t('errors.generic')}
+          </div>
         ) : (
           <>
             {completeError && (
