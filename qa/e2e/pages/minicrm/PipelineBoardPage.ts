@@ -41,10 +41,25 @@ export class PipelineBoardPage {
   }
 
   /**
-   * Navigates directly to the pipeline board URL.
+   * Navigates directly to the pipeline board URL and waits for the board
+   * container to be visible before returning.
+   *
+   * Waiting for the board element (rather than just networkidle) prevents
+   * scanMobileColumnSlug from starting its prev-button rewind before React has
+   * mounted the board, which caused the rewind to silently no-op and leave the
+   * view on whatever stage was last active. (MINCRM-415)
    */
   async navigate(): Promise<void> {
     await this.page.goto(PipelineBoardPage.PATH);
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'pipeline-board' },
+          { type: 'css', value: '[data-testid="pipeline-board"]' },
+        ],
+        { intent: 'pipeline kanban board container after navigation' },
+      )
+      .resolve();
   }
 
   /**

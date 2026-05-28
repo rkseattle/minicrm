@@ -53,6 +53,8 @@ import {
   navigateToLoginPage,
   submitLoginForm,
   navigateToForgotPasswordPage,
+  loginAsAdmin,
+  loginViaBrowser,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToPipelineBoard,
@@ -61,7 +63,13 @@ import {
   cancelCloseDealModal,
 } from '@behaviors/minicrm/deals.behaviors.js';
 import { navigateToUsers } from '@behaviors/minicrm/users.behaviors.js';
-import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestDeal,
+  createTestRep,
+  createTestAdmin,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 
 // ---------------------------------------------------------------------------
@@ -121,6 +129,21 @@ test.describe('Auth forms', () => {
 
     await assertNoBlockingViolations(page);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Authenticated tests — ephemeral rep per test (MINCRM-415)
+// ---------------------------------------------------------------------------
+
+// Authenticated tests must have their own browser session — the global
+// storageState is cleared by MINCRM-415 so each test creates an ephemeral rep
+// (or admin for admin-only tests) and logs in via browser.
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ page, restClient, testData }) => {
+  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
 });
 
 // ---------------------------------------------------------------------------
@@ -286,10 +309,15 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 });
 
 // ---------------------------------------------------------------------------
-// Admin flows — authenticated admin session
+// Admin flows — ephemeral admin session (MINCRM-415)
 // ---------------------------------------------------------------------------
 
-test('@functional A11Y-ADM1: user invite form', async ({ page }) => {
+test('@functional A11Y-ADM1: user invite form', async ({ page, restClient, testData }) => {
+  // /users is admin-only; re-login as an ephemeral admin for this test.
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
   await navigateToUsers({ page });
   await page.waitForLoadState('networkidle');
 

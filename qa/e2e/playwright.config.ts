@@ -78,8 +78,10 @@ export default defineConfig({
     trace: process.env.CI ? 'on-first-retry' : process.env.PLAYWRIGHT_TRACE === 'on' ? 'on' : 'off',
   },
 
-  // Global timeouts (ms)
-  timeout: 30_000,
+  // Global timeouts (ms).
+  // 60 s per test: createTestRep (5 API calls) + loginViaBrowser + actual test work
+  // needs headroom beyond the previous 30 s under 4-worker local parallelism. (MINCRM-415)
+  timeout: 60_000,
   expect: {
     timeout: 5_000,
   },
