@@ -18,9 +18,7 @@ function makeFilters(overrides: Partial<ReportFilters> = {}): ReportFilters {
     setViewMode: vi.fn(),
     selectedOwnerId: '',
     setSelectedOwnerId: vi.fn(),
-    activeUsers: [
-      { id: 'rep-1', name: 'Rep One', email: 'rep@test.com', role: 'rep', status: 'active' },
-    ],
+    activeUsers: [{ id: 'rep-1', name: 'Rep One' }],
     effectiveOwnerId: undefined,
     isAdmin: false,
     ...overrides,
