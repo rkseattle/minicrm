@@ -21,8 +21,10 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { openDeal, dragDealToStage, getDealById } from '@behaviors/minicrm/deals.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAccount, createTestDeal, createTestRep } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // DnD Stage Transition tests
@@ -32,6 +34,10 @@ import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 // and there are no adjacent columns to drag between. All three tests skip on
 // mobile-web to avoid false failures.
 // ---------------------------------------------------------------------------
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 
 test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualification → card moves in DOM and stage persists via API', async ({
   page,
@@ -44,7 +50,9 @@ test('@smoke @functional F5-DND1: drag deal card from Prospecting to Qualificati
     'F5-DND1: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND1-Account-${Date.now()}`,
@@ -87,7 +95,9 @@ test('@functional F5-DND2: drag deal card to Closed Won → CloseDealModal opens
     'F5-DND2: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND2-Account-${Date.now()}`,
@@ -129,7 +139,9 @@ test('@functional F5-DND3: drag deal card to Closed Lost → CloseDealModal open
     'F5-DND3: drag-and-drop is desktop-only; mobile uses stage-selector dropdown',
   );
 
-  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 
   const account = await createTestAccount(testData, restClient, {
     name: `F5DND3-Account-${Date.now()}`,

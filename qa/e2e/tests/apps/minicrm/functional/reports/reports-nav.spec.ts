@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   getReportsHeadingLocator,
@@ -30,14 +30,9 @@ import {
   getReportsActivityVolumeHeadingLocator,
   getReportsStageTrendHeadingLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[reports-nav-spec] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
@@ -50,14 +45,23 @@ test.beforeEach(async ({ restClient }) => {
 test('reports nav: clicking Reports nav link lands on /reports @functional', async ({
   page,
   restClient,
+  testData,
 }) => {
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
   test.skip(isMobile, 'left nav not rendered on mobile — mobile always uses NavTop');
 
-  await setNavLayoutViaAPI('left', restClient);
   try {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await page.waitForLoadState('networkidle');
+
+    // Set nav layout to 'left' AFTER login so the browser's initial nav-layout
+    // fetch completes first. Then navigate to a page that will trigger a
+    // React Query refetch of the (now-left) layout. Setting it here narrows the
+    // race window with parallel tests' ensureSystemDefaults calls. (MINCRM-415)
+    await setNavLayoutViaAPI('left', restClient);
+    await page.goto('/', { waitUntil: 'networkidle' });
+
     // The left-nav layout is applied via a React Query setting; the nav link may
     // not be in the DOM immediately after networkidle if the setting fetch is still
     // in flight. Wait explicitly before attempting the click.
@@ -78,16 +82,26 @@ test('reports nav: clicking Reports nav link lands on /reports @functional', asy
   }
 });
 
-test('reports nav: /reports shows the page heading @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('reports nav: /reports shows the page heading @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const heading = await getReportsHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
 });
 
-test('reports nav: /reports shows SubPageNav with three tabs @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('reports nav: /reports shows SubPageNav with three tabs @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
@@ -111,8 +125,13 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
   }
 });
 
-test('reports nav: /reports defaults to Win/Loss report content @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('reports nav: /reports defaults to Win/Loss report content @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const heading = await getReportsWinLossHeadingLocator({ page });
@@ -121,8 +140,11 @@ test('reports nav: /reports defaults to Win/Loss report content @functional', as
 
 test('reports nav: /reports?view=activity deep-links to Activity Volume @functional', async ({
   page,
+  testData,
+  restClient,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports?view=activity', { waitUntil: 'networkidle' });
 
   const heading = await getReportsActivityVolumeHeadingLocator({ page });
@@ -131,8 +153,11 @@ test('reports nav: /reports?view=activity deep-links to Activity Volume @functio
 
 test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage report @functional', async ({
   page,
+  testData,
+  restClient,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const heading = await getReportsStageTrendHeadingLocator({ page });
@@ -141,14 +166,22 @@ test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage rep
 
 test('reports nav: old /reports/win-loss URL redirects to /reports @functional', async ({
   page,
+  testData,
+  restClient,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
   expect(new URL(page.url()).pathname).toBe('/reports');
 });
 
-test('reports nav: switching tabs renders the selected report @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('reports nav: switching tabs renders the selected report @functional', async ({
+  page,
+  testData,
+  restClient,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/reports', { waitUntil: 'networkidle' });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;

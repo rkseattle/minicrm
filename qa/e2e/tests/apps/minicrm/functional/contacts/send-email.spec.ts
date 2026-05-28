@@ -15,8 +15,8 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { MailhogClient } from '@apps/minicrm/mailhogClient.js';
-import { createTestContact, navigateToContact } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestContact, createTestRep, navigateToContact } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
 import {
   getContactSendEmailButtonLocator,
@@ -31,8 +31,12 @@ import {
 
 const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
 
-test.beforeEach(async ({ restClient }) => {
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
 });
 
 // ---------------------------------------------------------------------------

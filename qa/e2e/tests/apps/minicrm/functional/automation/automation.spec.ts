@@ -25,9 +25,11 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import { createTestAccount, createTestDeal, createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   navigateToAutomation,
   getAutomationHeadingLocator,
@@ -79,6 +81,10 @@ async function pollForTask(
   );
 }
 
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // deal_created → create_task (F13-DC)
 // ---------------------------------------------------------------------------
@@ -87,8 +93,6 @@ test('@functional F13-DC1: deal_created trigger fires create_task action — tas
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC1 Follow Up ${suffix}`;
 
@@ -136,8 +140,6 @@ test('@functional F13-DC2: deal_created trigger — disabled rule does not fire'
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DC2 Should Not Appear ${suffix}`;
 
@@ -180,8 +182,6 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS1 Proposal Follow Up ${suffix}`;
 
@@ -228,8 +228,6 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const taskSubject = `F13DS2 Wrong Stage Task ${suffix}`;
 
@@ -278,8 +276,10 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
 test('@functional F13-PAG1: Automation rules page — pagination controls always visible', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAutomation({ page });
 

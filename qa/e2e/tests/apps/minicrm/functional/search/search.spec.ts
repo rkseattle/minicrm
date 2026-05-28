@@ -39,7 +39,10 @@ import {
   createTestDeal,
   navigateToDashboard,
   navigateToContacts,
+  createTestRep,
 } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import { RestClientError } from '@framework/clients/rest-client.js';
 import {
   typeSearchQuery,
@@ -54,10 +57,13 @@ import {
   createNoteViaApi,
   type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ page, restClient, testData }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 });
 
 // ---------------------------------------------------------------------------

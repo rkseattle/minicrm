@@ -17,7 +17,10 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   ensureSystemDefaults,
   navigateToAdminSettings,
@@ -31,14 +34,6 @@ import {
   getAdminSettingsBrandingResetConfirmLocator,
   getAdminSettingsBrandingResetSuccessLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[branding-spec] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -57,8 +52,13 @@ test.afterEach(async ({ restClient }) => {
 // Navigation
 // ---------------------------------------------------------------------------
 
-test('admin can navigate to the Branding tab @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('admin can navigate to the Branding tab @functional', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'branding');
 
@@ -70,8 +70,13 @@ test('admin can navigate to the Branding tab @functional', async ({ page }) => {
 // Save branding
 // ---------------------------------------------------------------------------
 
-test('admin can save a company name and see success confirmation @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('admin can save a company name and see success confirmation @functional', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'branding');
 
@@ -85,8 +90,9 @@ test('admin can save a company name and see success confirmation @functional', a
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
-test('admin can save a primary colour @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('admin can save a primary colour @functional', async ({ page, restClient, testData }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'branding');
 
@@ -100,8 +106,9 @@ test('admin can save a primary colour @functional', async ({ page }) => {
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
-test('admin can select a custom font @functional', async ({ page }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+test('admin can select a custom font @functional', async ({ page, restClient, testData }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'branding');
 
@@ -119,11 +126,12 @@ test('admin can select a custom font @functional', async ({ page }) => {
 // Reset branding
 // ---------------------------------------------------------------------------
 
-test('admin can reset branding to defaults @functional', async ({ page, restClient }) => {
+test('admin can reset branding to defaults @functional', async ({ page, restClient, testData }) => {
   // Seed some branding so the reset is meaningful
   await restClient.put('/api/v1/settings/branding', { companyName: 'ToBeReset' });
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'branding');
 

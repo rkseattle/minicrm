@@ -403,9 +403,6 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     restClient
       .put('/api/v1/settings/currencies', { home_currency: 'USD', currencies: [] })
       .catch(() => undefined),
-    restClient
-      .put('/api/v1/settings/onboarding', { onboarding_completed: true })
-      .catch(() => undefined),
     restClient.delete('/api/v1/settings/branding').catch(() => undefined),
     // Reset pipeline_stages_reviewed so the onboarding widget's first task
     // is always incomplete, preventing allDone=true auto-dismiss in F-OB1. (MINCRM-410)

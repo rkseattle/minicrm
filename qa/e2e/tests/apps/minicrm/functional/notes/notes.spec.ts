@@ -31,6 +31,7 @@ import {
   createTestUser,
   createTestAccount,
   createTestDeal,
+  createTestRep,
   navigateToContact,
   navigateToDeal,
   loginAndVerify,
@@ -51,6 +52,7 @@ import {
   deleteNote,
   getRecordAuditLog,
 } from '@behaviors/minicrm/index.js';
+import { loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getNotesSectionLocator,
   getNoteCardLocator,
@@ -66,8 +68,13 @@ import { RestClientError } from '@framework/clients/rest-client.js';
 
 const REP_PASSWORD = 'BvtPassword1!';
 
-test.beforeEach(async ({ restClient }) => {
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 });
 
 // ---------------------------------------------------------------------------
@@ -245,6 +252,9 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
   restClient,
   testData,
 }) => {
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  await loginAsAdmin(restClient);
+
   const contact = await createTestContact(testData, restClient);
 
   // Create rep A and rep B

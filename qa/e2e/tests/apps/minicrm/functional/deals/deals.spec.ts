@@ -26,9 +26,10 @@ import {
   createTestContact,
   createTestDeal,
   createTestActivity,
+  createTestRep,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getDealById,
   listDealsViaApi,
@@ -55,6 +56,15 @@ import {
   type DealRow,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
+});
+
 // ---------------------------------------------------------------------------
 // F7-D1 — Create deal via UI; card appears on pipeline board
 // ---------------------------------------------------------------------------
@@ -65,8 +75,6 @@ test(
   async ({ testData, restClient, page }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(isMobile, 'new-deal-button is desktop-only on the pipeline board');
-
-    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D1-Acct ${test.info().title}`,
@@ -143,8 +151,6 @@ test(
   'F7-D2: editing a deal name and value via the detail page persists the changes',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `D2-Acct ${test.info().title}`,
     });
@@ -191,8 +197,6 @@ test(
   'F7-D3: deleting a deal via the confirm dialog removes it and cascades to linked activities',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `D3-Acct ${test.info().title}`,
     });
@@ -253,8 +257,6 @@ test(
   async ({ testData, restClient, page }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(isMobile, 'link-contact-form requires sufficient viewport width');
-
-    await loginAsAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `D4-Acct ${test.info().title}`,

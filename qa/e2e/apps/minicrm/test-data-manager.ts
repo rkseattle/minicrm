@@ -27,6 +27,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
  * A single registered entity entry.
  */
 interface EntityEntry {
+  kind: 'delete';
   /** Human-readable label for log output (e.g. 'contact', 'deal'). */
   entityType: string;
   /** The entity's primary key. */
@@ -37,6 +38,19 @@ interface EntityEntry {
    * never infers routes from entity types.
    */
   deletePath: string;
+}
+
+/**
+ * A custom teardown action registered via registerCustomTeardown.
+ * Used for operations that are not simple REST DELETEs — e.g. user deactivation
+ * via PATCH, or multi-step cleanup sequences.
+ */
+interface CustomEntry {
+  kind: 'custom';
+  /** Human-readable label for log output (e.g. 'user-deactivate'). */
+  label: string;
+  /** Async teardown callback; must not throw — errors are caught internally. */
+  fn: () => Promise<void>;
 }
 
 /**
@@ -71,8 +85,8 @@ export interface TeardownResult {
  * ```
  */
 export class TestDataManager {
-  /** Entities registered for cleanup, in insertion order. */
-  private readonly entries: EntityEntry[] = [];
+  /** Entities and custom callbacks registered for cleanup, in insertion order. */
+  private readonly entries: Array<EntityEntry | CustomEntry> = [];
 
   /**
    * Registers an entity for cleanup during teardown.
@@ -85,7 +99,25 @@ export class TestDataManager {
    * @param deletePath - REST path for the DELETE request (e.g. `/api/contacts/42`).
    */
   register(entityType: string, id: string | number, deletePath: string): void {
-    this.entries.push({ entityType, id, deletePath });
+    this.entries.push({ kind: 'delete', entityType, id, deletePath });
+  }
+
+  /**
+   * Registers an async cleanup callback to run during teardown.
+   *
+   * Use this for cleanup that cannot be expressed as a simple REST DELETE —
+   * for example, deactivating a user via PATCH /api/v1/users/:id/deactivate.
+   * Callbacks are executed in reverse registration order, interleaved with
+   * standard entity deletes.
+   *
+   * The callback must not throw. Errors are caught, logged, and do not abort
+   * subsequent cleanup steps.
+   *
+   * @param label - Human-readable label for log output (e.g. 'user-deactivate').
+   * @param fn - Async teardown callback.
+   */
+  registerCustomTeardown(label: string, fn: () => Promise<void>): void {
+    this.entries.push({ kind: 'custom', label, fn });
   }
 
   /**
@@ -120,22 +152,35 @@ export class TestDataManager {
     const results: TeardownResult[] = [];
 
     for (const entry of toDelete) {
-      try {
-        await client.delete(entry.deletePath);
-        results.push({ entityType: entry.entityType, id: entry.id, success: true });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        // Log but do not rethrow — partial failure must not abort remaining cleanup.
-        console.error(
-          `[TestDataManager] teardown failed for ${entry.entityType} id=${entry.id} ` +
-            `path=${entry.deletePath}: ${message}`,
-        );
-        results.push({
-          entityType: entry.entityType,
-          id: entry.id,
-          success: false,
-          error: message,
-        });
+      if (entry.kind === 'custom') {
+        try {
+          await entry.fn();
+          results.push({ entityType: entry.label, id: '(custom)', success: true });
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(
+            `[TestDataManager] custom teardown failed for "${entry.label}": ${message}`,
+          );
+          results.push({ entityType: entry.label, id: '(custom)', success: false, error: message });
+        }
+      } else {
+        try {
+          await client.delete(entry.deletePath);
+          results.push({ entityType: entry.entityType, id: entry.id, success: true });
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          // Log but do not rethrow — partial failure must not abort remaining cleanup.
+          console.error(
+            `[TestDataManager] teardown failed for ${entry.entityType} id=${entry.id} ` +
+              `path=${entry.deletePath}: ${message}`,
+          );
+          results.push({
+            entityType: entry.entityType,
+            id: entry.id,
+            success: false,
+            error: message,
+          });
+        }
       }
     }
 

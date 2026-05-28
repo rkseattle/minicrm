@@ -34,7 +34,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createContactViaUI,
   searchContactsViaApi,
@@ -51,8 +51,22 @@ import {
   patchDealStage,
   createDealViaApi,
 } from '@behaviors/minicrm/deals.behaviors.js';
-import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestDeal,
+  createTestRep,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
+});
 
 // ---------------------------------------------------------------------------
 // Lead (Contact) Creation tests
@@ -64,7 +78,6 @@ test('@functional F4-LC1: create contact with all required fields → appears in
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await loginAsAdmin(restClient);
 
   const email = `f4lc1-${uniqueSuffix}@example.com`;
   const result = await createContactViaUI(
@@ -85,11 +98,8 @@ test('@functional F4-LC1: create contact with all required fields → appears in
 
 test('@functional F4-LC2: missing required email field → inline validation error, no navigation', async ({
   page,
-  restClient,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  await loginAsAdmin(restClient);
-
   // Submit with empty email — browser required validation fires before submission.
   const result = await createContactViaUI(
     { first_name: 'F4LC2', last_name: `NoEmail-${uniqueSuffix}`, email: '' },
@@ -113,8 +123,6 @@ test('@functional F4-LV1: contact linked to deal → both accessible via their r
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   // Create account (required for deal).
   const account = await createTestAccount(testData, restClient, {
     name: `F4LV1-Account-${Date.now()}`,
@@ -163,8 +171,6 @@ test('@smoke @functional F4-OC1: create deal with required fields → appears on
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC1-Account-${Date.now()}`,
   });
@@ -183,8 +189,6 @@ test('@functional F4-OC2: create deal linked to account → account visible on d
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC2-Account-${Date.now()}`,
   });
@@ -201,8 +205,6 @@ test('@functional F4-OC3: missing required name field → API 400', async ({
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OC3-Account-${Date.now()}`,
   });
@@ -235,8 +237,6 @@ test('@smoke @functional F4-OP1: advance deal through pipeline stages in sequenc
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP1-Account-${Date.now()}`,
   });
@@ -264,8 +264,6 @@ test('@functional F4-OP2: regress deal to a previous stage → allowed, reflecte
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP2-Account-${Date.now()}`,
   });
@@ -288,8 +286,6 @@ test('@smoke @functional F4-OP3: close deal as Won → marked Won, moved to clos
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP3-Account-${Date.now()}`,
   });
@@ -314,8 +310,6 @@ test('@functional F4-OP4: close deal as Lost → marked Lost, moved to closed-lo
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP4-Account-${Date.now()}`,
   });
@@ -340,8 +334,6 @@ test('@functional F4-OP5: reopen closed-won deal → returns to open stage on bo
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OP5-Account-${Date.now()}`,
   });
@@ -371,8 +363,6 @@ test('@functional F4-OV1: deal value is stored and returned correctly via API', 
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV1-Account-${Date.now()}`,
   });
@@ -397,8 +387,6 @@ test('@functional F4-OV2: open deal contributes to pipeline value total via API 
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV2-Account-${Date.now()}`,
   });
@@ -432,8 +420,6 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV3-Account-${Date.now()}`,
   });
@@ -478,8 +464,6 @@ test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list v
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
   const account = await createTestAccount(testData, restClient, {
     name: `F4OV4-Account-${Date.now()}`,
   });

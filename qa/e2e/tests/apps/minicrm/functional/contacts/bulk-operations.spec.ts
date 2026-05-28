@@ -27,9 +27,9 @@ import {
   getContactsBulkActionBarLocator,
   type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
-import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
+import { createTestContact, createTestUser, createTestRep } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -43,23 +43,45 @@ type ContactWithOwner = ContactRow & { owner_id: string };
 // Tests
 // ---------------------------------------------------------------------------
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
+// Shared rep credentials, populated by beforeEach, consumed by tests that need
+// to re-auth restClient as the rep after an intervening admin operation. (MINCRM-415)
+let repEmail = '';
+let repPassword = '';
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  repEmail = rep.email;
+  repPassword = rep.password;
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
+});
+
 test('@functional F2-BK1: select multiple contacts → bulk reassign → new owner reflected via API', async ({
   page,
   restClient,
   testData,
 }) => {
-  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
+  // restClient is currently authenticated as rep (from beforeEach). We need admin
+  // to call createTestUser, then re-auth as rep so the contacts are rep-owned and
+  // the browser session (rep) has permission to bulk-reassign them. (MINCRM-415)
   await loginAsAdmin(restClient);
 
-  // Create a second rep to reassign to.
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  // Create a second rep to reassign to (admin-only operation).
   const newOwner = await createTestUser(restClient, {
     name: `BK1 Owner ${uniqueSuffix}`,
     email: `bk1-owner-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
 
-  // Create two contacts owned by the logged-in admin.
+  // Re-auth as the ephemeral rep so contacts are created with the rep as owner.
+  await loginAs(restClient, repEmail, repPassword);
+
+  // Create two contacts owned by the rep.
   const c1 = await createTestContact(testData, restClient, {
     first_name: 'BK1A',
     last_name: `Bulk-${uniqueSuffix}`,
@@ -104,7 +126,8 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   const c2Updated = (await getContactById(restClient, c2.id)) as ContactWithOwner;
   expect(c2Updated.owner_id, 'c2 should have new owner').toBe(newOwner.id);
 
-  // Deactivate the temp user (users cannot be hard-deleted).
+  // Deactivate the temp user (users cannot be hard-deleted); re-auth as admin first. (MINCRM-415)
+  await loginAsAdmin(restClient);
   await deactivateUser(restClient, newOwner.id);
 });
 
@@ -114,8 +137,6 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-  await loginAsAdmin(restClient);
 
   // Create two contacts to be deleted.
   const c1 = await createTestContact(testData, restClient, {

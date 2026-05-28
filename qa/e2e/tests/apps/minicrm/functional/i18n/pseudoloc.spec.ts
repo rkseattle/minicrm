@@ -22,17 +22,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateToDashboard } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { navigateToDashboard, createTestAdmin } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import type { SafePage } from '@framework/types/safe-page.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F10-PL] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Browser-side evaluate functions
@@ -128,8 +122,11 @@ test.describe('Pseudolocalization (MINCRM-241)', () => {
 
   test('@functional F10-PL1: no hardcoded ASCII strings on testid elements after pseudo locale switch', async ({
     page,
+    restClient,
+    testData,
   }) => {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await navigateToDashboard(page);
     await applyPseudoLocale(page);
 
@@ -162,8 +159,11 @@ test.describe('Pseudolocalization (MINCRM-241)', () => {
 
   test('@functional F10-PL2: no horizontal overflow on key UI containers after pseudo locale switch', async ({
     page,
+    restClient,
+    testData,
   }) => {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await navigateToDashboard(page);
     await applyPseudoLocale(page);
 

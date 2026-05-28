@@ -23,7 +23,10 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 // Serial mode ensures no two tests race on the same shared rows simultaneously.
 test.describe.configure({ mode: 'serial' });
 
-import { loginAsAdmin, login } from '@behaviors/minicrm/auth.behaviors.js';
+test.use({ storageState: { cookies: [], origins: [] } });
+
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import {
   navigateToAdminSettings,
   getPipelineStagesTableLocator,
@@ -31,14 +34,6 @@ import {
   getPipelineStageMoveDownLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[pipeline-stages-spec] E2E_ADMIN_PASSWORD is not set');
 
 // Admin settings page with live pipeline stage interactions is heavier than
 // typical functional tests — allow 60 s per test.
@@ -94,8 +89,10 @@ test.afterEach(async ({ restClient }) => {
 test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, new order persists via API', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });
@@ -134,8 +131,10 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
 test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, new order persists via API', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });
@@ -179,8 +178,10 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
 test('@functional MINCRM-381-3: move-up button is disabled for the first stage', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });
@@ -200,8 +201,10 @@ test('@functional MINCRM-381-3: move-up button is disabled for the first stage',
 test('@functional PS-1: admin adds a new pipeline stage; stage appears in API list', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });
@@ -271,8 +274,10 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
 test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name appears in API', async ({
   page,
   restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });
@@ -342,6 +347,7 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
 test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer appears in API', async ({
   page,
   restClient,
+  testData,
 }) => {
   // Create a throwaway stage via API to avoid touching any seeded data
   const stageName = `PS4-Delete-${Date.now()}`;
@@ -352,7 +358,8 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
   });
   const stageId = createRes.body.id;
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'customisation');
 
   const table = await getPipelineStagesTableLocator({ page });

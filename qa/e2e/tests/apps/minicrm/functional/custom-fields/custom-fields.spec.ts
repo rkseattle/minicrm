@@ -21,7 +21,9 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   getCustomFieldDefinitions,
   createCustomFieldDefinition,
@@ -49,15 +51,8 @@ import {
   createTestUser,
   createTestAccount,
   createTestDeal,
+  createTestAdmin,
 } from '@apps/minicrm/helpers.js';
-
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[custom-fields-spec] E2E_ADMIN_PASSWORD is not set');
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
@@ -75,7 +70,8 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   // Field id is populated after the REST call below; used for teardown registration
   let createdFieldId = '';
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   // Navigate to Admin Settings → Customisation tab
   await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
@@ -159,7 +155,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await loginAsAdmin(restClient);
 
   // Log the browser in as the rep — this is the user who will set the custom field.
-  await login({ email: rep.email, password: repPassword }, { page });
+  await loginViaBrowser(rep.email, repPassword, { page });
 
   // Navigate to the contact detail page
   await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
@@ -178,8 +174,19 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
     .resolve();
   await fieldInput.fill('Test Value 123');
 
+  // Press Tab to move focus away from the input, which triggers a blur event and
+  // allows React to flush pending useEffect updates. The useEffect in
+  // CustomFieldsSection propagates editValues → onValuesChange → parent
+  // customFieldValues; without this flush the parent state may still be stale
+  // when the save handler fires. Confirm the value is set before continuing. (MINCRM-415)
+  await fieldInput.press('Tab');
+  await expect(fieldInput).toHaveValue('Test Value 123');
+
   // Save the contact
   await saveContact({ page });
+
+  // Wait for the save PATCH to complete before checking read mode. (MINCRM-415)
+  await page.waitForLoadState('networkidle');
 
   // Wait for edit mode to close (edit button reappears)
   expect(
@@ -217,7 +224,8 @@ test('admin deletes a custom field definition; it disappears from the contact de
   restClient,
   testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   // Create a text custom field definition via REST
   const fieldName = `Delete Test Field ${Date.now()}`;
@@ -315,7 +323,8 @@ test('CF-4: select custom field for deals renders as a select input in the deal 
   });
 
   try {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
 
     // Click Edit to enter edit mode
@@ -371,7 +380,8 @@ test('CF-5: text custom field for accounts renders in the account edit form @fun
   });
 
   try {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await page.goto(`/accounts/${account.id}`, { waitUntil: 'networkidle' });
 
     // Enter edit mode
@@ -435,7 +445,8 @@ test('CF-6: second text custom field for deals renders in the deal edit form @fu
   });
 
   try {
-    await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
 
     // Enter edit mode

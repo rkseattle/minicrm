@@ -51,12 +51,22 @@ import {
   getContactAccountLink,
   getContactsPaginationLocator,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestContact, createTestAccount, navigateToContact } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestRep,
+  navigateToContact,
+} from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
-test.beforeEach(async ({ restClient }) => {
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 });
 
 // ---------------------------------------------------------------------------

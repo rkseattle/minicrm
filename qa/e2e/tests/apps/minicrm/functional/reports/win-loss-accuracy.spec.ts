@@ -18,8 +18,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAccount, createTestAdmin, createTestDeal } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getWinLossReport,
   getReportsLoadingLocator,
@@ -34,6 +34,14 @@ import {
   getReportsTabListSelectLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,8 +106,6 @@ test(
   'F10-WL1: Win/Loss report shows correct won count, lost count, and win rate for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const { start, end } = currentMonthDateRange();
 
     const account = await createTestAccount(testData, restClient, {
@@ -158,8 +164,6 @@ test(
   'F10-WL2: date filter excludes a deal closed in the previous month',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const { start: monthStart, end: monthEnd } = currentMonthDateRange();
     const prevMonthDate = previousMonthFirstDay();
 
@@ -219,8 +223,6 @@ test(
   'F10-WL3: API endpoint returns wonCount and lostCount matching the UI for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const { start, end } = currentMonthDateRange();
 
     const account = await createTestAccount(testData, restClient, {
@@ -285,8 +287,6 @@ test(
   'F10-WL4: Win/Loss report stat cards are visible on mobile viewport',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const { start, end } = currentMonthDateRange();
 
     const account = await createTestAccount(testData, restClient, {

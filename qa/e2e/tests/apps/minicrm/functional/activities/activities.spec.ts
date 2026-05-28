@@ -44,9 +44,10 @@ import {
   createTestAccount,
   createTestActivity,
   createTestUser,
+  createTestRep,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
-import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginAs, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getActivityById,
   getActivities,
@@ -63,12 +64,13 @@ import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 // Environment
 // ---------------------------------------------------------------------------
 
-// Fast-fail guard: checked early to give a clearer error before any test scaffolding runs.
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F5-activities] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 });
 
 // ---------------------------------------------------------------------------
@@ -269,6 +271,9 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
   testData,
   playwright,
 }) => {
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  await loginAsAdmin(restClient);
+
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   // Create a rep user (admin session).
@@ -321,6 +326,9 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   testData,
   playwright,
 }) => {
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  await loginAsAdmin(restClient);
+
   // NOTE: The Jira ticket requests that reassigning a task moves it between
   // users' my-tasks views. The current server implementation does not include
   // owner_id in the updateActivitySchema, so PATCH /api/activities/:id with

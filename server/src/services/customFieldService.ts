@@ -252,7 +252,11 @@ export async function upsertValues(
   );
   const defNameMap = new Map(defResult.rows.map((r) => [r.id, r.name]));
 
-  for (const { definition_id, value } of values) {
+  // Skip values whose definition no longer exists (e.g. deleted between page load and save)
+  const validValues = values.filter((v) => defNameMap.has(v.definition_id));
+  if (validValues.length === 0) return;
+
+  for (const { definition_id, value } of validValues) {
     await (txClient ?? pool).query(
       `INSERT INTO custom_field_values (definition_id, record_id, value)
        VALUES ($1, $2, $3)

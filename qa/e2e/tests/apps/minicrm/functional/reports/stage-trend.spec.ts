@@ -17,25 +17,22 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getReportsLoadingLocator,
   getReportsStageTrendTableLocator,
   getReportsStageTrendEmptyLocator,
   getReportsDaysSelectLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
+test.use({ storageState: { cookies: [], origins: [] } });
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[stage-trend-spec] E2E_ADMIN_PASSWORD is not set');
-
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 });
 
 // ---------------------------------------------------------------------------
@@ -68,7 +65,6 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
 test('stage trend report: table or empty state visible after load @functional', async ({
   page,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
@@ -82,7 +78,6 @@ test('stage trend report: table or empty state visible after load @functional', 
 test('stage trend report: changing date range to 60 days re-fetches and still shows table or empty state @functional', async ({
   page,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   // Wait for initial load to settle
@@ -104,7 +99,6 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
 test('stage trend report: changing date range to 90 days updates the select @functional', async ({
   page,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
   await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
 
   const daysSelect = await getReportsDaysSelectLocator({ page });
