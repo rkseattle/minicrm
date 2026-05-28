@@ -22,7 +22,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
 
 // Each test uses its own ephemeral admin — no shared storageState.
@@ -44,28 +45,29 @@ test.beforeEach(async ({ restClient }) => {
 // Helper
 //
 // Waits for the empty-state element to appear, then asserts that the nearest
-// overflow-auto/overflow-hidden ancestor (the PagedListLayout list container)
-// has a rendered clientHeight above MIN_FILL_PX, and that the empty-state
-// element itself is visible (non-zero bounding rect inside the viewport).
+// overflow-auto ancestor (the PagedListLayout list container) has a rendered
+// clientHeight above MIN_FILL_PX, and that the empty-state element itself is
+// visible (non-zero bounding rect inside the viewport).
 //
-// All DOM access goes through waitForFunction string expressions to avoid
-// TypeScript lib:dom type errors in the Node-targeted QA tsconfig.
+// All DOM access goes through string expressions passed to waitForFunction /
+// evaluate to avoid TypeScript lib:dom type errors in the Node-targeted QA
+// tsconfig.
 // ---------------------------------------------------------------------------
 
 async function assertEmptyStateContainerFills(
   page: PageFacadeShape,
   emptyStateTestId: string,
 ): Promise<void> {
-  // Step 1 — wait for the empty-state element to be present.
+  // Wait for the empty-state element to be present in the DOM.
   await page.waitForFunction(
     `document.querySelector('[data-testid="${emptyStateTestId}"]') !== null`,
     null,
     { timeout: 10_000 },
   );
 
-  // Step 2 — assert the list container is tall enough.
   // Walk up from the empty-state element to find the first ancestor with the
-  // overflow-auto class that PagedListLayout applies to the list container.
+  // overflow-auto class that PagedListLayout applies to the list container,
+  // then assert it has a rendered height above the minimum fill threshold.
   const containerHeight = (await page.evaluate(
     `(() => {
       const el = document.querySelector('[data-testid="${emptyStateTestId}"]');
@@ -87,7 +89,7 @@ async function assertEmptyStateContainerFills(
       `got ${containerHeight}px. This indicates the empty-state viewport fill regression (MINCRM-404) is present.`,
   ).toBeGreaterThan(MIN_FILL_PX);
 
-  // Step 3 — assert the empty-state element itself is visible.
+  // Assert the empty-state element itself is visible inside the container.
   const emptyEl = await page
     .locate(
       [
@@ -108,9 +110,11 @@ test.describe('Contacts page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-C1: contacts empty state fills the list container at desktop viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
+      await page.goto('/contacts?owner=me', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'contacts-empty-state');
     },
   );
@@ -118,9 +122,11 @@ test.describe('Contacts page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-C2: contacts empty state fills the list container at mobile viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(MOBILE_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
+      await page.goto('/contacts?owner=me', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'contacts-empty-state');
     },
   );
@@ -134,9 +140,11 @@ test.describe('Accounts page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-A1: accounts empty state fills the list container at desktop viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/accounts', { waitUntil: 'networkidle' });
+      await page.goto('/accounts?owner=me', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'accounts-empty-state');
     },
   );
@@ -144,9 +152,11 @@ test.describe('Accounts page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-A2: accounts empty state fills the list container at mobile viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(MOBILE_VIEWPORT);
-      await page.goto('/accounts', { waitUntil: 'networkidle' });
+      await page.goto('/accounts?owner=me', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'accounts-empty-state');
     },
   );
@@ -157,12 +167,35 @@ test.describe('Accounts page — empty-state viewport fill', () => {
 // ===========================================================================
 
 test.describe('Leads page — empty-state viewport fill', () => {
+  // LeadsPage uses component state (not URL params) for the owner filter, so
+  // it defaults to "All" which shows other tests' leads. Click "Mine" to scope
+  // to the new admin's own leads — zero records → empty state appears.
+  async function navigateToLeadsEmpty(page: PageFacadeShape): Promise<void> {
+    await page.goto('/leads', { waitUntil: 'networkidle' });
+    // Wait for the "Mine" filter button (inside PagedListLayout toolbar — only
+    // present after the query resolves), then click it.
+    await page.waitForFunction(
+      `document.querySelector('[data-testid="filter-owner-me"]') !== null`,
+      null,
+      { timeout: 10_000 },
+    );
+    await page.click(
+      [
+        { type: 'testId', value: 'filter-owner-me' },
+        { type: 'role', value: 'button', options: { name: /mine/i } },
+      ],
+      { intent: 'owner filter button to scope leads list to current user only' },
+    );
+  }
+
   test(
     '@functional F-PLL-L1: leads empty state fills the list container at desktop viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/leads', { waitUntil: 'networkidle' });
+      await navigateToLeadsEmpty(page);
       await assertEmptyStateContainerFills(page, 'leads-empty-state');
     },
   );
@@ -170,9 +203,11 @@ test.describe('Leads page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-L2: leads empty state fills the list container at mobile viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(MOBILE_VIEWPORT);
-      await page.goto('/leads', { waitUntil: 'networkidle' });
+      await navigateToLeadsEmpty(page);
       await assertEmptyStateContainerFills(page, 'leads-empty-state');
     },
   );
@@ -186,7 +221,9 @@ test.describe('My Tasks page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-T1: my tasks empty state fills the list container at desktop viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/tasks', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'my-tasks-empty-state');
@@ -196,7 +233,9 @@ test.describe('My Tasks page — empty-state viewport fill', () => {
   test(
     '@functional F-PLL-T2: my tasks empty state fills the list container at mobile viewport',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
       await page.setViewportSize(MOBILE_VIEWPORT);
       await page.goto('/tasks', { waitUntil: 'networkidle' });
       await assertEmptyStateContainerFills(page, 'my-tasks-empty-state');
