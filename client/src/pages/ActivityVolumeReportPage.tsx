@@ -10,16 +10,15 @@
  * - Clicking a count cell navigates to Activities filtered to that rep/type/range
  * - CSV export of the full table
  *
- * Implements MINCRM-181, MINCRM-264.
+ * Implements MINCRM-181, MINCRM-264, MINCRM-407.
  */
 
-import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
-import { useAuth } from '@/hooks/useAuth.js';
-import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
+import ReportFilterBar from '@/components/ReportFilterBar.js';
+import { useReportFilters } from '@/hooks/useReportFilters.js';
 import {
   getActivityVolumeReport,
   ACTIVITY_VOLUME_REPORT_QUERY_KEY,
@@ -27,12 +26,6 @@ import {
   type ActivityTypeCounts,
   type ActivityVolumeRepRow,
 } from '@/api/reports.js';
-
-/** View mode for the admin toggle (MINCRM-264) */
-type ViewMode = 'team' | 'my';
-
-/** Date range preset identifier */
-type DatePreset = 'thisWeek' | 'currentMonth' | 'currentQuarter' | 'custom';
 
 /** Ordered activity type columns (MINCRM-181) */
 const ACTIVITY_TYPE_COLUMNS: (keyof ActivityTypeCounts)[] = [
@@ -42,49 +35,6 @@ const ACTIVITY_TYPE_COLUMNS: (keyof ActivityTypeCounts)[] = [
   'Meeting',
   'Task',
 ];
-
-/** Returns the Monday of the current week as YYYY-MM-DD */
-function startOfCurrentWeek(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0 = Sunday
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
-  return monday.toISOString().slice(0, 10);
-}
-
-/** Returns today as YYYY-MM-DD */
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Returns the first day of the current month as YYYY-MM-DD */
-function startOfCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-}
-
-/** Returns the last day of the current month as YYYY-MM-DD */
-function endOfCurrentMonth(): string {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return lastDay.toISOString().slice(0, 10);
-}
-
-/** Returns the first day of the current quarter as YYYY-MM-DD */
-function startOfCurrentQuarter(): string {
-  const now = new Date();
-  const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-  return `${now.getFullYear()}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`;
-}
-
-/** Returns the last day of the current quarter as YYYY-MM-DD */
-function endOfCurrentQuarter(): string {
-  const now = new Date();
-  const quarterEndMonth = Math.floor(now.getMonth() / 3) * 3 + 2;
-  const lastDay = new Date(now.getFullYear(), quarterEndMonth + 1, 0);
-  return lastDay.toISOString().slice(0, 10);
-}
 
 /**
  * Builds the Activities list URL for a cell link.
@@ -179,53 +129,14 @@ export default function ActivityVolumeReportPage() {
  */
 export function ActivityVolumeReportContent() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
-  // ── Date range state ────────────────────────────────────────────────────────
-  const [preset, setPreset] = useState<DatePreset>('currentMonth');
-  const [customStart, setCustomStart] = useState<string>(startOfCurrentMonth());
-  const [customEnd, setCustomEnd] = useState<string>(endOfCurrentMonth());
-
-  const { start, end } = useMemo<{ start: string; end: string }>(() => {
-    if (preset === 'thisWeek') {
-      return { start: startOfCurrentWeek(), end: today() };
-    }
-    if (preset === 'currentMonth') {
-      return { start: startOfCurrentMonth(), end: endOfCurrentMonth() };
-    }
-    if (preset === 'currentQuarter') {
-      return { start: startOfCurrentQuarter(), end: endOfCurrentQuarter() };
-    }
-    return { start: customStart, end: customEnd };
-  }, [preset, customStart, customEnd]);
-
-  // ── View mode toggle (admin only) — defaults to Team View, resets on mount ─
-  const [viewMode, setViewMode] = useState<ViewMode>('team');
-
-  // ── Owner filter state (admin only) ────────────────────────────────────────
-  const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
-
-  const { data: activeUsersData } = useQuery({
-    queryKey: ACTIVE_USERS_QUERY_KEY,
-    queryFn: listActiveUsers,
-    enabled: isAdmin,
-  });
-
-  // ── Report query ───────────────────────────────────────────────────────────
-  // For reps: no ownerId in params (server always scopes to req.user.id).
-  // For admin My View: pass the admin's own userId.
-  // For admin Team View: no ownerId; server returns team-wide data.
-  const adminOwnerId = isAdmin
-    ? viewMode === 'my'
-      ? (user?.id ?? undefined)
-      : selectedOwnerId || undefined
-    : undefined;
+  const filters = useReportFilters('currentMonth');
+  const { resolvedStart, resolvedEnd, effectiveOwnerId, isAdmin, viewMode } = filters;
 
   const reportParams: ActivityVolumeReportParams = {
-    start,
-    end,
-    ownerId: adminOwnerId,
+    start: resolvedStart,
+    end: resolvedEnd,
+    ownerId: effectiveOwnerId,
   };
 
   const {
@@ -235,20 +146,18 @@ export function ActivityVolumeReportContent() {
   } = useQuery({
     queryKey: [...ACTIVITY_VOLUME_REPORT_QUERY_KEY, reportParams],
     queryFn: () => getActivityVolumeReport(reportParams),
-    enabled: start <= end,
+    enabled: resolvedStart <= resolvedEnd,
   });
 
-  // ── Dynamic heading key ────────────────────────────────────────────────────
   const headingKey =
     !isAdmin || viewMode === 'my'
       ? 'reports.activityVolume.pageTitleMy'
       : 'reports.activityVolume.pageTitleTeam';
 
-  // ── CSV export ─────────────────────────────────────────────────────────────
   function handleExportCsv(): void {
     if (!report) return;
     const csv = buildCsv(report.rows, report.totals, t);
-    downloadCsv(csv, `activity-report-${start}-${end}.csv`);
+    downloadCsv(csv, `activity-report-${resolvedStart}-${resolvedEnd}.csv`);
   }
 
   return (
@@ -276,141 +185,11 @@ export function ActivityVolumeReportContent() {
         )}
       </div>
 
-      {/* My View / Team View toggle — admin only (MINCRM-264) */}
-      {isAdmin && (
-        <div
-          className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"
-          data-testid="view-mode-toggle"
-        >
-          <button
-            type="button"
-            onClick={() => setViewMode('team')}
-            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
-              viewMode === 'team'
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            data-testid="view-mode-team"
-          >
-            {t('reports.activityVolume.viewToggleTeamView')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('my')}
-            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
-              viewMode === 'my'
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            data-testid="view-mode-my"
-          >
-            {t('reports.activityVolume.viewToggleMyView')}
-          </button>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div
-        className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap gap-4 items-end"
-        data-testid="report-filters"
-      >
-        {/* Date preset */}
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="date-preset"
-            className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-          >
-            {t('reports.activityVolume.dateRangeLabel')}
-          </label>
-          <select
-            id="date-preset"
-            data-testid="date-preset-select"
-            value={preset}
-            onChange={(e) => {
-              if (e.target.value !== preset) setPreset(e.target.value as DatePreset);
-            }}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
-          >
-            <option value="thisWeek">{t('reports.activityVolume.presetThisWeek')}</option>
-            <option value="currentMonth">{t('reports.activityVolume.presetCurrentMonth')}</option>
-            <option value="currentQuarter">
-              {t('reports.activityVolume.presetCurrentQuarter')}
-            </option>
-            <option value="custom">{t('reports.activityVolume.presetCustom')}</option>
-          </select>
-        </div>
-
-        {/* Custom date range */}
-        {preset === 'custom' && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="custom-start"
-                className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-              >
-                {t('reports.activityVolume.startDateLabel')}
-              </label>
-              <input
-                id="custom-start"
-                type="date"
-                data-testid="custom-start-input"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="custom-end"
-                className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-              >
-                {t('reports.activityVolume.endDateLabel')}
-              </label>
-              <input
-                id="custom-end"
-                type="date"
-                data-testid="custom-end-input"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
-              />
-            </div>
-          </>
-        )}
-
-        {/* Owner filter — admin only */}
-        {isAdmin && (
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="owner-filter"
-              className="text-xs font-medium text-gray-500 uppercase tracking-wide"
-            >
-              {t('reports.activityVolume.ownerFilterLabel')}
-            </label>
-            <select
-              id="owner-filter"
-              data-testid="owner-filter-select"
-              value={selectedOwnerId}
-              onChange={(e) => setSelectedOwnerId(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">{t('reports.activityVolume.ownerFilterAll')}</option>
-              {activeUsersData?.users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Invalid date range warning */}
-      {preset === 'custom' && start > end && (
-        <p role="alert" className="mb-4 text-sm text-red-600" data-testid="date-range-error">
-          {t('reports.activityVolume.dateRangeInvalid')}
-        </p>
-      )}
+      <ReportFilterBar
+        filters={filters}
+        i18nPrefix="reports.activityVolume"
+        availablePresets={['thisWeek', 'currentMonth', 'currentQuarter', 'custom']}
+      />
 
       {/* Loading state */}
       {isLoading && (
@@ -492,7 +271,7 @@ export function ActivityVolumeReportContent() {
                         >
                           {row.counts[col] > 0 ? (
                             <Link
-                              to={buildActivitiesUrl(row.ownerId, col, start, end)}
+                              to={buildActivitiesUrl(row.ownerId, col, resolvedStart, resolvedEnd)}
                               className="text-primary-600 hover:underline font-medium"
                             >
                               {row.counts[col]}
