@@ -1,6 +1,6 @@
 /**
  * Integration tests for demoService.
- * Verifies seed, remove, reset, and status operations against a real test DB. (MINCRM-103, MINCRM-206, MINCRM-353)
+ * Verifies seed, remove, reset, and status operations against a real test DB. (MINCRM-103, MINCRM-206, MINCRM-353, MINCRM-408)
  *
  * Runs against the minicrm_test database.
  */
@@ -32,6 +32,8 @@ const DEMO_CUSTOM_FIELD_NAMES = [
 ];
 // Derived from DEMO_CURRENCIES in demoService.ts
 const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD'];
+// Derived from DEMO_PIPELINE_STAGES in demoService.ts (MINCRM-408)
+const DEMO_PIPELINE_STAGE_NAMES = ['Technical Validation', 'Contract Review'];
 
 async function cleanDemoData(): Promise<void> {
   // Delete notes created by demo rep first (no is_demo column on notes)
@@ -93,6 +95,11 @@ async function cleanDemoData(): Promise<void> {
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
   await pool.query(`DELETE FROM deals WHERE is_demo = true`);
+  // Remove custom demo pipeline stages — deals must be gone first (MINCRM-408)
+  await pool.query(
+    `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
+    [DEMO_PIPELINE_STAGE_NAMES],
+  );
   await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
   await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
   // Remove demo rep user — created by insertDemoData, not covered by is_demo flag (MINCRM-267)
@@ -189,6 +196,10 @@ afterAll(async () => {
       [adminId],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = $1`, [adminId]);
+    await pool.query(
+      `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
+      [DEMO_PIPELINE_STAGE_NAMES],
+    );
     await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = $1`, [adminId]);
     await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
   }
@@ -920,5 +931,125 @@ describe('removeDemo — currencies', () => {
       [DEMO_CURRENCY_CODES],
     );
     expect(currencies.rowCount).toBe(0);
+  });
+});
+
+// ── seedDemo — pipeline stages (MINCRM-408) ───────────────────────────────────
+
+describe('seedDemo — pipeline stages', () => {
+  it('inserts Technical Validation and Contract Review stages', async () => {
+    await seedDemo();
+
+    const stages = await pool.query<{ name: string; sort_order: number; probability: number }>(
+      `SELECT name, sort_order, probability
+       FROM pipeline_stages
+       WHERE name = ANY($1::text[])
+       ORDER BY sort_order`,
+      [DEMO_PIPELINE_STAGE_NAMES],
+    );
+    expect(stages.rowCount).toBe(2);
+
+    const tv = stages.rows[0];
+    expect(tv.name).toBe('Technical Validation');
+    expect(tv.sort_order).toBe(35);
+    expect(tv.probability).toBe(60);
+
+    const cr = stages.rows[1];
+    expect(cr.name).toBe('Contract Review');
+    expect(cr.sort_order).toBe(45);
+    expect(cr.probability).toBe(85);
+  });
+
+  it('pipeline has 8 total stages after seeding (6 default + 2 custom)', async () => {
+    await seedDemo();
+
+    const defaultPipelineId = await pool.query<{ id: string }>(
+      `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
+    );
+    const stages = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM pipeline_stages WHERE pipeline_id = $1`,
+      [defaultPipelineId.rows[0].id],
+    );
+    expect(parseInt(stages.rows[0].count, 10)).toBe(8);
+  });
+
+  it('custom stages are not is_terminal and not is_fixed', async () => {
+    await seedDemo();
+
+    const stages = await pool.query<{ is_terminal: boolean; is_fixed: boolean }>(
+      `SELECT is_terminal, is_fixed FROM pipeline_stages WHERE name = ANY($1::text[])`,
+      [DEMO_PIPELINE_STAGE_NAMES],
+    );
+    expect(stages.rows.every((r) => r.is_terminal === false)).toBe(true);
+    expect(stages.rows.every((r) => r.is_fixed === false)).toBe(true);
+  });
+
+  it('Technical Validation and Contract Review stages each have at least one deal', async () => {
+    await seedDemo();
+
+    for (const stageName of DEMO_PIPELINE_STAGE_NAMES) {
+      const deals = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM deals WHERE stage = $1 AND is_demo = true`,
+        [stageName],
+      );
+      expect(parseInt(deals.rows[0].count, 10)).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('is idempotent — seeding twice produces no duplicate stages', async () => {
+    await seedDemo();
+    await removeDemo();
+    await seedDemo();
+
+    const stages = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM pipeline_stages WHERE name = ANY($1::text[])`,
+      [DEMO_PIPELINE_STAGE_NAMES],
+    );
+    expect(parseInt(stages.rows[0].count, 10)).toBe(2);
+  });
+});
+
+// ── removeDemo — pipeline stages (MINCRM-408) ────────────────────────────────
+
+describe('removeDemo — pipeline stages', () => {
+  it('removes custom demo stages after removeDemo', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const stages = await pool.query(
+      `SELECT name FROM pipeline_stages WHERE name = ANY($1::text[])`,
+      [DEMO_PIPELINE_STAGE_NAMES],
+    );
+    expect(stages.rowCount).toBe(0);
+  });
+
+  it('default six stages remain intact after removeDemo', async () => {
+    const DEFAULT_STAGE_NAMES = [
+      'Prospecting',
+      'Qualification',
+      'Proposal',
+      'Negotiation',
+      'Closed Won',
+      'Closed Lost',
+    ];
+    await seedDemo();
+    await removeDemo();
+
+    const stages = await pool.query<{ name: string }>(
+      `SELECT name FROM pipeline_stages WHERE name = ANY($1::text[])`,
+      [DEFAULT_STAGE_NAMES],
+    );
+    expect(stages.rowCount).toBe(6);
+  });
+
+  it('Closed Won and Closed Lost remain is_fixed = true after removeDemo', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const fixed = await pool.query<{ name: string; is_fixed: boolean }>(
+      `SELECT name, is_fixed FROM pipeline_stages WHERE name IN ('Closed Won', 'Closed Lost')`,
+    );
+    expect(fixed.rowCount).toBe(2);
+    expect(fixed.rows.every((r) => r.is_fixed === true)).toBe(true);
   });
 });
