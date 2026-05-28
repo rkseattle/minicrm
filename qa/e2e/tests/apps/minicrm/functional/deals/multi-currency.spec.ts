@@ -22,6 +22,12 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
 import { getDealById, patchDeal, exportDealsAsCsv } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
@@ -32,8 +38,6 @@ test(
   'F8-MC1: deal created with explicit EUR currency stores EUR via API',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC1-Acct ${test.info().title}`,
     });
@@ -60,8 +64,6 @@ test(
   'F8-MC2: deal created without currency defaults to USD',
   { tag: ['@functional', '@smoke'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC2-Acct ${test.info().title}`,
     });
@@ -86,8 +88,6 @@ test(
   'F8-MC3: currency is preserved after a PATCH update that does not touch currency',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC3-Acct ${test.info().title}`,
     });
@@ -120,8 +120,6 @@ test(
   'F8-MC4: currency can be changed via PATCH',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC4-Acct ${test.info().title}`,
     });
@@ -150,8 +148,6 @@ test(
   'F8-MC5: PATCH with unsupported currency returns 400',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC5-Acct ${test.info().title}`,
     });
@@ -189,8 +185,6 @@ test(
   'F8-MC6: deal CSV export includes a Currency column',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `MC6-Acct ${test.info().title}`,
     });

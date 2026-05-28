@@ -23,8 +23,13 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestContact, createTestAccount, createTestDeal } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestDeal,
+  createTestRep,
+} from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createContactViaUI,
   navigateToContacts,
@@ -61,13 +66,17 @@ import {
 // Environment
 // ---------------------------------------------------------------------------
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+});
+
 // ---------------------------------------------------------------------------
 // Shared error response bodies
 // ---------------------------------------------------------------------------
-
-test.beforeEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
 
 const SERVER_ERROR_BODY = JSON.stringify({
   error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' },

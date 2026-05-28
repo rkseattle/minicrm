@@ -30,6 +30,13 @@ import {
   authMeResponseEnvelopeSchema,
   inviteUserResponseEnvelopeSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  deactivateUser,
+  suppressUserOnboarding,
+} from '@behaviors/minicrm/users.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -478,6 +485,99 @@ export async function createTestUser(
   }
 
   return { ...user, status: 'active' };
+}
+
+// ---------------------------------------------------------------------------
+// Ephemeral user helpers (MINCRM-415)
+// ---------------------------------------------------------------------------
+
+/** Credentials returned by createTestRep / createTestAdmin. */
+export interface EphemeralUserCredentials {
+  userId: string;
+  email: string;
+  password: string;
+}
+
+/** Optional overrides for ephemeral user creation. */
+export interface InviteUserParams {
+  name?: string;
+  email?: string;
+}
+
+/**
+ * Creates an ephemeral rep user for a single test.
+ *
+ * Wraps inviteUserViaApi + setUserPassword + suppressUserOnboarding in one
+ * call. Registers a deactivation callback with TestDataManager so the user
+ * is deactivated automatically after the test, even on failure.
+ *
+ * Every test that drives the browser as a non-admin user should call this
+ * instead of createTestUser() so cleanup is guaranteed and the onboarding
+ * widget never appears during the test. (MINCRM-415)
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Admin-authenticated RestClient.
+ * @param overrides - Optional name / email overrides.
+ * @returns Credentials for the created rep user.
+ */
+export async function createTestRep(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: InviteUserParams = {},
+): Promise<EphemeralUserCredentials> {
+  const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
+  const email = overrides.email ?? `rep-${uniqueSuffix}@example.com`;
+  const name = overrides.name ?? `Rep ${uniqueSuffix}`;
+  const password = 'BvtPassword1!';
+
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'rep' });
+  await setUserPassword(restClient, inviteToken, password);
+  await suppressUserOnboarding(restClient, email, password);
+
+  // Register deactivation as a custom teardown — users cannot be hard-deleted.
+  // Re-auth as admin first: tests may re-auth restClient as the rep for data
+  // creation, and deactivateUser requires admin. (MINCRM-415)
+  testData.registerCustomTeardown(`deactivate-rep-${user.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, user.id);
+  });
+
+  return { userId: user.id, email, password };
+}
+
+/**
+ * Creates an ephemeral admin user for a single test.
+ *
+ * Identical to createTestRep() but the user is invited with role='admin'.
+ * Use this for tests that exercise admin-only functionality (user management,
+ * pipeline stages, branding, webhooks, system settings) so the shared admin
+ * account is never mutated. (MINCRM-415)
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Admin-authenticated RestClient.
+ * @param overrides - Optional name / email overrides.
+ * @returns Credentials for the created admin user.
+ */
+export async function createTestAdmin(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: InviteUserParams = {},
+): Promise<EphemeralUserCredentials> {
+  const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
+  const email = overrides.email ?? `admin-${uniqueSuffix}@example.com`;
+  const name = overrides.name ?? `Admin ${uniqueSuffix}`;
+  const password = 'BvtPassword1!';
+
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
+  await setUserPassword(restClient, inviteToken, password);
+  await suppressUserOnboarding(restClient, email, password);
+
+  testData.registerCustomTeardown(`deactivate-admin-${user.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, user.id);
+  });
+
+  return { userId: user.id, email, password };
 }
 
 /**

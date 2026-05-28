@@ -11,7 +11,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   ensureSystemDefaults,
@@ -27,13 +28,7 @@ import {
   getAdminSettingsExchangeRateRowLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[settings-spec] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Setup — known-good system state before/after each test (MINCRM-358)
@@ -55,12 +50,13 @@ test.afterEach(async ({ restClient }) => {
 test('admin can configure exchange rates and reload to confirm persistence @functional', async ({
   page,
   restClient,
+  testData,
 }) => {
   // Reset currencies to just USD home so test state is predictable
   await setCurrencySettings(restClient, { home_currency: 'USD', currencies: [] });
 
-  // Log in via the UI
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   // Navigate to Admin Settings — currency tab required for exchange-rates-section
   await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });

@@ -24,9 +24,10 @@ import {
   createTestContact,
   createTestAccount,
   createTestDeal,
+  createTestAdmin,
 } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
-  loginAsAdmin,
   navigateToAdminTags,
   renameTagViaUI,
   deleteTagViaUI,
@@ -39,12 +40,7 @@ import {
 } from '@behaviors/minicrm/index.js';
 import { getAdminTagsPaginationLocator } from '@behaviors/minicrm/tags.behaviors.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F8-TG] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Local types for 4xx/5xx error-path assertions (exempt from behavior refactor)
@@ -58,6 +54,10 @@ interface TagSingleResponse {
   };
 }
 
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // F8-TG1 — Admin tags page loads
 // ---------------------------------------------------------------------------
@@ -68,7 +68,8 @@ test(
   async ({ page, testData, restClient }) => {
     void testData;
 
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     const result = await navigateToAdminTags({ page });
 
@@ -87,7 +88,8 @@ test(
   async ({ page, testData, restClient }) => {
     void testData;
 
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     await navigateToAdminTags({ page });
 
@@ -104,7 +106,8 @@ test(
   'F8-TG2: admin renames a tag via UI and new name is persisted via API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     const tag = await createTestTag(testData, restClient, { name: `tg2-original-${Date.now()}` });
 
@@ -129,7 +132,8 @@ test(
   'F8-TG3: admin deletes a tag via UI and tag is removed from API',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     // Create the tag but unregister it from TestDataManager after we delete it
     // in the test — otherwise teardown will attempt a DELETE on an already-gone
@@ -158,7 +162,8 @@ test(
   'F8-TG4: tag attached to a contact via TagInput widget badge appears and API confirms',
   { tag: ['@functional', '@smoke'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     const tag = await createTestTag(testData, restClient, { name: `tg4-attach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -188,7 +193,8 @@ test(
   'F8-TG5: tag detached from a contact via TagInput remove button disappears from UI and API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     const tag = await createTestTag(testData, restClient, { name: `tg5-detach-${Date.now()}` });
     const contact = await createTestContact(testData, restClient, {
@@ -220,7 +226,8 @@ test(
   'F8-TG6: tag attached to a deal via TagInput widget persists via API',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
 
     const tag = await createTestTag(testData, restClient, { name: `tg6-deal-${Date.now()}` });
     const account = await createTestAccount(testData, restClient, {

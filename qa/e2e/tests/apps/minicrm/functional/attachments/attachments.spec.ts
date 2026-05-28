@@ -26,12 +26,13 @@ import {
   createTestAccount,
   createTestDeal,
   createTestUser,
+  createTestRep,
   navigateToContact,
   navigateToAccount,
   navigateToDeal,
 } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
-import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginAs, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { listAttachments } from '@behaviors/minicrm/attachments.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
@@ -59,8 +60,12 @@ import {
 
 const REP_PASSWORD = 'BvtPassword1!';
 
-test.beforeEach(async ({ restClient }) => {
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
 });
 
 // ---------------------------------------------------------------------------

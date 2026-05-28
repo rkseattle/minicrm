@@ -41,6 +41,10 @@ import {
   getEmailNotificationsEnabled,
   ensureSystemDefaults,
 } from '@behaviors/minicrm/index.js';
+import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // Profile page — notification preferences
@@ -49,6 +53,18 @@ import {
 // All profile preference tests mutate the same admin user's preferences — run
 // serially to prevent parallel workers from contaminating each other's state.
 test.describe.serial('Profile page — notification preferences', () => {
+  test.beforeEach(async ({ restClient, testData, page }) => {
+    await loginAsAdmin(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    // Re-authenticate restClient as the ephemeral admin so patchNotificationPreferences
+    // patches the same user that the browser is logged in as (MINCRM-415).
+    await restClient.post('/api/v1/auth/login', {
+      email: admin.email,
+      password: admin.password,
+    });
+    await loginViaBrowser(admin.email, admin.password, { page });
+  });
+
   test('@functional F10-PP1: profile page renders with all three notification checkboxes', async ({
     page,
   }) => {
@@ -67,9 +83,9 @@ test.describe.serial('Profile page — notification preferences', () => {
     page,
     restClient,
   }) => {
-    // Reset preferences to all-true via API before reading — parallel workers
-    // running PP3/PP4 may have unchecked them, causing this assertion to flake.
-    await loginAsAdmin(restClient);
+    // Reset preferences to all-true via API before reading — each test uses a fresh
+    // ephemeral admin (MINCRM-415) so defaults should already be true, but we reset
+    // explicitly for clarity in case default values change.
     await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
@@ -94,8 +110,6 @@ test.describe.serial('Profile page — notification preferences', () => {
     page,
     restClient,
   }) => {
-    // Authenticate restClient to use API for setup/teardown
-    await loginAsAdmin(restClient);
     // Reset preferences to all-true via API before the test
     await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
@@ -131,8 +145,6 @@ test.describe.serial('Profile page — notification preferences', () => {
     page,
     restClient,
   }) => {
-    // Authenticate restClient to use API for setup/teardown
-    await loginAsAdmin(restClient);
     await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
       notify_assignments: true,
@@ -173,9 +185,17 @@ test.describe.serial('Profile page — notification preferences', () => {
 // Serial: AS3 mutates the email-notifications system setting. Parallel workers
 // would race against each other and corrupt the shared state mid-test.
 test.describe.serial('Admin Settings — global email notifications', () => {
-  test.beforeEach(async ({ restClient }) => {
+  test.beforeEach(async ({ restClient, testData, page }) => {
     await loginAsAdmin(restClient);
     await ensureSystemDefaults(restClient);
+    const admin = await createTestAdmin(testData, restClient);
+    // Re-authenticate restClient as the ephemeral admin so settings mutations
+    // are made in the same session as the browser user (MINCRM-415).
+    await restClient.post('/api/v1/auth/login', {
+      email: admin.email,
+      password: admin.password,
+    });
+    await loginViaBrowser(admin.email, admin.password, { page });
   });
 
   test.afterEach(async ({ restClient }) => {
@@ -205,9 +225,15 @@ test.describe.serial('Admin Settings — global email notifications', () => {
     const initial = await navigateToAdminSettings({ page });
     expect(initial.toggleVisible, 'toggle should be visible').toBe(true);
 
-    // Toggle off — AC2 is about API persistence, verified below via restClient
+    // Toggle off — AC2: the success message only appears after a 200 from the server,
+    // so saved=true already proves persistence. We also read the setting via API
+    // immediately after the mutation completes to double-verify. (MINCRM-415: add
+    // networkidle wait to ensure any in-flight queries settle before the GET.)
     const disableResult = await toggleAdminEmailNotifications({ page });
     expect(disableResult.saved, 'success message should appear after toggling off').toBe(true);
+    expect(disableResult.isEnabled, 'toggle UI should reflect disabled state').toBe(false);
+
+    await page.waitForLoadState('networkidle');
 
     // Verify via API (AC2)
     const afterDisable = await getEmailNotificationsEnabled(restClient);
@@ -216,6 +242,9 @@ test.describe.serial('Admin Settings — global email notifications', () => {
     // Toggle back on
     const enableResult = await toggleAdminEmailNotifications({ page });
     expect(enableResult.saved, 'success message should appear after toggling on').toBe(true);
+    expect(enableResult.isEnabled, 'toggle UI should reflect enabled state').toBe(true);
+
+    await page.waitForLoadState('networkidle');
 
     const afterEnable = await getEmailNotificationsEnabled(restClient);
     expect(afterEnable, 'API should reflect enabled state (AC2)').toBe(true);

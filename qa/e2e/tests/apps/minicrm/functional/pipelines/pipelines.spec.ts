@@ -23,20 +23,21 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateToAdminSettings } from '@behaviors/minicrm/settings.behaviors.js';
 import { navigateToPipelineBoard, createDealViaApi } from '@behaviors/minicrm/deals.behaviors.js';
-import { createTestAccount } from '@apps/minicrm/helpers.js';
+import { createTestAccount, createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[pipelines-spec] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
 test.setTimeout(60_000);
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,7 +67,6 @@ test(
   'F-P1: admin can create a new pipeline in the settings UI',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
     const pipelineName = `E2E-Pipeline-Create-${Date.now()}`;
     let createdId: string | undefined;
 
@@ -141,8 +141,6 @@ test(
   'F-P2: admin can rename a non-default pipeline in the settings UI',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const originalName = `E2E-Rename-Before-${Date.now()}`;
     const renamedName = `E2E-Rename-After-${Date.now()}`;
 
@@ -214,8 +212,6 @@ test(
   'F-P3: admin can delete an empty non-default pipeline in the settings UI',
   { tag: ['@functional'] },
   async ({ restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const pipelineName = `E2E-Delete-Empty-${Date.now()}`;
     const pipeline = await createPipelineViaApi(restClient, pipelineName);
     // No testData.register — we expect the test itself to delete it
@@ -281,8 +277,6 @@ test(
   'F-P4: a custom pipeline shows only its own stages in the stage selector',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const pipelineName = `E2E-Stages-${Date.now()}`;
     const pipeline = await createPipelineViaApi(restClient, pipelineName);
     testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
@@ -331,8 +325,6 @@ test(
   'F-P5: a deal created with a custom pipeline_id belongs to that pipeline',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `P5-Acct-${Date.now()}`,
     });
@@ -380,8 +372,6 @@ test(
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(isMobile, 'pipeline selector layout is desktop-only');
 
-    await loginAsAdmin(restClient);
-
     const pipeline = await createPipelineViaApi(restClient, `E2E-BoardFilter-${Date.now()}`);
     testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
 
@@ -420,8 +410,6 @@ test(
   'F-P7: deleting a pipeline that contains deals shows a blocked message',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    await loginAsAdmin(restClient);
-
     const pipeline = await createPipelineViaApi(restClient, `E2E-DeleteBlocked-${Date.now()}`);
     testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
 

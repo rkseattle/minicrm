@@ -52,7 +52,7 @@
  *   - Nav layout mutations reset to 'top' in afterEach (not ensureSystemDefaults —
  *     that resets onboarding_completed and races with the onboarding spec)
  *
- * MINCRM-324, MINCRM-371, MINCRM-409
+ * MINCRM-324, MINCRM-371, MINCRM-409, MINCRM-415
  */
 
 import { test } from '@apps/minicrm/fixtures.js';
@@ -63,10 +63,10 @@ import {
   createTestActivity,
   createTestContact,
   createTestDeal,
+  createTestAdmin,
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { setOnboardingCompleted } from '@behaviors/minicrm/setup.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   getPipelineBoardLocator,
   getPipelineMobileStageNameLocator,
@@ -90,13 +90,8 @@ import {
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[visual-regression] E2E_ADMIN_PASSWORD is not set');
+// Each test uses a unique ephemeral admin — no shared storageState. (MINCRM-415)
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // Visual tests involve browser login, page load, canvas rendering, and pixel-
 // diff computation — give each test 60 s to absorb CI resource contention.
@@ -104,13 +99,6 @@ test.setTimeout(60_000);
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-  // Ensure the admin's onboarding is marked complete before every visual test
-  // so the SetupChecklistWidget never renders and cannot produce pixel diffs.
-  // F-OB1–F-OB5 previously left onboarding_completed=false on the shared admin
-  // for the duration of the test; those tests now restore the flag in a finally
-  // block, eliminating the race. This call is a belt-and-suspenders guard for
-  // any future test that mutates the flag. (MINCRM-415)
-  await setOnboardingCompleted(restClient, true);
 });
 
 // Tests V13–V17 mutate the nav layout. Reset to 'top' after each test so
@@ -177,15 +165,6 @@ async function resolveTimestampMasks(page: PageFacadeShape) {
     tryResolve(page, [{ type: 'css', value: '[data-testid^="user-joined-"]' }], {
       intent: 'user management table joined date cells',
     }),
-    // SetupChecklistWidget — position:fixed overlay whose task-completion state
-    // changes as test data accumulates; mask to prevent non-deterministic diffs
-    // across runs. (MINCRM-391)
-    tryResolve(page, [{ type: 'testId', value: 'setup-checklist-widget' }], {
-      intent: 'floating setup checklist widget overlay',
-    }),
-    tryResolve(page, [{ type: 'testId', value: 'setup-checklist-pill' }], {
-      intent: 'collapsed setup checklist pill',
-    }),
   ]);
   return candidates.filter((c) => c !== null);
 }
@@ -201,7 +180,8 @@ test.describe('Core Layout', () => {
     'V1: pipeline board renders correctly at desktop viewport @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V1 Account',
@@ -247,7 +227,8 @@ test.describe('Core Layout', () => {
     'V2: pipeline board renders correctly at mobile viewport @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V2 Account',
@@ -296,7 +277,8 @@ test.describe('Core Layout', () => {
     'V3: dashboard renders stats grid and activity feed with seeded data @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       // Seed an account, contact, deal, and activity so the dashboard is not empty
       const account = await createTestAccount(testData, restClient, {
@@ -348,7 +330,8 @@ test.describe('Core Layout', () => {
     'V4: contact detail page renders with populated activity timeline @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V4 Account',
@@ -380,10 +363,6 @@ test.describe('Core Layout', () => {
       const editButton = await getContactEditButtonLocator({ page });
       await editButton.waitFor({ state: 'visible' });
 
-      // Wait for networkidle a second time so the SetupChecklistWidget's async
-      // data fetch has settled before resolveTimestampMasks tries to locate it.
-      // Without this, the widget may not yet be in the DOM when masks are resolved,
-      // causing it to be unmasked and producing non-deterministic pixel diffs.
       await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);
@@ -397,7 +376,8 @@ test.describe('Core Layout', () => {
     'V5: win/loss report renders stat cards and tables with seeded deal data @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V5 Account',
@@ -458,8 +438,9 @@ test.describe('Admin', () => {
   test(
     'V6: admin settings General tab renders correctly @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
@@ -481,8 +462,9 @@ test.describe('Admin', () => {
   test(
     'V7: admin settings Currency tab renders correctly @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
@@ -500,8 +482,9 @@ test.describe('Admin', () => {
   test(
     'V8: admin settings Notifications tab renders correctly @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/admin/settings?tab=notifications', { waitUntil: 'networkidle' });
@@ -526,7 +509,8 @@ test.describe('Key Pages', () => {
     'V9: contacts list renders with seeded contacts at desktop viewport @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       // Seed two contacts so the list has meaningful rows to capture.
       // Emails are auto-generated to avoid collisions when desktop and mobile-web
@@ -557,8 +541,6 @@ test.describe('Key Pages', () => {
         .resolve();
       await newBtn.waitFor({ state: 'visible' });
 
-      // Second networkidle wait so the SetupChecklistWidget's async data fetch
-      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
       await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);
@@ -572,7 +554,8 @@ test.describe('Key Pages', () => {
     'V10: accounts list renders with seeded accounts at desktop viewport @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await createTestAccount(testData, restClient, {
         name: 'VR Acme Corp',
@@ -607,8 +590,9 @@ test.describe('Key Pages', () => {
   test(
     'V11: leads list renders with seeded leads at desktop viewport @functional',
     { tag: ['@functional'] },
-    async ({ page, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       // Leads are not registered with TestDataManager — the lead API does not expose
       // a delete endpoint accessible via TestDataManager; leads are cleaned up by
@@ -642,8 +626,6 @@ test.describe('Key Pages', () => {
         .resolve();
       await newBtn.waitFor({ state: 'visible' });
 
-      // Second networkidle wait so the SetupChecklistWidget's async data fetch
-      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
       await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);
@@ -657,7 +639,8 @@ test.describe('Key Pages', () => {
     'V12: tasks list renders with seeded tasks at desktop viewport @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, { name: 'VR-V12 Account' });
 
@@ -698,8 +681,9 @@ test.describe('Key Pages', () => {
   test(
     'V13: left nav layout renders correctly at desktop viewport @functional',
     { tag: ['@functional'] },
-    async ({ page, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       // Switch to left nav layout via API before navigating to the page under test
       await setNavLayoutViaAPI('left', restClient);
@@ -730,8 +714,9 @@ test.describe('Key Pages', () => {
   test(
     'V14: hamburger nav layout renders correctly collapsed at desktop viewport @functional',
     { tag: ['@functional'] },
-    async ({ page, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await setNavLayoutViaAPI('hamburger', restClient);
 
@@ -759,13 +744,17 @@ test.describe('Key Pages', () => {
   test(
     'V15: hamburger nav drawer renders correctly open at desktop viewport @functional',
     { tag: ['@functional'] },
-    async ({ page, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await setNavLayoutViaAPI('hamburger', restClient);
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await navigateToDashboard(page);
+      // Navigate to the dashboard AFTER setting the layout so React Query fetches
+      // the new 'hamburger' value and renders the toggle. Using 'networkidle' ensures
+      // the nav-layout query completes before we look for nav-menu-toggle. (MINCRM-415)
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       // Wait for the page to be interactive before opening the drawer
       const statCards = await page
@@ -813,8 +802,9 @@ test.describe('Key Pages', () => {
   test(
     'V16: left nav layout renders correctly at mobile-web viewport @functional',
     { tag: ['@functional'] },
-    async ({ page, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await setNavLayoutViaAPI('left', restClient);
 
@@ -845,9 +835,10 @@ test.describe('Key Pages', () => {
   test(
     'V17: top nav layout renders correctly at mobile-web viewport @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
+    async ({ page, testData, restClient }) => {
       // Top nav is the default layout; no API call needed to set it.
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(MOBILE_VIEWPORT);
       await navigateToDashboard(page);
@@ -876,7 +867,8 @@ test.describe('Key Pages', () => {
     'V18: deal detail page renders with realistic seeded data @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, { name: 'VR-V18 Account' });
       const contact = await createTestContact(testData, restClient, {
@@ -918,7 +910,8 @@ test.describe('Key Pages', () => {
     'V19: account detail page renders with linked contacts and activities @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V19 Enterprises',
@@ -960,8 +953,9 @@ test.describe('Key Pages', () => {
   test(
     'V20: user management table renders at desktop viewport @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/users', { waitUntil: 'networkidle' });
@@ -988,8 +982,9 @@ test.describe('Key Pages', () => {
   test(
     'V21: contact create form renders in empty state @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/contacts', { waitUntil: 'networkidle' });
@@ -1020,8 +1015,9 @@ test.describe('Key Pages', () => {
   test(
     'V22: contact create form renders validation errors when submitted empty @functional',
     { tag: ['@functional'] },
-    async ({ page }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/contacts', { waitUntil: 'networkidle' });
@@ -1071,7 +1067,8 @@ test.describe('Key Pages', () => {
     'V23: confirm-delete modal renders correctly on the contacts list @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
 
       // Seed a contact so there is a row to select for bulk delete.
       // Email auto-generated to avoid collision when both projects run in parallel.
@@ -1124,8 +1121,6 @@ test.describe('Key Pages', () => {
       const modal = await getContactsConfirmDeleteModalLocator({ page });
       await modal.waitFor({ state: 'visible' });
 
-      // Second networkidle wait so the SetupChecklistWidget's async data fetch
-      // settles before resolveTimestampMasks tries to locate it. (MINCRM-410)
       await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks(page);

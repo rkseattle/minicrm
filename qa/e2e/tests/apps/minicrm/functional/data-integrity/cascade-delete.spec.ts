@@ -34,6 +34,12 @@ import { getContactById, deleteContact } from '@behaviors/minicrm/contacts.behav
 import { deleteAccount } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealById, deleteDeal } from '@behaviors/minicrm/deals.behaviors.js';
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -67,8 +73,6 @@ test(
   'F11-CD1: deleting a contact removes its linked activities via cascade',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const contact = await createTestContact(testData, restClient, {
       first_name: 'CD1',
       last_name: 'Contact',
@@ -107,8 +111,6 @@ test(
   'F11-CD2: deleting an account unlinks its contacts (account_id SET NULL) rather than deleting them',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `CD2-Acct ${test.info().title}`,
     });
@@ -150,8 +152,6 @@ test(
   'F11-CD3: deleting a deal removes its linked activities via cascade',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `CD3-Acct ${test.info().title}`,
     });
@@ -188,8 +188,6 @@ test(
   'F11-CD4: deleting an account unlinks its deals (account_id SET NULL) rather than deleting them',
   { tag: ['@functional'] },
   async ({ testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `CD4-Acct ${test.info().title}`,
     });

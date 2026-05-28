@@ -43,7 +43,9 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   inviteUserViaApi,
   setUserPassword,
@@ -83,6 +85,7 @@ import {
   navigateToAccounts,
   navigateToContact,
   navigateToDeal,
+  createTestAdmin,
 } from '@apps/minicrm/helpers.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -183,9 +186,11 @@ async function activateHamburgerLayout(page: PageFacade, restClient: RestClient)
 // Shared setup — admin auth + known-good system state (MINCRM-358)
 // ---------------------------------------------------------------------------
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ page, restClient, testData }) => {
   await loginAsAdmin(restClient);
   await ensureSystemDefaults(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 });
 
 // afterEach intentionally omitted — every layout-mutating test resets its own
@@ -438,6 +443,11 @@ test.describe.serial('Layout-mutating tests', () => {
           {},
           10_000,
         );
+
+        // Let any in-flight React Query fetches triggered by login settle so a
+        // nav-layout re-fetch doesn't cause the NavHamburger to remount and reset
+        // the drawer-open state before we check the active link class. (MINCRM-415)
+        await page.waitForLoadState('networkidle');
 
         const dealsLink = await getNavLinkLocator('hamburger', 'deals', { page });
 
@@ -1072,7 +1082,7 @@ test.describe('Rep deep-link redirect', () => {
     await setUserPassword(restClient, inviteRes.inviteToken, repPassword);
 
     try {
-      await login({ email: repEmail, password: repPassword }, { page });
+      await loginViaBrowser(repEmail, repPassword, { page });
 
       // Directly navigate to an admin-only route.
       await navigateToAdminSettings(page);

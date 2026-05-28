@@ -42,14 +42,21 @@ import {
   setUserLanguage,
   setSystemDefaultLanguage,
 } from '@behaviors/minicrm/index.js';
+import { loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestRep } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // Reset the admin user's language preference and system default before each test so that
 // i18n tests running concurrently on another worker cannot leave a non-English locale that
 // causes badge text assertions to receive translated strings (e.g. "Contactado" vs "Contacted").
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   await setUserLanguage(restClient, null).catch(() => null);
   await setSystemDefaultLanguage(restClient, 'en').catch(() => null);
+  const rep = await createTestRep(testData, restClient);
+  await loginViaBrowser(rep.email, rep.password, { page });
+  await loginAs(restClient, rep.email, rep.password);
 });
 
 // ---------------------------------------------------------------------------

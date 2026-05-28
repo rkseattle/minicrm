@@ -32,7 +32,9 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginAs, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   openMobileNav,
   closeMobileNavViaToggle,
@@ -45,7 +47,7 @@ import {
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-import { createTestUser, navigateToDashboard } from '@apps/minicrm/helpers.js';
+import { createTestUser, navigateToDashboard, createTestAdmin } from '@apps/minicrm/helpers.js';
 import { setLocale, t } from '@framework/i18n/locale.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -102,7 +104,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
   test('@functional F9-L1: admin sets system default language to es — UI shows Spanish nav label after reload', async ({
     page,
     restClient,
+    testData,
   }) => {
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await setSystemLanguage('es', restClient, 'F9-L1');
 
     try {
@@ -174,8 +179,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
     try {
       // Log in as the rep via the browser.
-      await page.context().clearCookies();
-      await login({ email: repEmail, password: repPassword }, { page });
+      await loginViaBrowser(repEmail, repPassword, { page });
 
       setLocale('fr');
 
@@ -247,9 +251,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
     try {
       // Log in as the rep via the browser so the session cookie is set for page.
-      // Use an unauthenticated context by clearing cookies before the UI login.
-      await page.context().clearCookies();
-      await login({ email: repEmail, password: repPassword }, { page });
+      await loginViaBrowser(repEmail, repPassword, { page });
 
       setLocale('de');
 
@@ -301,9 +303,12 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
   test('@functional F9-L4: nav language selector changes language immediately and persists after reload', async ({
     page,
     restClient,
+    testData,
   }) => {
     // Ensure the system default is English so we start from a known baseline.
     await setSystemLanguage('en', restClient, 'F9-L4');
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await navigateToDashboard(page);
 
     try {
@@ -320,6 +325,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
         const langSelect = await getDesktopLanguageSelectLocator({ page });
         await langSelect.selectOption('es');
       }
+
+      // Wait for the PATCH /api/v1/users/me/language mutation to complete before
+      // reloading — without this the preference may not be persisted yet. (MINCRM-415)
+      await page.waitForLoadState('networkidle');
 
       // Language change should take effect without a page reload.
       setLocale('es');
@@ -363,11 +372,14 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
   test('@functional F9-L5: mobile nav language selector changes UI language', async ({
     page,
     restClient,
+    testData,
   }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
     test.skip(!isMobile, 'F9-L5 only runs under the mobile-web Playwright project');
 
     await setSystemLanguage('en', restClient, 'F9-L5');
+    const admin = await createTestAdmin(testData, restClient);
+    await loginViaBrowser(admin.email, admin.password, { page });
     await navigateToDashboard(page);
 
     try {

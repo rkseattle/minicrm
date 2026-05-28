@@ -19,12 +19,24 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestContact, createTestAccount, createTestUser } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestAccount,
+  createTestUser,
+  createTestAdmin,
+} from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import { filterAuditLog, getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { patchContact, getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getAccountById } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
-import { loginAsAdmin, loginAs, getDevJwt } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  loginAs,
+  getDevJwt,
+  loginViaBrowser,
+} from '@behaviors/minicrm/auth.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   createLeadViaApi,
@@ -60,6 +72,9 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   grpcClient,
   testData,
 }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
   // Create a contact, then update it — both actions should generate audit entries
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F12AL1',
@@ -99,6 +114,9 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   grpcClient,
   testData,
 }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
   // Ensure there are at least one contact and one account action in the log
   const contact = await createTestContact(testData, restClient, { first_name: 'F12AL2C' });
   const account = await createTestAccount(testData, restClient, { name: 'F12AL2A Corp' });
@@ -127,6 +145,9 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   grpcClient,
   testData,
 }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
   const contact = await createTestContact(testData, restClient, {
     first_name: 'F12AL3',
     last_name: 'DetailTest',
@@ -194,6 +215,9 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
   restClient,
   testData,
 }) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
   const contact = await createTestContact(testData, restClient, { first_name: 'F12AL4Pag' });
   void contact;
 

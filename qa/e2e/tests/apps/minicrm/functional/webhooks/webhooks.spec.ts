@@ -17,7 +17,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { login, loginAsAdmin, getCurrentUser } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  loginViaBrowser,
+  getCurrentUser,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { createContactViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   createWebhookSubscription,
@@ -39,13 +44,7 @@ import {
   confirmAdminSettingsDeleteWebhook,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
-// ---------------------------------------------------------------------------
-// Environment
-// ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[webhooks-spec] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
 // WH-01 – Admin sees Webhooks section
@@ -53,8 +52,12 @@ if (!ADMIN_PASSWORD) throw new Error('[webhooks-spec] E2E_ADMIN_PASSWORD is not 
 
 test('@functional WH-01: admin sees the Webhooks section in Settings → Integrations', async ({
   page,
+  restClient,
+  testData,
 }) => {
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
@@ -72,7 +75,8 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   testData,
 }) => {
   await loginAsAdmin(restClient);
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
 
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
@@ -124,7 +128,8 @@ test('@functional WH-03: created subscription appears in the list with correct d
   });
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
@@ -158,7 +163,8 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   });
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
@@ -175,7 +181,11 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
 // WH-05 – Delete subscription
 // ---------------------------------------------------------------------------
 
-test('@functional WH-05: delete subscription → removed from list', async ({ restClient, page }) => {
+test('@functional WH-05: delete subscription → removed from list', async ({
+  restClient,
+  testData,
+  page,
+}) => {
   await loginAsAdmin(restClient);
 
   const suffix = Date.now().toString();
@@ -187,7 +197,8 @@ test('@functional WH-05: delete subscription → removed from list', async ({ re
   });
   // Do NOT register for auto-teardown — the test itself deletes it via UI
 
-  await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
   await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });

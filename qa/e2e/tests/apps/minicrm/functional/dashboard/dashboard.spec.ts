@@ -14,16 +14,25 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestAccount, createTestDeal, createTestActivity } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  createTestAccount,
+  createTestDeal,
+  createTestActivity,
+  createTestAdmin,
+} from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Environment
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[dashboard-spec] E2E_ADMIN_PASSWORD is not set');
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ restClient, testData, page }) => {
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,9 +50,7 @@ async function navigateToDashboard(page: Parameters<Parameters<typeof test>[2]>[
 test(
   'DB-1: dashboard loads; stat card grid and recent-activity feed are visible @functional',
   { tag: ['@functional'] },
-  async ({ page, restClient }) => {
-    await loginAsAdmin(restClient);
-
+  async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
 
     const statCards = await page
@@ -78,8 +85,6 @@ test(
   'DB-2: after creating a deal, open pipeline value stat is greater than zero @functional',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `DB2-Account-${Date.now()}`,
     });
@@ -129,8 +134,6 @@ test(
   'DB-3: after creating an overdue task, overdue-tasks stat is ≥ 1 @functional',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `DB3-Account-${Date.now()}`,
     });
@@ -183,8 +186,6 @@ test(
   'DB-4: after creating an activity, it appears in the recent-activity feed @functional',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    await loginAsAdmin(restClient);
-
     const account = await createTestAccount(testData, restClient, {
       name: `DB4-Account-${Date.now()}`,
     });
@@ -237,5 +238,3 @@ test(
     }
   },
 );
-
-void ADMIN_EMAIL; // used in test file description only — suppress unused-var warning

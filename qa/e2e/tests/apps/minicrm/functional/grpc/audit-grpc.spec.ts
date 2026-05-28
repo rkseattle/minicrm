@@ -24,6 +24,8 @@ import { loginAsAdmin, loginAs, getDevJwt } from '@behaviors/minicrm/auth.behavi
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import * as grpc from '@grpc/grpc-js';
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 /** Poll an async condition every 100 ms until it is truthy or the deadline passes. */
 async function waitForCondition(condition: () => boolean, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;

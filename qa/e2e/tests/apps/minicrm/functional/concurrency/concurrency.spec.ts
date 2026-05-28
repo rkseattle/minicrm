@@ -45,8 +45,10 @@ import {
   createTestAccount,
   createTestActivity,
   createTestUser,
-  loginAndVerify,
+  createTestRep,
 } from '@apps/minicrm/helpers.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   navigateToContacts,
   waitForContactInList,
@@ -71,6 +73,7 @@ import {
   selectConflictTheirs,
   selectConflictMine,
 } from '@behaviors/minicrm/concurrency.behaviors.js';
+import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToContactDetail,
   clickContactEdit,
@@ -87,12 +90,8 @@ import {
 } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
-// Environment
+// Setup — admin restClient session for REST API data setup
 // ---------------------------------------------------------------------------
-
-const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
-if (!ADMIN_PASSWORD) throw new Error('[F-CC] E2E_ADMIN_PASSWORD is not set');
 
 // ---------------------------------------------------------------------------
 // Local response types (only for endpoints not covered by behavior helpers)
@@ -183,12 +182,14 @@ async function driveContactIntoConflict(
 // ---------------------------------------------------------------------------
 
 test.describe.serial('F-CC — Optimistic locking concurrency', () => {
+  test.beforeEach(async ({ restClient }) => {
+    await loginAsAdmin(restClient);
+  });
+
   test(
     'F-CC1: contact API-level 409 — stale version rejected with OPTIMISTIC_LOCK_CONFLICT',
     { tag: ['@functional'] },
     async ({ testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
-
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC1',
         last_name: 'ApiConflict',
@@ -214,7 +215,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC2: contact UI conflict — FieldMergeModal appears when save uses stale version',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC2',
@@ -249,7 +252,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC3: deal stage conflict — 409 does not trigger webhook or automation event',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const account = await createTestAccount(testData, restClient, { name: 'CC3 Account' });
       const deal = await createTestDeal(testData, restClient, {
@@ -333,7 +338,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC4: conflict resolution — re-save path saves successfully with resolved version',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC4',
@@ -378,7 +385,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC5: conflict resolution — discard path reverts to server state',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC5',
@@ -428,14 +437,17 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     async ({ page, testData, restClient }) => {
       const uniqueSuffix = `cc6-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
 
-      // Create a new owner to reassign to
+      // Create the reassignment target while still admin-authed (MINCRM-415)
       const newOwner = await createTestUser(restClient, {
         name: `CC6 Owner ${uniqueSuffix}`,
         email: `cc6-owner-${uniqueSuffix}@example.com`,
         role: 'rep',
       });
+
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       // Create 3 contacts
       const c1 = await createTestContact(testData, restClient, {
@@ -497,7 +509,8 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(r3.body.contact.owner_id, 'c3 should have new owner').toBe(newOwner.id);
       expect(r3.body.contact.version, 'c3 version unchanged by bulk op').toBe(1);
 
-      // Deactivate the temp user (users cannot be hard-deleted)
+      // Deactivate the temp user (users cannot be hard-deleted); re-auth as admin first (MINCRM-415)
+      await loginAsAdmin(restClient);
       await deactivateUser(restClient, newOwner.id);
     },
   );
@@ -506,7 +519,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC7: accept "theirs" in conflict modal — subsequent edit saves cleanly at next version',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC7',
@@ -572,7 +587,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC8: accept "mine" in conflict modal — subsequent edit saves cleanly at next version',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
       const contact = await createTestContact(testData, restClient, {
         first_name: 'CC8',
@@ -638,8 +655,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     'F-CC9: activity — version increments on update; stale version returns 409 (MINCRM-409)',
     { tag: ['@functional'] },
     async ({ testData, restClient }) => {
-      await loginAndVerify(restClient, ADMIN_EMAIL, ADMIN_PASSWORD);
-
       const account = await createTestAccount(testData, restClient, { name: 'CC9 Account' });
       const activity = await createTestActivity(testData, restClient, {
         type: 'Note',

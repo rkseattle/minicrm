@@ -32,6 +32,8 @@ import {
   createTestUser,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import { searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import { searchAccountsViaApi } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealsByAccount } from '@behaviors/minicrm/deals.behaviors.js';
