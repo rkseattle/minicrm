@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-28T08:22:32.100Z",
+  "updatedAt": "2026-05-28T17:07:03.651Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -285,9 +285,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "invite-submit",
-      "count": 2,
+      "count": 5,
       "firstSeenAt": "2026-05-28T02:50:33.854Z",
-      "lastSeenAt": "2026-05-28T04:12:46.375Z"
+      "lastSeenAt": "2026-05-28T17:05:52.276Z"
     },
     "Unknown::unknown::testId::user-actions-2525eb1c-aa4e-406c-a020-5edcc8e0aabd": {
       "pageObject": "Unknown",
@@ -351,6 +351,60 @@
       "count": 1,
       "firstSeenAt": "2026-05-28T07:40:52.919Z",
       "lastSeenAt": "2026-05-28T07:40:52.919Z"
+    },
+    "Unknown::unknown::testId::user-actions-96452ac5-a1b7-41bd-9cec-bb0220e0a1f5": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-96452ac5-a1b7-41bd-9cec-bb0220e0a1f5",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T16:27:30.684Z",
+      "lastSeenAt": "2026-05-28T16:27:30.684Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-96452ac5-a1b7-41bd-9cec-bb0220e0a1f5": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-96452ac5-a1b7-41bd-9cec-bb0220e0a1f5",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T16:27:32.708Z",
+      "lastSeenAt": "2026-05-28T16:27:32.708Z"
+    },
+    "Unknown::unknown::testId::user-actions-f09226d9-03af-43e1-9aa2-146a67e6e26e": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-f09226d9-03af-43e1-9aa2-146a67e6e26e",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T16:42:52.036Z",
+      "lastSeenAt": "2026-05-28T16:42:52.036Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-f09226d9-03af-43e1-9aa2-146a67e6e26e": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-f09226d9-03af-43e1-9aa2-146a67e6e26e",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T16:42:54.059Z",
+      "lastSeenAt": "2026-05-28T16:42:54.059Z"
+    },
+    "Unknown::unknown::testId::user-actions-48d13247-915c-42b9-938c-f76f3af7d3a2": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-48d13247-915c-42b9-938c-f76f3af7d3a2",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T17:06:30.440Z",
+      "lastSeenAt": "2026-05-28T17:06:30.440Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-48d13247-915c-42b9-938c-f76f3af7d3a2": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-48d13247-915c-42b9-938c-f76f3af7d3a2",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T17:06:32.466Z",
+      "lastSeenAt": "2026-05-28T17:06:32.466Z"
     }
   }
 }
