@@ -111,6 +111,8 @@ function resolvePresetDates(
       return { start: startOfLastQuarter(), end: endOfLastQuarter() };
     case 'custom':
       return { start: customStart, end: customEnd };
+    default:
+      return { start: startOfCurrentMonth(), end: endOfCurrentMonth() };
   }
 }
 
