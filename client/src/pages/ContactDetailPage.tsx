@@ -48,6 +48,7 @@ import type { MergeFieldChoice } from '@/api/contacts.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import GdprPrivacySection from '@/components/GdprPrivacySection.js';
+import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -80,12 +81,6 @@ export default function ContactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
-  // Three-way merge conflict state (MINCRM-351)
-  const [conflictPendingValues, setConflictPendingValues] = useState<ContactFormValues | null>(
-    null,
-  );
-  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
-  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -108,6 +103,13 @@ export default function ContactDetailPage() {
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const contactQueryKey = ['contacts', id] as const;
+
+  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
+    useEntityConflictHandler<ContactFormValues>({
+      entityCacheKey: 'contact',
+      entityQueryKey: contactQueryKey,
+    });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: contactQueryKey,
@@ -196,31 +198,11 @@ export default function ContactDetailPage() {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
-      setConflictPendingValues(null);
-      setConflictBase(null);
-      setConflictTheirs(null);
+      clearConflict();
     },
-    onError: (
-      error: {
-        response?: {
-          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
-        };
-      },
-      variables,
-    ) => {
-      const code = error.response?.data?.error?.code;
-      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        // Capture base from cache before invalidating, then store theirs from the 409 body (MINCRM-351)
-        const cached = queryClient.getQueryData<{ contact: Record<string, unknown> }>(
-          contactQueryKey,
-        );
-        setConflictBase(cached?.contact ?? {});
-        setConflictPendingValues(variables.values);
-        setConflictTheirs(error.response?.data?.error?.current ?? null);
-        void queryClient.invalidateQueries({ queryKey: contactQueryKey });
-        return;
-      }
-      setUpdateError(resolveApiError(error, t));
+    onError: (error: unknown, variables) => {
+      if (handleConflict(error, variables)) return;
+      setUpdateError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -694,9 +676,7 @@ export default function ContactDetailPage() {
             <FieldMergeModal
               isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
               onClose={() => {
-                setConflictPendingValues(null);
-                setConflictBase(null);
-                setConflictTheirs(null);
+                clearConflict();
                 setIsEditing(false);
               }}
               entityType="contact"
@@ -724,9 +704,7 @@ export default function ContactDetailPage() {
                   },
                   version: conflictTheirs?.version as number | undefined,
                 });
-                setConflictPendingValues(null);
-                setConflictBase(null);
-                setConflictTheirs(null);
+                clearConflict();
               }}
             />
 
@@ -753,7 +731,7 @@ export default function ContactDetailPage() {
                 onClick={() => {
                   setIsEditing(false);
                   setUpdateError(null);
-                  setConflictPendingValues(null);
+                  clearConflict();
                   setIsAddingAddress(false);
                   setNewAddressFields({});
                   setAddressError(null);

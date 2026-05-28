@@ -47,6 +47,7 @@ import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 
 /**
  * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
@@ -74,10 +75,6 @@ export default function DealDetailPage() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  // Three-way merge conflict state (MINCRM-351)
-  const [conflictPendingValues, setConflictPendingValues] = useState<DealFormValues | null>(null);
-  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
-  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -94,6 +91,13 @@ export default function DealDetailPage() {
   const [closeError, setCloseError] = useState<string | null>(null);
 
   const dealQueryKey = ['deals', id] as const;
+
+  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
+    useEntityConflictHandler<DealFormValues>({
+      entityCacheKey: 'deal',
+      entityQueryKey: dealQueryKey,
+    });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: dealQueryKey,
@@ -149,28 +153,11 @@ export default function DealDetailPage() {
       queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
-      setConflictPendingValues(null);
-      setConflictBase(null);
-      setConflictTheirs(null);
+      clearConflict();
     },
-    onError: (
-      error: {
-        response?: {
-          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
-        };
-      },
-      variables,
-    ) => {
-      const code = error.response?.data?.error?.code;
-      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        const cached = queryClient.getQueryData<{ deal: Record<string, unknown> }>(dealQueryKey);
-        setConflictBase(cached?.deal ?? {});
-        setConflictPendingValues(variables.values);
-        setConflictTheirs(error.response?.data?.error?.current ?? null);
-        void queryClient.invalidateQueries({ queryKey: dealQueryKey });
-        return;
-      }
-      setUpdateError(resolveApiError(error, t));
+    onError: (error: unknown, variables) => {
+      if (handleConflict(error, variables)) return;
+      setUpdateError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -247,29 +234,14 @@ export default function DealDetailPage() {
       setPendingClose(null);
       setCloseError(null);
       setIsEditing(false);
-      setConflictPendingValues(null);
-      setConflictBase(null);
-      setConflictTheirs(null);
+      clearConflict();
     },
-    onError: (
-      error: {
-        response?: {
-          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
-        };
-      },
-      variables,
-    ) => {
-      const code = error.response?.data?.error?.code;
-      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        const cached = queryClient.getQueryData<{ deal: Record<string, unknown> }>(dealQueryKey);
-        setConflictBase(cached?.deal ?? {});
-        setConflictPendingValues(variables.formValues);
-        setConflictTheirs(error.response?.data?.error?.current ?? null);
+    onError: (error: unknown, variables) => {
+      if (handleConflict(error, { values: variables.formValues })) {
         setPendingClose(null);
-        void queryClient.invalidateQueries({ queryKey: dealQueryKey });
         return;
       }
-      setCloseError(resolveApiError(error, t));
+      setCloseError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -413,7 +385,7 @@ export default function DealDetailPage() {
                 onCancel={() => {
                   setIsEditing(false);
                   setUpdateError(null);
-                  setConflictPendingValues(null);
+                  clearConflict();
                 }}
                 isSubmitting={updateMutation.isPending}
                 submitLabel={t('deals.saveChanges')}
@@ -422,9 +394,7 @@ export default function DealDetailPage() {
               <FieldMergeModal
                 isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
                 onClose={() => {
-                  setConflictPendingValues(null);
-                  setConflictBase(null);
-                  setConflictTheirs(null);
+                  clearConflict();
                   setIsEditing(false);
                 }}
                 entityType="deal"
@@ -448,9 +418,7 @@ export default function DealDetailPage() {
                     },
                     version: conflictTheirs?.version as number | undefined,
                   });
-                  setConflictPendingValues(null);
-                  setConflictBase(null);
-                  setConflictTheirs(null);
+                  clearConflict();
                 }}
               />
             </div>

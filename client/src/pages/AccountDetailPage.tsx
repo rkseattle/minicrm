@@ -29,6 +29,7 @@ import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 
 /**
  * Single account detail page with view/edit/delete.
@@ -41,16 +42,17 @@ export default function AccountDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
-  // Three-way merge conflict state (MINCRM-351)
-  const [conflictPendingValues, setConflictPendingValues] = useState<AccountFormValues | null>(
-    null,
-  );
-  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
-  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   const accountQueryKey = ['accounts', id] as const;
+
+  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
+    useEntityConflictHandler<AccountFormValues>({
+      entityCacheKey: 'account',
+      entityQueryKey: accountQueryKey,
+    });
   const linkedContactsQueryKey = ['contacts', 'byAccount', id] as const;
   const childAccountsQueryKey = ['accounts', id, 'children'] as const;
 
@@ -120,30 +122,11 @@ export default function AccountDetailPage() {
       queryClient.invalidateQueries({ queryKey: childAccountsQueryKey });
       setIsEditing(false);
       setUpdateError(null);
-      setConflictPendingValues(null);
-      setConflictBase(null);
-      setConflictTheirs(null);
+      clearConflict();
     },
-    onError: (
-      error: {
-        response?: {
-          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
-        };
-      },
-      variables,
-    ) => {
-      const code = error.response?.data?.error?.code;
-      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        const cached = queryClient.getQueryData<{ account: Record<string, unknown> }>(
-          accountQueryKey,
-        );
-        setConflictBase(cached?.account ?? {});
-        setConflictPendingValues(variables.values);
-        setConflictTheirs(error.response?.data?.error?.current ?? null);
-        void queryClient.invalidateQueries({ queryKey: accountQueryKey });
-        return;
-      }
-      setUpdateError(resolveApiError(error, t));
+    onError: (error: unknown, variables) => {
+      if (handleConflict(error, variables)) return;
+      setUpdateError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -277,7 +260,7 @@ export default function AccountDetailPage() {
                 onCancel={() => {
                   setIsEditing(false);
                   setUpdateError(null);
-                  setConflictPendingValues(null);
+                  clearConflict();
                 }}
                 isSubmitting={updateMutation.isPending}
                 submitLabel={t('accounts.saveChanges')}
@@ -286,9 +269,7 @@ export default function AccountDetailPage() {
               <FieldMergeModal
                 isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
                 onClose={() => {
-                  setConflictPendingValues(null);
-                  setConflictBase(null);
-                  setConflictTheirs(null);
+                  clearConflict();
                   setIsEditing(false);
                 }}
                 entityType="account"
@@ -312,9 +293,7 @@ export default function AccountDetailPage() {
                     },
                     version: conflictTheirs?.version as number | undefined,
                   });
-                  setConflictPendingValues(null);
-                  setConflictBase(null);
-                  setConflictTheirs(null);
+                  clearConflict();
                 }}
               />
             </div>
