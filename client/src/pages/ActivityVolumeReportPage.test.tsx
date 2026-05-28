@@ -344,7 +344,7 @@ describe('ActivityVolumeReportPage', () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => screen.getByTestId('date-preset-select'));
       fireEvent.change(screen.getByTestId('date-preset-select'), {
-        target: { value: 'currentWeek' },
+        target: { value: 'thisWeek' },
       });
       await waitFor(() => {
         // startOfCurrentWeek() returns a Monday date; just verify it was called
@@ -370,7 +370,7 @@ describe('ActivityVolumeReportPage', () => {
       });
     });
 
-    it('selects the "Today" preset and triggers a fetch', async () => {
+    it('selects the "Last month" preset and triggers a fetch', async () => {
       let capturedStart: string | null = null;
       server.use(
         http.get('/api/v1/reports/activity-volume', ({ request }) => {
@@ -381,7 +381,7 @@ describe('ActivityVolumeReportPage', () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => screen.getByTestId('date-preset-select'));
       fireEvent.change(screen.getByTestId('date-preset-select'), {
-        target: { value: 'today' },
+        target: { value: 'lastMonth' },
       });
       await waitFor(() => {
         expect(capturedStart).not.toBeNull();
