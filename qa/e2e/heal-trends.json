@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-28T04:13:57.032Z",
+  "updatedAt": "2026-05-28T08:22:32.100Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -342,6 +342,15 @@
       "count": 1,
       "firstSeenAt": "2026-05-28T04:13:10.836Z",
       "lastSeenAt": "2026-05-28T04:13:10.836Z"
+    },
+    "Unknown::unknown::testId::pipeline-stages-table": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "pipeline-stages-table",
+      "count": 1,
+      "firstSeenAt": "2026-05-28T07:40:52.919Z",
+      "lastSeenAt": "2026-05-28T07:40:52.919Z"
     }
   }
 }
