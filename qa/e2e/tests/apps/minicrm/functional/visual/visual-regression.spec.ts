@@ -45,7 +45,7 @@
  *     V23 — Confirm-delete modal
  *
  * Framework conventions (MINCRM-42):
- *   - All tests tagged @functional
+ *   - All tests tagged @visual (not @functional — visual tests require OS-matching baselines)
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data via restClient + TestDataManager (auto teardown)
  *   - checkScreenshot() only — no direct expect(page).toHaveScreenshot() calls
@@ -177,8 +177,8 @@ test.describe('Core Layout', () => {
   // ── V1 — Pipeline board, desktop viewport ──────────────────────────────────
 
   test(
-    'V1: pipeline board renders correctly at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V1: pipeline board renders correctly at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -224,8 +224,8 @@ test.describe('Core Layout', () => {
   // ── V2 — Pipeline board, mobile viewport ───────────────────────────────────
 
   test(
-    'V2: pipeline board renders correctly at mobile viewport @functional',
-    { tag: ['@functional'] },
+    'V2: pipeline board renders correctly at mobile viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -274,8 +274,8 @@ test.describe('Core Layout', () => {
   // ── V3 — Dashboard ─────────────────────────────────────────────────────────
 
   test(
-    'V3: dashboard renders stats grid and activity feed with seeded data @functional',
-    { tag: ['@functional'] },
+    'V3: dashboard renders stats grid and activity feed with seeded data @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -327,8 +327,8 @@ test.describe('Core Layout', () => {
   // ── V4 — Contact detail page ────────────────────────────────────────────────
 
   test(
-    'V4: contact detail page renders with populated activity timeline @functional',
-    { tag: ['@functional'] },
+    'V4: contact detail page renders with populated activity timeline @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -373,8 +373,8 @@ test.describe('Core Layout', () => {
   // ── V5 — Win/Loss report ────────────────────────────────────────────────────
 
   test(
-    'V5: win/loss report renders stat cards and tables with seeded deal data @functional',
-    { tag: ['@functional'] },
+    'V5: win/loss report renders stat cards and tables with seeded deal data @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -436,8 +436,8 @@ test.describe('Admin', () => {
   // ── V6 — Admin Settings — General tab ──────────────────────────────────────
 
   test(
-    'V6: admin settings General tab renders correctly @functional',
-    { tag: ['@functional'] },
+    'V6: admin settings General tab renders correctly @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -460,8 +460,8 @@ test.describe('Admin', () => {
   // ── V7 — Admin Settings — Currency tab ─────────────────────────────────────
 
   test(
-    'V7: admin settings Currency tab renders correctly @functional',
-    { tag: ['@functional'] },
+    'V7: admin settings Currency tab renders correctly @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -480,8 +480,8 @@ test.describe('Admin', () => {
   // ── V8 — Admin Settings — Notifications tab ────────────────────────────────
 
   test(
-    'V8: admin settings Notifications tab renders correctly @functional',
-    { tag: ['@functional'] },
+    'V8: admin settings Notifications tab renders correctly @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -506,8 +506,8 @@ test.describe('Key Pages', () => {
   // ── V9 — Contacts list, desktop ────────────────────────────────────────────
 
   test(
-    'V9: contacts list renders with seeded contacts at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V9: contacts list renders with seeded contacts at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -551,8 +551,8 @@ test.describe('Key Pages', () => {
   // ── V10 — Accounts list, desktop ───────────────────────────────────────────
 
   test(
-    'V10: accounts list renders with seeded accounts at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V10: accounts list renders with seeded accounts at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -588,8 +588,8 @@ test.describe('Key Pages', () => {
   // ── V11 — Leads list, desktop ───────────────────────────────────────────────
 
   test(
-    'V11: leads list renders with seeded leads at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V11: leads list renders with seeded leads at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -636,8 +636,8 @@ test.describe('Key Pages', () => {
   // ── V12 — Tasks list, desktop ───────────────────────────────────────────────
 
   test(
-    'V12: tasks list renders with seeded tasks at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V12: tasks list renders with seeded tasks at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -679,8 +679,8 @@ test.describe('Key Pages', () => {
   // ── V13 — Left nav layout, desktop ─────────────────────────────────────────
 
   test(
-    'V13: left nav layout renders correctly at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V13: left nav layout renders correctly at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -712,8 +712,8 @@ test.describe('Key Pages', () => {
   // ── V14 — Hamburger nav layout, desktop (collapsed) ────────────────────────
 
   test(
-    'V14: hamburger nav layout renders correctly collapsed at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V14: hamburger nav layout renders correctly collapsed at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -742,8 +742,8 @@ test.describe('Key Pages', () => {
   // ── V15 — Hamburger nav layout, desktop (drawer open) ──────────────────────
 
   test(
-    'V15: hamburger nav drawer renders correctly open at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V15: hamburger nav drawer renders correctly open at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -800,8 +800,8 @@ test.describe('Key Pages', () => {
   // ── V16 — Left nav layout, mobile-web viewport ─────────────────────────────
 
   test(
-    'V16: left nav layout renders correctly at mobile-web viewport @functional',
-    { tag: ['@functional'] },
+    'V16: left nav layout renders correctly at mobile-web viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -833,8 +833,8 @@ test.describe('Key Pages', () => {
   // ── V17 — Top nav layout, mobile-web viewport ──────────────────────────────
 
   test(
-    'V17: top nav layout renders correctly at mobile-web viewport @functional',
-    { tag: ['@functional'] },
+    'V17: top nav layout renders correctly at mobile-web viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       // Top nav is the default layout; no API call needed to set it.
       const admin = await createTestAdmin(testData, restClient);
@@ -864,8 +864,8 @@ test.describe('Key Pages', () => {
   // ── V18 — Deal detail page ──────────────────────────────────────────────────
 
   test(
-    'V18: deal detail page renders with realistic seeded data @functional',
-    { tag: ['@functional'] },
+    'V18: deal detail page renders with realistic seeded data @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -907,8 +907,8 @@ test.describe('Key Pages', () => {
   // ── V19 — Account detail page ───────────────────────────────────────────────
 
   test(
-    'V19: account detail page renders with linked contacts and activities @functional',
-    { tag: ['@functional'] },
+    'V19: account detail page renders with linked contacts and activities @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -951,8 +951,8 @@ test.describe('Key Pages', () => {
   // ── V20 — User management table ────────────────────────────────────────────
 
   test(
-    'V20: user management table renders at desktop viewport @functional',
-    { tag: ['@functional'] },
+    'V20: user management table renders at desktop viewport @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -980,8 +980,8 @@ test.describe('Key Pages', () => {
   // ── V21 — Contact create form, empty state ─────────────────────────────────
 
   test(
-    'V21: contact create form renders in empty state @functional',
-    { tag: ['@functional'] },
+    'V21: contact create form renders in empty state @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -1013,8 +1013,8 @@ test.describe('Key Pages', () => {
   // ── V22 — Contact create form, validation errors ────────────────────────────
 
   test(
-    'V22: contact create form renders validation errors when submitted empty @functional',
-    { tag: ['@functional'] },
+    'V22: contact create form renders validation errors when submitted empty @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -1064,8 +1064,8 @@ test.describe('Key Pages', () => {
   // ── V23 — Confirm-delete modal ──────────────────────────────────────────────
 
   test(
-    'V23: confirm-delete modal renders correctly on the contacts list @functional',
-    { tag: ['@functional'] },
+    'V23: confirm-delete modal renders correctly on the contacts list @visual',
+    { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
