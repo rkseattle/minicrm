@@ -14,11 +14,7 @@ import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import DealForm from '@/components/DealForm.js';
-import ActivityTimeline from '@/components/ActivityTimeline.js';
-import AttachmentsSection from '@/components/AttachmentsSection.js';
-import NotesSection from '@/components/NotesSection.js';
-import ChangeHistory from '@/components/ChangeHistory.js';
-import { ConnectedTagInput } from '@/components/TagInput.js';
+import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
@@ -486,155 +482,130 @@ export default function DealDetailPage() {
 
             {id && <CustomFieldsSection entityType="deal" recordId={id} isEditing={false} />}
 
-            {/* Tags (MINCRM-186) */}
             {id && (
-              <section
-                className="mt-8"
-                aria-labelledby="deal-tags-heading"
-                data-testid="deal-tags-section"
+              <EntityDetailSidebar
+                entityType="deal"
+                entityId={id}
+                entityQueryKey={DEALS_QUERY_KEY}
+                isEditing={isEditing}
               >
-                <h2
-                  id="deal-tags-heading"
-                  className="text-sm font-semibold text-gray-900 mb-3"
-                  data-testid="deal-tags-heading"
-                >
-                  {t('tags.sectionTitle')}
-                </h2>
-                <ConnectedTagInput
-                  entityId={id}
-                  entityType="deal"
-                  entityQueryKey={DEALS_QUERY_KEY}
-                />
-              </section>
-            )}
-
-            {/* Activity timeline */}
-            <ActivityTimeline dealId={id} />
-
-            {/* Attachments (MINCRM-167) */}
-            {id && <AttachmentsSection recordType="deal" recordId={id} />}
-
-            {/* Notes (MINCRM-352) */}
-            {id && <NotesSection entityType="deal" entityId={id} />}
-
-            {/* Change history (MINCRM-171) */}
-            {id && <ChangeHistory recordType="deal" recordId={id} />}
-
-            {/* Linked contacts */}
-            <section className="mt-8" aria-labelledby="linked-contacts-heading">
-              <h2
-                id="linked-contacts-heading"
-                className="text-sm font-semibold text-gray-900 mb-3"
-                data-testid="linked-contacts-heading"
-              >
-                {t('deals.linkedContactsHeading')}
-              </h2>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {linkedContacts.length === 0 ? (
-                  <p
-                    className="px-6 py-4 text-sm text-gray-500"
-                    data-testid="linked-contacts-empty"
+                {/* Linked contacts */}
+                <section className="mt-8" aria-labelledby="linked-contacts-heading">
+                  <h2
+                    id="linked-contacts-heading"
+                    className="text-sm font-semibold text-gray-900 mb-3"
+                    data-testid="linked-contacts-heading"
                   >
-                    {t('deals.linkedContactsEmpty')}
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
-                    {linkedContacts.map((contact) => (
-                      <li
-                        key={contact.id}
-                        className="px-6 py-3 flex items-center justify-between gap-3"
+                    {t('deals.linkedContactsHeading')}
+                  </h2>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    {linkedContacts.length === 0 ? (
+                      <p
+                        className="px-6 py-4 text-sm text-gray-500"
+                        data-testid="linked-contacts-empty"
                       >
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/contacts/${contact.id}`}
-                            data-testid={`linked-contact-${contact.id}`}
-                            className="text-sm font-medium text-primary-600 hover:underline"
+                        {t('deals.linkedContactsEmpty')}
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
+                        {linkedContacts.map((contact) => (
+                          <li
+                            key={contact.id}
+                            className="px-6 py-3 flex items-center justify-between gap-3"
                           >
+                            <div className="flex items-center gap-3">
+                              <Link
+                                to={`/contacts/${contact.id}`}
+                                data-testid={`linked-contact-${contact.id}`}
+                                className="text-sm font-medium text-primary-600 hover:underline"
+                              >
+                                {contact.first_name} {contact.last_name}
+                              </Link>
+                              {contact.title && (
+                                <span className="text-sm text-gray-500">{contact.title}</span>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`unlink-contact-${contact.id}`}
+                              onClick={() => unlinkMutation.mutate(contact.id)}
+                              disabled={unlinkMutation.isPending}
+                            >
+                              {unlinkMutation.isPending ? t('deals.unlinking') : t('deals.unlink')}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {unlinkError && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs text-red-600"
+                      data-testid="unlink-contact-error"
+                    >
+                      {unlinkError}
+                    </p>
+                  )}
+
+                  {/* Contacts fetch error — MINCRM-117 */}
+                  {isContactsError && (
+                    <p
+                      role="alert"
+                      className="mt-3 text-sm text-red-600"
+                      data-testid="contacts-fetch-error"
+                    >
+                      {t('errors.loadContactsFailed')}
+                    </p>
+                  )}
+
+                  {/* Link contact form */}
+                  {!isContactsError && linkableContacts.length > 0 && (
+                    <div className="mt-3 flex items-center gap-2" data-testid="link-contact-form">
+                      <Select
+                        id="link-contact-select"
+                        data-testid="link-contact-select"
+                        value={selectedContactId}
+                        onChange={(e) => setSelectedContactId(e.target.value)}
+                        className="flex-1"
+                      >
+                        <option value="">{t('deals.selectContactToLink')}</option>
+                        {linkableContacts.map((contact) => (
+                          <option key={contact.id} value={contact.id}>
                             {contact.first_name} {contact.last_name}
-                          </Link>
-                          {contact.title && (
-                            <span className="text-sm text-gray-500">{contact.title}</span>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          data-testid={`unlink-contact-${contact.id}`}
-                          onClick={() => unlinkMutation.mutate(contact.id)}
-                          disabled={unlinkMutation.isPending}
-                        >
-                          {unlinkMutation.isPending ? t('deals.unlinking') : t('deals.unlink')}
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                          </option>
+                        ))}
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        data-testid="link-contact-button"
+                        disabled={!selectedContactId || linkMutation.isPending}
+                        onClick={() => {
+                          if (selectedContactId) linkMutation.mutate(selectedContactId);
+                        }}
+                      >
+                        {linkMutation.isPending ? t('deals.linking') : t('deals.linkContact')}
+                      </Button>
+                    </div>
+                  )}
 
-              {unlinkError && (
-                <p
-                  role="alert"
-                  className="mt-2 text-xs text-red-600"
-                  data-testid="unlink-contact-error"
-                >
-                  {unlinkError}
-                </p>
-              )}
-
-              {/* Contacts fetch error — MINCRM-117 */}
-              {isContactsError && (
-                <p
-                  role="alert"
-                  className="mt-3 text-sm text-red-600"
-                  data-testid="contacts-fetch-error"
-                >
-                  {t('errors.loadContactsFailed')}
-                </p>
-              )}
-
-              {/* Link contact form */}
-              {!isContactsError && linkableContacts.length > 0 && (
-                <div className="mt-3 flex items-center gap-2" data-testid="link-contact-form">
-                  <Select
-                    id="link-contact-select"
-                    data-testid="link-contact-select"
-                    value={selectedContactId}
-                    onChange={(e) => setSelectedContactId(e.target.value)}
-                    className="flex-1"
-                  >
-                    <option value="">{t('deals.selectContactToLink')}</option>
-                    {linkableContacts.map((contact) => (
-                      <option key={contact.id} value={contact.id}>
-                        {contact.first_name} {contact.last_name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    data-testid="link-contact-button"
-                    disabled={!selectedContactId || linkMutation.isPending}
-                    onClick={() => {
-                      if (selectedContactId) linkMutation.mutate(selectedContactId);
-                    }}
-                  >
-                    {linkMutation.isPending ? t('deals.linking') : t('deals.linkContact')}
-                  </Button>
-                </div>
-              )}
-
-              {linkError && (
-                <p
-                  role="alert"
-                  className="mt-2 text-xs text-red-600"
-                  data-testid="link-contact-error"
-                >
-                  {linkError}
-                </p>
-              )}
-            </section>
+                  {linkError && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs text-red-600"
+                      data-testid="link-contact-error"
+                    >
+                      {linkError}
+                    </p>
+                  )}
+                </section>
+              </EntityDetailSidebar>
+            )}
           </>
         )}
       </main>

@@ -12,11 +12,6 @@ import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import ContactForm from '@/components/ContactForm.js';
-import ActivityTimeline from '@/components/ActivityTimeline.js';
-import AttachmentsSection from '@/components/AttachmentsSection.js';
-import NotesSection from '@/components/NotesSection.js';
-import ChangeHistory from '@/components/ChangeHistory.js';
-import { ConnectedTagInput } from '@/components/TagInput.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import SendEmailModal from '@/components/SendEmailModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
@@ -47,8 +42,8 @@ import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { MergeFieldChoice } from '@/api/contacts.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
-import GdprPrivacySection from '@/components/GdprPrivacySection.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
+import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -1238,102 +1233,68 @@ export default function ContactDetailPage() {
           </div>
         )}
 
-        {/* Tags (MINCRM-186) */}
-        {!isEditing && id && (
-          <section
-            className="mt-8"
-            aria-labelledby="contact-tags-heading"
-            data-testid="contact-tags-section"
-          >
-            <h2
-              id="contact-tags-heading"
-              className="text-sm font-semibold text-gray-900 mb-3"
-              data-testid="contact-tags-heading"
-            >
-              {t('tags.sectionTitle')}
-            </h2>
-            <ConnectedTagInput
-              entityId={id}
-              entityType="contact"
-              entityQueryKey={CONTACTS_QUERY_KEY}
-            />
-          </section>
-        )}
-
-        {/* Activity timeline */}
-        {!isEditing && <ActivityTimeline contactId={id} />}
-
-        {/* Attachments (MINCRM-167) */}
-        {!isEditing && id && <AttachmentsSection recordType="contact" recordId={id} />}
-
-        {/* Notes (MINCRM-352) */}
-        {!isEditing && id && <NotesSection entityType="contact" entityId={id} />}
-
-        {/* Change history (MINCRM-171) */}
-        {!isEditing && id && <ChangeHistory recordType="contact" recordId={id} />}
-
-        {/* GDPR & Privacy (MINCRM-364) — admin only */}
-        {!isEditing && id && user?.role === 'admin' && (
-          <GdprPrivacySection
-            recordType="contact"
-            recordId={id}
-            onErased={() => {
+        {id && (
+          <EntityDetailSidebar
+            entityType="contact"
+            entityId={id}
+            entityQueryKey={CONTACTS_QUERY_KEY}
+            isEditing={isEditing}
+            showGdpr={user?.role === 'admin'}
+            onGdprErased={() => {
               void queryClient.invalidateQueries({ queryKey: ['contacts', id] });
             }}
-          />
-        )}
-
-        {/* Linked deals */}
-        {!isEditing && (
-          <section className="mt-8" aria-labelledby="linked-deals-heading">
-            <h2
-              id="linked-deals-heading"
-              className="text-sm font-semibold text-gray-900 mb-3"
-              data-testid="linked-deals-heading"
-            >
-              {t('contacts.linkedDealsHeading')}
-            </h2>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {linkedDeals.length === 0 ? (
-                <p className="px-6 py-4 text-sm text-gray-500" data-testid="linked-deals-empty">
-                  {t('contacts.linkedDealsEmpty')}
-                </p>
-              ) : (
-                <ul className="divide-y divide-gray-100" data-testid="linked-deals-list">
-                  {linkedDeals.map((deal) => (
-                    <li key={deal.id} className="px-6 py-3 flex items-center gap-3">
-                      <Link
-                        to={`/deals/${deal.id}`}
-                        data-testid={`linked-deal-${deal.id}`}
-                        className="text-sm font-medium text-primary-600 hover:underline"
-                      >
-                        {deal.name}
-                      </Link>
-                      <span className="text-sm text-gray-500">
-                        {getStageDisplayName(deal.stage, t)}
-                      </span>
-                      {/* Probability badge — consistent with DealCard display (MINCRM-179) */}
-                      <span
-                        data-testid={`linked-deal-probability-${deal.id}`}
-                        className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
-                          deal.probability_is_overridden
-                            ? 'bg-primary-100 text-primary-700 font-medium'
-                            : 'bg-gray-100 text-gray-500 italic'
-                        }`}
-                        title={
-                          deal.probability_is_overridden
-                            ? t('deals.probabilityOverridden')
-                            : t('deals.probabilityDefault')
-                        }
-                      >
-                        {t('deals.probabilityPct', { pct: deal.effective_probability })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
+          >
+            {/* Linked deals */}
+            <section className="mt-8" aria-labelledby="linked-deals-heading">
+              <h2
+                id="linked-deals-heading"
+                className="text-sm font-semibold text-gray-900 mb-3"
+                data-testid="linked-deals-heading"
+              >
+                {t('contacts.linkedDealsHeading')}
+              </h2>
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {linkedDeals.length === 0 ? (
+                  <p className="px-6 py-4 text-sm text-gray-500" data-testid="linked-deals-empty">
+                    {t('contacts.linkedDealsEmpty')}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-gray-100" data-testid="linked-deals-list">
+                    {linkedDeals.map((deal) => (
+                      <li key={deal.id} className="px-6 py-3 flex items-center gap-3">
+                        <Link
+                          to={`/deals/${deal.id}`}
+                          data-testid={`linked-deal-${deal.id}`}
+                          className="text-sm font-medium text-primary-600 hover:underline"
+                        >
+                          {deal.name}
+                        </Link>
+                        <span className="text-sm text-gray-500">
+                          {getStageDisplayName(deal.stage, t)}
+                        </span>
+                        {/* Probability badge — consistent with DealCard display (MINCRM-179) */}
+                        <span
+                          data-testid={`linked-deal-probability-${deal.id}`}
+                          className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
+                            deal.probability_is_overridden
+                              ? 'bg-primary-100 text-primary-700 font-medium'
+                              : 'bg-gray-100 text-gray-500 italic'
+                          }`}
+                          title={
+                            deal.probability_is_overridden
+                              ? t('deals.probabilityOverridden')
+                              : t('deals.probabilityDefault')
+                          }
+                        >
+                          {t('deals.probabilityPct', { pct: deal.effective_probability })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </EntityDetailSidebar>
         )}
       </main>
 

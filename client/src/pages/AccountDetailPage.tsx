@@ -12,11 +12,7 @@ import { resolveApiError } from '@/utils/apiError.js';
 import NavBar from '@/components/NavBar.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import AccountForm from '@/components/AccountForm.js';
-import ActivityTimeline from '@/components/ActivityTimeline.js';
-import AttachmentsSection from '@/components/AttachmentsSection.js';
-import NotesSection from '@/components/NotesSection.js';
-import ChangeHistory from '@/components/ChangeHistory.js';
-import { ConnectedTagInput } from '@/components/TagInput.js';
+import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
@@ -370,113 +366,91 @@ export default function AccountDetailPage() {
 
             {id && <CustomFieldsSection entityType="account" recordId={id} isEditing={false} />}
 
-            {/* Tags (MINCRM-186) */}
             {id && (
-              <section
-                className="mt-8"
-                aria-labelledby="account-tags-heading"
-                data-testid="account-tags-section"
+              <EntityDetailSidebar
+                entityType="account"
+                entityId={id}
+                entityQueryKey={ACCOUNTS_QUERY_KEY}
+                isEditing={isEditing}
               >
-                <h2
-                  id="account-tags-heading"
-                  className="text-sm font-semibold text-gray-900 mb-3"
-                  data-testid="account-tags-heading"
-                >
-                  {t('tags.sectionTitle')}
-                </h2>
-                <ConnectedTagInput
-                  entityId={id}
-                  entityType="account"
-                  entityQueryKey={ACCOUNTS_QUERY_KEY}
-                />
-              </section>
-            )}
-
-            {/* Activity timeline */}
-            <ActivityTimeline accountId={id} />
-
-            {/* Attachments (MINCRM-167) */}
-            {id && <AttachmentsSection recordType="account" recordId={id} />}
-
-            {/* Notes (MINCRM-352) */}
-            {id && <NotesSection entityType="account" entityId={id} />}
-
-            {/* Change history (MINCRM-171) */}
-            {id && <ChangeHistory recordType="account" recordId={id} />}
-
-            {/* Linked contacts */}
-            <section className="mt-8" aria-labelledby="linked-contacts-heading">
-              <h2
-                id="linked-contacts-heading"
-                className="text-sm font-semibold text-gray-900 mb-3"
-                data-testid="linked-contacts-heading"
-              >
-                {t('accounts.linkedContactsHeading')}
-              </h2>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {linkedContactsLoading ? (
-                  <p aria-busy="true" className="px-6 py-4 text-sm text-gray-500">
-                    {t('accounts.loading')}
-                  </p>
-                ) : !linkedContactsData || linkedContactsData.data.length === 0 ? (
-                  <p
-                    className="px-6 py-4 text-sm text-gray-500"
-                    data-testid="linked-contacts-empty"
+                {/* Linked contacts */}
+                <section className="mt-8" aria-labelledby="linked-contacts-heading">
+                  <h2
+                    id="linked-contacts-heading"
+                    className="text-sm font-semibold text-gray-900 mb-3"
+                    data-testid="linked-contacts-heading"
                   >
-                    {t('accounts.linkedContactsEmpty')}
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
-                    {linkedContactsData.data.map((contact) => (
-                      <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
-                        <Link
-                          to={`/contacts/${contact.id}`}
-                          data-testid={`linked-contact-${contact.id}`}
-                          className="text-sm font-medium text-primary-600 hover:underline"
-                        >
-                          {contact.first_name} {contact.last_name}
-                        </Link>
-                        {contact.title && (
-                          <span className="text-sm text-gray-500">{contact.title}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
+                    {t('accounts.linkedContactsHeading')}
+                  </h2>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    {linkedContactsLoading ? (
+                      <p aria-busy="true" className="px-6 py-4 text-sm text-gray-500">
+                        {t('accounts.loading')}
+                      </p>
+                    ) : !linkedContactsData || linkedContactsData.data.length === 0 ? (
+                      <p
+                        className="px-6 py-4 text-sm text-gray-500"
+                        data-testid="linked-contacts-empty"
+                      >
+                        {t('accounts.linkedContactsEmpty')}
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
+                        {linkedContactsData.data.map((contact) => (
+                          <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
+                            <Link
+                              to={`/contacts/${contact.id}`}
+                              data-testid={`linked-contact-${contact.id}`}
+                              className="text-sm font-medium text-primary-600 hover:underline"
+                            >
+                              {contact.first_name} {contact.last_name}
+                            </Link>
+                            {contact.title && (
+                              <span className="text-sm text-gray-500">{contact.title}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
 
-            {/* Subsidiary accounts (MINCRM-184) */}
-            {childAccounts.length > 0 && (
-              <section className="mt-8" aria-labelledby="subsidiaries-heading">
-                <h2
-                  id="subsidiaries-heading"
-                  className="text-sm font-semibold text-gray-900 mb-3"
-                  data-testid="subsidiary-accounts-heading"
-                >
-                  {t('accounts.subsidiaryAccountsHeading')}
-                </h2>
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <ul className="divide-y divide-gray-100" data-testid="subsidiary-accounts-list">
-                    {childAccounts.map((child) => (
-                      <li key={child.id} className="px-6 py-3 flex items-center gap-3">
-                        <Link
-                          to={`/accounts/${child.id}`}
-                          data-testid={`subsidiary-account-${child.id}`}
-                          className="text-sm font-medium text-primary-600 hover:underline"
-                        >
-                          {child.name}
-                        </Link>
-                        {child.account_type && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
-                            {t(`accounts.accountType.${child.account_type}`)}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
+                {/* Subsidiary accounts (MINCRM-184) */}
+                {childAccounts.length > 0 && (
+                  <section className="mt-8" aria-labelledby="subsidiaries-heading">
+                    <h2
+                      id="subsidiaries-heading"
+                      className="text-sm font-semibold text-gray-900 mb-3"
+                      data-testid="subsidiary-accounts-heading"
+                    >
+                      {t('accounts.subsidiaryAccountsHeading')}
+                    </h2>
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <ul
+                        className="divide-y divide-gray-100"
+                        data-testid="subsidiary-accounts-list"
+                      >
+                        {childAccounts.map((child) => (
+                          <li key={child.id} className="px-6 py-3 flex items-center gap-3">
+                            <Link
+                              to={`/accounts/${child.id}`}
+                              data-testid={`subsidiary-account-${child.id}`}
+                              className="text-sm font-medium text-primary-600 hover:underline"
+                            >
+                              {child.name}
+                            </Link>
+                            {child.account_type && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
+                                {t(`accounts.accountType.${child.account_type}`)}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </section>
+                )}
+              </EntityDetailSidebar>
             )}
           </>
         )}

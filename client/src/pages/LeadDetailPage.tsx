@@ -14,7 +14,7 @@ import FieldMergeModal from '@/components/FieldMergeModal.js';
 import LeadForm from '@/components/LeadForm.js';
 import ConvertLeadModal from '@/components/ConvertLeadModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
-import NotesSection from '@/components/NotesSection.js';
+import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import { Button } from '@/components/ui/Button.js';
 import { getLead, updateLead, deleteLead, getLeadStatusHistory } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -22,7 +22,6 @@ import type { ActiveUser } from '@/api/users.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
 import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
-import GdprPrivacySection from '@/components/GdprPrivacySection.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 
 /** Tailwind badge classes by status */
@@ -422,56 +421,59 @@ export default function LeadDetailPage() {
           </div>
         )}
 
-        {/* Status history timeline (MINCRM-174) */}
-        {history.length > 0 && (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">
-              {t('leads.statusHistoryHeading')}
-            </h2>
-            <ol className="space-y-3">
-              {history.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex items-start gap-3 text-sm"
-                  data-testid={`status-history-${entry.id}`}
-                >
-                  <span
-                    className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[entry.to_status] ?? 'bg-gray-100 text-gray-600'}`}
-                  >
-                    {t(`leads.status${entry.to_status}`)}
-                  </span>
-                  {/* min-w-0: prevents flex child overflow for long names/status strings */}
-                  <span className="text-gray-600 min-w-0 break-words">
-                    {entry.from_status
-                      ? t('leads.statusChangedFrom', {
-                          actor: entry.changed_by_name ?? t('leads.unknownActor'),
-                          from: t(`leads.status${entry.from_status}`),
-                          to: t(`leads.status${entry.to_status}`),
-                        })
-                      : t('leads.statusInitial', {
-                          actor: entry.changed_by_name ?? t('leads.unknownActor'),
-                        })}
-                    {' · '}
-                    {new Date(entry.created_at).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-
-        {/* Notes (MINCRM-352) */}
-        {id && <NotesSection entityType="lead" entityId={id} />}
-
-        {/* GDPR & Privacy (MINCRM-364) — admin only */}
-        {id && isAdmin && (
-          <GdprPrivacySection
-            recordType="lead"
-            recordId={id}
-            onErased={() => {
+        {id && (
+          <EntityDetailSidebar
+            entityType="lead"
+            entityId={id}
+            entityQueryKey={LEADS_QUERY_KEY}
+            isEditing={isEditing}
+            showTags={false}
+            showTimeline={false}
+            showAttachments={false}
+            showChangeHistory={false}
+            showGdpr={isAdmin}
+            onGdprErased={() => {
               void queryClient.invalidateQueries({ queryKey: leadQueryKey });
             }}
-          />
+          >
+            {/* Status history timeline (MINCRM-174) */}
+            {history.length > 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">
+                  {t('leads.statusHistoryHeading')}
+                </h2>
+                <ol className="space-y-3">
+                  {history.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="flex items-start gap-3 text-sm"
+                      data-testid={`status-history-${entry.id}`}
+                    >
+                      <span
+                        className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[entry.to_status] ?? 'bg-gray-100 text-gray-600'}`}
+                      >
+                        {t(`leads.status${entry.to_status}`)}
+                      </span>
+                      {/* min-w-0: prevents flex child overflow for long names/status strings */}
+                      <span className="text-gray-600 min-w-0 break-words">
+                        {entry.from_status
+                          ? t('leads.statusChangedFrom', {
+                              actor: entry.changed_by_name ?? t('leads.unknownActor'),
+                              from: t(`leads.status${entry.from_status}`),
+                              to: t(`leads.status${entry.to_status}`),
+                            })
+                          : t('leads.statusInitial', {
+                              actor: entry.changed_by_name ?? t('leads.unknownActor'),
+                            })}
+                        {' · '}
+                        {new Date(entry.created_at).toLocaleString()}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </EntityDetailSidebar>
         )}
       </main>
 
