@@ -879,9 +879,12 @@ export async function loginViaBrowser(
   await loginPage.fillEmail(email);
   await loginPage.fillPassword(password);
   await loginPage.submit();
-  await context.page
-    .waitForURL((url) => new URL(url).pathname !== '/login', { timeout: 10_000 })
-    .catch(() => null);
+  // Do not swallow the timeout — a failure here means the server rejected the
+  // credentials or is unreachable. Propagating gives a clear error rather than
+  // a confusing downstream timeout 30 s later. (MINCRM-415)
+  await context.page.waitForURL((url) => new URL(url).pathname !== '/login', {
+    timeout: 15_000,
+  });
 }
 
 /** Result returned by loginWithMfaChallenge. */
