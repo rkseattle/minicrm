@@ -23,6 +23,7 @@ import type { LeadFormValues } from '@/components/LeadForm.js';
 import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import GdprPrivacySection from '@/components/GdprPrivacySection.js';
+import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
@@ -46,14 +47,17 @@ export default function LeadDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  // Three-way merge conflict state (MINCRM-351)
-  const [conflictPendingValues, setConflictPendingValues] = useState<LeadFormValues | null>(null);
-  const [conflictBase, setConflictBase] = useState<Record<string, unknown> | null>(null);
-  const [conflictTheirs, setConflictTheirs] = useState<Record<string, unknown> | null>(null);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const leadQueryKey = ['leads', id] as const;
+
+  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
+    useEntityConflictHandler<LeadFormValues>({
+      entityCacheKey: 'lead',
+      entityQueryKey: leadQueryKey,
+    });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: leadQueryKey,
@@ -97,28 +101,11 @@ export default function LeadDetailPage() {
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setIsEditing(false);
       setUpdateError(null);
-      setConflictPendingValues(null);
-      setConflictBase(null);
-      setConflictTheirs(null);
+      clearConflict();
     },
-    onError: (
-      error: {
-        response?: {
-          data?: { error?: { code?: string; message?: string; current?: Record<string, unknown> } };
-        };
-      },
-      variables,
-    ) => {
-      const code = error.response?.data?.error?.code;
-      if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        const cached = queryClient.getQueryData<{ lead: Record<string, unknown> }>(leadQueryKey);
-        setConflictBase(cached?.lead ?? {});
-        setConflictPendingValues(variables.values);
-        setConflictTheirs(error.response?.data?.error?.current ?? null);
-        void queryClient.invalidateQueries({ queryKey: leadQueryKey });
-        return;
-      }
-      setUpdateError(resolveApiError(error, t));
+    onError: (error: unknown, variables) => {
+      if (handleConflict(error, variables)) return;
+      setUpdateError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -268,9 +255,7 @@ export default function LeadDetailPage() {
             <FieldMergeModal
               isOpen={Boolean(conflictPendingValues && conflictBase && conflictTheirs)}
               onClose={() => {
-                setConflictPendingValues(null);
-                setConflictBase(null);
-                setConflictTheirs(null);
+                clearConflict();
                 setIsEditing(false);
               }}
               entityType="lead"
@@ -295,9 +280,7 @@ export default function LeadDetailPage() {
                   },
                   version: conflictTheirs?.version as number | undefined,
                 });
-                setConflictPendingValues(null);
-                setConflictBase(null);
-                setConflictTheirs(null);
+                clearConflict();
               }}
             />
             <LeadForm
@@ -318,7 +301,7 @@ export default function LeadDetailPage() {
               onCancel={() => {
                 setIsEditing(false);
                 setUpdateError(null);
-                setConflictPendingValues(null);
+                clearConflict();
               }}
             />
           </div>
