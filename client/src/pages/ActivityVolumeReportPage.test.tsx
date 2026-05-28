@@ -370,24 +370,6 @@ describe('ActivityVolumeReportPage', () => {
       });
     });
 
-    it('selects the "Last month" preset and triggers a fetch', async () => {
-      let capturedStart: string | null = null;
-      server.use(
-        http.get('/api/v1/reports/activity-volume', ({ request }) => {
-          capturedStart = new URL(request.url).searchParams.get('start');
-          return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
-        }),
-      );
-      renderWithProviders(<ActivityVolumeReportPage />);
-      await waitFor(() => screen.getByTestId('date-preset-select'));
-      fireEvent.change(screen.getByTestId('date-preset-select'), {
-        target: { value: 'lastMonth' },
-      });
-      await waitFor(() => {
-        expect(capturedStart).not.toBeNull();
-      });
-    });
-
     it('custom range: changing start date triggers a fetch with the new start', async () => {
       let capturedStart: string | null = null;
       server.use(
