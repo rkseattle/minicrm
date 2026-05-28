@@ -806,39 +806,6 @@ export default function DealsPage() {
         {/* ── List view ───────────────────────────────────────────────────── */}
         {viewMode === 'list' && (
           <>
-            {/* Pipeline summary bar — shows open-stage deal counts and totals (MINCRM-56) */}
-            {!isLoading && !isError && (
-              <div
-                data-testid="pipeline-summary-bar"
-                role="region"
-                aria-label={t('deals.pipelineSummaryLabel')}
-                className="mb-4 flex flex-wrap gap-2"
-              >
-                {pipelineSummary.map(({ stage, count, total, currency, mixedCurrency }) => (
-                  <div
-                    key={stage}
-                    data-testid={`pipeline-summary-${stage.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
-                  >
-                    <span className="font-semibold">{getStageDisplayName(stage, t)}</span>
-                    <span className="text-gray-500">·</span>
-                    <span>{count}</span>
-                    <span className="text-gray-500">·</span>
-                    <span className="text-gray-500">
-                      {mixedCurrency
-                        ? t('pipeline.mixedCurrency')
-                        : new Intl.NumberFormat(i18n.language, {
-                            style: 'currency',
-                            currency: currency ?? 'USD',
-                            notation: 'compact',
-                            maximumFractionDigits: 1,
-                          }).format(total ?? 0)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {isLoading && (
               <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
                 <p aria-busy="true" className="text-sm text-gray-500">
@@ -946,68 +913,106 @@ export default function DealsPage() {
             {!isLoading && !isError && (
               <PagedListLayout
                 toolbar={
-                  <div className="flex flex-wrap items-center gap-3">
-                    <OwnerToggle
-                      value={ownerFilter}
-                      onChange={setOwnerFilter}
-                      testIdPrefix="deals-owner-filter"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      data-testid="toggle-closed-deals"
-                      onClick={() => {
-                        setListPage(1);
-                        setShowClosed((prev) => !prev);
-                      }}
-                    >
-                      {showClosed
-                        ? t('pipeline.closeDeal.hideClosed')
-                        : t('pipeline.closeDeal.showClosed')}
-                    </Button>
-                    {/* Tag filter (MINCRM-186) */}
-                    {tagsData && tagsData.tags.length > 0 && (
-                      <select
-                        aria-label={t('tags.sectionTitle')}
-                        data-testid="deals-tag-filter"
-                        value=""
-                        onChange={(e) => {
-                          const tagId = e.target.value;
-                          if (tagId && !selectedTagIds.includes(tagId)) {
-                            setSelectedTagIds((prev) => [...prev, tagId]);
-                            setListPage(1);
-                          }
+                  <>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <OwnerToggle
+                        value={ownerFilter}
+                        onChange={setOwnerFilter}
+                        testIdPrefix="deals-owner-filter"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        data-testid="toggle-closed-deals"
+                        onClick={() => {
+                          setListPage(1);
+                          setShowClosed((prev) => !prev);
                         }}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                       >
-                        <option value="">{t('tags.sectionTitle')}</option>
-                        {tagsData.tags.map((tag) => (
-                          <option key={tag.id} value={tag.id}>
-                            {tag.name}
-                          </option>
+                        {showClosed
+                          ? t('pipeline.closeDeal.hideClosed')
+                          : t('pipeline.closeDeal.showClosed')}
+                      </Button>
+                      {/* Tag filter (MINCRM-186) */}
+                      {tagsData && tagsData.tags.length > 0 && (
+                        <select
+                          aria-label={t('tags.sectionTitle')}
+                          data-testid="deals-tag-filter"
+                          value=""
+                          onChange={(e) => {
+                            const tagId = e.target.value;
+                            if (tagId && !selectedTagIds.includes(tagId)) {
+                              setSelectedTagIds((prev) => [...prev, tagId]);
+                              setListPage(1);
+                            }
+                          }}
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                        >
+                          <option value="">{t('tags.sectionTitle')}</option>
+                          {tagsData.tags.map((tag) => (
+                            <option key={tag.id} value={tag.id}>
+                              {tag.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {/* Active tag filter chips */}
+                      {selectedTagIds.length > 0 && (
+                        <div
+                          className="flex flex-wrap gap-1"
+                          data-testid="deals-active-tag-filters"
+                        >
+                          {selectedTagIds.map((tagId) => {
+                            const tag = tagsData?.tags.find((tg) => tg.id === tagId);
+                            if (!tag) return null;
+                            return (
+                              <TagBadge
+                                key={tag.id}
+                                tag={tag}
+                                onRemove={(id) => {
+                                  setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
+                                  setListPage(1);
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pipeline summary bar — below filter controls, matching pre-refactor order (MINCRM-56) */}
+                    {pipelineSummary.length > 0 && (
+                      <div
+                        data-testid="pipeline-summary-bar"
+                        role="region"
+                        aria-label={t('deals.pipelineSummaryLabel')}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {pipelineSummary.map(({ stage, count, total, currency, mixedCurrency }) => (
+                          <div
+                            key={stage}
+                            data-testid={`pipeline-summary-${stage.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
+                          >
+                            <span className="font-semibold">{getStageDisplayName(stage, t)}</span>
+                            <span className="text-gray-500">·</span>
+                            <span>{count}</span>
+                            <span className="text-gray-500">·</span>
+                            <span className="text-gray-500">
+                              {mixedCurrency
+                                ? t('pipeline.mixedCurrency')
+                                : new Intl.NumberFormat(i18n.language, {
+                                    style: 'currency',
+                                    currency: currency ?? 'USD',
+                                    notation: 'compact',
+                                    maximumFractionDigits: 1,
+                                  }).format(total ?? 0)}
+                            </span>
+                          </div>
                         ))}
-                      </select>
-                    )}
-                    {/* Active tag filter chips */}
-                    {selectedTagIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1" data-testid="deals-active-tag-filters">
-                        {selectedTagIds.map((tagId) => {
-                          const tag = tagsData?.tags.find((tg) => tg.id === tagId);
-                          if (!tag) return null;
-                          return (
-                            <TagBadge
-                              key={tag.id}
-                              tag={tag}
-                              onRemove={(id) => {
-                                setSelectedTagIds((prev) => prev.filter((tg) => tg !== id));
-                                setListPage(1);
-                              }}
-                            />
-                          );
-                        })}
                       </div>
                     )}
-                  </div>
+                  </>
                 }
                 isEmpty={sortedDeals.length === 0}
                 emptyState={

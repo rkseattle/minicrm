@@ -75,6 +75,22 @@ describe('PagedListLayout', () => {
     expect((container.firstChild as HTMLElement).classList).toContain('custom-class');
   });
 
+  it('renders without error when toolbar and pagination are null (skeleton/loading caller pattern)', () => {
+    const { container } = render(
+      <PagedListLayout toolbar={null} isEmpty={true} emptyState={emptyState} pagination={null}>
+        {children}
+      </PagedListLayout>,
+    );
+    // Outer wrapper must still mount
+    expect(container.firstChild).toBeTruthy();
+    // Empty state shown, not children
+    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('list-content')).not.toBeInTheDocument();
+    // No toolbar or pagination rendered
+    expect(screen.queryByTestId('toolbar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+  });
+
   it('renders pagination below the list container when not empty', () => {
     const { container } = render(
       <PagedListLayout
@@ -87,16 +103,17 @@ describe('PagedListLayout', () => {
       </PagedListLayout>,
     );
     const outer = container.firstChild as HTMLElement;
-    const children_nodes = Array.from(outer.childNodes) as HTMLElement[];
-    const listContainer = children_nodes.find((n) =>
-      n.contains(screen.getByTestId('list-content')),
-    );
-    const paginationNode = children_nodes.find((n) => n.contains(screen.getByTestId('pagination')));
-    // Pagination must come after the list container in the DOM
+    const childNodes = Array.from(outer.childNodes) as HTMLElement[];
+    const listContainer = childNodes.find((n) => n.contains(screen.getByTestId('list-content')));
+    const paginationNode = childNodes.find((n) => n.contains(screen.getByTestId('pagination')));
     expect(listContainer).toBeTruthy();
     expect(paginationNode).toBeTruthy();
+    // listContainer precedes paginationNode — DOCUMENT_POSITION_FOLLOWING is set on the *latter*
+    // when compared against the *former*, confirming DOM order is list → pagination.
     expect(
-      outer.compareDocumentPosition(paginationNode!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      // Safe: both nodes are confirmed truthy by the expects above.
+      (listContainer as HTMLElement).compareDocumentPosition(paginationNode as HTMLElement) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 });

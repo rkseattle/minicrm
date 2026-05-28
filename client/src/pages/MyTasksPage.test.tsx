@@ -23,6 +23,19 @@ describe('MyTasksPage', () => {
     });
   });
 
+  it('shows the error state when the API fails', async () => {
+    server.use(
+      http.get('/api/v1/activities/my-tasks', () =>
+        HttpResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'fail' } }, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<MyTasksPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('my-tasks-error')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
   it('shows the empty state when there are no open tasks', async () => {
     server.use(
       http.get('/api/v1/activities/my-tasks', () =>
