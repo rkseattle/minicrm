@@ -262,7 +262,7 @@ const DEMO_DEALS = [
   },
   {
     name: 'Acme — Security Upgrade',
-    stage: 'Proposal',
+    stage: 'Technical Validation',
     value: 45000,
     close_date: futureMonths(2),
   },
@@ -317,7 +317,7 @@ const DEMO_DEALS = [
   },
   {
     name: 'Globex — IoT Integration',
-    stage: 'Negotiation',
+    stage: 'Contract Review',
     value: 95000,
     close_date: futureMonths(2),
     currency: 'EUR',
@@ -737,10 +737,9 @@ const DEMO_REP_DEALS = [
   },
   {
     name: 'Stellartech — DevOps Platform',
-    stage: 'Proposal',
+    stage: 'Technical Validation',
     value: 52000,
     close_date: futureMonths(2),
-    probability: 60,
   },
   {
     name: 'Ironbridge — ERP Upgrade',
@@ -1145,6 +1144,22 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
+// Custom pipeline stages added by demo seed (MINCRM-408).
+// sort_order 35 slots between Proposal (30) and Negotiation (40);
+// sort_order 45 slots between Negotiation (40) and Closed Won (50).
+const DEMO_PIPELINE_STAGES = [
+  {
+    name: 'Technical Validation',
+    sort_order: 35,
+    probability: 60,
+    is_terminal: false,
+    is_fixed: false,
+  },
+  { name: 'Contract Review', sort_order: 45, probability: 85, is_terminal: false, is_fixed: false },
+] as const;
+
+const DEMO_PIPELINE_STAGE_NAMES = DEMO_PIPELINE_STAGES.map((s) => s.name);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -1272,6 +1287,13 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
+
+  // Remove custom demo pipeline stages — deals must be deleted first to avoid FK violation (MINCRM-408)
+  await client.query(
+    `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
+    [DEMO_PIPELINE_STAGE_NAMES],
+  );
+
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
   await client.query(`DELETE FROM accounts WHERE is_demo = true`);
 
@@ -1389,6 +1411,33 @@ async function insertDemoData(
         addr.postal_code,
         addr.country,
         addr.is_default,
+      ],
+    );
+  }
+
+  // 5a. Custom pipeline stages — must exist before deals reference them (MINCRM-408)
+  // Unique indexes are pipeline-scoped: (pipeline_id, lower(name)) and (pipeline_id, sort_order).
+  // We resolve the default pipeline ID at runtime so the insert is idempotent on both name and sort_order.
+  const defaultPipelineResult = await client.query<{ id: string }>(
+    `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
+  );
+  const defaultPipelineId = defaultPipelineResult.rows[0]?.id ?? null;
+
+  for (const stage of DEMO_PIPELINE_STAGES) {
+    // ON CONFLICT targets the functional unique index (pipeline_id, lower(name)).
+    // sort_order conflicts are prevented by choosing gap values (35, 45) that the
+    // default seed never uses; a second insert hits the name conflict first and is ignored.
+    await client.query(
+      `INSERT INTO pipeline_stages (name, sort_order, probability, is_terminal, is_fixed, pipeline_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (pipeline_id, lower(name)) DO NOTHING`,
+      [
+        stage.name,
+        stage.sort_order,
+        stage.probability,
+        stage.is_terminal,
+        stage.is_fixed,
+        defaultPipelineId,
       ],
     );
   }
