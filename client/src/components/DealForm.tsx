@@ -237,10 +237,13 @@ export default function DealForm({
             label={t('deals.pipelineLabel')}
             value={formData.pipeline_id}
             onChange={handleSelectChange}
-            disabled={isSubmitting}
-            required
+            disabled={isSubmitting || pipelines.length === 0}
           >
-            {pipelines.length === 0 && <option value="">{t('deals.pipelineLoading')}</option>}
+            {/* Always include the current value as an option so the select renders correctly
+                while the pipeline list is still loading (avoids browser required-validation race). */}
+            {pipelines.length === 0 && formData.pipeline_id && (
+              <option value={formData.pipeline_id}>{t('deals.pipelineLoading')}</option>
+            )}
             {pipelines.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
