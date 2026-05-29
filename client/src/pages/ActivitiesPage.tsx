@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
+import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActivities, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import type { ListActivitiesFilters } from '@/api/activities.js';
@@ -149,10 +150,11 @@ export default function ActivitiesPage() {
           </p>
         )}
 
-        {/* Table */}
         {!isLoading && !isError && (
-          <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-            {activities.length === 0 ? (
+          <PagedListLayout
+            toolbar={null}
+            isEmpty={activities.length === 0}
+            emptyState={
               <EmptyState
                 data-testid="activities-page-empty-state"
                 icon={
@@ -190,118 +192,112 @@ export default function ActivitiesPage() {
                     : undefined
                 }
               />
-            ) : (
-              <div
-                className="flex-1 overflow-auto min-h-0"
-                data-testid="activities-page-table-wrapper"
-              >
-                <table
-                  className="min-w-full divide-y divide-gray-200"
-                  data-testid="activities-page-table"
-                >
-                  <thead className="sticky top-0 z-10 bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+            }
+            pagination={
+              data ? (
+                <Pagination
+                  page={data.page}
+                  limit={data.limit}
+                  total={data.total}
+                  onPageChange={setPage}
+                />
+              ) : null
+            }
+          >
+            <table
+              className="min-w-full divide-y divide-gray-200"
+              data-testid="activities-page-table"
+            >
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {t('activitiesPage.columnType')}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {t('activitiesPage.columnSubject')}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {t('activitiesPage.columnRecord')}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {t('activitiesPage.columnDate')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {activities.map((activity) => {
+                  const badge = activityTypeBadge(activity.type);
+                  const recordPath = linkedRecordPath(activity);
+
+                  return (
+                    <tr key={activity.id} data-testid={`activity-row-${activity.id}`}>
+                      {/* Type badge */}
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${badge.className}`}
+                          data-testid={`activity-type-${activity.id}`}
+                        >
+                          {activity.type}
+                        </span>
+                      </td>
+
+                      {/* Subject */}
+                      <td
+                        className="px-6 py-4 text-sm text-gray-900"
+                        data-testid={`activity-subject-${activity.id}`}
                       >
-                        {t('activitiesPage.columnType')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                        {activity.subject}
+                      </td>
+
+                      {/* Linked record — show record type as the link label */}
+                      <td className="px-6 py-4 text-sm">
+                        {recordPath ? (
+                          <Link
+                            to={recordPath}
+                            className="text-primary-600 hover:text-primary-800 hover:underline"
+                            data-testid={`activity-record-${activity.id}`}
+                          >
+                            {activity.contact_id
+                              ? t('activitiesPage.recordTypeContact')
+                              : activity.account_id
+                                ? t('activitiesPage.recordTypeAccount')
+                                : t('activitiesPage.recordTypeDeal')}
+                          </Link>
+                        ) : (
+                          <span
+                            className="text-gray-500"
+                            data-testid={`activity-record-${activity.id}`}
+                          >
+                            —
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Date */}
+                      <td
+                        className="px-6 py-4 text-sm text-gray-600"
+                        data-testid={`activity-date-${activity.id}`}
                       >
-                        {t('activitiesPage.columnSubject')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                      >
-                        {t('activitiesPage.columnRecord')}
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                      >
-                        {t('activitiesPage.columnDate')}
-                      </th>
+                        {formatLocalDate(String(activity.updated_at).slice(0, 10), i18n.language)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {activities.map((activity) => {
-                      const badge = activityTypeBadge(activity.type);
-                      const recordPath = linkedRecordPath(activity);
-
-                      return (
-                        <tr key={activity.id} data-testid={`activity-row-${activity.id}`}>
-                          {/* Type badge */}
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${badge.className}`}
-                              data-testid={`activity-type-${activity.id}`}
-                            >
-                              {activity.type}
-                            </span>
-                          </td>
-
-                          {/* Subject */}
-                          <td
-                            className="px-6 py-4 text-sm text-gray-900"
-                            data-testid={`activity-subject-${activity.id}`}
-                          >
-                            {activity.subject}
-                          </td>
-
-                          {/* Linked record — show record type as the link label */}
-                          <td className="px-6 py-4 text-sm">
-                            {recordPath ? (
-                              <Link
-                                to={recordPath}
-                                className="text-primary-600 hover:text-primary-800 hover:underline"
-                                data-testid={`activity-record-${activity.id}`}
-                              >
-                                {activity.contact_id
-                                  ? t('activitiesPage.recordTypeContact')
-                                  : activity.account_id
-                                    ? t('activitiesPage.recordTypeAccount')
-                                    : t('activitiesPage.recordTypeDeal')}
-                              </Link>
-                            ) : (
-                              <span
-                                className="text-gray-500"
-                                data-testid={`activity-record-${activity.id}`}
-                              >
-                                —
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Date */}
-                          <td
-                            className="px-6 py-4 text-sm text-gray-600"
-                            data-testid={`activity-date-${activity.id}`}
-                          >
-                            {formatLocalDate(
-                              String(activity.updated_at).slice(0, 10),
-                              i18n.language,
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {data && (
-              <Pagination
-                page={data.page}
-                limit={data.limit}
-                total={data.total}
-                onPageChange={setPage}
-              />
-            )}
-          </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </PagedListLayout>
         )}
       </main>
     </div>

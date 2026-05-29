@@ -20,6 +20,7 @@ import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 import { Pagination } from '@/components/ui/Pagination.js';
+import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { auditClient } from '@/grpc/auditClient.js';
 import { listAuditLogActors, AUDIT_LOG_ACTORS_QUERY_KEY } from '@/api/auditLog.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
@@ -472,62 +473,70 @@ export default function AuditLogPage() {
           )}
         </div>
 
-        {/* Table */}
-        <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-          {isLoading && (
-            <p
-              className="px-6 py-8 text-sm text-gray-500 text-center"
-              data-testid="audit-log-loading"
-            >
-              {t('auditLog.loading')}
-            </p>
-          )}
+        {/* Loading */}
+        {isLoading && (
+          <p
+            className="px-6 py-8 text-sm text-gray-500 text-center"
+            data-testid="audit-log-loading"
+          >
+            {t('auditLog.loading')}
+          </p>
+        )}
 
-          {isError && (
-            <p
-              className="px-6 py-8 text-sm text-red-600 text-center"
-              role="alert"
-              data-testid="audit-log-error"
-            >
-              {t('errors.generic')}
-            </p>
-          )}
+        {/* Error */}
+        {isError && (
+          <p
+            className="px-6 py-8 text-sm text-red-600 text-center"
+            role="alert"
+            data-testid="audit-log-error"
+          >
+            {t('errors.generic')}
+          </p>
+        )}
 
-          {!isLoading && !isError && displayedEntries.length === 0 && (
-            <EmptyState
-              data-testid="audit-log-empty-state"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-12 w-12"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              }
-              title={
-                isUnfilteredFirstPage
-                  ? t('auditLog.table.noEntriesTitle')
-                  : t('auditLog.table.filteredTitle')
-              }
-              description={
-                isUnfilteredFirstPage
-                  ? t('auditLog.table.noEntriesDescription')
-                  : t('common.filteredEmptyDescription')
-              }
-            />
-          )}
-
-          {!isLoading && !isError && displayedEntries.length > 0 && (
+        {!isLoading && !isError && (
+          <PagedListLayout
+            toolbar={null}
+            isEmpty={displayedEntries.length === 0}
+            emptyState={
+              <EmptyState
+                data-testid="audit-log-empty-state"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                }
+                title={
+                  isUnfilteredFirstPage
+                    ? t('auditLog.table.noEntriesTitle')
+                    : t('auditLog.table.filteredTitle')
+                }
+                description={
+                  isUnfilteredFirstPage
+                    ? t('auditLog.table.noEntriesDescription')
+                    : t('common.filteredEmptyDescription')
+                }
+              />
+            }
+            pagination={
+              data ? (
+                <Pagination page={page} limit={PAGE_SIZE} total={total} onPageChange={setPage} />
+              ) : null
+            }
+          >
             <>
-              {/* Table header — sticky inside the scroll area */}
+              {/* Column header row — sticky within PagedListLayout's scroll container */}
               <div className="hidden md:grid grid-cols-[160px_140px_120px_120px_1fr] gap-3 px-6 py-3 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide sticky top-0 z-10">
                 <span>{t('auditLog.table.timestamp')}</span>
                 <span>{t('auditLog.table.user')}</span>
@@ -536,128 +545,120 @@ export default function AuditLogPage() {
                 <span>{t('auditLog.table.summary')}</span>
               </div>
 
-              {/* Rows — scrollable */}
-              <div className="flex-1 overflow-auto min-h-0">
-                <ul data-testid="audit-log-list">
-                  {displayedEntries.map((entry) => {
-                    const isExpanded = expandedIds.has(entry.id);
-                    const hasDetail =
-                      entry.event_type === 'updated' &&
-                      (entry.field_name !== null ||
-                        entry.old_value !== null ||
-                        entry.new_value !== null);
+              <ul data-testid="audit-log-list">
+                {displayedEntries.map((entry) => {
+                  const isExpanded = expandedIds.has(entry.id);
+                  const hasDetail =
+                    entry.event_type === 'updated' &&
+                    (entry.field_name !== null ||
+                      entry.old_value !== null ||
+                      entry.new_value !== null);
 
-                    return (
-                      <li
-                        key={entry.id}
-                        className="border-b border-gray-100 last:border-b-0"
-                        data-testid={`audit-log-row-${entry.id}`}
+                  return (
+                    <li
+                      key={entry.id}
+                      className="border-b border-gray-100 last:border-b-0"
+                      data-testid={`audit-log-row-${entry.id}`}
+                    >
+                      {/* Row summary */}
+                      <button
+                        type="button"
+                        onClick={hasDetail ? () => toggleExpanded(entry.id) : undefined}
+                        className={`w-full text-start px-6 py-3 ${hasDetail ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'}`}
+                        aria-expanded={hasDetail ? isExpanded : undefined}
+                        data-testid={`audit-log-row-button-${entry.id}`}
                       >
-                        {/* Row summary */}
-                        <button
-                          type="button"
-                          onClick={hasDetail ? () => toggleExpanded(entry.id) : undefined}
-                          className={`w-full text-start px-6 py-3 ${hasDetail ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'}`}
-                          aria-expanded={hasDetail ? isExpanded : undefined}
-                          data-testid={`audit-log-row-button-${entry.id}`}
-                        >
-                          <div className="md:grid md:grid-cols-[160px_140px_120px_120px_1fr] md:gap-3 flex flex-col gap-1">
-                            <time
-                              dateTime={entry.created_at}
-                              className="text-xs text-gray-500 whitespace-nowrap"
-                              data-testid={`audit-log-time-${entry.id}`}
-                            >
-                              {formatTimestamp(entry.created_at, i18n.language)}
-                            </time>
-                            <span
-                              className="text-sm text-gray-800"
-                              data-testid={`audit-log-actor-${entry.id}`}
-                            >
-                              {entry.changed_by_name ?? '—'}
-                            </span>
-                            <span
-                              className="text-sm text-gray-700 capitalize"
-                              data-testid={`audit-log-event-${entry.id}`}
-                            >
-                              {t(`auditLog.eventTypes.${entry.event_type}`)}
-                            </span>
-                            <span
-                              className="text-sm text-gray-700 capitalize"
-                              data-testid={`audit-log-record-type-${entry.id}`}
-                            >
-                              {t(`auditLog.recordTypes.${entry.record_type}`)}
-                            </span>
-                            <span
-                              className="text-sm text-gray-900 font-medium"
-                              data-testid={`audit-log-summary-${entry.id}`}
-                            >
-                              {buildRowSummary(entry, t)}
-                              {entry.record_name && (
-                                <span className="ms-1 text-sm text-gray-500 font-normal">
-                                  — {entry.record_name}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Expandable field detail */}
-                        {isExpanded && hasDetail && (
-                          <div
-                            className="px-6 pb-4 bg-gray-50 border-t border-gray-100"
-                            data-testid={`audit-log-detail-${entry.id}`}
+                        <div className="md:grid md:grid-cols-[160px_140px_120px_120px_1fr] md:gap-3 flex flex-col gap-1">
+                          <time
+                            dateTime={entry.created_at}
+                            className="text-xs text-gray-500 whitespace-nowrap"
+                            data-testid={`audit-log-time-${entry.id}`}
                           >
-                            <table className="w-full text-sm mt-3">
-                              <thead>
-                                <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                                  <th className="text-start pb-1 pe-4 font-semibold">
-                                    {t('auditLog.table.field')}
-                                  </th>
-                                  <th className="text-start pb-1 pe-4 font-semibold">
-                                    {t('auditLog.table.oldValue')}
-                                  </th>
-                                  <th className="text-start pb-1 font-semibold">
-                                    {t('auditLog.table.newValue')}
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td className="pe-4 text-gray-700 align-top">
-                                    {entry.field_name ?? '—'}
-                                  </td>
-                                  <td className="pe-4 text-gray-500 align-top line-through">
-                                    {entry.old_value ?? (
-                                      <span className="text-gray-300 no-underline">
-                                        {t('auditLog.summary.noOldValue')}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="text-gray-900 align-top">
-                                    {entry.new_value ?? (
-                                      <span className="text-gray-300">
-                                        {t('auditLog.summary.noNewValue')}
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </>
-          )}
+                            {formatTimestamp(entry.created_at, i18n.language)}
+                          </time>
+                          <span
+                            className="text-sm text-gray-800"
+                            data-testid={`audit-log-actor-${entry.id}`}
+                          >
+                            {entry.changed_by_name ?? '—'}
+                          </span>
+                          <span
+                            className="text-sm text-gray-700 capitalize"
+                            data-testid={`audit-log-event-${entry.id}`}
+                          >
+                            {t(`auditLog.eventTypes.${entry.event_type}`)}
+                          </span>
+                          <span
+                            className="text-sm text-gray-700 capitalize"
+                            data-testid={`audit-log-record-type-${entry.id}`}
+                          >
+                            {t(`auditLog.recordTypes.${entry.record_type}`)}
+                          </span>
+                          <span
+                            className="text-sm text-gray-900 font-medium"
+                            data-testid={`audit-log-summary-${entry.id}`}
+                          >
+                            {buildRowSummary(entry, t)}
+                            {entry.record_name && (
+                              <span className="ms-1 text-sm text-gray-500 font-normal">
+                                — {entry.record_name}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </button>
 
-          {/* Pagination — always visible once data loads (MINCRM-345) */}
-          {data && (
-            <Pagination page={page} limit={PAGE_SIZE} total={total} onPageChange={setPage} />
-          )}
-        </div>
+                      {/* Expandable field detail */}
+                      {isExpanded && hasDetail && (
+                        <div
+                          className="px-6 pb-4 bg-gray-50 border-t border-gray-100"
+                          data-testid={`audit-log-detail-${entry.id}`}
+                        >
+                          <table className="w-full text-sm mt-3">
+                            <thead>
+                              <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                <th className="text-start pb-1 pe-4 font-semibold">
+                                  {t('auditLog.table.field')}
+                                </th>
+                                <th className="text-start pb-1 pe-4 font-semibold">
+                                  {t('auditLog.table.oldValue')}
+                                </th>
+                                <th className="text-start pb-1 font-semibold">
+                                  {t('auditLog.table.newValue')}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="pe-4 text-gray-700 align-top">
+                                  {entry.field_name ?? '—'}
+                                </td>
+                                <td className="pe-4 text-gray-500 align-top line-through">
+                                  {entry.old_value ?? (
+                                    <span className="text-gray-300 no-underline">
+                                      {t('auditLog.summary.noOldValue')}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="text-gray-900 align-top">
+                                  {entry.new_value ?? (
+                                    <span className="text-gray-300">
+                                      {t('auditLog.summary.noNewValue')}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          </PagedListLayout>
+        )}
       </main>
     </div>
   );
