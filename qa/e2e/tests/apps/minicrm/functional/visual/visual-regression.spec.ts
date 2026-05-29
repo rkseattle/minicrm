@@ -60,7 +60,6 @@ import {
   createTestActivity,
   createTestContact,
   createTestDeal,
-  createTestAdmin,
   navigateToDashboard,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
@@ -80,7 +79,12 @@ import {
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  suppressUserOnboarding,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
 import type { EphemeralUserCredentials } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -104,9 +108,18 @@ test.setTimeout(60_000);
 let sharedAdmin: EphemeralUserCredentials;
 let sharedAdminRestClient: RestClient;
 
-test.beforeAll(async ({ restClient, testData }) => {
+test.beforeAll(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-  sharedAdmin = await createTestAdmin(testData, restClient);
+  // Create the shared admin directly — no testData needed since we own teardown
+  // in afterAll. testData is test-scoped and unavailable in beforeAll. (MINCRM-416)
+  const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
+  const email = `vr-admin-${uniqueSuffix}@example.com`;
+  const name = `VR Admin ${uniqueSuffix}`;
+  const password = 'BvtPassword1!';
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
+  await setUserPassword(restClient, inviteToken, password);
+  await suppressUserOnboarding(restClient, email, password);
+  sharedAdmin = { userId: user.id, email, password };
   sharedAdminRestClient = restClient;
 });
 
