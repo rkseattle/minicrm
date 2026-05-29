@@ -16,6 +16,15 @@ docker compose up -d
 
 Open http://localhost:5173 — the admin account is created automatically on first boot.
 
+## Documentation
+
+| Guide                                         | Audience                                                                          |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| [User Guide](docs/user-guide/index.md)        | Sales reps and managers — contacts, deals, leads, activities, notes, dashboard    |
+| [Admin Guide](docs/admin-guide.md)            | Administrators — user management, pipeline config, settings, branding, automation |
+| [REST API Reference](docs/api.md)             | Developers — authentication, all endpoints, pagination, error codes, gRPC         |
+| [Webhook Integration Guide](docs/webhooks.md) | Developers — subscriptions, event types, payload verification, retry behaviour    |
+
 For upgrade procedures, backup and restore scripts, email deliverability setup (SPF/DKIM/DMARC), and other operational guidance, see [docs/operations.md](docs/operations.md).
 
 To populate realistic demo data:
