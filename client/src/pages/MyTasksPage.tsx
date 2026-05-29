@@ -221,144 +221,142 @@ export default function MyTasksPage() {
               {visibleTasks.length > 0 ? (
                 isDesktop ? (
                   /* Desktop table */
-                  <div className="flex-1 overflow-auto min-h-0">
-                    <table
-                      className="min-w-full divide-y divide-gray-200"
-                      data-testid="my-tasks-table"
-                    >
-                      <thead className="sticky top-0 z-10 bg-gray-50">
-                        <tr>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('myTasks.columnSubject')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('myTasks.columnType')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('myTasks.columnDueDate')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('myTasks.columnRecord')}
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {t('myTasks.columnActions')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {visibleTasks.map((task) => {
-                          const overdue = isOverdue(task);
-                          const recordPath = linkedRecordPath(task);
+                  <table
+                    className="min-w-full divide-y divide-gray-200"
+                    data-testid="my-tasks-table"
+                  >
+                    <thead className="sticky top-0 z-10 bg-gray-50">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('myTasks.columnSubject')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('myTasks.columnType')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('myTasks.columnDueDate')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('myTasks.columnRecord')}
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {t('myTasks.columnActions')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {visibleTasks.map((task) => {
+                        const overdue = isOverdue(task);
+                        const recordPath = linkedRecordPath(task);
 
-                          return (
-                            <tr key={task.id} data-testid={`task-row-${task.id}`}>
-                              <td className="px-6 py-4 text-sm text-gray-900">
+                        return (
+                          <tr key={task.id} data-testid={`task-row-${task.id}`}>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              <span
+                                data-testid={`task-subject-${task.id}`}
+                                className={
+                                  task.status === 'complete' ? 'line-through text-gray-500' : ''
+                                }
+                              >
+                                {task.subject}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Badge
+                                variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
+                                data-testid={`task-type-${task.id}`}
+                              >
+                                {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {task.due_date ? (
                                 <span
-                                  data-testid={`task-subject-${task.id}`}
-                                  className={
-                                    task.status === 'complete' ? 'line-through text-gray-500' : ''
+                                  data-testid={`task-due-date-${task.id}`}
+                                  className={`whitespace-nowrap ${overdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}
+                                >
+                                  {formatLocalDate(task.due_date, i18n.language)}
+                                  {overdue && (
+                                    <span
+                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
+                                      data-testid={`task-overdue-badge-${task.id}`}
+                                    >
+                                      {t('myTasks.overdue')}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-gray-500"
+                                  data-testid={`task-due-date-${task.id}`}
+                                >
+                                  {t('myTasks.noDueDate')}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {recordPath && task.linked_record_name ? (
+                                <Link
+                                  to={recordPath}
+                                  className="text-primary-600 hover:text-primary-800 hover:underline"
+                                  data-testid={`task-record-link-${task.id}`}
+                                >
+                                  {task.linked_record_name}
+                                </Link>
+                              ) : (
+                                <span
+                                  className="text-gray-500"
+                                  data-testid={`task-record-link-${task.id}`}
+                                >
+                                  {t('myTasks.noRecord')}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {task.status === 'open' && (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  data-testid={`mark-complete-${task.id}`}
+                                  onClick={() =>
+                                    completeMutation.mutate({
+                                      id: task.id,
+                                      version: task.version,
+                                    })
+                                  }
+                                  disabled={
+                                    completeMutation.isPending &&
+                                    completeMutation.variables?.id === task.id
                                   }
                                 >
-                                  {task.subject}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <Badge
-                                  variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
-                                  data-testid={`task-type-${task.id}`}
-                                >
-                                  {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                {task.due_date ? (
-                                  <span
-                                    data-testid={`task-due-date-${task.id}`}
-                                    className={`whitespace-nowrap ${overdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}
-                                  >
-                                    {formatLocalDate(task.due_date, i18n.language)}
-                                    {overdue && (
-                                      <span
-                                        className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
-                                        data-testid={`task-overdue-badge-${task.id}`}
-                                      >
-                                        {t('myTasks.overdue')}
-                                      </span>
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="text-gray-500"
-                                    data-testid={`task-due-date-${task.id}`}
-                                  >
-                                    {t('myTasks.noDueDate')}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                {recordPath && task.linked_record_name ? (
-                                  <Link
-                                    to={recordPath}
-                                    className="text-primary-600 hover:text-primary-800 hover:underline"
-                                    data-testid={`task-record-link-${task.id}`}
-                                  >
-                                    {task.linked_record_name}
-                                  </Link>
-                                ) : (
-                                  <span
-                                    className="text-gray-500"
-                                    data-testid={`task-record-link-${task.id}`}
-                                  >
-                                    {t('myTasks.noRecord')}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                {task.status === 'open' && (
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    data-testid={`mark-complete-${task.id}`}
-                                    onClick={() =>
-                                      completeMutation.mutate({
-                                        id: task.id,
-                                        version: task.version,
-                                      })
-                                    }
-                                    disabled={
-                                      completeMutation.isPending &&
-                                      completeMutation.variables?.id === task.id
-                                    }
-                                  >
-                                    {completeMutation.isPending &&
-                                    completeMutation.variables?.id === task.id
-                                      ? t('myTasks.markingComplete')
-                                      : t('myTasks.markComplete')}
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                  {completeMutation.isPending &&
+                                  completeMutation.variables?.id === task.id
+                                    ? t('myTasks.markingComplete')
+                                    : t('myTasks.markComplete')}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 ) : (
                   /* Mobile card view */
                   <ul className="divide-y divide-gray-100" aria-label={t('myTasks.pageTitle')}>
