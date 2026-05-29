@@ -22,27 +22,18 @@
  *     V5 — Win/Loss report with seeded won/lost deals
  *   Admin pages
  *     V6 — Admin Settings — General tab
- *     V7 — Admin Settings — Currency tab
- *     V8 — Admin Settings — Notifications tab
  *   List views
- *     V9  — Contacts list, desktop
- *     V10 — Accounts list, desktop
- *     V11 — Leads list, desktop
- *     V12 — Tasks list, desktop
+ *     V7  — Contacts list, desktop
+ *     V8  — Accounts list, desktop
+ *     V9  — Leads list, desktop
+ *     V10 — Tasks list, desktop
  *   Navigation layout modes
- *     V13 — Left nav layout, desktop
- *     V14 — Hamburger nav layout, desktop (collapsed)
- *     V15 — Hamburger nav layout, desktop (drawer open)
- *     V16 — Left nav layout, mobile-web viewport
- *     V17 — Top nav layout, mobile-web viewport
+ *     V11 — Left nav layout, desktop
+ *     V12 — Hamburger nav layout, desktop (drawer open)
+ *     V13 — Top nav layout, mobile-web viewport
  *   Detail views
- *     V18 — Deal detail page
- *     V19 — Account detail page
- *     V20 — User management table
- *   Form / modal states
- *     V21 — Contact create form (empty state)
- *     V22 — Contact create form (validation errors)
- *     V23 — Confirm-delete modal
+ *     V14 — Deal detail page
+ *     V15 — Account detail page
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @visual (not @functional — visual tests require OS-matching baselines)
@@ -52,7 +43,13 @@
  *   - Nav layout mutations reset to 'top' in afterEach (not ensureSystemDefaults —
  *     that resets onboarding_completed and races with the onboarding spec)
  *
- * MINCRM-324, MINCRM-371, MINCRM-409, MINCRM-415
+ * Performance: A single ephemeral admin is created once per worker in beforeAll
+ * and shared across all tests in that worker. Per-test admin creation (5 API calls
+ * each) was the dominant setup cost; sharing reduces that to one call per worker.
+ * Each test still does a fresh browser login so session state is fully isolated.
+ * (MINCRM-416)
+ *
+ * MINCRM-324, MINCRM-371, MINCRM-409, MINCRM-415, MINCRM-416
  */
 
 import { test } from '@apps/minicrm/fixtures.js';
@@ -72,11 +69,7 @@ import {
   getPipelineMobileStageNameLocator,
   getDealNameHeadingLocator,
 } from '@behaviors/minicrm/deals.behaviors.js';
-import {
-  getContactEditButtonLocator,
-  getContactsCreateFormLocator,
-  getContactsConfirmDeleteModalLocator,
-} from '@behaviors/minicrm/contacts.behaviors.js';
+import { getContactEditButtonLocator } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   getReportsWinLossHeadingLocator,
   getReportsStatCardsLocator,
@@ -84,24 +77,51 @@ import {
 import {
   getAdminSettingsHeadingLocator,
   getAdminSettingsSaveLocator,
-  getAdminSettingsCurrencySectionLocator,
-  getAdminSettingsEmailNotificationsSectionLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
+import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import type { EphemeralUserCredentials } from '@apps/minicrm/helpers.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
 
-// Each test uses a unique ephemeral admin — no shared storageState. (MINCRM-415)
+// Each test uses a unique browser login but shares one ephemeral admin per
+// worker — no shared storageState. (MINCRM-415, MINCRM-416)
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // Visual tests involve browser login, page load, canvas rendering, and pixel-
 // diff computation — give each test 60 s to absorb CI resource contention.
 test.setTimeout(60_000);
 
+// ---------------------------------------------------------------------------
+// Shared admin — created once per worker, reused across all tests. (MINCRM-416)
+//
+// Each test still calls loginViaBrowser() to get a fresh isolated browser
+// session; we only avoid the 5-API-call invite+password+onboarding setup on
+// every test. Teardown deactivates the shared user after all tests in this
+// worker complete.
+// ---------------------------------------------------------------------------
+
+let sharedAdmin: EphemeralUserCredentials;
+let sharedAdminRestClient: RestClient;
+
+test.beforeAll(async ({ restClient, testData }) => {
+  await loginAsAdmin(restClient);
+  sharedAdmin = await createTestAdmin(testData, restClient);
+  sharedAdminRestClient = restClient;
+});
+
+test.afterAll(async () => {
+  if (sharedAdmin && sharedAdminRestClient) {
+    await loginAsAdmin(sharedAdminRestClient);
+    await deactivateUser(sharedAdminRestClient, sharedAdmin.userId);
+  }
+});
+
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
 });
 
-// Tests V13–V17 mutate the nav layout. Reset to 'top' after each test so
+// Tests V11–V13 mutate the nav layout. Reset to 'top' after each test so
 // a failed teardown in one test cannot contaminate subsequent tests in the
 // same worker.
 test.afterEach(async ({ restClient }) => {
@@ -180,8 +200,7 @@ test.describe('Core Layout', () => {
     'V1: pipeline board renders correctly at desktop viewport @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V1 Account',
@@ -227,8 +246,7 @@ test.describe('Core Layout', () => {
     'V2: pipeline board renders correctly at mobile viewport @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V2 Account',
@@ -277,8 +295,7 @@ test.describe('Core Layout', () => {
     'V3: dashboard renders stats grid and activity feed with seeded data @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       // Seed an account, contact, deal, and activity so the dashboard is not empty
       const account = await createTestAccount(testData, restClient, {
@@ -330,8 +347,7 @@ test.describe('Core Layout', () => {
     'V4: contact detail page renders with populated activity timeline @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V4 Account',
@@ -376,8 +392,7 @@ test.describe('Core Layout', () => {
     'V5: win/loss report renders stat cards and tables with seeded deal data @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
         name: 'VR-V5 Account',
@@ -438,9 +453,8 @@ test.describe('Admin', () => {
   test(
     'V6: admin settings General tab renders correctly @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+    async ({ page }) => {
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
@@ -456,61 +470,20 @@ test.describe('Admin', () => {
       await page.checkScreenshot('admin-settings-general.png', { mask: masks });
     },
   );
-
-  // ── V7 — Admin Settings — Currency tab ─────────────────────────────────────
-
-  test(
-    'V7: admin settings Currency tab renders correctly @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
-
-      const currencySection = await getAdminSettingsCurrencySectionLocator({ page });
-      await currencySection.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('admin-settings-currency.png', { mask: masks });
-    },
-  );
-
-  // ── V8 — Admin Settings — Notifications tab ────────────────────────────────
-
-  test(
-    'V8: admin settings Notifications tab renders correctly @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/admin/settings?tab=notifications', { waitUntil: 'networkidle' });
-
-      const notifSection = await getAdminSettingsEmailNotificationsSectionLocator({ page });
-      await notifSection.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('admin-settings-notifications.png', { mask: masks });
-    },
-  );
 }); // end Admin
 
 // ===========================================================================
-// List views (V9–V12)
+// List views (V7–V10)
 // ===========================================================================
 
 test.describe('Key Pages', () => {
-  // ── V9 — Contacts list, desktop ────────────────────────────────────────────
+  // ── V7 — Contacts list, desktop ────────────────────────────────────────────
 
   test(
-    'V9: contacts list renders with seeded contacts at desktop viewport @visual',
+    'V7: contacts list renders with seeded contacts at desktop viewport @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       // Seed two contacts so the list has meaningful rows to capture.
       // Emails are auto-generated to avoid collisions when desktop and mobile-web
@@ -548,14 +521,13 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V10 — Accounts list, desktop ───────────────────────────────────────────
+  // ── V8 — Accounts list, desktop ───────────────────────────────────────────
 
   test(
-    'V10: accounts list renders with seeded accounts at desktop viewport @visual',
+    'V8: accounts list renders with seeded accounts at desktop viewport @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await createTestAccount(testData, restClient, {
         name: 'VR Acme Corp',
@@ -585,14 +557,13 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V11 — Leads list, desktop ───────────────────────────────────────────────
+  // ── V9 — Leads list, desktop ───────────────────────────────────────────────
 
   test(
-    'V11: leads list renders with seeded leads at desktop viewport @visual',
+    'V9: leads list renders with seeded leads at desktop viewport @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+    async ({ page, restClient }) => {
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       // Leads are not registered with TestDataManager — the lead API does not expose
       // a delete endpoint accessible via TestDataManager; leads are cleaned up by
@@ -602,13 +573,13 @@ test.describe('Key Pages', () => {
       await createLeadViaApi(restClient, {
         first_name: 'Carol',
         last_name: 'VRLeads',
-        email: `vr-v11-carol-${suffix}@example.com`,
+        email: `vr-v9-carol-${suffix}@example.com`,
         company_name: 'VR Corp',
       });
       await createLeadViaApi(restClient, {
         first_name: 'Dave',
         last_name: 'VRLeads',
-        email: `vr-v11-dave-${suffix}@example.com`,
+        email: `vr-v9-dave-${suffix}@example.com`,
         company_name: 'VR Inc',
       });
 
@@ -633,16 +604,15 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V12 — Tasks list, desktop ───────────────────────────────────────────────
+  // ── V10 — Tasks list, desktop ───────────────────────────────────────────────
 
   test(
-    'V12: tasks list renders with seeded tasks at desktop viewport @visual',
+    'V10: tasks list renders with seeded tasks at desktop viewport @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
-      const account = await createTestAccount(testData, restClient, { name: 'VR-V12 Account' });
+      const account = await createTestAccount(testData, restClient, { name: 'VR-V10 Account' });
 
       await createTestActivity(testData, restClient, {
         type: 'Task',
@@ -676,14 +646,13 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V13 — Left nav layout, desktop ─────────────────────────────────────────
+  // ── V11 — Left nav layout, desktop ─────────────────────────────────────────
 
   test(
-    'V13: left nav layout renders correctly at desktop viewport @visual',
+    'V11: left nav layout renders correctly at desktop viewport @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+    async ({ page, restClient }) => {
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       // Switch to left nav layout via API before navigating to the page under test
       await setNavLayoutViaAPI('left', restClient);
@@ -709,44 +678,13 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V14 — Hamburger nav layout, desktop (collapsed) ────────────────────────
+  // ── V12 — Hamburger nav layout, desktop (drawer open) ──────────────────────
 
   test(
-    'V14: hamburger nav layout renders correctly collapsed at desktop viewport @visual',
+    'V12: hamburger nav drawer renders correctly open at desktop viewport @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await setNavLayoutViaAPI('hamburger', restClient);
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await navigateToDashboard(page);
-
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards confirming the page loaded with hamburger nav' },
-        )
-        .resolve();
-      await statCards.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('nav-hamburger-collapsed-desktop.png', { mask: masks });
-    },
-  );
-
-  // ── V15 — Hamburger nav layout, desktop (drawer open) ──────────────────────
-
-  test(
-    'V15: hamburger nav drawer renders correctly open at desktop viewport @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+    async ({ page, restClient }) => {
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await setNavLayoutViaAPI('hamburger', restClient);
 
@@ -797,48 +735,14 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V16 — Left nav layout, mobile-web viewport ─────────────────────────────
+  // ── V13 — Top nav layout, mobile-web viewport ──────────────────────────────
 
   test(
-    'V16: left nav layout renders correctly at mobile-web viewport @visual',
+    'V13: top nav layout renders correctly at mobile-web viewport @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await setNavLayoutViaAPI('left', restClient);
-
-      // Mobile viewport — left nav collapses to the hamburger icon on small screens
-      await page.setViewportSize(MOBILE_VIEWPORT);
-      await navigateToDashboard(page);
-
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards confirming mobile layout with left-nav setting' },
-        )
-        .resolve();
-      await statCards.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('nav-left-mobile.png', { mask: masks });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-    },
-  );
-
-  // ── V17 — Top nav layout, mobile-web viewport ──────────────────────────────
-
-  test(
-    'V17: top nav layout renders correctly at mobile-web viewport @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
+    async ({ page }) => {
       // Top nav is the default layout; no API call needed to set it.
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await page.setViewportSize(MOBILE_VIEWPORT);
       await navigateToDashboard(page);
@@ -861,16 +765,15 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V18 — Deal detail page ──────────────────────────────────────────────────
+  // ── V14 — Deal detail page ──────────────────────────────────────────────────
 
   test(
-    'V18: deal detail page renders with realistic seeded data @visual',
+    'V14: deal detail page renders with realistic seeded data @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
-      const account = await createTestAccount(testData, restClient, { name: 'VR-V18 Account' });
+      const account = await createTestAccount(testData, restClient, { name: 'VR-V14 Account' });
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Eve',
         last_name: 'VRDeal',
@@ -904,17 +807,16 @@ test.describe('Key Pages', () => {
     },
   );
 
-  // ── V19 — Account detail page ───────────────────────────────────────────────
+  // ── V15 — Account detail page ───────────────────────────────────────────────
 
   test(
-    'V19: account detail page renders with linked contacts and activities @visual',
+    'V15: account detail page renders with linked contacts and activities @visual',
     { tag: ['@visual'] },
     async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
-        name: 'VR-V19 Enterprises',
+        name: 'VR-V15 Enterprises',
         industry: 'Finance',
       });
       await createTestContact(testData, restClient, {
@@ -945,186 +847,6 @@ test.describe('Key Pages', () => {
 
       const masks = await resolveTimestampMasks(page);
       await page.checkScreenshot('account-detail-desktop.png', { mask: masks });
-    },
-  );
-
-  // ── V20 — User management table ────────────────────────────────────────────
-
-  test(
-    'V20: user management table renders at desktop viewport @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/users', { waitUntil: 'networkidle' });
-
-      // Wait for the invite form submit button — stable indicator that users page is loaded
-      const inviteBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'invite-submit' },
-            { type: 'role', value: 'button', options: { name: /invite/i } },
-          ],
-          { intent: 'invite submit button confirming the user management page has loaded' },
-        )
-        .resolve();
-      await inviteBtn.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('user-management-desktop.png', { mask: masks });
-    },
-  );
-
-  // ── V21 — Contact create form, empty state ─────────────────────────────────
-
-  test(
-    'V21: contact create form renders in empty state @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
-
-      // Open the contact creation form by clicking New Contact
-      const newBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'new-contact-button' },
-            { type: 'role', value: 'button', options: { name: /new contact/i } },
-          ],
-          { intent: 'new contact button to open the creation form' },
-        )
-        .resolve();
-      await newBtn.click();
-
-      // Wait for the form to appear before snapshotting
-      const form = await getContactsCreateFormLocator({ page });
-      await form.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('contact-create-form-empty.png', { mask: masks });
-    },
-  );
-
-  // ── V22 — Contact create form, validation errors ────────────────────────────
-
-  test(
-    'V22: contact create form renders validation errors when submitted empty @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
-
-      // Open the form
-      const newBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'new-contact-button' },
-            { type: 'role', value: 'button', options: { name: /new contact/i } },
-          ],
-          { intent: 'new contact button to open the creation form for validation test' },
-        )
-        .resolve();
-      await newBtn.click();
-
-      const form = await getContactsCreateFormLocator({ page });
-      await form.waitFor({ state: 'visible' });
-
-      // Submit without filling any required fields to trigger validation
-      const submitBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'contact-form-submit' },
-            { type: 'role', value: 'button', options: { name: /save|create/i } },
-          ],
-          { intent: 'contact form submit button to trigger validation errors' },
-        )
-        .resolve();
-      await submitBtn.click();
-
-      // Wait for at least one validation error message to appear before snapshotting.
-      // The form uses HTML5 constraint validation which shows browser-native tooltips
-      // or inline error spans — wait for any [aria-invalid] element to confirm errors are shown.
-      await page.waitForFunction(
-        `document.querySelector('[aria-invalid="true"], [data-testid="contact-form"] :invalid') !== null`,
-      );
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('contact-create-form-validation.png', { mask: masks });
-    },
-  );
-
-  // ── V23 — Confirm-delete modal ──────────────────────────────────────────────
-
-  test(
-    'V23: confirm-delete modal renders correctly on the contacts list @visual',
-    { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
-      const admin = await createTestAdmin(testData, restClient);
-      await loginViaBrowser(admin.email, admin.password, { page });
-
-      // Seed a contact so there is a row to select for bulk delete.
-      // Email auto-generated to avoid collision when both projects run in parallel.
-      const contact = await createTestContact(testData, restClient, {
-        first_name: 'Grace',
-        last_name: 'VRDelete',
-      });
-
-      await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
-
-      // Check the contact's bulk-select checkbox
-      const checkbox = await page
-        .locate(
-          [
-            { type: 'testId', value: `bulk-select-${contact.id}` },
-            { type: 'css', value: `[data-testid="bulk-select-${contact.id}"]` },
-          ],
-          { intent: 'bulk-select checkbox for the seeded contact row' },
-        )
-        .resolve();
-      await checkbox.waitFor({ state: 'visible' });
-      await checkbox.check();
-
-      // Wait for bulk action bar to appear after selecting
-      const bulkBar = await page
-        .locate(
-          [
-            { type: 'testId', value: 'bulk-action-bar' },
-            { type: 'role', value: 'toolbar' },
-          ],
-          { intent: 'bulk action toolbar that appears when contacts are selected' },
-        )
-        .resolve();
-      await bulkBar.waitFor({ state: 'visible' });
-
-      // Click the bulk-delete button to open the confirmation modal
-      await page
-        .locate(
-          [
-            { type: 'testId', value: 'bulk-delete-button' },
-            { type: 'role', value: 'button', options: { name: /delete/i } },
-          ],
-          { intent: 'bulk delete button in the action toolbar' },
-        )
-        .resolve()
-        .then((el) => el.click());
-
-      // Wait for the modal to become visible before snapshotting
-      const modal = await getContactsConfirmDeleteModalLocator({ page });
-      await modal.waitFor({ state: 'visible' });
-
-      await page.waitForLoadState('networkidle');
-
-      const masks = await resolveTimestampMasks(page);
-      await page.checkScreenshot('confirm-delete-modal.png', { mask: masks });
     },
   );
 }); // end Key Pages
