@@ -253,21 +253,26 @@ function futureMonths(monthsAhead: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// pipeline: 'enterprise' deals are assigned to the Enterprise B2B demo pipeline (MINCRM-408).
+// All others go to the default pipeline (pipeline_id: null resolved to default at insert time).
+// Indices 0–9 preserve the original ordering so DEMO_ACTIVITIES dealIndex values stay valid.
+// Indices 10–16 are new Enterprise B2B deals covering every stage of that pipeline.
 const DEMO_DEALS = [
+  // ── Default pipeline (indices 0–9) ───────────────────────────────────────
   {
-    name: 'Acme — Enterprise Platform',
+    name: 'Acme — Enterprise Platform', // index 0
     stage: 'Qualification',
     value: 120000,
     close_date: futureMonths(3),
   },
   {
-    name: 'Acme — Security Upgrade',
-    stage: 'Technical Validation',
+    name: 'Acme — Security Upgrade', // index 1
+    stage: 'Proposal',
     value: 45000,
     close_date: futureMonths(2),
   },
   {
-    name: 'Acme — Analytics Add-on',
+    name: 'Acme — Analytics Add-on', // index 2
     stage: 'Negotiation',
     value: 28000,
     close_date: futureMonths(1),
@@ -275,20 +280,20 @@ const DEMO_DEALS = [
     probability: 85,
   },
   {
-    name: 'Acme — Training Package',
+    name: 'Acme — Training Package', // index 3
     stage: 'Prospecting',
     value: 15000,
     close_date: futureMonths(4),
   },
   {
-    name: 'Acme — Support Contract',
+    name: 'Acme — Support Contract', // index 4
     stage: 'Closed Won',
     value: 36000,
     close_date: relativeDate(-5),
     loss_reason: null,
   },
   {
-    name: 'Globex — ERP Migration',
+    name: 'Globex — ERP Migration', // index 5
     stage: 'Proposal',
     value: 200000,
     close_date: futureMonths(4),
@@ -297,30 +302,85 @@ const DEMO_DEALS = [
     currency: 'GBP',
   },
   {
-    name: 'Globex — Cloud Infrastructure',
+    name: 'Globex — Cloud Infrastructure', // index 6
     stage: 'Qualification',
     value: 85000,
     close_date: futureMonths(3),
   },
   {
-    name: 'Globex — Data Warehouse',
+    name: 'Globex — Data Warehouse', // index 7
     stage: 'Prospecting',
     value: 60000,
     close_date: futureMonths(5),
   },
   {
-    name: 'Globex — Mobile App',
+    name: 'Globex — Mobile App', // index 8
     stage: 'Closed Lost',
     value: 40000,
     close_date: relativeDate(-2),
     loss_reason: 'Lost to competitor',
   },
   {
-    name: 'Globex — IoT Integration',
+    name: 'Globex — IoT Integration', // index 9
+    stage: 'Negotiation',
+    value: 95000,
+    close_date: futureMonths(2),
+    currency: 'EUR',
+  },
+  // ── Enterprise B2B pipeline (indices 10–16) ───────────────────────────────
+  // One deal per stage so the pipeline board is fully populated.
+  {
+    name: 'Acme — Platform Discovery', // index 10
+    stage: 'Discovery',
+    value: 180000,
+    close_date: futureMonths(6),
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Globex — Infrastructure Scoping', // index 11
+    stage: 'Technical Scoping',
+    value: 130000,
+    close_date: futureMonths(5),
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Acme — Security Upgrade (Enterprise)', // index 12
+    stage: 'Technical Validation',
+    value: 45000,
+    close_date: futureMonths(2),
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Acme — Global Rollout', // index 13
+    stage: 'Proposal',
+    value: 320000,
+    close_date: futureMonths(3),
+    currency: 'GBP',
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Globex — IoT Integration (Enterprise)', // index 14
     stage: 'Contract Review',
     value: 95000,
     close_date: futureMonths(2),
     currency: 'EUR',
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Globex — Manufacturing Suite', // index 15
+    stage: 'Closed Won',
+    value: 250000,
+    close_date: relativeDate(-10),
+    loss_reason: null,
+    pipeline: 'enterprise' as const,
+  },
+  {
+    name: 'Acme — Legacy Migration', // index 16
+    stage: 'Closed Lost',
+    value: 90000,
+    close_date: relativeDate(-4),
+    loss_reason: 'Timeline too long',
+    pipeline: 'enterprise' as const,
   },
 ];
 
@@ -728,18 +788,14 @@ const DEMO_REP_CONTACTS = [
   },
 ];
 
+// Rep-owned deals. pipeline: 'enterprise' routes to the Enterprise B2B pipeline (MINCRM-408).
 const DEMO_REP_DEALS = [
+  // ── Default pipeline ──────────────────────────────────────────────────────
   {
     name: 'Stellartech — Cloud Migration',
     stage: 'Prospecting',
     value: 75000,
     close_date: futureMonths(5),
-  },
-  {
-    name: 'Stellartech — DevOps Platform',
-    stage: 'Technical Validation',
-    value: 52000,
-    close_date: futureMonths(2),
   },
   {
     name: 'Ironbridge — ERP Upgrade',
@@ -760,6 +816,14 @@ const DEMO_REP_DEALS = [
     stage: 'Qualification',
     value: 24000,
     close_date: futureMonths(3),
+  },
+  // ── Enterprise B2B pipeline ───────────────────────────────────────────────
+  {
+    name: 'Stellartech — DevOps Platform',
+    stage: 'Technical Validation',
+    value: 52000,
+    close_date: futureMonths(2),
+    pipeline: 'enterprise' as const,
   },
 ];
 
@@ -1144,21 +1208,35 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
-// Custom pipeline stages added by demo seed (MINCRM-408).
-// sort_order 35 slots between Proposal (30) and Negotiation (40);
-// sort_order 45 slots between Negotiation (40) and Closed Won (50).
+// Demo pipeline added by seed to demonstrate multi-pipeline support (MINCRM-408).
+// This is a second, non-default pipeline so evaluators can see that pipelines are
+// configurable beyond the built-in "Default" one.
+const DEMO_PIPELINE_NAME = 'Enterprise B2B';
+
+// Stages for the Enterprise B2B pipeline.  A complete set including terminal
+// stages is required because deals.stage must resolve to a stage in the deal's
+// own pipeline.
 const DEMO_PIPELINE_STAGES = [
+  { name: 'Discovery', sort_order: 10, probability: 15, is_terminal: false, is_fixed: false },
+  {
+    name: 'Technical Scoping',
+    sort_order: 20,
+    probability: 35,
+    is_terminal: false,
+    is_fixed: false,
+  },
   {
     name: 'Technical Validation',
-    sort_order: 35,
+    sort_order: 30,
     probability: 60,
     is_terminal: false,
     is_fixed: false,
   },
-  { name: 'Contract Review', sort_order: 45, probability: 85, is_terminal: false, is_fixed: false },
+  { name: 'Proposal', sort_order: 40, probability: 50, is_terminal: false, is_fixed: false },
+  { name: 'Contract Review', sort_order: 50, probability: 85, is_terminal: false, is_fixed: false },
+  { name: 'Closed Won', sort_order: 60, probability: 100, is_terminal: true, is_fixed: false },
+  { name: 'Closed Lost', sort_order: 70, probability: 0, is_terminal: true, is_fixed: false },
 ] as const;
-
-const DEMO_PIPELINE_STAGE_NAMES = DEMO_PIPELINE_STAGES.map((s) => s.name);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1288,11 +1366,11 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   );
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
 
-  // Remove custom demo pipeline stages — deals must be deleted first to avoid FK violation (MINCRM-408)
-  await client.query(
-    `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
-    [DEMO_PIPELINE_STAGE_NAMES],
-  );
+  // Delete the demo pipeline — pipeline_stages cascade automatically via ON DELETE CASCADE.
+  // Guard on is_default = false so this can never remove the default pipeline (MINCRM-408).
+  await client.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
+    DEMO_PIPELINE_NAME,
+  ]);
 
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
   await client.query(`DELETE FROM accounts WHERE is_demo = true`);
@@ -1415,18 +1493,22 @@ async function insertDemoData(
     );
   }
 
-  // 5a. Custom pipeline stages — must exist before deals reference them (MINCRM-408)
-  // Unique indexes are pipeline-scoped: (pipeline_id, lower(name)) and (pipeline_id, sort_order).
-  // We resolve the default pipeline ID at runtime so the insert is idempotent on both name and sort_order.
-  const defaultPipelineResult = await client.query<{ id: string }>(
-    `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
+  // 5a. Demo pipeline + stages — must exist before deals reference them (MINCRM-408).
+  // Create the "Enterprise B2B" pipeline if it doesn't exist, then seed its stages.
+  // ON CONFLICT on lower(name) makes both inserts idempotent.
+  await client.query(
+    `INSERT INTO pipelines (name, is_default, created_by)
+     VALUES ($1, false, $2)
+     ON CONFLICT (lower(name)) DO NOTHING`,
+    [DEMO_PIPELINE_NAME, adminId],
   );
-  const defaultPipelineId = defaultPipelineResult.rows[0]?.id ?? null;
+  const demoPipelineResult = await client.query<{ id: string }>(
+    `SELECT id FROM pipelines WHERE lower(name) = lower($1) LIMIT 1`,
+    [DEMO_PIPELINE_NAME],
+  );
+  const demoPipelineId = demoPipelineResult.rows[0].id;
 
   for (const stage of DEMO_PIPELINE_STAGES) {
-    // ON CONFLICT targets the functional unique index (pipeline_id, lower(name)).
-    // sort_order conflicts are prevented by choosing gap values (35, 45) that the
-    // default seed never uses; a second insert hits the name conflict first and is ignored.
     await client.query(
       `INSERT INTO pipeline_stages (name, sort_order, probability, is_terminal, is_fixed, pipeline_id)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -1437,23 +1519,26 @@ async function insertDemoData(
         stage.probability,
         stage.is_terminal,
         stage.is_fixed,
-        defaultPipelineId,
+        demoPipelineId,
       ],
     );
   }
 
-  // 5. Deals — first 5 → account 0 (Acme), next 5 → account 1 (Globex)
+  // 5. Deals — Acme deals → account 0, Globex deals → account 1.
+  // pipeline: 'enterprise' fixtures are routed to demoPipelineId; others default to null
+  // (the server resolves null to the default pipeline). (MINCRM-408)
   const dealIds: string[] = [];
-  for (let i = 0; i < DEMO_DEALS.length; i++) {
-    const deal = DEMO_DEALS[i];
-    const accountId = accountIds[i < 5 ? 0 : 1];
+  for (const deal of DEMO_DEALS) {
+    const accountId = deal.name.startsWith('Acme') ? accountIds[0] : accountIds[1];
     const lossReason = (deal as { loss_reason?: string | null }).loss_reason ?? null;
     const probability = (deal as { probability?: number }).probability ?? null;
     const currency = (deal as { currency?: string }).currency ?? 'USD';
+    const pipelineId =
+      (deal as { pipeline?: string }).pipeline === 'enterprise' ? demoPipelineId : null;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
-         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
        RETURNING id`,
       [
         deal.name,
@@ -1465,17 +1550,23 @@ async function insertDemoData(
         lossReason,
         accountId,
         adminId,
+        pipelineId,
       ],
     );
     dealIds.push(result.rows[0].id);
   }
 
-  // 6. Link primary contact to each deal
+  // 6. Link primary contact to each deal.
+  // Indices 0–4: Acme contacts 0–4. Indices 5–9: Globex contacts 10–14.
+  // Indices 10–16 (Enterprise B2B): Acme contacts cycle 0–4, Globex contacts cycle 10–14.
+  let acmeContactIdx = 0;
+  let globexContactIdx = 10;
   for (let i = 0; i < DEMO_DEALS.length; i++) {
-    const primaryContactIndex = i < 5 ? i : i + 5;
+    const isAcme = DEMO_DEALS[i].name.startsWith('Acme');
+    const contactIndex = isAcme ? acmeContactIdx++ % 5 : (globexContactIdx++ % 5) + 10;
     await client.query(
       `INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [dealIds[i], contactIds[primaryContactIndex]],
+      [dealIds[i], contactIds[contactIndex]],
     );
   }
 
@@ -1595,18 +1686,20 @@ async function insertDemoData(
     repContactIds.push(result.rows[0].id);
   }
 
-  // 12. Rep-owned deals — first 2 → Stellartech (index 0), next 2 → Ironbridge (index 1), last 1 → Clearwater (index 2)
+  // 12. Rep-owned deals — Stellartech (index 0), Ironbridge (index 1), Clearwater (index 2) by account name.
   const repDealIds: string[] = [];
-  const repDealAccountMap = [0, 0, 1, 1, 2];
+  const repDealAccountMap = [0, 1, 1, 2, 0];
   for (let i = 0; i < DEMO_REP_DEALS.length; i++) {
     const deal = DEMO_REP_DEALS[i];
     const accountId = repAccountIds[repDealAccountMap[i]];
     const lossReason = (deal as { loss_reason?: string | null }).loss_reason ?? null;
     const probability = (deal as { probability?: number }).probability ?? null;
+    const pipelineId =
+      (deal as { pipeline?: string }).pipeline === 'enterprise' ? demoPipelineId : null;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
-         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, is_demo)
-       VALUES ($1, $2, $3, $4, 'USD', $5, $6, $7, $8, true)
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
+       VALUES ($1, $2, $3, $4, 'USD', $5, $6, $7, $8, $9, true)
        RETURNING id`,
       [
         deal.name,
@@ -1617,6 +1710,7 @@ async function insertDemoData(
         lossReason,
         accountId,
         repId,
+        pipelineId,
       ],
     );
     repDealIds.push(result.rows[0].id);

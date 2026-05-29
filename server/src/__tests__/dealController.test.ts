@@ -297,6 +297,82 @@ describe('PATCH /api/deals/:id — ownership', () => {
   });
 });
 
+// ── PATCH /api/deals/:id — pipeline reassignment (MINCRM-408) ────────────────
+
+describe('PATCH /api/deals/:id — pipeline reassignment', () => {
+  let enterprisePipelineId: string;
+  const ENTERPRISE_STAGE = 'Discovery';
+
+  beforeAll(async () => {
+    // Create a second pipeline for reassignment tests
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO pipelines (name, is_default) VALUES ('Enterprise Test Pipeline', false) RETURNING id`,
+    );
+    enterprisePipelineId = result.rows[0].id;
+    // Seed one stage in the new pipeline
+    await pool.query(
+      `INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability, is_terminal, is_fixed)
+       VALUES ($1, $2, 10, 15, false, false)`,
+      [enterprisePipelineId, ENTERPRISE_STAGE],
+    );
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM pipelines WHERE id = $1`, [enterprisePipelineId]);
+  });
+
+  it('moves a deal to a different pipeline when pipeline_id and stage are both provided', async () => {
+    const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
+
+    const res = await request(app)
+      .patch(`/api/v1/deals/${deal.id}`)
+      .set('Cookie', repCookie)
+      .send({ pipeline_id: enterprisePipelineId, stage: ENTERPRISE_STAGE, version: deal.version });
+
+    expect(res.status).toBe(200);
+    expect(res.body.deal.pipeline_id).toBe(enterprisePipelineId);
+    expect(res.body.deal.stage).toBe(ENTERPRISE_STAGE);
+  });
+
+  it('returns 400 when pipeline_id is provided without stage', async () => {
+    const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
+
+    const res = await request(app)
+      .patch(`/api/v1/deals/${deal.id}`)
+      .set('Cookie', repCookie)
+      .send({ pipeline_id: enterprisePipelineId, version: deal.version });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.message).toMatch(/stage is required/i);
+  });
+
+  it('returns 400 when the stage is not valid in the target pipeline', async () => {
+    const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
+
+    const res = await request(app)
+      .patch(`/api/v1/deals/${deal.id}`)
+      .set('Cookie', repCookie)
+      .send({ pipeline_id: enterprisePipelineId, stage: 'Prospecting', version: deal.version });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when pipeline_id is a non-existent UUID', async () => {
+    const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
+
+    const res = await request(app).patch(`/api/v1/deals/${deal.id}`).set('Cookie', repCookie).send({
+      pipeline_id: '00000000-0000-0000-0000-000000000000',
+      stage: ENTERPRISE_STAGE,
+      version: deal.version,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
 // ── POST /api/deals/:id/contacts/:contactId ───────────────────────────────────
 
 describe('POST /api/deals/:id/contacts/:contactId — link contact', () => {

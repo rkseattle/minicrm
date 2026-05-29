@@ -431,7 +431,11 @@
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "La probabilité doit être un nombre entier compris entre 0 et 100",
     "currencyLabel": "Devise",
-    "pipelineSelector": "Pipeline"
+    "pipelineSelector": "Pipeline",
+    "pipelineLabel": "Pipeline",
+    "pipelineLoading": "Chargement des pipelines…",
+    "pipelineDefault": "par défaut",
+    "stagePlaceholder": "— Sélectionner une étape —"
   },
   "pipeline": {
     "pageTitle": "Tableau de pipeline",

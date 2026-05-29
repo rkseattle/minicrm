@@ -32,8 +32,17 @@ const DEMO_CUSTOM_FIELD_NAMES = [
 ];
 // Derived from DEMO_CURRENCIES in demoService.ts
 const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD'];
-// Derived from DEMO_PIPELINE_STAGES in demoService.ts (MINCRM-408)
-const DEMO_PIPELINE_STAGE_NAMES = ['Technical Validation', 'Contract Review'];
+// Derived from DEMO_PIPELINE_NAME / DEMO_PIPELINE_STAGES in demoService.ts (MINCRM-408)
+const DEMO_PIPELINE_NAME = 'Enterprise B2B';
+const DEMO_PIPELINE_STAGE_NAMES = [
+  'Discovery',
+  'Technical Scoping',
+  'Technical Validation',
+  'Proposal',
+  'Contract Review',
+  'Closed Won',
+  'Closed Lost',
+];
 
 async function cleanDemoData(): Promise<void> {
   // Delete notes created by demo rep first (no is_demo column on notes)
@@ -95,11 +104,10 @@ async function cleanDemoData(): Promise<void> {
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
   await pool.query(`DELETE FROM deals WHERE is_demo = true`);
-  // Remove custom demo pipeline stages — deals must be gone first (MINCRM-408)
-  await pool.query(
-    `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
-    [DEMO_PIPELINE_STAGE_NAMES],
-  );
+  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE (MINCRM-408)
+  await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
+    DEMO_PIPELINE_NAME,
+  ]);
   await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
   await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
   // Remove demo rep user — created by insertDemoData, not covered by is_demo flag (MINCRM-267)
@@ -196,10 +204,10 @@ afterAll(async () => {
       [adminId],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    await pool.query(
-      `DELETE FROM pipeline_stages WHERE name = ANY($1::text[]) AND is_fixed = false`,
-      [DEMO_PIPELINE_STAGE_NAMES],
-    );
+    // Remove the demo pipeline — stages cascade via ON DELETE CASCADE (MINCRM-408)
+    await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
+      DEMO_PIPELINE_NAME,
+    ]);
     await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = $1`, [adminId]);
     await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
   }
@@ -934,96 +942,123 @@ describe('removeDemo — currencies', () => {
   });
 });
 
-// ── seedDemo — pipeline stages (MINCRM-408) ───────────────────────────────────
+// ── seedDemo — pipeline (MINCRM-408) ─────────────────────────────────────────
 
-describe('seedDemo — pipeline stages', () => {
-  it('inserts Technical Validation and Contract Review stages', async () => {
+describe('seedDemo — pipeline', () => {
+  it('creates the Enterprise B2B pipeline as a non-default pipeline', async () => {
+    await seedDemo();
+
+    const pipeline = await pool.query<{ name: string; is_default: boolean }>(
+      `SELECT name, is_default FROM pipelines WHERE name = $1`,
+      [DEMO_PIPELINE_NAME],
+    );
+    expect(pipeline.rowCount).toBe(1);
+    expect(pipeline.rows[0].is_default).toBe(false);
+  });
+
+  it('Enterprise B2B pipeline has all 7 expected stages in sort order', async () => {
     await seedDemo();
 
     const stages = await pool.query<{ name: string; sort_order: number; probability: number }>(
       `SELECT name, sort_order, probability
        FROM pipeline_stages
-       WHERE name = ANY($1::text[])
+       WHERE pipeline_id = (SELECT id FROM pipelines WHERE name = $1)
        ORDER BY sort_order`,
-      [DEMO_PIPELINE_STAGE_NAMES],
+      [DEMO_PIPELINE_NAME],
     );
-    expect(stages.rowCount).toBe(2);
-
-    const tv = stages.rows[0];
-    expect(tv.name).toBe('Technical Validation');
-    expect(tv.sort_order).toBe(35);
-    expect(tv.probability).toBe(60);
-
-    const cr = stages.rows[1];
-    expect(cr.name).toBe('Contract Review');
-    expect(cr.sort_order).toBe(45);
-    expect(cr.probability).toBe(85);
+    expect(stages.rowCount).toBe(7);
+    expect(stages.rows.map((r) => r.name)).toEqual(DEMO_PIPELINE_STAGE_NAMES);
   });
 
-  it('pipeline has 8 total stages after seeding (6 default + 2 custom)', async () => {
+  it('Technical Validation has probability 60, Contract Review has probability 85', async () => {
     await seedDemo();
 
-    const defaultPipelineId = await pool.query<{ id: string }>(
-      `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
+    const stages = await pool.query<{ name: string; probability: number }>(
+      `SELECT name, probability
+       FROM pipeline_stages
+       WHERE pipeline_id = (SELECT id FROM pipelines WHERE name = $1)
+         AND name = ANY($2::text[])`,
+      [DEMO_PIPELINE_NAME, ['Technical Validation', 'Contract Review']],
     );
-    const stages = await pool.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM pipeline_stages WHERE pipeline_id = $1`,
-      [defaultPipelineId.rows[0].id],
-    );
-    expect(parseInt(stages.rows[0].count, 10)).toBe(8);
+    const byName = Object.fromEntries(stages.rows.map((r) => [r.name, r.probability]));
+    expect(byName['Technical Validation']).toBe(60);
+    expect(byName['Contract Review']).toBe(85);
   });
 
-  it('custom stages are not is_terminal and not is_fixed', async () => {
+  it('Enterprise B2B stages are not is_fixed', async () => {
     await seedDemo();
 
-    const stages = await pool.query<{ is_terminal: boolean; is_fixed: boolean }>(
-      `SELECT is_terminal, is_fixed FROM pipeline_stages WHERE name = ANY($1::text[])`,
-      [DEMO_PIPELINE_STAGE_NAMES],
+    const stages = await pool.query<{ is_fixed: boolean }>(
+      `SELECT is_fixed FROM pipeline_stages
+       WHERE pipeline_id = (SELECT id FROM pipelines WHERE name = $1)`,
+      [DEMO_PIPELINE_NAME],
     );
-    expect(stages.rows.every((r) => r.is_terminal === false)).toBe(true);
     expect(stages.rows.every((r) => r.is_fixed === false)).toBe(true);
   });
 
-  it('Technical Validation and Contract Review stages each have at least one deal', async () => {
+  it('deals on Technical Validation and Contract Review are linked to the Enterprise B2B pipeline', async () => {
     await seedDemo();
 
-    for (const stageName of DEMO_PIPELINE_STAGE_NAMES) {
+    for (const stageName of ['Technical Validation', 'Contract Review']) {
       const deals = await pool.query<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM deals WHERE stage = $1 AND is_demo = true`,
-        [stageName],
+        `SELECT COUNT(*) AS count
+         FROM deals
+         WHERE stage = $1 AND is_demo = true
+           AND pipeline_id = (SELECT id FROM pipelines WHERE name = $2)`,
+        [stageName, DEMO_PIPELINE_NAME],
       );
       expect(parseInt(deals.rows[0].count, 10)).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('is idempotent — seeding twice produces no duplicate stages', async () => {
+  it('default pipeline still has only 6 stages after seeding', async () => {
+    await seedDemo();
+
+    const stages = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM pipeline_stages WHERE pipeline_id = (SELECT id FROM pipelines WHERE is_default = true)`,
+    );
+    expect(parseInt(stages.rows[0].count, 10)).toBe(6);
+  });
+
+  it('is idempotent — seeding twice produces exactly one Enterprise B2B pipeline', async () => {
     await seedDemo();
     await removeDemo();
     await seedDemo();
 
-    const stages = await pool.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM pipeline_stages WHERE name = ANY($1::text[])`,
-      [DEMO_PIPELINE_STAGE_NAMES],
+    const pipelines = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM pipelines WHERE name = $1`,
+      [DEMO_PIPELINE_NAME],
     );
-    expect(parseInt(stages.rows[0].count, 10)).toBe(2);
+    expect(parseInt(pipelines.rows[0].count, 10)).toBe(1);
   });
 });
 
-// ── removeDemo — pipeline stages (MINCRM-408) ────────────────────────────────
+// ── removeDemo — pipeline (MINCRM-408) ───────────────────────────────────────
 
-describe('removeDemo — pipeline stages', () => {
-  it('removes custom demo stages after removeDemo', async () => {
+describe('removeDemo — pipeline', () => {
+  it('removes the Enterprise B2B pipeline after removeDemo', async () => {
+    await seedDemo();
+    await removeDemo();
+
+    const pipeline = await pool.query(`SELECT id FROM pipelines WHERE name = $1`, [
+      DEMO_PIPELINE_NAME,
+    ]);
+    expect(pipeline.rowCount).toBe(0);
+  });
+
+  it('Enterprise B2B stages are removed via cascade after removeDemo', async () => {
     await seedDemo();
     await removeDemo();
 
     const stages = await pool.query(
-      `SELECT name FROM pipeline_stages WHERE name = ANY($1::text[])`,
+      `SELECT name FROM pipeline_stages WHERE name = ANY($1::text[])
+         AND pipeline_id NOT IN (SELECT id FROM pipelines WHERE is_default = true)`,
       [DEMO_PIPELINE_STAGE_NAMES],
     );
     expect(stages.rowCount).toBe(0);
   });
 
-  it('default six stages remain intact after removeDemo', async () => {
+  it('default pipeline and its six stages remain intact after removeDemo', async () => {
     const DEFAULT_STAGE_NAMES = [
       'Prospecting',
       'Qualification',
@@ -1036,18 +1071,21 @@ describe('removeDemo — pipeline stages', () => {
     await removeDemo();
 
     const stages = await pool.query<{ name: string }>(
-      `SELECT name FROM pipeline_stages WHERE name = ANY($1::text[])`,
-      [DEFAULT_STAGE_NAMES],
+      `SELECT name FROM pipeline_stages
+       WHERE pipeline_id = (SELECT id FROM pipelines WHERE is_default = true)`,
     );
     expect(stages.rowCount).toBe(6);
+    expect(stages.rows.map((r) => r.name).sort()).toEqual([...DEFAULT_STAGE_NAMES].sort());
   });
 
-  it('Closed Won and Closed Lost remain is_fixed = true after removeDemo', async () => {
+  it('Closed Won and Closed Lost in the default pipeline remain is_fixed = true', async () => {
     await seedDemo();
     await removeDemo();
 
-    const fixed = await pool.query<{ name: string; is_fixed: boolean }>(
-      `SELECT name, is_fixed FROM pipeline_stages WHERE name IN ('Closed Won', 'Closed Lost')`,
+    const fixed = await pool.query<{ is_fixed: boolean }>(
+      `SELECT is_fixed FROM pipeline_stages
+       WHERE name IN ('Closed Won', 'Closed Lost')
+         AND pipeline_id = (SELECT id FROM pipelines WHERE is_default = true)`,
     );
     expect(fixed.rowCount).toBe(2);
     expect(fixed.rows.every((r) => r.is_fixed === true)).toBe(true);

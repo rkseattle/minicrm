@@ -20,6 +20,7 @@ const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', n
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
   'name',
   'stage',
+  'pipeline_id',
   'value',
   'currency',
   'close_date',
