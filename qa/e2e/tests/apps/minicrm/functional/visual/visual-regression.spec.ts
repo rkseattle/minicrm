@@ -86,7 +86,6 @@ import {
   deactivateUser,
 } from '@behaviors/minicrm/users.behaviors.js';
 import type { EphemeralUserCredentials } from '@apps/minicrm/helpers.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
 
 // Each test uses a unique browser login but shares one ephemeral admin per
 // worker — no shared storageState. (MINCRM-415, MINCRM-416)
@@ -106,7 +105,6 @@ test.setTimeout(60_000);
 // ---------------------------------------------------------------------------
 
 let sharedAdmin: EphemeralUserCredentials;
-let sharedAdminRestClient: RestClient;
 
 test.beforeAll(async ({ restClient }) => {
   await loginAsAdmin(restClient);
@@ -120,13 +118,14 @@ test.beforeAll(async ({ restClient }) => {
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
   sharedAdmin = { userId: user.id, email, password };
-  sharedAdminRestClient = restClient;
 });
 
-test.afterAll(async () => {
-  if (sharedAdmin && sharedAdminRestClient) {
-    await loginAsAdmin(sharedAdminRestClient);
-    await deactivateUser(sharedAdminRestClient, sharedAdmin.userId);
+// afterAll receives its own restClient fixture — the one captured in beforeAll
+// cannot be reused across hook boundaries in Playwright. (MINCRM-416)
+test.afterAll(async ({ restClient }) => {
+  if (sharedAdmin) {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, sharedAdmin.userId);
   }
 });
 
