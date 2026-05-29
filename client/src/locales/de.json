@@ -431,7 +431,11 @@
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "Wahrscheinlichkeit muss eine ganze Zahl zwischen 0 und 100 sein",
     "currencyLabel": "Währung",
-    "pipelineSelector": "Pipeline"
+    "pipelineSelector": "Pipeline",
+    "pipelineLabel": "Pipeline",
+    "pipelineLoading": "Pipelines werden geladen…",
+    "pipelineDefault": "Standard",
+    "stagePlaceholder": "— Phase auswählen —"
   },
   "pipeline": {
     "pageTitle": "Pipeline-Board",

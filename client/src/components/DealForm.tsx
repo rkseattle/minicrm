@@ -15,6 +15,7 @@ import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import { SUPPORTED_CURRENCIES } from '@shared/schemas/settingsSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
+import { usePipelines } from '@/hooks/usePipelines.js';
 import { getDefaultCurrency, DEFAULT_CURRENCY_QUERY_KEY } from '@/api/settings.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
@@ -23,6 +24,8 @@ import type { ActiveUser } from '@/api/users.js';
 /** Form field values managed by this component */
 export interface DealFormValues {
   name: string;
+  /** UUID of the pipeline this deal belongs to (MINCRM-408) */
+  pipeline_id: string;
   stage: string;
   value: string;
   /** ISO 4217 currency code for the deal value (MINCRM-189) */
@@ -79,9 +82,15 @@ interface DealFormProps {
   triggerRef?: React.RefObject<HTMLElement | null>;
   /**
    * UUID of the pipeline to scope the stage selector to (MINCRM-397).
+   * Used by the create form (board context). In edit mode the pipeline comes from initialValues.
    * When omitted, defaults to the default pipeline's stages.
    */
   pipelineId?: string;
+  /**
+   * When true, renders a pipeline selector above the stage selector.
+   * Used by DealDetailPage to allow moving a deal to a different pipeline. (MINCRM-408)
+   */
+  showPipelineSelector?: boolean;
 }
 
 /**
@@ -97,6 +106,7 @@ function buildInitialState(
 ): DealFormValues {
   return {
     name: initial?.name ?? '',
+    pipeline_id: initial?.pipeline_id ?? '',
     stage: initial?.stage ?? PIPELINE_STAGES[0], // fallback; overridden once live stages load
     value: initial?.value ?? '',
     currency: initial?.currency ?? defaultCurrency,
@@ -124,9 +134,10 @@ export default function DealForm({
   error,
   triggerRef,
   pipelineId,
+  showPipelineSelector = false,
 }: DealFormProps) {
   const { t } = useTranslation();
-  const { stageNames, terminalStageNames, stages } = usePipelineStages(pipelineId);
+  const { pipelines } = usePipelines();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const { data: defaultCurrencyData } = useQuery({
@@ -152,6 +163,11 @@ export default function DealForm({
   const activeCurrency = currencyTouched ? formData.currency : defaultCurrency;
   const [probabilityError, setProbabilityError] = useState<string | null>(null);
 
+  // The active pipeline: formData.pipeline_id when set (edit mode), otherwise the prop (create mode),
+  // otherwise undefined (usePipelineStages falls back to the default pipeline). (MINCRM-408)
+  const activePipelineId = formData.pipeline_id || pipelineId || undefined;
+  const { stageNames, terminalStageNames, stages } = usePipelineStages(activePipelineId);
+
   // Move focus to the first input when the form mounts (WCAG 2.4.3)
   useEffect(() => {
     firstInputRef.current?.focus();
@@ -171,6 +187,11 @@ export default function DealForm({
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
     const { name, value } = event.target;
     if (name === 'currency') setCurrencyTouched(true);
+    if (name === 'pipeline_id') {
+      // Clear stage when the pipeline changes — stage names differ across pipelines. (MINCRM-408)
+      setFormData((previous) => ({ ...previous, pipeline_id: value, stage: '' }));
+      return;
+    }
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
@@ -207,6 +228,28 @@ export default function DealForm({
           disabled={isSubmitting}
         />
 
+        {/* Pipeline selector — edit mode only (MINCRM-408) */}
+        {showPipelineSelector && (
+          <Select
+            id="deal-pipeline"
+            data-testid="deal-pipeline-select"
+            name="pipeline_id"
+            label={t('deals.pipelineLabel')}
+            value={formData.pipeline_id}
+            onChange={handleSelectChange}
+            disabled={isSubmitting}
+            required
+          >
+            {pipelines.length === 0 && <option value="">{t('deals.pipelineLoading')}</option>}
+            {pipelines.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.is_default ? ` (${t('deals.pipelineDefault')})` : ''}
+              </option>
+            ))}
+          </Select>
+        )}
+
         <Select
           id="deal-stage"
           data-testid="deal-stage-select"
@@ -215,15 +258,22 @@ export default function DealForm({
           value={formData.stage}
           onChange={(e) => {
             const selected = e.target.value;
+            if (!selected) return; // ignore the placeholder option
             if (onCloseRequested && terminalStageNames.includes(selected)) {
               onCloseRequested(selected, formData);
             } else {
               handleSelectChange(e);
             }
           }}
-          disabled={isSubmitting}
+          disabled={isSubmitting || (showPipelineSelector && !formData.pipeline_id)}
           required
         >
+          {/* Placeholder shown after pipeline change until user picks a stage */}
+          {formData.stage === '' && (
+            <option value="" disabled>
+              {t('deals.stagePlaceholder')}
+            </option>
+          )}
           {stageNames.map((stage) => (
             <option key={stage} value={stage}>
               {getStageDisplayName(stage, t)}

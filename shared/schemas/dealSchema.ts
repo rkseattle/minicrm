@@ -78,6 +78,8 @@ export const updateDealSchema = createDealSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
     loss_reason: z.string().trim().nullable().optional(),
+    /** Moves the deal to a different pipeline; stage must also be provided and valid in the new pipeline (MINCRM-408) */
+    pipeline_id: z.string().uuid('Pipeline must be a valid UUID').optional(),
   })
   .partial()
   .extend({

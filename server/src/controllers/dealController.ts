@@ -18,6 +18,7 @@ import {
   DEAL_SORT_COLUMNS,
 } from '../services/dealService.js';
 import { getStageNames, getTerminalStageNames } from '../services/pipelineStageService.js';
+import { findPipelineById } from '../services/pipelineService.js';
 import { findContactById } from '../services/contactService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
@@ -171,9 +172,29 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Validate stage against live pipeline_stages for this deal's pipeline (MINCRM-180, MINCRM-397)
+  // When pipeline_id is changing, validate the target pipeline exists (MINCRM-408)
+  if (parsed.data.pipeline_id !== undefined && parsed.data.pipeline_id !== existing.pipeline_id) {
+    const targetPipeline = await findPipelineById(parsed.data.pipeline_id);
+    if (!targetPipeline) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Pipeline not found' },
+      });
+      return;
+    }
+    // Stage is required when changing pipeline — the current stage may not exist in the new pipeline
+    if (parsed.data.stage === undefined) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Stage is required when changing pipeline' },
+      });
+      return;
+    }
+  }
+
+  // Validate stage against the target pipeline (incoming pipeline_id if changing, existing otherwise).
+  // (MINCRM-180, MINCRM-397, MINCRM-408)
+  const effectivePipelineId = parsed.data.pipeline_id ?? existing.pipeline_id;
   if (parsed.data.stage !== undefined) {
-    const validStages = await getStageNames(existing.pipeline_id);
+    const validStages = await getStageNames(effectivePipelineId);
     if (!validStages.includes(parsed.data.stage)) {
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
@@ -184,12 +205,12 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 
   // MINCRM-121: reject a future close_date even when stage is not in the payload —
   // use existing.stage to determine if the deal is already in a terminal stage.
-  // Use live terminal stage list so custom terminal stages are respected (MINCRM-180, MINCRM-397).
+  // Use live terminal stage list so custom terminal stages are respected (MINCRM-180, MINCRM-397, MINCRM-408).
   if (parsed.data.close_date) {
-    const effectiveStage = parsed.data.stage ?? existing.stage;
+    const stageForTerminalCheck = parsed.data.stage ?? existing.stage;
     const today = new Date().toISOString().split('T')[0];
-    const terminalStages = await getTerminalStageNames(existing.pipeline_id);
-    if (terminalStages.includes(effectiveStage) && parsed.data.close_date > today) {
+    const terminalStages = await getTerminalStageNames(effectivePipelineId);
+    if (terminalStages.includes(stageForTerminalCheck) && parsed.data.close_date > today) {
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'Close date cannot be in the future' },
       });

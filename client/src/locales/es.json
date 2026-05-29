@@ -431,7 +431,11 @@
     "probabilityPct": "{{pct}} %",
     "probabilityInvalid": "La probabilidad debe ser un número entero entre 0 y 100",
     "currencyLabel": "Moneda",
-    "pipelineSelector": "Pipeline"
+    "pipelineSelector": "Pipeline",
+    "pipelineLabel": "Pipeline",
+    "pipelineLoading": "Cargando pipelines…",
+    "pipelineDefault": "predeterminado",
+    "stagePlaceholder": "— Seleccionar etapa —"
   },
   "pipeline": {
     "pageTitle": "Panel de canal",

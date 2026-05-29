@@ -431,7 +431,11 @@
     "probabilityPct": "{{pct}}%",
     "probabilityInvalid": "Probability must be a whole number between 0 and 100",
     "currencyLabel": "Currency",
-    "pipelineSelector": "Pipeline"
+    "pipelineSelector": "Pipeline",
+    "pipelineLabel": "Pipeline",
+    "pipelineLoading": "Loading pipelines…",
+    "pipelineDefault": "default",
+    "stagePlaceholder": "— Select a stage —"
   },
   "pipeline": {
     "pageTitle": "Pipeline Board",

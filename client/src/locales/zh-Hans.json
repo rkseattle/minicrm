@@ -431,7 +431,11 @@
     "probabilityPct": "{{pct}}%",
     "probabilityInvalid": "概率必须是 0 到 100 之间的整数",
     "currencyLabel": "货币",
-    "pipelineSelector": "管道"
+    "pipelineSelector": "管道",
+    "pipelineLabel": "管道",
+    "pipelineLoading": "正在加载管道…",
+    "pipelineDefault": "默认",
+    "stagePlaceholder": "— 选择阶段 —"
   },
   "pipeline": {
     "pageTitle": "管道看板",

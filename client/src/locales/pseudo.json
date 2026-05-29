@@ -428,7 +428,11 @@
     "probabilityPct": "[{{pct}}%~~~]",
     "probabilityInvalid": "[Pröbäbïlïty müŝt bë ä whölë ñümbër bëtwëëñ 0 äñd 100~~~~~~~~~~~~~~~~]",
     "currencyLabel": "[Ĉürrëñĉy~~~]",
-    "pipelineSelector": "[Ƥïƥéłïñé]"
+    "pipelineSelector": "[Ƥïƥéłïñé]",
+    "pipelineLabel": "[Ƥïƥéłïñé]",
+    "pipelineLoading": "[Łöädïñg ƥïƥéłïñëŝ…~~]",
+    "pipelineDefault": "[dëfäült~~]",
+    "stagePlaceholder": "[— Ŝëłëĉt ä ŝtägë —~~~]"
   },
   "pipeline": {
     "pageTitle": "[Pïpëlïñë Böärd~~~~~]",

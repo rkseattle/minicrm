@@ -124,6 +124,11 @@ export default function DealDetailPage() {
       updateDeal(id!, {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
+        // Include pipeline_id only when it differs from the current deal's pipeline (MINCRM-408)
+        pipeline_id:
+          values.pipeline_id && values.pipeline_id !== deal?.pipeline_id
+            ? values.pipeline_id
+            : undefined,
         value: values.value !== '' ? parseFloat(values.value) : null,
         currency: values.currency ? (values.currency as SupportedCurrency) : undefined,
         close_date: values.close_date || null,
@@ -370,6 +375,7 @@ export default function DealDetailPage() {
                 initialValues={deal}
                 accounts={accounts}
                 users={activeUsers}
+                showPipelineSelector
                 onCloseRequested={(stage, formValues) => {
                   setCloseError(null);
                   setPendingClose({ stage, formValues });
