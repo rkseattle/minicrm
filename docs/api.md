@@ -529,7 +529,7 @@ DELETE /api/:entityType/:entityId/notes/:noteId  — delete (author or admin onl
 
 `entityType` is one of: `contacts`, `accounts`, `deals`, `leads`.
 
-#### Create a note
+### Create a note
 
 ```
 POST /api/contacts/<uuid>/notes
@@ -590,7 +590,7 @@ POST   /api/users/:id/set-password     — set a user's password (forces change 
 POST   /api/users/:id/reset-onboarding — reset the user's onboarding checklist
 ```
 
-#### Invite a user
+### Invite a user
 
 ```
 POST /api/users/invite

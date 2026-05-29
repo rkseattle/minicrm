@@ -172,7 +172,7 @@ For `*.updated` and `deal.stage_changed` events a `previous_data` key is also pr
 }
 ```
 
-#### `contact.created` example
+### `contact.created` example
 
 ```json
 {
@@ -262,7 +262,7 @@ failure and triggers the retry schedule:
 After 5 failed attempts the subscription is automatically set to `failed` status and
 no further deliveries are made.
 
-#### Receiver requirements
+### Receiver requirements
 
 - Respond with a `2xx` status code as quickly as possible — ideally before doing any
   processing. Enqueue the payload for async handling if your processing takes time.
