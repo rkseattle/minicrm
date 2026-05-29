@@ -30,8 +30,8 @@ const DEMO_CUSTOM_FIELD_NAMES = [
   'Contract Signed Date',
   'Estimated ARR',
 ];
-// Derived from DEMO_CURRENCIES in demoService.ts
-const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD'];
+// Derived from DEMO_CURRENCIES in demoService.ts (JPY added in MINCRM-408 for i18n demo)
+const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD', 'JPY'];
 // Derived from DEMO_PIPELINE_NAME / DEMO_PIPELINE_STAGES in demoService.ts (MINCRM-408)
 const DEMO_PIPELINE_NAME = 'Enterprise B2B';
 const DEMO_PIPELINE_STAGE_NAMES = [
@@ -345,7 +345,7 @@ describe('seedDemo', () => {
     expect(mia.rows[0]?.linkedin_url).toBe('https://www.linkedin.com/in/mia-thompson-demo');
   });
 
-  it('inserts 2 contact_addresses rows with is_default = true', async () => {
+  it('inserts 5 contact_addresses rows with is_default = true', async () => {
     await seedDemo();
 
     const addresses = await pool.query(
@@ -354,7 +354,7 @@ describe('seedDemo', () => {
        JOIN contacts c ON ca.contact_id = c.id
        WHERE c.is_demo = true`,
     );
-    expect(addresses.rowCount).toBe(2);
+    expect(addresses.rowCount).toBe(5);
     expect(addresses.rows.every((r: { is_default: boolean }) => r.is_default)).toBe(true);
   });
 
@@ -887,14 +887,14 @@ describe('removeDemo — webhooks', () => {
 // ── seedDemo — currencies ─────────────────────────────────────────────────────
 
 describe('seedDemo — currencies', () => {
-  it('inserts GBP, EUR, and CAD exchange rates', async () => {
+  it('inserts GBP, EUR, CAD, and JPY exchange rates', async () => {
     await seedDemo();
 
     const currencies = await pool.query<{ code: string; rate_to_home: string }>(
       `SELECT code, rate_to_home FROM currencies WHERE code = ANY($1::text[]) ORDER BY code`,
       [DEMO_CURRENCY_CODES],
     );
-    expect(currencies.rowCount).toBe(3);
+    expect(currencies.rowCount).toBe(4);
 
     const byCode = Object.fromEntries(
       currencies.rows.map((r) => [r.code, parseFloat(r.rate_to_home)]),
@@ -902,6 +902,7 @@ describe('seedDemo — currencies', () => {
     expect(byCode['GBP']).toBeCloseTo(1.27, 2);
     expect(byCode['EUR']).toBeCloseTo(1.09, 2);
     expect(byCode['CAD']).toBeCloseTo(0.73, 2);
+    expect(byCode['JPY']).toBeCloseTo(0.0067, 4);
   });
 
   it('inserted currencies are not the home currency', async () => {
@@ -923,7 +924,7 @@ describe('seedDemo — currencies', () => {
       `SELECT COUNT(*) AS count FROM currencies WHERE code = ANY($1::text[])`,
       [DEMO_CURRENCY_CODES],
     );
-    expect(parseInt(currencies.rows[0].count, 10)).toBe(3);
+    expect(parseInt(currencies.rows[0].count, 10)).toBe(4);
   });
 });
 

@@ -35,7 +35,11 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
+// Contacts span multiple locales to demonstrate i18n/l10n support (MINCRM-408).
+// Acme contacts (indices 0–9): US/EN base with French and Japanese contacts woven in.
+// Globex contacts (indices 10–19): US/EN base with German, Korean, and Chinese contacts.
 const DEMO_CONTACTS = [
+  // ── Acme Corporation contacts (indices 0–9) ───────────────────────────────
   {
     first_name: 'Alice',
     last_name: 'Chen',
@@ -69,37 +73,41 @@ const DEMO_CONTACTS = [
     title: 'Procurement Manager',
     department: 'Operations',
   },
+  // French contact — Paris office (index 4)
   {
-    first_name: 'Eva',
-    last_name: 'Patel',
-    email: 'eva.patel.demo@acme-demo.example.com',
-    phone: '+1-555-0105',
-    title: 'CTO',
-    department: 'Technology',
-  },
-  {
-    first_name: 'Frank',
-    last_name: 'Nguyen',
-    email: 'frank.nguyen.demo@acme-demo.example.com',
-    phone: '+1-555-0106',
-    title: 'Sales Manager',
+    first_name: 'Hélène',
+    last_name: 'Dubois',
+    email: 'helene.dubois.demo@acme-demo.example.com',
+    phone: '+33 1 42 60 11 22',
+    title: 'Directrice Commerciale',
     department: 'Sales',
   },
+  // French contact (index 5)
   {
-    first_name: 'Grace',
-    last_name: 'Lee',
-    email: 'grace.lee.demo@acme-demo.example.com',
-    phone: '+1-555-0107',
-    title: 'Product Manager',
-    department: 'Product',
+    first_name: 'François',
+    last_name: 'Lefebvre',
+    email: 'francois.lefebvre.demo@acme-demo.example.com',
+    phone: '+33 1 42 60 33 44',
+    title: 'Responsable Technique',
+    department: 'Engineering',
   },
+  // Japanese contact — Tokyo office (index 6)
   {
-    first_name: 'Henry',
-    last_name: 'Brown',
-    email: 'henry.brown.demo@acme-demo.example.com',
-    phone: '+1-555-0108',
-    title: 'IT Director',
-    department: 'IT',
+    first_name: '健司',
+    last_name: '渡辺',
+    email: 'kenji.watanabe.demo@acme-demo.example.com',
+    phone: '+81 3-5678-9012',
+    title: 'アカウントマネージャー',
+    department: 'Sales',
+  },
+  // Japanese contact (index 7)
+  {
+    first_name: '由紀',
+    last_name: '田中',
+    email: 'yuki.tanaka.demo@acme-demo.example.com',
+    phone: '+81 3-5678-3456',
+    title: 'プロダクトマネージャー',
+    department: 'Product',
   },
   {
     first_name: 'Iris',
@@ -119,6 +127,7 @@ const DEMO_CONTACTS = [
     linkedin_url: 'https://www.linkedin.com/in/jack-wilson-demo',
     twitter_x_url: 'https://twitter.com/jackwilsondemo',
   },
+  // ── Globex Industries contacts (indices 10–19) ────────────────────────────
   {
     first_name: 'Karen',
     last_name: 'Taylor',
@@ -144,36 +153,40 @@ const DEMO_CONTACTS = [
     department: 'Sales',
     linkedin_url: 'https://www.linkedin.com/in/mia-thompson-demo',
   },
+  // German contact — Berlin office (index 13)
   {
-    first_name: 'Noah',
-    last_name: 'Garcia',
-    email: 'noah.garcia.demo@globex-demo.example.com',
-    phone: '+1-555-0204',
-    title: 'COO',
+    first_name: 'Lars',
+    last_name: 'Müller',
+    email: 'lars.mueller.demo@globex-demo.example.com',
+    phone: '+49 30 20191234',
+    title: 'Betriebsleiter',
     department: 'Operations',
   },
+  // German contact (index 14)
   {
-    first_name: 'Olivia',
-    last_name: 'Miller',
-    email: 'olivia.miller.demo@globex-demo.example.com',
-    phone: '+1-555-0205',
-    title: 'CFO',
+    first_name: 'Ingrid',
+    last_name: 'Hoffmann',
+    email: 'ingrid.hoffmann.demo@globex-demo.example.com',
+    phone: '+49 30 20195678',
+    title: 'Leiterin Finanzen',
     department: 'Finance',
   },
+  // Korean contact (index 15)
   {
-    first_name: 'Paul',
-    last_name: 'Moore',
-    email: 'paul.moore.demo@globex-demo.example.com',
-    phone: '+1-555-0206',
-    title: 'IT Manager',
+    first_name: '준서',
+    last_name: '박',
+    email: 'junseo.park.demo@globex-demo.example.com',
+    phone: '+82 2-3456-7890',
+    title: 'IT 관리자',
     department: 'IT',
   },
+  // Chinese contact (index 16)
   {
-    first_name: 'Quinn',
-    last_name: 'Jackson',
-    email: 'quinn.jackson.demo@globex-demo.example.com',
-    phone: '+1-555-0207',
-    title: 'CTO',
+    first_name: '伟',
+    last_name: '张',
+    email: 'wei.zhang.demo@globex-demo.example.com',
+    phone: '+86 10 6789 1234',
+    title: '首席技术官',
     department: 'Technology',
   },
   {
@@ -203,11 +216,10 @@ const DEMO_CONTACTS = [
   },
 ];
 
-// Contact index references for contact_addresses (MINCRM-206)
-// Index 0 = Alice Chen (Acme), Index 10 = Karen Taylor (Globex)
+// Contact addresses spanning multiple countries to demonstrate i18n address formatting (MINCRM-408).
 const DEMO_CONTACT_ADDRESSES = [
   {
-    contactIndex: 0,
+    contactIndex: 0, // Alice Chen — San Francisco
     label: 'Work',
     address_line1: '100 Technology Drive',
     city: 'San Francisco',
@@ -217,13 +229,43 @@ const DEMO_CONTACT_ADDRESSES = [
     is_default: true,
   },
   {
-    contactIndex: 10,
+    contactIndex: 4, // Hélène Dubois — Paris
+    label: 'Bureau',
+    address_line1: '14 Rue de la Paix',
+    city: 'Paris',
+    state_region: 'Île-de-France',
+    postal_code: '75001',
+    country: 'France',
+    is_default: true,
+  },
+  {
+    contactIndex: 6, // 渡辺 健司 — Tokyo
+    label: '勤務先',
+    address_line1: '東京都港区六本木1-6-1',
+    city: '東京都',
+    state_region: '東京',
+    postal_code: '106-0032',
+    country: '日本',
+    is_default: true,
+  },
+  {
+    contactIndex: 10, // Karen Taylor — Chicago
     label: 'Work',
     address_line1: '500 Industrial Way',
     city: 'Chicago',
     state_region: 'IL',
     postal_code: '60601',
     country: 'USA',
+    is_default: true,
+  },
+  {
+    contactIndex: 13, // Lars Müller — Berlin
+    label: 'Büro',
+    address_line1: 'Unter den Linden 42',
+    city: 'Berlin',
+    state_region: 'Berlin',
+    postal_code: '10117',
+    country: 'Deutschland',
     is_default: true,
   },
 ];
@@ -546,7 +588,7 @@ const DEMO_ACTIVITIES: Array<{
   },
 ];
 
-// Demo leads showcasing the full status lifecycle and source variety (MINCRM-206)
+// Demo leads showcasing the full status lifecycle, source variety, and international names (MINCRM-206, MINCRM-408)
 const DEMO_LEADS = [
   {
     first_name: 'Tyler',
@@ -557,19 +599,21 @@ const DEMO_LEADS = [
     status: 'New',
   },
   {
-    first_name: 'Sandra',
-    last_name: 'Okafor',
-    email: 'sandra.okafor.demo@meridian-demo.example.com',
-    company_name: 'Meridian Labs',
-    lead_source: 'Referral',
+    // French lead — European conference inbound
+    first_name: 'Marie-Claire',
+    last_name: 'Rousseau',
+    email: 'marie-claire.rousseau.demo@meridian-demo.example.com',
+    company_name: 'Méridian Consulting',
+    lead_source: 'Trade Show',
     status: 'Contacted',
   },
   {
-    first_name: 'Derek',
-    last_name: 'Walsh',
-    email: 'derek.walsh.demo@vertex-demo.example.com',
-    company_name: 'Vertex Solutions',
-    lead_source: 'Trade Show',
+    // Swedish lead — Nordic cold outreach
+    first_name: 'Björn',
+    last_name: 'Lindqvist',
+    email: 'bjorn.lindqvist.demo@vertex-demo.example.com',
+    company_name: 'Vertex Solutions AB',
+    lead_source: 'Cold Outreach',
     status: 'Qualified',
   },
   {
@@ -691,11 +735,13 @@ const DEMO_REP = {
   role: 'rep' as const,
 };
 
+// Rep accounts include international companies to demonstrate cross-locale data (MINCRM-408).
 const DEMO_REP_ACCOUNTS = [
   {
-    name: 'Stellartech Corp',
+    // Japanese technology company — demonstrates CJK account names and ¥ currency context
+    name: 'シナプス・テクノロジーズ株式会社',
     industry: 'Technology',
-    website: 'https://www.stellartech-demo.example.com',
+    website: 'https://www.synapse-tech-demo.example.com',
     employee_range: '51-200',
     revenue_range: '10M-50M',
     account_type: 'Prospect',
@@ -709,41 +755,45 @@ const DEMO_REP_ACCOUNTS = [
     account_type: 'Customer',
   },
   {
-    name: 'Clearwater Consulting',
+    // German consulting firm — demonstrates German-language account names and € currency context
+    name: 'Müller & Partner GmbH',
     industry: 'Professional Services',
-    website: 'https://www.clearwater-demo.example.com',
+    website: 'https://www.mueller-partner-demo.example.com',
     employee_range: '11-50',
     revenue_range: '1M-10M',
     account_type: 'Prospect',
   },
 ];
 
+// Rep contacts span Japanese, English, and German locales (MINCRM-408).
 const DEMO_REP_CONTACTS = [
+  // ── シナプス・テクノロジーズ株式会社 contacts (indices 0–2) ────────────────
   {
-    first_name: 'Natalie',
-    last_name: 'Russo',
-    email: 'natalie.russo.demo@stellartech-demo.example.com',
-    phone: '+1-555-0301',
-    title: 'VP of Engineering',
+    first_name: '咲良',
+    last_name: '林',
+    email: 'sakura.hayashi.demo@synapse-tech-demo.example.com',
+    phone: '+81 3-6789-0123',
+    title: 'エンジニアリング VP',
     department: 'Engineering',
-    linkedin_url: 'https://www.linkedin.com/in/natalie-russo-demo',
+    linkedin_url: 'https://www.linkedin.com/in/sakura-hayashi-demo',
   },
   {
-    first_name: 'Omar',
-    last_name: 'Farouk',
-    email: 'omar.farouk.demo@stellartech-demo.example.com',
-    phone: '+1-555-0302',
-    title: 'CTO',
+    first_name: '寛',
+    last_name: '中村',
+    email: 'hiroshi.nakamura.demo@synapse-tech-demo.example.com',
+    phone: '+81 3-6789-4567',
+    title: '最高技術責任者',
     department: 'Technology',
   },
   {
-    first_name: 'Priscilla',
-    last_name: 'Vega',
-    email: 'priscilla.vega.demo@stellartech-demo.example.com',
-    phone: '+1-555-0303',
-    title: 'Head of Operations',
-    department: 'Operations',
+    first_name: '美咲',
+    last_name: '小林',
+    email: 'misaki.kobayashi.demo@synapse-tech-demo.example.com',
+    phone: '+81 3-6789-8901',
+    title: '営業本部長',
+    department: 'Sales',
   },
+  // ── Ironbridge Manufacturing contacts (indices 3–6) ───────────────────────
   {
     first_name: 'Raymond',
     last_name: 'Osei',
@@ -777,14 +827,15 @@ const DEMO_REP_CONTACTS = [
     title: 'IT Manager',
     department: 'IT',
   },
+  // ── Müller & Partner GmbH contact (index 7) ──────────────────────────────
   {
-    first_name: 'Victor',
-    last_name: 'Moreau',
-    email: 'victor.moreau.demo@clearwater-demo.example.com',
-    phone: '+1-555-0501',
-    title: 'Managing Partner',
+    first_name: 'Klaus',
+    last_name: 'Brenner',
+    email: 'klaus.brenner.demo@mueller-partner-demo.example.com',
+    phone: '+49 89 54321678',
+    title: 'Geschäftsführer',
     department: 'Executive',
-    linkedin_url: 'https://www.linkedin.com/in/victor-moreau-demo',
+    linkedin_url: 'https://www.linkedin.com/in/klaus-brenner-demo',
   },
 ];
 
@@ -792,9 +843,10 @@ const DEMO_REP_CONTACTS = [
 const DEMO_REP_DEALS = [
   // ── Default pipeline ──────────────────────────────────────────────────────
   {
-    name: 'Stellartech — Cloud Migration',
+    name: 'シナプス — クラウド移行',
     stage: 'Prospecting',
-    value: 75000,
+    value: 8500000, // ¥8.5M — demonstrates JPY formatting
+    currency: 'JPY' as const,
     close_date: futureMonths(5),
   },
   {
@@ -812,16 +864,18 @@ const DEMO_REP_DEALS = [
     loss_reason: 'Budget cut — project deferred to next fiscal year',
   },
   {
-    name: 'Clearwater — CRM Integration',
+    name: 'Müller & Partner — CRM-Einführung',
     stage: 'Qualification',
-    value: 24000,
+    value: 22000,
+    currency: 'EUR' as const,
     close_date: futureMonths(3),
   },
   // ── Enterprise B2B pipeline ───────────────────────────────────────────────
   {
-    name: 'Stellartech — DevOps Platform',
+    name: 'シナプス — DevOps プラットフォーム',
     stage: 'Technical Validation',
-    value: 52000,
+    value: 6200000, // ¥6.2M
+    currency: 'JPY' as const,
     close_date: futureMonths(2),
     pipeline: 'enterprise' as const,
   },
@@ -839,7 +893,7 @@ const DEMO_REP_ACTIVITIES: Array<{
 }> = [
   {
     type: 'Call',
-    subject: 'Intro call — Stellartech Cloud Migration',
+    subject: 'Intro call — シナプス cloud migration',
     notes: 'Good initial conversation. Budget confirmed for H2.',
     due_date: '2026-04-08',
     status: 'complete',
@@ -849,7 +903,7 @@ const DEMO_REP_ACTIVITIES: Array<{
   },
   {
     type: 'Email',
-    subject: 'DevOps platform proposal — Stellartech',
+    subject: 'DevOps platform proposal — シナプス',
     notes: null,
     due_date: '2026-04-17',
     status: 'complete',
@@ -879,7 +933,7 @@ const DEMO_REP_ACTIVITIES: Array<{
   },
   {
     type: 'Task',
-    subject: 'Send Clearwater CRM integration overview deck',
+    subject: 'Send Müller & Partner CRM overview deck',
     notes: null,
     // Overdue task — past due date
     due_date: relativeDate(-4),
@@ -890,7 +944,7 @@ const DEMO_REP_ACTIVITIES: Array<{
   },
   {
     type: 'Task',
-    subject: 'Schedule technical review — Stellartech DevOps',
+    subject: 'Schedule technical review — シナプス DevOps',
     notes: null,
     // Overdue task — past due date
     due_date: relativeDate(-2),
@@ -912,20 +966,23 @@ const DEMO_REP_ACTIVITIES: Array<{
   },
 ];
 
+// Rep leads include international names to reinforce i18n (MINCRM-408).
 const DEMO_REP_LEADS = [
   {
-    first_name: 'Beatrice',
-    last_name: 'Nakamura',
-    email: 'beatrice.nakamura.demo@lumina-demo.example.com',
-    company_name: 'Lumina Digital',
+    // French lead — inbound web inquiry
+    first_name: 'Amélie',
+    last_name: 'Fontaine',
+    email: 'amelie.fontaine.demo@lumina-demo.example.com',
+    company_name: 'Lumina Numérique',
     lead_source: 'Web',
     status: 'New',
   },
   {
-    first_name: 'Carlos',
-    last_name: 'Estrada',
-    email: 'carlos.estrada.demo@redrock-demo.example.com',
-    company_name: 'Red Rock Industries',
+    // Chinese lead — referral from existing customer
+    first_name: '伟',
+    last_name: '陈',
+    email: 'wei.chen.demo@redrock-demo.example.com',
+    company_name: '红岩工业有限公司',
     lead_source: 'Referral',
     status: 'Contacted',
   },
@@ -1201,6 +1258,7 @@ const DEMO_CURRENCIES: Array<{
   { code: 'GBP', name: 'British Pound Sterling', symbol: '£', rate_to_home: 1.27 },
   { code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 1.09 },
   { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$', rate_to_home: 0.73 },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥', rate_to_home: 0.0067 },
 ];
 
 const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
@@ -1694,18 +1752,20 @@ async function insertDemoData(
     const accountId = repAccountIds[repDealAccountMap[i]];
     const lossReason = (deal as { loss_reason?: string | null }).loss_reason ?? null;
     const probability = (deal as { probability?: number }).probability ?? null;
+    const currency = (deal as { currency?: string }).currency ?? 'USD';
     const pipelineId =
       (deal as { pipeline?: string }).pipeline === 'enterprise' ? demoPipelineId : null;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
-       VALUES ($1, $2, $3, $4, 'USD', $5, $6, $7, $8, $9, true)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
        RETURNING id`,
       [
         deal.name,
         deal.stage,
         deal.value,
         probability,
+        currency,
         deal.close_date,
         lossReason,
         accountId,
