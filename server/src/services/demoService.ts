@@ -1552,6 +1552,12 @@ async function insertDemoData(
   }
 
   // 5a. Demo pipeline + stages — must exist before deals reference them (MINCRM-408).
+  // Resolve the default pipeline ID so deals are explicitly linked (not left as NULL).
+  const defaultPipelineResult = await client.query<{ id: string }>(
+    `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
+  );
+  const defaultPipelineId = defaultPipelineResult.rows[0].id;
+
   // Create the "Enterprise B2B" pipeline if it doesn't exist, then seed its stages.
   // ON CONFLICT on lower(name) makes both inserts idempotent.
   await client.query(
@@ -1583,8 +1589,7 @@ async function insertDemoData(
   }
 
   // 5. Deals — Acme deals → account 0, Globex deals → account 1.
-  // pipeline: 'enterprise' fixtures are routed to demoPipelineId; others default to null
-  // (the server resolves null to the default pipeline). (MINCRM-408)
+  // pipeline: 'enterprise' → demoPipelineId; all others → defaultPipelineId. (MINCRM-408)
   const dealIds: string[] = [];
   for (const deal of DEMO_DEALS) {
     const accountId = deal.name.startsWith('Acme') ? accountIds[0] : accountIds[1];
@@ -1592,7 +1597,9 @@ async function insertDemoData(
     const probability = (deal as { probability?: number }).probability ?? null;
     const currency = (deal as { currency?: string }).currency ?? 'USD';
     const pipelineId =
-      (deal as { pipeline?: string }).pipeline === 'enterprise' ? demoPipelineId : null;
+      (deal as { pipeline?: string }).pipeline === 'enterprise'
+        ? demoPipelineId
+        : defaultPipelineId;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
@@ -1754,7 +1761,9 @@ async function insertDemoData(
     const probability = (deal as { probability?: number }).probability ?? null;
     const currency = (deal as { currency?: string }).currency ?? 'USD';
     const pipelineId =
-      (deal as { pipeline?: string }).pipeline === 'enterprise' ? demoPipelineId : null;
+      (deal as { pipeline?: string }).pipeline === 'enterprise'
+        ? demoPipelineId
+        : defaultPipelineId;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
