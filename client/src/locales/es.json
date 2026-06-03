@@ -36,7 +36,10 @@
     "submitButton": "Iniciar sesión",
     "submitting": "Iniciando sesión…",
     "forgotPassword": "¿Olvidaste tu contraseña?",
-    "sessionExpiredBanner": "Tu sesión ha expirado. Por favor, inicia sesión de nuevo."
+    "sessionExpiredBanner": "Tu sesión ha expirado. Por favor, inicia sesión de nuevo.",
+    "ssoButton": "Iniciar sesión con {{protocol}}",
+    "orDivider": "o",
+    "ssoError": "El inicio de sesión único falló. Inténtelo de nuevo o contacte a su administrador."
   },
   "forgotPassword": {
     "title": "Restablecer contraseña",
@@ -838,6 +841,24 @@
       "saveError": "Error al guardar. Inténtelo de nuevo.",
       "deleteSuccess": "Pipeline eliminada.",
       "deleteError": "Error al eliminar. Inténtelo de nuevo."
+    },
+    "sso": {
+      "sectionTitle": "Inicio de sesión único (SSO)",
+      "sectionHint": "Configure SAML 2.0 u OpenID Connect (OIDC) para permitir que los usuarios inicien sesión a través de su proveedor de identidad.",
+      "statusEnabled": "SSO habilitado — {{protocol}}",
+      "protocolLabel": "Protocolo",
+      "idpMetadataUrlLabel": "URL de metadatos del IdP",
+      "entityIdLabel": "ID de entidad SP",
+      "clientIdLabel": "ID de cliente",
+      "idpCertificateLabel": "Certificado del IdP (PEM)",
+      "idpCertificateHint": "Pegue el certificado X.509 de su proveedor de identidad.",
+      "certificateMasked": "Certificado guardado — ingrese un nuevo valor para reemplazarlo.",
+      "saveButton": "Guardar configuración SSO",
+      "saveSuccess": "Configuración SSO guardada.",
+      "saveError": "Error al guardar la configuración SSO.",
+      "disableButton": "Deshabilitar SSO",
+      "disableConfirmPrompt": "¿Eliminar las vinculaciones SSO de todos los usuarios?",
+      "disableConfirmButton": "Sí, deshabilitar SSO"
     }
   },
   "import": {

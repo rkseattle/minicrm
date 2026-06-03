@@ -201,6 +201,9 @@ describe('sanitizeUser', () => {
       mfa_secret: null,
       mfa_pending_secret: null,
       mfa_recovery_codes: [],
+      // SSO fields (MINCRM-399)
+      sso_provider: null,
+      sso_subject: null,
       created_at: new Date(),
       updated_at: new Date(),
     };

@@ -1290,6 +1290,38 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
+  /** Settings: GET /api/settings/sso/status — SSO disabled by default (MINCRM-399) */
+  http.get('/api/v1/settings/sso/status', () => {
+    return HttpResponse.json({ enabled: false, protocol: null });
+  }),
+
+  /** Settings: GET /api/settings/sso — not configured by default (MINCRM-399) */
+  http.get('/api/v1/settings/sso', () => {
+    return HttpResponse.json({ sso: null });
+  }),
+
+  /** Settings: PUT /api/settings/sso (MINCRM-399) */
+  http.put('/api/v1/settings/sso', async ({ request }) => {
+    const body = (await request.json()) as {
+      protocol: string;
+      idp_metadata_url: string;
+      entity_id: string;
+    };
+    return HttpResponse.json({
+      sso: {
+        protocol: body.protocol,
+        idp_metadata_url: body.idp_metadata_url,
+        entity_id: body.entity_id,
+        idp_certificate_set: false,
+      },
+    });
+  }),
+
+  /** Settings: DELETE /api/settings/sso (MINCRM-399) */
+  http.delete('/api/v1/settings/sso', () => {
+    return HttpResponse.json({ ok: true });
+  }),
+
   /** Settings: GET /api/settings/tags-restrict-creation (MINCRM-263) */
   http.get('/api/v1/settings/tags-restrict-creation', () => {
     return HttpResponse.json({ restricted: false });

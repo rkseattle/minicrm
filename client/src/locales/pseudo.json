@@ -36,7 +36,10 @@
     "submitButton": "[Ŝïgñ ïñ~~~]",
     "submitting": "[Ŝïgñïñg ïñ…~~~~]",
     "forgotPassword": "[Förgöt yöür päŝŝwörd?~~~~~~~]",
-    "sessionExpiredBanner": "[Yöür ŝëŝŝïöñ ħäŝ ëxpïrëd. Pléäŝë ŝïgñ ïñ ägäïñ.~~~~~~~~~~~~~]"
+    "sessionExpiredBanner": "[Yöür ŝëŝŝïöñ ħäŝ ëxpïrëd. Pléäŝë ŝïgñ ïñ ägäïñ.~~~~~~~~~~~~~]",
+    "ssoButton": "Sign in with {{protocol}}",
+    "orDivider": "or",
+    "ssoError": "Single sign-on failed. Please try again or contact your administrator."
   },
   "forgotPassword": {
     "title": "[Rëŝët yöür päŝŝwörd~~~~~~]",
@@ -710,6 +713,24 @@
       "saveError": "[Ƒàïłéð ţö šàṽé. Ƥłéàšé ţʀÿ àɠàïñ.]",
       "deleteSuccess": "[Ƥïƥéłïñé ðéłéţéð.]",
       "deleteError": "[Ƒàïłéð ţö ðéłéţé. Ƥłéàšé ţʀÿ àɠàïñ.]"
+    },
+    "sso": {
+      "sectionTitle": "Single Sign-On (SSO)",
+      "sectionHint": "Configure SAML 2.0 or OpenID Connect (OIDC) to let users log in via your identity provider. The IdP certificate is stored encrypted.",
+      "statusEnabled": "SSO enabled — {{protocol}}",
+      "protocolLabel": "Protocol",
+      "idpMetadataUrlLabel": "IdP Metadata URL",
+      "entityIdLabel": "SP Entity ID",
+      "clientIdLabel": "Client ID",
+      "idpCertificateLabel": "IdP Certificate (PEM)",
+      "idpCertificateHint": "Paste the X.509 certificate from your identity provider.",
+      "certificateMasked": "Certificate saved — enter a new value to replace it.",
+      "saveButton": "Save SSO Configuration",
+      "saveSuccess": "SSO configuration saved.",
+      "saveError": "Failed to save SSO configuration. Please try again.",
+      "disableButton": "Disable SSO",
+      "disableConfirmPrompt": "This will remove SSO bindings for all users. Continue?",
+      "disableConfirmButton": "Yes, disable SSO"
     }
   },
   "profileSettings": {

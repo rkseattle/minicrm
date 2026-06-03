@@ -41,6 +41,9 @@ export interface UserRow {
   mfa_secret: string | null;
   mfa_pending_secret: string | null;
   mfa_recovery_codes: string[];
+  // SSO fields (MINCRM-399)
+  sso_provider: 'saml' | 'oidc' | null;
+  sso_subject: string | null;
   created_at: Date;
   updated_at: Date;
 }

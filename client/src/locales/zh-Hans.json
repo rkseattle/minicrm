@@ -36,7 +36,10 @@
     "submitButton": "登录",
     "submitting": "登录中…",
     "forgotPassword": "忘记密码？",
-    "sessionExpiredBanner": "您的会话已过期，请重新登录。"
+    "sessionExpiredBanner": "您的会话已过期，请重新登录。",
+    "ssoButton": "使用 {{protocol}} 登录",
+    "orDivider": "或",
+    "ssoError": "单点登录失败，请重试或联系管理员。"
   },
   "forgotPassword": {
     "title": "重置密码",
@@ -838,6 +841,24 @@
       "saveError": "保存失败，请重试。",
       "deleteSuccess": "管道已删除。",
       "deleteError": "删除失败，请重试。"
+    },
+    "sso": {
+      "sectionTitle": "单点登录（SSO）",
+      "sectionHint": "配置 SAML 2.0 或 OpenID Connect (OIDC)，允许用户通过身份提供商登录。",
+      "statusEnabled": "SSO 已启用 — {{protocol}}",
+      "protocolLabel": "协议",
+      "idpMetadataUrlLabel": "IdP 元数据 URL",
+      "entityIdLabel": "SP 实体 ID",
+      "clientIdLabel": "客户端 ID",
+      "idpCertificateLabel": "IdP 证书 (PEM)",
+      "idpCertificateHint": "请粘贴身份提供商的 X.509 证书。",
+      "certificateMasked": "证书已保存 — 输入新值以替换。",
+      "saveButton": "保存 SSO 配置",
+      "saveSuccess": "SSO 配置已保存。",
+      "saveError": "SSO 配置保存失败。",
+      "disableButton": "禁用 SSO",
+      "disableConfirmPrompt": "将为所有用户删除 SSO 绑定？",
+      "disableConfirmButton": "是，禁用 SSO"
     }
   },
   "import": {

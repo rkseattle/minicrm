@@ -1019,4 +1019,123 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  // ── SSO locators (MINCRM-399) ─────────────────────────────────────────────
+
+  /** Returns a resolved locator for the SSO section panel. */
+  async ssoSectionLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-section' },
+          { type: 'css', value: '[data-testid="sso-section"]' },
+        ],
+        { intent: 'SSO configuration section on the integrations settings tab' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO protocol selector. */
+  async ssoProtocolSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-protocol-select' },
+          { type: 'role', value: 'combobox', options: { name: /protocol/i } },
+        ],
+        { intent: 'dropdown for selecting SAML or OIDC as the SSO protocol' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO IdP metadata URL input. */
+  async ssoIdpMetadataUrlInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-idp-metadata-url-input' },
+          { type: 'css', value: '[data-testid="sso-idp-metadata-url-input"]' },
+        ],
+        { intent: 'input field for the identity provider metadata URL' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO entity ID / client ID input. */
+  async ssoEntityIdInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-entity-id-input' },
+          { type: 'css', value: '[data-testid="sso-entity-id-input"]' },
+        ],
+        { intent: 'input field for the SP entity ID or OIDC client ID' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO save button. */
+  async ssoSaveButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-save-button' },
+          { type: 'role', value: 'button', options: { name: /save sso/i } },
+        ],
+        { intent: 'button to save the SSO configuration' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO enabled badge. */
+  async ssoEnabledBadgeLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-enabled-badge' },
+          { type: 'css', value: '[data-testid="sso-enabled-badge"]' },
+        ],
+        { intent: 'status badge showing that SSO is currently enabled and configured' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO disable button. */
+  async ssoDisableButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-disable-button' },
+          { type: 'role', value: 'button', options: { name: /disable sso/i } },
+        ],
+        { intent: 'button to initiate SSO disable with confirmation' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO disable confirmation button. */
+  async ssoDisableConfirmButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-disable-confirm-button' },
+          { type: 'role', value: 'button', options: { name: /yes.*disable sso/i } },
+        ],
+        { intent: 'button to confirm disabling SSO after the confirmation prompt appears' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the SSO save success message. */
+  async ssoSaveSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'sso-save-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message shown after SSO configuration is saved' },
+      )
+      .resolve();
+  }
 }

@@ -51,6 +51,12 @@ import {
   putBrandingHandler,
   deleteBrandingHandler,
 } from '../controllers/brandingController.js';
+import {
+  getSsoConfigHandler,
+  getSsoStatusHandler,
+  putSsoConfigHandler,
+  deleteSsoConfigHandler,
+} from '../controllers/ssoSettingsController.js';
 
 const router = Router();
 
@@ -1194,5 +1200,117 @@ router.patch(
   requireRole('admin'),
   asyncHandler(setMfaRequiredHandler),
 );
+
+// ── SSO configuration (MINCRM-399) ────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/sso/status:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getSsoStatus
+ *     summary: Get SSO enabled status
+ *     description: >
+ *       Returns whether SSO is enabled and which protocol is configured.
+ *       Authenticated but not admin-only — the login page needs this to show/hide
+ *       the SSO login button.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: SSO status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 enabled:
+ *                   type: boolean
+ *                 protocol:
+ *                   type: string
+ *                   nullable: true
+ *                   enum: [saml, oidc]
+ */
+router.get('/sso/status', authenticate, asyncHandler(getSsoStatusHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/sso:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getSsoConfig
+ *     summary: Get SSO configuration (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current SSO configuration, or null if not configured
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/sso', authenticate, requireRole('admin'), asyncHandler(getSsoConfigHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/sso:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: putSsoConfig
+ *     summary: Save SSO configuration (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [protocol, idp_metadata_url, entity_id]
+ *             properties:
+ *               protocol:
+ *                 type: string
+ *                 enum: [saml, oidc]
+ *               idp_metadata_url:
+ *                 type: string
+ *                 format: uri
+ *               entity_id:
+ *                 type: string
+ *               idp_certificate:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Saved SSO configuration
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put('/sso', authenticate, requireRole('admin'), asyncHandler(putSsoConfigHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/sso:
+ *   delete:
+ *     tags: [Settings]
+ *     operationId: deleteSsoConfig
+ *     summary: Disable and clear SSO configuration (admin only)
+ *     description: >
+ *       Clears all SSO settings and removes SSO identity bindings from all users,
+ *       restoring password-based login for those users.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: SSO disabled
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.delete('/sso', authenticate, requireRole('admin'), asyncHandler(deleteSsoConfigHandler));
 
 export default router;

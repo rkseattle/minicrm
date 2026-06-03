@@ -25,6 +25,7 @@ import {
 } from '../services/loginLockoutService.js';
 import { issueMfaToken } from '../services/mfaService.js';
 import { getMfaRequired } from '../services/settingsService.js';
+import { isSsoBoundUser } from '../services/ssoService.js';
 import logger from '../logger.js';
 
 /**
@@ -110,6 +111,18 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 
   clearFailedAttempts(email);
+
+  // SSO-bound users (non-admin) must authenticate via their IdP, not a password. (MINCRM-399)
+  // Admins are exempt so there is always an escape hatch to recover from a misconfigured IdP.
+  if (isSsoBoundUser(user)) {
+    res.status(403).json({
+      error: {
+        code: 'AUTH_SSO_REQUIRED',
+        message: 'Your account uses single sign-on. Please log in via your identity provider.',
+      },
+    });
+    return;
+  }
 
   // MFA challenge: if user has MFA enabled, issue a short-lived pre-auth token
   // instead of the session cookie. The client completes login via /auth/mfa/verify-login. (MINCRM-392)

@@ -36,7 +36,10 @@
     "submitButton": "Se connecter",
     "submitting": "Connexion en cours…",
     "forgotPassword": "Mot de passe oublié ?",
-    "sessionExpiredBanner": "Votre session a expiré. Veuillez vous reconnecter."
+    "sessionExpiredBanner": "Votre session a expiré. Veuillez vous reconnecter.",
+    "ssoButton": "Se connecter avec {{protocol}}",
+    "orDivider": "ou",
+    "ssoError": "L'authentification unique a échoué. Veuillez réessayer ou contacter votre administrateur."
   },
   "forgotPassword": {
     "title": "Réinitialiser votre mot de passe",
@@ -838,6 +841,24 @@
       "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
       "deleteSuccess": "Pipeline supprimé.",
       "deleteError": "Échec de la suppression. Veuillez réessayer."
+    },
+    "sso": {
+      "sectionTitle": "Authentification unique (SSO)",
+      "sectionHint": "Configurez SAML 2.0 ou OpenID Connect (OIDC) pour permettre aux utilisateurs de se connecter via leur fournisseur d'identité.",
+      "statusEnabled": "SSO activé — {{protocol}}",
+      "protocolLabel": "Protocole",
+      "idpMetadataUrlLabel": "URL des métadonnées IdP",
+      "entityIdLabel": "ID d’entité SP",
+      "clientIdLabel": "ID client",
+      "idpCertificateLabel": "Certificat IdP (PEM)",
+      "idpCertificateHint": "Collez le certificat X.509 de votre fournisseur d'identité.",
+      "certificateMasked": "Certificat enregistré — saisissez une nouvelle valeur pour le remplacer.",
+      "saveButton": "Enregistrer la configuration SSO",
+      "saveSuccess": "Configuration SSO enregistrée.",
+      "saveError": "Échec de l’enregistrement de la configuration SSO.",
+      "disableButton": "Désactiver SSO",
+      "disableConfirmPrompt": "Supprimer les liaisons SSO pour tous les utilisateurs ?",
+      "disableConfirmButton": "Oui, désactiver SSO"
     }
   },
   "import": {

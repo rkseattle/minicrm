@@ -19,12 +19,13 @@ import { renderWithProviders } from '../../test/renderWithProviders.js';
 import IntegrationSettings from './IntegrationSettings.js';
 
 describe('IntegrationSettings', () => {
-  it('renders both the storage section and webhooks section as separate panels', async () => {
+  it('renders the storage section, SSO section, and webhooks section as separate panels', async () => {
     renderWithProviders(<IntegrationSettings />);
 
     await waitFor(() => {
       expect(screen.getByTestId('storage-section')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('sso-settings-wrapper')).toBeInTheDocument();
     expect(screen.getByTestId('webhooks-section')).toBeInTheDocument();
     expect(screen.getByTestId('webhook-settings-section')).toBeInTheDocument();
   });
