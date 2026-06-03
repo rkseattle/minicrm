@@ -306,10 +306,12 @@ describe('authenticate middleware — session invalidation after password reset'
       role: user.role,
     });
 
-    // Simulate a password reset by setting password_changed_at to now.
-    // The token was issued before this so it should be rejected.
+    // Simulate a password reset by setting password_changed_at to a future time.
+    // A 1-second offset is too tight — under parallel test load the DB clock and the
+    // JWT iat can land in the same second. Use 1 hour to guarantee the token predates
+    // the "reset" regardless of timing jitter. (MINCRM-399: stabilized against parallel load)
     await pool.query(
-      `UPDATE users SET password_changed_at = now() + interval '1 second' WHERE id = $1`,
+      `UPDATE users SET password_changed_at = now() + interval '1 hour' WHERE id = $1`,
       [user.id],
     );
 
