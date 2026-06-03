@@ -113,6 +113,14 @@ const SERIAL_FILES = [
   // it in beforeEach, but parallel workers share the same Node process and can fire
   // concurrent login requests that pollute the counter mid-test.
   'src/__tests__/loginLockout.test.ts',
+  // ssoSettingsService writes sso_* keys to system_settings; running in parallel
+  // with other settings-touching tests can cause key races. (MINCRM-399)
+  'src/__tests__/ssoSettingsService.test.ts',
+  // ssoService and ssoController create users (sso-test-* / sso-ctrl-test-*) and write
+  // audit log entries; running in parallel with passwordReset.test.ts can cause
+  // connection-pool contention that makes the session-invalidation timing assertions flap.
+  'src/__tests__/ssoService.test.ts',
+  'src/__tests__/ssoController.test.ts',
 ];
 
 const sharedResolve = {

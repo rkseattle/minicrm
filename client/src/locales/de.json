@@ -36,7 +36,10 @@
     "submitButton": "Anmelden",
     "submitting": "Anmeldung läuft…",
     "forgotPassword": "Passwort vergessen?",
-    "sessionExpiredBanner": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+    "sessionExpiredBanner": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "ssoButton": "Anmelden mit {{protocol}}",
+    "orDivider": "oder",
+    "ssoError": "Single Sign-On ist fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
   },
   "forgotPassword": {
     "title": "Passwort zurücksetzen",
@@ -838,6 +841,24 @@
       "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
       "deleteSuccess": "Pipeline gelöscht.",
       "deleteError": "Löschen fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "sso": {
+      "sectionTitle": "Single Sign-On (SSO)",
+      "sectionHint": "Konfigurieren Sie SAML 2.0 oder OpenID Connect (OIDC), damit Benutzer sich über Ihren Identitätsanbieter anmelden können.",
+      "statusEnabled": "SSO aktiviert — {{protocol}}",
+      "protocolLabel": "Protokoll",
+      "idpMetadataUrlLabel": "IdP-Metadaten-URL",
+      "entityIdLabel": "SP-Entitäts-ID",
+      "clientIdLabel": "Client-ID",
+      "idpCertificateLabel": "IdP-Zertifikat (PEM)",
+      "idpCertificateHint": "Fügen Sie das X.509-Zertifikat Ihres Identitätsanbieters ein.",
+      "certificateMasked": "Zertifikat gespeichert — neuen Wert eingeben, um es zu ersetzen.",
+      "saveButton": "SSO-Konfiguration speichern",
+      "saveSuccess": "SSO-Konfiguration gespeichert.",
+      "saveError": "SSO-Konfiguration konnte nicht gespeichert werden.",
+      "disableButton": "SSO deaktivieren",
+      "disableConfirmPrompt": "SSO-Bindungen für alle Benutzer entfernen?",
+      "disableConfirmButton": "Ja, SSO deaktivieren"
     }
   },
   "import": {

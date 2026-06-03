@@ -36,7 +36,10 @@
     "submitButton": "Sign in",
     "submitting": "Signing in…",
     "forgotPassword": "Forgot your password?",
-    "sessionExpiredBanner": "Your session has expired. Please sign in again."
+    "sessionExpiredBanner": "Your session has expired. Please sign in again.",
+    "ssoButton": "Sign in with {{protocol}}",
+    "orDivider": "or",
+    "ssoError": "Single sign-on failed. Please try again or contact your administrator."
   },
   "forgotPassword": {
     "title": "Reset your password",
@@ -838,6 +841,24 @@
       "saveError": "Failed to save. Please try again.",
       "deleteSuccess": "Pipeline deleted.",
       "deleteError": "Failed to delete. Please try again."
+    },
+    "sso": {
+      "sectionTitle": "Single Sign-On (SSO)",
+      "sectionHint": "Configure SAML 2.0 or OpenID Connect (OIDC) to let users log in via your identity provider. The IdP certificate is stored encrypted.",
+      "statusEnabled": "SSO enabled — {{protocol}}",
+      "protocolLabel": "Protocol",
+      "idpMetadataUrlLabel": "IdP Metadata URL",
+      "entityIdLabel": "SP Entity ID",
+      "clientIdLabel": "Client ID",
+      "idpCertificateLabel": "IdP Certificate (PEM)",
+      "idpCertificateHint": "Paste the X.509 certificate from your identity provider.",
+      "certificateMasked": "Certificate saved — enter a new value to replace it.",
+      "saveButton": "Save SSO Configuration",
+      "saveSuccess": "SSO configuration saved.",
+      "saveError": "Failed to save SSO configuration. Please try again.",
+      "disableButton": "Disable SSO",
+      "disableConfirmPrompt": "This will remove SSO bindings for all users. Continue?",
+      "disableConfirmButton": "Yes, disable SSO"
     }
   },
   "profileSettings": {

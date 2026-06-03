@@ -385,6 +385,54 @@ export async function getPipelineStagesFeedbackLocator(context: AdminSettingsBeh
 }
 
 // ---------------------------------------------------------------------------
+// SSO configuration (MINCRM-399)
+// ---------------------------------------------------------------------------
+
+/** Returns a resolved locator for the SSO section panel. */
+export async function getSsoSectionLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoSectionLocator();
+}
+
+/** Returns a resolved locator for the SSO protocol selector. */
+export async function getSsoProtocolSelectLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoProtocolSelectLocator();
+}
+
+/** Returns a resolved locator for the SSO IdP metadata URL input. */
+export async function getSsoIdpMetadataUrlInputLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoIdpMetadataUrlInputLocator();
+}
+
+/** Returns a resolved locator for the SSO entity ID input. */
+export async function getSsoEntityIdInputLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoEntityIdInputLocator();
+}
+
+/** Returns a resolved locator for the SSO save button. */
+export async function getSsoSaveButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoSaveButtonLocator();
+}
+
+/** Returns a resolved locator for the SSO enabled badge (shown when configured). */
+export async function getSsoEnabledBadgeLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoEnabledBadgeLocator();
+}
+
+/** Returns a resolved locator for the SSO disable button. */
+export async function getSsoDisableButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoDisableButtonLocator();
+}
+
+/** Returns a resolved locator for the SSO disable confirm button. */
+export async function getSsoDisableConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoDisableConfirmButtonLocator();
+}
+
+/** Returns a resolved locator for the SSO save success message. */
+export async function getSsoSaveSuccessLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).ssoSaveSuccessLocator();
+}
+
 // ensureSystemDefaults
 // ---------------------------------------------------------------------------
 
@@ -407,5 +455,7 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     // Reset pipeline_stages_reviewed so the onboarding widget's first task
     // is always incomplete, preventing allDone=true auto-dismiss in F-OB1. (MINCRM-410)
     restClient.delete('/api/v1/settings/pipeline-stages-reviewed').catch(() => undefined),
+    // Clear any SSO configuration left over from SSO tests (MINCRM-399)
+    restClient.delete('/api/v1/settings/sso').catch(() => undefined),
   ]);
 }

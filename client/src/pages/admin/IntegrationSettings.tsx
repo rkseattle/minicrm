@@ -14,6 +14,7 @@ import {
   STORAGE_CONFIG_QUERY_KEY,
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
+import SsoSettings from '@/pages/admin/SsoSettings.js';
 import WebhookSettings from '@/pages/admin/WebhookSettings.js';
 
 export default function IntegrationSettings() {
@@ -288,6 +289,11 @@ export default function IntegrationSettings() {
             </div>
           </form>
         )}
+      </div>
+
+      {/* SSO configuration (MINCRM-399) */}
+      <div className="mt-8" data-testid="sso-settings-wrapper">
+        <SsoSettings />
       </div>
 
       <div

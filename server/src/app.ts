@@ -34,6 +34,7 @@ import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
 import gdprRoutes from './routes/gdpr.js';
 import mfaRoutes from './routes/mfa.js';
+import ssoRoutes from './routes/sso.js';
 import pipelineRoutes from './routes/pipelines.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
@@ -99,6 +100,8 @@ app.use(expressConnectMiddleware({ routes: registerAuditService, requestPathPref
 
 // ── Body parsing ───────────────────────────────────────────────────────────────
 app.use(express.json());
+// SAML POST binding sends assertions as application/x-www-form-urlencoded (MINCRM-399)
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // ── Routes (v1) ────────────────────────────────────────────────────────────────
@@ -133,6 +136,8 @@ app.use(`${API_V1}/:entityType/:entityId/notes`, noteRoutes);
 app.use(`${API_V1}/gdpr`, gdprRoutes);
 // MFA (TOTP two-factor authentication) endpoints (MINCRM-392)
 app.use(`${API_V1}/auth/mfa`, mfaRoutes);
+// SSO (SAML 2.0 / OIDC single sign-on) endpoints (MINCRM-399)
+app.use(`${API_V1}/auth/sso`, ssoRoutes);
 // Pipeline management (MINCRM-397)
 app.use(`${API_V1}/pipelines`, pipelineRoutes);
 

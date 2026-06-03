@@ -60,7 +60,12 @@ export type AuditEventType =
   | 'gdpr_erasure'
   /** MFA enabled/disabled by user (MINCRM-392) */
   | 'mfa_enabled'
-  | 'mfa_disabled';
+  | 'mfa_disabled'
+  /** SSO identity events (MINCRM-399) */
+  | 'sso_login'
+  | 'sso_provisioned'
+  | 'sso_linked'
+  | 'sso_unlinked';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

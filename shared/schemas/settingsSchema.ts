@@ -140,6 +140,53 @@ export type DefaultCurrencyResponse = z.infer<typeof defaultCurrencyResponseSche
 export type SetNavLayoutInput = z.infer<typeof setNavLayoutSchema>;
 export type NavLayoutResponse = z.infer<typeof navLayoutResponseSchema>;
 
+// ── SSO schemas (MINCRM-399) ──────────────────────────────────────────────────
+
+/** Supported SSO protocols */
+export const SSO_PROTOCOLS = ['saml', 'oidc'] as const;
+export type SsoProtocol = (typeof SSO_PROTOCOLS)[number];
+
+/**
+ * Schema for PUT /api/v1/settings/sso request body.
+ * The SAML IdP certificate is optional — when the IdP metadata URL is set the
+ * certificate can be fetched from the metadata document instead of configured manually.
+ */
+export const setSsoConfigSchema = z.object({
+  protocol: z.enum(SSO_PROTOCOLS, {
+    errorMap: () => ({ message: `Protocol must be one of: ${SSO_PROTOCOLS.join(', ')}` }),
+  }),
+  idp_metadata_url: z
+    .string()
+    .url({ message: 'IdP metadata URL must be a valid URL' })
+    .max(2048, { message: 'IdP metadata URL must be 2048 characters or fewer' }),
+  entity_id: z
+    .string()
+    .min(1, { message: 'Entity ID is required' })
+    .max(512, { message: 'Entity ID must be 512 characters or fewer' }),
+  /** PEM-encoded X.509 certificate — required for SAML, ignored for OIDC */
+  idp_certificate: z
+    .string()
+    .max(8192, { message: 'IdP certificate must be 8192 characters or fewer' })
+    .optional(),
+});
+
+export type SetSsoConfigInput = z.infer<typeof setSsoConfigSchema>;
+
+/** Public shape returned by GET /api/v1/settings/sso (certificate never returned) */
+export interface SsoConfigPublic {
+  protocol: SsoProtocol;
+  idp_metadata_url: string;
+  entity_id: string;
+  /** True when a certificate has been stored; the value is never returned */
+  idp_certificate_set: boolean;
+}
+
+/** Shape returned by GET /api/v1/settings/sso/status (unauthenticated-safe) */
+export interface SsoStatusResponse {
+  enabled: boolean;
+  protocol: SsoProtocol | null;
+}
+
 // ── Exchange rate schemas (MINCRM-251) ─────────────────────────────────────────
 
 /**
