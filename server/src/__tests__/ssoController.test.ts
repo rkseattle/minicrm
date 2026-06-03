@@ -93,9 +93,10 @@ describe('GET /api/v1/settings/sso/status', () => {
     expect(res.body.protocol).toBe('oidc');
   });
 
-  it('returns 401 when not authenticated', async () => {
+  it('returns 200 without authentication — endpoint is public', async () => {
     const res = await request(app).get('/api/v1/settings/sso/status');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.enabled).toBe(false);
   });
 });
 

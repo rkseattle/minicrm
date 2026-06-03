@@ -26,7 +26,12 @@ const apiClient = axios.create({
  * - /auth/me: handled by ProtectedRoute; redirecting here would cause a
  *   double-redirect flash on initial page load
  */
-const SESSION_EXPIRY_EXCLUDED_PATHS = ['/auth/login', '/auth/me'];
+const SESSION_EXPIRY_EXCLUDED_PATHS = [
+  '/auth/login',
+  '/auth/me',
+  // Public endpoint — called by the login page before any session exists (MINCRM-399)
+  '/settings/sso/status',
+];
 
 /**
  * Registers the global 401 interceptor.
