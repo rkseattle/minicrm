@@ -1,0 +1,45 @@
+# Dex OIDC provider — local SSO testing only. (MINCRM-399)
+#
+# Start with:
+#   docker compose -f docker-compose.dev.yml --profile sso up -d
+#
+# Then configure MiniCRM SSO (as admin, under Settings → Integrations → SSO):
+#   Protocol:        OIDC
+#   IdP Metadata URL: http://localhost:5556/dex/.well-known/openid-configuration
+#   Client ID:       minicrm-local
+#
+# Test credentials:  admin@example.com / password
+
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: minicrm-local
+    redirectURIs:
+      - http://localhost:3001/api/v1/auth/sso/callback
+    name: MiniCRM (local dev)
+    # Public client — no secret required for local testing.
+    # openid-client will use PKCE automatically when no secret is configured.
+    public: true
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: admin@example.com
+    # bcrypt hash of "password"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4u"
+    username: Admin User
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5466
+
+  - email: rep@example.com
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4u"
+    username: Rep User
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5467

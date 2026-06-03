@@ -64,6 +64,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       APP_URL: ${APP_URL:-http://localhost}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      SSO_CALLBACK_BASE_URL: ${SSO_CALLBACK_BASE_URL:-http://localhost}
     # tsx watch for hot-reload — mirrors the dev server command.
     command: npx tsx watch server/src/server.ts
     volumes:
@@ -109,3 +111,17 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+
+  # MINCRM-399: Dex OIDC provider for local SSO testing.
+  # Enable with: docker compose -f docker-compose.dev.yml --profile sso up -d
+  # Discovery URL: http://localhost:5556/dex/.well-known/openid-configuration
+  # Test credentials: admin@example.com / password  (or rep@example.com / password)
+  dex:
+    profiles:
+      - sso
+    image: ghcr.io/dexidp/dex:v2.41.1
+    ports:
+      - "5556:5556"
+    volumes:
+      - ./dex/config.yaml:/etc/dex/config.yaml:ro
+    command: dex serve /etc/dex/config.yaml

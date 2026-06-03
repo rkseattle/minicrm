@@ -52,6 +52,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       APP_URL: ${APP_URL:-http://localhost}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      SSO_CALLBACK_BASE_URL: ${SSO_CALLBACK_BASE_URL:-http://localhost}
     ports:
       - "3001:3001"
     depends_on:
