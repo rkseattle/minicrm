@@ -102,6 +102,27 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
     return;
   }
 
+  // Known domain error codes thrown by ssoService — safe to forward to the browser.
+  // All other exceptions are mapped to SSO_CALLBACK_FAILED to avoid leaking
+  // library internals (stack paths, assertion XML, IdP URLs) via the redirect URL.
+  const SAFE_SSO_ERROR_CODES = new Set([
+    'SSO_NOT_CONFIGURED',
+    'SSO_MISSING_RESPONSE',
+    'SSO_CSRF_MISMATCH',
+    'SSO_EMPTY_PROFILE',
+    'SSO_MISSING_SUBJECT',
+    'SSO_MISSING_EMAIL',
+    'SSO_EMPTY_CLAIMS',
+    'SSO_CERTIFICATE_REQUIRED',
+    'SSO_USER_INACTIVE',
+    'SSO_PROVISION_FAILED',
+  ]);
+
+  const toSafeCode = (err: unknown): string => {
+    const msg = err instanceof Error ? err.message : '';
+    return SAFE_SSO_ERROR_CODES.has(msg) ? msg : 'SSO_CALLBACK_FAILED';
+  };
+
   let claims: Awaited<ReturnType<typeof validateSamlResponse>>;
   try {
     if (config.protocol === 'saml') {
@@ -110,25 +131,35 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
         res.redirect(302, `${APP_BASE_URL}/login?sso_error=SSO_MISSING_RESPONSE`);
         return;
       }
+
+      // CSRF protection: verify the RelayState in the POST body matches the
+      // relay-state cookie set during initiation.
+      const cookieRelayState = req.cookies?.[RELAY_STATE_COOKIE] as string | undefined;
+      const bodyRelayState = req.body?.RelayState as string | undefined;
+      if (!cookieRelayState || !bodyRelayState || cookieRelayState !== bodyRelayState) {
+        res.redirect(302, `${APP_BASE_URL}/login?sso_error=SSO_CSRF_MISMATCH`);
+        return;
+      }
+
       claims = await validateSamlResponse(samlResponse);
     } else if (config.protocol === 'oidc') {
-      const expectedState = req.cookies?.[RELAY_STATE_COOKIE] as string | undefined;
-      if (!expectedState) {
+      // packedRelayState contains "<state>:<nonce>" — validateOidcCallback unpacks both.
+      const packedRelayState = req.cookies?.[RELAY_STATE_COOKIE] as string | undefined;
+      if (!packedRelayState) {
         res.redirect(302, `${APP_BASE_URL}/login?sso_error=SSO_CSRF_MISMATCH`);
         return;
       }
 
       // Build the full callback URL including query params for openid-client.
       const callbackUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      claims = await validateOidcCallback(callbackUrl, expectedState);
+      claims = await validateOidcCallback(callbackUrl, packedRelayState);
     } else {
       res.redirect(302, `${APP_BASE_URL}/login?sso_error=SSO_NOT_CONFIGURED`);
       return;
     }
   } catch (err) {
-    const code = err instanceof Error ? err.message : 'SSO_CALLBACK_FAILED';
     logger.warn({ err }, 'ssoController: SSO callback validation failed');
-    res.redirect(302, `${APP_BASE_URL}/login?sso_error=${encodeURIComponent(code)}`);
+    res.redirect(302, `${APP_BASE_URL}/login?sso_error=${toSafeCode(err)}`);
     return;
   }
 
@@ -144,9 +175,8 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
     // Non-null assertion: config.protocol is 'saml'|'oidc' by this point.
     user = await findOrProvisionSsoUser(config.protocol!, claims);
   } catch (err) {
-    const code = err instanceof Error ? err.message : 'SSO_PROVISION_FAILED';
     logger.warn({ err, email: claims.email }, 'ssoController: SSO user provisioning failed');
-    res.redirect(302, `${APP_BASE_URL}/login?sso_error=${encodeURIComponent(code)}`);
+    res.redirect(302, `${APP_BASE_URL}/login?sso_error=${toSafeCode(err)}`);
     return;
   }
 

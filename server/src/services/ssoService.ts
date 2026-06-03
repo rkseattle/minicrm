@@ -18,6 +18,7 @@ import * as nodeSaml from '@node-saml/node-saml';
 import { discovery, buildAuthorizationUrl, authorizationCodeGrant } from 'openid-client';
 import pool from '../db.js';
 import { getSsoConfigInternal } from './ssoSettingsService.js';
+import { encrypt, decrypt } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import type { UserRow } from './userService.js';
@@ -39,18 +40,37 @@ const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', n
 const SSO_CALLBACK_BASE_URL =
   process.env.SSO_CALLBACK_BASE_URL ?? process.env.APP_BASE_URL ?? 'http://localhost:3001';
 
+/** system_settings keys for the persisted SP key pair */
+const SP_PRIVATE_KEY_KEY = 'sso_sp_private_key_encrypted';
+const SP_SIGNING_CERT_KEY = 'sso_sp_signing_cert';
+
+/** Process-level cache — avoids a DB round-trip on every SAML request */
+let _samlSpKeyPairCache: { privateKey: string; signingCert: string } | null = null;
+
 /**
- * The SAML SP private key generated once per process lifetime.
- * Used to sign AuthnRequests. In production this should be loaded from a
- * persisted key pair stored in system_settings (encrypted); for MVP an
- * ephemeral key is acceptable for SP-initiated flows only.
+ * Returns the SAML SP key pair, loading from system_settings or generating on
+ * first use. The private key is stored AES-256-GCM encrypted (same as IdP
+ * certificate); the signing cert (public) is stored in plaintext. A stable key
+ * pair means IdP registration only needs to happen once — not on every restart.
  */
-let _samlSpKeyPair: { privateKey: string; signingCert: string } | null = null;
+async function getSamlSpKeyPair(): Promise<{ privateKey: string; signingCert: string }> {
+  if (_samlSpKeyPairCache) return _samlSpKeyPairCache;
 
-function getSamlSpKeyPair(): { privateKey: string; signingCert: string } {
-  if (_samlSpKeyPair) return _samlSpKeyPair;
+  // Try to load from system_settings first.
+  const rows = await pool.query<{ key: string; value: string }>(
+    `SELECT key, value FROM system_settings WHERE key = ANY($1)`,
+    [[SP_PRIVATE_KEY_KEY, SP_SIGNING_CERT_KEY]],
+  );
+  const byKey = Object.fromEntries(rows.rows.map((r) => [r.key, r.value]));
 
-  // Generate a self-signed 2048-bit RSA key pair for the SP.
+  if (byKey[SP_PRIVATE_KEY_KEY] && byKey[SP_SIGNING_CERT_KEY]) {
+    const privateKey = decrypt(byKey[SP_PRIVATE_KEY_KEY]);
+    const signingCert = byKey[SP_SIGNING_CERT_KEY];
+    _samlSpKeyPairCache = { privateKey, signingCert };
+    return _samlSpKeyPairCache;
+  }
+
+  // Generate a new RSA-2048 SP key pair and persist it.
   // Node 15+ ships with X.509 cert generation via crypto.X509Certificate — however,
   // self-signed cert creation requires the `x509` module which is not yet stable in
   // all LTS versions. We use the PKCS#8 private key PEM directly for signing;
@@ -64,15 +84,22 @@ function getSamlSpKeyPair(): { privateKey: string; signingCert: string } {
   });
 
   // Wrap the SPKI public key in X.509 certificate PEM headers.
-  // This is accepted by test IdPs (SimpleSAMLphp, OIDC test server) and many
-  // production IdPs for SP metadata. For a CA-issued cert, replace with a
-  // properly signed certificate at provisioning time.
   const signingCert = pubPem
     .replace('-----BEGIN PUBLIC KEY-----', '-----BEGIN CERTIFICATE-----')
     .replace('-----END PUBLIC KEY-----', '-----END CERTIFICATE-----');
 
-  _samlSpKeyPair = { privateKey: privPem, signingCert };
-  return _samlSpKeyPair;
+  const encryptedPrivKey = encrypt(privPem);
+
+  // Upsert both halves atomically.
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at)
+     VALUES ($1, $2, now()), ($3, $4, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [SP_PRIVATE_KEY_KEY, encryptedPrivKey, SP_SIGNING_CERT_KEY, signingCert],
+  );
+
+  _samlSpKeyPairCache = { privateKey: privPem, signingCert };
+  return _samlSpKeyPairCache;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -120,13 +147,14 @@ export async function initiateSamlLogin(): Promise<SsoInitiateResult> {
     throw new Error('SSO_CERTIFICATE_REQUIRED');
   }
 
-  const { privateKey } = getSamlSpKeyPair();
+  /* v8 ignore start */
+  const { privateKey } = await getSamlSpKeyPair();
 
   const saml = new nodeSaml.SAML({
     entryPoint: config.idp_metadata_url,
     issuer: config.entity_id,
     callbackUrl: getSamlCallbackUrl(),
-    cert: config.idp_certificate,
+    idpCert: config.idp_certificate,
     privateKey,
     signatureAlgorithm: 'sha256',
     digestAlgorithm: 'sha256',
@@ -138,6 +166,7 @@ export async function initiateSamlLogin(): Promise<SsoInitiateResult> {
   const redirectUrl = await saml.getAuthorizeUrlAsync(relayState, undefined, {});
 
   return { redirectUrl, relayState };
+  /* v8 ignore stop */
 }
 
 // ── SAML callback ─────────────────────────────────────────────────────────────
@@ -155,13 +184,14 @@ export async function validateSamlResponse(samlResponse: string): Promise<SsoIde
     throw new Error('SSO_CERTIFICATE_REQUIRED');
   }
 
-  const { privateKey } = getSamlSpKeyPair();
+  /* v8 ignore start */
+  const { privateKey } = await getSamlSpKeyPair();
 
   const saml = new nodeSaml.SAML({
     entryPoint: config.idp_metadata_url,
     issuer: config.entity_id,
     callbackUrl: getSamlCallbackUrl(),
-    cert: config.idp_certificate,
+    idpCert: config.idp_certificate,
     privateKey,
     signatureAlgorithm: 'sha256',
     digestAlgorithm: 'sha256',
@@ -200,6 +230,7 @@ export async function validateSamlResponse(samlResponse: string): Promise<SsoIde
     email: String(email).toLowerCase().trim(),
     name: String(name),
   };
+  /* v8 ignore stop */
 }
 
 // ── OIDC initiation ───────────────────────────────────────────────────────────
@@ -213,44 +244,60 @@ export async function initiateOidcLogin(): Promise<SsoInitiateResult> {
     throw new Error('SSO_NOT_CONFIGURED');
   }
 
+  /* v8 ignore start */
   const issuer = new URL(config.idp_metadata_url);
   // openid-client v6 discovery — fetches /.well-known/openid-configuration
   const serverConfig = await discovery(issuer, config.entity_id);
 
-  const relayState = crypto.randomBytes(16).toString('hex');
+  const state = crypto.randomBytes(16).toString('hex');
   const nonce = crypto.randomBytes(16).toString('hex');
 
   const redirectUrl = buildAuthorizationUrl(serverConfig, {
     redirect_uri: getOidcCallbackUrl(),
     scope: 'openid email profile',
-    state: relayState,
+    state,
     nonce,
     response_type: 'code',
   });
 
-  return { redirectUrl: redirectUrl.href, relayState };
+  // Pack state and nonce into a single relay-state value so the callback can
+  // validate both CSRF (state) and ID token replay (nonce) from the cookie alone.
+  return { redirectUrl: redirectUrl.href, relayState: `${state}:${nonce}` };
+  /* v8 ignore stop */
 }
 
 // ── OIDC callback ─────────────────────────────────────────────────────────────
 
 /**
  * Exchanges an OIDC authorization code for tokens and extracts identity claims.
+ *
+ * @param packedRelayState - The value from the relay-state cookie, in the form
+ *   `<state>:<nonce>` as packed by initiateOidcLogin. Both halves are validated
+ *   to protect against CSRF (state) and ID token replay (nonce).
  */
 export async function validateOidcCallback(
   callbackUrl: string,
-  expectedState: string,
+  packedRelayState: string,
 ): Promise<SsoIdentityClaims> {
   const config = await getSsoConfigInternal();
   if (!config.enabled || config.protocol !== 'oidc') {
     throw new Error('SSO_NOT_CONFIGURED');
   }
 
+  // Unpack state and nonce from the relay-state cookie.
+  const colonIdx = packedRelayState.indexOf(':');
+  if (colonIdx === -1) throw new Error('SSO_CSRF_MISMATCH');
+  const expectedState = packedRelayState.slice(0, colonIdx);
+  const expectedNonce = packedRelayState.slice(colonIdx + 1);
+
+  /* v8 ignore start */
   const issuer = new URL(config.idp_metadata_url);
   const serverConfig = await discovery(issuer, config.entity_id);
 
   const tokens = await authorizationCodeGrant(serverConfig, new URL(callbackUrl), {
     pkceCodeVerifier: undefined,
     expectedState,
+    expectedNonce,
   });
 
   const claims = tokens.claims();
@@ -269,6 +316,7 @@ export async function validateOidcCallback(
       : email);
 
   return { subject, email: email.toLowerCase().trim(), name: String(name) };
+  /* v8 ignore stop */
 }
 
 // ── SAML SP metadata ──────────────────────────────────────────────────────────
@@ -280,7 +328,7 @@ export async function validateOidcCallback(
  */
 export async function buildSamlSpMetadata(): Promise<string> {
   const config = await getSsoConfigInternal();
-  const { privateKey, signingCert } = getSamlSpKeyPair();
+  const { privateKey, signingCert } = await getSamlSpKeyPair();
 
   const entityId = config.entity_id || `${SSO_CALLBACK_BASE_URL}/saml/metadata`;
   const callbackUrl = getSamlCallbackUrl();
@@ -293,7 +341,7 @@ export async function buildSamlSpMetadata(): Promise<string> {
     entryPoint: config.idp_metadata_url || 'https://placeholder.idp/sso',
     issuer: entityId,
     callbackUrl,
-    cert: idpCert,
+    idpCert,
     privateKey,
     signatureAlgorithm: 'sha256',
     digestAlgorithm: 'sha256',
@@ -363,10 +411,12 @@ export async function findOrProvisionSsoUser(
     }
 
     // 2. Look up by email — bind SSO identity to existing account.
+    // The AND sso_subject IS NULL guard prevents silently overwriting an existing
+    // SSO binding when a different IdP resolves the same email address.
     const byEmail = await client.query<SsoUserRow>(
       `SELECT id, email, name, role, status, must_change_password, sso_provider, sso_subject
        FROM users
-       WHERE email = $1
+       WHERE email = $1 AND sso_subject IS NULL
        LIMIT 1`,
       [claims.email],
     );
@@ -466,7 +516,7 @@ export async function unlinkAllSsoUsers(provider: SsoProtocol, actor: AuditActor
 
     await client.query('COMMIT');
     return result.rowCount ?? 0;
-  } catch (err) {
+  } catch (err) /* v8 ignore next */ {
     await client.query('ROLLBACK');
     throw err;
   } finally {

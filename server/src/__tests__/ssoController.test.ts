@@ -12,12 +12,31 @@
  */
 
 import 'dotenv/config';
+import { vi } from 'vitest';
 import request from 'supertest';
 import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { setSsoConfig } from '../services/ssoSettingsService.js';
 import { makeAuthCookie } from './testUtils.js';
+
+// Spy on ssoService functions so we can simulate a successful SSO round-trip
+// without needing a real IdP. The actual service logic is tested in ssoService.test.ts.
+vi.mock('../services/ssoService.js', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    initiateOidcLogin: vi.fn(),
+    initiateSamlLogin: vi.fn(),
+    validateOidcCallback: vi.fn(),
+    validateSamlResponse: vi.fn(),
+    findOrProvisionSsoUser: vi.fn(),
+  };
+});
+
+// Import after vi.mock so we get the mocked versions.
+const { initiateOidcLogin, validateOidcCallback, findOrProvisionSsoUser } =
+  await import('../services/ssoService.js');
 
 const SSO_KEYS = [
   'sso_enabled',
@@ -220,6 +239,109 @@ describe('GET /api/v1/auth/sso/login', () => {
   });
 });
 
+// ── POST /api/v1/auth/sso/callback — SAML CSRF protection ────────────────────
+
+describe('POST /api/v1/auth/sso/callback — SAML CSRF', () => {
+  it('rejects SAML POST with no relay-state cookie (SSO_CSRF_MISMATCH)', async () => {
+    await setSsoConfig({
+      protocol: 'saml',
+      idp_metadata_url: 'https://idp.example.com/saml/metadata',
+      entity_id: 'urn:sp:minicrm',
+      idp_certificate: 'placeholder-cert',
+    });
+
+    const res = await request(app)
+      .post('/api/v1/auth/sso/callback')
+      .send({ SAMLResponse: Buffer.from('<saml/>').toString('base64'), RelayState: 'abc' });
+
+    // Should redirect to login with CSRF mismatch error
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/sso_error=SSO_CSRF_MISMATCH/);
+  });
+
+  it('rejects SAML POST when cookie/body RelayState mismatch', async () => {
+    await setSsoConfig({
+      protocol: 'saml',
+      idp_metadata_url: 'https://idp.example.com/saml/metadata',
+      entity_id: 'urn:sp:minicrm',
+      idp_certificate: 'placeholder-cert',
+    });
+
+    const res = await request(app)
+      .post('/api/v1/auth/sso/callback')
+      .set('Cookie', 'sso_relay_state=correct-state')
+      .send({ SAMLResponse: Buffer.from('<saml/>').toString('base64'), RelayState: 'wrong-state' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/sso_error=SSO_CSRF_MISMATCH/);
+  });
+
+  it('rejects SAML POST with missing SAMLResponse', async () => {
+    await setSsoConfig({
+      protocol: 'saml',
+      idp_metadata_url: 'https://idp.example.com/saml/metadata',
+      entity_id: 'urn:sp:minicrm',
+      idp_certificate: 'placeholder-cert',
+    });
+
+    const res = await request(app)
+      .post('/api/v1/auth/sso/callback')
+      .set('Cookie', 'sso_relay_state=my-relay-state')
+      .send({ RelayState: 'my-relay-state' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/sso_error=SSO_MISSING_RESPONSE/);
+  });
+});
+
+// ── GET /api/v1/auth/sso/callback — OIDC CSRF protection ─────────────────────
+
+describe('GET /api/v1/auth/sso/callback — OIDC CSRF', () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('rejects OIDC callback with no relay-state cookie (SSO_CSRF_MISMATCH)', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/auth/sso/callback')
+      .query({ code: 'abc', state: 'xyz' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/sso_error=SSO_CSRF_MISMATCH/);
+  });
+
+  it('maps unknown library exceptions to opaque SSO_CALLBACK_FAILED code', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+
+    // Simulate a library-internal error with a URL in the message (the kind that
+    // must NOT be forwarded to the browser).
+    vi.mocked(validateOidcCallback).mockRejectedValue(
+      new Error('fetch failed: https://idp.example.com/token unreachable'),
+    );
+
+    const res = await request(app)
+      .get('/api/v1/auth/sso/callback')
+      .set('Cookie', 'sso_relay_state=valid-state:valid-nonce')
+      .query({ code: 'abc', state: 'valid-state' });
+
+    expect(res.status).toBe(302);
+    // Must be an opaque domain code only — must NOT contain library error text (URLs, stack paths)
+    const location = res.headers.location as string;
+    const errorParam = new URL(location).searchParams.get('sso_error');
+    expect(errorParam).toBe('SSO_CALLBACK_FAILED');
+  });
+});
+
 // ── GET /api/v1/auth/sso/metadata ────────────────────────────────────────────
 
 describe('GET /api/v1/auth/sso/metadata', () => {
@@ -295,5 +417,120 @@ describe('POST /api/v1/auth/login — SSO enforcement', () => {
 
     // Cleanup
     await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-bound-admin@example.com'");
+  });
+});
+
+// ── SSO callback success path (mocked service) ────────────────────────────────
+
+describe('GET /api/v1/auth/sso/callback — OIDC success path', () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('issues a JWT cookie and redirects to app on successful OIDC callback', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+
+    // Create a real active user to return from the mocked provisioner
+    const mockUser = await createUser({
+      email: 'sso-ctrl-test-success@example.com',
+      name: 'SSO Success User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+
+    vi.mocked(validateOidcCallback).mockResolvedValue({
+      subject: 'sub-success',
+      email: mockUser.email,
+      name: mockUser.name,
+    });
+    vi.mocked(findOrProvisionSsoUser).mockResolvedValue({
+      ...mockUser,
+      sso_provider: 'oidc',
+      sso_subject: 'sub-success',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/auth/sso/callback')
+      .set('Cookie', 'sso_relay_state=valid-state:valid-nonce')
+      .query({ code: 'auth-code', state: 'valid-state' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:5173/');
+    expect(res.headers['set-cookie']).toBeDefined();
+    const cookieHeader = (res.headers['set-cookie'] as unknown as string[]).join(';');
+    expect(cookieHeader).toContain('token=');
+
+    // Cleanup
+    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-success@example.com'");
+  });
+
+  it('redirects to /login?sso_error=SSO_USER_INACTIVE when user is inactive', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+
+    const inactiveUser = await createUser({
+      email: 'sso-ctrl-test-inactive@example.com',
+      name: 'Inactive User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'inactive',
+    });
+
+    vi.mocked(validateOidcCallback).mockResolvedValue({
+      subject: 'sub-inactive',
+      email: inactiveUser.email,
+      name: inactiveUser.name,
+    });
+    vi.mocked(findOrProvisionSsoUser).mockResolvedValue({
+      ...inactiveUser,
+      sso_provider: 'oidc',
+      sso_subject: 'sub-inactive',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/auth/sso/callback')
+      .set('Cookie', 'sso_relay_state=valid-state:valid-nonce')
+      .query({ code: 'auth-code', state: 'valid-state' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toMatch(/sso_error=SSO_USER_INACTIVE/);
+
+    // Cleanup
+    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-inactive@example.com'");
+  });
+});
+
+// ── GET /api/v1/auth/sso/login — OIDC redirect (mocked service) ──────────────
+
+describe('GET /api/v1/auth/sso/login — OIDC redirect', () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('redirects to IdP when SSO is configured', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+
+    vi.mocked(initiateOidcLogin).mockResolvedValue({
+      redirectUrl: 'https://idp.example.com/auth?client_id=client-id&state=abc',
+      relayState: 'abc:nonce',
+    });
+
+    const res = await request(app).get('/api/v1/auth/sso/login');
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain('idp.example.com/auth');
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 });
