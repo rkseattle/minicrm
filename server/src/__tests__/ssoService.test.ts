@@ -15,10 +15,17 @@ import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import {
   findOrProvisionSsoUser,
+  findUserForSso,
   isSsoBoundUser,
   unlinkAllSsoUsers,
+  initiateSamlLogin,
+  initiateOidcLogin,
+  validateSamlResponse,
+  validateOidcCallback,
+  buildSamlSpMetadata,
 } from '../services/ssoService.js';
 import type { SsoIdentityClaims } from '../services/ssoService.js';
+import { setSsoConfig } from '../services/ssoSettingsService.js';
 
 const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
 
@@ -229,5 +236,138 @@ describe('unlinkAllSsoUsers', () => {
       [provisioned.id],
     );
     expect(result.rowCount).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── Binding overwrite protection ──────────────────────────────────────────────
+
+describe('findOrProvisionSsoUser — binding overwrite protection', () => {
+  it('rejects a login attempt that would overwrite an existing SSO binding via email match', async () => {
+    // First login: SAML IdP binds the user
+    const user = await findOrProvisionSsoUser('saml', {
+      subject: 'saml-original-subject',
+      email: 'sso-test-bind-guard@example.com',
+      name: 'Guard Test',
+    });
+
+    expect(user.sso_provider).toBe('saml');
+    expect(user.sso_subject).toBe('saml-original-subject');
+
+    // Second login: OIDC IdP resolves the same email — the AND sso_subject IS NULL
+    // guard skips the email lookup, falls through to JIT-provision, and the
+    // unique email constraint rejects it. The original binding stays intact.
+    await expect(
+      findOrProvisionSsoUser('oidc', {
+        subject: 'oidc-attacker-subject',
+        email: 'sso-test-bind-guard@example.com',
+        name: 'Guard Test',
+      }),
+    ).rejects.toThrow();
+
+    // Original user's binding must be untouched
+    const originalRow = await pool.query(
+      'SELECT sso_provider, sso_subject FROM users WHERE id = $1',
+      [user.id],
+    );
+    expect(originalRow.rows[0].sso_provider).toBe('saml');
+    expect(originalRow.rows[0].sso_subject).toBe('saml-original-subject');
+
+    // Cleanup
+    await pool.query("DELETE FROM users WHERE email = 'sso-test-bind-guard@example.com'");
+  });
+});
+
+// ── findUserForSso ────────────────────────────────────────────────────────────
+
+describe('findUserForSso', () => {
+  it('returns user row when user exists', async () => {
+    const provisioned = await findOrProvisionSsoUser('oidc', CLAIMS);
+    const result = await findUserForSso(provisioned.id);
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe(provisioned.id);
+    expect(result?.email).toBe(CLAIMS.email);
+  });
+
+  it('returns null when user does not exist', async () => {
+    const result = await findUserForSso('00000000-0000-0000-0000-000000000000');
+    expect(result).toBeNull();
+  });
+});
+
+// ── Error path branches ───────────────────────────────────────────────────────
+
+describe('ssoService — error path branches', () => {
+  afterEach(async () => {
+    await pool.query("DELETE FROM system_settings WHERE key LIKE 'sso_%'");
+  });
+
+  it('initiateSamlLogin throws SSO_NOT_CONFIGURED when no config', async () => {
+    await expect(initiateSamlLogin()).rejects.toThrow('SSO_NOT_CONFIGURED');
+  });
+
+  it('initiateSamlLogin throws SSO_NOT_CONFIGURED when protocol is oidc', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com',
+      entity_id: 'c',
+    });
+    await expect(initiateSamlLogin()).rejects.toThrow('SSO_NOT_CONFIGURED');
+  });
+
+  it('initiateSamlLogin throws SSO_CERTIFICATE_REQUIRED when cert missing', async () => {
+    await setSsoConfig({
+      protocol: 'saml',
+      idp_metadata_url: 'https://idp.example.com/saml',
+      entity_id: 'urn:sp',
+    });
+    await expect(initiateSamlLogin()).rejects.toThrow('SSO_CERTIFICATE_REQUIRED');
+  });
+
+  it('initiateOidcLogin throws SSO_NOT_CONFIGURED when no config', async () => {
+    await expect(initiateOidcLogin()).rejects.toThrow('SSO_NOT_CONFIGURED');
+  });
+
+  it('initiateOidcLogin throws SSO_NOT_CONFIGURED when protocol is saml', async () => {
+    await setSsoConfig({
+      protocol: 'saml',
+      idp_metadata_url: 'https://idp.example.com/saml',
+      entity_id: 'urn:sp',
+      idp_certificate: 'cert',
+    });
+    await expect(initiateOidcLogin()).rejects.toThrow('SSO_NOT_CONFIGURED');
+  });
+
+  it('validateSamlResponse throws SSO_NOT_CONFIGURED when no config', async () => {
+    await expect(validateSamlResponse('dummy')).rejects.toThrow('SSO_NOT_CONFIGURED');
+  });
+
+  it('buildSamlSpMetadata returns XML even without a configured IdP cert', async () => {
+    const xml = await buildSamlSpMetadata();
+    expect(xml).toContain('EntityDescriptor');
+  });
+});
+
+// ── validateOidcCallback — branch coverage ────────────────────────────────────
+
+describe('validateOidcCallback — error branches', () => {
+  afterEach(async () => {
+    await pool.query("DELETE FROM system_settings WHERE key LIKE 'sso_%'");
+  });
+
+  it('throws SSO_NOT_CONFIGURED when no config', async () => {
+    await expect(validateOidcCallback('http://localhost/cb', 'state:nonce')).rejects.toThrow(
+      'SSO_NOT_CONFIGURED',
+    );
+  });
+
+  it('throws SSO_CSRF_MISMATCH when packedRelayState has no colon', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com',
+      entity_id: 'c',
+    });
+    await expect(validateOidcCallback('http://localhost/cb', 'no-colon-here')).rejects.toThrow(
+      'SSO_CSRF_MISMATCH',
+    );
   });
 });
