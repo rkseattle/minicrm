@@ -1212,10 +1212,9 @@ router.patch(
  *     summary: Get SSO enabled status
  *     description: >
  *       Returns whether SSO is enabled and which protocol is configured.
- *       Authenticated but not admin-only — the login page needs this to show/hide
- *       the SSO login button.
- *     security:
- *       - cookieAuth: []
+ *       Public endpoint — the login page queries this before any session exists
+ *       to decide whether to show the SSO login button.
+ *     security: []
  *     responses:
  *       200:
  *         description: SSO status
@@ -1231,7 +1230,8 @@ router.patch(
  *                   nullable: true
  *                   enum: [saml, oidc]
  */
-router.get('/sso/status', authenticate, asyncHandler(getSsoStatusHandler));
+// Public — the login page queries this before the user has a session cookie. (MINCRM-399)
+router.get('/sso/status', asyncHandler(getSsoStatusHandler));
 
 /**
  * @openapi
