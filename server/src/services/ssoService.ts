@@ -31,8 +31,13 @@ const SSO_JIT_ROLE = 'rep' as const;
 /** System actor used for JIT-provision audit entries */
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
-/** Base URL for constructing SP callback and metadata URLs */
-const APP_BASE_URL = process.env.APP_BASE_URL ?? 'http://localhost:3001';
+/**
+ * Base URL for SP callback and metadata URLs — must point to the API server.
+ * In development this is the Express server (port 3001), NOT the Vite dev server.
+ * Separate from APP_BASE_URL (the frontend URL used for post-login redirect).
+ */
+const SSO_CALLBACK_BASE_URL =
+  process.env.SSO_CALLBACK_BASE_URL ?? process.env.APP_BASE_URL ?? 'http://localhost:3001';
 
 /**
  * The SAML SP private key generated once per process lifetime.
@@ -93,11 +98,11 @@ export interface SsoInitiateResult {
 // ── SP callback URL helpers ───────────────────────────────────────────────────
 
 export function getSamlCallbackUrl(): string {
-  return `${APP_BASE_URL}/api/v1/auth/sso/callback`;
+  return `${SSO_CALLBACK_BASE_URL}/api/v1/auth/sso/callback`;
 }
 
 export function getOidcCallbackUrl(): string {
-  return `${APP_BASE_URL}/api/v1/auth/sso/callback`;
+  return `${SSO_CALLBACK_BASE_URL}/api/v1/auth/sso/callback`;
 }
 
 // ── SAML initiation ───────────────────────────────────────────────────────────
@@ -277,7 +282,7 @@ export async function buildSamlSpMetadata(): Promise<string> {
   const config = await getSsoConfigInternal();
   const { privateKey, signingCert } = getSamlSpKeyPair();
 
-  const entityId = config.entity_id || `${APP_BASE_URL}/saml/metadata`;
+  const entityId = config.entity_id || `${SSO_CALLBACK_BASE_URL}/saml/metadata`;
   const callbackUrl = getSamlCallbackUrl();
 
   // Use a placeholder IdP cert so the SAML instance can be constructed even
