@@ -200,6 +200,26 @@ describe('extractBodyText', () => {
     });
     expect(extractBodyText(doc)).toBe('@Bob');
   });
+
+  it('does not duplicate mention label when plugin also emits child text nodes', () => {
+    const doc = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'paragraph',
+            children: [
+              {
+                type: 'mention',
+                text: '@Alice',
+                children: [{ type: 'text', text: '@Alice' }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(extractBodyText(doc)).toBe('@Alice');
+  });
 });
 
 // ── createNote ────────────────────────────────────────────────────────────────

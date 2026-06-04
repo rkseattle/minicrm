@@ -84,10 +84,12 @@ export function extractBodyText(json: string): string {
         return; // text nodes have no meaningful children
       }
       if (node['type'] === 'mention') {
-        // Mention nodes store display text in `text` or `value` depending on the plugin
+        // Mention nodes store display text in `text` or `value` depending on the plugin.
+        // Return early to avoid also walking child text nodes that some plugins co-emit,
+        // which would duplicate the label in body_text.
         const label = node['text'] ?? node['value'];
         if (typeof label === 'string') parts.push(label);
-        // fall through to walk any nested children
+        return;
       }
       // Descend into well-known structural keys only — avoids recursing into metadata
       // (url, attrs, etc.).  `root` is Lexical's document wrapper; `children`/`content`
