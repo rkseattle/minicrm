@@ -358,6 +358,18 @@ export async function searchAccounts(
 
   await accountsPage.search(searchTerm);
 
+  // Wait for the DOM to reflect the search result before reading counts.
+  // waitForResponse (inside search()) signals the response arrived, but React
+  // re-renders asynchronously. Poll until the empty-state element appears OR
+  // the row count stabilises at a non-zero value (max 5 s). (MINCRM-418)
+  await context.page
+    .waitForFunction(
+      `document.querySelector('[data-testid="accounts-empty-state"]') !== null || document.querySelectorAll('[data-testid^="account-link-"]').length > 0`,
+      undefined,
+      { timeout: 5_000 },
+    )
+    .catch(() => null); // If neither appears within 5 s, fall through and let assertions report the state.
+
   const rowCount = await accountsPage.rowCount();
   const emptyStateVisible = await accountsPage.emptyStateIsVisible();
 

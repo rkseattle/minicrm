@@ -167,7 +167,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
 
   await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
 
-  await bulkDeleteContacts({ page });
+  await bulkDeleteContacts({ page }, false, [c1.id, c2.id]);
 
   // Bulk action bar should disappear.
   expect(await isBulkActionBarHidden({ page })).toBe(true);

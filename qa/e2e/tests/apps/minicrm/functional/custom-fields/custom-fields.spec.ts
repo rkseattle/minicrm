@@ -57,6 +57,7 @@ import {
   clickContactEdit,
   saveContact,
   isContactDetailLoaded,
+  waitForContactDetailReadMode,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   createTestContact,
@@ -191,17 +192,9 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await fieldInput.press('Tab');
   await expect(fieldInput).toHaveValue('Test Value 123');
 
-  // Save the contact
+  // Save the contact and wait for the page to return to read mode. (MINCRM-418)
   await saveContact({ page });
-
-  // Wait for the save PATCH to complete before checking read mode. (MINCRM-415)
-  await page.waitForLoadState('networkidle');
-
-  // Wait for edit mode to close (edit button reappears)
-  expect(
-    await isContactDetailLoaded({ page }),
-    'contact detail should return to read mode after save',
-  ).toBe(true);
+  await waitForContactDetailReadMode({ page });
 
   // Reload the page
   await navigateToContactDetailPage(contact.id, { page });

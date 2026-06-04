@@ -87,7 +87,6 @@ export class AccountsPage {
    * Returns 0 when no accounts are listed or during a loading state.
    */
   async rowCount(): Promise<number> {
-    await this.page.waitForLoadState('networkidle');
     try {
       const resolved = await this.page
         .locate(
@@ -252,15 +251,31 @@ export class AccountsPage {
    * @param term - Search term to type.
    */
   async search(term: string): Promise<void> {
+    // Register before fill so we never miss the response even if the debounced
+    // search fires before the next await. The predicate requires the search
+    // query param to be present so the initial page-load GET is not matched.
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/accounts') &&
+        response.url().includes('search=') &&
+        response.request().method() === 'GET',
+    );
     await this.page.fill(
       term,
       [
         { type: 'testId', value: 'accounts-search' },
-        { type: 'label', value: 'Search', options: { exact: false } },
+        { type: 'css', value: 'input[placeholder*="company name"]' },
       ],
-      { intent: 'accounts list search input field' },
+      {
+        intent: 'accounts list search input field',
+        // Allow extra time for the accounts list to mount — the page navigates
+        // with waitUntil:'load' so the search input may not be attached yet
+        // when the probe fires. Without this, the fallback matches the global
+        // nav search bar instead. (MINCRM-418)
+        fallbackTimeout: 5_000,
+      },
     );
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
   }
 
   /**
@@ -275,9 +290,9 @@ export class AccountsPage {
       term,
       [
         { type: 'testId', value: 'accounts-search' },
-        { type: 'label', value: 'Search', options: { exact: false } },
+        { type: 'css', value: 'input[placeholder*="company name"]' },
       ],
-      { intent: 'accounts list search input field' },
+      { intent: 'accounts list search input field', fallbackTimeout: 5_000 },
     );
   }
 

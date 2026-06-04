@@ -688,14 +688,21 @@ export async function bulkReassignContacts(
  * @param context - Playwright fixture context.
  * @param force - When true, uses force:true on the delete and confirm clicks.
  *   Pass true in error-state tests where mock routes cause overlay/scroll issues.
+ * @param deletedIds - Optional list of contact IDs whose rows must disappear from
+ *   the DOM before this call returns. Passing these ids serializes: server DELETE
+ *   committed → React re-render removes rows → then caller may verify via API.
  */
 export async function bulkDeleteContacts(
   context: ContactsBehaviorContext,
   force = false,
+  deletedIds: string[] = [],
 ): Promise<void> {
   const contactsPage = new ContactsPage(context);
   await contactsPage.clickBulkDelete();
   await contactsPage.confirmBulkDelete(force);
+  if (deletedIds.length > 0) {
+    await contactsPage.waitForContactsRemovedFromList(deletedIds);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1052,13 +1059,40 @@ export async function clickContactEdit(context: ContactsBehaviorContext): Promis
 /** Clicks Save on the contact detail page edit form. */
 export async function saveContact(context: ContactsBehaviorContext): Promise<void> {
   const detailPage = new ContactDetailPage(context);
+  // Register listener before clicking so the PATCH is always captured even if
+  // the server responds before the next await resolves. (MINCRM-418)
+  // No status filter — callers such as concurrency tests deliberately trigger
+  // 409 responses and must handle the outcome themselves after this returns.
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/contacts/') && response.request().method() === 'PATCH',
+  );
   await detailPage.save();
+  await patchDone;
 }
 
 /** Returns true when the contact detail page is in read mode (edit button visible). */
 export async function isContactDetailLoaded(context: ContactsBehaviorContext): Promise<boolean> {
   const detailPage = new ContactDetailPage(context);
   return detailPage.isLoaded();
+}
+
+/**
+ * Waits until the contact detail page is in read mode (edit button visible).
+ * Use after saveContact() when the caller needs the page to be out of edit mode
+ * before continuing — e.g. before reloading or reading the persisted state.
+ *
+ * @param timeout - Maximum ms to wait.
+ */
+export async function waitForContactDetailReadMode(
+  context: ContactsBehaviorContext,
+  timeout = 8_000,
+): Promise<void> {
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="edit-contact-button"]') !== null`,
+    undefined,
+    { timeout },
+  );
 }
 
 /**

@@ -112,6 +112,7 @@ test('SSO login button appears on the login page when SSO is enabled @functional
   restClient,
   testData,
 }) => {
+  void testData;
   // Configure SSO via API (already tested in UI above, so use API here for speed)
   await restClient.put('/api/v1/settings/sso', {
     protocol: 'oidc',
@@ -119,9 +120,9 @@ test('SSO login button appears on the login page when SSO is enabled @functional
     entity_id: OIDC_CLIENT_ID,
   });
 
-  const admin = await createTestAdmin(testData, restClient);
-  await loginViaBrowser(admin.email, admin.password, { page });
-
+  // Navigate to the login page as an unauthenticated user — the browser context
+  // has no session cookie (test.use({ storageState: { cookies: [], origins: [] } })),
+  // so the login page renders fully without redirecting away.
   await navigateToLoginPage({ page });
 
   const ssoButton = await getSsoLoginButtonLocator({ page });
@@ -170,6 +171,7 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
   restClient,
   testData,
 }) => {
+  void testData;
   // First enable SSO
   await restClient.put('/api/v1/settings/sso', {
     protocol: 'oidc',
@@ -177,9 +179,7 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
     entity_id: OIDC_CLIENT_ID,
   });
 
-  const admin = await createTestAdmin(testData, restClient);
-  await loginViaBrowser(admin.email, admin.password, { page });
-
+  // Navigate as unauthenticated user (no session cookie in this context).
   await navigateToLoginPage({ page });
   const ssoButton = await getSsoLoginButtonLocator({ page });
   await expect(ssoButton).toBeVisible({ timeout: 8_000 });

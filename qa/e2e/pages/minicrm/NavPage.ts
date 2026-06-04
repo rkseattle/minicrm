@@ -302,7 +302,13 @@ export class NavPage {
           { type: 'testId', value: testId },
           { type: 'css', value: `[data-testid="${testId}"]` },
         ],
-        { intent: `administration section divider in the ${layout} nav layout` },
+        {
+          intent: `administration section divider in the ${layout} nav layout`,
+          // The nav layout is set via API and the page navigated with networkidle,
+          // but React may still be committing the new layout subtree. Allow extra
+          // time for the component to mount before exhausting strategies.
+          fallbackTimeout: 5_000,
+        },
       )
       .resolve();
   }

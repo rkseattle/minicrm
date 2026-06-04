@@ -46,6 +46,7 @@ type AllowedPageMethods =
   | 'goto'
   | 'waitForLoadState'
   | 'waitForURL'
+  | 'waitForResponse'
   | 'url'
   | 'title'
   | 'viewportSize'
