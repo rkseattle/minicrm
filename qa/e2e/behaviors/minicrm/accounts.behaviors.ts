@@ -580,3 +580,35 @@ export async function getAccountAttachmentsListLocator(context: AccountsBehavior
 export async function navigateToAccountsOwnedByMe(context: AccountsBehaviorContext): Promise<void> {
   await context.page.goto('/accounts?owner=me', { waitUntil: 'networkidle' });
 }
+
+// ---------------------------------------------------------------------------
+// Visibility check helpers — keep page.doesNotExist() out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when no role="alert" element exists in the DOM.
+ * Used to assert that an account detail page loaded without errors.
+ */
+export async function noAlertExists(context: AccountsBehaviorContext): Promise<boolean> {
+  return context.page.doesNotExist([{ type: 'role', value: 'alert' }]);
+}
+
+/**
+ * Clicks the edit button on the account detail page to enter edit mode.
+ */
+export async function clickAccountEditButton(context: AccountsBehaviorContext): Promise<void> {
+  const detailPage = new AccountDetailPage(context);
+  await detailPage.clickEdit();
+}
+
+/**
+ * Returns true when the linked-contact element for the given contact ID is absent.
+ * Used to assert a contact was unlinked from an account.
+ */
+export async function isLinkedContactAbsent(
+  contactId: string,
+  context: AccountsBehaviorContext,
+): Promise<boolean> {
+  return context.page.doesNotExist([{ type: 'testId', value: `linked-contact-${contactId}` }]);
+}

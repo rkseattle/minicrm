@@ -53,8 +53,6 @@
  */
 
 import { test } from '@apps/minicrm/fixtures.js';
-import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
-import { StrategyExhaustedError } from '@framework/healing/index.js';
 import {
   createTestAccount,
   createTestActivity,
@@ -77,8 +75,25 @@ import {
   getAdminSettingsHeadingLocator,
   getAdminSettingsSaveLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
-import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
+import { setNavLayoutViaAPI, openHamburgerMenu } from '@behaviors/minicrm/nav.behaviors.js';
 import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
+import {
+  navigateToContactDetailPage,
+  navigateToDealDetailPage,
+  navigateToAccountDetailPage,
+  navigateToContactsPage,
+  navigateToAccountsPage,
+  navigateToLeadsPage,
+  navigateToTasksPage,
+  navigateToPath,
+  getDashboardStatCardsLocator,
+  getMyTasksHeadingLocator,
+  getNewContactButtonLocator,
+  getNewAccountButtonLocator,
+  getNewLeadButtonLocator,
+  getAccountNameHeadingLocator,
+  resolveTimestampMasks,
+} from '@behaviors/minicrm/layout.behaviors.js';
 import {
   inviteUserViaApi,
   setUserPassword,
@@ -162,45 +177,6 @@ const MOBILE_VIEWPORT = { width: 393, height: 851 };
 // of which timestamp elements are actually present.
 // ---------------------------------------------------------------------------
 
-async function tryResolve(page: PageFacadeShape, ...args: Parameters<PageFacadeShape['locate']>) {
-  try {
-    return await page.locate(...args).resolve();
-  } catch (err) {
-    if (err instanceof StrategyExhaustedError) return null;
-    throw err;
-  }
-}
-
-async function resolveTimestampMasks(page: PageFacadeShape) {
-  const candidates = await Promise.all([
-    // Dashboard recent-activity relative timestamps ("X minutes ago")
-    tryResolve(page, [{ type: 'css', value: '[data-testid^="recent-activity-time-"]' }], {
-      intent: 'dashboard recent activity relative timestamp cells',
-    }),
-    // Contact/activity timeline absolute timestamps (toLocaleString)
-    tryResolve(page, [{ type: 'css', value: '[data-testid^="activity-meta-"]' }], {
-      intent: 'activity timeline metadata timestamp cells',
-    }),
-    // Contact / account / deal detail "Created" field
-    tryResolve(page, [{ type: 'testId', value: 'detail-created' }], {
-      intent: 'detail page created-at timestamp field',
-    }),
-    // Leads list "Created" column cells — dynamic per-row timestamps
-    tryResolve(page, [{ type: 'css', value: '[data-testid^="lead-created-"]' }], {
-      intent: 'leads list created-at timestamp cells',
-    }),
-    // Tasks list "Due date" cells — absolute dates that change per-seeded record
-    tryResolve(page, [{ type: 'css', value: '[data-testid^="task-due-date-"]' }], {
-      intent: 'tasks list due date cells',
-    }),
-    // Users table "Last login" / "Joined" cells
-    tryResolve(page, [{ type: 'css', value: '[data-testid^="user-joined-"]' }], {
-      intent: 'user management table joined date cells',
-    }),
-  ]);
-  return candidates.filter((c) => c !== null);
-}
-
 // ===========================================================================
 // Core Layout
 // ===========================================================================
@@ -242,12 +218,12 @@ test.describe('Core Layout', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/deals', { waitUntil: 'networkidle' });
+      await navigateToPath('/deals', { page });
 
       const board = await getPipelineBoardLocator({ page });
       await board.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('pipeline-board-desktop.png', { mask: masks });
     },
   );
@@ -287,13 +263,13 @@ test.describe('Core Layout', () => {
       });
 
       await page.setViewportSize(MOBILE_VIEWPORT);
-      await page.goto('/deals', { waitUntil: 'networkidle' });
+      await navigateToPath('/deals', { page });
 
       // Mobile board shows single column with prev/next navigation — wait for it
       const mobileStage = await getPipelineMobileStageNameLocator({ page });
       await mobileStage.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('pipeline-board-mobile.png', { mask: masks });
 
       // Restore desktop viewport so subsequent tests in this worker are unaffected
@@ -334,21 +310,10 @@ test.describe('Core Layout', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToDashboard(page);
 
-      // Wait for the stat cards container before snapshotting.
-      // dashboard-stat-cards is not in a domain page object — locate inline since
-      // this is a screenshot ready-check, not a domain interaction.
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards grid' },
-        )
-        .resolve();
+      const statCards = await getDashboardStatCardsLocator({ page });
       await statCards.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('dashboard.png', { mask: masks });
     },
   );
@@ -386,14 +351,14 @@ test.describe('Core Layout', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+      await navigateToContactDetailPage(contact.id, { page });
 
       const editButton = await getContactEditButtonLocator({ page });
       await editButton.waitFor({ state: 'visible' });
 
       await page.waitForLoadState('networkidle');
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contact-detail.png', { mask: masks });
     },
   );
@@ -440,7 +405,7 @@ test.describe('Core Layout', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/reports', { waitUntil: 'networkidle' });
+      await navigateToPath('/reports', { page });
 
       const reportHeading = await getReportsWinLossHeadingLocator({ page });
       await reportHeading.waitFor({ state: 'visible' });
@@ -449,7 +414,7 @@ test.describe('Core Layout', () => {
       const statCards = await getReportsStatCardsLocator({ page });
       await statCards.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('win-loss-report.png', { mask: masks });
     },
   );
@@ -469,7 +434,7 @@ test.describe('Admin', () => {
       await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
+      await navigateToPath('/admin/settings?tab=general', { page });
 
       const settingsHeading = await getAdminSettingsHeadingLocator({ page });
       await settingsHeading.waitFor({ state: 'visible' });
@@ -478,7 +443,7 @@ test.describe('Admin', () => {
       const saveButton = await getAdminSettingsSaveLocator({ page });
       await saveButton.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('admin-settings-general.png', { mask: masks });
     },
   );
@@ -512,23 +477,14 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/contacts', { waitUntil: 'networkidle' });
+      await navigateToContactsPage({ page });
 
-      // Wait for the New Contact button — stable indicator the list has loaded
-      const newBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'new-contact-button' },
-            { type: 'role', value: 'button', options: { name: /new contact/i } },
-          ],
-          { intent: 'new contact button confirming the contacts list is ready' },
-        )
-        .resolve();
+      const newBtn = await getNewContactButtonLocator({ page });
       await newBtn.waitFor({ state: 'visible' });
 
       await page.waitForLoadState('networkidle');
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contacts-list-desktop.png', { mask: masks });
     },
   );
@@ -551,20 +507,12 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/accounts', { waitUntil: 'networkidle' });
+      await navigateToAccountsPage({ page });
 
-      const newBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'new-account-button' },
-            { type: 'role', value: 'button', options: { name: /new account/i } },
-          ],
-          { intent: 'new account button confirming the accounts list is ready' },
-        )
-        .resolve();
+      const newBtn = await getNewAccountButtonLocator({ page });
       await newBtn.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('accounts-list-desktop.png', { mask: masks });
     },
   );
@@ -596,22 +544,14 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/leads', { waitUntil: 'networkidle' });
+      await navigateToLeadsPage({ page });
 
-      const newBtn = await page
-        .locate(
-          [
-            { type: 'testId', value: 'new-lead-button' },
-            { type: 'role', value: 'button', options: { name: /new lead/i } },
-          ],
-          { intent: 'new lead button confirming the leads list is ready' },
-        )
-        .resolve();
+      const newBtn = await getNewLeadButtonLocator({ page });
       await newBtn.waitFor({ state: 'visible' });
 
       await page.waitForLoadState('networkidle');
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('leads-list-desktop.png', { mask: masks });
     },
   );
@@ -640,20 +580,12 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto('/tasks', { waitUntil: 'networkidle' });
+      await navigateToTasksPage({ page });
 
-      const heading = await page
-        .locate(
-          [
-            { type: 'testId', value: 'my-tasks-heading' },
-            { type: 'role', value: 'heading', options: { level: 1 } },
-          ],
-          { intent: 'my tasks page heading confirming the tasks list is ready' },
-        )
-        .resolve();
+      const heading = await getMyTasksHeadingLocator({ page });
       await heading.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('tasks-list-desktop.png', { mask: masks });
     },
   );
@@ -673,19 +605,10 @@ test.describe('Key Pages', () => {
       // Navigate to dashboard to show the left sidebar in context with page content
       await navigateToDashboard(page);
 
-      // Wait for the stat cards grid which indicates the dashboard has fully loaded
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards confirming the page loaded with left nav' },
-        )
-        .resolve();
+      const statCards = await getDashboardStatCardsLocator({ page });
       await statCards.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('nav-left-desktop.png', { mask: masks });
     },
   );
@@ -704,45 +627,17 @@ test.describe('Key Pages', () => {
       // Navigate to the dashboard AFTER setting the layout so React Query fetches
       // the new 'hamburger' value and renders the toggle. Using 'networkidle' ensures
       // the nav-layout query completes before we look for nav-menu-toggle. (MINCRM-415)
-      await page.goto('/', { waitUntil: 'networkidle' });
+      await navigateToPath('/', { page });
 
       // Wait for the page to be interactive before opening the drawer
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards confirming the page is ready before opening drawer' },
-        )
-        .resolve();
+      const statCards = await getDashboardStatCardsLocator({ page });
       await statCards.waitFor({ state: 'visible' });
 
       // Click the hamburger toggle to open the drawer
-      const toggle = await page
-        .locate(
-          [
-            { type: 'testId', value: 'nav-menu-toggle' },
-            { type: 'role', value: 'button', options: { name: /menu/i } },
-          ],
-          { intent: 'hamburger menu toggle button' },
-        )
-        .resolve();
-      await toggle.click();
+      const { drawerVisible } = await openHamburgerMenu({ page });
+      void drawerVisible;
 
-      // Wait for the drawer to become visible before snapshotting
-      const drawer = await page
-        .locate(
-          [
-            { type: 'testId', value: 'nav-hamburger-drawer' },
-            { type: 'role', value: 'dialog' },
-          ],
-          { intent: 'hamburger nav drawer overlay' },
-        )
-        .resolve();
-      await drawer.waitFor({ state: 'visible' });
-
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('nav-hamburger-open-desktop.png', { mask: masks });
     },
   );
@@ -759,18 +654,10 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(MOBILE_VIEWPORT);
       await navigateToDashboard(page);
 
-      const statCards = await page
-        .locate(
-          [
-            { type: 'testId', value: 'dashboard-stat-cards' },
-            { type: 'role', value: 'region' },
-          ],
-          { intent: 'dashboard KPI stat cards confirming mobile layout with top-nav setting' },
-        )
-        .resolve();
+      const statCards = await getDashboardStatCardsLocator({ page });
       await statCards.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('nav-top-mobile.png', { mask: masks });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
@@ -809,12 +696,12 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
+      await navigateToDealDetailPage(deal.id, { page });
 
       const dealHeading = await getDealNameHeadingLocator({ page });
       await dealHeading.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('deal-detail-desktop.png', { mask: masks });
     },
   );
@@ -843,21 +730,12 @@ test.describe('Key Pages', () => {
       });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await page.goto(`/accounts/${account.id}`, { waitUntil: 'networkidle' });
+      await navigateToAccountDetailPage(account.id, { page });
 
-      // Wait for the account name heading as the ready anchor
-      const accountName = await page
-        .locate(
-          [
-            { type: 'testId', value: 'account-name' },
-            { type: 'role', value: 'heading', options: { level: 1 } },
-          ],
-          { intent: 'account name heading confirming the account detail page has loaded' },
-        )
-        .resolve();
+      const accountName = await getAccountNameHeadingLocator({ page });
       await accountName.waitFor({ state: 'visible' });
 
-      const masks = await resolveTimestampMasks(page);
+      const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('account-detail-desktop.png', { mask: masks });
     },
   );

@@ -58,6 +58,7 @@ import {
   bulkReassignContacts,
   getContactById,
   patchContact,
+  isBulkActionBarHidden,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
 import { patchActivity } from '@behaviors/minicrm/activities.behaviors.js';
@@ -486,9 +487,8 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // Bulk reassign — no version required, no conflict expected
       await bulkReassignContacts(newOwner.id, newOwner.name, { page });
 
-      // Bulk action bar should disappear on success
       expect(
-        await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }]),
+        await isBulkActionBarHidden({ page }),
         'bulk action bar should disappear after successful reassign',
       ).toBe(true);
 

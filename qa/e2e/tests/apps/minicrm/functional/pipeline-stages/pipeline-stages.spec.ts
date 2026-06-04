@@ -32,6 +32,18 @@ import {
   getPipelineStagesTableLocator,
   getPipelineStageMoveUpLocator,
   getPipelineStageMoveDownLocator,
+  clickMoveUpAndWaitForReorder,
+  clickMoveDownAndWaitForReorder,
+  clickAddPipelineStage,
+  fillAddPipelineStageName,
+  submitAddPipelineStage,
+  waitForPipelineStagesFeedback,
+  fillRenamePipelineStage,
+  getPipelineStageEditButtonLocator,
+  getPipelineStageSaveButtonLocator,
+  getPipelineStageDeleteButtonLocator,
+  clickDeletePipelineStageConfirm,
+  waitForDeleteStageDialog,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -109,17 +121,8 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
   // Capture the reorder response directly to validate the server-committed order
   // without a networkidle delay that a concurrent worker's afterEach restore could
   // win against (MINCRM-387).
-  const [reorderResp] = await Promise.all([
-    page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
-    ),
-    moveUpButton.click(),
-  ]);
-
-  const reorderBody = (await reorderResp.json()) as StageListResponse;
+  const reorderResult = await clickMoveUpAndWaitForReorder(secondStageId, { page });
+  const reorderBody = { stages: reorderResult.stages } as StageListResponse;
   expect(reorderBody.stages[0].id, 'reorder response: moved stage should be first').toBe(
     secondStageId,
   );
@@ -152,17 +155,8 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
   // Capture the reorder response directly — avoids the race where a concurrent
   // worker's afterEach restore could overwrite the DB before fetchStages runs
   // (MINCRM-387).
-  const [reorderResp] = await Promise.all([
-    page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
-    ),
-    moveDownButton.click(),
-  ]);
-
-  const reorderBody = (await reorderResp.json()) as StageListResponse;
+  const reorderResult = await clickMoveDownAndWaitForReorder(firstStageId, { page });
+  const reorderBody = { stages: reorderResult.stages } as StageListResponse;
   expect(reorderBody.stages[0].id, 'reorder response: second stage should be first').toBe(
     secondStageId,
   );
@@ -214,43 +208,10 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
   let createdStageId: string | undefined;
 
   try {
-    // Click Add Stage button
-    await page.click(
-      [
-        { type: 'testId', value: 'add-stage-button' },
-        { type: 'role', value: 'button', options: { name: /add.*stage/i } },
-      ],
-      { intent: 'button to open the add new pipeline stage form' },
-    );
-
-    // Fill in the stage name
-    await page.fill(
-      stageName,
-      [
-        { type: 'testId', value: 'add-stage-name-input' },
-        { type: 'role', value: 'textbox', options: { name: /stage name/i } },
-      ],
-      { intent: 'input for the name of the new pipeline stage' },
-    );
-
-    // Submit the form
-    await page.click(
-      [
-        { type: 'testId', value: 'add-stage-submit' },
-        { type: 'role', value: 'button', options: { name: /add/i } },
-      ],
-      { intent: 'submit button that creates the new pipeline stage' },
-    );
-
-    // Wait for the table to update
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'pipeline-stages-feedback' },
-        { type: 'role', value: 'status' },
-      ],
-      'visible',
-      { intent: 'success or error feedback after submitting the add stage form' },
-    );
+    await clickAddPipelineStage({ page });
+    await fillAddPipelineStageName(stageName, { page });
+    await submitAddPipelineStage({ page });
+    await waitForPipelineStagesFeedback('visible', { page });
 
     // Verify the stage now appears in the API list
     const stages = await fetchStages(restClient);
@@ -295,37 +256,15 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
   const originalName = nonFixedStage.name;
 
   try {
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed edit button has no stable role fallback
-    await page
-      .locate([{ type: 'testId', value: `pipeline-stage-edit-${nonFixedStage.id}` }])
-      .resolve()
-      .then((el) => el.click());
+    const editEl = await getPipelineStageEditButtonLocator(nonFixedStage.id, { page });
+    await editEl.click();
 
-    // Clear the name input and type the new name
-    await page.fill(
-      newName,
-      [
-        { type: 'testId', value: `pipeline-stage-name-input-${nonFixedStage.id}` },
-        { type: 'css', value: `[data-testid="pipeline-stage-name-input-${nonFixedStage.id}"]` },
-      ],
-      { intent: 'inline name input for renaming the selected pipeline stage' },
-    );
+    await fillRenamePipelineStage(newName, nonFixedStage.id, { page });
 
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed save button has no stable role fallback
-    await page
-      .locate([{ type: 'testId', value: `pipeline-stage-save-${nonFixedStage.id}` }])
-      .resolve()
-      .then((el) => el.click());
+    const saveEl = await getPipelineStageSaveButtonLocator(nonFixedStage.id, { page });
+    await saveEl.click();
 
-    // Wait for feedback to confirm save
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'pipeline-stages-feedback' },
-        { type: 'role', value: 'status' },
-      ],
-      'visible',
-      { intent: 'success feedback after saving the renamed pipeline stage' },
-    );
+    await waitForPipelineStagesFeedback('visible', { page });
 
     // Verify the new name appears in the API response
     const updatedStages = await fetchStages(restClient);
@@ -365,42 +304,12 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
 
-  // Click the delete button for the throwaway stage — this opens a confirmation dialog
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback
-  await page
-    .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
-    .resolve()
-    .then((el) => el.click());
+  const deleteEl = await getPipelineStageDeleteButtonLocator(stageId, { page });
+  await deleteEl.click();
 
-  // Wait for the confirmation dialog to appear, then confirm the deletion
-  await page.waitFor(
-    [
-      { type: 'testId', value: 'delete-stage-confirm-dialog' },
-      { type: 'role', value: 'dialog', options: { name: /delete/i } },
-    ],
-    'visible',
-    { intent: 'confirmation dialog for deleting a pipeline stage' },
-    5_000,
-  );
-
-  await page.click(
-    [
-      { type: 'testId', value: 'delete-stage-confirm' },
-      { type: 'role', value: 'button', options: { name: /delete/i } },
-    ],
-    { intent: 'confirm button inside the delete stage confirmation dialog' },
-  );
-
-  // Wait for the confirmation dialog to close
-  await page.waitFor(
-    [
-      { type: 'testId', value: 'delete-stage-confirm-dialog' },
-      { type: 'role', value: 'dialog', options: { name: /delete/i } },
-    ],
-    'hidden',
-    { intent: 'confirmation dialog for deleting a pipeline stage' },
-    5_000,
-  );
+  await waitForDeleteStageDialog('visible', { page }, 5_000);
+  await clickDeletePipelineStageConfirm(stageId, { page });
+  await waitForDeleteStageDialog('hidden', { page }, 5_000);
 
   // Verify the stage no longer appears in the API list
   const stages = await fetchStages(restClient);

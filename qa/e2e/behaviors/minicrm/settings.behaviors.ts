@@ -3,6 +3,23 @@
  * AdminSettings page locator-accessor wrappers (MINCRM-358, MINCRM-367).
  */
 
+// Minimal interface for waitForResponse — avoids importing Page from @playwright/test,
+// which is forbidden by the no-playwright-imports ESLint rule. PageFacade proxies to
+// the underlying Playwright Page at runtime; casting through this interface is safe.
+interface PageWithWaitForResponse {
+  waitForResponse(
+    urlOrPredicate:
+      | string
+      | RegExp
+      | ((response: {
+          url(): string;
+          request(): { method(): string };
+          status(): number;
+          json(): Promise<unknown>;
+        }) => boolean | Promise<boolean>),
+  ): Promise<{ json(): Promise<unknown> }>;
+}
+
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -436,6 +453,224 @@ export async function getSsoSaveSuccessLocator(context: AdminSettingsBehaviorCon
 // ensureSystemDefaults
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Direct navigation helpers — keep page.goto() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates directly to a URL and waits for network idle.
+ * Use when an existing navigateTo* behavior does not cover the target URL.
+ */
+export async function navigateToUrl(
+  url: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto(url, { waitUntil: 'networkidle' });
+}
+
+/**
+ * Navigates directly to the Admin Settings customisation tab (shorthand).
+ */
+export async function navigateToAdminSettingsCustomisation(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Navigates directly to the Admin Settings general tab (shorthand).
+ */
+export async function navigateToAdminSettingsGeneral(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline stage reorder with response capture — keeps waitForResponse out of
+// spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Shape of a single stage in the pipeline-stages reorder API response. */
+export interface PipelineStageReorderEntry {
+  id: string;
+  name?: string;
+  sort_order?: number;
+}
+
+/** Result returned by clickMoveUpAndWaitForReorder / clickMoveDownAndWaitForReorder. */
+export interface StageReorderResult {
+  /** The stages array returned by the server in the reorder response. */
+  stages: PipelineStageReorderEntry[];
+}
+
+/**
+ * Clicks the move-up button for a stage and waits for the reorder API response.
+ * Returns the server-committed stage order from the response body.
+ */
+export async function clickMoveUpAndWaitForReorder(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<StageReorderResult> {
+  const moveUpButton = await getPipelineStageMoveUpLocator(context, stageId);
+  // Cast through Page to access waitForResponse — PageFacade proxies to the
+  // underlying Playwright Page at runtime; the cast is safe here. (MINCRM-418)
+  const rawPage = context.page as unknown as PageWithWaitForResponse;
+  const [reorderResp] = await Promise.all([
+    rawPage.waitForResponse(
+      (resp) =>
+        resp.url().includes('/pipeline-stages/reorder') &&
+        resp.request().method() === 'PUT' &&
+        resp.status() === 200,
+    ),
+    moveUpButton.click(),
+  ]);
+  const body = (await reorderResp.json()) as { stages: PipelineStageReorderEntry[] };
+  return { stages: body.stages };
+}
+
+/**
+ * Clicks the move-down button for a stage and waits for the reorder API response.
+ * Returns the server-committed stage order from the response body.
+ */
+export async function clickMoveDownAndWaitForReorder(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<StageReorderResult> {
+  const moveDownButton = await getPipelineStageMoveDownLocator(context, stageId);
+  const rawPage = context.page as unknown as PageWithWaitForResponse;
+  const [reorderResp] = await Promise.all([
+    rawPage.waitForResponse(
+      (resp) =>
+        resp.url().includes('/pipeline-stages/reorder') &&
+        resp.request().method() === 'PUT' &&
+        resp.status() === 200,
+    ),
+    moveDownButton.click(),
+  ]);
+  const body = (await reorderResp.json()) as { stages: PipelineStageReorderEntry[] };
+  return { stages: body.stages };
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline stage form interactions — keep page.click/fill/waitFor out of specs.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the Add Stage button to open the add-stage inline form.
+ */
+export async function clickAddPipelineStage(context: AdminSettingsBehaviorContext): Promise<void> {
+  await context.page.click(
+    [
+      { type: 'testId', value: 'add-stage-button' },
+      { type: 'role', value: 'button', options: { name: /add.*stage/i } },
+    ],
+    { intent: 'button to open the add new pipeline stage form' },
+  );
+}
+
+/**
+ * Fills the add-stage name input with the given stage name.
+ */
+export async function fillAddPipelineStageName(
+  stageName: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.fill(
+    stageName,
+    [
+      { type: 'testId', value: 'add-stage-name-input' },
+      { type: 'role', value: 'textbox', options: { name: /stage name/i } },
+    ],
+    { intent: 'input for the name of the new pipeline stage' },
+  );
+}
+
+/**
+ * Clicks the submit button to create the new pipeline stage.
+ */
+export async function submitAddPipelineStage(context: AdminSettingsBehaviorContext): Promise<void> {
+  await context.page.click(
+    [
+      { type: 'testId', value: 'add-stage-submit' },
+      { type: 'role', value: 'button', options: { name: /add/i } },
+    ],
+    { intent: 'submit button that creates the new pipeline stage' },
+  );
+}
+
+/**
+ * Waits for the pipeline stages feedback element to reach the given state.
+ */
+export async function waitForPipelineStagesFeedback(
+  state: 'visible' | 'hidden',
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'pipeline-stages-feedback' },
+      { type: 'role', value: 'status' },
+    ],
+    state,
+    { intent: 'success or error feedback after submitting the add stage form' },
+  );
+}
+
+/**
+ * Fills the inline rename input for a pipeline stage.
+ */
+export async function fillRenamePipelineStage(
+  newName: string,
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.fill(
+    newName,
+    [
+      { type: 'testId', value: `pipeline-stage-name-input-${stageId}` },
+      { type: 'css', value: `[data-testid="pipeline-stage-name-input-${stageId}"]` },
+    ],
+    { intent: 'inline name input for renaming the selected pipeline stage' },
+  );
+}
+
+/**
+ * Clicks the delete confirmation dialog's confirm button and waits for
+ * the dialog to become hidden.
+ */
+export async function clickDeletePipelineStageConfirm(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.click(
+    [
+      { type: 'testId', value: 'delete-stage-confirm' },
+      { type: 'role', value: 'button', options: { name: /delete/i } },
+    ],
+    { intent: 'confirm button inside the delete stage confirmation dialog' },
+  );
+}
+
+/**
+ * Waits for the delete-stage confirmation dialog to reach the given state.
+ */
+export async function waitForDeleteStageDialog(
+  state: 'visible' | 'hidden',
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'delete-stage-confirm-dialog' },
+      { type: 'role', value: 'dialog', options: { name: /delete/i } },
+    ],
+    state,
+    { intent: 'confirmation dialog for deleting a pipeline stage' },
+    timeout,
+  );
+}
+
 export async function ensureSystemDefaults(restClient: RestClient): Promise<void> {
   await Promise.all([
     restClient
@@ -458,4 +693,337 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     // Clear any SSO configuration left over from SSO tests (MINCRM-399)
     restClient.delete('/api/v1/settings/sso').catch(() => undefined),
   ]);
+}
+
+// ---------------------------------------------------------------------------
+// SSO login page helpers — keep page.goto/locate/reload out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the login page and waits for network idle.
+ * Used by SSO tests that need to verify the login page as an unauthenticated user.
+ */
+export async function navigateToLoginPageForSso(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/login', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Reloads the current page and waits for network idle.
+ */
+export async function reloadSettingsPage(context: AdminSettingsBehaviorContext): Promise<void> {
+  await context.page.reload({ waitUntil: 'networkidle' });
+}
+
+/**
+ * Resolves the SSO login button locator on the login page.
+ */
+export async function getSsoLoginButtonLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'sso-login-button' },
+        { type: 'role', value: 'link', options: { name: /sign in with/i } },
+      ],
+      { intent: 'SSO login button on the login page' },
+    )
+    .resolve();
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks navigation helpers — keep page.goto out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the admin settings integrations tab and waits for network idle.
+ */
+export async function navigateToAdminSettingsIntegrations(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Currency settings navigation helpers (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the admin settings currency tab and waits for network idle.
+ */
+export async function navigateToAdminSettingsCurrency(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline management UI behaviors — keep page.locate() out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the Add Pipeline button.
+ */
+export async function getPipelineAddButtonLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'add-pipeline-button' },
+        { type: 'role', value: 'button', options: { name: /new pipeline/i } },
+      ],
+      { intent: 'button to open the new pipeline form' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the new-pipeline name input.
+ */
+export async function getNewPipelineNameInputLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'new-pipeline-name-input' },
+        { type: 'role', value: 'textbox' },
+      ],
+      { intent: 'input field for the new pipeline name' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the create-pipeline submit button.
+ */
+export async function getCreatePipelineSubmitLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'create-pipeline-submit-button' },
+        { type: 'role', value: 'button', options: { name: /save/i } },
+      ],
+      { intent: 'submit button to create the new pipeline' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the pipelines feedback status message.
+ */
+export async function getPipelinesFeedbackLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipelines-feedback' },
+        { type: 'role', value: 'status' },
+      ],
+      { intent: 'success feedback message after a pipeline operation' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the edit button for a specific pipeline row.
+ */
+export async function getPipelineEditButtonLocator(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-edit-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      { intent: 'edit button for the pipeline row to rename' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the edit input for a specific pipeline row.
+ */
+export async function getPipelineEditInputLocator(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-edit-input-${pipelineId}` },
+        { type: 'role', value: 'textbox' },
+      ],
+      { intent: 'text input for renaming the pipeline' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the save button for a specific pipeline row.
+ */
+export async function getPipelineSaveButtonLocator(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-save-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /save/i } },
+      ],
+      { intent: 'save button to confirm pipeline rename' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the delete button for a specific pipeline row.
+ */
+export async function getPipelineDeleteButtonLocator(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-delete-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'delete button for the pipeline row to remove' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the delete confirmation panel.
+ * eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
+ */
+export async function getPipelineDeleteConfirmLocator(context: AdminSettingsBehaviorContext) {
+  // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
+  return context.page
+    .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
+      intent: 'delete confirmation panel for the pipeline',
+    })
+    .resolve();
+}
+
+/**
+ * Resolves the confirm-delete button inside the confirmation panel.
+ */
+export async function getPipelineDeleteConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-delete-confirm-button' },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'confirm button to execute pipeline deletion' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the pipeline stages pipeline selector dropdown.
+ */
+export async function getPipelineStagesPipelineSelectorLocator(
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-stages-pipeline-selector' },
+        { type: 'role', value: 'combobox' },
+      ],
+      { intent: 'dropdown to select which pipeline to manage stages for' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the pipeline selector on the deals board.
+ */
+export async function getPipelineBoardSelectorLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-selector' },
+        { type: 'role', value: 'combobox' },
+      ],
+      { intent: 'pipeline selector dropdown above the deals board' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the pipeline board container.
+ * eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
+ */
+export async function getPipelineBoardContainerLocator(context: AdminSettingsBehaviorContext) {
+  // eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
+  return context.page
+    .locate([{ type: 'testId', value: 'pipeline-board' }], {
+      intent: 'the main pipeline kanban board container',
+    })
+    .resolve();
+}
+
+/**
+ * Resolves the pipeline stage row for a specific stage.
+ */
+export async function getPipelineStageRowLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-stage-row-${stageId}` },
+        { type: 'text', value: 'Custom Stage One' },
+      ],
+      { intent: 'row for the custom stage in the pipeline stages table' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the inline edit button for a pipeline stage row.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+ */
+export async function getPipelineStageEditButtonLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-edit-${stageId}` }])
+    .resolve();
+}
+
+/**
+ * Resolves the inline save button for a pipeline stage row.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+ */
+export async function getPipelineStageSaveButtonLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-save-${stageId}` }])
+    .resolve();
+}
+
+/**
+ * Resolves the inline delete button for a pipeline stage row.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+ */
+export async function getPipelineStageDeleteButtonLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
+    .resolve();
 }

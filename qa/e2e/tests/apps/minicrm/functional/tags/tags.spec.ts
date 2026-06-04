@@ -39,6 +39,10 @@ import {
   getDealTags,
 } from '@behaviors/minicrm/index.js';
 import { getAdminTagsPaginationLocator } from '@behaviors/minicrm/tags.behaviors.js';
+import {
+  navigateToContactDetailPage,
+  navigateToDealDetailPage,
+} from '@behaviors/minicrm/layout.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -172,7 +176,7 @@ test(
     });
 
     // Navigate to the contact detail page (assumes the app uses /contacts/:id).
-    await page.goto(`/contacts/${contact.id}`);
+    await navigateToContactDetailPage(contact.id, { page });
     await page.waitForLoadState('networkidle');
 
     const attachResult = await attachTagViaUI(contact.id, tag.id, tag.name, { page });
@@ -205,7 +209,7 @@ test(
     // Attach via API so the badge is visible when we load the page.
     await attachTagToContact(restClient, contact.id, tag.name);
 
-    await page.goto(`/contacts/${contact.id}`);
+    await navigateToContactDetailPage(contact.id, { page });
     await page.waitForLoadState('networkidle');
 
     const detachResult = await detachTagViaUI(contact.id, tag.id, { page });
@@ -240,7 +244,7 @@ test(
     });
 
     // Navigate to the deal detail page.
-    await page.goto(`/deals/${deal.id}`);
+    await navigateToDealDetailPage(deal.id, { page });
     await page.waitForLoadState('networkidle');
 
     const attachResult = await attachTagViaUI(deal.id, tag.id, tag.name, { page });

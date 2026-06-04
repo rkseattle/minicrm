@@ -38,6 +38,9 @@ import {
   getSsoDisableButtonLocator,
   getSsoDisableConfirmButtonLocator,
   getSsoSaveSuccessLocator,
+  navigateToLoginPageForSso as navigateToLoginPage,
+  reloadSettingsPage,
+  getSsoLoginButtonLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 // Use fresh browser context for each test — SSO tests must verify the login
@@ -119,19 +122,9 @@ test('SSO login button appears on the login page when SSO is enabled @functional
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Navigate to login page as unauthenticated user
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  await navigateToLoginPage({ page });
 
-  // SSO button should be visible
-  const ssoButton = await page
-    .locate(
-      [
-        { type: 'testId', value: 'sso-login-button' },
-        { type: 'role', value: 'link', options: { name: /sign in with/i } },
-      ],
-      { intent: 'SSO login button on the login page' },
-    )
-    .resolve();
+  const ssoButton = await getSsoLoginButtonLocator({ page });
   await expect(ssoButton).toBeVisible({ timeout: 8_000 });
 });
 
@@ -187,24 +180,13 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Verify SSO button visible
-  await page.goto('/login', { waitUntil: 'networkidle' });
-  const ssoButton = await page
-    .locate(
-      [
-        { type: 'testId', value: 'sso-login-button' },
-        { type: 'role', value: 'link', options: { name: /sign in with/i } },
-      ],
-      { intent: 'SSO login button on the login page' },
-    )
-    .resolve();
+  await navigateToLoginPage({ page });
+  const ssoButton = await getSsoLoginButtonLocator({ page });
   await expect(ssoButton).toBeVisible({ timeout: 8_000 });
 
-  // Disable SSO via API
   await restClient.delete('/api/v1/settings/sso');
 
-  // Reload login page — SSO button should no longer appear
-  await page.reload({ waitUntil: 'networkidle' });
+  await reloadSettingsPage({ page });
   await expect(ssoButton).not.toBeVisible({ timeout: 5_000 });
 });
 

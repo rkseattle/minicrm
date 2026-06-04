@@ -33,7 +33,11 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import { loginAsAdmin, loginAs, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { listAttachments } from '@behaviors/minicrm/attachments.behaviors.js';
+import {
+  listAttachments,
+  getAttachmentDownloadLinkLocator,
+  isAttachmentRowHidden,
+} from '@behaviors/minicrm/attachments.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   getContactAttachmentsSectionLocator,
@@ -237,13 +241,7 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
     buffer: Buffer.from('downloadable content'),
   });
 
-  // Wait for the attachment list to show the row.
-  // Prefix-match CSS targets a dynamic attachment ID; role: link is too broad
-  // (matches all nav links) so single-strategy is the only safe option here.
-  // eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
-  const downloadLink = await page
-    .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
-    .resolve();
+  const downloadLink = await getAttachmentDownloadLinkLocator({ page });
   await expect(downloadLink).toBeVisible({ timeout: 10_000 });
 
   // Register for teardown
@@ -298,9 +296,7 @@ test('@functional F10-X1: Delete an attachment — row disappears and API return
 
   // Row should be gone (isNotVisible — safe when element is removed from DOM).
   await expect
-    .poll(() => page.isNotVisible([{ type: 'testId', value: `attachment-row-${attachmentId}` }]), {
-      timeout: 5_000,
-    })
+    .poll(() => isAttachmentRowHidden(attachmentId, { page }), { timeout: 5_000 })
     .toBe(true);
 
   // API should return 404

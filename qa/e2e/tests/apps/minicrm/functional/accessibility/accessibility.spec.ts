@@ -49,6 +49,7 @@ import {
   filterContactsByTerm,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
+import { navigateToContactsPage } from '@behaviors/minicrm/layout.behaviors.js';
 import {
   navigateToLoginPage,
   submitLoginForm,
@@ -156,7 +157,7 @@ test('@functional A11Y-N1: main navigation — top layout landmark structure', a
 }) => {
   // Ensure a known nav layout so the NavBar renders consistently across runs.
   await setNavLayoutViaAPI('top', restClient);
-  await page.goto('/contacts');
+  await navigateToContactsPage({ page });
   await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);

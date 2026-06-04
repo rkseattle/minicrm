@@ -25,6 +25,9 @@ import {
   disableMfaViaApi,
   enableMfa,
   disableMfa,
+  navigateToAdminSettingsGeneralPage,
+  getMfaRequiredCheckboxLocator,
+  getMfaRequiredSuccessLocator,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestUser } from '@apps/minicrm/helpers.js';
 
@@ -166,33 +169,16 @@ test('@functional F8-A1: admin can toggle org-wide MFA enforcement in General Se
   await loginAsAdmin(restClient);
   await loginViaBrowser(ADMIN_EMAIL, ADMIN_PASSWORD, { page });
 
-  await page.goto('/admin/settings');
-  await page.waitForLoadState('networkidle');
+  await navigateToAdminSettingsGeneralPage({ page });
 
-  const checkbox = await page
-    .locate(
-      [
-        { type: 'testId', value: 'mfa-required-checkbox' },
-        { type: 'css', value: '[data-testid="mfa-required-checkbox"]' },
-      ],
-      { intent: 'MFA enforcement checkbox in admin general settings' },
-    )
-    .resolve();
+  const checkbox = await getMfaRequiredCheckboxLocator({ page });
 
   await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
   const initiallyChecked = await checkbox.isChecked();
 
   // Toggle on.
   await checkbox.click();
-  const successMsg = await page
-    .locate(
-      [
-        { type: 'testId', value: 'mfa-required-success' },
-        { type: 'role', value: 'status' },
-      ],
-      { intent: 'success confirmation after toggling MFA enforcement setting' },
-    )
-    .resolve();
+  const successMsg = await getMfaRequiredSuccessLocator({ page });
   await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
   expect(await checkbox.isChecked(), 'checkbox should flip after first click').toBe(
     !initiallyChecked,

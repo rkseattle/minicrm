@@ -163,3 +163,33 @@ export async function collapseAuditLogFilters(context: AuditLogBehaviorContext):
   const auditLogPage = new AuditLogPage(context);
   await auditLogPage.collapseFilters();
 }
+
+// ---------------------------------------------------------------------------
+// Locator helpers — keep page.locate() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a resolved locator for an audit log row expand button by entry ID.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
+ */
+export async function getAuditLogRowButtonLocator(
+  entryId: string,
+  context: AuditLogBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `audit-log-row-button-${entryId}` }])
+    .resolve();
+}
+
+/**
+ * Returns a resolved locator for an audit log detail panel by entry ID.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
+ */
+export async function getAuditLogDetailPanelLocator(
+  entryId: string,
+  context: AuditLogBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
+  return context.page.locate([{ type: 'testId', value: `audit-log-detail-${entryId}` }]).resolve();
+}

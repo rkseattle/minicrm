@@ -1249,3 +1249,143 @@ export async function fillContactDetailField(
 export async function navigateToContactsOwnedByMe(context: ContactsBehaviorContext): Promise<void> {
   await context.page.goto('/contacts?owner=me', { waitUntil: 'networkidle' });
 }
+
+// ---------------------------------------------------------------------------
+// Visibility check helpers — keep page.isNotVisible() / doesNotExist() out of
+// spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the bulk-action bar is absent or hidden.
+ * Used after bulk operations to confirm the bar has been dismissed.
+ */
+export async function isBulkActionBarHidden(context: ContactsBehaviorContext): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }]);
+}
+
+/**
+ * Navigates to the contacts list using domcontentloaded wait (not networkidle).
+ * Use when the test intentionally intercepts requests that would delay networkidle.
+ */
+export async function navigateToContactsDomReady(context: ContactsBehaviorContext): Promise<void> {
+  await context.page.goto('/contacts', { waitUntil: 'domcontentloaded' });
+}
+
+/**
+ * Returns true when no aria-busy element is present or visible.
+ * Used to assert that the loading indicator has gone away.
+ */
+export async function isLoadingIndicatorGone(context: ContactsBehaviorContext): Promise<boolean> {
+  return context.page.isNotVisible([
+    { type: 'css', value: '[aria-busy="true"]' },
+    { type: 'css', value: 'p[aria-busy]' },
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// GDPR erasure flow — keep page.waitFor/click/fill out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Result returned by performGdprErasure. */
+export interface GdprErasureResult {
+  /** True when the erasure modal was dismissed (hidden) after submission. */
+  modalDismissed: boolean;
+}
+
+/**
+ * Waits for the GDPR privacy section, clicks Erase, fills the confirmation
+ * word, submits, and waits for the modal to be dismissed.
+ *
+ * @param confirmWord - The word the user must type to enable the submit button (e.g. 'ERASE').
+ * @param context - Behavior context with page.
+ */
+export async function performGdprErasure(
+  confirmWord: string,
+  context: ContactsBehaviorContext,
+): Promise<GdprErasureResult> {
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'gdpr-privacy-section' },
+      { type: 'role', value: 'region', options: { name: /gdpr/i } },
+    ],
+    'visible',
+    { intent: 'GDPR privacy section on contact detail page' },
+  );
+
+  await context.page.click(
+    [
+      { type: 'testId', value: 'gdpr-erase-button' },
+      { type: 'role', value: 'button', options: { name: /erase personal data/i } },
+    ],
+    { intent: 'button to open GDPR erasure confirmation modal' },
+  );
+
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'gdpr-erase-modal' },
+      { type: 'role', value: 'dialog', options: { name: /erase/i } },
+    ],
+    'visible',
+    { intent: 'GDPR erasure confirmation modal' },
+  );
+
+  await context.page.fill(
+    confirmWord,
+    [
+      { type: 'testId', value: 'gdpr-erase-confirm-input' },
+      { type: 'role', value: 'textbox', options: { name: /type erase/i } },
+    ],
+    { intent: 'confirmation input that accepts ERASE to enable the submit button' },
+  );
+
+  await context.page.click(
+    [
+      { type: 'testId', value: 'gdpr-erase-confirm-button' },
+      { type: 'role', value: 'button', options: { name: /confirm.*erase/i } },
+    ],
+    { intent: 'confirm button that submits the GDPR erasure request' },
+  );
+
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: 'gdpr-erase-modal' },
+      { type: 'role', value: 'dialog', options: { name: /erase/i } },
+    ],
+    'hidden',
+    { intent: 'GDPR erasure confirmation modal' },
+    10_000,
+  );
+
+  return { modalDismissed: true };
+}
+
+/**
+ * Resolves the contact name heading locator after GDPR erasure.
+ */
+export async function getContactNameHeadingLocator(context: ContactsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'contact-name' },
+        { type: 'role', value: 'heading', options: { level: 1 } },
+      ],
+      { intent: 'contact name heading on the detail page' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the contact email field locator on the detail page.
+ */
+export async function getContactEmailFieldLocator(context: ContactsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'detail-email' },
+        { type: 'css', value: '[data-testid="detail-email"]' },
+      ],
+      { intent: 'email value field on the contact detail page' },
+    )
+    .resolve();
+}

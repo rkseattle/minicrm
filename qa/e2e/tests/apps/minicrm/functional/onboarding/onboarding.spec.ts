@@ -35,6 +35,11 @@ import {
   dismissSetupChecklist,
   getSetupChecklistPillLocator,
   clickSetupChecklistCollapse,
+  navigateToDashboardAndWait,
+  waitForDashboardHeading,
+  isSetupChecklistWidgetHidden,
+  isSetupChecklistPillHidden,
+  getSetupChecklistTaskListLocator,
 } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   inviteUserViaApi,
@@ -112,12 +117,10 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     await setOnboardingCompleted(restClient, true);
     await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-    await page.goto('/', { waitUntil: 'networkidle' });
-    await page.waitFor([{ type: 'testId', value: 'dashboard-heading' }], 'visible', {}, 10_000);
-    expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
-      true,
-    );
-    expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-pill' }])).toBe(true);
+    await navigateToDashboardAndWait({ page });
+    await waitForDashboardHeading({ page }, 10_000);
+    expect(await isSetupChecklistWidgetHidden({ page })).toBe(true);
+    expect(await isSetupChecklistPillHidden({ page })).toBe(true);
   });
 
   test('@functional F-OB3: dismiss (X) hides the widget and persists onboarding_completed=true', async ({
@@ -138,9 +141,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
 
       await dismissSetupChecklist({ page });
 
-      expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
-        true,
-      );
+      expect(await isSetupChecklistWidgetHidden({ page })).toBe(true);
 
       // Verify persistence via API
       const status = await getOnboardingStatus(restClient);
@@ -172,9 +173,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
 
       const pill = await getSetupChecklistPillLocator({ page });
       await expect(pill).toBeVisible({ timeout: 5_000 });
-      expect(await page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }])).toBe(
-        true,
-      );
+      expect(await isSetupChecklistWidgetHidden({ page })).toBe(true);
     } finally {
       await loginAsAdmin(restClient);
       await setOnboardingCompleted(restClient, true);
@@ -193,15 +192,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
 
       await getSetupChecklistWidgetLocator({ page });
 
-      const taskList = await page
-        .locate(
-          [
-            { type: 'testId', value: 'setup-checklist-task-list' },
-            { type: 'role', value: 'list' },
-          ],
-          { intent: 'setup checklist task list showing five setup tasks' },
-        )
-        .resolve();
+      const taskList = await getSetupChecklistTaskListLocator({ page });
 
       await expect(taskList).toBeVisible({ timeout: 10_000 });
 
@@ -248,15 +239,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       const widget = await getSetupChecklistWidgetLocator({ page });
       await expect(widget).toBeVisible({ timeout: 10_000 });
 
-      const taskList = await page
-        .locate(
-          [
-            { type: 'testId', value: 'setup-checklist-task-list' },
-            { type: 'role', value: 'list' },
-          ],
-          { intent: 'setup checklist task list showing four rep-specific tasks' },
-        )
-        .resolve();
+      const taskList = await getSetupChecklistTaskListLocator({ page });
 
       await expect(taskList).toBeVisible({ timeout: 10_000 });
 

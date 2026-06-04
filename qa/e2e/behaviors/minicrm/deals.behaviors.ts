@@ -746,3 +746,19 @@ export async function getDealAttachmentsListLocator(context: DealsBehaviorContex
   const detail = new DealDetailPage(context);
   return detail.attachmentsListLocator();
 }
+
+// ---------------------------------------------------------------------------
+// Navigation helpers — keep page.waitForURL() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for the browser URL to match the deals list path after a redirect.
+ * Resolves the final pathname for the caller to assert against.
+ */
+export async function waitForDealsListUrl(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<string> {
+  await context.page.waitForURL('/deals', { timeout });
+  return new URL(context.page.url()).pathname;
+}

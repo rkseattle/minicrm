@@ -18,7 +18,12 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateViaNavLink, setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
+import {
+  navigateViaNavLink,
+  setNavLayoutViaAPI,
+  waitForNavLink,
+} from '@behaviors/minicrm/nav.behaviors.js';
+import { navigateToPath } from '@behaviors/minicrm/layout.behaviors.js';
 import {
   getReportsHeadingLocator,
   getReportsTabListLocator,
@@ -60,20 +65,12 @@ test('reports nav: clicking Reports nav link lands on /reports @functional', asy
     // React Query refetch of the (now-left) layout. Setting it here narrows the
     // race window with parallel tests' ensureSystemDefaults calls. (MINCRM-415)
     await setNavLayoutViaAPI('left', restClient);
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToPath('/', { page });
 
     // The left-nav layout is applied via a React Query setting; the nav link may
     // not be in the DOM immediately after networkidle if the setting fetch is still
     // in flight. Wait explicitly before attempting the click.
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'nav-left-reports' },
-        { type: 'css', value: '[data-testid="nav-left-reports"]' },
-      ],
-      'visible',
-      { intent: 'Reports nav link in left navigation bar' },
-      10_000,
-    );
+    await waitForNavLink('nav-left-reports', { page }, 10_000);
     const result = await navigateViaNavLink('left', 'reports', { page });
     expect(result.linkClicked).toBe(true);
     expect(new URL(result.finalUrl).pathname).toBe('/reports');
@@ -89,7 +86,7 @@ test('reports nav: /reports shows the page heading @functional', async ({
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports', { page });
 
   const heading = await getReportsHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -102,7 +99,7 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports', { page });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
@@ -132,7 +129,7 @@ test('reports nav: /reports defaults to Win/Loss report content @functional', as
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports', { page });
 
   const heading = await getReportsWinLossHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -145,7 +142,7 @@ test('reports nav: /reports?view=activity deep-links to Activity Volume @functio
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports?view=activity', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports?view=activity', { page });
 
   const heading = await getReportsActivityVolumeHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -158,7 +155,7 @@ test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage rep
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports?view=pipeline-stage', { page });
 
   const heading = await getReportsStageTrendHeadingLocator({ page });
   await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -171,7 +168,7 @@ test('reports nav: old /reports/win-loss URL redirects to /reports @functional',
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports/win-loss', { page });
   expect(new URL(page.url()).pathname).toBe('/reports');
 });
 
@@ -182,7 +179,7 @@ test('reports nav: switching tabs renders the selected report @functional', asyn
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/reports', { waitUntil: 'networkidle' });
+  await navigateToPath('/reports', { page });
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 

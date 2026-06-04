@@ -23,6 +23,7 @@ import {
   getReportsStageTrendTableLocator,
   getReportsStageTrendEmptyLocator,
   getReportsDaysSelectLocator,
+  navigateToStageTrendReport,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -65,7 +66,7 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
 test('stage trend report: table or empty state visible after load @functional', async ({
   page,
 }) => {
-  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+  await navigateToStageTrendReport({ page });
 
   const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
 
@@ -78,7 +79,7 @@ test('stage trend report: table or empty state visible after load @functional', 
 test('stage trend report: changing date range to 60 days re-fetches and still shows table or empty state @functional', async ({
   page,
 }) => {
-  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+  await navigateToStageTrendReport({ page });
 
   // Wait for initial load to settle
   await waitForReportLoaded(page);
@@ -99,7 +100,7 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
 test('stage trend report: changing date range to 90 days updates the select @functional', async ({
   page,
 }) => {
-  await page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+  await navigateToStageTrendReport({ page });
 
   const daysSelect = await getReportsDaysSelectLocator({ page });
   await daysSelect.selectOption('90');

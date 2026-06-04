@@ -29,6 +29,9 @@ export {
   navigateToForgotPasswordPage,
   navigateToSetPasswordPage,
   isSetPasswordTokenInvalid,
+  navigateToAdminSettingsGeneralPage,
+  getMfaRequiredCheckboxLocator,
+  getMfaRequiredSuccessLocator,
 } from './auth.behaviors.js';
 export type {
   AuthBehaviorContext,
@@ -88,6 +91,12 @@ export {
   clickContactsBulkReassign,
   getContactsBulkReassignModalLocator,
   cancelContactsBulkReassign,
+  isBulkActionBarHidden,
+  navigateToContactsDomReady,
+  isLoadingIndicatorGone,
+  performGdprErasure,
+  getContactNameHeadingLocator,
+  getContactEmailFieldLocator,
 } from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
@@ -123,6 +132,9 @@ export {
   deleteAccount,
   createAccountViaApi,
   patchAccount,
+  noAlertExists,
+  clickAccountEditButton,
+  isLinkedContactAbsent,
 } from './accounts.behaviors.js';
 export type {
   AccountsBehaviorContext,
@@ -187,6 +199,7 @@ export {
   getDealAttachmentsSectionLocator,
   getDealAttachmentsFileInputLocator,
   getDealAttachmentsListLocator,
+  waitForDealsListUrl,
 } from './deals.behaviors.js';
 export type {
   DealsBehaviorContext,
@@ -316,7 +329,12 @@ export type {
   DealTagRow,
 } from './tags.behaviors.js';
 
-export { filterAuditLog, getAuditLog } from './audit-log.behaviors.js';
+export {
+  filterAuditLog,
+  getAuditLog,
+  getAuditLogRowButtonLocator,
+  getAuditLogDetailPanelLocator,
+} from './audit-log.behaviors.js';
 export type {
   AuditLogBehaviorContext,
   FilterAuditLogResult,
@@ -398,6 +416,8 @@ export {
   getMyTasks,
   createActivityViaApi,
   patchActivity,
+  getOverdueTaskBadgeLocator,
+  isOverdueTaskBadgeHidden,
 } from './activities.behaviors.js';
 export type { ActivityRow, ActivityListRow, CreateActivityParams } from './activities.behaviors.js';
 
@@ -421,7 +441,18 @@ export {
   getSetupChecklistPillLocator,
   dismissSetupChecklist,
   clickSetupChecklistCollapse,
+  navigateToDashboardAndWait,
+  waitForDashboardHeading,
+  isSetupChecklistWidgetHidden,
+  isSetupChecklistPillHidden,
+  getSetupChecklistTaskListLocator,
+  resetPipelineStagesReviewed,
+  getCustomFieldsEditGridLocator,
+  getCustomFieldDeleteButtonLocator,
+  getCustomFieldInputLocator,
+  getCustomFieldLabelLocator,
 } from './setup.behaviors.js';
+export type { OnboardingBehaviorContext, CustomFieldsBehaviorContext } from './setup.behaviors.js';
 
 export {
   ensureSystemDefaults,
@@ -472,8 +503,55 @@ export {
   getPipelineStageMoveUpLocator,
   getPipelineStageMoveDownLocator,
   getPipelineStagesFeedbackLocator,
+  navigateToUrl,
+  navigateToAdminSettingsCustomisation,
+  navigateToAdminSettingsGeneral,
+  clickMoveUpAndWaitForReorder,
+  clickMoveDownAndWaitForReorder,
+  clickAddPipelineStage,
+  fillAddPipelineStageName,
+  submitAddPipelineStage,
+  waitForPipelineStagesFeedback,
+  fillRenamePipelineStage,
+  clickDeletePipelineStageConfirm,
+  waitForDeleteStageDialog,
+  getSsoSectionLocator,
+  getSsoProtocolSelectLocator,
+  getSsoIdpMetadataUrlInputLocator,
+  getSsoEntityIdInputLocator,
+  getSsoSaveButtonLocator,
+  getSsoEnabledBadgeLocator,
+  getSsoDisableButtonLocator,
+  getSsoDisableConfirmButtonLocator,
+  getSsoSaveSuccessLocator,
+  navigateToLoginPageForSso,
+  reloadSettingsPage,
+  getSsoLoginButtonLocator,
+  navigateToAdminSettingsIntegrations,
+  navigateToAdminSettingsCurrency,
+  getPipelineAddButtonLocator,
+  getNewPipelineNameInputLocator,
+  getCreatePipelineSubmitLocator,
+  getPipelinesFeedbackLocator,
+  getPipelineEditButtonLocator,
+  getPipelineEditInputLocator,
+  getPipelineSaveButtonLocator,
+  getPipelineDeleteButtonLocator,
+  getPipelineDeleteConfirmLocator,
+  getPipelineDeleteConfirmButtonLocator,
+  getPipelineStagesPipelineSelectorLocator,
+  getPipelineStageRowLocator,
+  getPipelineBoardSelectorLocator,
+  getPipelineBoardContainerLocator,
+  getPipelineStageEditButtonLocator,
+  getPipelineStageSaveButtonLocator,
+  getPipelineStageDeleteButtonLocator,
 } from './settings.behaviors.js';
-export type { AdminSettingsBehaviorContext } from './settings.behaviors.js';
+export type {
+  AdminSettingsBehaviorContext,
+  PipelineStageReorderEntry,
+  StageReorderResult,
+} from './settings.behaviors.js';
 export type {
   WebhookSubscription,
   WebhookCreateResult,
@@ -489,8 +567,10 @@ export {
   listAttachments,
   deleteAttachment,
   getAttachmentDownloadStatus,
+  getAttachmentDownloadLinkLocator,
+  isAttachmentRowHidden,
 } from './attachments.behaviors.js';
-export type { AttachmentRow } from './attachments.behaviors.js';
+export type { AttachmentRow, AttachmentsBehaviorContext } from './attachments.behaviors.js';
 
 export {
   getWinLossReport,
@@ -515,6 +595,8 @@ export {
   getReportsWonCountValueLocator,
   getReportsLostCountValueLocator,
   getReportsWinRateValueLocator,
+  navigateToWinLossReport,
+  navigateToStageTrendReport,
 } from './reports.behaviors.js';
 export type { WinLossReport, ReportsBehaviorContext } from './reports.behaviors.js';
 
@@ -537,6 +619,17 @@ export {
   getMobileLogoutButtonLocator,
   getMobileLanguageSelectLocator,
   getDesktopLanguageSelectLocator,
+  reloadCurrentPage,
+  navigateBack,
+  navigateForward,
+  waitForRedirectToDashboard,
+  navigateToUrlAndWait,
+  isNavLinkHidden,
+  waitForNavLink,
+  hamburgerDrawerDoesNotExist,
+  waitForCssSelector,
+  waitForUrl,
+  isMobileNavDrawerHidden,
 } from './nav.behaviors.js';
 export type {
   NavLayout,
@@ -550,7 +643,43 @@ export type {
   OpenMobileNavResult,
   CloseMobileNavViaToggleResult,
   NavigateViaMobileNavLinkResult,
+  BrowserHistoryNavigationResult,
+  WaitForRedirectResult,
 } from './nav.behaviors.js';
 
-export { assertEmptyStateContainerFills } from './layout.behaviors.js';
+export {
+  assertEmptyStateContainerFills,
+  resolveTimestampMasks,
+  getRecentActivityFeedLocator,
+  getDashboardStatCardLocator,
+  getDashboardStatCardValueLocator,
+  getRecentActivityEntryLocator,
+  countElements,
+  navigateToContactDetailPage,
+  navigateToDealDetailPage,
+  navigateToAccountDetailPage,
+  navigateToContactsPage,
+  navigateToAccountsPage,
+  navigateToLeadsPage,
+  navigateToTasksPage,
+  navigateToPath,
+  getDashboardStatCardsLocator,
+  getMyTasksHeadingLocator,
+  getNewContactButtonLocator,
+  getNewAccountButtonLocator,
+  getNewLeadButtonLocator,
+  getAccountNameHeadingLocator,
+} from './layout.behaviors.js';
 export type { LayoutBehaviorContext, EmptyStateContainerFillResult } from './layout.behaviors.js';
+
+export {
+  applyPseudoLocale,
+  reloadAndWait,
+  findHardcodedStrings,
+  findOverflowingElements,
+} from './i18n.behaviors.js';
+export type {
+  I18nBehaviorContext,
+  HardcodedStringFinding,
+  OverflowFinding,
+} from './i18n.behaviors.js';

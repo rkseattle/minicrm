@@ -53,6 +53,8 @@ import {
   getContactsDuplicateWarningVisible,
   getContactsLoadingIndicator,
   getContactsContactLinkLocator,
+  navigateToContactsDomReady,
+  isLoadingIndicatorGone,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   getDealById,
@@ -62,6 +64,7 @@ import {
   getDealNotFoundLocator,
   getDealNotFoundBackLink,
   navigateToDealNotFound,
+  navigateToPipelineBoard,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
@@ -159,7 +162,7 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
     account_id: account.id,
   });
 
-  await page.goto('/deals', { waitUntil: 'networkidle' });
+  await navigateToPipelineBoard({ page });
 
   // Wait for the deal card to be present before setting up the mock.
   const card = await getDealCardLocator(deal.id, { page });
@@ -365,7 +368,7 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
 
   // Navigate — do NOT wait for networkidle because the intercepted request keeps
   // the network busy for the full delay.
-  await page.goto('/contacts', { waitUntil: 'domcontentloaded' });
+  await navigateToContactsDomReady({ page });
 
   // The loading indicator must appear while the request is in-flight.
   const loadingEl = await getContactsLoadingIndicator({ page });
@@ -374,14 +377,7 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   // After the delay the real data arrives — wait for the page to settle.
   await page.waitForLoadState('networkidle');
 
-  // Loading indicator should be gone once data is rendered.
-  const loadingGone = await page.isNotVisible(
-    [
-      { type: 'css', value: '[aria-busy="true"]' },
-      { type: 'css', value: 'p[aria-busy]' },
-    ],
-    DELAY_MS + 5_000,
-  );
+  const loadingGone = await isLoadingIndicatorGone({ page });
   expect(loadingGone, 'loading indicator should disappear once contacts are loaded').toBe(true);
 });
 
@@ -405,7 +401,7 @@ test('@functional ES-1-8: isolation check — contacts list loads normally witho
     email: `es8-isolation-${uniqueSuffix}@example.com`,
   });
 
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
+  await navigateToContacts({ page });
 
   // The contacts list should load promptly (well under 3 s) and show the seeded contact.
   const contactRow = await getContactsContactLinkLocator(contact.id, { page });

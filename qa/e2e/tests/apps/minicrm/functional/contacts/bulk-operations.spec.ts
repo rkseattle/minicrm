@@ -25,6 +25,7 @@ import {
   bulkDeleteContacts,
   getContactById,
   getContactsBulkActionBarLocator,
+  isBulkActionBarHidden,
   type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
@@ -117,7 +118,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   // page.isNotVisible() is used here because resolve() throws
   // StrategyExhaustedError when the element is absent — it cannot be used for
   // not.toBeVisible() assertions. (MINCRM-211)
-  expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
+  expect(await isBulkActionBarHidden({ page })).toBe(true);
 
   // Verify via API that both contacts now have the new owner.
   const c1Updated = (await getContactById(restClient, c1.id)) as ContactWithOwner;
@@ -169,7 +170,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   await bulkDeleteContacts({ page });
 
   // Bulk action bar should disappear.
-  expect(await page.isNotVisible([{ type: 'testId', value: 'bulk-action-bar' }])).toBe(true);
+  expect(await isBulkActionBarHidden({ page })).toBe(true);
 
   // Verify both contacts return 404 via API.
   const err1 = await restClient.get<never>(`/api/v1/contacts/${c1.id}`).catch((e: unknown) => e);

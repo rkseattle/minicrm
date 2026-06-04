@@ -1042,3 +1042,46 @@ export async function loginWithRecoveryCode(
   const success = new URL(finalUrl).pathname !== '/login';
   return { success, finalUrl };
 }
+
+// ---------------------------------------------------------------------------
+// MFA settings helpers — keep page.goto/locate out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the admin settings general page and waits for network idle.
+ */
+export async function navigateToAdminSettingsGeneralPage(
+  context: AuthBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/admin/settings', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Returns a resolved locator for the MFA enforcement checkbox in admin settings.
+ */
+export async function getMfaRequiredCheckboxLocator(context: AuthBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-required-checkbox' },
+        { type: 'css', value: '[data-testid="mfa-required-checkbox"]' },
+      ],
+      { intent: 'MFA enforcement checkbox in admin general settings' },
+    )
+    .resolve();
+}
+
+/**
+ * Returns a resolved locator for the MFA enforcement success message.
+ */
+export async function getMfaRequiredSuccessLocator(context: AuthBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-required-success' },
+        { type: 'role', value: 'status' },
+      ],
+      { intent: 'success confirmation after toggling MFA enforcement setting' },
+    )
+    .resolve();
+}

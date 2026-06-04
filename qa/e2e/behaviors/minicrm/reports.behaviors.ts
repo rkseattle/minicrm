@@ -232,3 +232,28 @@ export async function getReportsWinRateValueLocator(context: ReportsBehaviorCont
   const reportsPage = new ReportsPage(context);
   return reportsPage.winRateValueLocator();
 }
+
+// ---------------------------------------------------------------------------
+// Navigation helpers — keep direct page.goto() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the win/loss report page and waits for network idle.
+ */
+export async function navigateToWinLossReport(context: ReportsBehaviorContext): Promise<void> {
+  await context.page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Navigates to the pipeline stage trend report page and waits for network idle.
+ */
+export async function navigateToStageTrendReport(context: ReportsBehaviorContext): Promise<void> {
+  await context.page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Reloads the current page and waits for network idle.
+ */
+export async function reloadPage(context: ReportsBehaviorContext): Promise<void> {
+  await context.page.reload({ waitUntil: 'networkidle' });
+}

@@ -43,6 +43,8 @@ import {
   listAccountsViaApi,
   getAccountLinkedContactLocator,
   getAccountLinkedContactsEmptyLocator,
+  noAlertExists,
+  isLinkedContactAbsent,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getContactById, patchContactAccount } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
@@ -390,11 +392,7 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
   const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
   await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
 
-  // No error alert should be present (doesNotExist — safe when element is absent).
-  expect(
-    await page.doesNotExist([{ type: 'role', value: 'alert' }]),
-    'no error alerts should be present',
-  ).toBe(true);
+  expect(await noAlertExists({ page }), 'no error alerts should be present').toBe(true);
 });
 
 test('@functional F3-A3: unlinking contact from contact side is reflected on account detail', async ({
@@ -420,9 +418,8 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
   await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
 
-  // The previously linked contact should not appear in the list.
   expect(
-    await page.doesNotExist([{ type: 'testId', value: `linked-contact-${contact.id}` }]),
+    await isLinkedContactAbsent(contact.id, { page }),
     'contact should no longer appear in linked contacts list',
   ).toBe(true);
 });
