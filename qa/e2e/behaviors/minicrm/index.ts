@@ -82,6 +82,7 @@ export {
   fillContactDetailField,
   saveContact,
   isContactDetailLoaded,
+  waitForContactDetailReadMode,
   getContactEditButtonLocator,
   clickNewContact,
   submitContactCreateFormAction,
@@ -630,6 +631,7 @@ export {
   waitForCssSelector,
   waitForUrl,
   isMobileNavDrawerHidden,
+  selectLanguageAndWaitForPatch,
 } from './nav.behaviors.js';
 export type {
   NavLayout,

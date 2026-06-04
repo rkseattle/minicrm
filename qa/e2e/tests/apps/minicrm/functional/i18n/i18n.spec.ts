@@ -43,6 +43,7 @@ import {
   getDesktopLanguageSelectLocator,
   getMobileLanguageSelectLocator,
   getMobileNavDrawerLocator,
+  selectLanguageAndWaitForPatch,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
@@ -319,17 +320,13 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
         // On mobile the language selector is inside the mobile nav drawer.
         await openMobileNav({ page });
         const langSelect = await getMobileLanguageSelectLocator({ page });
-        await langSelect.selectOption('es');
+        await selectLanguageAndWaitForPatch('es', langSelect, { page });
         await closeMobileNavViaToggle({ page });
       } else {
         // On desktop the language selector is in the nav header.
         const langSelect = await getDesktopLanguageSelectLocator({ page });
-        await langSelect.selectOption('es');
+        await selectLanguageAndWaitForPatch('es', langSelect, { page });
       }
-
-      // Wait for the PATCH /api/v1/users/me/language mutation to complete before
-      // reloading — without this the preference may not be persisted yet. (MINCRM-415)
-      await page.waitForLoadState('networkidle');
 
       // Language change should take effect without a page reload.
       setLocale('es');

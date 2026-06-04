@@ -11,7 +11,7 @@
  * MINCRM-144
  */
 
-import type { PageFacade } from '@framework/fixtures/index.js';
+import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -677,4 +677,36 @@ export async function waitForUrl(
  */
 export async function isMobileNavDrawerHidden(context: NavBehaviorContext): Promise<boolean> {
   return context.page.isNotVisible([{ type: 'testId', value: 'mobile-nav-drawer' }]);
+}
+
+// ---------------------------------------------------------------------------
+// selectLanguageAndWaitForPatch() — language selector interaction. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Selects a language from an already-resolved language selector locator and
+ * waits for the PATCH /api/v1/users/me/language response to confirm the
+ * preference was persisted on the server.
+ *
+ * The response listener is registered BEFORE selectOption fires to guarantee
+ * the response is captured even when the mutation fires synchronously in the
+ * React onChange handler (avoids the race where waitForResponse is set up after
+ * the PATCH has already completed). (MINCRM-418)
+ *
+ * @param locale  - Locale code to select (e.g. 'es', 'de').
+ * @param locator - Already-resolved locator for the language <select> element.
+ * @param context - Playwright fixture context.
+ */
+export async function selectLanguageAndWaitForPatch(
+  locale: string,
+  locator: SafeLocator,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/me/language') &&
+      response.request().method() === 'PATCH',
+  );
+  await locator.selectOption(locale);
+  await patchDone;
 }

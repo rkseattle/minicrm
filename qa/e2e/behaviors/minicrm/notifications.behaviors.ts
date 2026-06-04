@@ -287,10 +287,22 @@ export async function toggleAdminEmailNotifications(
   const adminSettings = new AdminSettingsPage(context);
   await adminSettings.navigate('notifications');
 
+  // Register the response listener before clicking so the PATCH is always
+  // captured — avoids the race where the mutation fires before waitForResponse
+  // is registered if the toggle click resolves synchronously. (MINCRM-418)
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/settings/email-notifications') &&
+      response.request().method() === 'PATCH' &&
+      response.status() === 200,
+  );
   await adminSettings.toggleEmailNotifications();
+  await patchDone;
 
-  // The success message is set in onSuccess, which fires only after the server
-  // PATCH has completed. Waiting for it is sufficient to confirm the write landed.
+  // Wait for the success message — it is set in React's onSuccess callback,
+  // which fires after invalidateQueries. This confirms the UI has processed
+  // the mutation before the caller reads isEnabled or queries the API.
+  // (MINCRM-389, MINCRM-418)
   await adminSettings.waitForEmailNotifSuccessVisible();
 
   const saved = await adminSettings.successMessageIsVisible();

@@ -234,6 +234,15 @@ export class ContactsPage {
    * @param term - The string to type into the search input.
    */
   async search(term: string): Promise<void> {
+    // Register before fill so we never miss the response even if the debounced
+    // search fires before the next await. The predicate requires the search
+    // query param to be present so the initial page-load GET is not matched.
+    const responsePromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contacts') &&
+        response.url().includes('search=') &&
+        response.request().method() === 'GET',
+    );
     await this.page.fill(
       term,
       [
@@ -242,9 +251,7 @@ export class ContactsPage {
       ],
       { intent: 'contacts list search input field' },
     );
-    // Wait for the debounce to fire, the request to complete, and React to
-    // repopulate the list — matches the pattern used in rowCount().
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
   }
 
   /**
@@ -539,7 +546,32 @@ export class ContactsPage {
       )
       .resolve();
     await el.waitFor({ state: 'visible', timeout: 8_000 });
+    // Register the response listener before clicking so the DELETE is always
+    // captured and fully awaited before control returns. (MINCRM-418)
+    const deleteDone = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contacts/bulk') && response.request().method() === 'POST',
+    );
     await el.click({ force });
+    await deleteDone;
+  }
+
+  /**
+   * Waits until all of the given contact IDs are absent from the DOM.
+   * Use after confirmBulkDelete() to ensure the delete has propagated to the
+   * rendered list before making API-level assertions. (MINCRM-418)
+   *
+   * @param ids - Contact IDs whose row testIds must disappear.
+   * @param timeout - Maximum ms to wait.
+   */
+  async waitForContactsRemovedFromList(ids: string[], timeout = 10_000): Promise<void> {
+    for (const id of ids) {
+      await this.page.waitForFunction(
+        `document.querySelector('[data-testid="contact-link-${id}"]') === null`,
+        undefined,
+        { timeout },
+      );
+    }
   }
 
   /**

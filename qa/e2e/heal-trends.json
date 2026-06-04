@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-28T17:07:03.651Z",
+  "updatedAt": "2026-06-04T22:40:39.873Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -285,9 +285,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "invite-submit",
-      "count": 5,
+      "count": 13,
       "firstSeenAt": "2026-05-28T02:50:33.854Z",
-      "lastSeenAt": "2026-05-28T17:05:52.276Z"
+      "lastSeenAt": "2026-06-04T22:39:44.345Z"
     },
     "Unknown::unknown::testId::user-actions-2525eb1c-aa4e-406c-a020-5edcc8e0aabd": {
       "pageObject": "Unknown",
@@ -405,6 +405,159 @@
       "count": 1,
       "firstSeenAt": "2026-05-28T17:06:32.466Z",
       "lastSeenAt": "2026-05-28T17:06:32.466Z"
+    },
+    "Unknown::unknown::testId::user-actions-c5de643a-799a-48a1-94d6-8eee2c71f4ec": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-c5de643a-799a-48a1-94d6-8eee2c71f4ec",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T17:36:56.398Z",
+      "lastSeenAt": "2026-06-04T17:36:56.398Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-c5de643a-799a-48a1-94d6-8eee2c71f4ec": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-c5de643a-799a-48a1-94d6-8eee2c71f4ec",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T17:36:58.423Z",
+      "lastSeenAt": "2026-06-04T17:36:58.423Z"
+    },
+    "Unknown::unknown::testId::y": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "y",
+      "count": 6,
+      "firstSeenAt": "2026-06-04T18:00:51.297Z",
+      "lastSeenAt": "2026-06-04T18:01:20.045Z"
+    },
+    "Unknown::unknown::testId::user-actions-26a4b86c-ad97-44a7-8a78-0722817f3706": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-26a4b86c-ad97-44a7-8a78-0722817f3706",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T18:13:30.352Z",
+      "lastSeenAt": "2026-06-04T18:13:30.352Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-26a4b86c-ad97-44a7-8a78-0722817f3706": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-26a4b86c-ad97-44a7-8a78-0722817f3706",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T18:13:32.372Z",
+      "lastSeenAt": "2026-06-04T18:13:32.372Z"
+    },
+    "Unknown::unknown::testId::user-actions-ca3b7c7d-16f0-4a4c-9da4-1aacc58e54af": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-ca3b7c7d-16f0-4a4c-9da4-1aacc58e54af",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T18:56:20.933Z",
+      "lastSeenAt": "2026-06-04T18:56:20.933Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-ca3b7c7d-16f0-4a4c-9da4-1aacc58e54af": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-ca3b7c7d-16f0-4a4c-9da4-1aacc58e54af",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T18:56:22.950Z",
+      "lastSeenAt": "2026-06-04T18:56:22.950Z"
+    },
+    "Unknown::unknown::testId::user-actions-1b55c353-47c8-4203-8466-0ce4c3759148": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-1b55c353-47c8-4203-8466-0ce4c3759148",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T19:11:46.537Z",
+      "lastSeenAt": "2026-06-04T19:11:46.537Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-1b55c353-47c8-4203-8466-0ce4c3759148": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-1b55c353-47c8-4203-8466-0ce4c3759148",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T19:11:48.557Z",
+      "lastSeenAt": "2026-06-04T19:11:48.557Z"
+    },
+    "Unknown::unknown::testId::add-pipeline-button": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "add-pipeline-button",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T19:40:23.684Z",
+      "lastSeenAt": "2026-06-04T19:40:23.684Z"
+    },
+    "Unknown::unknown::testId::user-actions-13c968f1-75ca-417a-a159-51a24af4ff20": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-13c968f1-75ca-417a-a159-51a24af4ff20",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T20:25:03.648Z",
+      "lastSeenAt": "2026-06-04T20:25:03.648Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-13c968f1-75ca-417a-a159-51a24af4ff20": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-13c968f1-75ca-417a-a159-51a24af4ff20",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T20:25:05.672Z",
+      "lastSeenAt": "2026-06-04T20:25:05.672Z"
+    },
+    "Unknown::unknown::testId::user-actions-5cd7d5c6-d105-4c39-9aab-7eca87f12bb4": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-5cd7d5c6-d105-4c39-9aab-7eca87f12bb4",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T20:45:55.143Z",
+      "lastSeenAt": "2026-06-04T20:45:55.143Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-5cd7d5c6-d105-4c39-9aab-7eca87f12bb4": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-5cd7d5c6-d105-4c39-9aab-7eca87f12bb4",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T20:45:57.165Z",
+      "lastSeenAt": "2026-06-04T20:45:57.165Z"
+    },
+    "Unknown::unknown::testId::pagination-next": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "pagination-next",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T21:10:37.729Z",
+      "lastSeenAt": "2026-06-04T21:10:37.729Z"
+    },
+    "Unknown::unknown::testId::user-actions-9c31abad-68fd-4c6e-b146-9e2ce7e2751d": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-9c31abad-68fd-4c6e-b146-9e2ce7e2751d",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T22:40:36.056Z",
+      "lastSeenAt": "2026-06-04T22:40:36.056Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-9c31abad-68fd-4c6e-b146-9e2ce7e2751d": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-9c31abad-68fd-4c6e-b146-9e2ce7e2751d",
+      "count": 1,
+      "firstSeenAt": "2026-06-04T22:40:38.084Z",
+      "lastSeenAt": "2026-06-04T22:40:38.084Z"
     }
   }
 }

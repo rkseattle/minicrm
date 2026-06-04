@@ -74,7 +74,7 @@ export class AdminSettingsPage {
    */
   async navigate(tab?: AdminSettingsTab): Promise<void> {
     const path = tab ? `${AdminSettingsPage.PATH}?tab=${tab}` : AdminSettingsPage.PATH;
-    await this.page.goto(path);
+    await this.page.goto(path, { waitUntil: 'networkidle' });
   }
 
   // ---------------------------------------------------------------------------
@@ -668,6 +668,13 @@ export class AdminSettingsPage {
    * Clicks the Save exchange rates button to persist all rate changes.
    */
   async saveExchangeRates(): Promise<void> {
+    // Register the listener before clicking so the PUT response is always
+    // captured even when the server responds before the next await resolves.
+    const putDone = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/settings/currencies') &&
+        response.request().method() === 'PUT',
+    );
     await this.page.click(
       [
         { type: 'testId', value: 'exchange-rate-save-button' },
@@ -675,6 +682,7 @@ export class AdminSettingsPage {
       ],
       { intent: 'save button to persist exchange rate configuration' },
     );
+    await putDone;
   }
 
   // ---------------------------------------------------------------------------
@@ -1095,7 +1103,12 @@ export class AdminSettingsPage {
           { type: 'testId', value: 'sso-enabled-badge' },
           { type: 'css', value: '[data-testid="sso-enabled-badge"]' },
         ],
-        { intent: 'status badge showing that SSO is currently enabled and configured' },
+        {
+          intent: 'status badge showing that SSO is currently enabled and configured',
+          // Badge renders after the save success message; allow extra probe time
+          // so the locator resolves before the caller's toBeVisible assertion.
+          fallbackTimeout: 5_000,
+        },
       )
       .resolve();
   }

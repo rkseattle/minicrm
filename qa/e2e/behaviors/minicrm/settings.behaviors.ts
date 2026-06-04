@@ -727,7 +727,12 @@ export async function getSsoLoginButtonLocator(context: AdminSettingsBehaviorCon
         { type: 'testId', value: 'sso-login-button' },
         { type: 'role', value: 'link', options: { name: /sign in with/i } },
       ],
-      { intent: 'SSO login button on the login page' },
+      {
+        intent: 'SSO login button on the login page',
+        // The login page fetches SSO status asynchronously after load; allow extra
+        // probe time for the button to appear after the status request settles.
+        fallbackTimeout: 8_000,
+      },
     )
     .resolve();
 }
@@ -750,12 +755,29 @@ export async function navigateToAdminSettingsIntegrations(
 // ---------------------------------------------------------------------------
 
 /**
- * Navigates to the admin settings currency tab and waits for network idle.
+ * Navigates to the admin settings currency tab and waits for the currencies
+ * config to be fetched. The extra waitForResponse ensures TanStack Query's
+ * initial fetch has completed before the caller interacts with the form —
+ * without it, a background refetch can overwrite React state set by
+ * selectOption() if the cached response resolves before the network fetch.
+ * (MINCRM-418)
  */
 export async function navigateToAdminSettingsCurrency(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
+  // Navigate and then wait for ALL in-flight GET /settings/currencies requests to
+  // complete. With staleTime:0 the component may fire a background refetch after
+  // the initial response; each refetch re-runs the useEffect that sets homeCurrency,
+  // overwriting any selectOption() call made in between. waitUntil:'networkidle'
+  // after the first response ensures both the initial fetch and any background
+  // refetch have landed before the caller interacts with the form. (MINCRM-418)
   await context.page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
+  // Settle any pending re-renders after the network quietens.
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="home-currency-select"]') !== null`,
+    undefined,
+    { timeout: 10_000 },
+  );
 }
 
 // ---------------------------------------------------------------------------
