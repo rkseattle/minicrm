@@ -65,8 +65,12 @@ interface NoteRow {
 }
 
 /**
- * Extracts plain text from a Lexical editor state JSON document.
- * Walks the node tree and concatenates all text-node values.
+ * Extracts plain text from a Lexical or Tiptap/ProseMirror editor state JSON document.
+ * Walks the node tree collecting text from all relevant node types:
+ * - `text` nodes (standard text, inline code via format bitmask)
+ * - `mention` nodes (display text from `text` or `value` field depending on plugin)
+ * - element nodes with `children` (Lexical: link, autolink, code block, paragraph, etc.)
+ * - element nodes with `content` (Tiptap/ProseMirror style)
  * Returns empty string on parse failure or non-object input.
  */
 export function extractBodyText(json: string): string {
@@ -77,11 +81,27 @@ export function extractBodyText(json: string): string {
     function walk(node: Record<string, unknown>): void {
       if (node['type'] === 'text' && typeof node['text'] === 'string') {
         parts.push(node['text']);
+        return; // text nodes have no meaningful children
       }
-      const content = node['content'];
-      if (Array.isArray(content)) {
-        for (const child of content as Record<string, unknown>[]) {
-          walk(child);
+      if (node['type'] === 'mention') {
+        // Mention nodes store display text in `text` or `value` depending on the plugin
+        const label = node['text'] ?? node['value'];
+        if (typeof label === 'string') parts.push(label);
+        // fall through to walk any nested children
+      }
+      // Descend into well-known structural keys only — avoids recursing into metadata
+      // (url, attrs, etc.).  `root` is Lexical's document wrapper; `children`/`content`
+      // are the child-array keys used by Lexical and Tiptap/ProseMirror respectively.
+      for (const key of ['root', 'children', 'content'] as const) {
+        const val = node[key];
+        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+          walk(val as Record<string, unknown>);
+        } else if (Array.isArray(val)) {
+          for (const child of val as Record<string, unknown>[]) {
+            if (child !== null && typeof child === 'object' && !Array.isArray(child)) {
+              walk(child as Record<string, unknown>);
+            }
+          }
         }
       }
     }
