@@ -427,22 +427,25 @@ export class ContactsPage {
   /**
    * Clicks the "Reassign" button in the bulk action bar.
    *
-   * Uses force: true for the same reason as clickBulkDelete — the action bar
-   * re-renders after checkbox selection settles, briefly detaching the button
-   * on CI runners.
+   * The action bar re-renders after checkbox selection settles, briefly
+   * detaching buttons on CI runners. Resolving a static element handle and
+   * clicking it races this detach cycle. Instead we wait for the button to be
+   * stably attached with a positive bounding rect (same pattern as the bar
+   * itself in clickBulkCheckbox), then click via a fresh locator resolution.
    */
   async clickBulkReassign(): Promise<void> {
-    const el = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'bulk-reassign-button' },
-          { type: 'role', value: 'button', options: { name: /reassign/i } },
-        ],
-        { intent: 'reassign button in the bulk action bar' },
-      )
-      .resolve();
-    await el.waitFor({ state: 'visible', timeout: 8_000 });
-    await el.click({ force: true });
+    await this.page.waitForFunction(
+      `(() => { const el = document.querySelector('[data-testid="bulk-reassign-button"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
+      undefined,
+      { timeout: 8_000 },
+    );
+    await this.page.click(
+      [
+        { type: 'testId', value: 'bulk-reassign-button' },
+        { type: 'role', value: 'button', options: { name: /reassign/i } },
+      ],
+      { intent: 'reassign button in the bulk action bar' },
+    );
   }
 
   /**
@@ -512,23 +515,24 @@ export class ContactsPage {
   /**
    * Clicks the "Delete" button in the bulk action bar.
    *
-   * @param force - When true, bypasses Playwright's actionability checks.
-   *   Defaults to true because the bar re-renders immediately after the checkbox
-   *   selection state settles, detaching the button briefly on both desktop and
-   *   mobile CI runners.
+   * The action bar re-renders after checkbox selection settles, briefly
+   * detaching buttons on CI runners. Same stable-bounding-rect guard as
+   * clickBulkReassign — wait for the button to have a positive height before
+   * clicking via a fresh locator resolution.
    */
-  async clickBulkDelete(force = true): Promise<void> {
-    const el = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'bulk-delete-button' },
-          { type: 'role', value: 'button', options: { name: /delete/i } },
-        ],
-        { intent: 'delete button in the bulk action bar' },
-      )
-      .resolve();
-    await el.waitFor({ state: 'visible', timeout: 8_000 });
-    await el.click({ force });
+  async clickBulkDelete(): Promise<void> {
+    await this.page.waitForFunction(
+      `(() => { const el = document.querySelector('[data-testid="bulk-delete-button"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
+      undefined,
+      { timeout: 8_000 },
+    );
+    await this.page.click(
+      [
+        { type: 'testId', value: 'bulk-delete-button' },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'delete button in the bulk action bar' },
+    );
   }
 
   /**

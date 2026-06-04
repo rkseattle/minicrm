@@ -694,7 +694,7 @@ export async function bulkDeleteContacts(
   force = false,
 ): Promise<void> {
   const contactsPage = new ContactsPage(context);
-  await contactsPage.clickBulkDelete(force);
+  await contactsPage.clickBulkDelete();
   await contactsPage.confirmBulkDelete(force);
 }
 
