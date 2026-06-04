@@ -46,6 +46,8 @@ export type {
 
 export {
   navigateToContacts,
+  navigateToContactsOwnedByMe,
+  navigateToContactNotFound,
   waitForContactInList,
   waitForBulkCheckbox,
   clickBulkCheckbox,
@@ -108,6 +110,7 @@ export type {
 
 export {
   navigateToAccounts,
+  navigateToAccountsOwnedByMe,
   editAccount,
   createAccountViaUI,
   deleteAccountViaUI,
@@ -180,6 +183,7 @@ export {
   getDealLinkedContactsEmptyLocator,
   getDealNotFoundLocator,
   getDealNotFoundBackLink,
+  navigateToDealNotFound,
   getDealAttachmentsSectionLocator,
   getDealAttachmentsFileInputLocator,
   getDealAttachmentsListLocator,
@@ -233,6 +237,7 @@ export type {
 
 export {
   navigateToLeads,
+  navigateToLeadsOwnedByMe,
   createLeadViaUI,
   createLeadViaUIThenCreateAnyway,
   updateLeadStatus,
@@ -546,3 +551,6 @@ export type {
   CloseMobileNavViaToggleResult,
   NavigateViaMobileNavLinkResult,
 } from './nav.behaviors.js';
+
+export { assertEmptyStateContainerFills } from './layout.behaviors.js';
+export type { LayoutBehaviorContext, EmptyStateContainerFillResult } from './layout.behaviors.js';

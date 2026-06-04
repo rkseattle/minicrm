@@ -328,20 +328,13 @@ export class NotesPage {
    * not just hidden), so resolve() — which probes for attached — would time out.
    */
   async waitForComposerClosed(timeout = 8_000): Promise<void> {
-    // Pass as string so TypeScript doesn't type-check browser globals (no dom lib in tsconfig).
-    await this.page.waitForFunction('!document.querySelector(\'[data-testid="notes-composer"]\')', {
-      timeout,
-    });
+    await this.page.waitForAbsent('[data-testid="notes-composer"]', timeout);
   }
 
   /**
    * Waits for the delete confirmation modal to be removed from the DOM after confirm.
-   * Uses waitForFunction for the same reason as waitForComposerClosed.
    */
   async waitForDeleteModalClosed(timeout = 8_000): Promise<void> {
-    await this.page.waitForFunction(
-      '!document.querySelector(\'[data-testid="confirm-delete-modal"]\')',
-      { timeout },
-    );
+    await this.page.waitForAbsent('[data-testid="confirm-delete-modal"]', timeout);
   }
 }

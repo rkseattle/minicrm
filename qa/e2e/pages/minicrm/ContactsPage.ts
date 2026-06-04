@@ -210,14 +210,8 @@ export class ContactsPage {
     // has run and the bar is CSS-visible. Checking only DOM presence (`!== null`)
     // is insufficient: on a loaded CI runner Playwright can resolve the bar during
     // a paint cycle before it has a rendered size, leaving bulk-reassign-button
-    // reporting not-visible. getBoundingClientRect().height > 0 works for both
-    // the mobile fixed sheet and the desktop inline bar (unlike offsetParent,
-    // which is null for position:fixed elements). (MINCRM-404)
-    await this.page.waitForFunction(
-      `(() => { const el = document.querySelector('[data-testid="bulk-action-bar"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
-      undefined,
-      { timeout: 5_000 },
-    );
+    // reporting not-visible. (MINCRM-404)
+    await this.page.waitForPainted('[data-testid="bulk-action-bar"]', 5_000);
     const bar = await this.page
       .locate(
         [
@@ -434,11 +428,7 @@ export class ContactsPage {
    * itself in clickBulkCheckbox), then click via a fresh locator resolution.
    */
   async clickBulkReassign(): Promise<void> {
-    await this.page.waitForFunction(
-      `(() => { const el = document.querySelector('[data-testid="bulk-reassign-button"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
-      undefined,
-      { timeout: 8_000 },
-    );
+    await this.page.waitForPainted('[data-testid="bulk-reassign-button"]');
     await this.page.click(
       [
         { type: 'testId', value: 'bulk-reassign-button' },
@@ -521,11 +511,7 @@ export class ContactsPage {
    * clicking via a fresh locator resolution.
    */
   async clickBulkDelete(): Promise<void> {
-    await this.page.waitForFunction(
-      `(() => { const el = document.querySelector('[data-testid="bulk-delete-button"]'); return el !== null && el.getBoundingClientRect().height > 0; })()`,
-      undefined,
-      { timeout: 8_000 },
-    );
+    await this.page.waitForPainted('[data-testid="bulk-delete-button"]');
     await this.page.click(
       [
         { type: 'testId', value: 'bulk-delete-button' },

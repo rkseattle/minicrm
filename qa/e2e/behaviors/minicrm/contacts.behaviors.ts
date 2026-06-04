@@ -912,6 +912,25 @@ export async function getContactNotFoundBackLink(context: ContactsBehaviorContex
 }
 
 /**
+ * Navigates directly to a contact detail URL by ID and waits for the
+ * not-found error state to render.
+ *
+ * Use domcontentloaded so navigation completes before the API response arrives;
+ * the not-found UI only renders after React receives the 404 and transitions
+ * from isLoading to isError, so we poll for the alert element's presence.
+ *
+ * @param id - Contact UUID (may be non-existent to trigger the 404 state).
+ * @param context - Playwright fixture context.
+ */
+export async function navigateToContactNotFound(
+  id: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  await context.page.goto(`/contacts/${id}`, { waitUntil: 'domcontentloaded' });
+  await context.page.waitForPresent('p[role="alert"]');
+}
+
+/**
  * Returns a resolved locator for the Edit button on the contact detail page.
  */
 export async function getContactEditButtonLocator(context: ContactsBehaviorContext) {
@@ -1218,4 +1237,15 @@ export async function fillContactDetailField(
 ): Promise<void> {
   const detailPage = new ContactDetailPage(context);
   await detailPage.fillField(testId, label, value);
+}
+
+/**
+ * Navigates to the contacts list pre-filtered to the current user's records
+ * (owner=me) and waits for the page to reach networkidle.
+ *
+ * Used by layout tests that need an empty-state to appear immediately without
+ * relying on the owner-filter UI controls loading first.
+ */
+export async function navigateToContactsOwnedByMe(context: ContactsBehaviorContext): Promise<void> {
+  await context.page.goto('/contacts?owner=me', { waitUntil: 'networkidle' });
 }

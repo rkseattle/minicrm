@@ -348,6 +348,55 @@ export interface HealMethods {
    * manually unless you want to reset mocks mid-test.
    */
   unmockAllRoutes(): Promise<void>;
+
+  /**
+   * Polls until the element matching `selector` is attached to the DOM *and*
+   * has a positive painted height (getBoundingClientRect().height > 0).
+   *
+   * Use this before clicking an element that lives inside a container that
+   * re-renders after state updates. Standard visibility checks pass as soon as
+   * an element is non-hidden in CSS, but on a loaded CI runner a framework can
+   * insert the element at zero height during a paint cycle before layout is
+   * complete — the element then detaches and re-attaches on the next render,
+   * making a previously-resolved element handle go stale mid-click.
+   *
+   * getBoundingClientRect().height > 0 is the authoritative "layout settled"
+   * signal. It works for both position:fixed elements (e.g. mobile action
+   * sheets) and normal-flow elements, unlike offsetParent which is null for
+   * fixed elements.
+   *
+   * @param selector - CSS selector for the target element.
+   * @param timeout  - Poll timeout in milliseconds (default 8 000).
+   */
+  waitForPainted(selector: string, timeout?: number): Promise<void>;
+
+  /**
+   * Polls until at least one element matching `selector` is present in the DOM.
+   *
+   * Use this as a guard before locate().resolve() or evaluate() when the element
+   * is conditionally rendered — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it to appear.
+   *
+   * Passed as a browser-evaluated string expression so the Node-targeted QA
+   * tsconfig (no dom lib) never sees `document` as a type error.
+   *
+   * @param selector - CSS selector for the target element.
+   * @param timeout  - Poll timeout in milliseconds (default 10 000).
+   */
+  waitForPresent(selector: string, timeout?: number): Promise<void>;
+
+  /**
+   * Polls until no element matching `selector` exists in the DOM.
+   *
+   * Use this after an action that fully unmounts a component (e.g. a modal or
+   * composer that is removed from the DOM rather than hidden). waitFor with
+   * state 'detached' requires an already-resolved locator handle; this method
+   * re-queries on every poll so it works even when you never held a handle.
+   *
+   * @param selector - CSS selector for the target element.
+   * @param timeout  - Poll timeout in milliseconds (default 8 000).
+   */
+  waitForAbsent(selector: string, timeout?: number): Promise<void>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -639,6 +688,30 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
         await page.unroute(pattern);
       }
       registeredPatterns.clear();
+    },
+
+    async waitForPainted(selector: string, timeout = 8_000): Promise<void> {
+      await page.waitForFunction(
+        `(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el !== null && el.getBoundingClientRect().height > 0; })()`,
+        undefined,
+        { timeout },
+      );
+    },
+
+    async waitForPresent(selector: string, timeout = 10_000): Promise<void> {
+      await page.waitForFunction(
+        `document.querySelector(${JSON.stringify(selector)}) !== null`,
+        undefined,
+        { timeout },
+      );
+    },
+
+    async waitForAbsent(selector: string, timeout = 8_000): Promise<void> {
+      await page.waitForFunction(
+        `document.querySelector(${JSON.stringify(selector)}) === null`,
+        undefined,
+        { timeout },
+      );
     },
   };
 }

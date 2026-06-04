@@ -572,3 +572,11 @@ export async function getAccountAttachmentsListLocator(context: AccountsBehavior
   const detail = new AccountDetailPage(context);
   return detail.attachmentsListLocator();
 }
+
+/**
+ * Navigates to the accounts list pre-filtered to the current user's records
+ * (owner=me) and waits for the page to reach networkidle.
+ */
+export async function navigateToAccountsOwnedByMe(context: AccountsBehaviorContext): Promise<void> {
+  await context.page.goto('/accounts?owner=me', { waitUntil: 'networkidle' });
+}

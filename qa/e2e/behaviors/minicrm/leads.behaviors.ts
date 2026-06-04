@@ -552,3 +552,18 @@ export async function disqualifyLead(
     version,
   });
 }
+
+/**
+ * Navigates to the leads list and filters to the current user's own leads.
+ *
+ * LeadsPage uses component state (not URL params) for owner filtering, so
+ * navigating to /leads always shows "All". This behavior clicks the "Mine"
+ * filter button after the query resolves, leaving the list scoped to the
+ * current user.
+ */
+export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): Promise<void> {
+  const leadsPage = new LeadsPage(context);
+  await leadsPage.navigate();
+  await context.page.waitForLoadState('networkidle');
+  await leadsPage.filterByOwnerMe();
+}

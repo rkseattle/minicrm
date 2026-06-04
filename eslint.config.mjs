@@ -14,6 +14,7 @@ import jsdocPlugin from 'eslint-plugin-jsdoc';
 import prettierConfig from 'eslint-config-prettier';
 import requireDataTestid from './eslint-plugins/require-data-testid.mjs';
 import noPageForbiddenMethods from './eslint-plugins/no-page-forbidden-methods.mjs';
+import noPageDirectInSpec from './eslint-plugins/no-page-direct-in-spec.mjs';
 import noPlaywrightImports from './eslint-plugins/no-playwright-imports.mjs';
 import requireLocatorIntent from './eslint-plugins/require-locator-intent.mjs';
 import requireLocatorFallback from './eslint-plugins/require-locator-fallback.mjs';
@@ -190,12 +191,21 @@ const testConfig = {
 // Framework internals (qa/e2e/framework/**) and framework self-tests
 // (qa/e2e/tests/framework/**) are intentionally excluded — they wrap Playwright
 // directly and need access to its primitives.
+// ── E2E spec and behavior files — enforce SafePage/HealPage usage ────────────
+// no-page-direct-in-spec is included here (spec files only, via an override
+// rule that is a no-op for behavior files) because ESLint 9 flat config does
+// not allow two config objects with overlapping file globs to both define the
+// same plugin key ("local"). All local rules are therefore registered once here
+// and selectively activated: no-page-direct-in-spec is set to "error" only for
+// spec files via e2eSpecDirectPageConfig below, which adds a rule override
+// without re-declaring the plugin.
 const e2eSpecConfig = {
   files: ['qa/e2e/tests/apps/**/*.spec.ts', 'qa/e2e/behaviors/**/*.ts'],
   plugins: {
     local: {
       rules: {
         'no-page-forbidden-methods': noPageForbiddenMethods,
+        'no-page-direct-in-spec': noPageDirectInSpec,
         'no-playwright-imports': noPlaywrightImports,
         'require-locator-fallback': requireLocatorFallback,
       },
@@ -205,6 +215,31 @@ const e2eSpecConfig = {
     'local/no-page-forbidden-methods': 'error',
     'local/no-playwright-imports': 'error',
     'local/require-locator-fallback': 'error',
+    // Off for behaviors — only activated for spec files below.
+    'local/no-page-direct-in-spec': 'off',
+  },
+};
+
+// ── E2E spec files only — forbid direct page navigation/interaction calls ────
+// Behaviors and page objects may call page.goto(), page.click(), page.evaluate()
+// etc. directly. Spec files must not — those calls belong in a named behavior
+// function so the spec reads as a sequence of intent-bearing steps.
+//
+// Allowed in specs: setViewportSize, mockRoute, unmockRoute, unmockAllRoutes,
+// waitForTimeout, waitForLoadState, on, once, removeListener, pause.
+// Everything else that belongs in a behavior is forbidden. (MINCRM-401)
+//
+// Currently set to 'warn' because existing spec files have pre-existing
+// violations that will be cleaned up incrementally. Escalate to 'error'
+// once all existing violations are resolved.
+//
+// No `plugins` key here — the plugin is already registered in e2eSpecConfig
+// above, which also covers spec files. This config only overrides the rule
+// severity for the narrower file glob.
+const e2eSpecDirectPageConfig = {
+  files: ['qa/e2e/tests/apps/**/*.spec.ts'],
+  rules: {
+    'local/no-page-direct-in-spec': 'warn',
   },
 };
 
@@ -252,6 +287,7 @@ export default [
   routeJsdocConfig,
   testConfig,
   e2eSpecConfig,
+  e2eSpecDirectPageConfig,
   e2ePageObjectConfig,
   scriptsConfig,
   // Must be last: disables ESLint rules that conflict with Prettier
