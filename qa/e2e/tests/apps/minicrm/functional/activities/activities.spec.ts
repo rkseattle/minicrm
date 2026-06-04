@@ -56,6 +56,7 @@ import {
   patchActivity,
   getOverdueTaskBadgeLocator,
   getMyTaskRowLocator,
+  isOverdueTaskBadgeHidden,
   type ActivityRow,
 } from '@behaviors/minicrm/activities.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
@@ -437,7 +438,7 @@ test('@functional F5-DS1: task with future due date → not shown as overdue in 
 
   // Overdue badge should NOT be present (isNotVisible — safe when element is absent).
   expect(
-    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await isOverdueTaskBadgeHidden(activity.id, { page }),
     'future task should not show overdue badge',
   ).toBe(true);
 
@@ -508,7 +509,7 @@ test('@functional F5-DS3: task with no due date → no overdue state in UI or AP
   expect(navResult.loaded).toBe(true);
 
   expect(
-    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await isOverdueTaskBadgeHidden(activity.id, { page }),
     'task with no due date should not show overdue badge',
   ).toBe(true);
 });
@@ -551,7 +552,7 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
   await taskRow?.waitFor({ state: 'visible', timeout: 10_000 });
 
   expect(
-    await page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${activity.id}` }]),
+    await isOverdueTaskBadgeHidden(activity.id, { page }),
     'completed task must not show overdue badge',
   ).toBe(true);
 });

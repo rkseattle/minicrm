@@ -30,6 +30,11 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
+  navigateToUrlAndWait,
+  waitForRedirectToDashboard,
+  isNavLinkHidden,
+} from '@behaviors/minicrm/nav.behaviors.js';
+import {
   createTestContact,
   createTestAccount,
   createTestActivity,
@@ -320,15 +325,9 @@ test('@functional F7-FU1: rep navigating directly to /users is redirected to das
     // Log in as rep via UI.
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
-    // Attempt direct navigation to the admin-only users route.
-    await page.goto('/users', { waitUntil: 'networkidle' });
+    await navigateToUrlAndWait('/users', { page });
 
-    // AdminRoute redirects non-admins to '/'.
-    await page
-      .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-      .catch(() => null);
-
-    const finalPath = new URL(page.url()).pathname;
+    const { pathname: finalPath } = await waitForRedirectToDashboard({ page }, 10_000);
     expect(finalPath, 'rep navigating to /users should be redirected to /').toBe('/');
   } finally {
     await restClient
@@ -347,13 +346,9 @@ test('@functional F7-FU2: rep navigating directly to /admin/settings is redirect
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
-    await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+    await navigateToUrlAndWait('/admin/settings', { page });
 
-    await page
-      .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-      .catch(() => null);
-
-    const finalPath = new URL(page.url()).pathname;
+    const { pathname: finalPath } = await waitForRedirectToDashboard({ page }, 10_000);
     expect(finalPath, 'rep navigating to /admin/settings should be redirected to /').toBe('/');
   } finally {
     await restClient
@@ -372,13 +367,9 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
-    await page.goto('/admin/automation', { waitUntil: 'networkidle' });
+    await navigateToUrlAndWait('/admin/automation', { page });
 
-    await page
-      .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-      .catch(() => null);
-
-    const finalPath = new URL(page.url()).pathname;
+    const { pathname: finalPath } = await waitForRedirectToDashboard({ page }, 10_000);
     expect(finalPath, 'rep navigating to /admin/automation should be redirected to /').toBe('/');
   } finally {
     await restClient
@@ -398,9 +389,8 @@ test('@functional F7-FU4: rep navigating directly to /reports can access the rep
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
     // /reports/win-loss now redirects to /reports?view=win-loss (MINCRM-294)
-    await page.goto('/reports/win-loss', { waitUntil: 'networkidle' });
+    await navigateToUrlAndWait('/reports/win-loss', { page });
 
-    // Rep should be redirected to /reports (the consolidated shell page)
     const finalPath = new URL(page.url()).pathname;
     expect(finalPath, 'rep navigating to /reports/win-loss should redirect to /reports').toBe(
       '/reports',
@@ -430,10 +420,7 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page,
 
     for (const dest of adminDestinations) {
       for (const prefix of navPrefixes) {
-        const notVisible = await page.isNotVisible(
-          [{ type: 'testId', value: `${prefix}-${dest}` }],
-          300,
-        );
+        const notVisible = await isNavLinkHidden(`${prefix}-${dest}`, { page }, 300);
         expect(notVisible, `nav link "${prefix}-${dest}" should not be visible to a rep`).toBe(
           true,
         );

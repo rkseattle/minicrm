@@ -239,7 +239,7 @@ const e2eSpecConfig = {
 const e2eSpecDirectPageConfig = {
   files: ['qa/e2e/tests/apps/**/*.spec.ts'],
   rules: {
-    'local/no-page-direct-in-spec': 'warn',
+    'local/no-page-direct-in-spec': 'error',
   },
 };
 

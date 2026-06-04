@@ -27,7 +27,13 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import { createTestContact, createTestAdmin } from '@apps/minicrm/helpers.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
-import { navigateToContactDetail, getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
+import {
+  navigateToContactDetail,
+  getContactById,
+  performGdprErasure,
+  getContactNameHeadingLocator,
+  getContactEmailFieldLocator,
+} from '@behaviors/minicrm/contacts.behaviors.js';
 import { getRecordAuditLog } from '@behaviors/minicrm/notes.behaviors.js';
 
 // The word the UI requires the user to type to confirm erasure
@@ -55,92 +61,14 @@ test(
       last_name: `UI-${Date.now()}`,
     });
 
-    // Navigate to the contact detail page
     await navigateToContactDetail(contact.id, { page });
 
-    // Wait for the GDPR & Privacy section to be visible
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'gdpr-privacy-section' },
-        { type: 'role', value: 'region', options: { name: /gdpr/i } },
-      ],
-      'visible',
-      { intent: 'GDPR privacy section on contact detail page' },
-    );
+    await performGdprErasure(CONFIRM_WORD, { page });
 
-    // Click the Erase personal data button
-    await page.click(
-      [
-        { type: 'testId', value: 'gdpr-erase-button' },
-        { type: 'role', value: 'button', options: { name: /erase personal data/i } },
-      ],
-      { intent: 'button to open GDPR erasure confirmation modal' },
-    );
-
-    // Wait for the confirmation modal to appear
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'gdpr-erase-modal' },
-        { type: 'role', value: 'dialog', options: { name: /erase/i } },
-      ],
-      'visible',
-      { intent: 'GDPR erasure confirmation modal' },
-    );
-
-    // Type the confirmation word
-    await page.fill(
-      CONFIRM_WORD,
-      [
-        { type: 'testId', value: 'gdpr-erase-confirm-input' },
-        { type: 'role', value: 'textbox', options: { name: /type erase/i } },
-      ],
-      { intent: 'confirmation input that accepts ERASE to enable the submit button' },
-    );
-
-    // Submit the erasure — viewport is pre-expanded to 900px so the button is in range
-    await page.click(
-      [
-        { type: 'testId', value: 'gdpr-erase-confirm-button' },
-        { type: 'role', value: 'button', options: { name: /confirm.*erase/i } },
-      ],
-      { intent: 'confirm button that submits the GDPR erasure request' },
-    );
-
-    // Modal should dismiss after erasure completes
-    await page.waitFor(
-      [
-        { type: 'testId', value: 'gdpr-erase-modal' },
-        { type: 'role', value: 'dialog', options: { name: /erase/i } },
-      ],
-      'hidden',
-      { intent: 'GDPR erasure confirmation modal' },
-      10_000,
-    );
-
-    // The contact name heading should now show [GDPR deleted]
-    const nameEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'contact-name' },
-          { type: 'role', value: 'heading', options: { level: 1 } },
-        ],
-        { intent: 'contact name heading on the detail page' },
-      )
-      .resolve();
+    const nameEl = await getContactNameHeadingLocator({ page });
     await expect(nameEl).toContainText('[GDPR deleted]');
 
-    // The email field is replaced with a scrambled sentinel (gdpr-deleted-UUID@gdpr.invalid)
-    // to satisfy the unique constraint — it will NOT contain "[GDPR deleted]".
-    // Verify it no longer contains the original contact email domain instead.
-    const emailEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'detail-email' },
-          { type: 'css', value: '[data-testid="detail-email"]' },
-        ],
-        { intent: 'email value field on the contact detail page' },
-      )
-      .resolve();
+    const emailEl = await getContactEmailFieldLocator({ page });
     const emailText = (await emailEl.textContent()) ?? '';
     expect(emailText, 'erased email must use the gdpr.invalid sentinel domain').toMatch(
       /gdpr-deleted-.+@gdpr\.invalid/,

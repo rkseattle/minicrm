@@ -47,6 +47,7 @@ import {
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
+import { reloadCurrentPage } from '@behaviors/minicrm/nav.behaviors.js';
 import { createTestUser, navigateToDashboard, createTestAdmin } from '@apps/minicrm/helpers.js';
 import { setLocale, t } from '@framework/i18n/locale.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -204,11 +205,11 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await assertFrenchNavLabel('on first load');
 
       // Reload once.
-      await page.reload({ waitUntil: 'networkidle' });
+      await reloadCurrentPage({ page });
       await assertFrenchNavLabel('after first reload');
 
       // Reload a second time — confirms no reversion to English.
-      await page.reload({ waitUntil: 'networkidle' });
+      await reloadCurrentPage({ page });
       await assertFrenchNavLabel('after second reload');
     } finally {
       setLocale('en');
@@ -346,7 +347,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       if (isMobile) await closeMobileNavViaToggle({ page });
 
       // Reload and confirm Spanish persists.
-      await page.reload({ waitUntil: 'networkidle' });
+      await reloadCurrentPage({ page });
 
       if (isMobile) await openMobileNav({ page });
       const contactsLinkAfterReload = isMobile

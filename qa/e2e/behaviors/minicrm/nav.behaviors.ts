@@ -520,3 +520,161 @@ export async function getDesktopLanguageSelectLocator(context: NavBehaviorContex
   const navPage = new NavPage(context);
   return navPage.desktopLanguageSelectLocator();
 }
+
+// ---------------------------------------------------------------------------
+// Page reload helper — keep page.reload() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Reloads the current page and waits for network idle.
+ */
+export async function reloadCurrentPage(context: NavBehaviorContext): Promise<void> {
+  await context.page.reload({ waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Browser history helpers — keep page.goBack/goForward out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Result returned by navigateBack / navigateForward. */
+export interface BrowserHistoryNavigationResult {
+  /** The URL pathname after navigation completes. */
+  pathname: string;
+}
+
+/**
+ * Navigates back in browser history and waits for network idle.
+ */
+export async function navigateBack(
+  context: NavBehaviorContext,
+): Promise<BrowserHistoryNavigationResult> {
+  await context.page.goBack({ waitUntil: 'networkidle' });
+  return { pathname: new URL(context.page.url()).pathname };
+}
+
+/**
+ * Navigates forward in browser history and waits for network idle.
+ */
+export async function navigateForward(
+  context: NavBehaviorContext,
+): Promise<BrowserHistoryNavigationResult> {
+  await context.page.goForward({ waitUntil: 'networkidle' });
+  return { pathname: new URL(context.page.url()).pathname };
+}
+
+// ---------------------------------------------------------------------------
+// URL wait helpers — keep page.waitForURL() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Result returned by waitForRedirectToDashboard. */
+export interface WaitForRedirectResult {
+  /** The final pathname after the redirect. */
+  pathname: string;
+}
+
+/**
+ * Waits for the browser to redirect to '/' (dashboard).
+ * Used to assert that an admin-only route redirected a non-admin user.
+ */
+export async function waitForRedirectToDashboard(
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<WaitForRedirectResult> {
+  await context.page
+    .waitForURL((url) => new URL(url).pathname === '/', { timeout })
+    .catch(() => null);
+  return { pathname: new URL(context.page.url()).pathname };
+}
+
+/**
+ * Navigates to a URL and waits for network idle.
+ */
+export async function navigateToUrlAndWait(
+  url: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  await context.page.goto(url, { waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Nav-link visibility checks — keep page.isNotVisible() out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the specified nav link (by testid) is absent or hidden.
+ */
+export async function isNavLinkHidden(
+  testId: string,
+  context: NavBehaviorContext,
+  timeout?: number,
+): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: testId }], timeout);
+}
+
+// ---------------------------------------------------------------------------
+// Nav link wait helper — keep page.waitFor() out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for a nav link with the given testId to become visible.
+ */
+export async function waitForNavLink(
+  testId: string,
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitFor(
+    [
+      { type: 'testId', value: testId },
+      { type: 'css', value: `[data-testid="${testId}"]` },
+    ],
+    'visible',
+    { intent: `${testId} nav link becoming visible` },
+    timeout,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Additional nav-specific DOM check helpers. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the hamburger drawer is absent from the DOM.
+ * Used to assert the drawer has not been opened yet.
+ */
+export async function hamburgerDrawerDoesNotExist(context: NavBehaviorContext): Promise<boolean> {
+  return context.page.doesNotExist([{ type: 'testId', value: 'nav-hamburger-drawer' }]);
+}
+
+/**
+ * Waits for a CSS-attribute selector to match a visible element.
+ * Used to wait for aria-checked="true" on a nav layout option.
+ */
+export async function waitForCssSelector(
+  cssSelector: string,
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitFor([{ type: 'css', value: cssSelector }], 'visible', {}, timeout);
+}
+
+/**
+ * Waits for the browser URL to match a pattern.
+ */
+export async function waitForUrl(
+  urlPattern: string | RegExp | ((url: URL) => boolean),
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitForURL(urlPattern as Parameters<typeof context.page.waitForURL>[0], {
+    timeout,
+  });
+}
+
+/**
+ * Returns true when the mobile-nav-drawer element is absent or hidden.
+ */
+export async function isMobileNavDrawerHidden(context: NavBehaviorContext): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: 'mobile-nav-drawer' }]);
+}

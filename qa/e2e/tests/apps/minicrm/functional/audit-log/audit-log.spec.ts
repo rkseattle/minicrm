@@ -51,6 +51,8 @@ import {
   getAuditLogPaginationLocator,
   getAuditLogPaginationPrevLocator,
   collapseAuditLogFilters,
+  getAuditLogRowButtonLocator,
+  getAuditLogDetailPanelLocator,
 } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { listAuditEvents } from '@apps/minicrm/grpc/auditGrpcClient.js';
 import { GrpcClientError } from '@framework/clients/grpc-client.js';
@@ -194,19 +196,12 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // and intercepts pointer events, causing the row-button click to time out.
   await collapseAuditLogFilters({ page });
 
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
-  const expandButton = await page
-    .locate([{ type: 'testId', value: `audit-log-row-button-${firstNameEntry.id}` }])
-    .resolve();
+  const expandButton = await getAuditLogRowButtonLocator(firstNameEntry.id, { page });
   const isVisible = await expandButton.isVisible().catch(() => false);
   if (isVisible) {
     await expandButton.click();
-    await expect(
-      // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
-      await page
-        .locate([{ type: 'testId', value: `audit-log-detail-${firstNameEntry.id}` }])
-        .resolve(),
-    ).toBeVisible({ timeout: 3_000 });
+    const detailPanel = await getAuditLogDetailPanelLocator(firstNameEntry.id, { page });
+    await expect(detailPanel).toBeVisible({ timeout: 3_000 });
   }
 });
 

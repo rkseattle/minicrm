@@ -35,6 +35,7 @@ import {
   isSetPasswordTokenInvalid,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import { inviteUserViaApi, deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import { navigateToUrlAndWait } from '@behaviors/minicrm/nav.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 // MINCRM-262: Set-password tests exercise an unauthenticated flow. Use an
@@ -107,7 +108,7 @@ test('@functional F1-INV2: /set-password — invalid token shows error on the pa
 test('@functional F1-INV3: /set-password — missing token shows invalid-token error, not a redirect to login', async ({
   page,
 }) => {
-  await page.goto('/set-password');
+  await navigateToUrlAndWait('/set-password', { page });
 
   const invalidToken = await isSetPasswordTokenInvalid({ page });
   expect(invalidToken, 'missing token should show invalid-token error').toBe(true);

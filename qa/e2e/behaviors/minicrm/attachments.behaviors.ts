@@ -12,6 +12,16 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { PageFacade } from '@framework/fixtures/index.js';
+
+// ---------------------------------------------------------------------------
+// Fixture context
+// ---------------------------------------------------------------------------
+
+/** Fixtures required by attachment UI behaviors. */
+export interface AttachmentsBehaviorContext {
+  page: PageFacade;
+}
 
 // ---------------------------------------------------------------------------
 // API data types (MINCRM-357)
@@ -79,4 +89,32 @@ export async function getAttachmentDownloadStatus(
 ): Promise<number> {
   const res = await restClient.get(`/api/v1/attachments/${attachmentId}/download`);
   return res.status;
+}
+
+// ---------------------------------------------------------------------------
+// UI locator/visibility helpers — keep page.locate/isNotVisible out of spec
+// files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the first attachment download link on the current page.
+ * Uses a prefix-match CSS selector because the testid includes a dynamic attachment ID.
+ * eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
+ */
+export async function getAttachmentDownloadLinkLocator(context: AttachmentsBehaviorContext) {
+  // eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
+  return context.page
+    .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
+    .resolve();
+}
+
+/**
+ * Returns true when the attachment row for the given ID is absent or hidden.
+ * Used to assert that a deleted attachment no longer appears in the list.
+ */
+export async function isAttachmentRowHidden(
+  attachmentId: string,
+  context: AttachmentsBehaviorContext,
+): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: `attachment-row-${attachmentId}` }]);
 }

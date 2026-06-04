@@ -176,3 +176,18 @@ export async function getOverdueTaskBadgeLocator(
   const tasksPage = new MyTasksPage(context);
   return tasksPage.overdueTaskBadgeLocator(taskId);
 }
+
+// ---------------------------------------------------------------------------
+// Visibility check helpers — keep page.isNotVisible() out of spec files.
+// (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the overdue badge for a task is absent or hidden.
+ */
+export async function isOverdueTaskBadgeHidden(
+  taskId: string,
+  context: ActivitiesBehaviorContext,
+): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${taskId}` }]);
+}

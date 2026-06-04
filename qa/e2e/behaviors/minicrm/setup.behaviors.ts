@@ -428,3 +428,136 @@ export async function getAutomationPaginationLocator(context: SetupUIBehaviorCon
   const automationPage = new AutomationPage(context);
   return automationPage.paginationLocator();
 }
+
+// ---------------------------------------------------------------------------
+// Onboarding visibility helpers — keep page.goto/waitFor/isNotVisible out of
+// spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Context for setup/onboarding UI behaviors. */
+export interface OnboardingBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Navigates to the dashboard root and waits for network idle.
+ */
+export async function navigateToDashboardAndWait(
+  context: OnboardingBehaviorContext,
+): Promise<void> {
+  await context.page.goto('/', { waitUntil: 'networkidle' });
+}
+
+/**
+ * Waits for the dashboard heading to be visible (confirms page is loaded).
+ */
+export async function waitForDashboardHeading(
+  context: OnboardingBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitFor(
+    [{ type: 'testId', value: 'dashboard-heading' }],
+    'visible',
+    {},
+    timeout,
+  );
+}
+
+/**
+ * Returns true when the setup checklist widget is absent or hidden.
+ */
+export async function isSetupChecklistWidgetHidden(
+  context: OnboardingBehaviorContext,
+): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: 'setup-checklist-widget' }]);
+}
+
+/**
+ * Returns true when the setup checklist pill is absent or hidden.
+ */
+export async function isSetupChecklistPillHidden(
+  context: OnboardingBehaviorContext,
+): Promise<boolean> {
+  return context.page.isNotVisible([{ type: 'testId', value: 'setup-checklist-pill' }]);
+}
+
+/**
+ * Resolves the setup checklist task list locator.
+ */
+export async function getSetupChecklistTaskListLocator(context: OnboardingBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'setup-checklist-task-list' },
+        { type: 'role', value: 'list' },
+      ],
+      { intent: 'setup checklist task list showing setup tasks' },
+    )
+    .resolve();
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields locator helpers — keep page.locate out of spec files. (MINCRM-418)
+// ---------------------------------------------------------------------------
+
+/** Context for custom fields UI behaviors. */
+export interface CustomFieldsBehaviorContext {
+  page: PageFacade;
+}
+
+/**
+ * Resolves the custom-fields edit grid on any entity detail page.
+ */
+export async function getCustomFieldsEditGridLocator(context: CustomFieldsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'custom-fields-edit-grid' },
+        { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
+      ],
+      { intent: 'custom fields edit grid in the entity edit form' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the delete button for a custom field definition row.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback without scoping
+ */
+export async function getCustomFieldDeleteButtonLocator(
+  definitionId: string,
+  context: CustomFieldsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback without scoping
+  return context.page
+    .locate([{ type: 'testId', value: `custom-field-delete-${definitionId}` }])
+    .resolve();
+}
+
+/**
+ * Resolves the input for a custom field by definition ID.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+ */
+export async function getCustomFieldInputLocator(
+  definitionId: string,
+  context: CustomFieldsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
+    .resolve();
+}
+
+/**
+ * Resolves the label element for a custom field by definition ID.
+ * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+ */
+export async function getCustomFieldLabelLocator(
+  definitionId: string,
+  context: CustomFieldsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed label has no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `custom-field-label-${definitionId}` }])
+    .resolve();
+}

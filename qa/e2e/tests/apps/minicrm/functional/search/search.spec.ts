@@ -58,6 +58,7 @@ import {
   type GlobalSearchResult,
 } from '@behaviors/minicrm/index.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { navigateBack } from '@behaviors/minicrm/nav.behaviors.js';
 
 test.beforeEach(async ({ page, restClient, testData }) => {
   await loginAsAdmin(restClient);
@@ -417,7 +418,7 @@ test('@functional @search F9-RN4: browser back after clicking a result returns t
   );
 
   // Press browser back.
-  await page.goBack({ waitUntil: 'networkidle' });
+  await navigateBack({ page });
   const backPath = new URL(page.url()).pathname;
   expect(backPath, 'browser back should return to the prior page').toBe(priorPath);
 });

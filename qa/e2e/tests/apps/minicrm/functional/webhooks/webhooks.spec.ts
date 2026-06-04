@@ -42,6 +42,7 @@ import {
   clickAdminSettingsDeleteWebhook,
   getAdminSettingsWebhookDeleteConfirmLocator,
   confirmAdminSettingsDeleteWebhook,
+  navigateToAdminSettingsIntegrations,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -59,7 +60,7 @@ test('@functional WH-01: admin sees the Webhooks section in Settings → Integra
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsIntegrations({ page });
 
   const section = await getAdminSettingsWebhookSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
@@ -78,7 +79,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsIntegrations({ page });
 
   const urlInput = await getAdminSettingsWebhookUrlInputLocator({ page });
   await urlInput.fill('https://example.com/hook/wh02');
@@ -130,7 +131,7 @@ test('@functional WH-03: created subscription appears in the list with correct d
 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsIntegrations({ page });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });
@@ -165,7 +166,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsIntegrations({ page });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });
@@ -199,7 +200,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({
 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsIntegrations({ page });
 
   const row = await getAdminSettingsWebhookRowLocator(sub.id, { page });
   await expect(row).toBeVisible({ timeout: 8_000 });

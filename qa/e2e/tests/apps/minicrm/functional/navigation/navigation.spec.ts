@@ -69,6 +69,17 @@ import {
   getMobileNavLinkLocator,
   getMobileLogoutButtonLocator,
   getMobileLanguageSelectLocator,
+  reloadCurrentPage,
+  waitForNavLink,
+  navigateToUrlAndWait,
+  waitForRedirectToDashboard,
+  waitForCssSelector,
+  waitForUrl,
+  isNavLinkHidden,
+  hamburgerDrawerDoesNotExist,
+  isMobileNavDrawerHidden,
+  navigateBack,
+  navigateForward,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   getContactNameLocator,
@@ -163,7 +174,7 @@ async function activateHamburgerLayout(page: PageFacade, restClient: RestClient)
   if (isMobile) {
     await setNavLayoutViaAPI('hamburger', restClient);
     await navigateToDashboard(page);
-    await page.reload({ waitUntil: 'networkidle' });
+    await reloadCurrentPage({ page });
   } else {
     await navigateToAdminSettings(page);
     const result = await setNavLayoutViaUI('hamburger', { page });
@@ -171,10 +182,9 @@ async function activateHamburgerLayout(page: PageFacade, restClient: RestClient)
     // Wait for aria-checked on the option to confirm the PATCH has round-tripped
     // before navigating away. Without this, goto('/') may fetch the layout before
     // the server write commits and serve the stale value.
-    await page.waitFor(
-      [{ type: 'css', value: '[data-testid="nav-layout-option-hamburger"][aria-checked="true"]' }],
-      'visible',
-      {},
+    await waitForCssSelector(
+      '[data-testid="nav-layout-option-hamburger"][aria-checked="true"]',
+      { page },
       10_000,
     );
     // Re-assert via API immediately before the goto to minimise the race window
@@ -233,8 +243,7 @@ test.describe.serial('Layout-mutating tests', () => {
       try {
         for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
           if (isMobile) {
-            // Verify the route is reachable via direct navigation.
-            await page.goto(expectedPath, { waitUntil: 'networkidle' });
+            await navigateToUrlAndWait(expectedPath, { page });
             const actualPath = new URL(page.url()).pathname;
             expect(actualPath, `route ${expectedPath} should be reachable on mobile-web`).toBe(
               expectedPath,
@@ -392,7 +401,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // open/close mechanics (those are covered by F8-HM1–HM5). Use page.goto
         // per destination — same approach as F8-TN1 on mobile-web.
         for (const [_destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
-          await page.goto(expectedPath, { waitUntil: 'networkidle' });
+          await navigateToUrlAndWait(expectedPath, { page });
           const actualPath = new URL(page.url()).pathname;
           expect(
             actualPath,
@@ -425,7 +434,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // React Router's location update may not be committed by the time
         // openHamburgerMenu triggers a fresh popover mount — waiting for the
         // URL guarantees the browser location is correct.
-        await page.waitForURL('**/deals', { timeout: 10_000 });
+        await waitForUrl('**/deals', { page }, 10_000);
 
         // With v7_startTransition enabled, React Router wraps location updates in
         // startTransition — the browser URL changes before React commits the new
@@ -447,12 +456,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // React may not have committed the NavLink children to the DOM yet at that
         // instant. Wait for a known link to confirm the drawer content is rendered
         // before resolving any specific link locator.
-        await page.waitFor(
-          [{ type: 'testId', value: 'nav-hamburger-dashboard' }],
-          'visible',
-          {},
-          10_000,
-        );
+        await waitForNavLink('nav-hamburger-dashboard', { page }, 10_000);
 
         // Let any in-flight React Query fetches triggered by login settle so a
         // nav-layout re-fetch doesn't cause the NavHamburger to remount and reset
@@ -622,24 +626,21 @@ test.describe.serial('Layout-mutating tests', () => {
         const leftNavLink = await getNavLinkLocator('left', 'contacts', { page });
         await expect(leftNavLink).toBeVisible();
 
-        // Top nav links should no longer be present.
         expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          await isNavLinkHidden('nav-top-contacts', { page }),
           'nav-top-contacts should not be visible after switching to left layout',
         ).toBe(true);
 
-        // Switch to hamburger layout.
         await setNavLayoutViaUI('hamburger', { page });
 
-        // Hamburger toggle should now be visible; top and left nav links should not.
         const hamburgerToggle = await getMenuToggleLocator({ page });
         await expect(hamburgerToggle).toBeVisible();
         expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+          await isNavLinkHidden('nav-top-contacts', { page }),
           'nav-top-contacts should not be visible in hamburger layout',
         ).toBe(true);
         expect(
-          await page.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
+          await isNavLinkHidden('nav-left-contacts', { page }),
           'nav-left-contacts should not be visible in hamburger layout',
         ).toBe(true);
       } finally {
@@ -673,12 +674,11 @@ test.describe.serial('Layout-mutating tests', () => {
         assertActive: async (_page, restClient) => {
           const leftNavLink = await getNavLinkLocator('left', 'contacts', { page: _page });
           await expect(leftNavLink).toBeVisible();
-          // Re-assert before reload to minimise the race window (MINCRM-390)
           await setNavLayoutViaAPI('left', restClient);
-          await _page.reload({ waitUntil: 'networkidle' });
+          await reloadCurrentPage({ page: _page });
           await expect(leftNavLink).toBeVisible();
           expect(
-            await _page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+            await isNavLinkHidden('nav-top-contacts', { page: _page }),
             'nav-top-contacts should not be visible after reload in left layout',
           ).toBe(true);
         },
@@ -691,21 +691,19 @@ test.describe.serial('Layout-mutating tests', () => {
           await activateHamburgerLayout(_page, restClient);
         },
         assertActive: async (_page, restClient) => {
-          // Re-assert via API + reload before persistence check (MINCRM-391)
           await setNavLayoutViaAPI('hamburger', restClient);
-          await _page.reload({ waitUntil: 'networkidle' });
+          await reloadCurrentPage({ page: _page });
           const hamburgerToggle = await getMenuToggleLocator({ page: _page });
           await expect(hamburgerToggle).toBeVisible();
-          // Second re-assert + reload to confirm it sticks (MINCRM-390, MINCRM-391)
           await setNavLayoutViaAPI('hamburger', restClient);
-          await _page.reload({ waitUntil: 'networkidle' });
+          await reloadCurrentPage({ page: _page });
           await expect(hamburgerToggle).toBeVisible();
           expect(
-            await _page.isNotVisible([{ type: 'testId', value: 'nav-top-contacts' }]),
+            await isNavLinkHidden('nav-top-contacts', { page: _page }),
             'nav-top-contacts should not be visible in hamburger layout',
           ).toBe(true);
           expect(
-            await _page.isNotVisible([{ type: 'testId', value: 'nav-left-contacts' }]),
+            await isNavLinkHidden('nav-left-contacts', { page: _page }),
             'nav-left-contacts should not be visible in hamburger layout',
           ).toBe(true);
         },
@@ -748,9 +746,8 @@ test.describe.serial('Layout-mutating tests', () => {
       await activateHamburgerLayout(page, restClient);
 
       try {
-        // Drawer is conditionally rendered — not in DOM when closed.
         expect(
-          await page.doesNotExist([{ type: 'testId', value: 'nav-hamburger-drawer' }]),
+          await hamburgerDrawerDoesNotExist({ page }),
           'hamburger drawer should not exist before toggle tap',
         ).toBe(true);
 
@@ -894,9 +891,8 @@ test.describe('Mobile nav mechanics', () => {
 
     await navigateToDashboard(page);
 
-    // Drawer is hidden initially (isNotVisible — safe when element is absent or hidden).
     expect(
-      await page.isNotVisible([{ type: 'testId', value: 'mobile-nav-drawer' }]),
+      await isMobileNavDrawerHidden({ page }),
       'mobile nav drawer should be hidden before toggle tap',
     ).toBe(true);
 
@@ -1051,7 +1047,7 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   page,
 }) => {
   // Use an ID that is extremely unlikely to exist.
-  await page.goto('/contacts/00000000-0000-0000-0000-000000000000', { waitUntil: 'networkidle' });
+  await navigateToUrlAndWait('/contacts/00000000-0000-0000-0000-000000000000', { page });
 
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
   // React Query fires its error state after the server 404 response arrives, which may
@@ -1097,12 +1093,7 @@ test.describe('Rep deep-link redirect', () => {
       // Directly navigate to an admin-only route.
       await navigateToAdminSettings(page);
 
-      // AdminRoute redirects non-admins to '/'.
-      await page
-        .waitForURL((url) => new URL(url).pathname === '/', { timeout: 10_000 })
-        .catch(() => null);
-
-      const finalPath = new URL(page.url()).pathname;
+      const { pathname: finalPath } = await waitForRedirectToDashboard({ page }, 10_000);
       expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
     } finally {
       await loginAsAdmin(restClient).catch(() => null);
@@ -1124,24 +1115,16 @@ test('@functional F8-GU1: browser back and forward navigate correctly between vi
   await navigateToContacts(page);
   await navigateToAccounts(page);
 
-  // Go back to contacts.
-  await page.goBack({ waitUntil: 'networkidle' });
-  let pathname = new URL(page.url()).pathname;
+  let { pathname } = await navigateBack({ page });
   expect(pathname, 'browser back should navigate to /contacts').toBe('/contacts');
 
-  // Go back to dashboard.
-  await page.goBack({ waitUntil: 'networkidle' });
-  pathname = new URL(page.url()).pathname;
+  ({ pathname } = await navigateBack({ page }));
   expect(pathname, 'browser back again should navigate to /').toBe('/');
 
-  // Go forward to contacts.
-  await page.goForward({ waitUntil: 'networkidle' });
-  pathname = new URL(page.url()).pathname;
+  ({ pathname } = await navigateForward({ page }));
   expect(pathname, 'browser forward should navigate back to /contacts').toBe('/contacts');
 
-  // Go forward to accounts.
-  await page.goForward({ waitUntil: 'networkidle' });
-  pathname = new URL(page.url()).pathname;
+  ({ pathname } = await navigateForward({ page }));
   expect(pathname, 'browser forward again should navigate to /accounts').toBe('/accounts');
 });
 

@@ -21,6 +21,15 @@ import {
   createTestActivity,
   createTestAdmin,
 } from '@apps/minicrm/helpers.js';
+import {
+  navigateToPath,
+  getDashboardStatCardsLocator,
+  getRecentActivityFeedLocator,
+  getDashboardStatCardLocator,
+  getDashboardStatCardValueLocator,
+  getRecentActivityEntryLocator,
+  countElements,
+} from '@behaviors/minicrm/layout.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -38,9 +47,9 @@ test.beforeEach(async ({ restClient, testData, page }) => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Navigates to the dashboard and waits for the stat card grid to be present. */
+/** Navigates to the dashboard and waits for network idle. */
 async function navigateToDashboard(page: Parameters<Parameters<typeof test>[2]>[0]['page']) {
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await navigateToPath('/', { page });
 }
 
 // ---------------------------------------------------------------------------
@@ -51,28 +60,12 @@ test(
   'DB-1: dashboard loads; stat card grid and recent-activity feed are visible @functional',
   { tag: ['@functional'] },
   async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await navigateToPath('/', { page });
 
-    const statCards = await page
-      .locate(
-        [
-          { type: 'testId', value: 'dashboard-stat-cards' },
-          { type: 'role', value: 'region', options: { name: /stats/i } },
-        ],
-        { intent: 'grid of summary stat cards on the dashboard page' },
-      )
-      .resolve();
-    await expect(statCards).toBeVisible({ timeout: 10_000 });
+    const statCardsRegion = await getDashboardStatCardsLocator({ page });
+    await expect(statCardsRegion).toBeVisible({ timeout: 10_000 });
 
-    const activityFeed = await page
-      .locate(
-        [
-          { type: 'testId', value: 'recent-activity-feed' },
-          { type: 'role', value: 'region', options: { name: /recent activity/i } },
-        ],
-        { intent: 'recent activity feed section on the dashboard page' },
-      )
-      .resolve();
+    const activityFeed = await getRecentActivityFeedLocator({ page });
     await expect(activityFeed).toBeVisible({ timeout: 10_000 });
   },
 );
@@ -98,28 +91,10 @@ test(
 
     await navigateToDashboard(page);
 
-    // The pipeline value stat card must be present
-    const pipelineValueCard = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-pipeline-value' },
-          { type: 'css', value: '[data-testid="stat-pipeline-value"]' },
-        ],
-        { intent: 'open pipeline value stat card on the dashboard' },
-      )
-      .resolve();
+    const pipelineValueCard = await getDashboardStatCardLocator('pipeline-value', { page });
     await expect(pipelineValueCard).toBeVisible({ timeout: 10_000 });
 
-    // The value element must not show zero — the deal we created has value 5000
-    const pipelineValueEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-pipeline-value-value' },
-          { type: 'css', value: '[data-testid="stat-pipeline-value-value"]' },
-        ],
-        { intent: 'numeric value inside the open pipeline value stat card' },
-      )
-      .resolve();
+    const pipelineValueEl = await getDashboardStatCardValueLocator('pipeline-value', { page });
     const text = await pipelineValueEl.textContent();
     // The value includes currency formatting but must not be "0" or empty
     expect(text?.trim(), 'pipeline value must be non-empty').toBeTruthy();
@@ -149,26 +124,10 @@ test(
 
     await navigateToDashboard(page);
 
-    const overdueCard = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-overdue-tasks' },
-          { type: 'css', value: '[data-testid="stat-overdue-tasks"]' },
-        ],
-        { intent: 'overdue tasks stat card on the dashboard' },
-      )
-      .resolve();
+    const overdueCard = await getDashboardStatCardLocator('overdue-tasks', { page });
     await expect(overdueCard).toBeVisible({ timeout: 10_000 });
 
-    const overdueValueEl = await page
-      .locate(
-        [
-          { type: 'testId', value: 'stat-overdue-tasks-value' },
-          { type: 'css', value: '[data-testid="stat-overdue-tasks-value"]' },
-        ],
-        { intent: 'numeric count inside the overdue tasks stat card' },
-      )
-      .resolve();
+    const overdueValueEl = await getDashboardStatCardValueLocator('overdue-tasks', { page });
     const text = await overdueValueEl.textContent();
     const count = parseInt(text?.trim() ?? '0', 10);
     expect(
@@ -199,36 +158,20 @@ test(
 
     await navigateToDashboard(page);
 
-    // The activity feed must be visible
-    const activityFeed = await page
-      .locate(
-        [
-          { type: 'testId', value: 'recent-activity-feed' },
-          { type: 'role', value: 'region', options: { name: /recent activity/i } },
-        ],
-        { intent: 'recent activity feed section on the dashboard page' },
-      )
-      .resolve();
+    const activityFeed = await getRecentActivityFeedLocator({ page });
     await expect(activityFeed).toBeVisible({ timeout: 10_000 });
 
-    // The specific activity entry must appear in the feed
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed activity row has no stable role fallback
-    const activityEntry = await page
-      .locate([{ type: 'testId', value: `recent-activity-${activity.id}` }])
-      .resolve();
+    const activityEntry = await getRecentActivityEntryLocator(activity.id, { page });
     const isVisible = await activityEntry.isVisible().catch(() => false);
 
-    // If the item is not in the feed (beyond the feed limit) fall back to checking
-    // that the feed is non-empty — the activity was just created so the feed
-    // must contain at least one entry.
     if (!isVisible) {
-      // Count list items via a CSS selector scoped to the feed list
-      const listItemCount = await page.count(
+      const listItemCount = await countElements(
         [
           { type: 'css', value: '[data-testid="recent-activity-list"] li' },
           { type: 'css', value: '[data-testid="recent-activity-list"] > li' },
         ],
-        { intent: 'individual entries inside the recent activity list' },
+        'individual entries inside the recent activity list',
+        { page },
       );
       expect(listItemCount, 'recent activity list must contain at least one entry').toBeGreaterThan(
         0,

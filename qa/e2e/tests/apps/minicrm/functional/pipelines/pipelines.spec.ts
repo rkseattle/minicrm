@@ -24,7 +24,23 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateToAdminSettings } from '@behaviors/minicrm/settings.behaviors.js';
+import {
+  navigateToAdminSettings,
+  getPipelineAddButtonLocator,
+  getNewPipelineNameInputLocator,
+  getCreatePipelineSubmitLocator,
+  getPipelinesFeedbackLocator,
+  getPipelineEditButtonLocator,
+  getPipelineEditInputLocator,
+  getPipelineSaveButtonLocator,
+  getPipelineDeleteButtonLocator,
+  getPipelineDeleteConfirmLocator,
+  getPipelineDeleteConfirmButtonLocator,
+  getPipelineStagesPipelineSelectorLocator,
+  getPipelineStageRowLocator,
+  getPipelineBoardSelectorLocator,
+  getPipelineBoardContainerLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
 import { navigateToPipelineBoard, createDealViaApi } from '@behaviors/minicrm/deals.behaviors.js';
 import { createTestAccount, createTestAdmin } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -72,52 +88,16 @@ test(
 
     await navigateToAdminSettings({ page }, 'customisation');
 
-    // Open the add-pipeline form
-    const addButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'add-pipeline-button' },
-          { type: 'role', value: 'button', options: { name: /new pipeline/i } },
-        ],
-        { intent: 'button to open the new pipeline form' },
-      )
-      .resolve();
+    const addButton = await getPipelineAddButtonLocator({ page });
     await addButton.click();
 
-    // Fill in the pipeline name
-    const nameInput = await page
-      .locate(
-        [
-          { type: 'testId', value: 'new-pipeline-name-input' },
-          { type: 'role', value: 'textbox' },
-        ],
-        { intent: 'input field for the new pipeline name' },
-      )
-      .resolve();
+    const nameInput = await getNewPipelineNameInputLocator({ page });
     await nameInput.fill(pipelineName);
 
-    // Submit
-    const submitButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'create-pipeline-submit-button' },
-          { type: 'role', value: 'button', options: { name: /save/i } },
-        ],
-        { intent: 'submit button to create the new pipeline' },
-      )
-      .resolve();
+    const submitButton = await getCreatePipelineSubmitLocator({ page });
     await submitButton.click();
 
-    // Success feedback appears
-    const feedback = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipelines-feedback' },
-          { type: 'role', value: 'status' },
-        ],
-        { intent: 'success feedback message after creating a pipeline' },
-      )
-      .resolve();
+    const feedback = await getPipelinesFeedbackLocator({ page });
     await feedback.waitFor({ state: 'visible' });
 
     // Pipeline appears in the list (via API verification)
@@ -149,52 +129,16 @@ test(
 
     await navigateToAdminSettings({ page }, 'customisation');
 
-    // Click the edit button for this pipeline row
-    const editButton = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-edit-button-${pipeline.id}` },
-          { type: 'role', value: 'button', options: { name: /edit/i } },
-        ],
-        { intent: 'edit button for the pipeline row to rename' },
-      )
-      .resolve();
+    const editButton = await getPipelineEditButtonLocator(pipeline.id, { page });
     await editButton.click();
 
-    // Clear and fill the edit input
-    const editInput = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-edit-input-${pipeline.id}` },
-          { type: 'role', value: 'textbox' },
-        ],
-        { intent: 'text input for renaming the pipeline' },
-      )
-      .resolve();
+    const editInput = await getPipelineEditInputLocator(pipeline.id, { page });
     await editInput.fill(renamedName);
 
-    // Save
-    const saveButton = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-save-button-${pipeline.id}` },
-          { type: 'role', value: 'button', options: { name: /save/i } },
-        ],
-        { intent: 'save button to confirm pipeline rename' },
-      )
-      .resolve();
+    const saveButton = await getPipelineSaveButtonLocator(pipeline.id, { page });
     await saveButton.click();
 
-    // Success feedback
-    const feedback = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipelines-feedback' },
-          { type: 'role', value: 'status' },
-        ],
-        { intent: 'success feedback after renaming a pipeline' },
-      )
-      .resolve();
+    const feedback = await getPipelinesFeedbackLocator({ page });
     await feedback.waitFor({ state: 'visible' });
 
     // Verify via API
@@ -218,49 +162,16 @@ test(
 
     await navigateToAdminSettings({ page }, 'customisation');
 
-    // Click delete
-    const deleteButton = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-delete-button-${pipeline.id}` },
-          { type: 'role', value: 'button', options: { name: /delete/i } },
-        ],
-        { intent: 'delete button for the pipeline row to remove' },
-      )
-      .resolve();
+    const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
     await deleteButton.click();
 
-    // Confirmation dialog appears
-    // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
-    const confirmDialog = await page
-      .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
-        intent: 'delete confirmation panel for the pipeline',
-      })
-      .resolve();
+    const confirmDialog = await getPipelineDeleteConfirmLocator({ page });
     await confirmDialog.waitFor({ state: 'visible' });
 
-    // Confirm deletion
-    const confirmButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-delete-confirm-button' },
-          { type: 'role', value: 'button', options: { name: /delete/i } },
-        ],
-        { intent: 'confirm button to execute pipeline deletion' },
-      )
-      .resolve();
+    const confirmButton = await getPipelineDeleteConfirmButtonLocator({ page });
     await confirmButton.click();
 
-    // Success feedback
-    const feedback = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipelines-feedback' },
-          { type: 'role', value: 'status' },
-        ],
-        { intent: 'success feedback after deleting a pipeline' },
-      )
-      .resolve();
+    const feedback = await getPipelinesFeedbackLocator({ page });
     await feedback.waitFor({ state: 'visible' });
 
     // Verify deleted via API
@@ -292,27 +203,10 @@ test(
     // Switch to the new pipeline in settings and verify stage appears
     await navigateToAdminSettings({ page }, 'customisation');
 
-    const pipelineSelector = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-stages-pipeline-selector' },
-          { type: 'role', value: 'combobox' },
-        ],
-        { intent: 'dropdown to select which pipeline to manage stages for' },
-      )
-      .resolve();
+    const pipelineSelector = await getPipelineStagesPipelineSelectorLocator({ page });
     await pipelineSelector.selectOption(pipeline.id);
 
-    // Custom stage appears in the stage table
-    const stageRow = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-stage-row-${stageId}` },
-          { type: 'text', value: 'Custom Stage One' },
-        ],
-        { intent: 'row for the custom stage in the pipeline stages table' },
-      )
-      .resolve();
+    const stageRow = await getPipelineStageRowLocator(stageId, { page });
     await stageRow.waitFor({ state: 'visible' });
   },
 );
@@ -377,27 +271,12 @@ test(
 
     await navigateToPipelineBoard({ page });
 
-    // Pipeline selector is visible when >1 pipeline exists
-    const selector = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-selector' },
-          { type: 'role', value: 'combobox' },
-        ],
-        { intent: 'pipeline selector dropdown above the deals board' },
-      )
-      .resolve();
+    const selector = await getPipelineBoardSelectorLocator({ page });
     await selector.waitFor({ state: 'visible' });
 
-    // Switch to the new pipeline — board reloads with 0 deals
     await selector.selectOption(pipeline.id);
 
-    // eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
-    const board = await page
-      .locate([{ type: 'testId', value: 'pipeline-board' }], {
-        intent: 'the main pipeline kanban board container',
-      })
-      .resolve();
+    const board = await getPipelineBoardContainerLocator({ page });
     await board.waitFor({ state: 'visible' });
   },
 );
@@ -437,46 +316,16 @@ test(
 
     await navigateToAdminSettings({ page }, 'customisation');
 
-    // Click delete on the blocked pipeline
-    const deleteButton = await page
-      .locate(
-        [
-          { type: 'testId', value: `pipeline-delete-button-${pipeline.id}` },
-          { type: 'role', value: 'button', options: { name: /delete/i } },
-        ],
-        { intent: 'delete button for the pipeline that has deals' },
-      )
-      .resolve();
+    const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
     await deleteButton.click();
 
-    // Confirmation dialog opens
-    // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
-    const confirmDialog = await page
-      .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
-        intent: 'delete confirmation panel for the blocked pipeline',
-      })
-      .resolve();
+    const confirmDialog = await getPipelineDeleteConfirmLocator({ page });
     await confirmDialog.waitFor({ state: 'visible' });
 
-    // Attempt to confirm — server returns 409
-    const confirmButton = await page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-delete-confirm-button' },
-          { type: 'role', value: 'button', options: { name: /delete/i } },
-        ],
-        { intent: 'confirm button that triggers the blocked deletion attempt' },
-      )
-      .resolve();
+    const confirmButton = await getPipelineDeleteConfirmButtonLocator({ page });
     await confirmButton.click();
 
-    // Blocked message is displayed (PIPELINE_HAS_DEALS)
-    // eslint-disable-next-line local/require-locator-fallback -- same container re-used; no stable role alternative
-    const blockedMsg = await page
-      .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
-        intent: 'confirmation panel now showing the blocked-by-deals error message',
-      })
-      .resolve();
-    await expect(blockedMsg).toContainText(/deal/i);
+    // confirmDialog re-resolves same container showing the blocked-by-deals error message
+    await expect(confirmDialog).toContainText(/deal/i);
   },
 );

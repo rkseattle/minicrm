@@ -26,6 +26,7 @@ import {
   saveAdminSettingsExchangeRates,
   getAdminSettingsExchangeRateSaveSuccessLocator,
   getAdminSettingsExchangeRateRowLocator,
+  navigateToAdminSettingsCurrency,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -59,7 +60,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await loginViaBrowser(admin.email, admin.password, { page });
 
   // Navigate to Admin Settings — currency tab required for exchange-rates-section
-  await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsCurrency({ page });
 
   // Wait for the exchange rates section to be visible
   const section = await getAdminSettingsExchangeRatesSectionLocator({ page });
@@ -99,7 +100,7 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
   // Reload and verify persistence — deep-link back to currency tab
-  await page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
+  await navigateToAdminSettingsCurrency({ page });
   const sectionAfterReload = await getAdminSettingsExchangeRatesSectionLocator({ page });
   await expect(sectionAfterReload).toBeVisible({ timeout: 10_000 });
 

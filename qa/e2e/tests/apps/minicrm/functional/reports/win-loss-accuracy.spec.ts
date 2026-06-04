@@ -20,6 +20,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestAccount, createTestAdmin, createTestDeal } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { navigateToWinLossReport } from '@behaviors/minicrm/reports.behaviors.js';
 import {
   getWinLossReport,
   getReportsLoadingLocator,
@@ -132,7 +133,7 @@ test(
       });
     }
 
-    await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+    await navigateToWinLossReport({ page });
 
     const heading = await getReportsWinLossHeadingLocator({ page });
     await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -189,7 +190,7 @@ test(
       account_id: account.id,
     });
 
-    await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+    await navigateToWinLossReport({ page });
 
     await applyCustomDateFilter(page, monthStart, monthEnd);
     await waitForReportLoaded(page);
@@ -256,7 +257,7 @@ test(
     }
 
     // UI assertion first — navigate and apply the same date filter
-    await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+    await navigateToWinLossReport({ page });
     await applyCustomDateFilter(page, start, end);
     await waitForReportLoaded(page);
 
@@ -301,7 +302,7 @@ test(
       account_id: account.id,
     });
 
-    await page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+    await navigateToWinLossReport({ page });
 
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 

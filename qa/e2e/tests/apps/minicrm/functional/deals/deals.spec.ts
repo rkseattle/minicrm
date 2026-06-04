@@ -53,6 +53,7 @@ import {
   getDealLinkedContactLocator,
   getDealUnlinkContactLocator,
   getDealLinkedContactsEmptyLocator,
+  waitForDealsListUrl,
   type DealRow,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
@@ -221,7 +222,7 @@ test(
     await confirmDeleteDeal({ page });
 
     // Should redirect to /deals after deletion
-    await page.waitForURL('/deals', { timeout: 10_000 });
+    await waitForDealsListUrl({ page }, 10_000);
 
     // API assertion — deal returns 404
     await expect(restClient.get<{ deal: DealRow }>(`/api/v1/deals/${deal.id}`)).rejects.toThrow(

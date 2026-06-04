@@ -28,7 +28,19 @@ import {
   getCustomFieldDefinitions,
   createCustomFieldDefinition,
   setContactCustomFields,
+  getCustomFieldsEditGridLocator,
+  getCustomFieldDeleteButtonLocator,
+  getCustomFieldInputLocator,
+  getCustomFieldLabelLocator,
 } from '@behaviors/minicrm/setup.behaviors.js';
+import {
+  navigateToContactDetailPage,
+  navigateToDealDetailPage,
+  navigateToAccountDetailPage,
+  navigateToPath,
+} from '@behaviors/minicrm/layout.behaviors.js';
+import { openDealEditForm } from '@behaviors/minicrm/deals.behaviors.js';
+import { clickAccountEditButton } from '@behaviors/minicrm/accounts.behaviors.js';
 import {
   getAdminSettingsCustomFieldsSectionLocator,
   getAdminSettingsCustomFieldsEntitySelectLocator,
@@ -74,7 +86,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   await loginViaBrowser(admin.email, admin.password, { page });
 
   // Navigate to Admin Settings → Customisation tab
-  await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
+  await navigateToPath('/admin/settings?tab=customisation', { page });
 
   const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
@@ -158,7 +170,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await loginViaBrowser(rep.email, repPassword, { page });
 
   // Navigate to the contact detail page
-  await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+  await navigateToContactDetailPage(contact.id, { page });
 
   // Click Edit
   await clickContactEdit({ page });
@@ -168,10 +180,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
-  const fieldInput = await page
-    .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
-    .resolve();
+  const fieldInput = await getCustomFieldInputLocator(definitionId, { page });
   await fieldInput.fill('Test Value 123');
 
   // Press Tab to move focus away from the input, which triggers a blur event and
@@ -195,18 +204,14 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   ).toBe(true);
 
   // Reload the page
-  await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+  await navigateToContactDetailPage(contact.id, { page });
 
   // Custom fields read section should show the saved value.
   const readGrid = await getContactCustomFieldsReadGrid({ page });
   if (!readGrid) throw new Error('custom-fields-read-grid not found after save');
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
-  // Confirm the value persisted
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed label has no stable role fallback
-  const fieldLabel = await page
-    .locate([{ type: 'testId', value: `custom-field-label-${definitionId}` }])
-    .resolve();
+  const fieldLabel = await getCustomFieldLabelLocator(definitionId, { page });
   await expect(fieldLabel).toBeVisible();
   await expect(readGrid).toContainText('Test Value 123');
 
@@ -246,7 +251,7 @@ test('admin deletes a custom field definition; it disappears from the contact de
   ]);
 
   // Confirm the field appears on the detail page before deletion.
-  await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+  await navigateToContactDetailPage(contact.id, { page });
 
   const readGridBefore = await getContactCustomFieldsReadGrid({ page });
   if (!readGridBefore) throw new Error('custom-fields-read-grid not found before deletion');
@@ -254,7 +259,7 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await expect(readGridBefore).toContainText('Temp Value');
 
   // Navigate to Admin Settings → Customisation tab
-  await page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
+  await navigateToPath('/admin/settings?tab=customisation', { page });
 
   const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
@@ -263,11 +268,7 @@ test('admin deletes a custom field definition; it disappears from the contact de
   const entitySelect = await getAdminSettingsCustomFieldsEntitySelectLocator({ page });
   await entitySelect.selectOption('contact');
 
-  // Click Delete on the field row
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback without scoping
-  const deleteBtn = await page
-    .locate([{ type: 'testId', value: `custom-field-delete-${definitionId}` }])
-    .resolve();
+  const deleteBtn = await getCustomFieldDeleteButtonLocator(definitionId, { page });
   await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
   await deleteBtn.click();
 
@@ -281,7 +282,7 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await expect(feedback).toBeVisible({ timeout: 5_000 });
 
   // Navigate back to the contact — custom fields section should not appear
-  await page.goto(`/contacts/${contact.id}`, { waitUntil: 'networkidle' });
+  await navigateToContactDetailPage(contact.id, { page });
 
   // Wait for the page to load (edit button should be visible)
 
@@ -325,34 +326,14 @@ test('CF-4: select custom field for deals renders as a select input in the deal 
   try {
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
-    await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
+    await navigateToDealDetailPage(deal.id, { page });
 
-    // Click Edit to enter edit mode
-    await page.click(
-      [
-        { type: 'testId', value: 'edit-deal-button' },
-        { type: 'role', value: 'button', options: { name: /edit/i } },
-      ],
-      { intent: 'edit button on the deal detail page' },
-    );
+    await openDealEditForm({ page });
 
-    // The custom fields edit grid should be visible
-    const editGrid = await page
-      .locate(
-        [
-          { type: 'testId', value: 'custom-fields-edit-grid' },
-          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
-        ],
-        { intent: 'custom fields edit grid in the deal edit form' },
-      )
-      .resolve();
+    const editGrid = await getCustomFieldsEditGridLocator({ page });
     await expect(editGrid).toBeVisible({ timeout: 8_000 });
 
-    // The select input for our field must be present
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
-    const fieldInput = await page
-      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
-      .resolve();
+    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
     await expect(fieldInput).toBeVisible({ timeout: 5_000 });
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
@@ -382,32 +363,14 @@ test('CF-5: text custom field for accounts renders in the account edit form @fun
   try {
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
-    await page.goto(`/accounts/${account.id}`, { waitUntil: 'networkidle' });
+    await navigateToAccountDetailPage(account.id, { page });
 
-    // Enter edit mode
-    await page.click(
-      [
-        { type: 'testId', value: 'edit-account-button' },
-        { type: 'role', value: 'button', options: { name: /edit/i } },
-      ],
-      { intent: 'edit button on the account detail page' },
-    );
+    await clickAccountEditButton({ page });
 
-    const editGrid = await page
-      .locate(
-        [
-          { type: 'testId', value: 'custom-fields-edit-grid' },
-          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
-        ],
-        { intent: 'custom fields edit grid in the account edit form' },
-      )
-      .resolve();
+    const editGrid = await getCustomFieldsEditGridLocator({ page });
     await expect(editGrid).toBeVisible({ timeout: 8_000 });
 
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
-    const fieldInput = await page
-      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
-      .resolve();
+    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
     await expect(fieldInput).toBeVisible({ timeout: 5_000 });
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
@@ -447,32 +410,14 @@ test('CF-6: second text custom field for deals renders in the deal edit form @fu
   try {
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
-    await page.goto(`/deals/${deal.id}`, { waitUntil: 'networkidle' });
+    await navigateToDealDetailPage(deal.id, { page });
 
-    // Enter edit mode
-    await page.click(
-      [
-        { type: 'testId', value: 'edit-deal-button' },
-        { type: 'role', value: 'button', options: { name: /edit/i } },
-      ],
-      { intent: 'edit button on the deal detail page' },
-    );
+    await openDealEditForm({ page });
 
-    const editGrid = await page
-      .locate(
-        [
-          { type: 'testId', value: 'custom-fields-edit-grid' },
-          { type: 'css', value: '[data-testid="custom-fields-edit-grid"]' },
-        ],
-        { intent: 'custom fields edit grid in the deal edit form' },
-      )
-      .resolve();
+    const editGrid = await getCustomFieldsEditGridLocator({ page });
     await expect(editGrid).toBeVisible({ timeout: 8_000 });
 
-    // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
-    const fieldInput = await page
-      .locate([{ type: 'testId', value: `custom-field-input-${def.id}` }])
-      .resolve();
+    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
     await expect(fieldInput).toBeVisible({ timeout: 5_000 });
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
