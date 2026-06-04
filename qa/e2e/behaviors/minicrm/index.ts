@@ -526,7 +526,6 @@ export {
   getSsoDisableConfirmButtonLocator,
   getSsoSaveSuccessLocator,
   navigateToLoginPageForSso,
-  reloadSettingsPage,
   getSsoLoginButtonLocator,
   navigateToAdminSettingsIntegrations,
   navigateToAdminSettingsCurrency,
