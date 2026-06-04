@@ -565,13 +565,15 @@ export class ContactsPage {
    * @param timeout - Maximum ms to wait.
    */
   async waitForContactsRemovedFromList(ids: string[], timeout = 10_000): Promise<void> {
-    for (const id of ids) {
-      await this.page.waitForFunction(
-        `document.querySelector('[data-testid="contact-link-${id}"]') === null`,
-        undefined,
-        { timeout },
-      );
-    }
+    await Promise.all(
+      ids.map((id) =>
+        this.page.waitForFunction(
+          `document.querySelector('[data-testid="contact-link-${id}"]') === null`,
+          undefined,
+          { timeout },
+        ),
+      ),
+    );
   }
 
   /**

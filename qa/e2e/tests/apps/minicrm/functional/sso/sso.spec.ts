@@ -26,6 +26,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { reloadCurrentPage } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   ensureSystemDefaults,
   navigateToAdminSettings,
@@ -39,7 +40,6 @@ import {
   getSsoDisableConfirmButtonLocator,
   getSsoSaveSuccessLocator,
   navigateToLoginPageForSso as navigateToLoginPage,
-  reloadSettingsPage,
   getSsoLoginButtonLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
@@ -186,7 +186,7 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
 
   await restClient.delete('/api/v1/settings/sso');
 
-  await reloadSettingsPage({ page });
+  await reloadCurrentPage({ page });
   await expect(ssoButton).not.toBeVisible({ timeout: 5_000 });
 });
 

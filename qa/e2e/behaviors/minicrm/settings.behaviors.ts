@@ -3,23 +3,6 @@
  * AdminSettings page locator-accessor wrappers (MINCRM-358, MINCRM-367).
  */
 
-// Minimal interface for waitForResponse — avoids importing Page from @playwright/test,
-// which is forbidden by the no-playwright-imports ESLint rule. PageFacade proxies to
-// the underlying Playwright Page at runtime; casting through this interface is safe.
-interface PageWithWaitForResponse {
-  waitForResponse(
-    urlOrPredicate:
-      | string
-      | RegExp
-      | ((response: {
-          url(): string;
-          request(): { method(): string };
-          status(): number;
-          json(): Promise<unknown>;
-        }) => boolean | Promise<boolean>),
-  ): Promise<{ json(): Promise<unknown> }>;
-}
-
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -513,11 +496,8 @@ export async function clickMoveUpAndWaitForReorder(
   context: AdminSettingsBehaviorContext,
 ): Promise<StageReorderResult> {
   const moveUpButton = await getPipelineStageMoveUpLocator(context, stageId);
-  // Cast through Page to access waitForResponse — PageFacade proxies to the
-  // underlying Playwright Page at runtime; the cast is safe here. (MINCRM-418)
-  const rawPage = context.page as unknown as PageWithWaitForResponse;
   const [reorderResp] = await Promise.all([
-    rawPage.waitForResponse(
+    context.page.waitForResponse(
       (resp) =>
         resp.url().includes('/pipeline-stages/reorder') &&
         resp.request().method() === 'PUT' &&
@@ -538,9 +518,8 @@ export async function clickMoveDownAndWaitForReorder(
   context: AdminSettingsBehaviorContext,
 ): Promise<StageReorderResult> {
   const moveDownButton = await getPipelineStageMoveDownLocator(context, stageId);
-  const rawPage = context.page as unknown as PageWithWaitForResponse;
   const [reorderResp] = await Promise.all([
-    rawPage.waitForResponse(
+    context.page.waitForResponse(
       (resp) =>
         resp.url().includes('/pipeline-stages/reorder') &&
         resp.request().method() === 'PUT' &&
@@ -708,13 +687,6 @@ export async function navigateToLoginPageForSso(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
   await context.page.goto('/login', { waitUntil: 'networkidle' });
-}
-
-/**
- * Reloads the current page and waits for network idle.
- */
-export async function reloadSettingsPage(context: AdminSettingsBehaviorContext): Promise<void> {
-  await context.page.reload({ waitUntil: 'networkidle' });
 }
 
 /**
