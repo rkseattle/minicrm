@@ -138,6 +138,68 @@ describe('extractBodyText', () => {
     const doc = JSON.stringify({ type: 'doc', content: [{ type: 'horizontalRule' }] });
     expect(extractBodyText(doc)).toBe('');
   });
+
+  it('extracts text from a Lexical link node (children-based)', () => {
+    const doc = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'paragraph',
+            children: [
+              {
+                type: 'link',
+                url: 'https://example.com',
+                children: [{ type: 'text', text: 'Example' }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(extractBodyText(doc)).toBe('Example');
+  });
+
+  it('extracts text from a Lexical code block node (children-based)', () => {
+    const doc = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'code',
+            children: [{ type: 'text', text: 'const x = 1;' }],
+          },
+        ],
+      },
+    });
+    expect(extractBodyText(doc)).toBe('const x = 1;');
+  });
+
+  it('extracts text from a Lexical mention node via text field', () => {
+    const doc = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'paragraph',
+            children: [{ type: 'mention', text: '@Alice' }],
+          },
+        ],
+      },
+    });
+    expect(extractBodyText(doc)).toBe('@Alice');
+  });
+
+  it('extracts text from a Lexical mention node via value field fallback', () => {
+    const doc = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'paragraph',
+            children: [{ type: 'mention', value: '@Bob' }],
+          },
+        ],
+      },
+    });
+    expect(extractBodyText(doc)).toBe('@Bob');
+  });
 });
 
 // ── createNote ────────────────────────────────────────────────────────────────
