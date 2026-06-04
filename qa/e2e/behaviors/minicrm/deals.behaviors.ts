@@ -208,12 +208,8 @@ export async function dragDealToStage(
   const cardTestId = `deal-card-${dealId}`;
   const headerTestId = `stage-column-header-${targetSlug}`;
 
-  await context.page.waitForFunction(
-    `document.querySelector('[data-testid="${cardTestId}"]') !== null && ` +
-      `document.querySelector('[data-testid="${headerTestId}"]') !== null`,
-    undefined,
-    { timeout: 10_000 },
-  );
+  await context.page.waitForPresent(`[data-testid="${cardTestId}"]`);
+  await context.page.waitForPresent(`[data-testid="${headerTestId}"]`);
 
   await context.page.evaluate(`(() => {
     const source = document.querySelector('[data-testid="${cardTestId}"]');
@@ -238,11 +234,7 @@ export async function dragDealToStage(
     // waitForFunction polls until the modal element is in the DOM before
     // closeDealModalLocator(), because locate().resolve() throws StrategyExhaustedError
     // immediately when the element is absent rather than waiting for it to appear.
-    await context.page.waitForFunction(
-      `document.querySelector('[data-testid="close-deal-modal"]') !== null`,
-      undefined,
-      { timeout: 8_000 },
-    );
+    await context.page.waitForPresent('[data-testid="close-deal-modal"]', 8_000);
     const modal = await boardPage.closeDealModalLocator();
     await modal?.waitFor({ state: 'visible', timeout: 5_000 });
     closeDealModalOpened = true;
@@ -264,11 +256,7 @@ export async function dragDealToStage(
   // load. A reload cycle was tried previously but consumed too much of the 30s test
   // budget even when every step succeeded. (MINCRM-313)
   const cardInTargetSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
-  await context.page.waitForFunction(
-    `document.querySelector(${JSON.stringify(cardInTargetSelector)}) !== null`,
-    undefined,
-    { timeout: 25_000 },
-  );
+  await context.page.waitForPresent(cardInTargetSelector, 25_000);
 
   const columnSlug = await boardPage.getDealColumnSlug(dealId);
   return { closeDealModalOpened, columnSlug };
@@ -718,6 +706,21 @@ export async function getDealNotFoundLocator(context: DealsBehaviorContext) {
 export async function getDealNotFoundBackLink(context: DealsBehaviorContext) {
   const detail = new DealDetailPage(context);
   return detail.notFoundBackLinkLocator();
+}
+
+/**
+ * Navigates directly to a deal detail URL by ID and waits for the not-found
+ * error state to render.
+ *
+ * @param id - Deal UUID (may be non-existent to trigger the 404 state).
+ * @param context - Playwright fixture context.
+ */
+export async function navigateToDealNotFound(
+  id: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
+  await context.page.goto(`/deals/${id}`, { waitUntil: 'domcontentloaded' });
+  await context.page.waitForPresent('p[role="alert"]');
 }
 
 /**

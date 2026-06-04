@@ -33,6 +33,7 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   createContactViaUI,
   navigateToContacts,
+  navigateToContactNotFound,
   openContactCreateForm,
   fillContactCreateForm,
   submitContactCreateForm,
@@ -60,6 +61,7 @@ import {
   getPipelineBoardStageUpdateErrorLocator,
   getDealNotFoundLocator,
   getDealNotFoundBackLink,
+  navigateToDealNotFound,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
 // ---------------------------------------------------------------------------
@@ -271,18 +273,7 @@ test('@functional ES-1-4: navigate to /contacts/:id with invalid id → not-foun
 }) => {
   const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-  // Use domcontentloaded — the API call is still in-flight at that point.
-  // The not-found UI renders only after React gets the 404 response and
-  // transitions from isLoading to isError. Poll via waitForFunction until
-  // the alert paragraph is in the DOM (it is absent in both the loading
-  // branch and the success branch, so its presence is an unambiguous signal).
-  await page.goto(`/contacts/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
-
-  // Wait until the not-found paragraph is present in the DOM.
-  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
-  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
-    timeout: 10_000,
-  });
+  await navigateToContactNotFound(nonExistentId, { page });
 
   // The page must show a not-found message — not a blank screen or JS error.
 
@@ -303,13 +294,7 @@ test('@functional ES-1-5: navigate to /deals/:id with invalid id → not-found s
 }) => {
   const nonExistentId = '00000000-0000-0000-0000-000000000000';
 
-  await page.goto(`/deals/${nonExistentId}`, { waitUntil: 'domcontentloaded' });
-
-  // Wait until the not-found paragraph is present — same pattern as ES-1-4.
-  // Passed as a string so the QA tsconfig (no dom lib) does not flag `document`.
-  await page.waitForFunction('document.querySelector(\'p[role="alert"]\') !== null', {
-    timeout: 10_000,
-  });
+  await navigateToDealNotFound(nonExistentId, { page });
 
   // The page must show a not-found message.
 

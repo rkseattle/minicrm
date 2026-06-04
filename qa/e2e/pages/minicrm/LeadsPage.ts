@@ -62,6 +62,22 @@ export class LeadsPage {
   }
 
   /**
+   * Clicks the "Mine" owner-filter button and waits for it to settle.
+   * The button is only rendered after the initial query resolves, so this
+   * method guards with waitForPresent before clicking.
+   */
+  async filterByOwnerMe(): Promise<void> {
+    await this.page.waitForPresent('[data-testid="filter-owner-me"]');
+    await this.page.click(
+      [
+        { type: 'testId', value: 'filter-owner-me' },
+        { type: 'role', value: 'button', options: { name: /mine/i } },
+      ],
+      { intent: 'owner filter button to scope leads list to current user only' },
+    );
+  }
+
+  /**
    * Selects 100 rows per page from the pagination size selector so that all
    * leads are visible on a single page. Useful in tests that need to find a
    * specific lead row when the DB has accumulated rows from prior runs.
@@ -152,13 +168,7 @@ export class LeadsPage {
     // locate().resolve() throws StrategyExhaustedError when the element is absent,
     // so use waitForFunction to poll the DOM until it appears before resolving.
     const testId = `status-select-${leadId}`;
-    // waitForFunction body runs in the browser; pass the testId as part of the
-    // expression string so node-side TypeScript never sees `document` directly.
-    await this.page.waitForFunction(
-      `document.querySelector('[data-testid="${testId}"]') !== null`,
-      undefined,
-      { timeout: 10_000 },
-    );
+    await this.page.waitForPresent(`[data-testid="${testId}"]`);
     const resolved = await this.page
       .locate(
         [
