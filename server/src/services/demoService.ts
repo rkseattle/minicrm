@@ -1266,6 +1266,59 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
+// Demo saved reports — showcase common report patterns (MINCRM-402)
+const DEMO_CUSTOM_REPORTS: Array<{
+  name: string;
+  entity_type: string;
+  config: object;
+}> = [
+  {
+    name: 'Open Deals by Stage',
+    entity_type: 'deal',
+    config: {
+      selected_fields: ['id', 'name', 'stage', 'value', 'owner_id'],
+      filters: [
+        { field: 'stage', operator: 'neq', value: 'Closed Won' },
+        { field: 'stage', operator: 'neq', value: 'Closed Lost' },
+      ],
+      group_by: 'stage',
+      sort_field: 'value',
+      sort_direction: 'desc',
+      aggregate: { type: 'sum', field: 'value' },
+    },
+  },
+  {
+    name: 'Contacts by Account',
+    entity_type: 'contact',
+    config: {
+      selected_fields: ['id', 'first_name', 'last_name', 'email', 'title', 'account_id'],
+      filters: [],
+      sort_field: 'last_name',
+      sort_direction: 'asc',
+    },
+  },
+  {
+    name: 'New Leads This Quarter',
+    entity_type: 'lead',
+    config: {
+      selected_fields: [
+        'id',
+        'first_name',
+        'last_name',
+        'company_name',
+        'status',
+        'lead_source',
+        'created_at',
+      ],
+      filters: [{ field: 'status', operator: 'neq', value: 'Disqualified' }],
+      sort_field: 'created_at',
+      sort_direction: 'desc',
+    },
+  },
+];
+
+const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
+
 // Demo pipeline added by seed to demonstrate multi-pipeline support (MINCRM-408).
 // This is a second, non-default pipeline so evaluators can see that pipelines are
 // configurable beyond the built-in "Default" one.
@@ -1371,6 +1424,11 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   // but we delete values first to be explicit about ordering.
   await client.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
     DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
+  ]);
+
+  // Custom reports identified by name (no is_demo flag) (MINCRM-402)
+  await client.query(`DELETE FROM custom_reports WHERE name = ANY($1::text[])`, [
+    DEMO_CUSTOM_REPORT_NAMES,
   ]);
 
   // Webhook subscriptions identified by URL (no is_demo flag) (MINCRM-353)
@@ -1919,6 +1977,16 @@ async function insertDemoData(
        VALUES ($1, $2, $3, $4, false)
        ON CONFLICT (code) DO NOTHING`,
       [currency.code, currency.name, currency.symbol, currency.rate_to_home],
+    );
+  }
+
+  // 20. Custom reports — demonstrate the report builder with pre-built examples (MINCRM-402)
+  for (const report of DEMO_CUSTOM_REPORTS) {
+    await client.query(
+      `INSERT INTO custom_reports (name, entity_type, config, created_by)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (name) DO NOTHING`,
+      [report.name, report.entity_type, JSON.stringify(report.config), adminId],
     );
   }
 }
