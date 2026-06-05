@@ -23,10 +23,11 @@ import { useNavLayout } from '@/components/NavLayoutContext.js';
 import { WinLossReportContent } from '@/pages/WinLossReportPage.js';
 import { ActivityVolumeReportContent } from '@/pages/ActivityVolumeReportPage.js';
 import { StageTrendReportContent } from '@/pages/StageTrendReportPage.js';
+import { CustomReportBuilderContent } from '@/pages/CustomReportBuilderPage.js';
 
-type ReportView = 'win-loss' | 'activity' | 'pipeline-stage';
+type ReportView = 'win-loss' | 'activity' | 'pipeline-stage' | 'custom-reports';
 
-const REPORT_VIEWS: ReportView[] = ['win-loss', 'activity', 'pipeline-stage'];
+const REPORT_VIEWS: ReportView[] = ['win-loss', 'activity', 'pipeline-stage', 'custom-reports'];
 const LOCALSTORAGE_KEY = 'minicrm_reports_last_view';
 
 function isValidView(value: string | null): value is ReportView {
@@ -54,6 +55,7 @@ const REPORT_CONTENT: Record<ReportView, React.ComponentType> = {
   'win-loss': WinLossReportContent,
   activity: ActivityVolumeReportContent,
   'pipeline-stage': StageTrendReportContent,
+  'custom-reports': CustomReportBuilderContent,
 };
 
 export default function ReportsPage() {
