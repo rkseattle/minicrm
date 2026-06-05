@@ -184,7 +184,7 @@ router.post('/:id/run', authenticate, asyncHandler(runCustomReportHandler));
 /**
  * @openapi
  * /api/v1/reports/custom/{id}/export:
- *   post:
+ *   get:
  *     tags: [Reports]
  *     operationId: exportCustomReport
  *     summary: Execute a saved custom report and stream as CSV
@@ -207,6 +207,6 @@ router.post('/:id/run', authenticate, asyncHandler(runCustomReportHandler));
  *       404:
  *         description: Report not found
  */
-router.post('/:id/export', authenticate, asyncHandler(exportCustomReportHandler));
+router.get('/:id/export', authenticate, asyncHandler(exportCustomReportHandler));
 
 export default router;

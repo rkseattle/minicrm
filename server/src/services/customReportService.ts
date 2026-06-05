@@ -181,12 +181,34 @@ function validateConfig(
   if (config.group_by) {
     assertFieldAllowed(entityType, config.group_by);
   }
-  if (config.sort_field && config.sort_field !== '_sum' && config.sort_field !== '_count') {
+  if (config.sort_field === '_sum' || config.sort_field === '_count') {
+    // Aggregate alias sort is only valid when a matching aggregate block exists.
+    if (!config.aggregate) {
+      throw Object.assign(
+        new Error(`sort_field "${config.sort_field}" requires an aggregate block`),
+        { code: 'INVALID_REPORT_FIELD' },
+      );
+    }
+  } else if (config.sort_field) {
     assertFieldAllowed(entityType, config.sort_field);
   }
   if (config.aggregate?.type === 'sum' && config.aggregate.field) {
     assertFieldAllowed(entityType, config.aggregate.field);
     assertSumFieldAllowed(entityType, config.aggregate.field);
+  }
+  // When group_by is set every selected field must equal the group_by column;
+  // any other field would violate PostgreSQL GROUP BY rules at query time.
+  if (config.group_by) {
+    for (const field of config.selected_fields) {
+      if (field !== config.group_by) {
+        throw Object.assign(
+          new Error(
+            `Field "${field}" must appear in the GROUP BY clause or be removed from selected_fields when group_by is "${config.group_by}"`,
+          ),
+          { code: 'INVALID_REPORT_FIELD' },
+        );
+      }
+    }
   }
 }
 
@@ -524,10 +546,10 @@ export async function executeReport(
       const val = row[col];
       if (val === null || val === undefined) {
         out[col] = null;
-      } else if (typeof val === 'number') {
-        out[col] = val;
       } else {
-        out[col] = String(val);
+        // pg returns all SQL numeric/int types as strings; keep as-is for
+        // JS numbers that might appear from custom type parsers in future.
+        out[col] = typeof val === 'number' ? val : String(val);
       }
     }
     return out;

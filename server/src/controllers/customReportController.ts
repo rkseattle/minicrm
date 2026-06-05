@@ -244,7 +244,7 @@ export async function runAdHocReportHandler(req: Request, res: Response): Promis
 }
 
 /**
- * POST /api/v1/reports/custom/:id/export
+ * GET /api/v1/reports/custom/:id/export
  * Executes a saved report and streams results as CSV.
  */
 export async function exportCustomReportHandler(req: Request, res: Response): Promise<void> {
@@ -270,10 +270,14 @@ export async function exportCustomReportHandler(req: Request, res: Response): Pr
     const escape = (v: string | number | null): string => {
       if (v === null || v === undefined) return '';
       const s = String(v);
-      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-        return `"${s.replace(/"/g, '""')}"`;
+      const needsQuote = s.includes(',') || s.includes('"') || s.includes('\n');
+      // Prefix formula-injection characters with a tab to neutralise spreadsheet
+      // formula execution when the file is opened in Excel / Google Sheets.
+      const safe = /^[=+\-@]/.test(s) ? `\t${s}` : s;
+      if (needsQuote || safe !== s) {
+        return `"${safe.replace(/"/g, '""')}"`;
       }
-      return s;
+      return safe;
     };
 
     res.write(result.columns.map(escape).join(',') + '\n');
