@@ -35,12 +35,12 @@ import type {
   AggregateType,
   SortDirection,
   RunReportResponse,
-} from '@minicrm/shared/schemas/customReportSchema.js';
+} from '@shared/schemas/customReportSchema.js';
 import {
   REPORT_ENTITY_TYPES,
   FILTER_OPERATORS,
   AGGREGATE_TYPES,
-} from '@minicrm/shared/schemas/customReportSchema.js';
+} from '@shared/schemas/customReportSchema.js';
 
 // ── Field metadata per entity ──────────────────────────────────────────────────
 

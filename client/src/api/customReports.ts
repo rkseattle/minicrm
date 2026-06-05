@@ -11,7 +11,7 @@ import type {
   RunReportResponse,
   ReportConfig,
   ReportEntityType,
-} from '@minicrm/shared/schemas/customReportSchema.js';
+} from '@shared/schemas/customReportSchema.js';
 
 /** React Query cache key for the list of all saved custom reports */
 export const CUSTOM_REPORTS_QUERY_KEY = ['reports', 'custom'] as const;
