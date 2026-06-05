@@ -1294,8 +1294,10 @@
       "account": "Account",
       "deal": "Deal",
       "lead": "Lead",
+      "activity": "Activity",
       "user": "User",
       "system_settings": "System Settings",
+      "custom_report": "Custom Report",
       "all": "All"
     },
     "filters": {

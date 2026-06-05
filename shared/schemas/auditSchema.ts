@@ -11,8 +11,10 @@ export const AUDIT_RECORD_TYPES = [
   'account',
   'deal',
   'lead',
+  'activity',
   'user',
   'system_settings',
+  'custom_report',
 ] as const;
 
 /** Valid event types in the audit log */

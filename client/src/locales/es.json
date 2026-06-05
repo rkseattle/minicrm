@@ -1329,8 +1329,10 @@
       "account": "Cuenta",
       "deal": "Negocio",
       "lead": "Lead",
+      "activity": "Actividad",
       "user": "Usuario",
       "system_settings": "Configuración del sistema",
+      "custom_report": "Informe personalizado",
       "all": "Todos"
     },
     "filters": {
