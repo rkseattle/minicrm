@@ -14,6 +14,7 @@ import { initSentry, captureException } from './sentry.js';
 import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
+import { advanceDueEnrollments } from './services/sequenceService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 
@@ -149,4 +150,14 @@ if (process.env.NODE_ENV !== 'test') {
   // Stop the cron task when the process shuts down so it is garbage-collected.
   process.once('SIGTERM', () => overdueDigestCron.stop());
   process.once('SIGINT', () => overdueDigestCron.stop());
+
+  // Sequence step advancement — runs every 15 minutes (MINCRM-403).
+  const sequenceCron = cron.schedule('*/15 * * * *', () => {
+    logger.info('cron: advancing due sequence enrollments');
+    void advanceDueEnrollments();
+  });
+  logger.info('Sequence enrollment cron scheduled (every 15 minutes)');
+
+  process.once('SIGTERM', () => sequenceCron.stop());
+  process.once('SIGINT', () => sequenceCron.stop());
 }

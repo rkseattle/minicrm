@@ -684,3 +684,14 @@ export type {
   HardcodedStringFinding,
   OverflowFinding,
 } from './i18n.behaviors.js';
+
+export {
+  createSequence,
+  deleteSequence,
+  getSequence,
+  createSequenceStep,
+  enrollContact,
+  unenrollContact,
+  getContactEnrollments,
+} from './sequences.behaviors.js';
+export type { TestSequence, TestSequenceStep, TestEnrollment } from './sequences.behaviors.js';

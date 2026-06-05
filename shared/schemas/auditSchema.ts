@@ -15,6 +15,9 @@ export const AUDIT_RECORD_TYPES = [
   'user',
   'system_settings',
   'custom_report',
+  /** Sales sequence definitions and enrollments (MINCRM-403) */
+  'sequence',
+  'sequence_enrollment',
 ] as const;
 
 /** Valid event types in the audit log */

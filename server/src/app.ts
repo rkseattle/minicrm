@@ -37,10 +37,13 @@ import mfaRoutes from './routes/mfa.js';
 import ssoRoutes from './routes/sso.js';
 import pipelineRoutes from './routes/pipelines.js';
 import customReportRoutes from './routes/customReports.js';
+import sequenceRoutes from './routes/sequences.js';
+import sequenceEnrollmentRoutes from './routes/sequenceEnrollments.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
+import { asyncHandler } from './middleware/asyncHandler.js';
 
 const app = express();
 
@@ -144,6 +147,9 @@ app.use(`${API_V1}/auth/mfa`, mfaRoutes);
 app.use(`${API_V1}/auth/sso`, ssoRoutes);
 // Pipeline management (MINCRM-397)
 app.use(`${API_V1}/pipelines`, pipelineRoutes);
+// Sales sequences (MINCRM-403)
+app.use(`${API_V1}/sequences`, sequenceRoutes);
+app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the
@@ -220,6 +226,26 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 // swagger-jsdoc is a production dependency so this import is always safe.
 if (process.env.NODE_ENV !== 'production') {
   setupSwagger(app);
+}
+
+// ── Test-only endpoints (non-production) ──────────────────────────────────────
+// These endpoints are used exclusively by the E2E test suite to trigger
+// background jobs synchronously without waiting for the cron schedule.
+if (process.env.NODE_ENV !== 'production') {
+  /**
+   * POST /api/v1/test/advance-sequences — dev/test only.
+   * Calls advanceDueEnrollments() immediately so E2E tests can verify
+   * that sequence cron logic fires correctly without waiting 15 minutes.
+   * Never available in production. (MINCRM-403)
+   */
+  app.post(
+    `${API_V1}/test/advance-sequences`,
+    asyncHandler(async (_req, res) => {
+      const { advanceDueEnrollments } = await import('./services/sequenceService.js');
+      await advanceDueEnrollments();
+      res.status(200).json({ ok: true });
+    }),
+  );
 }
 
 // ── 404 handler ────────────────────────────────────────────────────────────────
