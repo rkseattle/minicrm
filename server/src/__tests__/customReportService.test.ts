@@ -596,6 +596,16 @@ describe('executeReport', () => {
     ).rejects.toMatchObject({ code: 'INVALID_REPORT_FIELD' });
   });
 
+  it('throws INVALID_REPORT_FIELD when aggregate is provided without group_by', async () => {
+    await expect(
+      executeReport(
+        'deal',
+        { selected_fields: ['stage'], filters: [], aggregate: { type: 'count' } },
+        null,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_REPORT_FIELD' });
+  });
+
   it('throws INVALID_REPORT_FIELD when selected fields are not covered by group_by', async () => {
     await expect(
       executeReport(

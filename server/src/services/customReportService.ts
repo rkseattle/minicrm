@@ -192,9 +192,18 @@ function validateConfig(
   } else if (config.sort_field) {
     assertFieldAllowed(entityType, config.sort_field);
   }
-  if (config.aggregate?.type === 'sum' && config.aggregate.field) {
-    assertFieldAllowed(entityType, config.aggregate.field);
-    assertSumFieldAllowed(entityType, config.aggregate.field);
+  if (config.aggregate) {
+    // aggregate requires group_by; without it every selected field would need
+    // to be in GROUP BY but the query builder only adds the group_by column.
+    if (!config.group_by) {
+      throw Object.assign(new Error(`aggregate requires a group_by field`), {
+        code: 'INVALID_REPORT_FIELD',
+      });
+    }
+    if (config.aggregate.type === 'sum' && config.aggregate.field) {
+      assertFieldAllowed(entityType, config.aggregate.field);
+      assertSumFieldAllowed(entityType, config.aggregate.field);
+    }
   }
   // When group_by is set every selected field must equal the group_by column;
   // any other field would violate PostgreSQL GROUP BY rules at query time.
