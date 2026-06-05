@@ -855,6 +855,57 @@ export const handlers = [
     return HttpResponse.json(STAGE_TREND_REPORT);
   }),
 
+  /** Custom Reports: GET /api/v1/reports/custom — returns saved custom reports list (MINCRM-402) */
+  http.get('/api/v1/reports/custom', () => {
+    return HttpResponse.json({ reports: [] });
+  }),
+
+  /** Custom Reports: POST /api/v1/reports/custom/run — executes ad-hoc report (MINCRM-402) */
+  http.post('/api/v1/reports/custom/run', () => {
+    return HttpResponse.json({ columns: ['id', 'first_name'], rows: [], row_count: 0 });
+  }),
+
+  /** Custom Reports: POST /api/v1/reports/custom — creates a saved report (MINCRM-402) */
+  http.post('/api/v1/reports/custom', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      {
+        id: '00000000-0000-0000-0000-000000000099',
+        name: body['name'] ?? 'Test Report',
+        entity_type: body['entity_type'] ?? 'contact',
+        config: body['config'] ?? { selected_fields: ['id'], filters: [] },
+        created_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Custom Reports: PATCH /api/v1/reports/custom/:id — updates a saved report (MINCRM-402) */
+  http.patch('/api/v1/reports/custom/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params['id'],
+      name: body['name'] ?? 'Updated Report',
+      entity_type: 'contact',
+      config: body['config'] ?? { selected_fields: ['id'], filters: [] },
+      created_by: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  /** Custom Reports: DELETE /api/v1/reports/custom/:id — deletes a saved report (MINCRM-402) */
+  http.delete('/api/v1/reports/custom/:id', ({ params }) => {
+    return HttpResponse.json({ id: params['id'] });
+  }),
+
+  /** Custom Reports: POST /api/v1/reports/custom/:id/run — runs a saved report (MINCRM-402) */
+  http.post('/api/v1/reports/custom/:id/run', () => {
+    return HttpResponse.json({ columns: ['id', 'first_name'], rows: [], row_count: 0 });
+  }),
+
   /** Activities: GET /api/activities/my-tasks — returns paginated task rows with linked record info */
   http.get('/api/v1/activities/my-tasks', () => {
     const tasks = [MY_TASK_1, MY_TASK_OVERDUE];

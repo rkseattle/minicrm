@@ -36,6 +36,7 @@ import gdprRoutes from './routes/gdpr.js';
 import mfaRoutes from './routes/mfa.js';
 import ssoRoutes from './routes/sso.js';
 import pipelineRoutes from './routes/pipelines.js';
+import customReportRoutes from './routes/customReports.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -117,6 +118,9 @@ app.use(`${API_V1}/accounts`, accountRoutes);
 app.use(`${API_V1}/deals`, dealRoutes);
 app.use(`${API_V1}/activities`, activityRoutes);
 app.use(`${API_V1}/dashboard`, dashboardRoutes);
+// Custom reports must be mounted before the general reports router so that
+// /api/v1/reports/custom/* is matched before Express hands control to reportRoutes.
+app.use(`${API_V1}/reports/custom`, customReportRoutes);
 app.use(`${API_V1}/reports`, reportRoutes);
 app.use(`${API_V1}/settings`, settingsRoutes);
 app.use(`${API_V1}/automation/rules`, automationRoutes);

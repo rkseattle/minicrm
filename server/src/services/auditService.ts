@@ -35,7 +35,9 @@ export type AuditRecordType =
   | 'user'
   | 'system_settings'
   | 'lead'
-  | 'activity';
+  | 'activity'
+  /** Saved custom report definitions (MINCRM-402) */
+  | 'custom_report';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
