@@ -28,6 +28,15 @@ import {
   deleteContactAddress,
   setDefaultContactAddress,
 } from '@/api/contacts.js';
+import {
+  contactEnrollmentsQueryKey,
+  listContactEnrollments,
+  listSequences,
+  enrollContact,
+  unenrollContact,
+  SEQUENCES_QUERY_KEY,
+} from '@/api/sequences.js';
+import type { EnrollmentResponse, SequenceResponse } from '@shared/schemas/sequenceSchema.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import type { ContactAddress, ContactAddressInput } from '@/api/contacts.js';
@@ -97,6 +106,12 @@ export default function ContactDetailPage() {
   const [newAddressFields, setNewAddressFields] = useState<ContactAddressInput>({});
   const [addressError, setAddressError] = useState<string | null>(null);
 
+  // Sequence enrollment state (MINCRM-403)
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [enrollSequenceId, setEnrollSequenceId] = useState('');
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+  const [unenrollError, setUnenrollError] = useState<string | null>(null);
+
   const contactQueryKey = ['contacts', id] as const;
 
   // Three-way merge conflict state (MINCRM-351, MINCRM-406)
@@ -142,6 +157,24 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
+  // Sequence enrollment queries (MINCRM-403)
+  const enrollmentsQueryKey = contactEnrollmentsQueryKey(id!);
+  const {
+    data: enrollmentsData,
+    isLoading: enrollmentsLoading,
+    isError: enrollmentsError,
+  } = useQuery({
+    queryKey: enrollmentsQueryKey,
+    queryFn: () => listContactEnrollments(id!),
+    enabled: Boolean(id),
+  });
+
+  const { data: allSequencesData } = useQuery({
+    queryKey: [...SEQUENCES_QUERY_KEY, 1],
+    queryFn: () => listSequences(1, 100),
+    enabled: isEnrollModalOpen,
+  });
+
   const contactAddresses: ContactAddress[] = addressesData?.addresses ?? [];
 
   const accounts = accountsData?.data ?? [];
@@ -149,6 +182,37 @@ export default function ContactDetailPage() {
   const linkedAccount = linkedAccountData?.account ?? null;
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
   const linkedDeals = contactDealsData?.deals ?? [];
+  const enrollments: EnrollmentResponse[] = enrollmentsData?.enrollments ?? [];
+  const availableSequences: SequenceResponse[] = allSequencesData?.data ?? [];
+
+  const enrollMutation = useMutation({
+    mutationFn: (sequenceId: string) => enrollContact(id!, sequenceId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: enrollmentsQueryKey });
+      setIsEnrollModalOpen(false);
+      setEnrollSequenceId('');
+      setEnrollError(null);
+    },
+    onError: (err) => {
+      const message =
+        (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data?.error
+          ?.code === 'ENROLLMENT_DUPLICATE'
+          ? t('sequences.enrollDuplicateError')
+          : t('sequences.enrollError');
+      setEnrollError(message);
+    },
+  });
+
+  const unenrollMutation = useMutation({
+    mutationFn: (enrollmentId: string) => unenrollContact(enrollmentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: enrollmentsQueryKey });
+      setUnenrollError(null);
+    },
+    onError: () => {
+      setUnenrollError(t('sequences.unenrollError'));
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: ({ values, version }: { values: ContactFormValues; version?: number }) =>
@@ -1294,9 +1358,166 @@ export default function ContactDetailPage() {
                 )}
               </div>
             </section>
+            {/* Sequence enrollments (MINCRM-403) */}
+            <section className="mt-8" aria-labelledby="sequence-enrollments-heading">
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                  <h2
+                    id="sequence-enrollments-heading"
+                    className="text-base font-semibold text-gray-900"
+                    data-testid="sequence-enrollments-heading"
+                  >
+                    {t('sequences.enrollments')}
+                  </h2>
+                  <button
+                    data-testid="enroll-sequence-button"
+                    onClick={() => {
+                      setIsEnrollModalOpen(true);
+                      setEnrollError(null);
+                    }}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    {t('sequences.enrollButton')}
+                  </button>
+                </div>
+
+                {enrollmentsLoading && (
+                  <p className="px-6 py-4 text-sm text-gray-500">{t('sequences.loading')}</p>
+                )}
+
+                {enrollmentsError && !enrollmentsLoading && (
+                  <p className="px-6 py-4 text-sm text-red-600" role="alert">
+                    {t('sequences.errorLoad')}
+                  </p>
+                )}
+
+                {unenrollError && (
+                  <p className="px-4 py-2 text-sm text-red-600" role="alert">
+                    {unenrollError}
+                  </p>
+                )}
+
+                {!enrollmentsLoading && !enrollmentsError && enrollments.length === 0 && (
+                  <p
+                    className="px-6 py-4 text-sm text-gray-500"
+                    data-testid="sequence-enrollments-empty"
+                  >
+                    {t('sequences.enrollmentsEmpty')}
+                  </p>
+                )}
+
+                {enrollments.length > 0 && (
+                  <ul className="divide-y divide-gray-100" data-testid="sequence-enrollments-list">
+                    {enrollments.map((enrollment) => (
+                      <li
+                        key={enrollment.id}
+                        className="flex items-center justify-between px-6 py-3"
+                        data-testid={`enrollment-row-${enrollment.id}`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-gray-900">
+                            {enrollment.sequence_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {enrollment.status === 'active' &&
+                            enrollment.current_step_sort_order != null
+                              ? t('sequences.currentStep', {
+                                  step: enrollment.current_step_sort_order,
+                                })
+                              : t(
+                                  `sequences.status${enrollment.status.charAt(0).toUpperCase()}${enrollment.status.slice(1)}`,
+                                )}
+                          </p>
+                        </div>
+                        {enrollment.status === 'active' && (
+                          <button
+                            data-testid={`unenroll-button-${enrollment.id}`}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  t('sequences.unenrollConfirmBody', {
+                                    name: enrollment.sequence_name,
+                                  }),
+                                )
+                              ) {
+                                unenrollMutation.mutate(enrollment.id);
+                              }
+                            }}
+                            className="ms-4 flex-shrink-0 text-sm text-red-600 hover:underline"
+                          >
+                            {t('sequences.unenrollButton')}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
           </EntityDetailSidebar>
         )}
       </main>
+
+      {/* Enroll in sequence modal (MINCRM-403) */}
+      {isEnrollModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="enroll-modal-title"
+          data-testid="enroll-sequence-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        >
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h2 id="enroll-modal-title" className="mb-4 text-lg font-semibold text-gray-900">
+              {t('sequences.enrollModalTitle')}
+            </h2>
+            {enrollError && (
+              <p className="mb-3 text-sm text-red-600" role="alert">
+                {enrollError}
+              </p>
+            )}
+            <select
+              data-testid="enroll-sequence-select"
+              value={enrollSequenceId}
+              onChange={(e) => setEnrollSequenceId(e.target.value)}
+              className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">{t('sequences.enrollSelectPlaceholder')}</option>
+              {availableSequences
+                .filter((s) => s.enabled)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                data-testid="enroll-submit-button"
+                onClick={() => {
+                  if (!enrollSequenceId) return;
+                  enrollMutation.mutate(enrollSequenceId);
+                }}
+                disabled={!enrollSequenceId || enrollMutation.isPending}
+                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {t('sequences.enrollSubmit')}
+              </button>
+              <button
+                data-testid="enroll-cancel-button"
+                onClick={() => {
+                  setIsEnrollModalOpen(false);
+                  setEnrollSequenceId('');
+                  setEnrollError(null);
+                }}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {t('sequences.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal — MINCRM-107 */}
       <ConfirmDeleteModal

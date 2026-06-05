@@ -1266,6 +1266,37 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
+// Demo sales sequence — showcases a 3-step new-customer cadence (MINCRM-403)
+const DEMO_SEQUENCE_STEPS = [
+  {
+    sort_order: 1,
+    action_type: 'send_email',
+    action_config: {
+      subject: 'Welcome to MiniCRM!',
+      body: 'Hi {{contact_name}}, welcome aboard. Let us know if you have any questions.',
+    },
+    delay_days: 0,
+  },
+  {
+    sort_order: 2,
+    action_type: 'log_call_reminder',
+    action_config: {
+      subject: 'Check-in call',
+      notes: 'Ask how onboarding is going and address any blockers.',
+    },
+    delay_days: 3,
+  },
+  {
+    sort_order: 3,
+    action_type: 'create_task',
+    action_config: {
+      subject: 'Send product tour invitation',
+      notes: 'Link to in-app tour or schedule a live walkthrough.',
+    },
+    delay_days: 7,
+  },
+];
+
 // Demo saved reports — showcase common report patterns and visibility settings (MINCRM-402)
 const DEMO_CUSTOM_REPORTS: Array<{
   name: string;
@@ -1429,6 +1460,9 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   await client.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
     DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
   ]);
+
+  // Sales sequences (MINCRM-403)
+  await client.query(`DELETE FROM sales_sequences WHERE is_demo = true`);
 
   // Custom reports identified by name (no is_demo flag) (MINCRM-402)
   await client.query(`DELETE FROM custom_reports WHERE name = ANY($1::text[])`, [
@@ -1992,6 +2026,44 @@ async function insertDemoData(
        ON CONFLICT (name) DO NOTHING`,
       [report.name, report.entity_type, JSON.stringify(report.config), report.visibility, adminId],
     );
+  }
+
+  // 21. Sales sequence — demonstrate a 3-step new-customer cadence (MINCRM-403)
+  const seqResult = await client.query<{ id: string }>(
+    `INSERT INTO sales_sequences (name, description, enabled, created_by, is_demo)
+     VALUES ($1, $2, true, $3, true)
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    ['New Customer Onboarding', 'A 3-step cadence to welcome and onboard new customers.', adminId],
+  );
+  if (seqResult.rows[0]) {
+    const sequenceId = seqResult.rows[0].id;
+    for (const step of DEMO_SEQUENCE_STEPS) {
+      await client.query(
+        `INSERT INTO sales_sequence_steps
+           (sequence_id, sort_order, action_type, action_config, delay_days)
+         VALUES ($1, $2, $3, $4::jsonb, $5)`,
+        [
+          sequenceId,
+          step.sort_order,
+          step.action_type,
+          JSON.stringify(step.action_config),
+          step.delay_days,
+        ],
+      );
+    }
+    // Enroll the first demo contact so the sequence shows active usage in the UI
+    if (contactIds[0]) {
+      await client.query(
+        `INSERT INTO sequence_enrollments
+           (sequence_id, contact_id, enrolled_by_id, status, current_step_id, next_action_at)
+         SELECT $1, $2, $3, 'active',
+                (SELECT id FROM sales_sequence_steps WHERE sequence_id = $1 ORDER BY sort_order ASC LIMIT 1),
+                now() + interval '1 day'
+         ON CONFLICT DO NOTHING`,
+        [sequenceId, contactIds[0], adminId],
+      );
+    }
   }
 }
 

@@ -38,6 +38,8 @@ const AdminSettingsPage = lazy(() => import('@/pages/AdminSettingsPage.js'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage.js'));
 const ActivitiesPage = lazy(() => import('@/pages/ActivitiesPage.js'));
 const AutomationRulesPage = lazy(() => import('@/pages/AutomationRulesPage.js'));
+const SequencesPage = lazy(() => import('@/pages/SequencesPage.js'));
+const SequenceDetailPage = lazy(() => import('@/pages/SequenceDetailPage.js'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage.js'));
 const AuditLogPage = lazy(() => import('@/pages/AuditLogPage.js'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage.js'));
@@ -130,6 +132,8 @@ function AppRoutes() {
             <Route path="/admin/tags" element={<AdminTagsPage />} />
             <Route path="/admin/audit-log" element={<AuditLogPage />} />
             <Route path="/admin/automation" element={<AutomationRulesPage />} />
+            <Route path="/admin/sequences" element={<SequencesPage />} />
+            <Route path="/admin/sequences/:id" element={<SequenceDetailPage />} />
           </Route>
         </Route>
 

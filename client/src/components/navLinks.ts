@@ -50,6 +50,7 @@ export const NAV_LINKS: NavLinkDef[] = [
     sectionLabelKey: 'nav.administrationSection',
   },
   { to: '/admin/automation', labelKey: 'nav.automation', adminOnly: true },
+  { to: '/admin/sequences', labelKey: 'nav.sequences', adminOnly: true },
   { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true },
   { to: '/admin/settings', labelKey: 'nav.adminSettings', adminOnly: true },
 ];
@@ -69,6 +70,7 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/users': 'users',
   '/reports': 'reports',
   '/admin/automation': 'automation',
+  '/admin/sequences': 'sequences',
   '/admin/tags': 'tags',
   '/admin/settings': 'settings',
 };
