@@ -1167,10 +1167,9 @@ jobs:
   update-visual-snapshots:
     name: Phase 4 - Update Visual Snapshots
     needs: [lint-and-typecheck, changes]
-    if: |
-      needs.lint-and-typecheck.result == 'success' &&
-      (needs.changes.outputs.client == 'true' ||
-       needs.changes.outputs.visual == 'true')
+    # disabled — re-enable by restoring: needs.lint-and-typecheck.result == 'success' &&
+    #   (needs.changes.outputs.client == 'true' || needs.changes.outputs.visual == 'true')
+    if: false
     runs-on: ubuntu-latest
 
     services:
