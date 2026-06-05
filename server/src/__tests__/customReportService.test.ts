@@ -589,4 +589,71 @@ describe('executeReport', () => {
     );
     expect(result.columns).toContain('_sum');
   });
+
+  it('throws INVALID_REPORT_FIELD when _sum sort used without aggregate', async () => {
+    await expect(
+      executeReport('deal', { selected_fields: ['stage'], filters: [], sort_field: '_sum' }, null),
+    ).rejects.toMatchObject({ code: 'INVALID_REPORT_FIELD' });
+  });
+
+  it('throws INVALID_REPORT_FIELD when selected fields are not covered by group_by', async () => {
+    await expect(
+      executeReport(
+        'deal',
+        { selected_fields: ['stage', 'name'], filters: [], group_by: 'stage' },
+        null,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_REPORT_FIELD' });
+  });
+
+  it('applies contains filter operator', async () => {
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Contains', 'Test', 'cr-svc-contains@example.com', $1)
+       ON CONFLICT (email) DO NOTHING`,
+      [ACTOR.id],
+    );
+    const result = await executeReport(
+      'contact',
+      {
+        selected_fields: ['email'],
+        filters: [{ field: 'email', operator: 'contains', value: 'cr-svc-contains' }],
+      },
+      null,
+    );
+    expect(result.rows.some((r) => r['email'] === 'cr-svc-contains@example.com')).toBe(true);
+  });
+
+  it('maps null column values to null in the result', async () => {
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('NullPhone', 'Test', 'cr-svc-nullphone@example.com', $1)
+       ON CONFLICT (email) DO NOTHING`,
+      [ACTOR.id],
+    );
+    const result = await executeReport(
+      'contact',
+      {
+        selected_fields: ['email', 'phone'],
+        filters: [{ field: 'email', operator: 'eq', value: 'cr-svc-nullphone@example.com' }],
+      },
+      null,
+    );
+    const row = result.rows.find((r) => r['email'] === 'cr-svc-nullphone@example.com');
+    expect(row).toBeDefined();
+    expect(row!['phone']).toBeNull();
+  });
+
+  it('toReportResponse maps row fields to the response shape', async () => {
+    const report = await createReport(
+      { name: `${FILE_PREFIX}-ResponseMap`, entity_type: 'contact', config: BASIC_CONFIG },
+      ACTOR,
+    );
+    const { toReportResponse } = await import('../services/customReportService.js');
+    const raw = { ...report, created_at: new Date(), updated_at: new Date() };
+    const resp = toReportResponse(raw);
+    expect(resp.id).toBe(report.id);
+    expect(resp.entity_type).toBe('contact');
+    expect(typeof resp.created_at).toBe('string');
+  });
 });
