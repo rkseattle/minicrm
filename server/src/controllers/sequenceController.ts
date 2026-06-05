@@ -234,9 +234,11 @@ export async function updateStepHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
+
   let step;
   try {
-    step = await updateStep(stepId, parsed.data);
+    step = await updateStep(stepId, parsed.data, actor);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === '23505') {
       res.status(409).json({
@@ -264,7 +266,20 @@ export async function updateStepHandler(req: Request, res: Response): Promise<vo
 export async function deleteStepHandler(req: Request, res: Response): Promise<void> {
   const stepId = String(req.params['stepId']);
   const actor = { id: req.user!.id, name: req.user!.name };
-  const deleted = await deleteStep(stepId, actor);
+
+  let deleted;
+  try {
+    deleted = await deleteStep(stepId, actor);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException & { code?: string }).code === 'STEP_HAS_ACTIVE_ENROLLMENTS') {
+      res.status(409).json({
+        error: { code: 'STEP_HAS_ACTIVE_ENROLLMENTS', message: (err as Error).message },
+      });
+      return;
+    }
+    throw err;
+  }
+
   if (!deleted) {
     res.status(404).json({ error: { code: 'STEP_NOT_FOUND', message: 'Step not found' } });
     return;
@@ -337,7 +352,20 @@ export async function listContactEnrollmentsHandler(req: Request, res: Response)
 export async function unenrollContactHandler(req: Request, res: Response): Promise<void> {
   const enrollmentId = String(req.params['id']);
   const actor = { id: req.user!.id, name: req.user!.name };
-  const enrollment = await unenrollContact(enrollmentId, actor);
+
+  let enrollment;
+  try {
+    enrollment = await unenrollContact(enrollmentId, actor);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException & { code?: string }).code === 'ENROLLMENT_NOT_ACTIVE') {
+      res.status(409).json({
+        error: { code: 'ENROLLMENT_NOT_ACTIVE', message: (err as Error).message },
+      });
+      return;
+    }
+    throw err;
+  }
+
   if (!enrollment) {
     res.status(404).json({
       error: { code: 'ENROLLMENT_NOT_FOUND', message: 'Enrollment not found' },
