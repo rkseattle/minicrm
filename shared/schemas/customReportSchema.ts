@@ -8,6 +8,9 @@ import { z } from 'zod';
 export const REPORT_ENTITY_TYPES = ['contact', 'account', 'deal', 'lead', 'activity'] as const;
 export type ReportEntityType = (typeof REPORT_ENTITY_TYPES)[number];
 
+export const REPORT_VISIBILITY_OPTIONS = ['private', 'public_read_only', 'public'] as const;
+export type ReportVisibility = (typeof REPORT_VISIBILITY_OPTIONS)[number];
+
 export const FILTER_OPERATORS = [
   'eq',
   'neq',
@@ -65,14 +68,19 @@ export const createCustomReportSchema = z.object({
     .trim(),
   entity_type: z.enum(REPORT_ENTITY_TYPES),
   config: reportConfigSchema,
+  visibility: z.enum(REPORT_VISIBILITY_OPTIONS).optional().default('public'),
 });
+/** Output type (after Zod defaults are applied) — use for service function parameters. */
 export type CreateCustomReportInput = z.infer<typeof createCustomReportSchema>;
+/** Input type (before Zod defaults) — use for client-side call sites where visibility is optional. */
+export type CreateCustomReportBody = z.input<typeof createCustomReportSchema>;
 
 /** Request body for updating a saved custom report. */
 export const updateCustomReportSchema = z
   .object({
     name: z.string().min(1).max(200).trim().optional(),
     config: reportConfigSchema.optional(),
+    visibility: z.enum(REPORT_VISIBILITY_OPTIONS).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
@@ -85,6 +93,7 @@ export const customReportResponseSchema = z.object({
   name: z.string(),
   entity_type: z.enum(REPORT_ENTITY_TYPES),
   config: reportConfigSchema,
+  visibility: z.enum(REPORT_VISIBILITY_OPTIONS),
   created_by: z.string().uuid().nullable(),
   created_at: z.string(),
   updated_at: z.string(),

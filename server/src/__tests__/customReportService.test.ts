@@ -19,6 +19,9 @@ import { createUser } from '../services/userService.js';
 
 const FILE_PREFIX = 'cr-svc';
 
+const ADMIN_CALLER = { id: '', role: 'admin' };
+const REP_CALLER = { id: '', role: 'rep' };
+
 const BASIC_CONFIG = {
   selected_fields: ['id', 'first_name', 'last_name'],
   filters: [],
@@ -30,6 +33,8 @@ async function truncate(): Promise<void> {
   await pool.query(`DELETE FROM custom_reports WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
 }
 
+let REP_ACTOR = { id: '', name: 'Test Rep' };
+
 beforeAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const actor = await createUser({
@@ -40,6 +45,17 @@ beforeAll(async () => {
     passwordHash: null,
   });
   ACTOR = { id: actor.id, name: actor.name };
+  ADMIN_CALLER.id = actor.id;
+
+  const rep = await createUser({
+    email: `${FILE_PREFIX}-rep@example.com`,
+    name: 'Test Rep',
+    role: 'rep',
+    status: 'active',
+    passwordHash: null,
+  });
+  REP_ACTOR = { id: rep.id, name: rep.name };
+  REP_CALLER.id = rep.id;
 });
 
 beforeEach(async () => {
@@ -57,7 +73,7 @@ afterAll(async () => {
 
 describe('listReports', () => {
   it('returns empty array when no reports exist', async () => {
-    const result = await listReports();
+    const result = await listReports(ADMIN_CALLER);
     const ours = result.filter((r) => r.name.startsWith(FILE_PREFIX));
     expect(ours).toHaveLength(0);
   });
@@ -76,11 +92,56 @@ describe('listReports', () => {
       ACTOR,
     );
 
-    const all = await listReports();
+    const all = await listReports(ADMIN_CALLER);
     const ours = all.filter((r) => r.name.startsWith(FILE_PREFIX));
     expect(ours).toHaveLength(2);
     expect(ours[0].name).toBe(`${FILE_PREFIX}-Alpha`);
     expect(ours[1].name).toBe(`${FILE_PREFIX}-Beta`);
+  });
+
+  it('excludes private reports for non-owners', async () => {
+    await createReport(
+      {
+        name: `${FILE_PREFIX}-Private`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      ACTOR,
+    );
+    const all = await listReports(REP_CALLER);
+    const ours = all.filter((r) => r.name.startsWith(FILE_PREFIX));
+    expect(ours.find((r) => r.name === `${FILE_PREFIX}-Private`)).toBeUndefined();
+  });
+
+  it('includes private reports for their owner', async () => {
+    await createReport(
+      {
+        name: `${FILE_PREFIX}-OwnPrivate`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      REP_ACTOR,
+    );
+    const all = await listReports(REP_CALLER);
+    const ours = all.filter((r) => r.name.startsWith(FILE_PREFIX));
+    expect(ours.find((r) => r.name === `${FILE_PREFIX}-OwnPrivate`)).toBeDefined();
+  });
+
+  it('includes all reports for admins regardless of visibility', async () => {
+    await createReport(
+      {
+        name: `${FILE_PREFIX}-AdminSee`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      REP_ACTOR,
+    );
+    const all = await listReports(ADMIN_CALLER);
+    const ours = all.filter((r) => r.name.startsWith(FILE_PREFIX));
+    expect(ours.find((r) => r.name === `${FILE_PREFIX}-AdminSee`)).toBeDefined();
   });
 });
 
@@ -88,19 +149,47 @@ describe('listReports', () => {
 
 describe('getReport', () => {
   it('returns null for a nonexistent ID', async () => {
-    const result = await getReport('00000000-0000-0000-0000-000000000000');
+    const result = await getReport('00000000-0000-0000-0000-000000000000', ADMIN_CALLER);
     expect(result).toBeNull();
   });
 
-  it('returns the report by ID', async () => {
+  it('returns the report by ID for the owner', async () => {
     const created = await createReport(
       { name: `${FILE_PREFIX}-Get`, entity_type: 'contact', config: BASIC_CONFIG },
       ACTOR,
     );
-    const found = await getReport(created.id);
+    const found = await getReport(created.id, ADMIN_CALLER);
     expect(found).not.toBeNull();
     expect(found!.id).toBe(created.id);
     expect(found!.name).toBe(`${FILE_PREFIX}-Get`);
+  });
+
+  it('returns null for a private report when caller is not owner or admin', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-GetPriv`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      ACTOR,
+    );
+    const found = await getReport(created.id, REP_CALLER);
+    expect(found).toBeNull();
+  });
+
+  it('returns a public_read_only report to non-owners', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-GetReadOnly`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public_read_only',
+      },
+      ACTOR,
+    );
+    const found = await getReport(created.id, REP_CALLER);
+    expect(found).not.toBeNull();
   });
 });
 
@@ -167,7 +256,7 @@ describe('createReport', () => {
       passwordHash: '$2b$12$placeholder',
       status: 'active',
     });
-    const actor = { id: user.id, name: user.name };
+    const actor = { id: user.id, name: user.name, role: 'admin' };
     const report = await createReport(
       { name: `${FILE_PREFIX}-Audit`, entity_type: 'contact', config: BASIC_CONFIG },
       actor,
@@ -186,43 +275,123 @@ describe('createReport', () => {
 
 // ── updateReport ──────────────────────────────────────────────────────────────
 
+const ADMIN_ACTOR_WITH_ROLE = () => ({ ...ACTOR, role: 'admin' });
+const REP_ACTOR_WITH_ROLE = () => ({ ...REP_ACTOR, role: 'rep' });
+
 describe('updateReport', () => {
   it('returns null for a nonexistent ID', async () => {
-    const result = await updateReport('00000000-0000-0000-0000-000000000000', { name: 'x' }, ACTOR);
+    const result = await updateReport(
+      '00000000-0000-0000-0000-000000000000',
+      { name: 'x' },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
     expect(result).toBeNull();
   });
 
   it('updates the report name', async () => {
     const created = await createReport(
       { name: `${FILE_PREFIX}-UpdOld`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
-    const updated = await updateReport(created.id, { name: `${FILE_PREFIX}-UpdNew` }, ACTOR);
+    const updated = await updateReport(
+      created.id,
+      { name: `${FILE_PREFIX}-UpdNew` },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
     expect(updated!.name).toBe(`${FILE_PREFIX}-UpdNew`);
   });
 
   it('updates the report config', async () => {
     const created = await createReport(
       { name: `${FILE_PREFIX}-UpdCfg`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
     const newConfig = { selected_fields: ['id', 'email'], filters: [] };
-    const updated = await updateReport(created.id, { config: newConfig }, ACTOR);
+    const updated = await updateReport(created.id, { config: newConfig }, ADMIN_ACTOR_WITH_ROLE());
     expect(updated!.config.selected_fields).toEqual(['id', 'email']);
+  });
+
+  it('updates the report visibility', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-UpdVis`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public',
+      },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    const updated = await updateReport(
+      created.id,
+      { visibility: 'private' },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    expect(updated!.visibility).toBe('private');
   });
 
   it('throws CUSTOM_REPORT_NAME_CONFLICT on name collision', async () => {
     await createReport(
       { name: `${FILE_PREFIX}-Existing`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
     const second = await createReport(
       { name: `${FILE_PREFIX}-Second`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
     await expect(
-      updateReport(second.id, { name: `${FILE_PREFIX}-Existing` }, ACTOR),
+      updateReport(second.id, { name: `${FILE_PREFIX}-Existing` }, ADMIN_ACTOR_WITH_ROLE()),
     ).rejects.toMatchObject({ code: 'CUSTOM_REPORT_NAME_CONFLICT' });
+  });
+
+  it('throws REPORT_FORBIDDEN when rep tries to update a public_read_only report they do not own', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-UpdForbidden`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public_read_only',
+      },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    await expect(
+      updateReport(created.id, { name: `${FILE_PREFIX}-UpdForbiddenNew` }, REP_ACTOR_WITH_ROLE()),
+    ).rejects.toMatchObject({ code: 'REPORT_FORBIDDEN' });
+  });
+
+  it('allows rep to update a public report they do not own', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-UpdPublic`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public',
+      },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    const updated = await updateReport(
+      created.id,
+      { name: `${FILE_PREFIX}-UpdPublicNew` },
+      REP_ACTOR_WITH_ROLE(),
+    );
+    expect(updated!.name).toBe(`${FILE_PREFIX}-UpdPublicNew`);
+  });
+
+  it('allows rep to update their own private report', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-OwnPrivUpd`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      REP_ACTOR_WITH_ROLE(),
+    );
+    const updated = await updateReport(
+      created.id,
+      { name: `${FILE_PREFIX}-OwnPrivUpdNew` },
+      REP_ACTOR_WITH_ROLE(),
+    );
+    expect(updated!.name).toBe(`${FILE_PREFIX}-OwnPrivUpdNew`);
   });
 });
 
@@ -230,34 +399,80 @@ describe('updateReport', () => {
 
 describe('deleteReport', () => {
   it('returns null for a nonexistent ID', async () => {
-    const result = await deleteReport('00000000-0000-0000-0000-000000000000', ACTOR);
+    const result = await deleteReport(
+      '00000000-0000-0000-0000-000000000000',
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
     expect(result).toBeNull();
   });
 
   it('deletes the report and returns it', async () => {
     const created = await createReport(
       { name: `${FILE_PREFIX}-Del`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
-    const deleted = await deleteReport(created.id, ACTOR);
+    const deleted = await deleteReport(created.id, ADMIN_ACTOR_WITH_ROLE());
     expect(deleted!.id).toBe(created.id);
 
-    const found = await getReport(created.id);
+    const found = await getReport(created.id, ADMIN_CALLER);
     expect(found).toBeNull();
   });
 
   it('writes an audit entry on delete', async () => {
     const created = await createReport(
       { name: `${FILE_PREFIX}-DelAudit`, entity_type: 'contact', config: BASIC_CONFIG },
-      ACTOR,
+      ADMIN_ACTOR_WITH_ROLE(),
     );
-    await deleteReport(created.id, ACTOR);
+    await deleteReport(created.id, ADMIN_ACTOR_WITH_ROLE());
 
     const auditRows = await pool.query(
       `SELECT * FROM audit_log WHERE record_type = 'custom_report' AND record_id = $1 AND event_type = 'deleted'`,
       [created.id],
     );
     expect(auditRows.rows).toHaveLength(1);
+  });
+
+  it('throws REPORT_FORBIDDEN when rep tries to delete a public_read_only report they do not own', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-DelForbidden`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public_read_only',
+      },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    await expect(deleteReport(created.id, REP_ACTOR_WITH_ROLE())).rejects.toMatchObject({
+      code: 'REPORT_FORBIDDEN',
+    });
+  });
+
+  it('allows rep to delete a public report they do not own', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-DelPublic`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'public',
+      },
+      ADMIN_ACTOR_WITH_ROLE(),
+    );
+    const deleted = await deleteReport(created.id, REP_ACTOR_WITH_ROLE());
+    expect(deleted!.id).toBe(created.id);
+  });
+
+  it('allows rep to delete their own private report', async () => {
+    const created = await createReport(
+      {
+        name: `${FILE_PREFIX}-OwnPrivDel`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      },
+      REP_ACTOR_WITH_ROLE(),
+    );
+    const deleted = await deleteReport(created.id, REP_ACTOR_WITH_ROLE());
+    expect(deleted!.id).toBe(created.id);
   });
 });
 

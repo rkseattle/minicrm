@@ -29,7 +29,8 @@ function isValidEntityType(value: string): value is (typeof REPORT_ENTITY_TYPES)
  * Returns all saved custom reports, ordered by name.
  */
 export async function listCustomReportsHandler(req: Request, res: Response): Promise<void> {
-  const reports = await listReports();
+  const caller = { id: req.user!.id, role: req.user!.role };
+  const reports = await listReports(caller);
   res.status(200).json({ reports: reports.map(toReportResponse) });
 }
 
@@ -39,7 +40,8 @@ export async function listCustomReportsHandler(req: Request, res: Response): Pro
  */
 export async function getCustomReportHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
-  const report = await getReport(id);
+  const caller = { id: req.user!.id, role: req.user!.role };
+  const report = await getReport(id, caller);
   if (!report) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
     return;
@@ -63,7 +65,7 @@ export async function createCustomReportHandler(req: Request, res: Response): Pr
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
 
   try {
     const report = await createReport(parsed.data, actor);
@@ -104,7 +106,7 @@ export async function updateCustomReportHandler(req: Request, res: Response): Pr
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
 
   try {
     const report = await updateReport(id, parsed.data, actor);
@@ -115,6 +117,12 @@ export async function updateCustomReportHandler(req: Request, res: Response): Pr
     res.status(200).json(toReportResponse(report));
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'REPORT_FORBIDDEN') {
+      res
+        .status(403)
+        .json({ error: { code: 'REPORT_FORBIDDEN', message: (err as Error).message } });
+      return;
+    }
     if (code === 'CUSTOM_REPORT_NAME_CONFLICT') {
       res.status(409).json({
         error: { code: 'CUSTOM_REPORT_NAME_CONFLICT', message: (err as Error).message },
@@ -137,14 +145,24 @@ export async function updateCustomReportHandler(req: Request, res: Response): Pr
  */
 export async function deleteCustomReportHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
-  const actor = { id: req.user!.id, name: req.user!.name };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
 
-  const report = await deleteReport(id, actor);
-  if (!report) {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
-    return;
+  try {
+    const report = await deleteReport(id, actor);
+    if (!report) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
+      return;
+    }
+    res.status(200).json({ id });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'REPORT_FORBIDDEN') {
+      res
+        .status(403)
+        .json({ error: { code: 'REPORT_FORBIDDEN', message: (err as Error).message } });
+      return;
+    }
+    throw err;
   }
-  res.status(200).json({ id });
 }
 
 /**
@@ -154,8 +172,9 @@ export async function deleteCustomReportHandler(req: Request, res: Response): Pr
  */
 export async function runCustomReportHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
+  const caller = { id: req.user!.id, role: req.user!.role };
 
-  const report = await getReport(id);
+  const report = await getReport(id, caller);
   if (!report) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
     return;
@@ -230,8 +249,9 @@ export async function runAdHocReportHandler(req: Request, res: Response): Promis
  */
 export async function exportCustomReportHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
+  const caller = { id: req.user!.id, role: req.user!.role };
 
-  const report = await getReport(id);
+  const report = await getReport(id, caller);
   if (!report) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
     return;

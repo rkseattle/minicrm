@@ -1266,15 +1266,17 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
-// Demo saved reports — showcase common report patterns (MINCRM-402)
+// Demo saved reports — showcase common report patterns and visibility settings (MINCRM-402)
 const DEMO_CUSTOM_REPORTS: Array<{
   name: string;
   entity_type: string;
+  visibility: string;
   config: object;
 }> = [
   {
     name: 'Open Deals by Stage',
     entity_type: 'deal',
+    visibility: 'public',
     config: {
       selected_fields: ['id', 'name', 'stage', 'value', 'owner_id'],
       filters: [
@@ -1290,6 +1292,7 @@ const DEMO_CUSTOM_REPORTS: Array<{
   {
     name: 'Contacts by Account',
     entity_type: 'contact',
+    visibility: 'public_read_only',
     config: {
       selected_fields: ['id', 'first_name', 'last_name', 'email', 'title', 'account_id'],
       filters: [],
@@ -1300,6 +1303,7 @@ const DEMO_CUSTOM_REPORTS: Array<{
   {
     name: 'New Leads This Quarter',
     entity_type: 'lead',
+    visibility: 'private',
     config: {
       selected_fields: [
         'id',
@@ -1983,10 +1987,10 @@ async function insertDemoData(
   // 20. Custom reports — demonstrate the report builder with pre-built examples (MINCRM-402)
   for (const report of DEMO_CUSTOM_REPORTS) {
     await client.query(
-      `INSERT INTO custom_reports (name, entity_type, config, created_by)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO custom_reports (name, entity_type, config, visibility, created_by)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (name) DO NOTHING`,
-      [report.name, report.entity_type, JSON.stringify(report.config), adminId],
+      [report.name, report.entity_type, JSON.stringify(report.config), report.visibility, adminId],
     );
   }
 }

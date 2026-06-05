@@ -1062,6 +1062,7 @@
         "title": "Bericht speichern",
         "nameLabel": "Berichtsname",
         "namePlaceholder": "z. B. Offene Deals nach Phase",
+        "visibilityLabel": "Sichtbarkeit",
         "confirm": "Speichern",
         "cancel": "Abbrechen"
       },
@@ -1080,7 +1081,12 @@
       "operatorLte": "höchstens",
       "operatorContains": "enthält",
       "operatorIsNull": "ist leer",
-      "operatorIsNotNull": "ist nicht leer"
+      "operatorIsNotNull": "ist nicht leer",
+      "visibility": {
+        "private": "Privat",
+        "public_read_only": "Öffentlich – Nur lesen",
+        "public": "Öffentlich"
+      }
     }
   },
   "automation": {

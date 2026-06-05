@@ -1027,6 +1027,7 @@
         "title": "Save report",
         "nameLabel": "Report name",
         "namePlaceholder": "e.g. Open deals by stage",
+        "visibilityLabel": "Visibility",
         "confirm": "Save",
         "cancel": "Cancel"
       },
@@ -1045,7 +1046,12 @@
       "operatorLte": "at most",
       "operatorContains": "contains",
       "operatorIsNull": "is empty",
-      "operatorIsNotNull": "is not empty"
+      "operatorIsNotNull": "is not empty",
+      "visibility": {
+        "private": "Private",
+        "public_read_only": "Public – Read Only",
+        "public": "Public"
+      }
     }
   },
   "automation": {

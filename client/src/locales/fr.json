@@ -1062,6 +1062,7 @@
         "title": "Enregistrer le rapport",
         "nameLabel": "Nom du rapport",
         "namePlaceholder": "ex. Opportunités ouvertes par étape",
+        "visibilityLabel": "Visibilité",
         "confirm": "Enregistrer",
         "cancel": "Annuler"
       },
@@ -1080,7 +1081,12 @@
       "operatorLte": "au plus",
       "operatorContains": "contient",
       "operatorIsNull": "est vide",
-      "operatorIsNotNull": "n'est pas vide"
+      "operatorIsNotNull": "n'est pas vide",
+      "visibility": {
+        "private": "Privé",
+        "public_read_only": "Public – Lecture seule",
+        "public": "Public"
+      }
     }
   },
   "automation": {

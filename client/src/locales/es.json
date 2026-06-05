@@ -1062,6 +1062,7 @@
         "title": "Guardar informe",
         "nameLabel": "Nombre del informe",
         "namePlaceholder": "p. ej. Negocios abiertos por etapa",
+        "visibilityLabel": "Visibilidad",
         "confirm": "Guardar",
         "cancel": "Cancelar"
       },
@@ -1080,7 +1081,12 @@
       "operatorLte": "como máximo",
       "operatorContains": "contiene",
       "operatorIsNull": "está vacío",
-      "operatorIsNotNull": "no está vacío"
+      "operatorIsNotNull": "no está vacío",
+      "visibility": {
+        "private": "Privado",
+        "public_read_only": "Público – Solo lectura",
+        "public": "Público"
+      }
     }
   },
   "automation": {
