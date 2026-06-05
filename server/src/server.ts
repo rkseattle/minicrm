@@ -152,9 +152,18 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGINT', () => overdueDigestCron.stop());
 
   // Sequence step advancement — runs every 15 minutes (MINCRM-403).
+  // Re-entrancy guard: if the previous run is still in progress, skip the tick.
+  let sequenceCronRunning = false;
   const sequenceCron = cron.schedule('*/15 * * * *', () => {
+    if (sequenceCronRunning) {
+      logger.warn('cron: sequence advancement still in progress — skipping tick');
+      return;
+    }
+    sequenceCronRunning = true;
     logger.info('cron: advancing due sequence enrollments');
-    void advanceDueEnrollments();
+    void advanceDueEnrollments().finally(() => {
+      sequenceCronRunning = false;
+    });
   });
   logger.info('Sequence enrollment cron scheduled (every 15 minutes)');
 

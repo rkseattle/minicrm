@@ -273,20 +273,35 @@ export async function deleteSequence(
   id: string,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<SequenceRow | null> {
-  const existing = await findSequenceById(id);
-  if (!existing) return null;
-
-  if (existing.active_enrollment_count > 0) {
-    const err = new Error(
-      'Cannot delete a sequence with active enrollments. Unenroll all contacts first.',
-    );
-    Object.assign(err, { code: 'SEQUENCE_HAS_ACTIVE_ENROLLMENTS' });
-    throw err;
-  }
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Lock the sequence row to prevent concurrent enrollContact from sneaking in
+    // between the active-enrollment check and the DELETE (TOCTOU guard).
+    const lockResult = await client.query<{ id: string; name: string }>(
+      `SELECT id, name FROM sales_sequences WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    if (lockResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const existing = lockResult.rows[0]!;
+
+    const enrollmentCountResult = await client.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM sequence_enrollments WHERE sequence_id = $1 AND status = 'active'`,
+      [id],
+    );
+    const activeCount = parseInt(enrollmentCountResult.rows[0]!.count, 10);
+    if (activeCount > 0) {
+      await client.query('ROLLBACK');
+      const err = new Error(
+        'Cannot delete a sequence with active enrollments. Unenroll all contacts first.',
+      );
+      Object.assign(err, { code: 'SEQUENCE_HAS_ACTIVE_ENROLLMENTS' });
+      throw err;
+    }
 
     const deleteResult = await client.query<{ id: string }>(
       `DELETE FROM sales_sequences WHERE id = $1 RETURNING id`,
@@ -309,7 +324,17 @@ export async function deleteSequence(
 
     await client.query('COMMIT');
 
-    return existing;
+    // Return a minimal SequenceRow — the record is deleted so subquery counts are zero
+    return {
+      ...existing,
+      enabled: false,
+      description: null,
+      created_by: null,
+      step_count: 0,
+      active_enrollment_count: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -398,6 +423,7 @@ export async function createStep(
 export async function updateStep(
   stepId: string,
   params: UpdateSequenceStepInput,
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<SequenceStepRow | null> {
   const fields = (Object.keys(params) as (keyof UpdateSequenceStepInput)[]).filter((f) =>
     ALLOWED_STEP_UPDATE_FIELDS.has(f),
@@ -407,23 +433,52 @@ export async function updateStep(
     return findStepById(stepId);
   }
 
+  const existing = await findStepById(stepId);
+  if (!existing) return null;
+
   const setClauses = fields
     .map((f, i) => (f === 'action_config' ? `${f} = $${i + 2}::jsonb` : `${f} = $${i + 2}`))
     .join(', ');
 
   const values = fields.map((f) => (f === 'action_config' ? JSON.stringify(params[f]) : params[f]));
 
-  const updateResult = await pool.query<{ id: string }>(
-    `UPDATE sales_sequence_steps
-     SET ${setClauses}, updated_at = now()
-     WHERE id = $1
-     RETURNING id`,
-    [stepId, ...values],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (updateResult.rowCount === 0) return null;
+    const updateResult = await client.query<{ id: string }>(
+      `UPDATE sales_sequence_steps
+       SET ${setClauses}, updated_at = now()
+       WHERE id = $1
+       RETURNING id`,
+      [stepId, ...values],
+    );
 
-  return findStepById(stepId);
+    if (updateResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'sequence',
+      recordId: existing.sequence_id,
+      recordName: `step ${existing.sort_order} (${existing.action_type})`,
+      eventType: 'updated',
+      fieldName: 'step_updated',
+      newValue: stepId,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    return findStepById(stepId);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -435,6 +490,18 @@ export async function deleteStep(
 ): Promise<SequenceStepRow | null> {
   const existing = await findStepById(stepId);
   if (!existing) return null;
+
+  const activeEnrollments = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM sequence_enrollments WHERE current_step_id = $1 AND status = 'active'`,
+    [stepId],
+  );
+  if (parseInt(activeEnrollments.rows[0]!.count, 10) > 0) {
+    const err = new Error(
+      'Cannot delete a step that has active enrollments currently on it. Unenroll those contacts first.',
+    );
+    Object.assign(err, { code: 'STEP_HAS_ACTIVE_ENROLLMENTS' });
+    throw err;
+  }
 
   const client: PoolClient = await pool.connect();
   try {
@@ -588,6 +655,14 @@ export async function unenrollContact(
 ): Promise<EnrollmentRow | null> {
   const existing = await findEnrollmentById(enrollmentId);
   if (!existing) return null;
+
+  if (existing.status !== 'active') {
+    const err = new Error(
+      `Cannot unenroll an enrollment with status '${existing.status}'. Only active enrollments can be unenrolled.`,
+    );
+    Object.assign(err, { code: 'ENROLLMENT_NOT_ACTIVE' });
+    throw err;
+  }
 
   const client: PoolClient = await pool.connect();
   try {
