@@ -17,6 +17,9 @@ RUN npm install --workspace=minicrm-client
 COPY client/ ./client/
 COPY shared/ ./shared/
 
+# Compile shared schemas to JS so Vite can resolve .js imports at build time
+RUN npm run build --workspace=@minicrm/shared
+
 RUN npm run build --workspace=minicrm-client
 
 FROM nginx:alpine
