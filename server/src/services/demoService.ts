@@ -1278,13 +1278,13 @@ const DEMO_CUSTOM_REPORTS: Array<{
     entity_type: 'deal',
     visibility: 'public',
     config: {
-      selected_fields: ['id', 'name', 'stage', 'value', 'owner_id'],
+      selected_fields: ['stage'],
       filters: [
         { field: 'stage', operator: 'neq', value: 'Closed Won' },
         { field: 'stage', operator: 'neq', value: 'Closed Lost' },
       ],
       group_by: 'stage',
-      sort_field: 'value',
+      sort_field: '_sum',
       sort_direction: 'desc',
       aggregate: { type: 'sum', field: 'value' },
     },

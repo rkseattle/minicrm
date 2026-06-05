@@ -358,6 +358,58 @@ describe('CustomReportBuilderContent — saved reports list', () => {
     expect(screen.getByTestId('delete-report-rpt-pub')).toBeInTheDocument();
   });
 
+  it('shows visibility select in action area when a mutable report is loaded', async () => {
+    const report = makeReport({ id: 'rpt-own', name: 'Owned Report', visibility: 'private' });
+    server.use(
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({ reports: [report] });
+      }),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-report-rpt-own')).toBeInTheDocument();
+    });
+    // Visibility select not visible before loading a report
+    expect(screen.queryByTestId('active-report-visibility-select')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('saved-report-rpt-own'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('active-report-visibility-select')).toBeInTheDocument();
+    });
+    const visSelect = screen.getByTestId('active-report-visibility-select') as HTMLSelectElement;
+    expect(visSelect.value).toBe('private');
+
+    await userEvent.selectOptions(visSelect, 'public');
+    expect(visSelect.value).toBe('public');
+  });
+
+  it('hides visibility select for public_read_only reports the user does not own', async () => {
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({
+          reports: [
+            makeReport({
+              id: 'rpt-ro2',
+              name: 'Read Only Report',
+              visibility: 'public_read_only',
+              created_by: 'other-user',
+            }),
+          ],
+        });
+      }),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-report-rpt-ro2')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('saved-report-rpt-ro2'));
+
+    // Rep does not own this report and it's read-only — no visibility select
+    expect(screen.queryByTestId('active-report-visibility-select')).not.toBeInTheDocument();
+  });
+
   it('shows visibility badge on each report', async () => {
     server.use(
       http.get('/api/v1/reports/custom', () => {

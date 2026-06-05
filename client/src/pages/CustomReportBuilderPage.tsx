@@ -47,7 +47,17 @@ import {
 // ── Field metadata per entity ──────────────────────────────────────────────────
 
 const ENTITY_FIELDS: Record<ReportEntityType, string[]> = {
-  contact: ['id', 'first_name', 'last_name', 'email', 'phone', 'title', 'created_at', 'owner_id'],
+  contact: [
+    'id',
+    'first_name',
+    'last_name',
+    'email',
+    'phone',
+    'title',
+    'account_id',
+    'created_at',
+    'owner_id',
+  ],
   account: ['id', 'name', 'account_type', 'website', 'created_at', 'owner_id'],
   deal: [
     'id',
@@ -65,6 +75,7 @@ const ENTITY_FIELDS: Record<ReportEntityType, string[]> = {
     'first_name',
     'last_name',
     'email',
+    'company_name',
     'status',
     'lead_source',
     'created_at',
@@ -411,6 +422,7 @@ export function CustomReportBuilderContent() {
 
   // ── Builder state ───────────────────────────────────────────────────────────
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
+  const [activeReportVisibility, setActiveReportVisibility] = useState<ReportVisibility>('public');
   const [entityType, setEntityType] = useState<ReportEntityType>('contact');
   const [config, setConfig] = useState<ReportConfig>(() => defaultConfig('contact'));
   const [result, setResult] = useState<RunReportResponse | null>(null);
@@ -460,7 +472,8 @@ export function CustomReportBuilderContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (id: string) => updateCustomReport(id, { config }),
+    mutationFn: ({ id, visibility }: { id: string; visibility: ReportVisibility }) =>
+      updateCustomReport(id, { config, visibility }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
       setSaveError(null);
@@ -500,6 +513,7 @@ export function CustomReportBuilderContent() {
 
   function loadReport(report: CustomReportResponse) {
     setActiveReportId(report.id);
+    setActiveReportVisibility(report.visibility);
     setEntityType(report.entity_type as ReportEntityType);
     setConfig(report.config);
     setResult(null);
@@ -546,10 +560,18 @@ export function CustomReportBuilderContent() {
   );
 
   const handleUpdate = useCallback(() => {
-    if (activeReportId) updateMutation.mutate(activeReportId);
-  }, [activeReportId, updateMutation]);
+    if (activeReportId)
+      updateMutation.mutate({ id: activeReportId, visibility: activeReportVisibility });
+  }, [activeReportId, activeReportVisibility, updateMutation]);
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const activeReport = savedReports?.find((r) => r.id === activeReportId) ?? null;
+  const activeReportCanMutate =
+    activeReport !== null &&
+    (user?.role === 'admin' ||
+      activeReport.created_by === user?.id ||
+      activeReport.visibility === 'public');
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -906,7 +928,7 @@ export function CustomReportBuilderContent() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
+          <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100 items-center">
             <button
               type="button"
               className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
@@ -918,6 +940,30 @@ export function CustomReportBuilderContent() {
                 ? t('reports.customReports.runningButton')
                 : t('reports.customReports.runButton')}
             </button>
+
+            {activeReportId && activeReportCanMutate && (
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="active-report-visibility-select"
+                  className="text-sm text-gray-600 shrink-0"
+                >
+                  {t('reports.customReports.saveDialog.visibilityLabel')}
+                </label>
+                <select
+                  id="active-report-visibility-select"
+                  className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  value={activeReportVisibility}
+                  onChange={(e) => setActiveReportVisibility(e.target.value as ReportVisibility)}
+                  data-testid="active-report-visibility-select"
+                >
+                  {REPORT_VISIBILITY_OPTIONS.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`reports.customReports.visibility.${v}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {activeReportId ? (
               <>
