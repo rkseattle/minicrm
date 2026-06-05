@@ -1329,8 +1329,10 @@
       "account": "Unternehmen",
       "deal": "Geschäft",
       "lead": "Lead",
+      "activity": "Aktivität",
       "user": "Benutzer",
       "system_settings": "Systemeinstellungen",
+      "custom_report": "Benutzerdefinierter Bericht",
       "all": "Alle"
     },
     "filters": {

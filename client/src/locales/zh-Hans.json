@@ -1329,8 +1329,10 @@
       "account": "客户",
       "deal": "商机",
       "lead": "潜在客户",
+      "activity": "活动",
       "user": "用户",
       "system_settings": "系统设置",
+      "custom_report": "自定义报表",
       "all": "全部"
     },
     "filters": {
