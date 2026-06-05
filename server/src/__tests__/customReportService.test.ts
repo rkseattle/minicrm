@@ -555,4 +555,38 @@ describe('executeReport', () => {
     );
     expect(result.columns).toContain('email');
   });
+
+  it('allows account_id as a contact field', async () => {
+    const result = await executeReport(
+      'contact',
+      { selected_fields: ['email', 'account_id'], filters: [] },
+      null,
+    );
+    expect(result.columns).toContain('account_id');
+  });
+
+  it('allows company_name as a lead field', async () => {
+    const result = await executeReport(
+      'lead',
+      { selected_fields: ['first_name', 'company_name'], filters: [] },
+      null,
+    );
+    expect(result.columns).toContain('company_name');
+  });
+
+  it('allows sorting by _sum aggregate alias', async () => {
+    const result = await executeReport(
+      'deal',
+      {
+        selected_fields: ['stage'],
+        filters: [],
+        group_by: 'stage',
+        sort_field: '_sum',
+        sort_direction: 'desc',
+        aggregate: { type: 'sum', field: 'value' },
+      },
+      null,
+    );
+    expect(result.columns).toContain('_sum');
+  });
 });

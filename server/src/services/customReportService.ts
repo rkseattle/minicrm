@@ -75,6 +75,7 @@ const ALLOWED_FIELDS: Record<string, ReadonlySet<string>> = {
     'email',
     'phone',
     'title',
+    'account_id',
     'created_at',
     'owner_id',
   ]),
@@ -95,6 +96,7 @@ const ALLOWED_FIELDS: Record<string, ReadonlySet<string>> = {
     'first_name',
     'last_name',
     'email',
+    'company_name',
     'status',
     'lead_source',
     'created_at',
@@ -179,7 +181,7 @@ function validateConfig(
   if (config.group_by) {
     assertFieldAllowed(entityType, config.group_by);
   }
-  if (config.sort_field) {
+  if (config.sort_field && config.sort_field !== '_sum' && config.sort_field !== '_count') {
     assertFieldAllowed(entityType, config.sort_field);
   }
   if (config.aggregate?.type === 'sum' && config.aggregate.field) {
