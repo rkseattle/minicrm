@@ -11,6 +11,30 @@ import { http, HttpResponse } from 'msw';
 import { CustomReportBuilderContent } from './CustomReportBuilderPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { REP_USER } from '../test/msw/handlers.js';
+
+const MOCK_USER_ID = 'user-abc';
+
+function makeReport(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    entity_type: string;
+    visibility: string;
+    created_by: string | null;
+  }> = {},
+) {
+  return {
+    id: overrides.id ?? 'rpt-1',
+    name: overrides.name ?? 'Alpha Report',
+    entity_type: overrides.entity_type ?? 'contact',
+    visibility: overrides.visibility ?? 'public',
+    config: { selected_fields: ['id'], filters: [] },
+    created_by: overrides.created_by ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
 
 // ── Loading state ─────────────────────────────────────────────────────────────
 
@@ -180,6 +204,7 @@ describe('CustomReportBuilderContent — save report', () => {
     });
     await userEvent.click(screen.getByTestId('save-report-button'));
     expect(screen.getByTestId('save-report-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('save-report-visibility-select')).toBeInTheDocument();
   });
 
   it('closes save dialog when Cancel is clicked', async () => {
@@ -198,33 +223,14 @@ describe('CustomReportBuilderContent — save report', () => {
       http.post('/api/v1/reports/custom', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         reportCreated = true;
-        return HttpResponse.json(
-          {
-            id: 'new-report-id',
-            name: String(body['name']),
-            entity_type: 'contact',
-            config: { selected_fields: ['id'], filters: [] },
-            created_by: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          { status: 201 },
-        );
+        return HttpResponse.json(makeReport({ id: 'new-report-id', name: String(body['name']) }), {
+          status: 201,
+        });
       }),
       http.get('/api/v1/reports/custom', () => {
         return HttpResponse.json({
           reports: reportCreated
-            ? [
-                {
-                  id: 'new-report-id',
-                  name: 'My Test Report',
-                  entity_type: 'contact',
-                  config: { selected_fields: ['id'], filters: [] },
-                  created_by: null,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                },
-              ]
+            ? [makeReport({ id: 'new-report-id', name: 'My Test Report' })]
             : [],
         });
       }),
@@ -254,19 +260,7 @@ describe('CustomReportBuilderContent — saved reports list', () => {
   it('renders saved reports in the sidebar', async () => {
     server.use(
       http.get('/api/v1/reports/custom', () => {
-        return HttpResponse.json({
-          reports: [
-            {
-              id: 'rpt-1',
-              name: 'Alpha Report',
-              entity_type: 'contact',
-              config: { selected_fields: ['id'], filters: [] },
-              created_by: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
-        });
+        return HttpResponse.json({ reports: [makeReport({ id: 'rpt-1', name: 'Alpha Report' })] });
       }),
     );
     renderWithProviders(<CustomReportBuilderContent />);
@@ -281,17 +275,23 @@ describe('CustomReportBuilderContent — saved reports list', () => {
       http.get('/api/v1/reports/custom', () => {
         return HttpResponse.json({
           reports: [
-            {
+            makeReport({
               id: 'rpt-2',
               name: 'Deal Report',
               entity_type: 'deal',
-              config: {
-                selected_fields: ['id', 'name', 'stage'],
-                filters: [],
-              },
-              created_by: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+            }),
+          ],
+        });
+      }),
+    );
+    // Override config for this test since makeReport uses a generic one
+    server.use(
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({
+          reports: [
+            {
+              ...makeReport({ id: 'rpt-2', name: 'Deal Report', entity_type: 'deal' }),
+              config: { selected_fields: ['id', 'name', 'stage'], filters: [] },
             },
           ],
         });
@@ -309,5 +309,73 @@ describe('CustomReportBuilderContent — saved reports list', () => {
 
     // stage checkbox should be checked
     expect(screen.getByTestId('field-checkbox-stage')).toBeChecked();
+  });
+
+  it('hides delete button for public_read_only reports the user does not own', async () => {
+    server.use(
+      // Return a rep user so admin bypass doesn't apply
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({
+          reports: [
+            makeReport({
+              id: 'rpt-ro',
+              name: 'Read Only Report',
+              visibility: 'public_read_only',
+              created_by: 'other-user',
+            }),
+          ],
+        });
+      }),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-report-rpt-ro')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('delete-report-rpt-ro')).not.toBeInTheDocument();
+  });
+
+  it('shows delete button for public reports regardless of ownership', async () => {
+    server.use(
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({
+          reports: [
+            makeReport({
+              id: 'rpt-pub',
+              name: 'Public Report',
+              visibility: 'public',
+              created_by: 'other-user',
+            }),
+          ],
+        });
+      }),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('saved-report-rpt-pub')).toBeInTheDocument();
+    });
+    // Delete button is hidden until hover; check it exists in DOM
+    expect(screen.getByTestId('delete-report-rpt-pub')).toBeInTheDocument();
+  });
+
+  it('shows visibility badge on each report', async () => {
+    server.use(
+      http.get('/api/v1/reports/custom', () => {
+        return HttpResponse.json({
+          reports: [
+            makeReport({
+              id: 'rpt-badge',
+              name: 'Badge Report',
+              visibility: 'private',
+              created_by: MOCK_USER_ID,
+            }),
+          ],
+        });
+      }),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('report-visibility-rpt-badge')).toBeInTheDocument();
+    });
   });
 });

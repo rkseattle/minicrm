@@ -35,11 +35,13 @@ import type {
   AggregateType,
   SortDirection,
   RunReportResponse,
+  ReportVisibility,
 } from '@shared/schemas/customReportSchema.js';
 import {
   REPORT_ENTITY_TYPES,
   FILTER_OPERATORS,
   AGGREGATE_TYPES,
+  REPORT_VISIBILITY_OPTIONS,
 } from '@shared/schemas/customReportSchema.js';
 
 // ── Field metadata per entity ──────────────────────────────────────────────────
@@ -304,7 +306,7 @@ function FilterRow({ filter, index, fields, onChange, onRemove }: FilterRowProps
 
 interface SaveDialogProps {
   initialName: string;
-  onConfirm: (name: string) => void;
+  onConfirm: (name: string, visibility: ReportVisibility) => void;
   onCancel: () => void;
   isSaving: boolean;
 }
@@ -312,6 +314,7 @@ interface SaveDialogProps {
 function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
+  const [visibility, setVisibility] = useState<ReportVisibility>('public');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -320,7 +323,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (name.trim()) onConfirm(name.trim());
+    if (name.trim()) onConfirm(name.trim(), visibility);
   }
 
   return (
@@ -350,6 +353,21 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
             maxLength={200}
             required
           />
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('reports.customReports.saveDialog.visibilityLabel')}
+          </label>
+          <select
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as ReportVisibility)}
+            data-testid="save-report-visibility-select"
+          >
+            {REPORT_VISIBILITY_OPTIONS.map((v) => (
+              <option key={v} value={v}>
+                {t(`reports.customReports.visibility.${v}`)}
+              </option>
+            ))}
+          </select>
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -378,7 +396,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
 
 export function CustomReportBuilderContent() {
   const { t } = useTranslation();
-  useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // ── Saved reports list ──────────────────────────────────────────────────────
@@ -428,7 +446,8 @@ export function CustomReportBuilderContent() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (name: string) => createCustomReport({ name, entity_type: entityType, config }),
+    mutationFn: ({ name, visibility }: { name: string; visibility: ReportVisibility }) =>
+      createCustomReport({ name, entity_type: entityType, config, visibility }),
     onSuccess: (report) => {
       void queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
       setActiveReportId(report.id);
@@ -520,8 +539,8 @@ export function CustomReportBuilderContent() {
   }
 
   const handleSaveConfirm = useCallback(
-    (name: string) => {
-      createMutation.mutate(name);
+    (name: string, visibility: ReportVisibility) => {
+      createMutation.mutate({ name, visibility });
     },
     [createMutation],
   );
@@ -572,31 +591,56 @@ export function CustomReportBuilderContent() {
         )}
 
         <ul className="space-y-1" data-testid="saved-reports-list">
-          {savedReports?.map((report) => (
-            <li key={report.id} className="group flex items-center gap-1">
-              <button
-                type="button"
-                className={`flex-1 text-start text-sm px-2 py-1 rounded truncate ${
-                  activeReportId === report.id
-                    ? 'bg-indigo-50 text-indigo-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-                onClick={() => loadReport(report)}
-                data-testid={`saved-report-${report.id}`}
-              >
-                {report.name}
-              </button>
-              <button
-                type="button"
-                className="hidden group-hover:block text-gray-400 hover:text-red-600 text-xs px-1"
-                onClick={() => setPendingDeleteId(report.id)}
-                data-testid={`delete-report-${report.id}`}
-                aria-label={t('reports.customReports.deleteConfirm')}
-              >
-                ×
-              </button>
-            </li>
-          ))}
+          {savedReports?.map((report) => {
+            const canMutate =
+              user?.role === 'admin' ||
+              report.created_by === user?.id ||
+              report.visibility === 'public';
+            return (
+              <li key={report.id} className="group flex items-center gap-1 min-w-0">
+                <button
+                  type="button"
+                  className={`flex-1 min-w-0 text-start text-sm px-2 py-1 rounded truncate ${
+                    activeReportId === report.id
+                      ? 'bg-indigo-50 text-indigo-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                  onClick={() => loadReport(report)}
+                  data-testid={`saved-report-${report.id}`}
+                >
+                  <span className="truncate">{report.name}</span>
+                </button>
+                <span
+                  className={`shrink-0 text-xs px-1 py-0.5 rounded ${
+                    report.visibility === 'private'
+                      ? 'bg-gray-100 text-gray-500'
+                      : report.visibility === 'public_read_only'
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'bg-green-50 text-green-700'
+                  }`}
+                  data-testid={`report-visibility-${report.id}`}
+                  title={t(`reports.customReports.visibility.${report.visibility}`)}
+                >
+                  {report.visibility === 'private'
+                    ? '🔒'
+                    : report.visibility === 'public_read_only'
+                      ? '👁'
+                      : '✓'}
+                </span>
+                {canMutate && (
+                  <button
+                    type="button"
+                    className="hidden group-hover:block shrink-0 text-gray-400 hover:text-red-600 text-xs px-1"
+                    onClick={() => setPendingDeleteId(report.id)}
+                    data-testid={`delete-report-${report.id}`}
+                    aria-label={t('reports.customReports.deleteConfirm')}
+                  >
+                    ×
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {deleteError && (

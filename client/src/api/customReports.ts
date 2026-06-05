@@ -6,12 +6,15 @@
 import apiClient from './axiosInstance.js';
 import type {
   CustomReportResponse,
-  CreateCustomReportInput,
+  CreateCustomReportBody,
   UpdateCustomReportInput,
   RunReportResponse,
   ReportConfig,
   ReportEntityType,
+  ReportVisibility,
 } from '@shared/schemas/customReportSchema.js';
+
+export type { ReportVisibility };
 
 /** React Query cache key for the list of all saved custom reports */
 export const CUSTOM_REPORTS_QUERY_KEY = ['reports', 'custom'] as const;
@@ -51,7 +54,7 @@ export async function getCustomReport(id: string): Promise<CustomReportResponse>
  * Creates a new saved custom report.
  */
 export async function createCustomReport(
-  input: CreateCustomReportInput,
+  input: CreateCustomReportBody,
 ): Promise<CustomReportResponse> {
   const response = await apiClient.post<CustomReportResponse>('/reports/custom', input);
   return response.data;

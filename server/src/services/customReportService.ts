@@ -6,11 +6,12 @@
 import pool from '../db.js';
 import type { PoolClient } from 'pg';
 import type {
-  CreateCustomReportInput,
+  CreateCustomReportBody,
   UpdateCustomReportInput,
   ReportConfig,
   FilterCondition,
   Aggregate,
+  ReportVisibility,
 } from '@minicrm/shared/schemas/customReportSchema.js';
 import { writeAuditEntry } from './auditService.js';
 import { SYSTEM_ACTOR } from './auditService.js';
@@ -23,12 +24,44 @@ export interface CustomReportRow {
   name: string;
   entity_type: string;
   config: ReportConfig;
+  visibility: ReportVisibility;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
 }
 
-const REPORT_SELECT = 'id, name, entity_type, config, created_by, created_at, updated_at';
+/**
+ * Caller context passed to service functions that enforce visibility/ownership.
+ * The role is included so service functions avoid an extra DB lookup — it is
+ * already resolved by the auth middleware and available on req.user.
+ */
+export interface ReportCaller {
+  id: string;
+  role: string;
+}
+
+const REPORT_SELECT =
+  'id, name, entity_type, config, visibility, created_by, created_at, updated_at';
+
+// ── Visibility / ownership helpers ────────────────────────────────────────────
+
+function isAdmin(caller: ReportCaller): boolean {
+  return caller.role === 'admin';
+}
+
+/** Returns true when caller can see this report. */
+function canView(report: CustomReportRow, caller: ReportCaller): boolean {
+  if (isAdmin(caller)) return true;
+  if (report.created_by === caller.id) return true;
+  return report.visibility !== 'private';
+}
+
+/** Returns true when caller can create/update/delete this report. */
+function canMutate(report: CustomReportRow, caller: ReportCaller): boolean {
+  if (isAdmin(caller)) return true;
+  if (report.created_by === caller.id) return true;
+  return report.visibility === 'public';
+}
 
 // ── Field allowlists (SQL injection prevention) ───────────────────────────────
 // All field names used in SELECT, WHERE, GROUP BY, or ORDER BY must be in these
@@ -125,11 +158,22 @@ function assertSumFieldAllowed(entityType: string, field: string): void {
   }
 }
 
-function validateConfig(entityType: string, config: ReportConfig): void {
+function validateConfig(
+  entityType: string,
+  config:
+    | ReportConfig
+    | {
+        selected_fields: string[];
+        filters?: ReportConfig['filters'];
+        group_by?: string;
+        sort_field?: string;
+        aggregate?: ReportConfig['aggregate'];
+      },
+): void {
   for (const field of config.selected_fields) {
     assertFieldAllowed(entityType, field);
   }
-  for (const filter of config.filters) {
+  for (const filter of config.filters ?? []) {
     assertFieldAllowed(entityType, filter.field);
   }
   if (config.group_by) {
@@ -147,26 +191,40 @@ function validateConfig(entityType: string, config: ReportConfig): void {
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
 /**
- * Returns all saved custom reports, ordered by name.
+ * Returns saved custom reports visible to the caller, ordered by name.
+ * Admins see all reports. Non-admins see public/public_read_only reports plus
+ * their own private reports.
  */
-export async function listReports(): Promise<CustomReportRow[]> {
+export async function listReports(caller: ReportCaller): Promise<CustomReportRow[]> {
+  if (isAdmin(caller)) {
+    const result = await pool.query<CustomReportRow>(
+      `SELECT ${REPORT_SELECT} FROM custom_reports ORDER BY name ASC`,
+    );
+    return result.rows;
+  }
+
   const result = await pool.query<CustomReportRow>(
-    `SELECT ${REPORT_SELECT} FROM custom_reports ORDER BY name ASC`,
+    `SELECT ${REPORT_SELECT} FROM custom_reports
+     WHERE visibility != 'private' OR created_by = $1
+     ORDER BY name ASC`,
+    [caller.id],
   );
   return result.rows;
 }
 
 /**
- * Returns a single saved custom report by ID.
- *
- * @returns The report row, or null if not found
+ * Returns a single saved custom report by ID, or null if not found or not
+ * visible to the caller.
  */
-export async function getReport(id: string): Promise<CustomReportRow | null> {
+export async function getReport(id: string, caller: ReportCaller): Promise<CustomReportRow | null> {
   const result = await pool.query<CustomReportRow>(
     `SELECT ${REPORT_SELECT} FROM custom_reports WHERE id = $1`,
     [id],
   );
-  return result.rows[0] ?? null;
+  const report = result.rows[0] ?? null;
+  if (!report) return null;
+  if (!canView(report, caller)) return null;
+  return report;
 }
 
 /**
@@ -176,7 +234,7 @@ export async function getReport(id: string): Promise<CustomReportRow | null> {
  * @throws Error with code INVALID_REPORT_FIELD if config references a disallowed field
  */
 export async function createReport(
-  input: CreateCustomReportInput,
+  input: CreateCustomReportBody,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<CustomReportRow> {
   validateConfig(input.entity_type, input.config);
@@ -188,10 +246,16 @@ export async function createReport(
     let result: { rows: CustomReportRow[] };
     try {
       result = await client.query<CustomReportRow>(
-        `INSERT INTO custom_reports (name, entity_type, config, created_by)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO custom_reports (name, entity_type, config, visibility, created_by)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING ${REPORT_SELECT}`,
-        [input.name, input.entity_type, JSON.stringify(input.config), actor.id],
+        [
+          input.name,
+          input.entity_type,
+          JSON.stringify(input.config),
+          input.visibility ?? 'public',
+          actor.id,
+        ],
       );
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === '23505') {
@@ -229,17 +293,29 @@ export async function createReport(
  * @returns The updated row, or null if not found
  * @throws Error with code CUSTOM_REPORT_NAME_CONFLICT if the new name already exists
  * @throws Error with code INVALID_REPORT_FIELD if config references a disallowed field
+ * @throws Error with code REPORT_FORBIDDEN if caller lacks mutation rights
  */
 export async function updateReport(
   id: string,
   input: UpdateCustomReportInput,
-  actor: AuditActor = SYSTEM_ACTOR,
+  actor: AuditActor & { role: string },
 ): Promise<CustomReportRow | null> {
+  // Fetch existing to check ownership/visibility and validate config
+  const existing = await pool.query<CustomReportRow>(
+    `SELECT ${REPORT_SELECT} FROM custom_reports WHERE id = $1`,
+    [id],
+  );
+  const before = existing.rows[0] ?? null;
+  if (!before) return null;
+
+  if (!canMutate(before, { id: actor.id, role: actor.role })) {
+    const e = new Error('You do not have permission to edit this report');
+    (e as NodeJS.ErrnoException).code = 'REPORT_FORBIDDEN';
+    throw e;
+  }
+
   if (input.config) {
-    // entity_type cannot change — fetch it first to validate the updated config
-    const existing = await getReport(id);
-    if (!existing) return null;
-    validateConfig(existing.entity_type, input.config);
+    validateConfig(before.entity_type, input.config);
   }
 
   const setClauses: string[] = [];
@@ -252,6 +328,10 @@ export async function updateReport(
   if (input.config !== undefined) {
     values.push(JSON.stringify(input.config));
     setClauses.push(`config = $${values.length}`);
+  }
+  if (input.visibility !== undefined) {
+    values.push(input.visibility);
+    setClauses.push(`visibility = $${values.length}`);
   }
   setClauses.push(`updated_at = now()`);
 
@@ -303,11 +383,26 @@ export async function updateReport(
  * Deletes a saved custom report.
  *
  * @returns The deleted row, or null if not found
+ * @throws Error with code REPORT_FORBIDDEN if caller lacks mutation rights
  */
 export async function deleteReport(
   id: string,
-  actor: AuditActor = SYSTEM_ACTOR,
+  actor: AuditActor & { role: string },
 ): Promise<CustomReportRow | null> {
+  // Check ownership before opening a transaction
+  const existing = await pool.query<CustomReportRow>(
+    `SELECT ${REPORT_SELECT} FROM custom_reports WHERE id = $1`,
+    [id],
+  );
+  const before = existing.rows[0] ?? null;
+  if (!before) return null;
+
+  if (!canMutate(before, { id: actor.id, role: actor.role })) {
+    const e = new Error('You do not have permission to delete this report');
+    (e as NodeJS.ErrnoException).code = 'REPORT_FORBIDDEN';
+    throw e;
+  }
+
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -483,6 +578,7 @@ export function toReportResponse(row: CustomReportRow): {
   name: string;
   entity_type: string;
   config: ReportConfig;
+  visibility: ReportVisibility;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -492,6 +588,7 @@ export function toReportResponse(row: CustomReportRow): {
     name: row.name,
     entity_type: row.entity_type,
     config: row.config,
+    visibility: row.visibility,
     created_by: row.created_by,
     created_at:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),

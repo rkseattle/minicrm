@@ -1062,6 +1062,7 @@
         "title": "保存报告",
         "nameLabel": "报告名称",
         "namePlaceholder": "例如：按阶段统计的未结商机",
+        "visibilityLabel": "可见性",
         "confirm": "保存",
         "cancel": "取消"
       },
@@ -1080,7 +1081,12 @@
       "operatorLte": "至多",
       "operatorContains": "包含",
       "operatorIsNull": "为空",
-      "operatorIsNotNull": "不为空"
+      "operatorIsNotNull": "不为空",
+      "visibility": {
+        "private": "私有",
+        "public_read_only": "公开 – 只读",
+        "public": "公开"
+      }
     }
   },
   "automation": {
