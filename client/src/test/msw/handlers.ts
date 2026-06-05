@@ -26,6 +26,11 @@ import type { SearchResponse } from '@/api/search.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
 import type { PipelineResponse } from '@shared/schemas/pipelineSchema.js';
+import type {
+  SequenceResponse,
+  SequenceStepResponse,
+  EnrollmentResponse,
+} from '@shared/schemas/sequenceSchema.js';
 
 /** Default pipeline ID used in test fixtures */
 export const DEFAULT_PIPELINE_ID = '00000000-0000-0000-0000-000000000001';
@@ -477,6 +482,58 @@ export const ACTIVITY_2: ActivityResponse = {
   created_at: '2025-01-02T00:00:00.000Z',
   updated_at: '2025-01-02T00:00:00.000Z',
   version: 1,
+};
+
+/** Reusable fixture: a sequence */
+export const SEQUENCE_1: SequenceResponse = {
+  id: '00000000-0000-0000-0000-000000000801',
+  name: 'New Customer Onboarding',
+  description: 'A 3-step onboarding cadence',
+  enabled: true,
+  created_by: '00000000-0000-0000-0000-000000000001',
+  step_count: 2,
+  active_enrollment_count: 0,
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a step belonging to SEQUENCE_1 */
+export const SEQUENCE_STEP_1: SequenceStepResponse = {
+  id: '00000000-0000-0000-0000-000000000901',
+  sequence_id: SEQUENCE_1.id,
+  sort_order: 1,
+  action_type: 'create_task',
+  action_config: { subject: 'Send welcome email' },
+  delay_days: 0,
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: a step belonging to SEQUENCE_1 */
+export const SEQUENCE_STEP_2: SequenceStepResponse = {
+  id: '00000000-0000-0000-0000-000000000902',
+  sequence_id: SEQUENCE_1.id,
+  sort_order: 2,
+  action_type: 'log_call_reminder',
+  action_config: { subject: 'Check-in call', notes: 'Ask about onboarding progress' },
+  delay_days: 3,
+  created_at: '2025-01-01T00:00:00.000Z',
+  updated_at: '2025-01-01T00:00:00.000Z',
+};
+
+/** Reusable fixture: an active enrollment */
+export const ENROLLMENT_1: EnrollmentResponse = {
+  id: '00000000-0000-0000-0000-000000000a01',
+  sequence_id: SEQUENCE_1.id,
+  sequence_name: SEQUENCE_1.name,
+  contact_id: '00000000-0000-0000-0000-000000000101',
+  enrolled_by_id: '00000000-0000-0000-0000-000000000001',
+  enrolled_at: '2025-01-02T00:00:00.000Z',
+  status: 'active',
+  current_step_id: SEQUENCE_STEP_1.id,
+  current_step_sort_order: 1,
+  next_action_at: '2025-01-02T00:00:00.000Z',
+  unenrolled_at: null,
 };
 
 /** Default handlers — can be overridden in individual tests with server.use() */
@@ -2002,5 +2059,139 @@ export const handlers = [
   http.patch('/api/v1/settings/mfa-required', async ({ request }) => {
     const body = (await request.json()) as { mfa_required: boolean };
     return HttpResponse.json({ mfa_required: body.mfa_required });
+  }),
+
+  // ── Sequences (MINCRM-403) ───────────────────────────────────────────────────
+
+  /** Sequences: GET /api/sequences — returns SEQUENCE_1 by default */
+  http.get('/api/v1/sequences', () => {
+    return HttpResponse.json({ data: [SEQUENCE_1], total: 1, page: 1, limit: 25 });
+  }),
+
+  /** Sequences: POST /api/sequences */
+  http.post('/api/v1/sequences', async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string;
+      description?: string;
+      enabled?: boolean;
+    };
+    return HttpResponse.json(
+      {
+        sequence: {
+          ...SEQUENCE_1,
+          id: '00000000-0000-0000-0000-000000000802',
+          name: body.name,
+          description: body.description ?? null,
+          enabled: body.enabled ?? true,
+          step_count: 0,
+          active_enrollment_count: 0,
+        } satisfies SequenceResponse,
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Sequences: GET /api/sequences/:id */
+  http.get('/api/v1/sequences/:id', ({ params }) => {
+    if (params['id'] === SEQUENCE_1.id) {
+      return HttpResponse.json({ sequence: SEQUENCE_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'SEQUENCE_NOT_FOUND', message: 'Sequence not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Sequences: PATCH /api/sequences/:id */
+  http.patch('/api/v1/sequences/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<SequenceResponse>;
+    return HttpResponse.json({ sequence: { ...SEQUENCE_1, ...body, id: params['id'] as string } });
+  }),
+
+  /** Sequences: DELETE /api/sequences/:id */
+  http.delete('/api/v1/sequences/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Sequence steps: GET /api/sequences/:id/steps */
+  http.get('/api/v1/sequences/:id/steps', ({ params }) => {
+    if (params['id'] === SEQUENCE_1.id) {
+      return HttpResponse.json({ steps: [SEQUENCE_STEP_1, SEQUENCE_STEP_2] });
+    }
+    return HttpResponse.json({ steps: [] });
+  }),
+
+  /** Sequence steps: POST /api/sequences/:id/steps */
+  http.post('/api/v1/sequences/:id/steps', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<SequenceStepResponse>;
+    return HttpResponse.json(
+      {
+        step: {
+          ...SEQUENCE_STEP_1,
+          id: '00000000-0000-0000-0000-000000000903',
+          sequence_id: params['id'] as string,
+          sort_order: body.sort_order ?? 1,
+          action_type: body.action_type ?? 'create_task',
+          action_config: body.action_config ?? {},
+          delay_days: body.delay_days ?? 0,
+        } satisfies SequenceStepResponse,
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Sequence steps: PATCH /api/sequences/:id/steps/:stepId */
+  http.patch('/api/v1/sequences/:id/steps/:stepId', async ({ params, request }) => {
+    const body = (await request.json()) as Partial<SequenceStepResponse>;
+    return HttpResponse.json({
+      step: { ...SEQUENCE_STEP_1, ...body, id: params['stepId'] as string },
+    });
+  }),
+
+  /** Sequence steps: DELETE /api/sequences/:id/steps/:stepId */
+  http.delete('/api/v1/sequences/:id/steps/:stepId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Enrollments: GET /api/contacts/:id/sequence-enrollments */
+  http.get('/api/v1/contacts/:id/sequence-enrollments', () => {
+    return HttpResponse.json({ enrollments: [ENROLLMENT_1] });
+  }),
+
+  /** Enrollments: POST /api/contacts/:id/sequence-enrollments */
+  http.post('/api/v1/contacts/:id/sequence-enrollments', async ({ params }) => {
+    return HttpResponse.json(
+      {
+        enrollment: {
+          ...ENROLLMENT_1,
+          contact_id: params['id'] as string,
+        } satisfies EnrollmentResponse,
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Enrollments: GET /api/sequence-enrollments/:id */
+  http.get('/api/v1/sequence-enrollments/:id', ({ params }) => {
+    if (params['id'] === ENROLLMENT_1.id) {
+      return HttpResponse.json({ enrollment: ENROLLMENT_1 });
+    }
+    return HttpResponse.json(
+      { error: { code: 'ENROLLMENT_NOT_FOUND', message: 'Enrollment not found' } },
+      { status: 404 },
+    );
+  }),
+
+  /** Enrollments: DELETE /api/sequence-enrollments/:id (unenroll) */
+  http.delete('/api/v1/sequence-enrollments/:id', ({ params }) => {
+    return HttpResponse.json({
+      enrollment: {
+        ...ENROLLMENT_1,
+        id: params['id'] as string,
+        status: 'unenrolled',
+        next_action_at: null,
+        unenrolled_at: new Date().toISOString(),
+      } satisfies EnrollmentResponse,
+    });
   }),
 ];

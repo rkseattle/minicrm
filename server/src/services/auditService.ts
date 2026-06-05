@@ -37,7 +37,10 @@ export type AuditRecordType =
   | 'lead'
   | 'activity'
   /** Saved custom report definitions (MINCRM-402) */
-  | 'custom_report';
+  | 'custom_report'
+  /** Sales sequence definitions and enrollments (MINCRM-403) */
+  | 'sequence'
+  | 'sequence_enrollment';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =

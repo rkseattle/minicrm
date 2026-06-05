@@ -9,6 +9,17 @@ interface ApiErrorBody {
 }
 
 /**
+ * Returns a human-readable error message from an API response, falling back
+ * to `fallback` when the response body lacks a message string.
+ * Used by pages that display raw server messages without i18n code lookup.
+ */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  const code = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
+    ?.error;
+  return code?.message ?? fallback;
+}
+
+/**
  * Resolves a localized error message from an Axios API error.
  *
  * Looks up `errors.<code>` in the i18n catalog; falls back to `fallbackKey`

@@ -30,6 +30,10 @@ import {
 import { bulkContactsHandler } from '../controllers/bulkController.js';
 import { eraseContactHandler, gdprExportContactHandler } from '../controllers/gdprController.js';
 import { requireRole } from '../middleware/requireRole.js';
+import {
+  enrollContactHandler,
+  listContactEnrollmentsHandler,
+} from '../controllers/sequenceController.js';
 
 const router = Router();
 
@@ -718,6 +722,14 @@ router.post('/:id/tags', authenticate, asyncHandler(attachContactTagHandler));
 
 /** Detach a tag from a contact. */
 router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachContactTagHandler));
+
+// ── Sequence enrollment routes (MINCRM-403) ────────────────────────────────────
+
+/** Enroll a contact in a sales sequence. */
+router.post('/:id/sequence-enrollments', authenticate, asyncHandler(enrollContactHandler));
+
+/** List all sequence enrollments for a contact. */
+router.get('/:id/sequence-enrollments', authenticate, asyncHandler(listContactEnrollmentsHandler));
 
 // ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
 
