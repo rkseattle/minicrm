@@ -134,18 +134,20 @@ test('admin can disable SSO via the confirmation flow @functional', async ({
   restClient,
   testData,
 }) => {
-  // Configure SSO via API
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  // Navigate to Settings → Integrations tab first, then configure SSO via API
+  // and reload. Setting SSO before login risks another parallel worker's
+  // ensureSystemDefaults() wiping the config during the login round-trip.
+  await navigateToAdminSettings({ page }, 'integrations');
+
   await restClient.put('/api/v1/settings/sso', {
     protocol: 'oidc',
     idp_metadata_url: OIDC_METADATA_URL,
     entity_id: OIDC_CLIENT_ID,
   });
-
-  const admin = await createTestAdmin(testData, restClient);
-  await loginViaBrowser(admin.email, admin.password, { page });
-
-  // Navigate to Settings → Integrations tab
-  await navigateToAdminSettings({ page }, 'integrations');
+  await reloadCurrentPage({ page });
 
   // Wait for SSO section and verify enabled badge is present
   const badge = await getSsoEnabledBadgeLocator({ page });

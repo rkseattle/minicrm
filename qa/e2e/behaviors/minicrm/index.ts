@@ -626,6 +626,7 @@ export {
   navigateToUrlAndWait,
   isNavLinkHidden,
   waitForNavLink,
+  assertNavLinkIsVisible,
   hamburgerDrawerDoesNotExist,
   waitForCssSelector,
   waitForUrl,

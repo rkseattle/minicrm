@@ -33,11 +33,7 @@ import {
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { listFeatureFlags, updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
-import {
-  isNavLinkHidden,
-  getNavLinkLocator,
-  waitForNavLink,
-} from '@behaviors/minicrm/nav.behaviors.js';
+import { isNavLinkHidden, assertNavLinkIsVisible } from '@behaviors/minicrm/nav.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -209,8 +205,8 @@ test('@functional F-FF6: withFlags() shows the Reports nav link when reporting f
 
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Wait for the Reports link then assert it is visible.
-  await waitForNavLink('nav-top-reports', { page }, 10_000);
-  const reportsLink = await getNavLinkLocator('top', 'reports', { page });
-  await expect(reportsLink).toBeVisible();
+  // Assert the Reports nav link is visible on the current viewport.
+  // On mobile the link lives inside the hamburger drawer; assertNavLinkIsVisible
+  // opens the drawer first so the correct element is checked. (mobile fix)
+  await assertNavLinkIsVisible('reports', { page }, 10_000);
 });

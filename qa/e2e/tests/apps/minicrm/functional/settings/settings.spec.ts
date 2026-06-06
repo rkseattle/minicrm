@@ -115,20 +115,18 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   const saveSuccess = await getAdminSettingsExchangeRateSaveSuccessLocator({ page });
   await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
 
-  // Reload and verify persistence — deep-link back to currency tab
-  await navigateToAdminSettingsCurrency({ page });
-  const sectionAfterReload = await getAdminSettingsExchangeRatesSectionLocator({ page });
-  await expect(sectionAfterReload).toBeVisible({ timeout: 10_000 });
-
-  // Home currency should be GBP
-  const homeSelectAfterReload = await getAdminSettingsHomeCurrencySelectLocator({ page });
-  await expect(homeSelectAfterReload).toHaveValue('GBP');
-
-  // USD and EUR rate rows should be visible
-  const usdRow = await getAdminSettingsExchangeRateRowLocator('USD', { page });
-  await expect(usdRow).toBeVisible();
-  const eurRow = await getAdminSettingsExchangeRateRowLocator('EUR', { page });
-  await expect(eurRow).toBeVisible();
+  // Verify persistence via REST immediately after save — before parallel workers
+  // can call ensureSystemDefaults() and reset home_currency back to USD.
+  // A page reload is vulnerable to that race; a direct API check is not.
+  const saved = (await restClient.get('/api/v1/settings/currencies')).body as {
+    home_currency: string;
+    currencies: Array<{ code: string; rate: number }>;
+  };
+  expect(saved.home_currency).toBe('GBP');
+  const savedUsd = saved.currencies.find((c) => c.code === 'USD');
+  const savedEur = saved.currencies.find((c) => c.code === 'EUR');
+  expect(savedUsd).toBeDefined();
+  expect(savedEur).toBeDefined();
 
   // Restore to USD home for other tests
   await setCurrencySettings(restClient, { home_currency: 'USD', currencies: [] });
