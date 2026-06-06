@@ -14,6 +14,7 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 5. [Demo Data](#5-demo-data)
 6. [Automation Rules](#6-automation-rules)
 7. [Onboarding Checklist](#7-onboarding-checklist)
+8. [Feature Flags](#8-feature-flags)
 
 ---
 
@@ -376,3 +377,64 @@ Any user can dismiss the checklist by:
 - Completing all tasks (the widget auto-dismisses after a short delay).
 
 Once dismissed the widget does not reappear unless an admin resets it.
+
+---
+
+## 8. Feature Flags
+
+Feature flags let administrators enable or disable individual product features without
+a code deployment. The **Features** tab under **Admin Settings** shows all available flags.
+
+### What feature flags control
+
+Each flag corresponds to a named feature in the system. When a flag is disabled, the
+associated API endpoints return `403 Forbidden` and the UI hides the relevant navigation
+items or sections. Re-enabling a flag restores full access immediately — no restart required.
+
+Flags are grouped by category (e.g. _Core CRM_, _Data_, _Integrations_). Each flag shows:
+
+| Column             | Meaning                                                             |
+| ------------------ | ------------------------------------------------------------------- |
+| **Label**          | Human-readable feature name                                         |
+| **Status**         | Toggle showing whether the flag is currently on or off              |
+| **Active users**   | Number of users who have used this feature in the last 30 days      |
+| **Role overrides** | Per-role on/off state (shown when the flag has role-level controls) |
+
+### Tutorial: disable a feature
+
+1. Go to **Admin Settings → Features**.
+2. Find the flag you want to disable.
+3. Click its toggle.
+4. A confirmation dialog appears — review the warning (it will show how many active users
+   will be affected) and click **Confirm**.
+
+The flag is disabled immediately. Users who are currently using that feature will receive
+a `403` error on their next request to a guarded endpoint.
+
+### Tutorial: re-enable a feature
+
+1. Go to **Admin Settings → Features**.
+2. Find the disabled flag (marked **OFF**).
+3. Click its toggle and confirm.
+
+Access is restored immediately for all users.
+
+### Role overrides
+
+Some flags support per-role configuration. When role overrides are shown, you can
+independently enable or disable a feature for _Admin_ and _Rep_ roles. The flag's
+top-level enabled state acts as the master switch: if the flag is disabled, role overrides
+have no effect.
+
+### Audit trail
+
+Every flag change is written to the audit log with the name of the admin who made the
+change, the previous value, and the new value. You can review this history in
+**Admin Settings → Data → Audit Log**.
+
+### Notes
+
+- Disabling a flag does not delete any data — it only gates access to the feature.
+- The **Active users** count reflects usage in the trailing 30-day window and updates
+  automatically as users interact with the system.
+- System flags (marked with a lock icon) cannot be deleted, but they can be toggled off.
