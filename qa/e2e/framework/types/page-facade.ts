@@ -16,11 +16,15 @@ import { buildHealPage } from '../fixtures/heal-methods.js';
 
 export type PageFacade = SafePage & HealMethods;
 
-export function createPageFacade(page: Page, testName: string): PageFacade {
+export function createPageFacade(
+  page: Page,
+  testName: string,
+  pageObjectPathSegments: string[] = [],
+): PageFacade {
   // Pass createPageFacade itself as the tabFactory so newTab() can wrap new
   // tabs. This avoids a circular import: heal-methods.ts never imports from
   // page-facade.ts, but we inject the factory here at construction time.
-  const healPage = buildHealPage(page, testName, createPageFacade);
+  const healPage = buildHealPage(page, testName, createPageFacade, pageObjectPathSegments);
 
   // Safe cast: the Proxy routes HealMethods property accesses to healPage and
   // all other accesses to the raw Page. Methods absent from the PageFacade type

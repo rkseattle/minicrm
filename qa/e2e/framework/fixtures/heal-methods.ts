@@ -22,6 +22,7 @@ import {
   BoundHealingLocator,
 } from '../healing/index.js';
 import type { LocatorStrategy } from '../healing/index.js';
+import { inferCallSite } from '../healing/call-site-inferrer.js';
 import type { SafePage } from '../types/safe-page.js';
 import type { SafeLocator } from '../types/safe-locator.js';
 
@@ -437,9 +438,19 @@ const DEFAULT_SCREENSHOT_MAX_DIFF_PIXELS = 50;
  *   When provided, newTab() calls page.context().newPage() internally and
  *   passes the raw page to this factory. Injected from page-facade.ts to
  *   avoid a circular import dependency.
+ * @param pageObjectPathSegments - File path substrings used to identify
+ *   page-object call frames when inferring heal-event attribution from the
+ *   stack. Pass app-specific segments (e.g. `['pages/myapp']`) from the
+ *   app fixture layer; leave empty (the default) for framework-only usage
+ *   where no page objects exist.
  * @returns A HealMethods instance.
  */
-export function buildHealPage(page: Page, testName: string, tabFactory?: TabFactory): HealMethods {
+export function buildHealPage(
+  page: Page,
+  testName: string,
+  tabFactory?: TabFactory,
+  pageObjectPathSegments: string[] = [],
+): HealMethods {
   // Tracks all patterns registered via mockRoute() so unmockAllRoutes() can
   // clean them up automatically at fixture teardown.
   const registeredPatterns = new Set<string | RegExp>();
@@ -448,11 +459,23 @@ export function buildHealPage(page: Page, testName: string, tabFactory?: TabFact
     strategies: LocatorStrategy[],
     options: LocateOptions,
   ): HealingLocator {
+    // When explicit attribution is absent, infer it from the call stack so
+    // heal events are attributed to the page object method that called locate()
+    // rather than falling back to "Unknown.unknown".
+    let { pageObject, method } = options;
+    if ((pageObject === undefined || method === undefined) && pageObjectPathSegments.length > 0) {
+      const inferred = inferCallSite(new Error().stack ?? '', pageObjectPathSegments);
+      if (inferred !== null) {
+        pageObject ??= inferred.pageObject;
+        method ??= inferred.method;
+      }
+    }
+
     return new HealingLocator(page, strategies, {
       intent: options.intent,
       fallbackTimeout: options.fallbackTimeout,
-      pageObject: options.pageObject,
-      method: options.method,
+      pageObject,
+      method,
     });
   }
 
