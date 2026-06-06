@@ -184,7 +184,7 @@ export async function getAiConfig(): Promise<AiConfigResponse> {
 
   return {
     enabled: parseBool(rows.get(KEY_AI_ENABLED), false),
-    enabled_updated_at: rows.get(KEY_AI_ENABLED_UPDATED_AT) ?? null,
+    enabled_updated_at: rows.get(KEY_AI_ENABLED_UPDATED_AT) || null,
     provider,
     model: rows.get(KEY_AI_MODEL) ?? DEFAULTS.model,
     api_key_set: apiKeySet,
@@ -192,7 +192,7 @@ export async function getAiConfig(): Promise<AiConfigResponse> {
     base_url: rows.get(KEY_AI_BASE_URL) ?? '',
     dpa_acknowledged: dpaAcknowledged,
     dpa_acknowledged_by: rows.get(KEY_AI_DPA_ACKNOWLEDGED_BY) ?? '',
-    dpa_acknowledged_at: rows.get(KEY_AI_DPA_ACKNOWLEDGED_AT) ?? null,
+    dpa_acknowledged_at: rows.get(KEY_AI_DPA_ACKNOWLEDGED_AT) || null,
     dpa_acknowledged_for_provider: dpaAcknowledgedForProvider,
     custom_dpa_url: rows.get(KEY_AI_CUSTOM_DPA_URL) ?? '',
     dpa_status: dpaStatus,
