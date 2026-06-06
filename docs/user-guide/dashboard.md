@@ -1,5 +1,9 @@
 # Dashboard
 
+> **Feature flags:** The pipeline summary and reports sections require the **Reporting &
+> Dashboards** feature flag to be enabled. The My Tasks section requires the **Tasks**
+> feature flag. If either section is missing, contact your admin.
+
 The dashboard gives you an at-a-glance summary of your pipeline, your open tasks, and
 key activity metrics. It is the first page you see after logging in.
 
