@@ -39,6 +39,7 @@ import pipelineRoutes from './routes/pipelines.js';
 import customReportRoutes from './routes/customReports.js';
 import sequenceRoutes from './routes/sequences.js';
 import sequenceEnrollmentRoutes from './routes/sequenceEnrollments.js';
+import featureFlagRoutes from './routes/featureFlags.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -150,6 +151,8 @@ app.use(`${API_V1}/pipelines`, pipelineRoutes);
 // Sales sequences (MINCRM-403)
 app.use(`${API_V1}/sequences`, sequenceRoutes);
 app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
+// Feature flag registry (MINCRM-463)
+app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the
