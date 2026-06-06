@@ -1221,7 +1221,8 @@
     "filteredEmptyDescription": "Versuchen Sie, Ihre Filter anzupassen oder zu löschen.",
     "clearFilters": "Filter löschen",
     "next": "Weiter",
-    "back": "Zurück"
+    "back": "Zurück",
+    "confirm": "Bestätigen"
   },
   "errors": {
     "boundaryTitle": "Etwas ist schiefgelaufen",

@@ -1186,7 +1186,8 @@
     "filteredEmptyDescription": "Try adjusting or clearing your filters.",
     "clearFilters": "Clear filters",
     "next": "Next",
-    "back": "Back"
+    "back": "Back",
+    "confirm": "Confirm"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",
