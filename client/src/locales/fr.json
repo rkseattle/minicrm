@@ -1235,6 +1235,7 @@
     "VALIDATION_ERROR": "Veuillez vérifier vos informations et réessayer.",
     "RESET_TOKEN_INVALID": "Ce lien de réinitialisation est invalide ou a expiré.",
     "FORBIDDEN": "Vous n'avez pas la permission d'effectuer cette action.",
+    "FEATURE_FLAG_NOT_ENABLED": "Cette fonctionnalité n'est pas activée. Contactez un administrateur.",
     "NOT_FOUND": "La ressource demandée est introuvable.",
     "OPTIMISTIC_LOCK_CONFLICT": "Quelqu'un d'autre a modifié cet enregistrement pendant que vous travailliez. Veuillez le vérifier et le renvoyer.",
     "CONTACT_EMAIL_DUPLICATE": "Un contact avec cette adresse e-mail existe déjà.",

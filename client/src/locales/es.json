@@ -1235,6 +1235,7 @@
     "VALIDATION_ERROR": "Por favor, revisa tu información e inténtalo de nuevo.",
     "RESET_TOKEN_INVALID": "Este enlace de restablecimiento es inválido o ha expirado.",
     "FORBIDDEN": "No tienes permiso para realizar esta acción.",
+    "FEATURE_FLAG_NOT_ENABLED": "Esta función no está habilitada. Contacte con un administrador.",
     "NOT_FOUND": "El recurso solicitado no fue encontrado.",
     "OPTIMISTIC_LOCK_CONFLICT": "Alguien más editó este registro mientras trabajabas. Por favor, revísalo y vuelve a enviarlo.",
     "CONTACT_EMAIL_DUPLICATE": "Ya existe un contacto con esta dirección de correo electrónico.",

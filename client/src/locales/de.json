@@ -1235,6 +1235,7 @@
     "VALIDATION_ERROR": "Bitte überprüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
     "RESET_TOKEN_INVALID": "Dieser Zurücksetzungslink ist ungültig oder abgelaufen.",
     "FORBIDDEN": "Sie haben keine Berechtigung, diese Aktion auszuführen.",
+    "FEATURE_FLAG_NOT_ENABLED": "Diese Funktion ist nicht aktiviert. Wenden Sie sich an einen Administrator.",
     "NOT_FOUND": "Die angeforderte Ressource wurde nicht gefunden.",
     "OPTIMISTIC_LOCK_CONFLICT": "Jemand anderes hat diesen Datensatz bearbeitet, während Sie arbeiteten. Bitte überprüfen Sie ihn und senden Sie ihn erneut.",
     "CONTACT_EMAIL_DUPLICATE": "Ein Kontakt mit dieser E-Mail-Adresse existiert bereits.",
