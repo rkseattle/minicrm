@@ -1083,3 +1083,142 @@ export async function getFeatureFlagConfirmOkLocator(context: AdminSettingsBehav
     )
     .resolve();
 }
+
+// ---------------------------------------------------------------------------
+// AI Settings behaviors (MINCRM-457)
+// ---------------------------------------------------------------------------
+
+/** Shape of the AI configuration returned by the admin AI config endpoint. */
+export interface TestAiConfig {
+  enabled: boolean;
+  enabled_updated_at: string | null;
+  provider: string;
+  model: string;
+  api_key_set: boolean;
+  deployment_mode: string;
+  base_url: string;
+  dpa_acknowledged: boolean;
+  dpa_acknowledged_by: string;
+  dpa_acknowledged_at: string | null;
+  dpa_acknowledged_for_provider: string;
+  custom_dpa_url: string;
+  dpa_status: string;
+  data_posture: string;
+  available_models: { id: string; display_name: string; provider: string }[];
+  provider_dpa_url: string;
+}
+
+/**
+ * Fetches the current AI configuration via the admin REST API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @returns The current AI configuration.
+ */
+export async function getAiConfig(restClient: RestClient): Promise<TestAiConfig> {
+  const res = await restClient.get<TestAiConfig>('/api/v1/admin/ai/config');
+  return res.body;
+}
+
+/**
+ * Sets the AI master toggle (enabled / disabled) via the admin REST API.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param enabled - The desired enabled state.
+ * @returns The updated AI configuration.
+ */
+export async function setAiEnabled(
+  restClient: RestClient,
+  enabled: boolean,
+): Promise<TestAiConfig> {
+  const res = await restClient.patch<TestAiConfig>('/api/v1/admin/ai/master-toggle', { enabled });
+  return res.body;
+}
+
+/**
+ * Resets the AI configuration to disabled defaults by disabling AI
+ * and clearing DPA acknowledgment. Safe to call in beforeEach/afterEach.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ */
+export async function resetAiSettings(restClient: RestClient): Promise<void> {
+  await Promise.all([
+    restClient.patch('/api/v1/admin/ai/master-toggle', { enabled: false }).catch(() => undefined),
+    restClient
+      .post('/api/v1/admin/ai/dpa-acknowledgment', { acknowledged: false, custom_dpa_url: '' })
+      .catch(() => undefined),
+    restClient
+      .patch('/api/v1/admin/ai/config', {
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-20250514',
+        deployment_mode: 'cloud_api',
+        base_url: '',
+        custom_dpa_url: '',
+      })
+      .catch(() => undefined),
+  ]);
+}
+
+/** Resolves the AI settings panel locator. */
+export async function getAiSettingsPanelLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiSettingsPanelLocator();
+}
+
+/** Resolves the AI master toggle locator. */
+export async function getAiMasterToggleLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiMasterToggleLocator();
+}
+
+/** Resolves the AI toggle confirmation dialog locator. */
+export async function getAiToggleConfirmDialogLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiToggleConfirmDialogLocator();
+}
+
+/** Resolves the Confirm button inside the AI toggle confirmation dialog. */
+export async function getAiToggleConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiToggleConfirmButtonLocator();
+}
+
+/** Resolves the Cancel button inside the AI toggle confirmation dialog. */
+export async function getAiToggleCancelButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiToggleCancelButtonLocator();
+}
+
+/** Resolves the AI DPA acknowledgment checkbox locator. */
+export async function getAiDpaCheckboxLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiDpaCheckboxLocator();
+}
+
+/** Resolves the DPA warning banner locator. */
+export async function getAiDpaWarningBannerLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiDpaWarningBannerLocator();
+}
+
+/** Resolves the AI data posture badge locator. */
+export async function getAiDataPostureBadgeLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiDataPostureBadgeLocator();
+}
+
+/** Resolves the AI DPA status badge locator. */
+export async function getAiDpaStatusBadgeLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiDpaStatusBadgeLocator();
+}
+
+/** Resolves the AI Save button locator. */
+export async function getAiSaveButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiSaveButtonLocator();
+}
+
+/** Resolves the AI Test Connection button locator. */
+export async function getAiTestConnectionButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiTestConnectionButtonLocator();
+}
+
+/** Resolves the AI test connection result message locator. */
+export async function getAiTestConnectionResultLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiTestConnectionResultLocator();
+}
+
+/** Resolves the AI model select locator. */
+export async function getAiModelSelectLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiModelSelectLocator();
+}

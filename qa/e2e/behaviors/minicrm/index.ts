@@ -556,11 +556,28 @@ export {
   getPipelineStageEditButtonLocator,
   getPipelineStageSaveButtonLocator,
   getPipelineStageDeleteButtonLocator,
+  getAiSettingsPanelLocator,
+  getAiMasterToggleLocator,
+  getAiToggleConfirmDialogLocator,
+  getAiToggleConfirmButtonLocator,
+  getAiToggleCancelButtonLocator,
+  getAiDpaCheckboxLocator,
+  getAiDpaWarningBannerLocator,
+  getAiDataPostureBadgeLocator,
+  getAiDpaStatusBadgeLocator,
+  getAiModelSelectLocator,
+  getAiSaveButtonLocator,
+  getAiTestConnectionButtonLocator,
+  getAiTestConnectionResultLocator,
+  getAiConfig,
+  setAiEnabled,
+  resetAiSettings,
 } from './settings.behaviors.js';
 export type {
   AdminSettingsBehaviorContext,
   PipelineStageReorderEntry,
   StageReorderResult,
+  TestAiConfig,
 } from './settings.behaviors.js';
 export type {
   WebhookSubscription,
