@@ -40,6 +40,7 @@ import customReportRoutes from './routes/customReports.js';
 import sequenceRoutes from './routes/sequences.js';
 import sequenceEnrollmentRoutes from './routes/sequenceEnrollments.js';
 import featureFlagRoutes from './routes/featureFlags.js';
+import aiRoutes from './routes/ai.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -156,6 +157,7 @@ app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 // router (/ and /:key) are still protected by requireRole('admin') middleware.
 app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
+app.use(`${API_V1}/admin/ai`, aiRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
 // 301 redirects let external consumers that haven't migrated yet reach the

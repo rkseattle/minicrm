@@ -42,7 +42,9 @@ export type AuditRecordType =
   | 'sequence'
   | 'sequence_enrollment'
   /** Feature flag registry entries (MINCRM-463) */
-  | 'feature_flag';
+  | 'feature_flag'
+  /** AI provider/model configuration (MINCRM-457) */
+  | 'ai_settings';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
