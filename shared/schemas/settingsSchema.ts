@@ -242,6 +242,8 @@ export interface AiConfigResponse {
   data_posture: AiDataPosture;
   /** Server-managed list of available models for the selected provider. */
   available_models: AiModelOption[];
+  /** Standard DPA URL for the selected provider. */
+  provider_dpa_url: string;
 }
 
 /**
