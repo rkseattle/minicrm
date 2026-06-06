@@ -2284,4 +2284,119 @@ export const handlers = [
       },
     });
   }),
+
+  // ── AI configuration (MINCRM-457) ─────────────────────────────────────────
+
+  /** AI config: GET /api/v1/admin/ai/config — default disabled state */
+  http.get('/api/v1/admin/ai/config', () => {
+    return HttpResponse.json({
+      enabled: false,
+      enabled_updated_at: null,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      api_key_set: false,
+      deployment_mode: 'cloud_api',
+      base_url: '',
+      dpa_acknowledged: false,
+      dpa_acknowledged_by: '',
+      dpa_acknowledged_at: null,
+      dpa_acknowledged_for_provider: '',
+      custom_dpa_url: '',
+      dpa_status: 'not_acknowledged',
+      data_posture: 'amber',
+      available_models: [
+        {
+          id: 'claude-sonnet-4-20250514',
+          display_name: 'Claude Sonnet 4 (2025-05-14)',
+          provider: 'anthropic',
+        },
+        { id: 'claude-opus-4-8', display_name: 'Claude Opus 4.8', provider: 'anthropic' },
+      ],
+      provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+    });
+  }),
+
+  /** AI config: PATCH /api/v1/admin/ai/config */
+  http.patch('/api/v1/admin/ai/config', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      enabled: false,
+      enabled_updated_at: null,
+      provider: body['provider'] ?? 'anthropic',
+      model: body['model'] ?? 'claude-sonnet-4-20250514',
+      api_key_set: Boolean(body['api_key']),
+      deployment_mode: body['deployment_mode'] ?? 'cloud_api',
+      base_url: body['base_url'] ?? '',
+      dpa_acknowledged: false,
+      dpa_acknowledged_by: '',
+      dpa_acknowledged_at: null,
+      dpa_acknowledged_for_provider: '',
+      custom_dpa_url: body['custom_dpa_url'] ?? '',
+      dpa_status: 'not_acknowledged',
+      data_posture: 'amber',
+      available_models: [
+        {
+          id: 'claude-sonnet-4-20250514',
+          display_name: 'Claude Sonnet 4 (2025-05-14)',
+          provider: 'anthropic',
+        },
+      ],
+      provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+    });
+  }),
+
+  /** AI config: PATCH /api/v1/admin/ai/master-toggle */
+  http.patch('/api/v1/admin/ai/master-toggle', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      enabled: Boolean(body['enabled']),
+      enabled_updated_at: new Date().toISOString(),
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      api_key_set: false,
+      deployment_mode: 'cloud_api',
+      base_url: '',
+      dpa_acknowledged: false,
+      dpa_acknowledged_by: '',
+      dpa_acknowledged_at: null,
+      dpa_acknowledged_for_provider: '',
+      custom_dpa_url: '',
+      dpa_status: 'not_acknowledged',
+      data_posture: 'amber',
+      available_models: [],
+      provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+    });
+  }),
+
+  /** AI config: POST /api/v1/admin/ai/dpa-acknowledgment */
+  http.post('/api/v1/admin/ai/dpa-acknowledgment', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const acknowledged = Boolean(body['acknowledged']);
+    return HttpResponse.json({
+      enabled: false,
+      enabled_updated_at: null,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      api_key_set: false,
+      deployment_mode: 'cloud_api',
+      base_url: '',
+      dpa_acknowledged: acknowledged,
+      dpa_acknowledged_by: acknowledged ? 'Test Admin' : '',
+      dpa_acknowledged_at: acknowledged ? new Date().toISOString() : null,
+      dpa_acknowledged_for_provider: acknowledged ? 'anthropic' : '',
+      custom_dpa_url: '',
+      dpa_status: acknowledged ? 'acknowledged' : 'not_acknowledged',
+      data_posture: acknowledged ? 'green' : 'amber',
+      available_models: [],
+      provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+    });
+  }),
+
+  /** AI config: POST /api/v1/admin/ai/test-connection */
+  http.post('/api/v1/admin/ai/test-connection', () => {
+    return HttpResponse.json({
+      ok: false,
+      message: 'No API key configured. Enter an API key to test.',
+    });
+  }),
 ];
