@@ -37,17 +37,22 @@ export class UsersPage {
   }
 
   /**
-   * Returns whether the users page is loaded (invite form visible).
+   * Returns whether the users page is loaded (invite form toggle visible).
+   *
+   * Uses the collapse-toggle button, which is always in the DOM regardless of
+   * whether the invite form is open or closed. The submit button lives inside
+   * {isOpen && ...} and is absent in the DOM on mobile where the form starts
+   * collapsed — making it a poor readiness signal. (heal-trends)
    */
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
         .locate(
           [
-            { type: 'testId', value: 'invite-submit' },
-            { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
+            { type: 'testId', value: 'invite-form-toggle' },
+            { type: 'role', value: 'button', options: { name: /invite/i } },
           ],
-          { intent: 'invite submit button indicating users page is loaded' },
+          { intent: 'invite form toggle button indicating users page is loaded' },
         )
         .resolve();
       return true;
@@ -102,7 +107,11 @@ export class UsersPage {
         { type: 'testId', value: 'invite-submit' },
         { type: 'role', value: 'button', options: { name: 'Invite', exact: false } },
       ],
-      { intent: 'submit button to send user invite' },
+      // Extended timeout: on mobile the form starts collapsed and the caller
+      // must open it first. After the collapse animation completes, the button
+      // is attached but may still be mid-transition within the 2 s default
+      // window. (heal-trends)
+      { intent: 'submit button to send user invite', fallbackTimeout: 6_000 },
     );
     await this.page.waitForLoadState('networkidle');
   }

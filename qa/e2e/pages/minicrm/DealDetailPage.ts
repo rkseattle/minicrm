@@ -188,7 +188,10 @@ export class DealDetailPage {
           { type: 'testId', value: 'deal-name' },
           { type: 'role', value: 'heading' },
         ],
-        { intent: 'deal name heading on the deal detail page' },
+        // Extended timeout: the deal API response arrives near networkidle, and
+        // the React render cycle that replaces the loading paragraph with the h1
+        // can land just after the 2 s default window under load. (heal-trends)
+        { intent: 'deal name heading on the deal detail page', fallbackTimeout: 8_000 },
       )
       .resolve();
   }

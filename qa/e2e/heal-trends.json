@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-05T21:52:22.499Z",
+  "updatedAt": "2026-06-06T17:30:22.836Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -285,9 +285,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "invite-submit",
-      "count": 14,
+      "count": 15,
       "firstSeenAt": "2026-05-28T02:50:33.854Z",
-      "lastSeenAt": "2026-06-05T21:51:10.783Z"
+      "lastSeenAt": "2026-06-06T16:17:43.116Z"
     },
     "Unknown::unknown::testId::user-actions-2525eb1c-aa4e-406c-a020-5edcc8e0aabd": {
       "pageObject": "Unknown",
@@ -429,9 +429,9 @@
       "method": "unknown",
       "originalStrategyType": "testId",
       "originalStrategyValue": "y",
-      "count": 6,
+      "count": 16,
       "firstSeenAt": "2026-06-04T18:00:51.297Z",
-      "lastSeenAt": "2026-06-04T18:01:20.045Z"
+      "lastSeenAt": "2026-06-06T16:29:27.266Z"
     },
     "Unknown::unknown::testId::user-actions-26a4b86c-ad97-44a7-8a78-0722817f3706": {
       "pageObject": "Unknown",
@@ -585,6 +585,69 @@
       "count": 1,
       "firstSeenAt": "2026-06-05T21:52:20.714Z",
       "lastSeenAt": "2026-06-05T21:52:20.714Z"
+    },
+    "Unknown::unknown::testId::search-result-contact-d2d47291-509a-4a19-92c3-6fdb501f5542": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "search-result-contact-d2d47291-509a-4a19-92c3-6fdb501f5542",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T05:51:50.710Z",
+      "lastSeenAt": "2026-06-06T05:51:50.710Z"
+    },
+    "Unknown::unknown::testId::contact-link-f8f2931f-85db-425a-a53a-e1b33b745e87": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-f8f2931f-85db-425a-a53a-e1b33b745e87",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T07:02:25.458Z",
+      "lastSeenAt": "2026-06-06T07:02:25.458Z"
+    },
+    "Unknown::unknown::testId::contact-link-795f73f3-f5ae-49e3-8977-1d7eb9cd8163": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-795f73f3-f5ae-49e3-8977-1d7eb9cd8163",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T08:32:14.349Z",
+      "lastSeenAt": "2026-06-06T08:32:14.349Z"
+    },
+    "Unknown::unknown::testId::user-actions-4d8dda09-232c-49a9-8941-cac9e0692511": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-4d8dda09-232c-49a9-8941-cac9e0692511",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T16:18:55.961Z",
+      "lastSeenAt": "2026-06-06T16:18:55.961Z"
+    },
+    "Unknown::unknown::testId::reset-onboarding-4d8dda09-232c-49a9-8941-cac9e0692511": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-4d8dda09-232c-49a9-8941-cac9e0692511",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T16:18:57.996Z",
+      "lastSeenAt": "2026-06-06T16:18:57.996Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-9539dfe4-f82f-4862-b292-c0c5738c5843": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-9539dfe4-f82f-4862-b292-c0c5738c5843",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T17:30:19.096Z",
+      "lastSeenAt": "2026-06-06T17:30:19.096Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-9539dfe4-f82f-4862-b292-c0c5738c5843": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-9539dfe4-f82f-4862-b292-c0c5738c5843",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T17:30:21.135Z",
+      "lastSeenAt": "2026-06-06T17:30:21.135Z"
     }
   }
 }
