@@ -17,6 +17,7 @@ import {
   updateFeatureFlag,
   recordFeatureFlagUsage,
   getActiveUserCountForFlag,
+  __clearCacheForTest,
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
 
@@ -53,9 +54,8 @@ beforeEach(async () => {
      updated_by = null,
      updated_at = now()`,
   );
-  // Invalidate module-level cache so tests see fresh DB state.
-  // Done by updating a flag and letting the service re-read it.
-  await pool.query(`UPDATE feature_flags SET updated_at = now() WHERE flag_key = 'notes'`);
+  // Clear the module-level TTL cache so each test reads fresh DB state.
+  __clearCacheForTest();
 });
 
 afterAll(async () => {
@@ -250,9 +250,11 @@ describe('updateFeatureFlag', () => {
     const uniqueActorId = uniqueResult.rows[0].id;
     const uniqueActor = { id: uniqueActorId, name: 'FF Service Actor Unique' };
 
+    // enabled: false differs from the seeded default (true), so both the
+    // enabled and role_overrides audit entries are written.
     await updateFeatureFlag(
       'reporting',
-      { enabled: true, role_overrides: { admin: true, rep: false } },
+      { enabled: false, role_overrides: { admin: true, rep: false } },
       uniqueActor,
     );
 
