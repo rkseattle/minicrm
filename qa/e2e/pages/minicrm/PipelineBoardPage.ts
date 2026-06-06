@@ -223,7 +223,14 @@ export class PipelineBoardPage {
               { type: 'testId', value: `mobile-deal-card-${dealId}` },
               { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
             ],
-            { intent: 'deal card in mobile single-column board view' },
+            {
+              intent: 'deal card in mobile single-column board view',
+              // Extended timeout: deal cards for the current stage may still be
+              // mounting when the probe runs, especially at stage 0 immediately
+              // after navigation. A 2 s window was too short under CI load and
+              // caused the scan to skip the correct column. (heal-trends)
+              fallbackTimeout: 6_000,
+            },
           )
           .resolve();
         if (await card.isVisible().catch(() => false)) return slug;
@@ -308,7 +315,14 @@ export class PipelineBoardPage {
               { type: 'testId', value: `mobile-deal-card-${dealId}` },
               { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
             ],
-            { intent: 'deal card in mobile single-column board view' },
+            {
+              intent: 'deal card in mobile single-column board view',
+              // Extended timeout: deal cards for the current stage may still be
+              // mounting when the probe runs. Without extra time the scan skips
+              // the correct column and leaves the board on the wrong stage,
+              // causing the subsequent stage-select locate to fail. (heal-trends)
+              fallbackTimeout: 6_000,
+            },
           )
           .resolve();
         if (await card.isVisible().catch(() => false)) return;

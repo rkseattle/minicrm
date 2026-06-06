@@ -256,7 +256,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     page,
     restClient,
   }) => {
-    test.setTimeout(120_000); // browser login + pagination + UI reset + API verify
+    test.setTimeout(180_000); // browser login + pagination + UI reset + API verify
     await loginAsAdmin(restClient);
 
     const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

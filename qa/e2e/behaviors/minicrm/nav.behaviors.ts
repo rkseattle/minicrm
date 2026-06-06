@@ -636,6 +636,56 @@ export async function waitForNavLink(
 }
 
 // ---------------------------------------------------------------------------
+// assertNavLinkIsVisible() — viewport-aware nav link visibility assertion
+// ---------------------------------------------------------------------------
+
+const MOBILE_BREAKPOINT_PX = 1024;
+
+/**
+ * Asserts that a nav link for the given destination is visible on the current
+ * viewport.
+ *
+ * - Desktop (≥ 1024 px): checks `nav-top-{destination}` directly.
+ * - Mobile (< 1024 px): opens the mobile drawer, checks `nav-top-{destination}-mobile`,
+ *   then closes the drawer so subsequent actions start from a clean state.
+ *
+ * @param destination - The route key used in testid construction (e.g. 'reports').
+ * @param context - Behavior context with page.
+ * @param timeout - Maximum ms to wait for the link. Default 10 000.
+ */
+export async function assertNavLinkIsVisible(
+  destination: string,
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const viewportWidth = context.page.viewportSize()?.width ?? 1280;
+
+  if (viewportWidth < MOBILE_BREAKPOINT_PX) {
+    await openMobileNav(context);
+    await context.page.waitFor(
+      [
+        { type: 'testId', value: `nav-top-${destination}-mobile` },
+        { type: 'css', value: `[data-testid="nav-top-${destination}-mobile"]` },
+      ],
+      'visible',
+      { intent: `mobile nav link for ${destination} visible in drawer` },
+      timeout,
+    );
+    await closeMobileNavViaToggle(context);
+  } else {
+    await context.page.waitFor(
+      [
+        { type: 'testId', value: `nav-top-${destination}` },
+        { type: 'css', value: `[data-testid="nav-top-${destination}"]` },
+      ],
+      'visible',
+      { intent: `desktop nav link for ${destination} visible in top nav` },
+      timeout,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Additional nav-specific DOM check helpers. (MINCRM-418)
 // ---------------------------------------------------------------------------
 

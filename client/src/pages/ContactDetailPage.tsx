@@ -85,7 +85,11 @@ export default function ContactDetailPage() {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
+  // Ref holds the latest custom field values from the child component.
+  // A ref (not state) is used so the useMutation onSuccess handler always reads
+  // fresh values regardless of whether React has flushed pending useEffects from
+  // CustomFieldsSection's onValuesChange into a state update cycle.
+  const customFieldValuesRef = useRef<CustomFieldValueInput[]>([]);
   const editFormRef = useRef<HTMLFormElement>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -243,10 +247,15 @@ export default function ContactDetailPage() {
       // the cache so a stale refetch cannot overwrite the authoritative PATCH version (MINCRM-385)
       await queryClient.cancelQueries({ queryKey: contactQueryKey });
       queryClient.setQueryData(contactQueryKey, data);
-      // Save custom field values after core record is saved (MINCRM-276)
-      if (customFieldValues.length > 0) {
+      // Save custom field values after core record is saved (MINCRM-276).
+      // Read from the ref (not state) to avoid stale-closure issues: React may
+      // not have flushed the useEffect that propagates CustomFieldsSection's
+      // onValuesChange into the customFieldValues state before this onSuccess
+      // fires. The ref is updated synchronously in the onValuesChange callback.
+      const cfValues = customFieldValuesRef.current;
+      if (cfValues.length > 0) {
         try {
-          await putCustomFieldValues('contact', id!, customFieldValues);
+          await putCustomFieldValues('contact', id!, cfValues);
           void queryClient.invalidateQueries({
             queryKey: customFieldValuesQueryKey('contact', id!),
           });
@@ -731,7 +740,9 @@ export default function ContactDetailPage() {
                 entityType="contact"
                 recordId={id}
                 isEditing={true}
-                onValuesChange={setCustomFieldValues}
+                onValuesChange={(values) => {
+                  customFieldValuesRef.current = values;
+                }}
               />
             )}
 
