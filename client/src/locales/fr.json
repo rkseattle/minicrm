@@ -538,7 +538,8 @@
       "branding": "Identité visuelle",
       "data": "Données",
       "integrations": "Intégrations",
-      "features": "Fonctionnalités"
+      "features": "Fonctionnalités",
+      "ai": "IA"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
@@ -1222,7 +1223,9 @@
     "clearFilters": "Effacer les filtres",
     "next": "Suivant",
     "back": "Retour",
-    "confirm": "Confirmer"
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…"
   },
   "errors": {
     "boundaryTitle": "Une erreur s'est produite",
@@ -1818,6 +1821,84 @@
     "roles": {
       "admin": "Admin",
       "rep": "Commercial"
+    }
+  },
+  "aiSettings": {
+    "loadError": "Échec du chargement des paramètres IA. Veuillez réessayer.",
+    "header": {
+      "deploymentMode": "Mode de déploiement"
+    },
+    "toggle": {
+      "heading": "Fonctionnalités IA",
+      "description": "Activez ou désactivez globalement toutes les fonctionnalités IA. Lorsqu'elles sont désactivées, les fonctionnalités IA sont masquées pour tous les utilisateurs.",
+      "enabled": "Fonctionnalités IA : Activées",
+      "disabled": "Fonctionnalités IA : Désactivées",
+      "lastChanged": "Dernière modification : {{timestamp}}",
+      "confirmEnableTitle": "Activer les fonctionnalités IA ?",
+      "confirmDisableTitle": "Désactiver les fonctionnalités IA ?",
+      "confirmEnableBody": "Cela activera toutes les fonctionnalités IA pour tous les utilisateurs.",
+      "confirmDisableBody": "Cela désactivera toutes les fonctionnalités IA pour tous les utilisateurs jusqu'à la réactivation."
+    },
+    "provider": {
+      "heading": "Fournisseur et modèle",
+      "description": "Configurez le fournisseur IA, le modèle et la clé API.",
+      "providerLabel": "Fournisseur",
+      "modelLabel": "Modèle",
+      "apiKeyLabel": "Clé API",
+      "apiKeySet": "Clé stockée",
+      "apiKeyPlaceholder": "Entrez votre clé API",
+      "apiKeyPlaceholderChange": "Entrez une nouvelle clé API pour remplacer celle stockée",
+      "apiKeyHint": "La clé API est stockée chiffrée et n'est jamais retournée par l'API.",
+      "changeApiKey": "Modifier",
+      "baseUrlLabel": "URL de base personnalisée",
+      "testConnection": "Tester la connexion",
+      "testingConnection": "Test en cours…",
+      "testConnectionError": "Échec du test de connexion. Consultez les journaux du serveur.",
+      "saveSuccess": "Configuration enregistrée.",
+      "saveError": "Échec de l'enregistrement de la configuration. Veuillez réessayer.",
+      "providers": {
+        "anthropic": "Anthropic"
+      },
+      "apiKeyMasked": "••••••••••••••••"
+    },
+    "deploymentMode": {
+      "label": "Mode de déploiement",
+      "cloud_api": {
+        "label": "API Cloud",
+        "description": "Les données transitent par l'infrastructure du fournisseur. DPA requis."
+      },
+      "private_endpoint": {
+        "label": "Point de terminaison privé",
+        "description": "Les données sont acheminées via un lien réseau privé. Aucune exposition publique. DPA requis."
+      },
+      "self_hosted": {
+        "label": "Autohébergé",
+        "description": "Les données ne quittent pas votre infrastructure. Aucun DPA requis."
+      }
+    },
+    "dpa": {
+      "heading": "Accord de traitement des données",
+      "description": "Confirmez qu'un Accord de traitement des données est en place avec votre fournisseur IA.",
+      "providerDpaLabel": "DPA standard de {{provider}}",
+      "customDpaUrlLabel": "URL du document DPA personnalisé (facultatif)",
+      "customDpaUrlHint": "Lien vers votre DPA signé stocké dans SharePoint, Google Drive, etc. URL uniquement, pas de téléchargement de fichier.",
+      "checkboxLabel": "Je confirme qu'un Accord de traitement des données est en place avec ce fournisseur.",
+      "acknowledgedBy": "Confirmé par {{name}} le {{date}}.",
+      "notAcknowledged": "Pas encore confirmé.",
+      "saveSuccess": "Confirmation de DPA enregistrée.",
+      "saveError": "Échec de l'enregistrement de la confirmation de DPA. Veuillez réessayer.",
+      "selfHostedNotice": "La confirmation de DPA n'est pas requise pour les déploiements autohébergés : les données ne quittent pas votre infrastructure.",
+      "warningBanner": "Aucune confirmation de DPA enregistrée pour ce fournisseur. Les fonctionnalités IA sont actives, mais une confirmation de conformité est recommandée.",
+      "status": {
+        "acknowledged": "DPA confirmé",
+        "not_acknowledged": "DPA non confirmé",
+        "provider_changed": "DPA obsolète (fournisseur modifié)"
+      }
+    },
+    "dataPosture": {
+      "green": "Posture des données : Sécurisée",
+      "amber": "Posture des données : Révision nécessaire",
+      "red": "Posture des données : Action requise"
     }
   }
 }

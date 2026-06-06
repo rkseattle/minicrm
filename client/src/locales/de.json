@@ -538,7 +538,8 @@
       "branding": "Erscheinungsbild",
       "data": "Daten",
       "integrations": "Integrationen",
-      "features": "Funktionen"
+      "features": "Funktionen",
+      "ai": "KI"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
@@ -1222,7 +1223,9 @@
     "clearFilters": "Filter löschen",
     "next": "Weiter",
     "back": "Zurück",
-    "confirm": "Bestätigen"
+    "confirm": "Bestätigen",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…"
   },
   "errors": {
     "boundaryTitle": "Etwas ist schiefgelaufen",
@@ -1818,6 +1821,84 @@
     "roles": {
       "admin": "Admin",
       "rep": "Vertrieb"
+    }
+  },
+  "aiSettings": {
+    "loadError": "KI-Einstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
+    "header": {
+      "deploymentMode": "Bereitstellungsmodus"
+    },
+    "toggle": {
+      "heading": "KI-Funktionen",
+      "description": "Aktivieren oder deaktivieren Sie alle KI-Funktionen global. Bei Deaktivierung sind KI-Funktionen für alle Benutzer ausgeblendet.",
+      "enabled": "KI-Funktionen: Aktiviert",
+      "disabled": "KI-Funktionen: Deaktiviert",
+      "lastChanged": "Zuletzt geändert: {{timestamp}}",
+      "confirmEnableTitle": "KI-Funktionen aktivieren?",
+      "confirmDisableTitle": "KI-Funktionen deaktivieren?",
+      "confirmEnableBody": "Dadurch werden alle KI-Funktionen für alle Benutzer aktiviert.",
+      "confirmDisableBody": "Dadurch werden alle KI-Funktionen für alle Benutzer deaktiviert, bis sie wieder aktiviert werden."
+    },
+    "provider": {
+      "heading": "Anbieter und Modell",
+      "description": "Konfigurieren Sie den KI-Anbieter, das Modell und den API-Schlüssel.",
+      "providerLabel": "Anbieter",
+      "modelLabel": "Modell",
+      "apiKeyLabel": "API-Schlüssel",
+      "apiKeySet": "Schlüssel gespeichert",
+      "apiKeyPlaceholder": "API-Schlüssel eingeben",
+      "apiKeyPlaceholderChange": "Neuen API-Schlüssel eingeben, um den gespeicherten zu ersetzen",
+      "apiKeyHint": "Der API-Schlüssel wird verschlüsselt gespeichert und nie über die API zurückgegeben.",
+      "changeApiKey": "Ändern",
+      "baseUrlLabel": "Benutzerdefinierte Basis-URL",
+      "testConnection": "Verbindung testen",
+      "testingConnection": "Teste…",
+      "testConnectionError": "Verbindungstest fehlgeschlagen. Serverprotokolle prüfen.",
+      "saveSuccess": "Konfiguration gespeichert.",
+      "saveError": "Konfiguration konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "providers": {
+        "anthropic": "Anthropic"
+      },
+      "apiKeyMasked": "••••••••••••••••"
+    },
+    "deploymentMode": {
+      "label": "Bereitstellungsmodus",
+      "cloud_api": {
+        "label": "Cloud-API",
+        "description": "Daten werden über die Infrastruktur des Anbieters übertragen. DPA erforderlich."
+      },
+      "private_endpoint": {
+        "label": "Privater Endpunkt",
+        "description": "Daten werden über einen privaten Netzwerklink geleitet. Keine öffentliche Exposition. DPA erforderlich."
+      },
+      "self_hosted": {
+        "label": "Selbst gehostet",
+        "description": "Daten verlassen Ihre Infrastruktur nicht. Kein DPA erforderlich."
+      }
+    },
+    "dpa": {
+      "heading": "Datenverarbeitungsvertrag",
+      "description": "Bestätigen Sie, dass ein Datenverarbeitungsvertrag mit Ihrem KI-Anbieter besteht.",
+      "providerDpaLabel": "Standard-DPA für {{provider}}",
+      "customDpaUrlLabel": "Benutzerdefinierte DPA-Dokument-URL (optional)",
+      "customDpaUrlHint": "Link zu Ihrem signierten DPA in SharePoint, Google Drive usw. Nur URL, kein Datei-Upload.",
+      "checkboxLabel": "Ich bestätige, dass ein Datenverarbeitungsvertrag mit diesem Anbieter besteht.",
+      "acknowledgedBy": "Bestätigt von {{name}} am {{date}}.",
+      "notAcknowledged": "Noch nicht bestätigt.",
+      "saveSuccess": "DPA-Bestätigung gespeichert.",
+      "saveError": "DPA-Bestätigung konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "selfHostedNotice": "Eine DPA-Bestätigung ist für selbst gehostete Deployments nicht erforderlich — Daten verlassen Ihre Infrastruktur nicht.",
+      "warningBanner": "Keine DPA-Bestätigung für diesen Anbieter — KI-Funktionen sind aktiv, aber eine Compliance-Bestätigung wird empfohlen.",
+      "status": {
+        "acknowledged": "DPA bestätigt",
+        "not_acknowledged": "DPA nicht bestätigt",
+        "provider_changed": "DPA veraltet (Anbieter geändert)"
+      }
+    },
+    "dataPosture": {
+      "green": "Datenlage: Sicher",
+      "amber": "Datenlage: Überprüfung erforderlich",
+      "red": "Datenlage: Handlungsbedarf"
     }
   }
 }

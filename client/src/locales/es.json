@@ -538,7 +538,8 @@
       "branding": "Marca",
       "data": "Datos",
       "integrations": "Integraciones",
-      "features": "Funciones"
+      "features": "Funciones",
+      "ai": "IA"
     },
     "defaultLanguageLabel": "Idioma predeterminado",
     "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
@@ -1222,7 +1223,9 @@
     "clearFilters": "Borrar filtros",
     "next": "Siguiente",
     "back": "Volver",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "saving": "Guardando…"
   },
   "errors": {
     "boundaryTitle": "Algo salió mal",
@@ -1818,6 +1821,84 @@
     "roles": {
       "admin": "Admin",
       "rep": "Representante"
+    }
+  },
+  "aiSettings": {
+    "loadError": "Error al cargar la configuración de IA. Inténtalo de nuevo.",
+    "header": {
+      "deploymentMode": "Modo de implementación"
+    },
+    "toggle": {
+      "heading": "Funciones de IA",
+      "description": "Activa o desactiva globalmente todas las funciones de IA. Cuando esté desactivada, las funciones de IA estarán ocultas para todos los usuarios.",
+      "enabled": "Funciones de IA: Activadas",
+      "disabled": "Funciones de IA: Desactivadas",
+      "lastChanged": "Último cambio: {{timestamp}}",
+      "confirmEnableTitle": "¿Activar funciones de IA?",
+      "confirmDisableTitle": "¿Desactivar funciones de IA?",
+      "confirmEnableBody": "Esto activará todas las funciones de IA para todos los usuarios.",
+      "confirmDisableBody": "Esto desactivará todas las funciones de IA para todos los usuarios hasta que se vuelvan a activar."
+    },
+    "provider": {
+      "heading": "Proveedor y modelo",
+      "description": "Configura el proveedor de IA, el modelo y la clave de API.",
+      "providerLabel": "Proveedor",
+      "modelLabel": "Modelo",
+      "apiKeyLabel": "Clave de API",
+      "apiKeySet": "Clave almacenada",
+      "apiKeyPlaceholder": "Introduce tu clave de API",
+      "apiKeyPlaceholderChange": "Introduce una nueva clave de API para reemplazar la almacenada",
+      "apiKeyHint": "La clave de API se almacena cifrada y nunca se devuelve a través de la API.",
+      "changeApiKey": "Cambiar",
+      "baseUrlLabel": "URL base personalizada",
+      "testConnection": "Probar conexión",
+      "testingConnection": "Probando…",
+      "testConnectionError": "Error al probar la conexión. Consulta los registros del servidor.",
+      "saveSuccess": "Configuración guardada.",
+      "saveError": "Error al guardar la configuración. Inténtalo de nuevo.",
+      "providers": {
+        "anthropic": "Anthropic"
+      },
+      "apiKeyMasked": "••••••••••••••••"
+    },
+    "deploymentMode": {
+      "label": "Modo de implementación",
+      "cloud_api": {
+        "label": "API en la nube",
+        "description": "Los datos transitan por la infraestructura del proveedor. Se requiere DPA."
+      },
+      "private_endpoint": {
+        "label": "Endpoint privado",
+        "description": "Los datos se enrutan a través de un enlace de red privado. No hay exposición pública. Se requiere DPA."
+      },
+      "self_hosted": {
+        "label": "Autoalojado",
+        "description": "Los datos no salen de tu infraestructura. No se requiere DPA."
+      }
+    },
+    "dpa": {
+      "heading": "Acuerdo de procesamiento de datos",
+      "description": "Confirma que existe un Acuerdo de procesamiento de datos con tu proveedor de IA.",
+      "providerDpaLabel": "DPA estándar de {{provider}}",
+      "customDpaUrlLabel": "URL del documento DPA personalizado (opcional)",
+      "customDpaUrlHint": "Enlace a tu DPA firmado almacenado en SharePoint, Google Drive, etc. Solo URL, sin carga de archivos.",
+      "checkboxLabel": "Confirmo que existe un Acuerdo de procesamiento de datos con este proveedor.",
+      "acknowledgedBy": "Confirmado por {{name}} el {{date}}.",
+      "notAcknowledged": "Aún no confirmado.",
+      "saveSuccess": "Confirmación de DPA registrada.",
+      "saveError": "Error al registrar la confirmación de DPA. Inténtalo de nuevo.",
+      "selfHostedNotice": "La confirmación de DPA no es necesaria para implementaciones autoalojadas: los datos no salen de tu infraestructura.",
+      "warningBanner": "No hay confirmación de DPA registrada para este proveedor. Las funciones de IA están activas, pero se recomienda confirmar el cumplimiento.",
+      "status": {
+        "acknowledged": "DPA confirmado",
+        "not_acknowledged": "DPA no confirmado",
+        "provider_changed": "DPA desactualizado (proveedor cambiado)"
+      }
+    },
+    "dataPosture": {
+      "green": "Postura de datos: Segura",
+      "amber": "Postura de datos: Revisión necesaria",
+      "red": "Postura de datos: Acción requerida"
     }
   }
 }

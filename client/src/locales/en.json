@@ -538,7 +538,8 @@
       "branding": "Branding",
       "data": "Data",
       "integrations": "Integrations",
-      "features": "Features"
+      "features": "Features",
+      "ai": "AI"
     },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
@@ -1187,7 +1188,9 @@
     "clearFilters": "Clear filters",
     "next": "Next",
     "back": "Back",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "save": "Save",
+    "saving": "Saving…"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",
@@ -1818,6 +1821,84 @@
     "roles": {
       "admin": "Admin",
       "rep": "Rep"
+    }
+  },
+  "aiSettings": {
+    "loadError": "Failed to load AI settings. Please try again.",
+    "header": {
+      "deploymentMode": "Deployment Mode"
+    },
+    "toggle": {
+      "heading": "AI Features",
+      "description": "Enable or disable all AI-powered features globally. When disabled, AI features are hidden from all users regardless of per-feature or per-role settings.",
+      "enabled": "AI Features: Enabled",
+      "disabled": "AI Features: Disabled",
+      "lastChanged": "Last changed {{timestamp}}",
+      "confirmEnableTitle": "Enable AI Features?",
+      "confirmDisableTitle": "Disable AI Features?",
+      "confirmEnableBody": "This will enable all AI features for all users. Previously configured per-feature and role settings will be restored.",
+      "confirmDisableBody": "This will disable all AI features for all users. No AI-related controls will be visible until AI is re-enabled."
+    },
+    "provider": {
+      "heading": "Provider & Model",
+      "description": "Configure the AI provider, model, and API key. Changes take effect on the next AI request — no restart required.",
+      "providerLabel": "Provider",
+      "modelLabel": "Model",
+      "apiKeyLabel": "API Key",
+      "apiKeySet": "Key stored",
+      "apiKeyPlaceholder": "Enter your API key",
+      "apiKeyPlaceholderChange": "Enter a new API key to replace the stored one",
+      "apiKeyHint": "The API key is encrypted at rest. The stored value is never returned by the API.",
+      "changeApiKey": "Change",
+      "baseUrlLabel": "Custom Base URL",
+      "testConnection": "Test Connection",
+      "testingConnection": "Testing…",
+      "testConnectionError": "Connection test failed. See server logs for details.",
+      "saveSuccess": "Configuration saved.",
+      "saveError": "Failed to save configuration. Please try again.",
+      "providers": {
+        "anthropic": "Anthropic"
+      },
+      "apiKeyMasked": "••••••••••••••••"
+    },
+    "deploymentMode": {
+      "label": "Deployment Mode",
+      "cloud_api": {
+        "label": "Cloud API",
+        "description": "Data transits provider infrastructure. DPA required."
+      },
+      "private_endpoint": {
+        "label": "Private Endpoint",
+        "description": "Data routed via private network link. No public internet exposure. DPA required."
+      },
+      "self_hosted": {
+        "label": "Self-Hosted",
+        "description": "Data does not leave your infrastructure. No DPA required."
+      }
+    },
+    "dpa": {
+      "heading": "Data Processing Agreement",
+      "description": "Confirm that a Data Processing Agreement is in place with your AI provider.",
+      "providerDpaLabel": "Standard DPA for {{provider}}",
+      "customDpaUrlLabel": "Custom DPA Document URL (optional)",
+      "customDpaUrlHint": "Link to your countersigned DPA stored in SharePoint, Google Drive, or similar. URL only — no file upload.",
+      "checkboxLabel": "I confirm a Data Processing Agreement is in place with this provider.",
+      "acknowledgedBy": "Acknowledged by {{name}} on {{date}}.",
+      "notAcknowledged": "Not yet acknowledged.",
+      "saveSuccess": "DPA acknowledgment recorded.",
+      "saveError": "Failed to record DPA acknowledgment. Please try again.",
+      "selfHostedNotice": "DPA acknowledgment is not required for Self-Hosted deployments — data does not leave your infrastructure.",
+      "warningBanner": "No DPA acknowledgment on record for this provider — AI features are active but compliance confirmation is recommended.",
+      "status": {
+        "acknowledged": "DPA Acknowledged",
+        "not_acknowledged": "DPA Not Acknowledged",
+        "provider_changed": "DPA Outdated (Provider Changed)"
+      }
+    },
+    "dataPosture": {
+      "green": "Data Posture: Secure",
+      "amber": "Data Posture: Review Needed",
+      "red": "Data Posture: Action Required"
     }
   }
 }
