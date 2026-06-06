@@ -24,6 +24,8 @@ is required. If you are an admin setting up the system, see the
 | [Leads](leads.md)           | Capturing prospects, qualifying them, and converting to contacts/deals         |
 | [Notes](notes.md)           | Adding contextual notes with visibility controls                               |
 | [Dashboard](dashboard.md)   | Reading pipeline metrics, overdue tasks, and reports                           |
+| [Reports](reports.md)       | Win/Loss, Activity Volume, Pipeline Stage Trend, and Custom Reports            |
+| [Sequences](sequences.md)   | Multi-step follow-up cadences for contacts                                     |
 
 ---
 
