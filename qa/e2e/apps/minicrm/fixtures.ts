@@ -32,11 +32,19 @@
  */
 
 import { test as baseTest, expect } from '@framework/fixtures/index.js';
+import type { Page } from '@playwright/test';
+import { HealingRegistry } from '@framework/healing/index.js';
+import { createPageFacade } from '@framework/types/page-facade.js';
+import type { PageFacade } from '@framework/types/page-facade.js';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import './locale.js';
+
+// File path substrings used to identify page-object frames in the V8 stack
+// when inferring heal-event attribution automatically.
+const PAGE_OBJECT_PATH_SEGMENTS = ['pages/minicrm'];
 
 export type { TeardownResult } from './test-data-manager.js';
 export type { EphemeralUserCredentials };
@@ -79,7 +87,26 @@ export interface MinicrmFixtures {
 // Extended test object
 // ---------------------------------------------------------------------------
 
-const testWithData = baseTest.extend<Pick<MinicrmFixtures, 'testData'>>({
+const testWithPage = baseTest.extend<{ page: PageFacade }>({
+  // Override the framework's `page` fixture to wire in page-object path
+  // segments for automatic heal-event attribution. Without this, every
+  // heal event produced by page objects in pages/minicrm/ is attributed
+  // to "Unknown.unknown" because the framework layer has no knowledge of
+  // where the app's page objects live.
+  page: async ({ page: rawPage }: { page: Page }, use, testInfo) => {
+    const facade = createPageFacade(rawPage, testInfo.title, PAGE_OBJECT_PATH_SEGMENTS);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (use as (v: any) => Promise<void>)(facade);
+    } finally {
+      await facade.unmockAllRoutes();
+      HealingRegistry.instance.flush();
+      HealingRegistry.instance._reset();
+    }
+  },
+});
+
+const testWithData = testWithPage.extend<Pick<MinicrmFixtures, 'testData'>>({
   testData: async ({ restClient }, use) => {
     const manager = new TestDataManager();
     try {

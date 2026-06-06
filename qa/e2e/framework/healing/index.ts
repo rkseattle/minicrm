@@ -36,3 +36,6 @@ export {
   buildTrendKey,
 } from './heal-trends.js';
 export type { HealTrendEntry, HealTrendsFile } from './heal-trends.js';
+
+export { inferCallSite } from './call-site-inferrer.js';
+export type { CallSite } from './call-site-inferrer.js';
