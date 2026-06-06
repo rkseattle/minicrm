@@ -488,24 +488,35 @@ export async function deleteStep(
   stepId: string,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<SequenceStepRow | null> {
-  const existing = await findStepById(stepId);
-  if (!existing) return null;
-
-  const activeEnrollments = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM sequence_enrollments WHERE current_step_id = $1 AND status = 'active'`,
-    [stepId],
-  );
-  if (parseInt(activeEnrollments.rows[0]!.count, 10) > 0) {
-    const err = new Error(
-      'Cannot delete a step that has active enrollments currently on it. Unenroll those contacts first.',
-    );
-    Object.assign(err, { code: 'STEP_HAS_ACTIVE_ENROLLMENTS' });
-    throw err;
-  }
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Lock the step row first so concurrent advanceDueEnrollments cannot advance
+    // an enrollment onto this step between the count check and the DELETE (TOCTOU guard).
+    const lockResult = await client.query<SequenceStepRow>(
+      `SELECT id, sequence_id, sort_order, action_type, action_config, delay_days, created_at, updated_at
+       FROM sales_sequence_steps WHERE id = $1 FOR UPDATE`,
+      [stepId],
+    );
+    if (lockResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const existing = lockResult.rows[0]!;
+
+    const activeEnrollments = await client.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM sequence_enrollments WHERE current_step_id = $1 AND status = 'active'`,
+      [stepId],
+    );
+    if (parseInt(activeEnrollments.rows[0]!.count, 10) > 0) {
+      await client.query('ROLLBACK');
+      const err = new Error(
+        'Cannot delete a step that has active enrollments currently on it. Unenroll those contacts first.',
+      );
+      Object.assign(err, { code: 'STEP_HAS_ACTIVE_ENROLLMENTS' });
+      throw err;
+    }
 
     const deleteResult = await client.query<{ id: string }>(
       `DELETE FROM sales_sequence_steps WHERE id = $1 RETURNING id`,
@@ -588,6 +599,12 @@ export async function enrollContact(
   if (!sequence) {
     const err = new Error('Sequence not found');
     Object.assign(err, { code: 'SEQUENCE_NOT_FOUND' });
+    throw err;
+  }
+
+  if (!sequence.enabled) {
+    const err = new Error('Cannot enroll in a disabled sequence');
+    Object.assign(err, { code: 'SEQUENCE_DISABLED' });
     throw err;
   }
 
@@ -749,7 +766,8 @@ export async function advanceDueEnrollments(): Promise<void> {
      JOIN sales_sequence_steps step   ON step.id = e.current_step_id
      JOIN contacts c                  ON c.id    = e.contact_id
      WHERE e.status = 'active'
-       AND e.next_action_at <= now()`,
+       AND e.next_action_at <= now()
+       AND seq.enabled = true`,
   );
 
   if (dueResult.rows.length === 0) return;
