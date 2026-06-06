@@ -1055,7 +1055,8 @@
     "filteredEmptyDescription": "[Try ädjüŝtïñg ör ĉlëärïñg yöür fïltërŝ.~~~~~~~~~~~~]",
     "clearFilters": "[Ĉlëär fïltërŝ~~~~]",
     "next": "[[Next]]",
-    "back": "[[Back]]"
+    "back": "[[Back]]",
+    "confirm": "[Confïrmẽẽ]"
   },
   "errors": {
     "boundaryTitle": "[Ŝömëthïñg wëñt wröñg~~~~~~]",
