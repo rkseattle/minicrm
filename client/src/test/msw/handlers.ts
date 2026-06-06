@@ -32,6 +32,7 @@ import type {
   EnrollmentResponse,
 } from '@shared/schemas/sequenceSchema.js';
 import type { FeatureFlagRow } from '@shared/schemas/featureFlagSchema.js';
+import { FEATURE_FLAG_KEYS } from '@shared/schemas/featureFlagSchema.js';
 
 /** Default pipeline ID used in test fixtures */
 export const DEFAULT_PIPELINE_ID = '00000000-0000-0000-0000-000000000001';
@@ -2240,6 +2241,19 @@ export const handlers = [
   }),
 
   // ── Feature flags (MINCRM-463) ────────────────────────────────────────────────
+
+  /**
+   * Feature flags: GET /api/feature-flags/me — returns resolved flag map for the calling user.
+   * All flags default to enabled so nav and feature-gated UI renders normally in tests.
+   * Exceptions: demo_data and mobile_access default to false (matching migration 066 seed).
+   */
+  http.get('/api/v1/feature-flags/me', () => {
+    const FLAGS_OFF_BY_DEFAULT = new Set<string>(['demo_data', 'mobile_access']);
+    const flags = Object.fromEntries(
+      FEATURE_FLAG_KEYS.map((key) => [key, !FLAGS_OFF_BY_DEFAULT.has(key)]),
+    ) as Record<string, boolean>;
+    return HttpResponse.json({ flags });
+  }),
 
   /** Feature flags: GET /api/admin/feature-flags — returns fixture flags list */
   http.get('/api/v1/admin/feature-flags', () => {

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -27,6 +28,7 @@ import { getApiErrorMessage } from '@/utils/apiError.js';
 export default function SequencesPage() {
   const { t } = useTranslation() as { t: TFunction };
   const queryClient = useQueryClient();
+  const { enabled, isLoading: flagLoading } = useFeatureFlag('sequencing');
   const [page, setPage] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -87,6 +89,23 @@ export default function SequencesPage() {
   function handleDeleteClick(sequence: SequenceResponse) {
     if (!window.confirm(t('sequences.confirmDeleteBody'))) return;
     deleteMutation.mutate(sequence.id);
+  }
+
+  if (flagLoading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!enabled) {
+    return (
+      <div className="p-8 text-center text-gray-500" data-testid="feature-disabled">
+        {t('errors.FEATURE_FLAG_NOT_ENABLED')}
+      </div>
+    );
   }
 
   return (

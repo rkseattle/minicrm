@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import type { TFunction } from 'i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
@@ -72,6 +73,7 @@ export default function SequenceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { enabled, isLoading: flagLoading } = useFeatureFlag('sequencing');
 
   const [isAddingStep, setIsAddingStep] = useState(false);
   const [addStepForm, setAddStepForm] = useState<StepFormState>(BLANK_STEP);
@@ -158,6 +160,23 @@ export default function SequenceDetailPage() {
 
   const sequence = seqData?.sequence ?? null;
   const steps = stepsData?.steps ?? [];
+
+  if (flagLoading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!enabled) {
+    return (
+      <div className="p-8 text-center text-gray-500" data-testid="feature-disabled">
+        {t('errors.FEATURE_FLAG_NOT_ENABLED')}
+      </div>
+    );
+  }
 
   if (seqLoading) {
     return (

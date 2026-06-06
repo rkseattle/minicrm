@@ -6,9 +6,15 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import AutomationRulesPage from './AutomationRulesPage.js';
+
+// Resolve feature flags synchronously so the page's own loading/error/empty states are testable.
+vi.mock('@/hooks/useFeatureFlag.js', () => ({
+  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
+  useFeatureFlags: () => ({ flags: {}, isLoading: false }),
+}));
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { AUTOMATION_RULE_1, AUTOMATION_LOG_1 } from '../test/msw/handlers.js';
 import { server } from '../test/setup.js';

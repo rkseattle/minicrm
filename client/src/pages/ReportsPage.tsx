@@ -16,6 +16,7 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import NavBar from '@/components/NavBar.js';
 import SubPageNav from '@/components/SubPageNav.js';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
@@ -63,6 +64,7 @@ export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isMobile } = useBreakpoint();
   const { layout: navLayout } = useNavLayout();
+  const { enabled, isLoading: flagLoading } = useFeatureFlag('reporting');
 
   // Priority: URL param → localStorage → default
   const rawView = searchParams.get('view');
@@ -91,6 +93,23 @@ export default function ReportsPage() {
 
   // Vertical mode (desktop + top/hamburger) needs a flex row to place nav beside content.
   const useVerticalLayout = !isMobile && navLayout !== 'left';
+
+  if (flagLoading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!enabled) {
+    return (
+      <div className="p-8 text-center text-gray-500" data-testid="feature-disabled">
+        {t('errors.FEATURE_FLAG_NOT_ENABLED')}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

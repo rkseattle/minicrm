@@ -9,6 +9,7 @@ import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth.js';
+import { useFeatureFlags } from '@/hooks/useFeatureFlag.js';
 import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
 import NavHeader from './NavHeader.js';
 
@@ -96,8 +97,16 @@ export default function NavHamburger() {
     setMenuOpen((open) => !open);
   }, []);
 
-  const isAdmin = user?.role === 'admin';
-  const visibleLinks = NAV_LINKS.filter((link) => !link.adminOnly || isAdmin);
+  const { flags, isLoading: flagsLoading } = useFeatureFlags();
+
+  const visibleLinks = NAV_LINKS.filter((link) => {
+    if (!link.adminOnly || user?.role === 'admin') {
+      // role check passes — now check feature flag
+      if (link.featureFlag && flags?.[link.featureFlag] === false) return false;
+      return true;
+    }
+    return false;
+  });
 
   return (
     <>
@@ -163,15 +172,22 @@ export default function NavHamburger() {
                     </span>
                   </div>
                 )}
-                <NavLink
-                  to={link.to}
-                  end={link.end}
-                  className={popoverLinkClass}
-                  data-testid={`nav-hamburger-${DESTINATION_NAME[link.to]}`}
-                  onClick={closeMenu}
-                >
-                  {t(link.labelKey)}
-                </NavLink>
+                {flagsLoading && link.featureFlag ? (
+                  <div
+                    className="h-8 bg-gray-200 rounded animate-pulse mx-2 my-1"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <NavLink
+                    to={link.to}
+                    end={link.end}
+                    className={popoverLinkClass}
+                    data-testid={`nav-hamburger-${DESTINATION_NAME[link.to]}`}
+                    onClick={closeMenu}
+                  >
+                    {t(link.labelKey)}
+                  </NavLink>
+                )}
               </div>
             ))}
           </nav>

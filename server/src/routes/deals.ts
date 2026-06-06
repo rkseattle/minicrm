@@ -592,12 +592,27 @@ router.delete('/:id/contacts/:contactId', authenticate, asyncHandler(unlinkConta
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────
 
 /** List all tags on a deal. */
-router.get('/:id/tags', authenticate, asyncHandler(listDealTagsHandler));
+router.get(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(listDealTagsHandler),
+);
 
 /** Attach a tag to a deal by name, creating the tag if it does not exist. */
-router.post('/:id/tags', authenticate, asyncHandler(attachDealTagHandler));
+router.post(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(attachDealTagHandler),
+);
 
 /** Detach a tag from a deal. */
-router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachDealTagHandler));
+router.delete(
+  '/:id/tags/:tagId',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(detachDealTagHandler),
+);
 
 export default router;

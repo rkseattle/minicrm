@@ -528,12 +528,27 @@ router.get('/:id/children', authenticate, asyncHandler(listChildAccountsHandler)
 // ── Account Tag Routes (MINCRM-186) ───────────────────────────────────────────
 
 /** List all tags on an account. */
-router.get('/:id/tags', authenticate, asyncHandler(listAccountTagsHandler));
+router.get(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(listAccountTagsHandler),
+);
 
 /** Attach a tag to an account by name, creating the tag if it does not exist. */
-router.post('/:id/tags', authenticate, asyncHandler(attachAccountTagHandler));
+router.post(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(attachAccountTagHandler),
+);
 
 /** Detach a tag from an account. */
-router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachAccountTagHandler));
+router.delete(
+  '/:id/tags/:tagId',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(detachAccountTagHandler),
+);
 
 export default router;

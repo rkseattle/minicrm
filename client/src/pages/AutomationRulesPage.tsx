@@ -14,6 +14,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -309,6 +310,7 @@ export default function AutomationRulesPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { stageNames } = usePipelineStages();
+  const { enabled, isLoading: flagLoading } = useFeatureFlag('automation_rules');
 
   const [page, setPage] = useState(1);
 
@@ -449,6 +451,23 @@ export default function AutomationRulesPage() {
       return t('automation.actionSendNotification');
     }
     return rule.action_type;
+  }
+
+  if (flagLoading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!enabled) {
+    return (
+      <div className="p-8 text-center text-gray-500" data-testid="feature-disabled">
+        {t('errors.FEATURE_FLAG_NOT_ENABLED')}
+      </div>
+    );
   }
 
   return (

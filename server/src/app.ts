@@ -152,6 +152,9 @@ app.use(`${API_V1}/pipelines`, pipelineRoutes);
 app.use(`${API_V1}/sequences`, sequenceRoutes);
 app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 // Feature flag registry (MINCRM-463)
+// Public path exposes /me for all authenticated users; admin-only routes on this
+// router (/ and /:key) are still protected by requireRole('admin') middleware.
+app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────

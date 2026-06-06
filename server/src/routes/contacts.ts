@@ -721,21 +721,46 @@ router.post(
 // ── Contact Tag Routes (MINCRM-186) ───────────────────────────────────────────
 
 /** List all tags on a contact. */
-router.get('/:id/tags', authenticate, asyncHandler(listContactTagsHandler));
+router.get(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(listContactTagsHandler),
+);
 
 /** Attach a tag to a contact by name, creating the tag if it does not exist. */
-router.post('/:id/tags', authenticate, asyncHandler(attachContactTagHandler));
+router.post(
+  '/:id/tags',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(attachContactTagHandler),
+);
 
 /** Detach a tag from a contact. */
-router.delete('/:id/tags/:tagId', authenticate, asyncHandler(detachContactTagHandler));
+router.delete(
+  '/:id/tags/:tagId',
+  authenticate,
+  requireFeatureEnabled('tags'),
+  asyncHandler(detachContactTagHandler),
+);
 
 // ── Sequence enrollment routes (MINCRM-403) ────────────────────────────────────
 
 /** Enroll a contact in a sales sequence. */
-router.post('/:id/sequence-enrollments', authenticate, asyncHandler(enrollContactHandler));
+router.post(
+  '/:id/sequence-enrollments',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(enrollContactHandler),
+);
 
 /** List all sequence enrollments for a contact. */
-router.get('/:id/sequence-enrollments', authenticate, asyncHandler(listContactEnrollmentsHandler));
+router.get(
+  '/:id/sequence-enrollments',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(listContactEnrollmentsHandler),
+);
 
 // ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
 

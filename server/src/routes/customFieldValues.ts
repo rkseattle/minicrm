@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import {
   getCustomFieldValuesHandler,
   putCustomFieldValuesHandler,
@@ -43,6 +44,7 @@ const router = Router();
 router.get(
   '/:entityType/:recordId/custom-fields',
   authenticate,
+  requireFeatureEnabled('custom_fields'),
   asyncHandler(getCustomFieldValuesHandler),
 );
 
@@ -92,6 +94,7 @@ router.get(
 router.put(
   '/:entityType/:recordId/custom-fields',
   authenticate,
+  requireFeatureEnabled('custom_fields'),
   asyncHandler(putCustomFieldValuesHandler),
 );
 

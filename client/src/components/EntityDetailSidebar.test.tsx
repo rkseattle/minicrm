@@ -7,6 +7,11 @@ import EntityDetailSidebar from './EntityDetailSidebar.js';
 vi.mock('@/hooks/useAuth.js', () => ({
   useAuth: () => ({ user: { id: 'user-1', role: 'admin', name: 'Admin' } }),
 }));
+// Resolve feature flags synchronously so tests don't need waitFor for flag-gated sections.
+vi.mock('@/hooks/useFeatureFlag.js', () => ({
+  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
+  useFeatureFlags: () => ({ flags: {}, isLoading: false }),
+}));
 vi.mock('@/components/ActivityTimeline.js', () => ({
   default: ({ contactId, accountId, dealId }: Record<string, unknown>) => (
     <div data-testid="activity-timeline">{String(contactId ?? accountId ?? dealId)}</div>

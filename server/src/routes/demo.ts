@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getDemoStatusHandler,
@@ -16,8 +17,9 @@ import {
 
 const router = Router();
 
-// All demo routes require admin auth
+// All demo routes require admin auth and the demo_data feature flag
 router.use(authenticate, requireRole('admin'));
+router.use(requireFeatureEnabled('demo_data'));
 
 /**
  * @openapi
