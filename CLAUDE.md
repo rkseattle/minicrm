@@ -366,6 +366,8 @@ own isolated try/catch so a failing rule never aborts the triggering operation.
 - [ ] Pagination: use `paginationParamsSchema` from `shared/schemas/paginationSchema.ts`
 - [ ] Sort params: allowlist-validated before SQL interpolation
 - [ ] Admin-only routes: `requireRole('admin')` on the route
+- [ ] Feature flag gate: does this endpoint expose a feature that should be toggleable?
+      If yes, add `requireFeatureEnabled('flag_key')` and add/update the flag in migration 066. If no, document why not (always-on core auth/infra routes are exempt).
 - [ ] PATCH/DELETE: ownership enforced in the WHERE clause
 - [ ] Write operations: audit entry in same transaction as data change
 - [ ] Assignment notification fired if `owner_id` changed (after commit, not awaited)
@@ -675,6 +677,9 @@ Real patterns from past findings on this repo:
 - [ ] **RTL-safe classes** — logical properties used, not physical directional classes.
 - [ ] **Loading / error / empty states** — every component with async data handles all three
       states explicitly; none are left implicit or missing.
+- [ ] **Feature flag considered** — every new user-facing feature should either be gated by
+      a `requireFeatureEnabled` middleware call (and have an entry in `feature_flags`) or have
+      a documented reason why it is always-on (core auth, infra, admin-only config).
 - [ ] **User docs updated** — if the change adds or modifies a user-facing feature, update
       or create the relevant page(s) in `docs/user-guide/` and `docs/admin-guide.md`.
       New navigable sections need an entry in `docs/user-guide/index.md`. Feature-flagged
