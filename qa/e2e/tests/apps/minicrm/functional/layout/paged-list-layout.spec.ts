@@ -23,7 +23,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import { navigateToContactsOwnedByMe } from '@behaviors/minicrm/contacts.behaviors.js';
 import { navigateToAccountsOwnedByMe } from '@behaviors/minicrm/accounts.behaviors.js';
 import { navigateToLeadsOwnedByMe } from '@behaviors/minicrm/leads.behaviors.js';
@@ -41,8 +41,9 @@ const MOBILE_VIEWPORT = { width: 393, height: 851 };
 // the collapsed content-only height that the original bug produced.
 const MIN_FILL_PX = 200;
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, page }) => {
   await loginAsAdmin(restClient);
+  await withFlags(page, { tasks: true });
 });
 
 // ===========================================================================

@@ -659,12 +659,19 @@ export async function withFlags(
   overrides: Record<string, boolean>,
 ): Promise<void> {
   await pageOrContext.route('**/api/v1/feature-flags/me', async (route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { flags: Record<string, boolean> };
-    const merged: { flags: Record<string, boolean> } = {
-      ...body,
-      flags: { ...body.flags, ...overrides },
-    };
-    await route.fulfill({ json: merged });
+    // The page or context may be torn down while a flag fetch is still in flight
+    // (e.g. during afterEach cleanup). Swallow the closed-context error so it
+    // does not propagate as an unhandled rejection and fail the test.
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as { flags: Record<string, boolean> };
+      const merged: { flags: Record<string, boolean> } = {
+        ...body,
+        flags: { ...body.flags, ...overrides },
+      };
+      await route.fulfill({ json: merged });
+    } catch {
+      // Context closed before the route could be fulfilled — safe to ignore.
+    }
   });
 }

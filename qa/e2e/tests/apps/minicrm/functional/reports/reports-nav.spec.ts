@@ -35,12 +35,13 @@ import {
   getReportsActivityVolumeHeadingLocator,
   getReportsStageTrendHeadingLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, page }) => {
   await loginAsAdmin(restClient);
+  await withFlags(page, { reporting: true });
 });
 
 // ---------------------------------------------------------------------------

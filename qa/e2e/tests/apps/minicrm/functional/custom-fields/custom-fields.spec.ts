@@ -65,10 +65,12 @@ import {
   createTestAccount,
   createTestDeal,
   createTestAdmin,
+  withFlags,
 } from '@apps/minicrm/helpers.js';
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, page }) => {
   await loginAsAdmin(restClient);
+  await withFlags(page, { custom_fields: true });
 });
 
 // ---------------------------------------------------------------------------

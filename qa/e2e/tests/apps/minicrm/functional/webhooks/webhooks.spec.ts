@@ -22,7 +22,7 @@ import {
   loginViaBrowser,
   getCurrentUser,
 } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import { createContactViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   createWebhookSubscription,
@@ -58,6 +58,7 @@ test('@functional WH-01: admin sees the Webhooks section in Settings → Integra
 }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { webhooks: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettingsIntegrations({ page });
@@ -77,6 +78,7 @@ test('@functional WH-02: create webhook subscription → secret modal appears', 
 }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { webhooks: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettingsIntegrations({ page });
@@ -130,6 +132,7 @@ test('@functional WH-03: created subscription appears in the list with correct d
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { webhooks: true });
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettingsIntegrations({ page });
 
@@ -165,6 +168,7 @@ test('@functional WH-04: disable subscription → status shows Disabled', async 
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
 
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { webhooks: true });
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettingsIntegrations({ page });
 
@@ -199,6 +203,7 @@ test('@functional WH-05: delete subscription → removed from list', async ({
   // Do NOT register for auto-teardown — the test itself deletes it via UI
 
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { webhooks: true });
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettingsIntegrations({ page });
 
