@@ -121,6 +121,12 @@ const SERIAL_FILES = [
   // connection-pool contention that makes the session-invalidation timing assertions flap.
   'src/__tests__/ssoService.test.ts',
   'src/__tests__/ssoController.test.ts',
+  // aiConfigService and aiConfigController both write ai_* keys to system_settings.
+  // Running them in parallel causes beforeEach deletes to race with mid-test upserts
+  // from the sibling file, producing stale model/dpa_acknowledged_by values.
+  // (MINCRM-457)
+  'src/__tests__/aiConfigService.test.ts',
+  'src/__tests__/aiConfigController.test.ts',
 ];
 
 const sharedResolve = {
