@@ -317,6 +317,12 @@ export async function enrollContactHandler(req: Request, res: Response): Promise
         .json({ error: { code: 'SEQUENCE_NOT_FOUND', message: (err as Error).message } });
       return;
     }
+    if (code === 'SEQUENCE_DISABLED') {
+      res
+        .status(409)
+        .json({ error: { code: 'SEQUENCE_DISABLED', message: (err as Error).message } });
+      return;
+    }
     if (code === 'SEQUENCE_HAS_NO_STEPS') {
       res
         .status(400)
