@@ -32,7 +32,8 @@ export type AdminSettingsTab =
   | 'branding'
   | 'data'
   | 'integrations'
-  | 'features';
+  | 'features'
+  | 'ai';
 
 // ---------------------------------------------------------------------------
 // AdminSettingsPage
@@ -1149,6 +1150,221 @@ export class AdminSettingsPage {
           { type: 'role', value: 'status' },
         ],
         { intent: 'success message shown after SSO configuration is saved' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI Settings locators (MINCRM-457)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the AI settings panel container. */
+  async aiSettingsPanelLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-settings-panel' },
+          { type: 'role', value: 'region' },
+        ],
+        { intent: 'main panel containing the AI provider and model configuration form' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI master toggle switch. */
+  async aiMasterToggleLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-master-toggle' },
+          { type: 'role', value: 'switch', options: { name: /ai/i } },
+        ],
+        { intent: 'toggle switch to enable or disable all AI features globally' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI toggle confirmation dialog. */
+  async aiToggleConfirmDialogLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-toggle-confirm-dialog' },
+          { type: 'role', value: 'dialog' },
+        ],
+        { intent: 'confirmation dialog shown before enabling or disabling AI globally' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the Confirm button inside the AI toggle dialog. */
+  async aiToggleConfirmButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-toggle-confirm-button' },
+          { type: 'role', value: 'button', options: { name: /confirm/i } },
+        ],
+        { intent: 'confirm button inside the AI toggle confirmation dialog' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the Cancel button inside the AI toggle dialog. */
+  async aiToggleCancelButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-toggle-cancel-button' },
+          { type: 'role', value: 'button', options: { name: /cancel/i } },
+        ],
+        { intent: 'cancel button inside the AI toggle confirmation dialog' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI provider select. */
+  async aiProviderSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-provider-select' },
+          { type: 'role', value: 'combobox', options: { name: /provider/i } },
+        ],
+        { intent: 'select input for choosing the AI provider' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI model select. */
+  async aiModelSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-model-select' },
+          { type: 'role', value: 'combobox', options: { name: /model/i } },
+        ],
+        { intent: 'select input for choosing the AI model' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI API key input field. */
+  async aiApiKeyInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-api-key-input' },
+          { type: 'css', value: '[data-testid="ai-api-key-input"]' },
+        ],
+        { intent: 'input field for entering the AI provider API key' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the masked API key display. */
+  async aiApiKeyMaskedLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-api-key-masked' },
+          { type: 'css', value: '[data-testid="ai-api-key-masked"]' },
+        ],
+        { intent: 'masked display showing that an API key is stored without revealing its value' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the Test Connection button. */
+  async aiTestConnectionButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-test-connection-button' },
+          { type: 'role', value: 'button', options: { name: /test connection/i } },
+        ],
+        { intent: 'button to test the AI provider API key and model connectivity' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the test connection result message. */
+  async aiTestConnectionResultLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-test-connection-result' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'message showing the result of the test connection attempt' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI DPA acknowledgment checkbox. */
+  async aiDpaCheckboxLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-dpa-checkbox' },
+          { type: 'role', value: 'checkbox', options: { name: /dpa|data processing/i } },
+        ],
+        { intent: 'checkbox to acknowledge the data processing agreement with the AI provider' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the DPA warning banner. */
+  async aiDpaWarningBannerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-dpa-warning-banner' },
+          { type: 'role', value: 'alert' },
+        ],
+        {
+          intent:
+            'warning banner shown when the data processing agreement has not been acknowledged',
+        },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the data posture badge. */
+  async aiDataPostureBadgeLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-data-posture-badge' },
+          { type: 'css', value: '[data-testid="ai-data-posture-badge"]' },
+        ],
+        { intent: 'badge showing the current data posture classification for AI usage' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the Save button in the AI configuration section. */
+  async aiSaveButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-save-button' },
+          { type: 'role', value: 'button', options: { name: /save/i } },
+        ],
+        { intent: 'button to save the AI provider and model configuration' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI DPA status badge. */
+  async aiDpaStatusBadgeLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-dpa-status-badge' },
+          { type: 'css', value: '[data-testid="ai-dpa-status-badge"]' },
+        ],
+        { intent: 'badge showing the current DPA acknowledgment status' },
       )
       .resolve();
   }
