@@ -135,6 +135,82 @@ export class LeadDetailPage {
   }
 
   // ---------------------------------------------------------------------------
+  // Edit
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Clicks the Edit button to enter edit mode.
+   */
+  async clickEdit(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'edit-lead-button' },
+        { type: 'role', value: 'button', options: { name: t('leads.edit'), exact: false } },
+      ],
+      { intent: 'edit button to enter lead edit mode' },
+    );
+  }
+
+  /**
+   * Fills a text field on the edit form.
+   *
+   * @param testId - data-testid of the input (e.g. 'lead-first-name').
+   * @param label - i18n label text used as fallback strategy.
+   * @param value - Value to type.
+   */
+  async fillField(testId: string, label: string, value: string): Promise<void> {
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: testId },
+        { type: 'label', value: label, options: { exact: false } },
+      ],
+      { intent: `lead edit form field labeled ${label}` },
+    );
+  }
+
+  /**
+   * Clicks the Save button to submit the edit form.
+   */
+  async save(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'lead-form-submit' },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('leads.save'), exact: false },
+        },
+      ],
+      { intent: 'save button to submit lead edit form' },
+    );
+  }
+
+  /**
+   * Returns whether the lead detail page is in read mode (Edit button visible).
+   */
+  async isLoaded(): Promise<boolean> {
+    try {
+      await this.page
+        .locate(
+          [
+            { type: 'testId', value: 'edit-lead-button' },
+            {
+              type: 'role',
+              value: 'button',
+              options: { name: t('leads.edit'), exact: false },
+            },
+          ],
+          { intent: 'edit button indicating lead detail page is in read mode' },
+        )
+        .resolve();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Delete
   // ---------------------------------------------------------------------------
 

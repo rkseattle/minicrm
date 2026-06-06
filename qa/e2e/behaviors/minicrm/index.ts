@@ -136,6 +136,10 @@ export {
   noAlertExists,
   clickAccountEditButton,
   isLinkedContactAbsent,
+  navigateToAccountDetail,
+  fillAccountDetailField,
+  saveAccountDetail,
+  isAccountDetailLoaded,
 } from './accounts.behaviors.js';
 export type {
   AccountsBehaviorContext,
@@ -265,6 +269,12 @@ export {
   convertLeadViaApi,
   getLeads,
   disqualifyLead,
+  patchLead,
+  navigateToLeadDetail,
+  clickLeadEdit,
+  fillLeadDetailField,
+  saveLead,
+  isLeadDetailLoaded,
 } from './leads.behaviors.js';
 export type {
   LeadsBehaviorContext,

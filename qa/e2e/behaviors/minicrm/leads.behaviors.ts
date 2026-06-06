@@ -567,3 +567,84 @@ export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): P
   await context.page.waitForLoadState('networkidle');
   await leadsPage.filterByOwnerMe();
 }
+
+// ---------------------------------------------------------------------------
+// Concurrency / conflict-resolution helpers (MINCRM-400)
+// Mirrors the pattern used in contacts.behaviors.ts for F-CC2-style UI tests.
+// ---------------------------------------------------------------------------
+
+/**
+ * Patches arbitrary fields on a lead via the API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param leadId - Lead UUID.
+ * @param patch - Fields to update (must include version for optimistic locking).
+ * @returns The updated lead record.
+ */
+export async function patchLead(
+  restClient: RestClient,
+  leadId: string,
+  patch: Partial<LeadRow> & { version: number },
+): Promise<LeadRow> {
+  const res = await restClient.patch<{ lead: LeadRow }>(`/api/v1/leads/${leadId}`, patch);
+  return res.body.lead;
+}
+
+/**
+ * Navigates to the lead detail page for the given lead ID.
+ */
+export async function navigateToLeadDetail(
+  leadId: string,
+  context: LeadsBehaviorContext,
+): Promise<void> {
+  const detailPage = new LeadDetailPage(context);
+  await detailPage.navigate(leadId);
+}
+
+/**
+ * Clicks the Edit button on the lead detail page.
+ */
+export async function clickLeadEdit(context: LeadsBehaviorContext): Promise<void> {
+  const detailPage = new LeadDetailPage(context);
+  await detailPage.clickEdit();
+}
+
+/**
+ * Fills a field in the lead edit form.
+ *
+ * @param testId - data-testid of the input field.
+ * @param label - i18n label used as fallback strategy.
+ * @param value - Value to type.
+ */
+export async function fillLeadDetailField(
+  testId: string,
+  label: string,
+  value: string,
+  context: LeadsBehaviorContext,
+): Promise<void> {
+  const detailPage = new LeadDetailPage(context);
+  await detailPage.fillField(testId, label, value);
+}
+
+/**
+ * Clicks Save on the lead detail edit form and waits for the PATCH response.
+ * No status filter — callers such as concurrency tests deliberately trigger
+ * 409 responses and must handle the outcome themselves after this returns.
+ */
+export async function saveLead(context: LeadsBehaviorContext): Promise<void> {
+  const detailPage = new LeadDetailPage(context);
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/leads/') && response.request().method() === 'PATCH',
+  );
+  await detailPage.save();
+  await patchDone;
+}
+
+/**
+ * Returns true when the lead detail page is in read mode (Edit button visible).
+ */
+export async function isLeadDetailLoaded(context: LeadsBehaviorContext): Promise<boolean> {
+  const detailPage = new LeadDetailPage(context);
+  return detailPage.isLoaded();
+}

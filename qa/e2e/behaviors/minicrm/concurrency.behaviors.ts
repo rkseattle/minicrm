@@ -16,13 +16,14 @@ import { ConflictBannerWidget } from '@pages/minicrm/ConflictBannerWidget.js';
 // Entity types supported by simulateConcurrentEdit
 // ---------------------------------------------------------------------------
 
-export type ConcurrentEditEntityType = 'contact' | 'account' | 'deal' | 'activity';
+export type ConcurrentEditEntityType = 'contact' | 'account' | 'deal' | 'activity' | 'lead';
 
 const ENTITY_API_PATH: Record<ConcurrentEditEntityType, string> = {
   contact: '/api/v1/contacts',
   account: '/api/v1/accounts',
   deal: '/api/v1/deals',
   activity: '/api/v1/activities',
+  lead: '/api/v1/leads',
 };
 
 // ---------------------------------------------------------------------------
