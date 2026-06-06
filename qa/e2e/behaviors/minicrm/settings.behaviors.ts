@@ -1021,3 +1021,65 @@ export async function getPipelineStageDeleteButtonLocator(
     .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
     .resolve();
 }
+
+// ---------------------------------------------------------------------------
+// Feature flag UI behaviors (MINCRM-463)
+// ---------------------------------------------------------------------------
+
+/** Resolves the feature flags list container. */
+export async function getFeatureFlagsListLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flags-list' },
+        { type: 'role', value: 'region' },
+      ],
+      { intent: 'container showing the grouped list of feature flags' },
+    )
+    .resolve();
+}
+
+/**
+ * Resolves the toggle button for a specific feature flag row.
+ * @param flagKey - The flag_key identifier (e.g. 'notes', 'tags').
+ */
+export async function getFeatureFlagToggleLocator(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-toggle-${flagKey}` },
+        { type: 'role', value: 'switch', options: { name: new RegExp(flagKey, 'i') } },
+      ],
+      { intent: `toggle switch to enable or disable the ${flagKey} feature flag` },
+    )
+    .resolve();
+}
+
+/** Resolves the confirmation dialog for a feature flag toggle. */
+export async function getFeatureFlagConfirmDialogLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flag-confirm-dialog' },
+        { type: 'role', value: 'dialog' },
+      ],
+      { intent: 'confirmation dialog shown before toggling a feature flag' },
+    )
+    .resolve();
+}
+
+/** Resolves the confirm OK button inside the feature flag confirmation dialog. */
+export async function getFeatureFlagConfirmOkLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flag-confirm-ok' },
+        { type: 'role', value: 'button', options: { name: /confirm/i } },
+      ],
+      { intent: 'confirm button inside the feature flag toggle confirmation dialog' },
+    )
+    .resolve();
+}
