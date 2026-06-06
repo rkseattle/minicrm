@@ -50,7 +50,9 @@ export class PipelineBoardPage {
    * view on whatever stage was last active. (MINCRM-415)
    */
   async navigate(): Promise<void> {
-    await this.page.goto(PipelineBoardPage.PATH);
+    // waitUntil:'networkidle' ensures deal/stage API calls complete before the
+    // board-container probe starts, preventing 2 s timeout heals. (heal-trends)
+    await this.page.goto(PipelineBoardPage.PATH, { waitUntil: 'networkidle' });
     await this.page
       .locate(
         [
