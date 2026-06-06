@@ -624,3 +624,59 @@ export async function isLinkedContactAbsent(
 ): Promise<boolean> {
   return context.page.doesNotExist([{ type: 'testId', value: `linked-contact-${contactId}` }]);
 }
+
+// ---------------------------------------------------------------------------
+// Concurrency / conflict-resolution helpers (MINCRM-400)
+// Mirrors the pattern used in contacts.behaviors.ts for F-CC2-style UI tests.
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the account detail page for the given account ID.
+ */
+export async function navigateToAccountDetail(
+  accountId: string,
+  context: AccountsBehaviorContext,
+): Promise<void> {
+  const detailPage = new AccountDetailPage(context);
+  await detailPage.navigate(accountId);
+}
+
+/**
+ * Fills a field in the account edit form.
+ *
+ * @param testId - data-testid of the input field.
+ * @param label - i18n label used as fallback strategy.
+ * @param value - Value to type.
+ */
+export async function fillAccountDetailField(
+  testId: string,
+  label: string,
+  value: string,
+  context: AccountsBehaviorContext,
+): Promise<void> {
+  const detailPage = new AccountDetailPage(context);
+  await detailPage.fillField(testId, label, value);
+}
+
+/**
+ * Clicks Save on the account detail edit form and waits for the PATCH response.
+ * No status filter — callers such as concurrency tests deliberately trigger
+ * 409 responses and must handle the outcome themselves after this returns.
+ */
+export async function saveAccountDetail(context: AccountsBehaviorContext): Promise<void> {
+  const detailPage = new AccountDetailPage(context);
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/accounts/') && response.request().method() === 'PATCH',
+  );
+  await detailPage.save();
+  await patchDone;
+}
+
+/**
+ * Returns true when the account detail page is in read mode (Edit button visible).
+ */
+export async function isAccountDetailLoaded(context: AccountsBehaviorContext): Promise<boolean> {
+  const detailPage = new AccountDetailPage(context);
+  return detailPage.isLoaded();
+}

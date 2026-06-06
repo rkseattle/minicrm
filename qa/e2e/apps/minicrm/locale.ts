@@ -83,7 +83,9 @@ const MINICRM_EN: LocaleMap = {
 
   // Leads
   'leads.new': 'New Lead',
+  'leads.edit': 'Edit',
   'leads.save': 'Save',
+  'leads.cancel': 'Cancel',
   'leads.delete': 'Delete',
   'leads.convert': 'Convert Lead',
   'leads.confirmConvert': 'Confirm',
@@ -176,7 +178,9 @@ const MINICRM_ES: LocaleMap = {
 
   // Leads
   'leads.new': 'Nuevo lead',
+  'leads.edit': 'Editar',
   'leads.save': 'Guardar',
+  'leads.cancel': 'Cancelar',
   'leads.delete': 'Eliminar',
   'leads.convert': 'Convertir lead',
   'leads.confirmConvert': 'Confirmar',
@@ -269,7 +273,9 @@ const MINICRM_FR: LocaleMap = {
 
   // Leads
   'leads.new': 'Nouveau prospect',
+  'leads.edit': 'Modifier',
   'leads.save': 'Enregistrer',
+  'leads.cancel': 'Annuler',
   'leads.delete': 'Supprimer',
   'leads.convert': 'Convertir le prospect',
   'leads.confirmConvert': 'Convertir',
@@ -362,7 +368,9 @@ const MINICRM_DE: LocaleMap = {
 
   // Leads
   'leads.new': 'Neuer Lead',
+  'leads.edit': 'Bearbeiten',
   'leads.save': 'Speichern',
+  'leads.cancel': 'Abbrechen',
   'leads.delete': 'Löschen',
   'leads.convert': 'Lead konvertieren',
   'leads.confirmConvert': 'Konvertieren',
@@ -455,7 +463,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
 
   // Leads
   'leads.new': '新建潜在客户',
+  'leads.edit': '编辑',
   'leads.save': '保存',
+  'leads.cancel': '取消',
   'leads.delete': '删除',
   'leads.convert': '转化潜在客户',
   'leads.confirmConvert': '转化',

@@ -406,6 +406,58 @@ export async function createTestActivity(
 }
 
 // ---------------------------------------------------------------------------
+// Lead helper (MINCRM-400)
+// ---------------------------------------------------------------------------
+
+/** Minimal representation of a MiniCRM lead as returned by POST /api/v1/leads. */
+export interface TestLead {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  status: string;
+  /** Optimistic lock version (MINCRM-349) */
+  version: number;
+}
+
+/** Fields accepted when creating a lead via createTestLead. */
+export interface CreateLeadOverrides {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  company_name?: string;
+}
+
+/**
+ * Creates a lead via the REST API, registers it with TestDataManager,
+ * and returns the created lead.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - Authenticated RestClient instance.
+ * @param overrides - Field overrides.
+ * @returns The created lead as returned by the server.
+ */
+export async function createTestLead(
+  testData: TestDataManager,
+  restClient: RestClient,
+  overrides: CreateLeadOverrides = {},
+): Promise<TestLead> {
+  const uniqueSuffix = Date.now();
+  const payload: Record<string, string> = {
+    first_name: overrides.first_name ?? `TestLead${uniqueSuffix}`,
+    email: overrides.email ?? `test-lead-${uniqueSuffix}@example.com`,
+  };
+  if (overrides.last_name !== undefined) payload['last_name'] = overrides.last_name;
+  if (overrides.company_name !== undefined) payload['company_name'] = overrides.company_name;
+
+  const response = await restClient.post<{ lead: TestLead }>('/api/v1/leads', payload);
+  const lead = response.body.lead;
+
+  testData.register('lead', lead.id, `/api/v1/leads/${lead.id}`);
+  return lead;
+}
+
+// ---------------------------------------------------------------------------
 // User helper
 // ---------------------------------------------------------------------------
 

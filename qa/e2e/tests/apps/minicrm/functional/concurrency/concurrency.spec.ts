@@ -26,6 +26,10 @@
  *   F-CC8  Accept "mine" in conflict modal → subsequent edit saves cleanly
  *   F-CC9  Activity — version increments on update; stale version returns 409
  *           (absorbed from optimistic-locking.spec.ts OL4 — MINCRM-409)
+ *   F-CC10 Account UI conflict: FieldMergeModal appears on stale account save
+ *   F-CC11 Lead UI conflict: FieldMergeModal appears on stale lead save
+ *   F-CC12 Activity API conflict: stale version rejected with OPTIMISTIC_LOCK_CONFLICT
+ *           (Activities have no FieldMergeModal in the UI — conflict is API-only)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -33,7 +37,7 @@
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *   - test.describe.serial: tests run sequentially within this file
  *
- * MINCRM-350
+ * MINCRM-350, MINCRM-400
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -44,6 +48,7 @@ import {
   createTestDeal,
   createTestAccount,
   createTestActivity,
+  createTestLead,
   createTestUser,
   createTestRep,
 } from '@apps/minicrm/helpers.js';
@@ -89,6 +94,20 @@ import {
   getDealStageSelectOnFormLocator,
   submitDealForm,
 } from '@behaviors/minicrm/deals.behaviors.js';
+import {
+  navigateToAccountDetail,
+  clickAccountEditButton,
+  fillAccountDetailField,
+  saveAccountDetail,
+  getAccountById,
+} from '@behaviors/minicrm/accounts.behaviors.js';
+import {
+  navigateToLeadDetail,
+  clickLeadEdit,
+  fillLeadDetailField,
+  saveLead,
+  getLeadById,
+} from '@behaviors/minicrm/leads.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Setup — admin restClient session for REST API data setup
@@ -651,6 +670,8 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     },
   );
 
+  // F-CC9 is the activity API test below — see MINCRM-409.
+
   test(
     'F-CC9: activity — version increments on update; stale version returns 409 (MINCRM-409)',
     { tag: ['@functional'] },
@@ -673,6 +694,156 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // Stale PATCH with original version 1 must be rejected with 409
       await assertStaleVersionRejected(restClient, `/api/v1/activities/${activity.id}`, {
         subject: 'CC9 Stale',
+        version: activity.version, // original version 1 is now stale
+      });
+    },
+  );
+
+  test(
+    'F-CC10: account UI conflict — FieldMergeModal appears when save uses stale version (MINCRM-400)',
+    { tag: ['@functional'] },
+    async ({ page, testData, restClient }) => {
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
+
+      const account = await createTestAccount(testData, restClient, {
+        name: 'CC10 Account',
+      });
+      expect(account.version, 'freshly created account should be at version 1').toBe(1);
+
+      // Navigate to account detail and enter edit mode
+      await navigateToAccountDetail(account.id, { page });
+      await clickAccountEditButton({ page });
+      await fillAccountDetailField('account-name-input', 'Company name', 'CC10-Mine', { page });
+
+      // Background write: another user saves before we do — version increments to 2
+      const { newVersion } = await simulateConcurrentEdit(
+        restClient,
+        'account',
+        account.id,
+        account.version,
+        { name: 'CC10-Theirs' },
+      );
+      expect(newVersion, 'background write should produce version 2').toBe(2);
+
+      // Submit the stale UI form — expect 409 → conflict modal
+      await saveAccountDetail({ page });
+
+      // Conflict modal must appear
+      const isVisible = await isConflictModalVisible({ page });
+      expect(isVisible, 'conflict modal should be visible after stale account save').toBe(true);
+
+      // Title heading must be present
+      const title = await getConflictModalTitleLocator({ page });
+      expect(await title.isVisible(), 'modal title should be visible').toBe(true);
+
+      // Both action buttons must be present
+      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
+      expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
+
+      const discardBtn = await getConflictDiscardButtonLocator({ page });
+      expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
+        true,
+      );
+
+      // Verify the account is still at version 2 in the DB — the stale save was rejected
+      const dbAccount = await getAccountById(restClient, account.id);
+      expect(dbAccount.version, 'account version should be 2 — stale save was rejected').toBe(2);
+      expect(dbAccount.name, 'account name should reflect background write').toBe('CC10-Theirs');
+    },
+  );
+
+  test(
+    'F-CC11: lead UI conflict — FieldMergeModal appears when save uses stale version (MINCRM-400)',
+    { tag: ['@functional'] },
+    async ({ page, testData, restClient }) => {
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
+
+      const lead = await createTestLead(testData, restClient, {
+        first_name: 'CC11',
+        last_name: 'UiConflict',
+        email: `cc11-conflict-${Date.now()}@example.com`,
+      });
+      expect(lead.version, 'freshly created lead should be at version 1').toBe(1);
+
+      // Navigate to lead detail and enter edit mode
+      await navigateToLeadDetail(lead.id, { page });
+      await clickLeadEdit({ page });
+      await fillLeadDetailField('lead-first-name', 'First name', 'CC11-Mine', { page });
+
+      // Background write: another user saves before we do — version increments to 2
+      const { newVersion } = await simulateConcurrentEdit(
+        restClient,
+        'lead',
+        lead.id,
+        lead.version,
+        { first_name: 'CC11-Theirs' },
+      );
+      expect(newVersion, 'background write should produce version 2').toBe(2);
+
+      // Submit the stale UI form — expect 409 → conflict modal
+      await saveLead({ page });
+
+      // Conflict modal must appear
+      const isVisible = await isConflictModalVisible({ page });
+      expect(isVisible, 'conflict modal should be visible after stale lead save').toBe(true);
+
+      // Title heading must be present
+      const title = await getConflictModalTitleLocator({ page });
+      expect(await title.isVisible(), 'modal title should be visible').toBe(true);
+
+      // Both action buttons must be present
+      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
+      expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
+
+      const discardBtn = await getConflictDiscardButtonLocator({ page });
+      expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
+        true,
+      );
+
+      // Verify the lead is still at version 2 in the DB — the stale save was rejected
+      const dbLead = await getLeadById(restClient, lead.id);
+      expect(dbLead.version, 'lead version should be 2 — stale save was rejected').toBe(2);
+      expect(dbLead.first_name, 'lead first_name should reflect background write').toBe(
+        'CC11-Theirs',
+      );
+    },
+  );
+
+  test(
+    'F-CC12: activity API conflict — stale version rejected with OPTIMISTIC_LOCK_CONFLICT (MINCRM-400)',
+    { tag: ['@functional'] },
+    async ({ testData, restClient }) => {
+      // Activities have no FieldMergeModal in the UI (editing occurs inline or via
+      // a list-row form without conflict resolution UI). This test validates the
+      // API-layer guard so that any future UI addition can build on a known-good
+      // server contract.
+      const account = await createTestAccount(testData, restClient, { name: 'CC12 Account' });
+      const contact = await createTestContact(testData, restClient, {
+        first_name: 'CC12',
+        last_name: 'ActivityConflict',
+      });
+      const activity = await createTestActivity(testData, restClient, {
+        type: 'Note',
+        subject: 'CC12 Activity',
+        account_id: account.id,
+        contact_id: contact.id,
+      });
+      expect(activity.version, 'freshly created activity should be at version 1').toBe(1);
+
+      // Successful update with current version — version increments to 2
+      const updated = await patchActivity(restClient, activity.id, {
+        subject: 'CC12 Updated',
+        version: activity.version,
+      });
+      expect(updated.version, 'version should increment to 2 on successful PATCH').toBe(2);
+
+      // Stale PATCH with original version 1 must be rejected with 409
+      await assertStaleVersionRejected(restClient, `/api/v1/activities/${activity.id}`, {
+        subject: 'CC12 Stale',
         version: activity.version, // original version 1 is now stale
       });
     },
