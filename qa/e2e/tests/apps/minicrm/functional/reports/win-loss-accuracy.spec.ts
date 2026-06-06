@@ -18,7 +18,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAccount, createTestAdmin, createTestDeal } from '@apps/minicrm/helpers.js';
+import {
+  createTestAccount,
+  createTestAdmin,
+  createTestDeal,
+  withFlags,
+} from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateToWinLossReport } from '@behaviors/minicrm/reports.behaviors.js';
 import {
@@ -41,6 +46,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { reporting: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 });
 

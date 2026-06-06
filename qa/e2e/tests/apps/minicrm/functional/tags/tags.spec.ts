@@ -25,6 +25,7 @@ import {
   createTestAccount,
   createTestDeal,
   createTestAdmin,
+  withFlags,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
@@ -58,8 +59,9 @@ interface TagSingleResponse {
   };
 }
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, page }) => {
   await loginAsAdmin(restClient);
+  await withFlags(page, { tags: true });
 });
 
 // ---------------------------------------------------------------------------

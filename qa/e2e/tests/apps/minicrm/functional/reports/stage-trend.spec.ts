@@ -25,7 +25,7 @@ import {
   getReportsDaysSelectLocator,
   navigateToStageTrendReport,
 } from '@behaviors/minicrm/reports.behaviors.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -33,6 +33,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { reporting: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 });
 

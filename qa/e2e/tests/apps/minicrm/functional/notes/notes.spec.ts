@@ -35,6 +35,7 @@ import {
   navigateToContact,
   navigateToDeal,
   loginAndVerify,
+  withFlags,
 } from '@apps/minicrm/helpers.js';
 import {
   createNoteViaUI,
@@ -73,6 +74,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   const rep = await createTestRep(testData, restClient);
+  await withFlags(page, { notes: true });
   await loginViaBrowser(rep.email, rep.password, { page });
   await loginAs(restClient, rep.email, rep.password);
 });

@@ -42,7 +42,7 @@ import {
   getPipelineBoardContainerLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { navigateToPipelineBoard, createDealViaApi } from '@behaviors/minicrm/deals.behaviors.js';
-import { createTestAccount, createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAccount, createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -52,6 +52,7 @@ test.setTimeout(60_000);
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  await withFlags(page, { multiple_pipelines: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 });
 
