@@ -685,17 +685,24 @@ export async function unenrollContact(
   try {
     await client.query('BEGIN');
 
+    // AND status = 'active' closes the TOCTOU gap: if the cron completes the
+    // enrollment between the status check above and this UPDATE, rowCount will
+    // be 0 and we throw ENROLLMENT_NOT_ACTIVE rather than overwriting 'completed'.
     const updateResult = await client.query<{ id: string }>(
       `UPDATE sequence_enrollments
        SET status = 'unenrolled', unenrolled_at = now(), next_action_at = NULL, updated_at = now()
-       WHERE id = $1
+       WHERE id = $1 AND status = 'active'
        RETURNING id`,
       [enrollmentId],
     );
 
     if (updateResult.rowCount === 0) {
       await client.query('ROLLBACK');
-      return null;
+      const err = new Error(
+        `Cannot unenroll an enrollment that is no longer active. Only active enrollments can be unenrolled.`,
+      );
+      Object.assign(err, { code: 'ENROLLMENT_NOT_ACTIVE' });
+      throw err;
     }
 
     await writeAuditEntry(client, {
