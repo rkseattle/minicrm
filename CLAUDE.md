@@ -579,6 +579,11 @@ under CI resource contention. Use DOM-state waits instead: `locator.waitFor({ st
   Enforced by `check-settings-mutations.sh`.
 - **No `loginAsAdmin` in `test.beforeAll`** — pre-auth is handled by global `storageState` in
   `playwright.config.ts`. Call `loginAsAdmin(restClient)` at the start of the test body instead.
+- **Feature flag state is controlled exclusively via `withFlags()` route interception**
+  (`qa/e2e/apps/minicrm/helpers.ts`). Never toggle flag state via `PATCH /api/admin/feature-flags/:key`
+  or direct DB mutation in tests. Call `withFlags(page, overrides)` before `page.goto()` so the
+  handler is registered before the first flag fetch. Flag state is scoped to the browser context
+  and is parallel-safe. (MINCRM-477)
 - **Every story must include or update a functional E2E spec.** Do not mark a ticket done
   without E2E coverage for the new behaviour.
 
