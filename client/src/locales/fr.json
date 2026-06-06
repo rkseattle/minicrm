@@ -537,7 +537,8 @@
       "customisation": "Personnalisation",
       "branding": "Identité visuelle",
       "data": "Données",
-      "integrations": "Intégrations"
+      "integrations": "Intégrations",
+      "features": "Fonctionnalités"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
@@ -1790,5 +1791,31 @@
     "noSteps": "Aucune étape. Ajoutez-en une pour commencer.",
     "enableSequence": "Activer la séquence {{name}}",
     "disableSequence": "Désactiver la séquence {{name}}"
+  },
+  "featureFlags": {
+    "description": "Activez ou désactivez des fonctionnalités pour tous les utilisateurs de votre organisation.",
+    "offBadge": "Désactivé",
+    "lastChanged": "Dernière modification par {{name}} le {{date}}",
+    "activeUsersWarning": "{{count}} utilisateur(s) ont utilisé cette fonctionnalité au cours des 30 derniers jours.",
+    "confirmEnable": "Activer {{label}} ?",
+    "confirmDisable": "Désactiver {{label}} ?",
+    "confirmEnableBody": "Cela activera {{label}} pour tous les utilisateurs. Continuer ?",
+    "confirmDisableBody": "Cela désactivera {{label}} pour tous les utilisateurs. Continuer ?",
+    "roleOverrides": "Accès par rôle :",
+    "toggleLabel": "Basculer {{label}}",
+    "saveError": "Échec de la sauvegarde. Veuillez réessayer.",
+    "loadError": "Impossible de charger les indicateurs de fonctionnalité.",
+    "empty": "Aucun indicateur de fonctionnalité configuré.",
+    "categories": {
+      "core_crm": "CRM principal",
+      "productivity": "Productivité",
+      "data": "Données",
+      "integrations": "Intégrations",
+      "ai": "IA"
+    },
+    "roles": {
+      "admin": "Admin",
+      "rep": "Commercial"
+    }
   }
 }

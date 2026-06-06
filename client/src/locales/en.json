@@ -537,7 +537,8 @@
       "customisation": "Customisation",
       "branding": "Branding",
       "data": "Data",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "features": "Features"
     },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
@@ -1790,5 +1791,31 @@
     "noSteps": "No steps yet. Add one to get started.",
     "enableSequence": "Enable sequence {{name}}",
     "disableSequence": "Disable sequence {{name}}"
+  },
+  "featureFlags": {
+    "description": "Enable or disable product features for all users in your organization.",
+    "offBadge": "Off",
+    "lastChanged": "Last changed by {{name}} on {{date}}",
+    "activeUsersWarning": "{{count}} user(s) have used this feature in the last 30 days.",
+    "confirmEnable": "Enable {{label}}?",
+    "confirmDisable": "Disable {{label}}?",
+    "confirmEnableBody": "This will enable {{label}} for all users. Continue?",
+    "confirmDisableBody": "This will disable {{label}} for all users. Continue?",
+    "roleOverrides": "Per-role access:",
+    "toggleLabel": "Toggle {{label}}",
+    "saveError": "Failed to save. Please try again.",
+    "loadError": "Failed to load feature flags.",
+    "empty": "No feature flags configured.",
+    "categories": {
+      "core_crm": "Core CRM",
+      "productivity": "Productivity",
+      "data": "Data",
+      "integrations": "Integrations",
+      "ai": "AI"
+    },
+    "roles": {
+      "admin": "Admin",
+      "rep": "Rep"
+    }
   }
 }

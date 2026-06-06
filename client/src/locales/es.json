@@ -537,7 +537,8 @@
       "customisation": "Personalización",
       "branding": "Marca",
       "data": "Datos",
-      "integrations": "Integraciones"
+      "integrations": "Integraciones",
+      "features": "Funciones"
     },
     "defaultLanguageLabel": "Idioma predeterminado",
     "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
@@ -1790,5 +1791,31 @@
     "noSteps": "Sin pasos todavía. Agrega uno para empezar.",
     "enableSequence": "Habilitar secuencia {{name}}",
     "disableSequence": "Deshabilitar secuencia {{name}}"
+  },
+  "featureFlags": {
+    "description": "Activa o desactiva funciones del producto para todos los usuarios de tu organización.",
+    "offBadge": "Desactivado",
+    "lastChanged": "Último cambio por {{name}} el {{date}}",
+    "activeUsersWarning": "{{count}} usuario(s) han utilizado esta función en los últimos 30 días.",
+    "confirmEnable": "¿Activar {{label}}?",
+    "confirmDisable": "¿Desactivar {{label}}?",
+    "confirmEnableBody": "Esto activará {{label}} para todos los usuarios. ¿Continuar?",
+    "confirmDisableBody": "Esto desactivará {{label}} para todos los usuarios. ¿Continuar?",
+    "roleOverrides": "Acceso por rol:",
+    "toggleLabel": "Alternar {{label}}",
+    "saveError": "Error al guardar. Inténtalo de nuevo.",
+    "loadError": "No se pudieron cargar los indicadores de función.",
+    "empty": "No hay indicadores de función configurados.",
+    "categories": {
+      "core_crm": "CRM principal",
+      "productivity": "Productividad",
+      "data": "Datos",
+      "integrations": "Integraciones",
+      "ai": "IA"
+    },
+    "roles": {
+      "admin": "Admin",
+      "rep": "Representante"
+    }
   }
 }

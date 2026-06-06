@@ -537,7 +537,8 @@
       "customisation": "自定义",
       "branding": "品牌",
       "data": "数据",
-      "integrations": "集成"
+      "integrations": "集成",
+      "features": "功能"
     },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
@@ -1790,5 +1791,31 @@
     "noSteps": "暂无步骤，添加一个开始吧。",
     "enableSequence": "启用序列 {{name}}",
     "disableSequence": "禁用序列 {{name}}"
+  },
+  "featureFlags": {
+    "description": "为组织中的所有用户启用或禁用产品功能。",
+    "offBadge": "已关闭",
+    "lastChanged": "最后由 {{name}} 于 {{date}} 修改",
+    "activeUsersWarning": "过去30天内有 {{count}} 位用户使用了此功能。",
+    "confirmEnable": "启用 {{label}}？",
+    "confirmDisable": "禁用 {{label}}？",
+    "confirmEnableBody": "这将为所有用户启用 {{label}}。继续？",
+    "confirmDisableBody": "这将为所有用户禁用 {{label}}。继续？",
+    "roleOverrides": "按角色访问：",
+    "toggleLabel": "切换 {{label}}",
+    "saveError": "保存失败，请重试。",
+    "loadError": "无法加载功能标志。",
+    "empty": "未配置功能标志。",
+    "categories": {
+      "core_crm": "核心CRM",
+      "productivity": "效率",
+      "data": "数据",
+      "integrations": "集成",
+      "ai": "人工智能"
+    },
+    "roles": {
+      "admin": "管理员",
+      "rep": "销售代表"
+    }
   }
 }

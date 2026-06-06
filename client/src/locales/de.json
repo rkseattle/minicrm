@@ -537,7 +537,8 @@
       "customisation": "Anpassung",
       "branding": "Erscheinungsbild",
       "data": "Daten",
-      "integrations": "Integrationen"
+      "integrations": "Integrationen",
+      "features": "Funktionen"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
@@ -1790,5 +1791,31 @@
     "noSteps": "Noch keine Schritte. Fügen Sie einen hinzu, um zu beginnen.",
     "enableSequence": "Sequenz {{name}} aktivieren",
     "disableSequence": "Sequenz {{name}} deaktivieren"
+  },
+  "featureFlags": {
+    "description": "Produktfunktionen für alle Benutzer Ihrer Organisation aktivieren oder deaktivieren.",
+    "offBadge": "Aus",
+    "lastChanged": "Zuletzt geändert von {{name}} am {{date}}",
+    "activeUsersWarning": "{{count}} Benutzer haben diese Funktion in den letzten 30 Tagen genutzt.",
+    "confirmEnable": "{{label}} aktivieren?",
+    "confirmDisable": "{{label}} deaktivieren?",
+    "confirmEnableBody": "{{label}} wird für alle Benutzer aktiviert. Fortfahren?",
+    "confirmDisableBody": "{{label}} wird für alle Benutzer deaktiviert. Fortfahren?",
+    "roleOverrides": "Rollenzugriff:",
+    "toggleLabel": "{{label}} umschalten",
+    "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "loadError": "Feature-Flags konnten nicht geladen werden.",
+    "empty": "Keine Feature-Flags konfiguriert.",
+    "categories": {
+      "core_crm": "Kern-CRM",
+      "productivity": "Produktivität",
+      "data": "Daten",
+      "integrations": "Integrationen",
+      "ai": "KI"
+    },
+    "roles": {
+      "admin": "Admin",
+      "rep": "Vertrieb"
+    }
   }
 }
