@@ -75,7 +75,9 @@ beforeEach(async () => {
 afterAll(async () => {
   await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [AI_KEYS]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.end();
+  // Do NOT call pool.end() — this file runs in the parallel Vitest project
+  // and pool is a shared singleton. Calling end() here terminates it for all
+  // other concurrent test files and causes "Cannot use a pool after calling end".
 });
 
 // ── Role enforcement ──────────────────────────────────────────────────────────
@@ -87,14 +89,11 @@ describe('role enforcement — rep receives 403', () => {
   });
 
   it('PATCH /admin/ai/config', async () => {
-    const res = await request(app)
-      .patch('/api/v1/admin/ai/config')
-      .set('Cookie', repCookie)
-      .send({
-        provider: 'anthropic',
-        model: 'claude-sonnet-4-20250514',
-        deployment_mode: 'cloud_api',
-      });
+    const res = await request(app).patch('/api/v1/admin/ai/config').set('Cookie', repCookie).send({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      deployment_mode: 'cloud_api',
+    });
     expect(res.status).toBe(403);
   });
 

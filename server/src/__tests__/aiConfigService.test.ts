@@ -59,7 +59,9 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await clearAiSettings();
-  await pool.end();
+  // Do NOT call pool.end() — this file runs in the parallel Vitest project
+  // and pool is a shared singleton. Calling end() here terminates it for all
+  // other concurrent test files and causes "Cannot use a pool after calling end".
 });
 
 // ── getAiConfig defaults ───────────────────────────────────────────────────────
