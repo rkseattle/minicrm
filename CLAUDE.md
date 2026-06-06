@@ -675,6 +675,11 @@ Real patterns from past findings on this repo:
 - [ ] **RTL-safe classes** — logical properties used, not physical directional classes.
 - [ ] **Loading / error / empty states** — every component with async data handles all three
       states explicitly; none are left implicit or missing.
+- [ ] **User docs updated** — if the change adds or modifies a user-facing feature, update
+      or create the relevant page(s) in `docs/user-guide/` and `docs/admin-guide.md`.
+      New navigable sections need an entry in `docs/user-guide/index.md`. Feature-flagged
+      features need a callout naming the flag. New i18n `errors.*` codes need a plain-English
+      explanation in the user guide where that error can surface.
 - [ ] **Screenshots updated** — if the change modifies any user-visible UI, update
       `docs/screenshots/` via `scripts/screenshot.ts` and check `README.md` for stale
       descriptions.
