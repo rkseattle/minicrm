@@ -21,6 +21,7 @@
     "create:e2e-db": "tsx src/scripts/create-e2e-db.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.0",
     "@bufbuild/protobuf": "^1.10.1",
     "@connectrpc/connect": "^1.7.0",
     "@connectrpc/connect-express": "^1.7.0",

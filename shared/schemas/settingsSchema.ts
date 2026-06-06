@@ -187,6 +187,164 @@ export interface SsoStatusResponse {
   protocol: SsoProtocol | null;
 }
 
+// ── AI configuration schemas (MINCRM-457) ─────────────────────────────────────
+
+/** Supported AI providers. Extend this list when adding new providers. */
+export const AI_PROVIDERS = ['anthropic'] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+
+/** Deployment modes that control where AI inference traffic is routed. */
+export const AI_DEPLOYMENT_MODES = ['cloud_api', 'private_endpoint', 'self_hosted'] as const;
+export type AiDeploymentMode = (typeof AI_DEPLOYMENT_MODES)[number];
+
+/**
+ * DPA compliance status derived from the combination of acknowledgment state
+ * and whether the provider has changed since the last acknowledgment.
+ */
+export type AiDpaStatus = 'acknowledged' | 'not_acknowledged' | 'provider_changed';
+
+/**
+ * Composite data-posture indicator shown in the /admin/ai header.
+ * Combines deployment mode and DPA status per the AC matrix.
+ */
+export type AiDataPosture = 'green' | 'amber' | 'red';
+
+/** A single model entry returned in the available_models list. */
+export interface AiModelOption {
+  id: string;
+  display_name: string;
+  provider: AiProvider;
+}
+
+/**
+ * Public shape returned by GET /api/v1/admin/ai/config.
+ * The raw API key is never returned — only the boolean indicator.
+ */
+export interface AiConfigResponse {
+  enabled: boolean;
+  enabled_updated_at: string | null;
+  provider: AiProvider;
+  model: string;
+  /** True when an encrypted API key is stored; the plaintext is never returned. */
+  api_key_set: boolean;
+  deployment_mode: AiDeploymentMode;
+  /** Required and non-empty for private_endpoint and self_hosted modes. */
+  base_url: string;
+  dpa_acknowledged: boolean;
+  dpa_acknowledged_by: string;
+  dpa_acknowledged_at: string | null;
+  /** The provider that was active when the DPA was last acknowledged. */
+  dpa_acknowledged_for_provider: string;
+  custom_dpa_url: string;
+  /** Derived compliance status for UI badge rendering. */
+  dpa_status: AiDpaStatus;
+  /** Composite data posture indicator for the /admin/ai header. */
+  data_posture: AiDataPosture;
+  /** Server-managed list of available models for the selected provider. */
+  available_models: AiModelOption[];
+}
+
+/**
+ * Schema for PATCH /api/v1/admin/ai/config request body.
+ * api_key is optional — omitting it leaves the stored key unchanged.
+ * base_url is required when deployment_mode is private_endpoint or self_hosted.
+ */
+export const setAiConfigSchema = z
+  .object({
+    provider: z.enum(AI_PROVIDERS, {
+      errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
+    }),
+    model: z.string().min(1, { message: 'Model is required' }).max(100),
+    api_key: z.string().max(512, { message: 'API key must be 512 characters or fewer' }).optional(),
+    deployment_mode: z.enum(AI_DEPLOYMENT_MODES, {
+      errorMap: () => ({
+        message: `Deployment mode must be one of: ${AI_DEPLOYMENT_MODES.join(', ')}`,
+      }),
+    }),
+    base_url: z
+      .string()
+      .max(2048, { message: 'Base URL must be 2048 characters or fewer' })
+      .optional()
+      .default(''),
+    custom_dpa_url: z
+      .string()
+      .max(2048, { message: 'Custom DPA URL must be 2048 characters or fewer' })
+      .optional()
+      .default(''),
+  })
+  .superRefine((val, ctx) => {
+    const requiresBaseUrl =
+      val.deployment_mode === 'private_endpoint' || val.deployment_mode === 'self_hosted';
+    if (requiresBaseUrl && (!val.base_url || val.base_url.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Base URL is required for Private Endpoint and Self-Hosted deployment modes',
+        path: ['base_url'],
+      });
+    }
+    if (val.base_url && val.base_url.trim() !== '') {
+      const urlResult = z.string().url().safeParse(val.base_url);
+      if (!urlResult.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Base URL must be a valid URL',
+          path: ['base_url'],
+        });
+      }
+    }
+    if (val.custom_dpa_url && val.custom_dpa_url.trim() !== '') {
+      const urlResult = z.string().url().safeParse(val.custom_dpa_url);
+      if (!urlResult.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Custom DPA URL must be a valid URL',
+          path: ['custom_dpa_url'],
+        });
+      }
+    }
+  });
+
+export type SetAiConfigInput = z.infer<typeof setAiConfigSchema>;
+
+/** Schema for PATCH /api/v1/admin/ai/master-toggle request body. */
+export const setAiEnabledSchema = z.object({
+  enabled: z.boolean({ required_error: 'enabled is required' }),
+});
+
+export type SetAiEnabledInput = z.infer<typeof setAiEnabledSchema>;
+
+/** Schema for POST /api/v1/admin/ai/dpa-acknowledgment request body. */
+export const setAiDpaAcknowledgmentSchema = z.object({
+  acknowledged: z.boolean({ required_error: 'acknowledged is required' }),
+  custom_dpa_url: z
+    .string()
+    .max(2048, { message: 'Custom DPA URL must be 2048 characters or fewer' })
+    .optional()
+    .default(''),
+});
+
+export type SetAiDpaAcknowledgmentInput = z.infer<typeof setAiDpaAcknowledgmentSchema>;
+
+/** Schema for POST /api/v1/admin/ai/test-connection request body. */
+export const testAiConnectionSchema = z.object({
+  provider: z.enum(AI_PROVIDERS, {
+    errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
+  }),
+  model: z.string().min(1, { message: 'Model is required' }).max(100),
+  /** If omitted, the stored API key is used for the test. */
+  api_key: z.string().max(512).optional(),
+  deployment_mode: z.enum(AI_DEPLOYMENT_MODES),
+  base_url: z.string().max(2048).optional().default(''),
+});
+
+export type TestAiConnectionInput = z.infer<typeof testAiConnectionSchema>;
+
+/** Shape returned by POST /api/v1/admin/ai/test-connection */
+export interface TestAiConnectionResponse {
+  ok: boolean;
+  message: string;
+}
+
 // ── Exchange rate schemas (MINCRM-251) ─────────────────────────────────────────
 
 /**
