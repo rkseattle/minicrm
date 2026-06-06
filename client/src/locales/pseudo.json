@@ -1069,6 +1069,7 @@
     "VALIDATION_ERROR": "[Plëäŝë ĉhëĉk yöür ïñpüt äñd try ägäïñ.~~~~~~~~~~~~]",
     "RESET_TOKEN_INVALID": "[Thïŝ rëŝët lïñk ïŝ ïñvälïd ör häŝ ëxpïrëd.~~~~~~~~~~~~~]",
     "FORBIDDEN": "[Yöü döñ't hävë përmïŝŝïöñ tö përförm thïŝ äĉtïöñ.~~~~~~~~~~~~~~~~]",
+    "FEATURE_FLAG_NOT_ENABLED": "[Thïs fëätůŗë ïs ñöt ëñäblëd. Cöñtäct äñ ädmïñïŝtŗätöŗ.~~~~~~~~]",
     "NOT_FOUND": "[Thë rëqüëŝtëd rëŝöürĉë wäŝ ñöt föüñd.~~~~~~~~~~~~~]",
     "OPTIMISTIC_LOCK_CONFLICT": "[Ŝömëöñë ëlŝë ëdïtëd thïŝ rëĉörd whïlë yöü wërë wörkïñg. Plëäŝë rëvïëw äñd rëŝübmït.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
     "CONTACT_EMAIL_DUPLICATE": "[Ä ĉöñtäĉt wïth thïŝ ëmäïl äddrëŝŝ älrëädy ëxïŝtŝ.~~~~~~~~~~~~~~~~]",

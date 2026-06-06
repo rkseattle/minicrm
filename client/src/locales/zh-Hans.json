@@ -1235,6 +1235,7 @@
     "VALIDATION_ERROR": "请检查您的输入并重试。",
     "RESET_TOKEN_INVALID": "此重置链接无效或已过期。",
     "FORBIDDEN": "您没有执行此操作的权限。",
+    "FEATURE_FLAG_NOT_ENABLED": "此功能未启用，请联系管理员。",
     "NOT_FOUND": "找不到所请求的资源。",
     "OPTIMISTIC_LOCK_CONFLICT": "您编辑期间有其他人修改了此记录，请检查后重新提交。",
     "CONTACT_EMAIL_DUPLICATE": "已存在使用此电子邮件地址的联系人。",

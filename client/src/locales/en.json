@@ -1200,6 +1200,7 @@
     "VALIDATION_ERROR": "Please check your input and try again.",
     "RESET_TOKEN_INVALID": "This reset link is invalid or has expired.",
     "FORBIDDEN": "You don't have permission to perform this action.",
+    "FEATURE_FLAG_NOT_ENABLED": "This feature is not enabled. Contact an administrator.",
     "NOT_FOUND": "The requested resource was not found.",
     "OPTIMISTIC_LOCK_CONFLICT": "Someone else edited this record while you were working. Please review and resubmit.",
     "CONTACT_EMAIL_DUPLICATE": "A contact with this email address already exists.",
