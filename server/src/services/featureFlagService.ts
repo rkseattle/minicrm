@@ -49,6 +49,15 @@ function invalidateCache(): void {
   cache = null;
 }
 
+/**
+ * Exported for test use only — clears the TTL cache so a test's DB mutations
+ * are visible to the next service call without waiting for TTL expiry.
+ * Do not call this from application code.
+ */
+export function __clearCacheForTest(): void {
+  invalidateCache();
+}
+
 /** Returns cached rows if still valid, otherwise fetches from DB and repopulates cache. */
 async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
   if (cache && cache.expiresAt > Date.now()) {
@@ -189,17 +198,19 @@ export async function updateFeatureFlag(
     );
     const updated = result.rows[0];
 
-    await writeAuditEntry(client, {
-      recordType: 'feature_flag',
-      recordId: null,
-      recordName: before.label,
-      eventType: 'updated',
-      fieldName: 'enabled',
-      oldValue: String(before.enabled),
-      newValue: String(patch.enabled),
-      changedById: actor.id,
-      changedByName: actor.name,
-    });
+    if (patch.enabled !== before.enabled) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'enabled',
+        oldValue: String(before.enabled),
+        newValue: String(patch.enabled),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
 
     if (
       patch.role_overrides !== undefined &&
@@ -222,7 +233,9 @@ export async function updateFeatureFlag(
     invalidateCache();
 
     if (patch.enabled === false && opts?.onDisabled) {
-      void opts.onDisabled();
+      void opts.onDisabled().catch((err: unknown) => {
+        logger.error({ err, flagKey: key }, 'onDisabled side-effect failed');
+      });
     }
 
     return {

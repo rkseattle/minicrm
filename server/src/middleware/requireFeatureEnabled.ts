@@ -21,7 +21,13 @@ import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 export function requireFeatureEnabled(flagKey: string): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const role = (req.user?.role ?? 'rep') as UserRole;
+      if (!req.user) {
+        res.status(401).json({
+          error: { code: 'UNAUTHENTICATED', message: 'Authentication required' },
+        });
+        return;
+      }
+      const role = req.user.role as UserRole;
       const enabled = await isFlagEnabledForRole(flagKey, role);
 
       if (!enabled) {
