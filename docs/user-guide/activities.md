@@ -1,5 +1,9 @@
 # Activities
 
+> **Feature flags:** Activities and Tasks can be independently disabled by your admin.
+> If the activity timeline or task list is missing, contact your admin to check the
+> **Activities** and **Tasks** feature flags.
+
 Activities are records of interactions with contacts — calls, emails, meetings, and
 tasks. They build up a timeline on each contact, account, and deal so everyone on the
 team can see the history at a glance.

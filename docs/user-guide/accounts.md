@@ -1,5 +1,9 @@
 # Accounts
 
+> **Feature flags:** Custom Fields on accounts and CSV export from the accounts list
+> require the **Custom Fields** and **CSV Export** feature flags respectively. If either
+> is missing, contact your admin.
+
 Accounts represent companies or organisations. Linking contacts and deals to an account
 gives you a full picture of your relationship with that company.
 

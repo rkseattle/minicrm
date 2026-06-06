@@ -1,5 +1,8 @@
 # Notes
 
+> **Feature flag:** Notes can be disabled by your admin. If the Notes section does not
+> appear on record pages, contact your admin to enable the **Notes** feature flag.
+
 Notes are rich-text comments attached to a contact, account, deal, or lead. Unlike
 activity log entries, notes are designed for longer contextual commentary — background
 on a relationship, meeting summaries, internal team discussions, or information shared
