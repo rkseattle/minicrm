@@ -732,6 +732,9 @@
       "disableButton": "Disable SSO",
       "disableConfirmPrompt": "This will remove SSO bindings for all users. Continue?",
       "disableConfirmButton": "Yes, disable SSO"
+    },
+    "tabs": {
+      "features": "Ƒéàŧůŗéş"
     }
   },
   "profileSettings": {
@@ -1600,5 +1603,31 @@
     "noSteps": "[Ñö ŝţëpŝ ÿëţ. Ädd öñë ţö ĝëţ ŝţärţëd.~~~~~~~~~]",
     "enableSequence": "[Ëñäblë ŝëqüëñçë {{name}}~~~~~~]",
     "disableSequence": "[Dïŝäblë ŝëqüëñçë {{name}}~~~~~~]"
+  },
+  "featureFlags": {
+    "description": "[Ɛñàƀĺé öŗ ðïšàƀĺé ƥŗöðùçŧ ƒéàŧùŗéš ƒöŗ àĺĺ ùšéŗš ïñ ÿöùŗ öŗǧàñïžàŧïöñ.]",
+    "offBadge": "[Öƒƒ]",
+    "lastChanged": "[Ĺàšŧ çĥàñǧéð ƀÿ {{name}} öñ {{date}}]",
+    "activeUsersWarning": "[{{count}} ùšéŗ(š) ĥàvé ùšéð ŧĥïš ƒéàŧùŗé ïñ ŧĥé ĺàšŧ 30 ðàÿš.]",
+    "confirmEnable": "[Ɛñàƀĺé {{label}}?]",
+    "confirmDisable": "[Ðïšàƀĺé {{label}}?]",
+    "confirmEnableBody": "[Ŧĥïš ŵïĺĺ éñàƀĺé {{label}} ƒöŗ àĺĺ ùšéŗš. Çöñŧïñùé?]",
+    "confirmDisableBody": "[Ŧĥïš ŵïĺĺ ðïšàƀĺé {{label}} ƒöŗ àĺĺ ùšéŗš. Çöñŧïñùé?]",
+    "roleOverrides": "[Ƥéŗ-ŗöĺé àççéšš:]",
+    "toggleLabel": "[Ŧöǧǧĺé {{label}}]",
+    "saveError": "[Ƒàïĺéð ŧö šàvé. Ƥĺéàšé ŧŗÿ àǧàïñ.]",
+    "loadError": "[Ƒàïĺéð ŧö ĺöàð ƒéàŧùŗé ƒĺàǧš.]",
+    "empty": "[Ñö ƒéàŧùŗé ƒĺàǧš çöñƒïǧùŗéð.]",
+    "categories": {
+      "core_crm": "[Çöŗé ÇŔM]",
+      "productivity": "[Ƥŗöðùçŧïvïŧÿ]",
+      "data": "[Ðàŧà]",
+      "integrations": "[Ïñŧéǧŗàŧïöñš]",
+      "ai": "[ÀÏ]"
+    },
+    "roles": {
+      "admin": "[Àðmïñ]",
+      "rep": "[Ŕéƥ]"
+    }
   }
 }

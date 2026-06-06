@@ -22,6 +22,7 @@ import CustomisationSettings from '@/pages/admin/CustomisationSettings.js';
 import DataSettings from '@/pages/admin/DataSettings.js';
 import IntegrationSettings from '@/pages/admin/IntegrationSettings.js';
 import BrandingSettings from '@/pages/admin/BrandingSettings.js';
+import FeatureFlagsSettings from '@/pages/admin/FeatureFlagsSettings.js';
 
 type TabKey =
   | 'general'
@@ -30,7 +31,8 @@ type TabKey =
   | 'customisation'
   | 'branding'
   | 'data'
-  | 'integrations';
+  | 'integrations'
+  | 'features';
 
 const TAB_KEYS: TabKey[] = [
   'general',
@@ -40,6 +42,7 @@ const TAB_KEYS: TabKey[] = [
   'branding',
   'data',
   'integrations',
+  'features',
 ];
 
 const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
@@ -50,6 +53,7 @@ const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
   branding: BrandingSettings,
   data: DataSettings,
   integrations: IntegrationSettings,
+  features: FeatureFlagsSettings,
 };
 
 function isValidTab(value: string | null): value is TabKey {
