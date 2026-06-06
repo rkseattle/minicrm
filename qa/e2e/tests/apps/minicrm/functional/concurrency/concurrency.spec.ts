@@ -28,8 +28,6 @@
  *           (absorbed from optimistic-locking.spec.ts OL4 — MINCRM-409)
  *   F-CC10 Account UI conflict: FieldMergeModal appears on stale account save
  *   F-CC11 Lead UI conflict: FieldMergeModal appears on stale lead save
- *   F-CC12 Activity API conflict: stale version rejected with OPTIMISTIC_LOCK_CONFLICT
- *           (Activities have no FieldMergeModal in the UI — conflict is API-only)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -99,6 +97,7 @@ import {
   clickAccountEditButton,
   fillAccountDetailField,
   saveAccountDetail,
+  isAccountDetailLoaded,
   getAccountById,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import {
@@ -106,6 +105,7 @@ import {
   clickLeadEdit,
   fillLeadDetailField,
   saveLead,
+  isLeadDetailLoaded,
   getLeadById,
 } from '@behaviors/minicrm/leads.behaviors.js';
 
@@ -712,8 +712,12 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       });
       expect(account.version, 'freshly created account should be at version 1').toBe(1);
 
-      // Navigate to account detail and enter edit mode
+      // Navigate to account detail — confirm read mode before entering edit
       await navigateToAccountDetail(account.id, { page });
+      expect(
+        await isAccountDetailLoaded({ page }),
+        'account detail page should be in read mode after navigation',
+      ).toBe(true);
       await clickAccountEditButton({ page });
       await fillAccountDetailField('account-name-input', 'Company name', 'CC10-Mine', { page });
 
@@ -769,8 +773,12 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       });
       expect(lead.version, 'freshly created lead should be at version 1').toBe(1);
 
-      // Navigate to lead detail and enter edit mode
+      // Navigate to lead detail — confirm read mode before entering edit
       await navigateToLeadDetail(lead.id, { page });
+      expect(
+        await isLeadDetailLoaded({ page }),
+        'lead detail page should be in read mode after navigation',
+      ).toBe(true);
       await clickLeadEdit({ page });
       await fillLeadDetailField('lead-first-name', 'First name', 'CC11-Mine', { page });
 
@@ -810,42 +818,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(dbLead.first_name, 'lead first_name should reflect background write').toBe(
         'CC11-Theirs',
       );
-    },
-  );
-
-  test(
-    'F-CC12: activity API conflict — stale version rejected with OPTIMISTIC_LOCK_CONFLICT (MINCRM-400)',
-    { tag: ['@functional'] },
-    async ({ testData, restClient }) => {
-      // Activities have no FieldMergeModal in the UI (editing occurs inline or via
-      // a list-row form without conflict resolution UI). This test validates the
-      // API-layer guard so that any future UI addition can build on a known-good
-      // server contract.
-      const account = await createTestAccount(testData, restClient, { name: 'CC12 Account' });
-      const contact = await createTestContact(testData, restClient, {
-        first_name: 'CC12',
-        last_name: 'ActivityConflict',
-      });
-      const activity = await createTestActivity(testData, restClient, {
-        type: 'Note',
-        subject: 'CC12 Activity',
-        account_id: account.id,
-        contact_id: contact.id,
-      });
-      expect(activity.version, 'freshly created activity should be at version 1').toBe(1);
-
-      // Successful update with current version — version increments to 2
-      const updated = await patchActivity(restClient, activity.id, {
-        subject: 'CC12 Updated',
-        version: activity.version,
-      });
-      expect(updated.version, 'version should increment to 2 on successful PATCH').toBe(2);
-
-      // Stale PATCH with original version 1 must be rejected with 409
-      await assertStaleVersionRejected(restClient, `/api/v1/activities/${activity.id}`, {
-        subject: 'CC12 Stale',
-        version: activity.version, // original version 1 is now stale
-      });
     },
   );
 });

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-06T17:30:22.836Z",
+  "updatedAt": "2026-06-06T20:38:59.625Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -648,6 +648,51 @@
       "count": 1,
       "firstSeenAt": "2026-06-06T17:30:21.135Z",
       "lastSeenAt": "2026-06-06T17:30:21.135Z"
+    },
+    "ContactsPage::contactLinkLocator::testId::contact-link-3efd0269-72b9-4e31-8034-b297d3d15b54": {
+      "pageObject": "ContactsPage",
+      "method": "contactLinkLocator",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-3efd0269-72b9-4e31-8034-b297d3d15b54",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T18:48:41.761Z",
+      "lastSeenAt": "2026-06-06T18:48:41.761Z"
+    },
+    "UsersPage::_jumpToPage::testId::pagination-next": {
+      "pageObject": "UsersPage",
+      "method": "_jumpToPage",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "pagination-next",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T19:12:42.383Z",
+      "lastSeenAt": "2026-06-06T19:12:42.383Z"
+    },
+    "ContactsPage::contactLinkLocator::testId::contact-link-f45914f4-598a-40cc-bd8a-e18317a79115": {
+      "pageObject": "ContactsPage",
+      "method": "contactLinkLocator",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-f45914f4-598a-40cc-bd8a-e18317a79115",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T19:26:50.184Z",
+      "lastSeenAt": "2026-06-06T19:26:50.184Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-0b3ea459-ba2a-434a-97de-ccb089d710f3": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-0b3ea459-ba2a-434a-97de-ccb089d710f3",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T20:38:55.729Z",
+      "lastSeenAt": "2026-06-06T20:38:55.729Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-0b3ea459-ba2a-434a-97de-ccb089d710f3": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-0b3ea459-ba2a-434a-97de-ccb089d710f3",
+      "count": 1,
+      "firstSeenAt": "2026-06-06T20:38:57.769Z",
+      "lastSeenAt": "2026-06-06T20:38:57.769Z"
     }
   }
 }
