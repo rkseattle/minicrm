@@ -438,3 +438,116 @@ change, the previous value, and the new value. You can review this history in
 - The **Active users** count reflects usage in the trailing 30-day window and updates
   automatically as users interact with the system.
 - System flags (marked with a lock icon) cannot be deleted, but they can be toggled off.
+
+---
+
+## 9. AI Configuration
+
+> **Feature flag:** `ai_features`
+>
+> The AI configuration page is always visible to administrators. The **AI Features** flag
+> in **Admin Settings → Features** is the master gate for AI-powered features shown to
+> _all users_. The admin configuration page itself is not gated by this flag — you need
+> to reach it to enable AI in the first place.
+
+MiniCRM can integrate with an AI provider to power future AI-assisted features. The
+**AI** tab under **Admin Settings** lets you configure the provider, model, API key,
+deployment mode, and data processing agreement status.
+
+### Tutorial: enable AI and connect to Anthropic
+
+#### Step 1 — Open the AI settings tab
+
+Go to **Admin Settings → AI**.
+
+#### Step 2 — Configure the provider and model
+
+1. Select **Provider** — currently only _Anthropic_ is supported.
+2. Select a **Model** from the available list (e.g. _Claude Sonnet 4_).
+3. Under **Deployment mode**, choose one of:
+   - **Cloud API** — calls go to Anthropic's public API (default).
+   - **Private endpoint** — calls go to a custom HTTPS base URL (enter it in the
+     **Base URL** field that appears).
+   - **Self-hosted** — your own on-premises deployment.
+
+#### Step 3 — Enter the API key
+
+Paste your Anthropic API key into the **API key** field. Once saved, the key is stored
+encrypted at rest and is never displayed again. You can update it at any time by clicking
+**Change**.
+
+#### Step 4 — Test the connection
+
+Click **Test connection** to verify that the key and model can reach the provider. A
+success or failure message will appear beneath the button.
+
+#### Step 5 — Acknowledge the data processing agreement
+
+For _Cloud API_ and _Private endpoint_ modes, you must acknowledge your organisation's
+data processing agreement (DPA) with Anthropic before the data posture indicator turns
+green.
+
+1. Review the [Anthropic DPA](https://www.anthropic.com/legal/data-processing-agreement)
+   (the link is shown on the page).
+2. If your organisation has a custom DPA on file, paste the URL in the **Custom DPA URL**
+   field.
+3. Tick the **I acknowledge the data processing agreement** checkbox.
+
+Acknowledgment is recorded with your name and timestamp in the audit log. If you later
+switch providers, the DPA status resets and you must re-acknowledge for the new provider.
+
+Self-hosted deployments do not require a DPA acknowledgment (the green data posture is
+granted automatically because data never leaves your infrastructure).
+
+#### Step 6 — Enable AI globally
+
+Click **Save** to persist the configuration, then use the **AI enabled** master toggle
+at the top of the page to turn AI features on. A confirmation dialog will appear before
+the state is changed.
+
+### Reference
+
+#### Data posture indicator
+
+The data posture badge summarises the current risk classification:
+
+| Badge | Meaning                                                                         |
+| ----- | ------------------------------------------------------------------------------- |
+| Green | AI is disabled, self-hosted mode is active, or DPA is fully acknowledged        |
+| Amber | AI is configured but the DPA has not been acknowledged                          |
+| Red   | DPA was acknowledged for a different provider than the one currently configured |
+
+#### DPA status values
+
+| Status           | Meaning                                                              |
+| ---------------- | -------------------------------------------------------------------- |
+| Not acknowledged | No DPA acknowledgment on record                                      |
+| Acknowledged     | DPA acknowledged for the current provider                            |
+| Provider changed | Provider changed since the DPA was last acknowledged; re-acknowledge |
+
+#### Available models (Anthropic)
+
+| Model ID                    | Display name                 |
+| --------------------------- | ---------------------------- |
+| `claude-opus-4-8`           | Claude Opus 4.8              |
+| `claude-sonnet-4-6`         | Claude Sonnet 4.6            |
+| `claude-sonnet-4-20250514`  | Claude Sonnet 4 (2025-05-14) |
+| `claude-haiku-4-5-20251001` | Claude Haiku 4.5             |
+
+The model list is curated for stable production use. Contact support if you need access
+to a model not listed here.
+
+#### Audit trail
+
+Every change to AI configuration is written to the audit log under the `ai_settings`
+record type. This includes enabling/disabling AI, changing the provider or model, rotating
+the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
+
+#### Notes
+
+- The API key is encrypted at rest using AES-256-GCM. It is never returned by the API —
+  only an `api_key_set` boolean indicator is exposed.
+- Changing the provider resets the DPA acknowledgment. You must re-acknowledge for the
+  new provider before the data posture indicator turns green.
+- The master toggle and configuration are separate operations. You can configure AI
+  without enabling it globally, which is useful for staging your setup before rollout.
