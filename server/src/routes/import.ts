@@ -13,6 +13,7 @@ import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   parseAccountsCsv,
@@ -46,6 +47,7 @@ const upload = multer({
 // ── Shared middleware ──────────────────────────────────────────────────────────
 router.use(authenticate);
 router.use(requireRole('admin'));
+router.use(requireFeatureEnabled('csv_import'));
 
 /**
  * @openapi

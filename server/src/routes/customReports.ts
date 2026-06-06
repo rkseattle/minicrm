@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listCustomReportsHandler,
@@ -32,7 +33,12 @@ const router = Router();
  *       200:
  *         description: Array of saved custom reports
  */
-router.get('/', authenticate, asyncHandler(listCustomReportsHandler));
+router.get(
+  '/',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(listCustomReportsHandler),
+);
 
 /**
  * @openapi
@@ -62,7 +68,12 @@ router.get('/', authenticate, asyncHandler(listCustomReportsHandler));
  *       400:
  *         description: Validation error or invalid field
  */
-router.post('/run', authenticate, asyncHandler(runAdHocReportHandler));
+router.post(
+  '/run',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(runAdHocReportHandler),
+);
 
 /**
  * @openapi
@@ -81,7 +92,12 @@ router.post('/run', authenticate, asyncHandler(runAdHocReportHandler));
  *       409:
  *         description: Name conflict
  */
-router.post('/', authenticate, asyncHandler(createCustomReportHandler));
+router.post(
+  '/',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(createCustomReportHandler),
+);
 
 /**
  * @openapi
@@ -105,7 +121,12 @@ router.post('/', authenticate, asyncHandler(createCustomReportHandler));
  *       404:
  *         description: Not found
  */
-router.get('/:id', authenticate, asyncHandler(getCustomReportHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(getCustomReportHandler),
+);
 
 /**
  * @openapi
@@ -131,7 +152,12 @@ router.get('/:id', authenticate, asyncHandler(getCustomReportHandler));
  *       409:
  *         description: Name conflict
  */
-router.patch('/:id', authenticate, asyncHandler(updateCustomReportHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(updateCustomReportHandler),
+);
 
 /**
  * @openapi
@@ -155,7 +181,12 @@ router.patch('/:id', authenticate, asyncHandler(updateCustomReportHandler));
  *       404:
  *         description: Not found
  */
-router.delete('/:id', authenticate, asyncHandler(deleteCustomReportHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(deleteCustomReportHandler),
+);
 
 /**
  * @openapi
@@ -179,7 +210,12 @@ router.delete('/:id', authenticate, asyncHandler(deleteCustomReportHandler));
  *       404:
  *         description: Report not found
  */
-router.post('/:id/run', authenticate, asyncHandler(runCustomReportHandler));
+router.post(
+  '/:id/run',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(runCustomReportHandler),
+);
 
 /**
  * @openapi
@@ -207,6 +243,11 @@ router.post('/:id/run', authenticate, asyncHandler(runCustomReportHandler));
  *       404:
  *         description: Report not found
  */
-router.get('/:id/export', authenticate, asyncHandler(exportCustomReportHandler));
+router.get(
+  '/:id/export',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(exportCustomReportHandler),
+);
 
 export default router;

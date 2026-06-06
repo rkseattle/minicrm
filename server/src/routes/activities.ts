@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createActivityHandler,
@@ -135,7 +136,12 @@ const router = Router();
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.get('/', authenticate, asyncHandler(listActivitiesHandler));
+router.get(
+  '/',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(listActivitiesHandler),
+);
 
 /**
  * @openapi
@@ -204,7 +210,12 @@ router.get('/', authenticate, asyncHandler(listActivitiesHandler));
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
+router.get(
+  '/my-tasks',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(listMyTasksHandler),
+);
 
 /**
  * @openapi
@@ -276,7 +287,12 @@ router.get('/my-tasks', authenticate, asyncHandler(listMyTasksHandler));
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.post('/', authenticate, asyncHandler(createActivityHandler));
+router.post(
+  '/',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(createActivityHandler),
+);
 
 /**
  * @openapi
@@ -340,7 +356,12 @@ router.post('/', authenticate, asyncHandler(createActivityHandler));
  *                 code: NOT_FOUND
  *                 message: Activity not found
  */
-router.get('/:id', authenticate, asyncHandler(getActivityHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(getActivityHandler),
+);
 
 /**
  * @openapi
@@ -437,7 +458,12 @@ router.get('/:id', authenticate, asyncHandler(getActivityHandler));
  *                 code: NOT_FOUND
  *                 message: Activity not found
  */
-router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(updateActivityHandler),
+);
 
 /**
  * @openapi
@@ -493,6 +519,11 @@ router.patch('/:id', authenticate, asyncHandler(updateActivityHandler));
  *                 code: NOT_FOUND
  *                 message: Activity not found
  */
-router.delete('/:id', authenticate, asyncHandler(deleteActivityHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('activities'),
+  asyncHandler(deleteActivityHandler),
+);
 
 export default router;

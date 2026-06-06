@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listNotesHandler,
@@ -63,7 +64,7 @@ const router = Router({ mergeParams: true });
  *       401:
  *         description: Unauthenticated
  */
-router.get('/', authenticate, asyncHandler(listNotesHandler));
+router.get('/', authenticate, requireFeatureEnabled('notes'), asyncHandler(listNotesHandler));
 
 /**
  * @openapi
@@ -117,7 +118,7 @@ router.get('/', authenticate, asyncHandler(listNotesHandler));
  *       401:
  *         description: Unauthenticated
  */
-router.post('/', authenticate, asyncHandler(createNoteHandler));
+router.post('/', authenticate, requireFeatureEnabled('notes'), asyncHandler(createNoteHandler));
 
 /**
  * @openapi
@@ -155,7 +156,7 @@ router.post('/', authenticate, asyncHandler(createNoteHandler));
  *       404:
  *         description: Note not found
  */
-router.get('/:noteId', authenticate, asyncHandler(getNoteHandler));
+router.get('/:noteId', authenticate, requireFeatureEnabled('notes'), asyncHandler(getNoteHandler));
 
 /**
  * @openapi
@@ -198,7 +199,12 @@ router.get('/:noteId', authenticate, asyncHandler(getNoteHandler));
  *       404:
  *         description: Note not found
  */
-router.patch('/:noteId', authenticate, asyncHandler(updateNoteHandler));
+router.patch(
+  '/:noteId',
+  authenticate,
+  requireFeatureEnabled('notes'),
+  asyncHandler(updateNoteHandler),
+);
 
 /**
  * @openapi
@@ -239,6 +245,11 @@ router.patch('/:noteId', authenticate, asyncHandler(updateNoteHandler));
  *       404:
  *         description: Note not found
  */
-router.delete('/:noteId', authenticate, asyncHandler(deleteNoteHandler));
+router.delete(
+  '/:noteId',
+  authenticate,
+  requireFeatureEnabled('notes'),
+  asyncHandler(deleteNoteHandler),
+);
 
 export default router;

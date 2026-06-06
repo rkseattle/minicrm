@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listCustomFieldDefinitionsHandler,
@@ -38,7 +39,12 @@ const router = Router();
  *       400:
  *         description: Invalid entity_type
  */
-router.get('/', authenticate, asyncHandler(listCustomFieldDefinitionsHandler));
+router.get(
+  '/',
+  authenticate,
+  requireFeatureEnabled('custom_fields'),
+  asyncHandler(listCustomFieldDefinitionsHandler),
+);
 
 /**
  * @openapi
@@ -61,6 +67,7 @@ router.post(
   '/',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('custom_fields'),
   asyncHandler(createCustomFieldDefinitionHandler),
 );
 
@@ -90,6 +97,7 @@ router.patch(
   '/:id',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('custom_fields'),
   asyncHandler(updateCustomFieldDefinitionHandler),
 );
 
@@ -119,6 +127,7 @@ router.delete(
   '/:id',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('custom_fields'),
   asyncHandler(deleteCustomFieldDefinitionHandler),
 );
 

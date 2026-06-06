@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { unenrollContactHandler, getEnrollmentHandler } from '../controllers/sequenceController.js';
 
@@ -32,7 +33,12 @@ const router = Router();
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', authenticate, asyncHandler(getEnrollmentHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(getEnrollmentHandler),
+);
 
 /**
  * @openapi
@@ -56,6 +62,11 @@ router.get('/:id', authenticate, asyncHandler(getEnrollmentHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id', authenticate, asyncHandler(unenrollContactHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(unenrollContactHandler),
+);
 
 export default router;
