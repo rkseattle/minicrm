@@ -18,6 +18,7 @@
  * MINCRM-129, MINCRM-110
  */
 
+import type { Page, BrowserContext } from '@playwright/test';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
@@ -633,4 +634,37 @@ export async function navigateToDashboard(page: SafePage): Promise<void> {
 
 export async function navigateToAdminSettings(page: SafePage): Promise<void> {
   await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+}
+
+// ---------------------------------------------------------------------------
+// Feature flag route interception (MINCRM-477)
+// ---------------------------------------------------------------------------
+
+/**
+ * Intercepts GET /api/v1/feature-flags/me for the given page or browser context
+ * and merges the provided overrides into the response. All unspecified flags
+ * retain the seed defaults returned by the server.
+ *
+ * Scoped to the browser context, so it is parallel-safe and never mutates
+ * global DB state. Must be called before page.goto() so the route handler is
+ * registered before the first navigation triggers the flag fetch.
+ *
+ * @example
+ * await withFlags(page, { reporting: false });
+ * await page.goto('/');
+ * await expect(page.getByTestId('nav-top-reports')).not.toBeVisible();
+ */
+export async function withFlags(
+  pageOrContext: Page | BrowserContext,
+  overrides: Record<string, boolean>,
+): Promise<void> {
+  await pageOrContext.route('**/api/v1/feature-flags/me', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { flags: Record<string, boolean> };
+    const merged: { flags: Record<string, boolean> } = {
+      ...body,
+      flags: { ...body.flags, ...overrides },
+    };
+    await route.fulfill({ json: merged });
+  });
 }

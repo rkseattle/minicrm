@@ -1,24 +1,28 @@
 /**
- * F-FF — Feature Flag Registry (MINCRM-463)
+ * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477)
  *
- * Functional regression tests for the admin feature flag management UI
- * and API gate enforcement.
+ * Functional regression tests for the admin feature flag management UI,
+ * API gate enforcement, and client-side flag isolation via withFlags().
  *
  * Test groups:
  *   F-FF1 — Admin views the feature flags page
  *   F-FF2 — Admin toggles a flag off and sees the confirmation dialog
  *   F-FF3 — Flag toggle writes an audit log entry
  *   F-FF4 — Disabled feature flag returns 403 on the guarded API route
+ *   F-FF5 — withFlags() hides a nav link when its flag is intercepted as off
+ *   F-FF6 — withFlags() shows a nav link when its flag is intercepted as on
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
+ *   - Feature flag UI state controlled via withFlags() route interception only
+ *     (MINCRM-477) — never via PATCH /api/admin/feature-flags/:key in UI tests
  *   - Test data cleaned up via TestDataManager + direct REST resets
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
@@ -29,6 +33,11 @@ import {
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { listFeatureFlags, updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
+import {
+  isNavLinkHidden,
+  getNavLinkLocator,
+  waitForNavLink,
+} from '@behaviors/minicrm/nav.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -159,4 +168,49 @@ test('@functional F-FF4: API route guarded by requireFeatureEnabled returns 403 
       (err as { response?: { status?: number } }).response?.status;
     expect(status).toBe(403);
   }
+});
+
+// ---------------------------------------------------------------------------
+// F-FF5 — withFlags() hides a flagged nav link when intercepted as disabled
+// ---------------------------------------------------------------------------
+
+test('@functional F-FF5: withFlags() hides the Reports nav link when reporting flag is intercepted as off', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Intercept /api/v1/feature-flags/me before the first navigation so the
+  // client receives reporting=false and omits the Reports link from the nav.
+  await withFlags(page, { reporting: false });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  // The Reports nav link must not be visible in the top nav.
+  const hidden = await isNavLinkHidden('nav-top-reports', { page }, 5_000);
+  expect(hidden).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF6 — withFlags() shows a flagged nav link when intercepted as enabled
+// ---------------------------------------------------------------------------
+
+test('@functional F-FF6: withFlags() shows the Reports nav link when reporting flag is intercepted as on', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Intercept to explicitly assert the enabled path, even if the DB seed
+  // already has reporting=true — this documents the expected on-state behaviour.
+  await withFlags(page, { reporting: true });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  // Wait for the Reports link then assert it is visible.
+  await waitForNavLink('nav-top-reports', { page }, 10_000);
+  const reportsLink = await getNavLinkLocator('top', 'reports', { page });
+  await expect(reportsLink).toBeVisible();
 });
