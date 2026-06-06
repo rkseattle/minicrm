@@ -7,6 +7,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
@@ -27,6 +28,7 @@ import type { TagResponse } from '@shared/schemas/tagSchema.js';
 export default function AdminTagsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { enabled, isLoading: flagLoading } = useFeatureFlag('tags');
   const [page, setPage] = useState(1);
 
   const tagsQueryKey = [...TAGS_QUERY_KEY, { page }] as const;
@@ -155,6 +157,23 @@ export default function AdminTagsPage() {
     setDeletingId(id);
     setDeleteError(null);
     deleteMutation.mutate(id);
+  }
+
+  if (flagLoading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!enabled) {
+    return (
+      <div className="p-8 text-center text-gray-500" data-testid="feature-disabled">
+        {t('errors.FEATURE_FLAG_NOT_ENABLED')}
+      </div>
+    );
   }
 
   return (

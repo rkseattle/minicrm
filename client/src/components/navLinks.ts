@@ -4,6 +4,7 @@
  */
 
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import type { FeatureFlagKey } from '@shared/schemas/featureFlagSchema.js';
 
 /**
  * Native name for each supported locale, displayed in the language selector.
@@ -32,6 +33,8 @@ export interface NavLinkDef {
    * The divider + label are only shown when the item is visible (admin check already applied).
    */
   sectionLabelKey?: string;
+  /** When set, this link is hidden if the feature flag is disabled for the current user. */
+  featureFlag?: FeatureFlagKey;
 }
 
 /** Ordered list of navigation destinations for all layout components. */
@@ -42,16 +45,21 @@ export const NAV_LINKS: NavLinkDef[] = [
   { to: '/accounts', labelKey: 'nav.accounts', adminOnly: false },
   { to: '/deals', labelKey: 'nav.deals', adminOnly: false },
   { to: '/tasks', labelKey: 'nav.myTasks', adminOnly: false },
-  { to: '/reports', labelKey: 'nav.reports', adminOnly: false },
+  { to: '/reports', labelKey: 'nav.reports', adminOnly: false, featureFlag: 'reporting' },
   {
     to: '/users',
     labelKey: 'nav.users',
     adminOnly: true,
     sectionLabelKey: 'nav.administrationSection',
   },
-  { to: '/admin/automation', labelKey: 'nav.automation', adminOnly: true },
-  { to: '/admin/sequences', labelKey: 'nav.sequences', adminOnly: true },
-  { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true },
+  {
+    to: '/admin/automation',
+    labelKey: 'nav.automation',
+    adminOnly: true,
+    featureFlag: 'automation_rules',
+  },
+  { to: '/admin/sequences', labelKey: 'nav.sequences', adminOnly: true, featureFlag: 'sequencing' },
+  { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true, featureFlag: 'tags' },
   { to: '/admin/settings', labelKey: 'nav.adminSettings', adminOnly: true },
 ];
 

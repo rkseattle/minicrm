@@ -9,9 +9,40 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listFeatureFlagsHandler,
   updateFeatureFlagHandler,
+  getMyFeatureFlagsHandler,
 } from '../controllers/featureFlagController.js';
 
 const router = Router();
+
+/**
+ * @openapi
+ * /api/v1/feature-flags/me:
+ *   get:
+ *     tags: [FeatureFlags]
+ *     operationId: getMyFeatureFlags
+ *     summary: Get resolved feature flags for the current user
+ *     description: >
+ *       Returns a map of all feature flag keys to their resolved enabled state
+ *       for the calling user's role (accounting for role overrides). Available
+ *       to all authenticated users.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Resolved feature flag map
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 flags:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: boolean
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/me', authenticate, asyncHandler(getMyFeatureFlagsHandler));
 
 /**
  * @openapi

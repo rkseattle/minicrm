@@ -153,6 +153,7 @@ export async function updateFeatureFlag(
   key: string,
   patch: UpdateFeatureFlagInput,
   actor: AuditActor,
+  opts?: { onDisabled?: () => Promise<void> },
 ): Promise<FeatureFlagRow | null> {
   const client: PoolClient = await pool.connect();
   try {
@@ -219,6 +220,10 @@ export async function updateFeatureFlag(
 
     await client.query('COMMIT');
     invalidateCache();
+
+    if (patch.enabled === false && opts?.onDisabled) {
+      void opts.onDisabled();
+    }
 
     return {
       ...updated,

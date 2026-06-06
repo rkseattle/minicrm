@@ -10,6 +10,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
 import NotesSection from '@/components/NotesSection.js';
@@ -76,6 +77,9 @@ export default function EntityDetailSidebar({
 }: EntityDetailSidebarProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { enabled: tagsEnabled, isLoading: tagsLoading } = useFeatureFlag('tags');
+  const { enabled: activitiesEnabled, isLoading: activitiesLoading } = useFeatureFlag('activities');
+  const { enabled: notesEnabled, isLoading: notesLoading } = useFeatureFlag('notes');
 
   if (isEditing) return null;
 
@@ -84,7 +88,10 @@ export default function EntityDetailSidebar({
   return (
     <>
       {/* Tags (MINCRM-186) — not supported for lead */}
-      {showTags && (
+      {showTags && tagsLoading && (
+        <div className="mt-8 h-20 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      )}
+      {showTags && !tagsLoading && tagsEnabled && (
         <section
           className="mt-8"
           aria-labelledby={`${entityType}-tags-heading`}
@@ -106,13 +113,23 @@ export default function EntityDetailSidebar({
       )}
 
       {/* Activity timeline */}
-      {showTimeline && <ActivityTimeline {...timelineProp} />}
+      {showTimeline && activitiesLoading && (
+        <div className="mt-8 h-32 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      )}
+      {showTimeline && !activitiesLoading && activitiesEnabled && (
+        <ActivityTimeline {...timelineProp} />
+      )}
 
       {/* Attachments (MINCRM-167) */}
       {showAttachments && <AttachmentsSection recordType={entityType} recordId={entityId} />}
 
       {/* Notes (MINCRM-352) */}
-      <NotesSection entityType={entityType} entityId={entityId} />
+      {notesLoading && (
+        <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+      )}
+      {!notesLoading && notesEnabled && (
+        <NotesSection entityType={entityType} entityId={entityId} />
+      )}
 
       {/* Change history (MINCRM-171) — not supported for lead */}
       {showChangeHistory && (

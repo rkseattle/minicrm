@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import {
   listPipelinesHandler,
   createPipelineHandler,
@@ -73,7 +74,13 @@ router.get('/', authenticate, asyncHandler(listPipelinesHandler));
  *       409:
  *         description: Pipeline name already in use
  */
-router.post('/', authenticate, requireRole('admin'), asyncHandler(createPipelineHandler));
+router.post(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('multiple_pipelines'),
+  asyncHandler(createPipelineHandler),
+);
 
 /**
  * @openapi
@@ -111,7 +118,13 @@ router.post('/', authenticate, requireRole('admin'), asyncHandler(createPipeline
  *       409:
  *         description: Pipeline name already in use
  */
-router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updatePipelineHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('multiple_pipelines'),
+  asyncHandler(updatePipelineHandler),
+);
 
 /**
  * @openapi
@@ -142,6 +155,12 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updatePipe
  *       409:
  *         description: Pipeline has deals — must be empty before deletion
  */
-router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deletePipelineHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('multiple_pipelines'),
+  asyncHandler(deletePipelineHandler),
+);
 
 export default router;

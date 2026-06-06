@@ -5,8 +5,17 @@
  */
 
 import type { Request, Response } from 'express';
-import { listFeatureFlags, updateFeatureFlag } from '../services/featureFlagService.js';
-import { updateFeatureFlagSchema } from '@minicrm/shared/schemas/featureFlagSchema.js';
+import {
+  listFeatureFlags,
+  updateFeatureFlag,
+  isFlagEnabledForRole,
+} from '../services/featureFlagService.js';
+import { removeDemo } from '../services/demoService.js';
+import {
+  updateFeatureFlagSchema,
+  FEATURE_FLAG_KEYS,
+} from '@minicrm/shared/schemas/featureFlagSchema.js';
+import type { MyFeatureFlagsResponse } from '@minicrm/shared/schemas/featureFlagSchema.js';
 
 /**
  * GET /api/v1/admin/feature-flags
@@ -14,6 +23,20 @@ import { updateFeatureFlagSchema } from '@minicrm/shared/schemas/featureFlagSche
  */
 export async function listFeatureFlagsHandler(req: Request, res: Response): Promise<void> {
   const flags = await listFeatureFlags();
+  res.json({ flags });
+}
+
+/**
+ * GET /api/v1/feature-flags/me
+ * Returns the resolved enabled state for every feature flag for the calling user's role.
+ * Available to all authenticated users (not admin-only).
+ */
+export async function getMyFeatureFlagsHandler(req: Request, res: Response): Promise<void> {
+  const role = req.user!.role; // authenticate ensures req.user exists
+  const entries = await Promise.all(
+    FEATURE_FLAG_KEYS.map(async (key) => [key, await isFlagEnabledForRole(key, role)] as const),
+  );
+  const flags = Object.fromEntries(entries) as MyFeatureFlagsResponse;
   res.json({ flags });
 }
 
@@ -38,7 +61,13 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
   // req.user is guaranteed by authenticate middleware upstream
   const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
 
-  const updated = await updateFeatureFlag(key, parsed.data, actor);
+  const onDisabled =
+    key === 'demo_data'
+      ? async (): Promise<void> => {
+          await removeDemo();
+        }
+      : undefined;
+  const updated = await updateFeatureFlag(key, parsed.data, actor, { onDisabled });
   if (!updated) {
     res.status(404).json({
       error: {

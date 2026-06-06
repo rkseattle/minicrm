@@ -68,6 +68,9 @@ export const updateFeatureFlagSchema = z.object({
 
 export type UpdateFeatureFlagInput = z.infer<typeof updateFeatureFlagSchema>;
 
+/** Response from GET /api/v1/feature-flags/me — resolved enabled state per calling user's role. */
+export type MyFeatureFlagsResponse = Record<FeatureFlagKey, boolean>;
+
 /** Shape of a feature flag row returned from the API. */
 export interface FeatureFlagRow {
   flag_key: FeatureFlagKey;

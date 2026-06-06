@@ -34,6 +34,9 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
+  // Enable demo_data feature flag for this test suite (default is false in migration seed)
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'demo_data'`);
+
   // Remove any notes created_by these test users from prior runs before deleting users
   await pool.query(
     `DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
@@ -146,6 +149,8 @@ afterAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  // Restore demo_data flag to its seeded default
+  await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'demo_data'`);
 });
 
 // ── GET /api/admin/demo/status ────────────────────────────────────────────────

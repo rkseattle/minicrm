@@ -6,7 +6,11 @@
  */
 
 import apiClient from './axiosInstance.js';
-import type { FeatureFlagRow, UpdateFeatureFlagInput } from '@shared/schemas/featureFlagSchema.js';
+import type {
+  FeatureFlagRow,
+  MyFeatureFlagsResponse,
+  UpdateFeatureFlagInput,
+} from '@shared/schemas/featureFlagSchema.js';
 
 /** React Query cache key for the feature flags list */
 export const FEATURE_FLAGS_QUERY_KEY = ['admin', 'feature-flags'] as const;
@@ -42,5 +46,17 @@ export async function updateFeatureFlag(
     `/admin/feature-flags/${key}`,
     patch,
   );
+  return response.data;
+}
+
+/** React Query cache key for the current user's resolved feature flags */
+export const MY_FEATURE_FLAGS_QUERY_KEY = ['feature-flags', 'me'] as const;
+
+/**
+ * Returns the resolved enabled state for every feature flag for the calling user's role.
+ * Available to all authenticated users.
+ */
+export async function getMyFeatureFlags(): Promise<{ flags: MyFeatureFlagsResponse }> {
+  const response = await apiClient.get<{ flags: MyFeatureFlagsResponse }>('/feature-flags/me');
   return response.data;
 }

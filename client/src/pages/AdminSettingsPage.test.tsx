@@ -7,12 +7,18 @@
 
 import { screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import i18n from 'i18next';
 import AdminSettingsPage from './AdminSettingsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+
+// Resolve feature flags synchronously so flag-gated sections render without waitFor.
+vi.mock('@/hooks/useFeatureFlag.js', () => ({
+  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
+  useFeatureFlags: () => ({ flags: {}, isLoading: false }),
+}));
 
 function renderOnTab(tab: string) {
   return renderWithProviders(<AdminSettingsPage />, {

@@ -21,6 +21,12 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import DataSettings from './DataSettings.js';
 
+// Resolve feature flags synchronously so flag-gated sections render without waitFor.
+vi.mock('@/hooks/useFeatureFlag.js', () => ({
+  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
+  useFeatureFlags: () => ({ flags: {}, isLoading: false }),
+}));
+
 describe('DataSettings — sections', () => {
   it('renders import, demo, and audit log sections', async () => {
     renderWithProviders(<DataSettings />);
