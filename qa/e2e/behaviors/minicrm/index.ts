@@ -695,3 +695,6 @@ export {
   getContactEnrollments,
 } from './sequences.behaviors.js';
 export type { TestSequence, TestSequenceStep, TestEnrollment } from './sequences.behaviors.js';
+
+export { listFeatureFlags, updateFeatureFlag } from './feature-flags.behaviors.js';
+export type { TestFeatureFlag } from './feature-flags.behaviors.js';

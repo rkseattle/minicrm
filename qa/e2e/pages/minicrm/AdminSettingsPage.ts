@@ -31,7 +31,8 @@ export type AdminSettingsTab =
   | 'customisation'
   | 'branding'
   | 'data'
-  | 'integrations';
+  | 'integrations'
+  | 'features';
 
 // ---------------------------------------------------------------------------
 // AdminSettingsPage

@@ -31,6 +31,7 @@ import type {
   SequenceStepResponse,
   EnrollmentResponse,
 } from '@shared/schemas/sequenceSchema.js';
+import type { FeatureFlagRow } from '@shared/schemas/featureFlagSchema.js';
 
 /** Default pipeline ID used in test fixtures */
 export const DEFAULT_PIPELINE_ID = '00000000-0000-0000-0000-000000000001';
@@ -535,6 +536,49 @@ export const ENROLLMENT_1: EnrollmentResponse = {
   next_action_at: '2025-01-02T00:00:00.000Z',
   unenrolled_at: null,
 };
+
+/** Reusable fixture: feature flags list (MINCRM-463) */
+export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
+  {
+    flag_key: 'notes',
+    label: 'Notes',
+    description: 'Allows users to create and view notes on contacts, accounts, and deals.',
+    category: 'Core CRM',
+    enabled: true,
+    role_overrides: null,
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'reporting',
+    label: 'Reporting',
+    description: 'Sales reports and dashboards',
+    category: 'Data',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 3,
+  },
+  {
+    flag_key: 'mobile_access',
+    label: 'Mobile Access',
+    description: 'Mobile app access',
+    category: 'Core CRM',
+    enabled: false,
+    role_overrides: null,
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+];
 
 /** Default handlers — can be overridden in individual tests with server.use() */
 export const handlers = [
@@ -2192,6 +2236,38 @@ export const handlers = [
         next_action_at: null,
         unenrolled_at: new Date().toISOString(),
       } satisfies EnrollmentResponse,
+    });
+  }),
+
+  // ── Feature flags (MINCRM-463) ────────────────────────────────────────────────
+
+  /** Feature flags: GET /api/admin/feature-flags — returns fixture flags list */
+  http.get('/api/v1/admin/feature-flags', () => {
+    return HttpResponse.json({ flags: FEATURE_FLAGS_FIXTURE });
+  }),
+
+  /** Feature flags: PATCH /api/admin/feature-flags/:key — returns updated flag */
+  http.patch('/api/v1/admin/feature-flags/:key', async ({ params, request }) => {
+    const body = (await request.json()) as {
+      enabled: boolean;
+      role_overrides?: Record<string, boolean> | null;
+    };
+    const existing = FEATURE_FLAGS_FIXTURE.find((f) => f.flag_key === params['key']);
+    if (!existing) {
+      return HttpResponse.json(
+        { error: { code: 'FEATURE_FLAG_NOT_FOUND', message: 'Feature flag not found' } },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json({
+      flag: {
+        ...existing,
+        enabled: body.enabled,
+        role_overrides:
+          body.role_overrides !== undefined ? body.role_overrides : existing.role_overrides,
+        updated_by_name: 'Test Admin',
+        updated_at: new Date().toISOString(),
+      },
     });
   }),
 ];
