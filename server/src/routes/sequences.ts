@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createSequenceHandler,
@@ -44,7 +45,12 @@ const router = Router();
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/', authenticate, asyncHandler(listSequencesHandler));
+router.get(
+  '/',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(listSequencesHandler),
+);
 
 /**
  * @openapi
@@ -66,7 +72,13 @@ router.get('/', authenticate, asyncHandler(listSequencesHandler));
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/', authenticate, requireRole('admin'), asyncHandler(createSequenceHandler));
+router.post(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(createSequenceHandler),
+);
 
 /**
  * @openapi
@@ -90,7 +102,12 @@ router.post('/', authenticate, requireRole('admin'), asyncHandler(createSequence
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', authenticate, asyncHandler(getSequenceHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(getSequenceHandler),
+);
 
 /**
  * @openapi
@@ -119,7 +136,13 @@ router.get('/:id', authenticate, asyncHandler(getSequenceHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateSequenceHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(updateSequenceHandler),
+);
 
 /**
  * @openapi
@@ -148,7 +171,13 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateSequ
  *       409:
  *         description: Sequence has active enrollments
  */
-router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteSequenceHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(deleteSequenceHandler),
+);
 
 /**
  * @openapi
@@ -172,7 +201,12 @@ router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteSeq
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id/steps', authenticate, asyncHandler(listStepsHandler));
+router.get(
+  '/:id/steps',
+  authenticate,
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(listStepsHandler),
+);
 
 /**
  * @openapi
@@ -203,7 +237,13 @@ router.get('/:id/steps', authenticate, asyncHandler(listStepsHandler));
  *       409:
  *         description: Sort order conflict
  */
-router.post('/:id/steps', authenticate, requireRole('admin'), asyncHandler(createStepHandler));
+router.post(
+  '/:id/steps',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
+  asyncHandler(createStepHandler),
+);
 
 /**
  * @openapi
@@ -240,6 +280,7 @@ router.patch(
   '/:id/steps/:stepId',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
   asyncHandler(updateStepHandler),
 );
 
@@ -276,6 +317,7 @@ router.delete(
   '/:id/steps/:stepId',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('sequencing'),
   asyncHandler(deleteStepHandler),
 );
 

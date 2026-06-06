@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createWebhookSubscriptionHandler,
@@ -44,7 +45,13 @@ const router = Router();
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/', authenticate, requireRole('admin'), asyncHandler(listWebhookSubscriptionsHandler));
+router.get(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
+  asyncHandler(listWebhookSubscriptionsHandler),
+);
 
 /**
  * @openapi
@@ -88,6 +95,7 @@ router.post(
   '/',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
   asyncHandler(createWebhookSubscriptionHandler),
 );
 
@@ -117,7 +125,13 @@ router.post(
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getWebhookSubscriptionHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
+  asyncHandler(getWebhookSubscriptionHandler),
+);
 
 /**
  * @openapi
@@ -152,6 +166,7 @@ router.patch(
   '/:id',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
   asyncHandler(updateWebhookSubscriptionHandler),
 );
 
@@ -186,6 +201,7 @@ router.delete(
   '/:id',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
   asyncHandler(deleteWebhookSubscriptionHandler),
 );
 
@@ -230,6 +246,7 @@ router.get(
   '/:id/logs',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('webhooks'),
   asyncHandler(listWebhookDeliveryLogsHandler),
 );
 

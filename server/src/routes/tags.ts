@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listTagsHandler,
@@ -67,7 +68,7 @@ const router = Router();
  *       401:
  *         description: Not authenticated
  */
-router.get('/', authenticate, asyncHandler(listTagsHandler));
+router.get('/', authenticate, requireFeatureEnabled('tags'), asyncHandler(listTagsHandler));
 
 /**
  * @openapi
@@ -96,7 +97,7 @@ router.get('/', authenticate, asyncHandler(listTagsHandler));
  *       401:
  *         description: Not authenticated
  */
-router.post('/', authenticate, asyncHandler(createTagHandler));
+router.post('/', authenticate, requireFeatureEnabled('tags'), asyncHandler(createTagHandler));
 
 /**
  * @openapi
@@ -122,7 +123,7 @@ router.post('/', authenticate, asyncHandler(createTagHandler));
  *       404:
  *         description: Tag not found
  */
-router.get('/:id', authenticate, asyncHandler(getTagHandler));
+router.get('/:id', authenticate, requireFeatureEnabled('tags'), asyncHandler(getTagHandler));
 
 /**
  * @openapi
@@ -161,7 +162,13 @@ router.get('/:id', authenticate, asyncHandler(getTagHandler));
  *       404:
  *         description: Tag not found
  */
-router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateTagHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('tags'),
+  asyncHandler(updateTagHandler),
+);
 
 /**
  * @openapi
@@ -189,6 +196,12 @@ router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateTagH
  *       404:
  *         description: Tag not found
  */
-router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteTagHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('tags'),
+  asyncHandler(deleteTagHandler),
+);
 
 export default router;

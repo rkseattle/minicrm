@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createAutomationRuleHandler,
@@ -66,7 +67,13 @@ const router = Router();
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/', authenticate, requireRole('admin'), asyncHandler(listAutomationRulesHandler));
+router.get(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
+  asyncHandler(listAutomationRulesHandler),
+);
 
 /**
  * @openapi
@@ -94,7 +101,13 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listAutomationR
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/', authenticate, requireRole('admin'), asyncHandler(createAutomationRuleHandler));
+router.post(
+  '/',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
+  asyncHandler(createAutomationRuleHandler),
+);
 
 /**
  * @openapi
@@ -122,7 +135,13 @@ router.post('/', authenticate, requireRole('admin'), asyncHandler(createAutomati
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getAutomationRuleHandler));
+router.get(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
+  asyncHandler(getAutomationRuleHandler),
+);
 
 /**
  * @openapi
@@ -152,7 +171,13 @@ router.get('/:id', authenticate, requireRole('admin'), asyncHandler(getAutomatio
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.patch('/:id', authenticate, requireRole('admin'), asyncHandler(updateAutomationRuleHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
+  asyncHandler(updateAutomationRuleHandler),
+);
 
 /**
  * @openapi
@@ -184,6 +209,7 @@ router.delete(
   '/:id',
   authenticate,
   requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
   asyncHandler(deleteAutomationRuleHandler),
 );
 
@@ -214,6 +240,12 @@ router.delete(
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id/logs', authenticate, requireRole('admin'), asyncHandler(listRuleLogsHandler));
+router.get(
+  '/:id/logs',
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('automation_rules'),
+  asyncHandler(listRuleLogsHandler),
+);
 
 export default router;

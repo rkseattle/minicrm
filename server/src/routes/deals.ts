@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createDealHandler,
@@ -128,7 +129,12 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *       401:
  *         description: Not authenticated
  */
-router.get('/export', authenticate, asyncHandler(exportDealsHandler));
+router.get(
+  '/export',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportDealsHandler),
+);
 
 /**
  * @openapi

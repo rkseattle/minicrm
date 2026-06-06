@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getWinLossReportHandler,
@@ -79,7 +80,12 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/win-loss', authenticate, asyncHandler(getWinLossReportHandler));
+router.get(
+  '/win-loss',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(getWinLossReportHandler),
+);
 
 /**
  * @openapi
@@ -137,7 +143,12 @@ router.get('/win-loss', authenticate, asyncHandler(getWinLossReportHandler));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/activity-volume', authenticate, asyncHandler(getActivityVolumeReportHandler));
+router.get(
+  '/activity-volume',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(getActivityVolumeReportHandler),
+);
 
 /**
  * @openapi
@@ -182,6 +193,11 @@ router.get('/activity-volume', authenticate, asyncHandler(getActivityVolumeRepor
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/stage-trend', authenticate, asyncHandler(getStageTrendReportHandler));
+router.get(
+  '/stage-trend',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(getStageTrendReportHandler),
+);
 
 export default router;
