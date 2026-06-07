@@ -1899,6 +1899,40 @@
       "green": "Postura de datos: Segura",
       "amber": "Postura de datos: Revisión necesaria",
       "red": "Postura de datos: Acción requerida"
+    },
+    "tokenBudgets": {
+      "heading": "Presupuestos de tokens",
+      "description": "Establece límites mensuales de tokens para controlar los costos de uso de IA. El seguimiento de tokens es aproximado (±5%). Los administradores están exentos de los límites por usuario, pero se incluyen en los totales de la organización.",
+      "orgLimitLabel": "Límite mensual de la organización",
+      "orgLimitHint": "Tokens de entrada y salida combinados por mes en todos los usuarios. Establece 0 para ilimitado.",
+      "orgLimitPlaceholder": "0 (ilimitado)",
+      "orgLimitSave": "Guardar límite",
+      "orgLimitSaveSuccess": "Límite de tokens de la organización guardado.",
+      "orgLimitSaveError": "Error al guardar el límite de tokens. Inténtalo de nuevo.",
+      "loadError": "Error al cargar los datos de presupuesto de tokens. Inténtalo de nuevo.",
+      "usersTableHeading": "Uso del mes actual",
+      "tableUser": "Usuario",
+      "tableRole": "Rol",
+      "tableLimit": "Límite",
+      "tableUsed": "Usado",
+      "tableUsage": "Uso",
+      "tableOverride": "Personalizado",
+      "unlimited": "Ilimitado",
+      "orgDefault": "Predeterminado org.",
+      "removeOverride": "Eliminar",
+      "saveOverride": "Guardar",
+      "overridePlaceholder": "Límite de tokens",
+      "overrideSaveSuccess": "Límite de tokens del usuario guardado.",
+      "overrideSaveError": "Error al guardar el límite de tokens del usuario.",
+      "statusOk": "Correcto",
+      "statusWarning": "Advertencia",
+      "statusExceeded": "Superado",
+      "orgTotal": "({{total}} tokens en total org)",
+      "noUsers": "No hay usuarios activos."
     }
+  },
+  "aiTokenBudget": {
+    "warning": "Has usado el {{percentage}}% de tu presupuesto mensual de tokens de IA. Contacta a tu administrador si necesitas un límite mayor.",
+    "exceeded": "Has alcanzado tu límite mensual de IA — contacta a tu administrador para aumentarlo"
   }
 }

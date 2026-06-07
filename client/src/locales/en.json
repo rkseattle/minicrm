@@ -1899,6 +1899,40 @@
       "green": "Data Posture: Secure",
       "amber": "Data Posture: Review Needed",
       "red": "Data Posture: Action Required"
+    },
+    "tokenBudgets": {
+      "heading": "Token Budgets",
+      "description": "Set monthly token limits to control AI usage costs. Token tracking is approximate (±5%). Admins are exempt from per-user limits but are included in org-wide totals.",
+      "orgLimitLabel": "Org Monthly Limit",
+      "orgLimitHint": "Combined input and output tokens per month across all users. Set to 0 for unlimited.",
+      "orgLimitPlaceholder": "0 (unlimited)",
+      "orgLimitSave": "Save Org Limit",
+      "orgLimitSaveSuccess": "Org token limit saved.",
+      "orgLimitSaveError": "Failed to save org token limit. Please try again.",
+      "loadError": "Failed to load token budget data. Please try again.",
+      "usersTableHeading": "Current Month Usage",
+      "tableUser": "User",
+      "tableRole": "Role",
+      "tableLimit": "Limit",
+      "tableUsed": "Used",
+      "tableUsage": "Usage",
+      "tableOverride": "Override",
+      "unlimited": "Unlimited",
+      "orgDefault": "Org default",
+      "removeOverride": "Remove",
+      "saveOverride": "Save",
+      "overridePlaceholder": "Token limit",
+      "overrideSaveSuccess": "User token limit saved.",
+      "overrideSaveError": "Failed to save user token limit.",
+      "statusOk": "OK",
+      "statusWarning": "Warning",
+      "statusExceeded": "Exceeded",
+      "orgTotal": "({{total}} tokens org total)",
+      "noUsers": "No active users."
     }
+  },
+  "aiTokenBudget": {
+    "warning": "You have used {{percentage}}% of your monthly AI token budget. Contact your admin if you need a higher limit.",
+    "exceeded": "You've reached your monthly AI limit — contact your admin to increase it"
   }
 }

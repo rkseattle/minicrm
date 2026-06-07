@@ -1899,6 +1899,40 @@
       "green": "Posture des données : Sécurisée",
       "amber": "Posture des données : Révision nécessaire",
       "red": "Posture des données : Action requise"
+    },
+    "tokenBudgets": {
+      "heading": "Budgets de tokens",
+      "description": "Définissez des limites mensuelles de tokens pour maîtriser les coûts d'utilisation de l'IA. Le suivi des tokens est approximatif (±5 %). Les administrateurs sont exemptés des limites par utilisateur, mais sont inclus dans les totaux de l'organisation.",
+      "orgLimitLabel": "Limite mensuelle de l'organisation",
+      "orgLimitHint": "Tokens d'entrée et de sortie combinés par mois pour tous les utilisateurs. Définissez 0 pour illimité.",
+      "orgLimitPlaceholder": "0 (illimité)",
+      "orgLimitSave": "Enregistrer la limite",
+      "orgLimitSaveSuccess": "Limite de tokens de l'organisation enregistrée.",
+      "orgLimitSaveError": "Échec de l'enregistrement de la limite de tokens. Veuillez réessayer.",
+      "loadError": "Échec du chargement des données de budget de tokens. Veuillez réessayer.",
+      "usersTableHeading": "Utilisation du mois en cours",
+      "tableUser": "Utilisateur",
+      "tableRole": "Rôle",
+      "tableLimit": "Limite",
+      "tableUsed": "Utilisé",
+      "tableUsage": "Utilisation",
+      "tableOverride": "Personnalisé",
+      "unlimited": "Illimité",
+      "orgDefault": "Défaut org.",
+      "removeOverride": "Supprimer",
+      "saveOverride": "Enregistrer",
+      "overridePlaceholder": "Limite de tokens",
+      "overrideSaveSuccess": "Limite de tokens de l'utilisateur enregistrée.",
+      "overrideSaveError": "Échec de l'enregistrement de la limite de tokens de l'utilisateur.",
+      "statusOk": "OK",
+      "statusWarning": "Avertissement",
+      "statusExceeded": "Dépassé",
+      "orgTotal": "({{total}} tokens total org)",
+      "noUsers": "Aucun utilisateur actif."
     }
+  },
+  "aiTokenBudget": {
+    "warning": "Vous avez utilisé {{percentage}} % de votre budget mensuel de tokens IA. Contactez votre administrateur si vous avez besoin d'une limite plus élevée.",
+    "exceeded": "Vous avez atteint votre limite mensuelle d'IA — contactez votre administrateur pour l'augmenter"
   }
 }
