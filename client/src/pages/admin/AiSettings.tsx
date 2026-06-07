@@ -173,6 +173,15 @@ function UserBudgetRow({ row, onSave, isSaving }: UserBudgetRowProps) {
   const [overrideValue, setOverrideValue] = useState(row.limit !== null ? String(row.limit) : '');
   const [isDirty, setIsDirty] = useState(false);
 
+  // Sync the input back to server state when the parent re-fetches and the field is not dirty.
+  // Without this, key={row.user_id} reuse keeps showing the stale value after an external change.
+  useEffect(() => {
+    if (!isDirty) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOverrideValue(row.limit !== null ? String(row.limit) : '');
+    }
+  }, [row.limit, isDirty]);
+
   const handleChange = (value: string) => {
     setOverrideValue(value);
     setIsDirty(true);
@@ -298,6 +307,11 @@ function TokenBudgetSection() {
     mutationFn: ({ userId, limit }: { userId: string; limit: number | null }) =>
       setUserTokenBudget(userId, { monthly_limit: limit }),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: AI_TOKEN_BUDGETS_QUERY_KEY });
+    },
+    onError: () => {
+      // Re-fetch to snap the row back to the server-confirmed state so the admin
+      // is not left with a stale value that looks like it was saved.
       void queryClient.invalidateQueries({ queryKey: AI_TOKEN_BUDGETS_QUERY_KEY });
     },
   });

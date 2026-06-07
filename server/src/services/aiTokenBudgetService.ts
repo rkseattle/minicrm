@@ -121,14 +121,19 @@ export async function getUserBudgetStatus(
   userId: string,
   userRole: string,
 ): Promise<AiTokenBudgetStatusResponse> {
+  const yearMonth = currentYearMonth();
+
   // Admins are exempt from per-user budget enforcement.
   if (userRole === 'admin') {
-    const used = await getUserUsageForMonth(userId, currentYearMonth());
+    const used = await getUserUsageForMonth(userId, yearMonth);
     return { limit: null, used, percentage: null, status: 'ok' };
   }
 
-  const limit = await getEffectiveUserBudget(userId);
-  const used = await getUserUsageForMonth(userId, currentYearMonth());
+  // Fetch the effective limit and current usage concurrently — they are independent.
+  const [limit, used] = await Promise.all([
+    getEffectiveUserBudget(userId),
+    getUserUsageForMonth(userId, yearMonth),
+  ]);
 
   // limit = 0 means unlimited — no enforcement.
   if (limit === 0) {

@@ -40,7 +40,7 @@ import customReportRoutes from './routes/customReports.js';
 import sequenceRoutes from './routes/sequences.js';
 import sequenceEnrollmentRoutes from './routes/sequenceEnrollments.js';
 import featureFlagRoutes from './routes/featureFlags.js';
-import aiRoutes from './routes/ai.js';
+import aiRoutes, { aiUserRouter } from './routes/ai.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -157,10 +157,9 @@ app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 // router (/ and /:key) are still protected by requireRole('admin') middleware.
 app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
-// Admin AI config/token-budget routes (MINCRM-457, MINCRM-458).
-// Also mounted at /api/v1/ai so the user-facing /token-budget/me endpoint is reachable.
-// All admin-only handlers enforce requireRole('admin') within the router.
-app.use(`${API_V1}/ai`, aiRoutes);
+// User-facing AI routes — only /token-budget/me; no admin handlers. (MINCRM-458)
+app.use(`${API_V1}/ai`, aiUserRouter);
+// Admin AI config/token-budget routes — full router at the admin prefix. (MINCRM-457, MINCRM-458)
 app.use(`${API_V1}/admin/ai`, aiRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
