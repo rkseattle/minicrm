@@ -7,7 +7,11 @@
 import { z } from 'zod';
 import { USER_ROLES } from './userSchema.js';
 
-/** All valid feature flag keys — must match the seed rows in migration 066. */
+/**
+ * All valid feature flag keys — must match the seed rows in migrations 066 and 071.
+ * AI sub-feature keys (ai_nli_page through ai_stage_advancement) were added in
+ * migration 071 (MINCRM-460).
+ */
 export const FEATURE_FLAG_KEYS = [
   'notes',
   'tags',
@@ -27,12 +31,38 @@ export const FEATURE_FLAG_KEYS = [
   'ai_features',
   'mobile_access',
   'demo_data',
+  // AI sub-feature flags (MINCRM-460) — child flags of the 'ai_features' master toggle.
+  'ai_nli_page',
+  'ai_activity_summarizer',
+  'ai_email_draft',
+  'ai_task_suggestions',
+  'ai_contact_enrichment',
+  'ai_duplicate_explanation',
+  'ai_lead_score_narrative',
+  'ai_deal_health_check',
+  'ai_stage_advancement',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];
 
-/** Flag keys that support per-role overrides. */
-export const ROLE_OVERRIDE_FLAG_KEYS: readonly FeatureFlagKey[] = ['reporting', 'csv_export'];
+/**
+ * Flag keys that support per-role overrides (admin/rep toggles in the admin UI).
+ * AI sub-feature flags (MINCRM-460) all support role overrides so admins can
+ * enable/disable each AI capability independently per role.
+ */
+export const ROLE_OVERRIDE_FLAG_KEYS: readonly FeatureFlagKey[] = [
+  'reporting',
+  'csv_export',
+  'ai_nli_page',
+  'ai_activity_summarizer',
+  'ai_email_draft',
+  'ai_task_suggestions',
+  'ai_contact_enrichment',
+  'ai_duplicate_explanation',
+  'ai_lead_score_narrative',
+  'ai_deal_health_check',
+  'ai_stage_advancement',
+];
 
 /** UI grouping categories — must match the category values in migration 066. */
 export const FEATURE_FLAG_CATEGORIES = [

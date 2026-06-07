@@ -415,3 +415,80 @@ export interface CurrencyConfig {
     updated_at: string;
   }>;
 }
+
+// ── AI token budget schemas (MINCRM-458) ──────────────────────────────────────
+
+/**
+ * Budget threshold status for a user relative to their monthly token limit.
+ * 'ok'       — below 80% consumed
+ * 'warning'  — 80–99% consumed
+ * 'exceeded' — 100%+ consumed; AI calls are blocked for reps
+ */
+export type AiTokenBudgetStatus = 'ok' | 'warning' | 'exceeded';
+
+/**
+ * Response from GET /api/v1/ai/token-budget/me — the calling user's budget status
+ * for the current calendar month. Admins always receive status='ok' and limit=null.
+ */
+export interface AiTokenBudgetStatusResponse {
+  /** Effective monthly token limit (input + output combined). null = unlimited (admin). */
+  limit: number | null;
+  /** Tokens consumed so far this calendar month. */
+  used: number;
+  /** Percentage of limit consumed (0–100+). null when limit is null. */
+  percentage: number | null;
+  status: AiTokenBudgetStatus;
+}
+
+/** A single row in the admin consumption breakdown table. */
+export interface AiTokenUsageRow {
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_role: string;
+  /** Effective monthly limit (0 = org default; null = unlimited / admin). */
+  limit: number | null;
+  used: number;
+  percentage: number | null;
+  status: AiTokenBudgetStatus;
+}
+
+/**
+ * Response from GET /api/v1/admin/ai/token-budgets.
+ * Includes org-wide limit, current-month totals, and per-user breakdown.
+ */
+export interface AiTokenBudgetsResponse {
+  /** Org-wide monthly token limit. 0 = unlimited (no enforcement). */
+  org_monthly_limit: number;
+  /** Total tokens consumed by all users in the current calendar month. */
+  org_used_this_month: number;
+  /** Per-user breakdown for the current month (all active users). */
+  users: AiTokenUsageRow[];
+}
+
+/** Request body for PATCH /api/v1/admin/ai/token-budgets/org */
+export const setOrgTokenBudgetSchema = z.object({
+  monthly_limit: z
+    .number({
+      required_error: 'monthly_limit is required',
+      invalid_type_error: 'monthly_limit must be a number',
+    })
+    .int('monthly_limit must be an integer')
+    .min(0, 'monthly_limit must be 0 or greater'),
+});
+
+export type SetOrgTokenBudgetInput = z.infer<typeof setOrgTokenBudgetSchema>;
+
+/** Request body for PATCH /api/v1/admin/ai/token-budgets/users/:userId */
+export const setUserTokenBudgetSchema = z.object({
+  monthly_limit: z
+    .number({
+      required_error: 'monthly_limit is required',
+      invalid_type_error: 'monthly_limit must be a number',
+    })
+    .int('monthly_limit must be an integer')
+    .min(0, 'monthly_limit must be 0 or greater')
+    .nullable(),
+});
+
+export type SetUserTokenBudgetInput = z.infer<typeof setUserTokenBudgetSchema>;
