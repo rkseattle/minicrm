@@ -70,6 +70,7 @@ exports.down = (pgm) => {
   pgm.sql(`
     DELETE FROM system_settings WHERE key IN (
       'ai_enabled',
+      'ai_enabled_updated_at',
       'ai_provider',
       'ai_model',
       'ai_api_key',

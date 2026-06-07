@@ -301,7 +301,7 @@ export default function AiSettings() {
   const availableModels = data.available_models.filter((m) => m.provider === provider);
 
   return (
-    <div className="space-y-8" data-testid="ai-settings-panel">
+    <div className="space-y-8" data-testid="ai-settings-panel" role="region">
       {/* ── Header status bar ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-gray-200">
         <span className="text-sm font-medium text-gray-700">
@@ -559,6 +559,8 @@ export default function AiSettings() {
               <span
                 className={`text-sm ${testStatus === 'ok' ? 'text-green-700' : 'text-red-600'}`}
                 data-testid="ai-test-connection-result"
+                role="status"
+                aria-live="polite"
               >
                 {testMessage}
               </span>
@@ -658,12 +660,10 @@ export default function AiSettings() {
                 <input
                   id="ai-dpa-checkbox"
                   type="checkbox"
+                  checked={false}
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      handleDpaAcknowledge();
-                      e.target.checked = false; // reset — state comes from server
-                    }
+                  onChange={() => {
+                    handleDpaAcknowledge();
                   }}
                   data-testid="ai-dpa-checkbox"
                 />

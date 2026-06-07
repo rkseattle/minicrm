@@ -6,10 +6,11 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { encrypt, decrypt } from './cryptoService.js';
-import { writeAuditEntryBestEffort } from './auditService.js';
+import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import type {
   AiProvider,
@@ -69,11 +70,7 @@ const AVAILABLE_MODELS: AiModelOption[] = [
     display_name: 'Claude Sonnet 4 (2025-05-14)',
     provider: 'anthropic',
   },
-  {
-    id: 'claude-haiku-4-5-20251001',
-    display_name: 'Claude Haiku 4.5 (2025-10-01)',
-    provider: 'anthropic',
-  },
+  { id: 'claude-haiku-4-5', display_name: 'Claude Haiku 4.5', provider: 'anthropic' },
 ];
 
 /** Per-provider standard DPA URL shown alongside the provider selector. */
@@ -111,14 +108,15 @@ async function fetchAiRows(): Promise<Map<string, string>> {
   return new Map(result.rows.map((r) => [r.key, r.value]));
 }
 
-/** Upsert a single system_settings key. */
-async function upsertSetting(key: string, value: string): Promise<void> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [key, value],
-  );
+const UPSERT_SQL = `
+  INSERT INTO system_settings (key, value, updated_at)
+  VALUES ($1, $2, now())
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+`;
+
+/** Upsert a single system_settings key inside an existing transaction. */
+async function upsertSettingTx(client: PoolClient, key: string, value: string): Promise<void> {
+  await client.query(UPSERT_SQL, [key, value]);
 }
 
 function parseBool(raw: string | undefined, fallback: boolean): boolean {
@@ -217,7 +215,8 @@ export async function isAiEnabled(): Promise<boolean> {
 /**
  * Persists provider/model/key/deployment configuration.
  * Encrypts the API key when provided. Resets DPA acknowledgment when the
- * provider changes. Writes one audit entry per changed field.
+ * provider changes. Writes one audit entry per changed field, all in the
+ * same transaction as the data writes.
  */
 export async function setAiConfig(
   params: SetAiConfigInput,
@@ -225,61 +224,74 @@ export async function setAiConfig(
 ): Promise<AiConfigResponse> {
   const before = await getAiConfig();
 
-  if (params.provider !== before.provider) {
-    // Provider changed — DPA acknowledgment is no longer valid.
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED, 'false');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_BY, '');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_AT, '');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
-    void writeAuditEntryBestEffort({
-      recordType: 'ai_settings',
-      recordName: 'AI Configuration',
-      eventType: 'updated',
-      fieldName: 'dpa_acknowledged',
-      oldValue: String(before.dpa_acknowledged),
-      newValue: 'false',
-      changedById: actor.id,
-      changedByName: actor.name,
-    }).catch((err) => logger.warn({ err }, 'Failed to write AI DPA reset audit entry'));
-  }
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  await upsertSetting(KEY_AI_PROVIDER, params.provider);
-  await upsertSetting(KEY_AI_MODEL, params.model);
-  await upsertSetting(KEY_AI_DEPLOYMENT_MODE, params.deployment_mode);
-  await upsertSetting(KEY_AI_BASE_URL, params.base_url ?? '');
-  await upsertSetting(KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url ?? '');
-
-  if (params.api_key !== undefined && params.api_key !== '') {
-    const encrypted = encrypt(params.api_key);
-    await upsertSetting(KEY_AI_API_KEY, encrypted);
-  }
-
-  const auditFields: Array<{ field: string; old: string; next: string }> = [
-    { field: 'provider', old: before.provider, next: params.provider },
-    { field: 'model', old: before.model, next: params.model },
-    { field: 'deployment_mode', old: before.deployment_mode, next: params.deployment_mode },
-    { field: 'base_url', old: before.base_url, next: params.base_url ?? '' },
-    { field: 'custom_dpa_url', old: before.custom_dpa_url, next: params.custom_dpa_url ?? '' },
-  ];
-
-  if (params.api_key !== undefined && params.api_key !== '') {
-    // Never log API key values — record that a change occurred only.
-    auditFields.push({ field: 'api_key', old: '[redacted]', next: '[redacted]' });
-  }
-
-  for (const { field, old: oldVal, next: newVal } of auditFields) {
-    if (oldVal !== newVal) {
-      void writeAuditEntryBestEffort({
+    if (params.provider !== before.provider) {
+      // Provider changed — DPA acknowledgment is no longer valid for the new provider.
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'false');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, '');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, '');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
+      await writeAuditEntry(client, {
         recordType: 'ai_settings',
         recordName: 'AI Configuration',
         eventType: 'updated',
-        fieldName: field,
-        oldValue: field === 'api_key' ? null : oldVal,
-        newValue: field === 'api_key' ? null : newVal,
+        fieldName: 'dpa_acknowledged',
+        oldValue: String(before.dpa_acknowledged),
+        newValue: 'false',
         changedById: actor.id,
         changedByName: actor.name,
-      }).catch((err) => logger.warn({ err }, 'Failed to write AI config audit entry'));
+      });
     }
+
+    await upsertSettingTx(client, KEY_AI_PROVIDER, params.provider);
+    await upsertSettingTx(client, KEY_AI_MODEL, params.model);
+    await upsertSettingTx(client, KEY_AI_DEPLOYMENT_MODE, params.deployment_mode);
+    await upsertSettingTx(client, KEY_AI_BASE_URL, params.base_url ?? '');
+    await upsertSettingTx(client, KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url ?? '');
+
+    if (params.api_key !== undefined && params.api_key !== '') {
+      const encrypted = encrypt(params.api_key);
+      await upsertSettingTx(client, KEY_AI_API_KEY, encrypted);
+    }
+
+    const auditFields: Array<{ field: string; old: string; next: string }> = [
+      { field: 'provider', old: before.provider, next: params.provider },
+      { field: 'model', old: before.model, next: params.model },
+      { field: 'deployment_mode', old: before.deployment_mode, next: params.deployment_mode },
+      { field: 'base_url', old: before.base_url, next: params.base_url ?? '' },
+      { field: 'custom_dpa_url', old: before.custom_dpa_url, next: params.custom_dpa_url ?? '' },
+    ];
+
+    if (params.api_key !== undefined && params.api_key !== '') {
+      // Never log API key values — record that a change occurred only.
+      auditFields.push({ field: 'api_key', old: '[redacted]', next: '[redacted]' });
+    }
+
+    for (const { field, old: oldVal, next: newVal } of auditFields) {
+      if (oldVal !== newVal) {
+        await writeAuditEntry(client, {
+          recordType: 'ai_settings',
+          recordName: 'AI Configuration',
+          eventType: 'updated',
+          fieldName: field,
+          // API key values are never logged — only the fact that the key changed.
+          oldValue: field === 'api_key' ? null : oldVal,
+          newValue: field === 'api_key' ? null : newVal,
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
+      }
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 
   return getAiConfig();
@@ -287,31 +299,43 @@ export async function setAiConfig(
 
 /**
  * Toggles the master AI enable/disable switch.
- * Writes an audit entry and records the timestamp.
+ * Writes an audit entry in the same transaction as the toggle write.
  */
 export async function setAiEnabled(
   params: SetAiEnabledInput,
   actor: AuditActor,
 ): Promise<AiConfigResponse> {
-  const rows = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [KEY_AI_ENABLED],
-  );
-  const previousEnabled = parseBool(rows.rows[0]?.value, false);
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  await upsertSetting(KEY_AI_ENABLED, String(params.enabled));
-  await upsertSetting(KEY_AI_ENABLED_UPDATED_AT, new Date().toISOString());
+    const rows = await client.query<SystemSettingRow>(
+      'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+      [KEY_AI_ENABLED],
+    );
+    const previousEnabled = parseBool(rows.rows[0]?.value, false);
 
-  void writeAuditEntryBestEffort({
-    recordType: 'ai_settings',
-    recordName: 'AI Configuration',
-    eventType: 'updated',
-    fieldName: 'enabled',
-    oldValue: String(previousEnabled),
-    newValue: String(params.enabled),
-    changedById: actor.id,
-    changedByName: actor.name,
-  }).catch((err) => logger.warn({ err }, 'Failed to write AI enabled audit entry'));
+    await upsertSettingTx(client, KEY_AI_ENABLED, String(params.enabled));
+    await upsertSettingTx(client, KEY_AI_ENABLED_UPDATED_AT, new Date().toISOString());
+
+    await writeAuditEntry(client, {
+      recordType: 'ai_settings',
+      recordName: 'AI Configuration',
+      eventType: 'updated',
+      fieldName: 'enabled',
+      oldValue: String(previousEnabled),
+      newValue: String(params.enabled),
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return getAiConfig();
 }
@@ -320,6 +344,7 @@ export async function setAiEnabled(
  * Records or resets the DPA acknowledgment for the current provider.
  * When acknowledged=true, stores the actor's name, timestamp, and current provider.
  * When acknowledged=false, clears all acknowledgment state.
+ * All writes and the audit entry are committed in the same transaction.
  */
 export async function setAiDpaAcknowledgment(
   params: SetAiDpaAcknowledgmentInput,
@@ -327,33 +352,45 @@ export async function setAiDpaAcknowledgment(
 ): Promise<AiConfigResponse> {
   const before = await getAiConfig();
 
-  if (params.acknowledged) {
-    const now = new Date().toISOString();
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED, 'true');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_BY, actor.name);
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_AT, now);
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, before.provider);
-  } else {
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED, 'false');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_BY, '');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_AT, '');
-    await upsertSetting(KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
-  }
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (params.custom_dpa_url !== undefined) {
-    await upsertSetting(KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url);
-  }
+    if (params.acknowledged) {
+      const now = new Date().toISOString();
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'true');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, actor.name);
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, now);
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, before.provider);
+    } else {
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'false');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, '');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, '');
+      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
+    }
 
-  void writeAuditEntryBestEffort({
-    recordType: 'ai_settings',
-    recordName: 'AI Configuration',
-    eventType: 'updated',
-    fieldName: 'dpa_acknowledged',
-    oldValue: String(before.dpa_acknowledged),
-    newValue: String(params.acknowledged),
-    changedById: actor.id,
-    changedByName: actor.name,
-  }).catch((err) => logger.warn({ err }, 'Failed to write DPA acknowledgment audit entry'));
+    if (params.custom_dpa_url !== undefined) {
+      await upsertSettingTx(client, KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url);
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'ai_settings',
+      recordName: 'AI Configuration',
+      eventType: 'updated',
+      fieldName: 'dpa_acknowledged',
+      oldValue: String(before.dpa_acknowledged),
+      newValue: String(params.acknowledged),
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return getAiConfig();
 }
