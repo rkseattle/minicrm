@@ -157,6 +157,10 @@ app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 // router (/ and /:key) are still protected by requireRole('admin') middleware.
 app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
+// Admin AI config/token-budget routes (MINCRM-457, MINCRM-458).
+// Also mounted at /api/v1/ai so the user-facing /token-budget/me endpoint is reachable.
+// All admin-only handlers enforce requireRole('admin') within the router.
+app.use(`${API_V1}/ai`, aiRoutes);
 app.use(`${API_V1}/admin/ai`, aiRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
