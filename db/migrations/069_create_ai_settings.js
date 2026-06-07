@@ -50,6 +50,7 @@ exports.up = (pgm) => {
   pgm.sql(`
     INSERT INTO system_settings (key, value, updated_at) VALUES
       ('ai_enabled',                   'false',                    now()),
+      ('ai_enabled_updated_at',        '',                         now()),
       ('ai_provider',                  'anthropic',                now()),
       ('ai_model',                     'claude-sonnet-4-20250514', now()),
       ('ai_api_key',                   '',                         now()),

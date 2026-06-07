@@ -653,8 +653,8 @@ export default function AiSettings() {
             )}
           </div>
 
-          {/* Acknowledgment checkbox + button */}
-          {data.deployment_mode !== 'self_hosted' && (
+          {/* Acknowledgment checkbox + button — hidden once acknowledged */}
+          {!data.dpa_acknowledged && data.deployment_mode !== 'self_hosted' && (
             <div className="flex flex-col gap-3">
               <div className="flex items-start gap-3">
                 <input

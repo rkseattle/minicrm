@@ -267,7 +267,8 @@ export async function setAiConfig(
 
     if (params.api_key !== undefined && params.api_key !== '') {
       // Never log API key values — record that a change occurred only.
-      auditFields.push({ field: 'api_key', old: '[redacted]', next: '[redacted]' });
+      // Use distinct sentinel strings so the oldVal !== newVal guard fires.
+      auditFields.push({ field: 'api_key', old: '[previous]', next: '[redacted]' });
     }
 
     for (const { field, old: oldVal, next: newVal } of auditFields) {

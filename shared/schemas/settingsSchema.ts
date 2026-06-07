@@ -328,16 +328,28 @@ export const setAiDpaAcknowledgmentSchema = z.object({
 export type SetAiDpaAcknowledgmentInput = z.infer<typeof setAiDpaAcknowledgmentSchema>;
 
 /** Schema for POST /api/v1/admin/ai/test-connection request body. */
-export const testAiConnectionSchema = z.object({
-  provider: z.enum(AI_PROVIDERS, {
-    errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
-  }),
-  model: z.string().min(1, { message: 'Model is required' }).max(100),
-  /** If omitted, the stored API key is used for the test. */
-  api_key: z.string().max(512).optional(),
-  deployment_mode: z.enum(AI_DEPLOYMENT_MODES),
-  base_url: z.string().max(2048).optional().default(''),
-});
+export const testAiConnectionSchema = z
+  .object({
+    provider: z.enum(AI_PROVIDERS, {
+      errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
+    }),
+    model: z.string().min(1, { message: 'Model is required' }).max(100),
+    /** If omitted, the stored API key is used for the test. */
+    api_key: z.string().max(512).optional(),
+    deployment_mode: z.enum(AI_DEPLOYMENT_MODES),
+    base_url: z.string().max(2048).optional().default(''),
+  })
+  .superRefine((val, ctx) => {
+    const requiresBaseUrl =
+      val.deployment_mode === 'private_endpoint' || val.deployment_mode === 'self_hosted';
+    if (requiresBaseUrl && (!val.base_url || val.base_url.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Base URL is required for Private Endpoint and Self-Hosted deployment modes',
+        path: ['base_url'],
+      });
+    }
+  });
 
 export type TestAiConnectionInput = z.infer<typeof testAiConnectionSchema>;
 
