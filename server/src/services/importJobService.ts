@@ -19,7 +19,8 @@ export interface ImportJobRow {
   skipped_count: number;
   failed_count: number;
   error_csv: string | null;
-  created_by: string;
+  /** NULL when the creating user has been deleted (MINCRM-505) */
+  created_by: string | null;
   started_at: Date | null;
   completed_at: Date | null;
   created_at: Date;

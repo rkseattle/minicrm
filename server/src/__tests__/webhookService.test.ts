@@ -443,3 +443,33 @@ describe('dispatchWebhookEvent', () => {
     server.close();
   }, 10_000);
 });
+
+// ── FK ON DELETE SET NULL — user deletion preserves webhook history (MINCRM-505) ──
+
+describe('webhook_subscriptions.created_by FK — ON DELETE SET NULL', () => {
+  it('sets created_by to NULL when the owning user is deleted, and preserves the subscription row', async () => {
+    const ephemeralUser = await createUser({
+      email: `wh-svc-ephemeral@example.com`,
+      name: 'Ephemeral Webhook Owner',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder_hash',
+      status: 'active',
+    });
+
+    const { subscription } = await createWebhookSubscription(
+      {
+        url: 'https://example.com/hook',
+        events: ['contact.created'],
+        created_by: ephemeralUser.id,
+      },
+      { id: ephemeralUser.id, name: ephemeralUser.name },
+    );
+
+    // Hard-delete the user — this previously raised a FK violation
+    await pool.query('DELETE FROM users WHERE id = $1', [ephemeralUser.id]);
+
+    const found = await findWebhookSubscriptionById(subscription.id);
+    expect(found).not.toBeNull();
+    expect(found!.created_by).toBeNull();
+  });
+});
