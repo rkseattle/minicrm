@@ -7,6 +7,7 @@
 import { parse } from 'csv-parse/sync';
 import pool from '../db.js';
 import { PIPELINE_STAGES } from '@minicrm/shared/schemas/dealSchema.js';
+import { getDefaultPipelineId } from './pipelineService.js';
 
 /** Maximum CSV file size in bytes (10 MB) */
 export const MAX_CSV_BYTES = 10 * 1024 * 1024;
@@ -388,6 +389,8 @@ export async function importDeals(
   );
   const accountByName = new Map(accountRows.map((r) => [r.name.toLowerCase(), r.id]));
 
+  const defaultPipelineId = await getDefaultPipelineId();
+
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 1;
     const csvRow = rows[i];
@@ -462,9 +465,9 @@ export async function importDeals(
 
     try {
       await pool.query(
-        `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [name, stage, dealValue, closeDate, lossReason, accountId, adminId],
+        `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id, pipeline_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [name, stage, dealValue, closeDate, lossReason, accountId, adminId, defaultPipelineId],
       );
       result.created++;
     } catch (err) {

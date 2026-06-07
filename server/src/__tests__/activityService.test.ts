@@ -18,6 +18,7 @@ import {
   deleteActivity,
 } from '../services/activityService.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import {
   createActivitySchema,
   updateActivitySchema,
@@ -39,6 +40,7 @@ let ownerId: string;
 let contactId: string;
 let accountId: string;
 let dealId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   await pool.query(
@@ -79,9 +81,11 @@ beforeAll(async () => {
   );
   contactId = contactResult.rows[0].id;
 
+  defaultPipelineId = await getDefaultPipelineId();
+
   const dealResult = await pool.query<{ id: string }>(
-    `INSERT INTO deals (name, stage, owner_id) VALUES ('Test Deal', 'Prospecting', $1) RETURNING id`,
-    [ownerId],
+    `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Test Deal', 'Prospecting', $1, $2) RETURNING id`,
+    [ownerId, defaultPipelineId],
   );
   dealId = dealResult.rows[0].id;
 });

@@ -19,6 +19,7 @@ import {
   fireAutomationTrigger,
 } from '../services/automationService.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
 const FILE_PREFIX = 'auto-svc';
@@ -60,6 +61,7 @@ let adminId: string;
 let repId: string;
 let dealId: string;
 let contactId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   // Clean up any leftovers from prior runs
@@ -95,10 +97,12 @@ beforeAll(async () => {
   const rep = await createUser(REP_USER);
   repId = rep.id;
 
+  defaultPipelineId = await getDefaultPipelineId();
+
   // Create a deal and a contact for trigger execution tests
   const dealResult = await pool.query<{ id: string }>(
-    `INSERT INTO deals (name, stage, owner_id) VALUES ($1, $2, $3) RETURNING id`,
-    ['Trigger Test Deal', 'Prospecting', adminId],
+    `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+    ['Trigger Test Deal', 'Prospecting', adminId, defaultPipelineId],
   );
   dealId = dealResult.rows[0].id;
 

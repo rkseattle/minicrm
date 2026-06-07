@@ -25,6 +25,7 @@ import {
 } from '../services/leadsService.js';
 import { findContactById } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 import { uid } from './testUtils.js';
 
@@ -49,6 +50,7 @@ const makeLead = () => ({
 });
 
 let ownerId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   // Clean up any leftover state from prior failed runs
@@ -70,6 +72,7 @@ beforeAll(async () => {
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
+  defaultPipelineId = await getDefaultPipelineId();
 });
 
 beforeEach(async () => {
@@ -496,8 +499,8 @@ describe('findLeadByDealId', () => {
       ['No Lead Corp', ownerId],
     );
     const dealResult = await pool.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, account_id, owner_id) VALUES ($1, $2, $3, $4) RETURNING id`,
-      ['No Lead Deal', 'Prospecting', acctResult.rows[0].id, ownerId],
+      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      ['No Lead Deal', 'Prospecting', acctResult.rows[0].id, ownerId, defaultPipelineId],
     );
     const found = await findLeadByDealId(dealResult.rows[0].id);
     expect(found).toBeNull();

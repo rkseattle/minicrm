@@ -12,6 +12,7 @@ import 'dotenv/config';
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { getDashboardSummary } from '../services/dashboardService.js';
 import { getWinLossReport } from '../services/reportService.js';
 
@@ -21,6 +22,7 @@ const CONTACT_EMAIL = `${FILE_PREFIX}-contact@example.com`;
 
 let repId: string;
 let contactId: string;
+let defaultPipelineId: string;
 
 // ---------------------------------------------------------------------------
 // Setup / teardown
@@ -50,6 +52,7 @@ beforeAll(async () => {
     [CONTACT_EMAIL, repId],
   );
   contactId = contactResult.rows[0].id;
+  defaultPipelineId = await getDefaultPipelineId();
 });
 
 afterAll(async () => {
@@ -66,7 +69,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   // Reset deals and currencies to a clean state before each test
-  await pool.query('DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id = $1)', [repId]);
+  await pool.query(
+    'DELETE FROM deal_contacts WHERE deal_id IN (SELECT id FROM deals WHERE owner_id = $1)',
+    [repId],
+  );
   await pool.query('DELETE FROM deals WHERE owner_id = $1', [repId]);
   await pool.query('DELETE FROM currencies');
   await pool.query(
@@ -87,8 +93,8 @@ async function insertOpenDeal(opts: {
 }): Promise<void> {
   const stage = opts.stage ?? 'Prospecting';
   await pool.query(
-    `INSERT INTO deals (name, stage, value, currency, probability, close_date, owner_id)
-     VALUES ($1, $2, $3, $4, $5, '2030-12-31', $6)`,
+    `INSERT INTO deals (name, stage, value, currency, probability, close_date, owner_id, pipeline_id)
+     VALUES ($1, $2, $3, $4, $5, '2030-12-31', $6, $7)`,
     [
       `Test Deal ${opts.currency}`,
       stage,
@@ -96,6 +102,7 @@ async function insertOpenDeal(opts: {
       opts.currency,
       opts.probability ?? null,
       repId,
+      defaultPipelineId,
     ],
   );
 }
@@ -113,8 +120,8 @@ async function insertClosedDeal(opts: {
 }): Promise<void> {
   const closeDate = opts.closeDate ?? '2025-01-15';
   await pool.query(
-    `INSERT INTO deals (name, stage, value, currency, close_date, loss_reason, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO deals (name, stage, value, currency, close_date, loss_reason, owner_id, pipeline_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       `Closed ${opts.currency}`,
       opts.stage,
@@ -123,6 +130,7 @@ async function insertClosedDeal(opts: {
       closeDate,
       opts.lossReason ?? null,
       repId,
+      defaultPipelineId,
     ],
   );
 }

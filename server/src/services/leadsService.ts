@@ -19,6 +19,7 @@ import {
   diffFields,
 } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { getDefaultPipelineId } from './pipelineService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -436,6 +437,7 @@ export async function convertLead(
       code: 'DISQUALIFIED',
     });
 
+  const defaultPipelineId = await getDefaultPipelineId();
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -488,10 +490,19 @@ export async function convertLead(
         : null;
 
     const dealResult = await client.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, source_lead_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, source_lead_id, pipeline_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
-      [dealName, dealStage, dealValue, dealCloseDate, accountId, actor.id, leadId],
+      [
+        dealName,
+        dealStage,
+        dealValue,
+        dealCloseDate,
+        accountId,
+        actor.id,
+        leadId,
+        defaultPipelineId,
+      ],
     );
     const dealId = dealResult.rows[0].id;
 

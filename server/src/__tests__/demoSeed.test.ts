@@ -15,6 +15,7 @@
 
 import 'dotenv/config';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
 const FILE_PREFIX = 'demo-seed';
@@ -28,6 +29,7 @@ const OWNER_USER = {
 };
 
 let ownerId: string;
+let defaultPipelineId: string;
 
 async function cleanOwnerData(): Promise<void> {
   await pool.query(
@@ -57,6 +59,7 @@ beforeAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
+  defaultPipelineId = await getDefaultPipelineId();
 });
 
 beforeEach(async () => {
@@ -106,7 +109,10 @@ describe('is_demo column — accounts', () => {
       [ownerId],
     );
     await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
-    const result = await pool.query<{ name: string }>(`SELECT name FROM accounts WHERE owner_id = $1`, [ownerId]);
+    const result = await pool.query<{ name: string }>(
+      `SELECT name FROM accounts WHERE owner_id = $1`,
+      [ownerId],
+    );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].name).toBe('Real');
   });
@@ -143,7 +149,10 @@ describe('is_demo column — contacts', () => {
       [ownerId],
     );
     await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
-    const result = await pool.query<{ first_name: string }>(`SELECT first_name FROM contacts WHERE owner_id = $1`, [ownerId]);
+    const result = await pool.query<{ first_name: string }>(
+      `SELECT first_name FROM contacts WHERE owner_id = $1`,
+      [ownerId],
+    );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].first_name).toBe('Real');
   });
@@ -154,29 +163,32 @@ describe('is_demo column — contacts', () => {
 describe('is_demo column — deals', () => {
   it('defaults to false', async () => {
     const result = await pool.query<{ is_demo: boolean }>(
-      `INSERT INTO deals (name, stage, owner_id) VALUES ('Real Deal', 'Prospecting', $1) RETURNING is_demo`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Real Deal', 'Prospecting', $1, $2) RETURNING is_demo`,
+      [ownerId, defaultPipelineId],
     );
     expect(result.rows[0].is_demo).toBe(false);
   });
 
   it('can be set to true on insert', async () => {
     const result = await pool.query<{ is_demo: boolean }>(
-      `INSERT INTO deals (name, stage, owner_id, is_demo) VALUES ('Demo Deal', 'Prospecting', $1, true) RETURNING is_demo`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id) VALUES ('Demo Deal', 'Prospecting', $1, true, $2) RETURNING is_demo`,
+      [ownerId, defaultPipelineId],
     );
     expect(result.rows[0].is_demo).toBe(true);
   });
 
   it('DELETE WHERE is_demo = true removes only demo rows', async () => {
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, is_demo)
-       VALUES ('Real Deal', 'Prospecting', $1, false),
-              ('Demo Deal', 'Prospecting', $1, true)`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id)
+       VALUES ('Real Deal', 'Prospecting', $1, false, $2),
+              ('Demo Deal', 'Prospecting', $1, true, $2)`,
+      [ownerId, defaultPipelineId],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true`);
-    const result = await pool.query<{ name: string }>(`SELECT name FROM deals WHERE owner_id = $1`, [ownerId]);
+    const result = await pool.query<{ name: string }>(
+      `SELECT name FROM deals WHERE owner_id = $1`,
+      [ownerId],
+    );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].name).toBe('Real Deal');
   });
@@ -225,7 +237,10 @@ describe('is_demo column — activities', () => {
       [contactId, ownerId],
     );
     await pool.query(`DELETE FROM activities WHERE is_demo = true`);
-    const result = await pool.query<{ subject: string }>(`SELECT subject FROM activities WHERE owner_id = $1`, [ownerId]);
+    const result = await pool.query<{ subject: string }>(
+      `SELECT subject FROM activities WHERE owner_id = $1`,
+      [ownerId],
+    );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].subject).toBe('Real note');
   });
