@@ -1348,7 +1348,7 @@ export class AdminSettingsPage {
     return this.page
       .locate(
         [
-          { type: 'testId', value: 'ai-save-button' },
+          { type: 'testId', value: 'ai-config-save-button' },
           { type: 'role', value: 'button', options: { name: /save/i } },
         ],
         { intent: 'button to save the AI provider and model configuration' },

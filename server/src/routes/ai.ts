@@ -2,6 +2,11 @@
  * AI administration routes — provider, model, and API key configuration.
  * All routes require authentication and the admin role.
  *
+ * Feature flag exemption: these routes are NOT gated by requireFeatureEnabled('ai_features').
+ * They are the admin control plane for the AI toggle — gating them behind the flag they
+ * control would create a chicken-and-egg deadlock (you cannot enable AI if the page itself
+ * is disabled). The ai_features flag governs end-user AI features, not this admin config page.
+ *
  * Future AI feature routes (NLI, suggestions, etc.) belong in a separate
  * router mounted at /api/v1/ai that uses requireAiEnabled middleware.
  * (MINCRM-457)
