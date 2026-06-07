@@ -151,10 +151,14 @@ export async function getOrgConsumptionSummary(): Promise<AiTokenBudgetsResponse
     pool.query<ActiveUserRow>(
       `SELECT id, name, email, role FROM users WHERE status = 'active' ORDER BY name`,
     ),
+    // Scope usage to active users so org_used_this_month matches the per-user table sum.
+    // Deactivated users' historical rows are preserved in ai_token_usage for auditing
+    // but are excluded from the admin dashboard totals to prevent unexplained discrepancies.
     pool.query<UsageRow>(
-      `SELECT user_id, input_tokens, output_tokens
-       FROM ai_token_usage
-       WHERE year_month = $1`,
+      `SELECT u.user_id, u.input_tokens, u.output_tokens
+       FROM ai_token_usage u
+       JOIN users usr ON usr.id = u.user_id AND usr.status = 'active'
+       WHERE u.year_month = $1`,
       [yearMonth],
     ),
     pool.query<BudgetRow>(
