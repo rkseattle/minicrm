@@ -5,6 +5,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import {
   setOrgTokenBudgetSchema,
   setUserTokenBudgetSchema,
@@ -44,7 +45,14 @@ export async function setUserTokenBudgetHandler(req: Request, res: Response): Pr
     return;
   }
 
-  const userId = req.params['userId'] as string; // Express path param is always string here
+  const userIdResult = z.string().uuid().safeParse(req.params['userId']);
+  if (!userIdResult.success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid user ID format' } });
+    return;
+  }
+  const userId = userIdResult.data;
   const actor = { id: req.user!.id, name: req.user!.name };
   await setUserTokenBudget(userId, parsed.data, actor);
   res.status(200).json({ user_id: userId, monthly_limit: parsed.data.monthly_limit });
