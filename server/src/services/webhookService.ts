@@ -160,7 +160,8 @@ export interface WebhookSubscriptionRow {
   events: string[];
   secret_hash: string;
   status: 'active' | 'failed' | 'disabled';
-  created_by: string;
+  /** NULL when the creating user has been deleted (MINCRM-505) */
+  created_by: string | null;
   created_at: Date;
 }
 

@@ -216,3 +216,26 @@ describe('pruneOldJobs', () => {
     expect(found).not.toBeNull();
   });
 });
+
+// ── 4. FK ON DELETE SET NULL — user deletion preserves import history (MINCRM-505) ──
+
+describe('import_jobs.created_by FK — ON DELETE SET NULL', () => {
+  it('preserves import_jobs row with created_by = NULL when the owning user is deleted', async () => {
+    const ephemeralUser = await createUser({
+      email: `${FILE_PREFIX}-ephemeral@example.com`,
+      name: 'Ephemeral Importer',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+
+    const job = await createJob('contacts', 5, ephemeralUser.id);
+
+    // Hard-delete the user — this previously cascaded and destroyed the job row
+    await pool.query('DELETE FROM users WHERE id = $1', [ephemeralUser.id]);
+
+    const found = await getJob(job.id);
+    expect(found).not.toBeNull();
+    expect(found!.created_by).toBeNull();
+  });
+});
