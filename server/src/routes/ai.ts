@@ -1,6 +1,7 @@
 /**
- * AI administration routes — provider, model, and API key configuration.
- * All routes require authentication and the admin role.
+ * AI administration routes — provider, model, API key configuration, and token budgets.
+ * Admin-scoped routes (/admin/ai/*) require authentication and the admin role.
+ * User-scoped routes (/ai/*) require authentication only.
  *
  * Feature flag exemption: these routes are NOT gated by requireFeatureEnabled('ai_features').
  * They are the admin control plane for the AI toggle — gating them behind the flag they
@@ -9,7 +10,7 @@
  *
  * Future AI feature routes (NLI, suggestions, etc.) belong in a separate
  * router mounted at /api/v1/ai that uses requireAiEnabled middleware.
- * (MINCRM-457)
+ * (MINCRM-457, MINCRM-458)
  */
 
 import { Router } from 'express';
@@ -23,6 +24,12 @@ import {
   setAiDpaAcknowledgmentHandler,
   testAiConnectionHandler,
 } from '../controllers/aiConfigController.js';
+import {
+  getAiTokenBudgetsHandler,
+  setOrgTokenBudgetHandler,
+  setUserTokenBudgetHandler,
+  getMyTokenBudgetStatusHandler,
+} from '../controllers/aiTokenBudgetController.js';
 
 const router = Router();
 
@@ -213,5 +220,126 @@ router.post(
   requireRole('admin'),
   asyncHandler(testAiConnectionHandler),
 );
+
+/**
+ * @openapi
+ * /admin/ai/token-budgets:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get org token budget, per-user overrides, and current-month consumption
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Token budget summary with per-user breakdown
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/token-budgets',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getAiTokenBudgetsHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/token-budgets/org:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Set the org-wide monthly token limit
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [monthly_limit]
+ *             properties:
+ *               monthly_limit:
+ *                 type: integer
+ *                 minimum: 0
+ *                 description: 0 means unlimited (no enforcement)
+ *     responses:
+ *       200:
+ *         description: Updated org monthly limit
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/token-budgets/org',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setOrgTokenBudgetHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/token-budgets/users/{userId}:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Set or remove a per-user monthly token limit override
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [monthly_limit]
+ *             properties:
+ *               monthly_limit:
+ *                 type: integer
+ *                 minimum: 0
+ *                 nullable: true
+ *                 description: null removes the override so the user inherits the org default
+ *     responses:
+ *       200:
+ *         description: Updated per-user limit
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/token-budgets/users/:userId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setUserTokenBudgetHandler),
+);
+
+/**
+ * @openapi
+ * /ai/token-budget/me:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the calling user's token budget status for the current month
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Token budget status (limit, used, percentage, status)
+ *       401:
+ *         description: Unauthenticated
+ */
+router.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudgetStatusHandler));
 
 export default router;
