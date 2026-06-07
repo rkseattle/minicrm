@@ -23,6 +23,7 @@ import {
 } from '../services/dealService.js';
 import { updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
 const FILE_PREFIX = 'deal-svc';
@@ -46,6 +47,7 @@ const BASE_DEAL = {
 
 let ownerId: string;
 let accountId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   await pool.query(
@@ -75,6 +77,7 @@ beforeAll(async () => {
     ['Test Account', ownerId],
   );
   accountId = accountResult.rows[0].id;
+  defaultPipelineId = await getDefaultPipelineId();
 });
 
 beforeEach(async () => {
@@ -238,9 +241,10 @@ describe('createDeal', () => {
 describe('DB constraints — deals', () => {
   it('rejects a deal with a null name (NOT NULL)', async () => {
     await expect(
-      pool.query(`INSERT INTO deals (name, stage, owner_id) VALUES (NULL, 'Prospecting', $1)`, [
-        ownerId,
-      ]),
+      pool.query(
+        `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES (NULL, 'Prospecting', $1, $2)`,
+        [ownerId, defaultPipelineId],
+      ),
     ).rejects.toThrow();
   });
 
@@ -249,8 +253,8 @@ describe('DB constraints — deals', () => {
     // custom stage names. The pipelineStageService.getStageNames() list is the
     // authoritative allowlist — enforced in the deal controller, not in the DB.
     const result = await pool.query(
-      `INSERT INTO deals (name, stage, owner_id) VALUES ('Custom Stage Deal', 'Discovery', $1) RETURNING id`,
-      [ownerId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Custom Stage Deal', 'Discovery', $1, $2) RETURNING id`,
+      [ownerId, defaultPipelineId],
     );
     expect(result.rows[0].id).toBeTruthy();
     // Clean up
@@ -858,5 +862,50 @@ describe('exportDealsForCsv — currency field', () => {
     await createDeal({ ...BASE_DEAL, currency: 'AUD', owner_id: ownerId });
     const rows = await exportDealsForCsv({ ownerId });
     expect(rows[0].currency).toBe('AUD');
+  });
+});
+
+// ── deals.pipeline_id NOT NULL constraint (MINCRM-504) ────────────────────────
+
+describe('deals.pipeline_id NOT NULL constraint', () => {
+  it('rejects a raw INSERT with pipeline_id = NULL at the DB level', async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO deals (name, stage, owner_id, pipeline_id)
+         VALUES ('No Pipeline Deal', 'Prospecting', $1, NULL)`,
+        [ownerId],
+      ),
+    ).rejects.toThrow(/not-null constraint|null value in column "pipeline_id"/i);
+  });
+});
+
+// ── set_updated_at trigger (MINCRM-503) ──────────────────────────────────────
+
+describe('set_updated_at trigger — deals', () => {
+  it('automatically advances updated_at on UPDATE', async () => {
+    const deal = await createDeal({ ...BASE_DEAL, owner_id: ownerId });
+
+    const before = await pool.query<{ updated_at: Date }>(
+      'SELECT updated_at FROM deals WHERE id = $1',
+      [deal.id],
+    );
+    const updatedAtBefore = before.rows[0].updated_at;
+
+    // A small sleep ensures clock_timestamp() advances past the inserted value.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await updateDeal(
+      deal.id,
+      { name: 'Trigger Test Updated', version: deal.version },
+      { id: ownerId, name: 'Test' },
+    );
+
+    const after = await pool.query<{ updated_at: Date }>(
+      'SELECT updated_at FROM deals WHERE id = $1',
+      [deal.id],
+    );
+    const updatedAtAfter = after.rows[0].updated_at;
+
+    expect(updatedAtAfter.getTime()).toBeGreaterThan(updatedAtBefore.getTime());
   });
 });
