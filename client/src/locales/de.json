@@ -1899,6 +1899,40 @@
       "green": "Datenlage: Sicher",
       "amber": "Datenlage: Überprüfung erforderlich",
       "red": "Datenlage: Handlungsbedarf"
+    },
+    "tokenBudgets": {
+      "heading": "Token-Budgets",
+      "description": "Legen Sie monatliche Token-Limits fest, um KI-Nutzungskosten zu kontrollieren. Das Token-Tracking ist näherungsweise (±5 %). Administratoren sind von benutzerspezifischen Limits ausgenommen, werden aber in die Gesamtsummen der Organisation einbezogen.",
+      "orgLimitLabel": "Monatliches Organisations-Limit",
+      "orgLimitHint": "Kombinierte Eingabe- und Ausgabe-Tokens pro Monat für alle Benutzer. 0 für unbegrenzt.",
+      "orgLimitPlaceholder": "0 (unbegrenzt)",
+      "orgLimitSave": "Limit speichern",
+      "orgLimitSaveSuccess": "Organisations-Token-Limit gespeichert.",
+      "orgLimitSaveError": "Token-Limit konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "loadError": "Token-Budget-Daten konnten nicht geladen werden. Bitte erneut versuchen.",
+      "usersTableHeading": "Nutzung im aktuellen Monat",
+      "tableUser": "Benutzer",
+      "tableRole": "Rolle",
+      "tableLimit": "Limit",
+      "tableUsed": "Verbraucht",
+      "tableUsage": "Nutzung",
+      "tableOverride": "Benutzerdefiniert",
+      "unlimited": "Unbegrenzt",
+      "orgDefault": "Org.-Standard",
+      "removeOverride": "Entfernen",
+      "saveOverride": "Speichern",
+      "overridePlaceholder": "Token-Limit",
+      "overrideSaveSuccess": "Benutzer-Token-Limit gespeichert.",
+      "overrideSaveError": "Benutzer-Token-Limit konnte nicht gespeichert werden.",
+      "statusOk": "OK",
+      "statusWarning": "Warnung",
+      "statusExceeded": "Überschritten",
+      "orgTotal": "({{total}} Token gesamt org)",
+      "noUsers": "Keine aktiven Benutzer."
     }
+  },
+  "aiTokenBudget": {
+    "warning": "Sie haben {{percentage}} % Ihres monatlichen KI-Token-Budgets verbraucht. Kontaktieren Sie Ihren Administrator, wenn Sie ein höheres Limit benötigen.",
+    "exceeded": "Sie haben Ihr monatliches KI-Limit erreicht — kontaktieren Sie Ihren Administrator, um es zu erhöhen"
   }
 }

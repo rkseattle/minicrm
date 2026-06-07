@@ -1899,6 +1899,40 @@
       "green": "数据安全态势：安全",
       "amber": "数据安全态势：需审查",
       "red": "数据安全态势：需立即处理"
+    },
+    "tokenBudgets": {
+      "heading": "Token 预算",
+      "description": "设置每月 Token 限额以控制 AI 使用成本。Token 追踪为近似值（±5%）。管理员不受用户级限额约束，但计入组织总量。",
+      "orgLimitLabel": "组织月度限额",
+      "orgLimitHint": "所有用户每月的输入和输出 Token 总量。设为 0 表示不限制。",
+      "orgLimitPlaceholder": "0（不限制）",
+      "orgLimitSave": "保存限额",
+      "orgLimitSaveSuccess": "组织 Token 限额已保存。",
+      "orgLimitSaveError": "保存 Token 限额失败，请重试。",
+      "loadError": "加载 Token 预算数据失败，请重试。",
+      "usersTableHeading": "本月使用情况",
+      "tableUser": "用户",
+      "tableRole": "角色",
+      "tableLimit": "限额",
+      "tableUsed": "已用",
+      "tableUsage": "使用率",
+      "tableOverride": "自定义",
+      "unlimited": "不限制",
+      "orgDefault": "组织默认",
+      "removeOverride": "移除",
+      "saveOverride": "保存",
+      "overridePlaceholder": "Token 限额",
+      "overrideSaveSuccess": "用户 Token 限额已保存。",
+      "overrideSaveError": "保存用户 Token 限额失败。",
+      "statusOk": "正常",
+      "statusWarning": "警告",
+      "statusExceeded": "已超限",
+      "orgTotal": "（组织总计 {{total}} 个令牌）",
+      "noUsers": "没有活跃用户。"
     }
+  },
+  "aiTokenBudget": {
+    "warning": "您已使用每月 AI Token 预算的 {{percentage}}%。如需提高限额，请联系管理员。",
+    "exceeded": "您已达到每月 AI 限额——请联系管理员以提高限额"
   }
 }
