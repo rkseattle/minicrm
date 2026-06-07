@@ -296,6 +296,27 @@ export class NavPage {
       layout === 'top-mobile'
         ? 'nav-top-admin-section-divider-mobile'
         : `nav-${layout}-admin-section-divider`;
+
+    // The divider is only rendered once the auth query resolves and the user's
+    // role is confirmed as 'admin' — visibleLinks filters out adminOnly links
+    // while user is null (loading). networkidle on page.goto does not guarantee
+    // React has committed the auth state. Wait for the Users nav link (the first
+    // admin-only link, which triggers the divider render) to appear in the DOM
+    // before resolving the divider locator. (MINCRM-457)
+    const usersTestId = layout === 'top-mobile' ? 'nav-top-users-mobile' : `nav-${layout}-users`;
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: usersTestId },
+          { type: 'css', value: `[data-testid="${usersTestId}"]` },
+        ],
+        {
+          intent: `Users admin nav link confirming auth state has resolved and admin links are rendered`,
+          fallbackTimeout: 15_000,
+        },
+      )
+      .resolve();
+
     return this.page
       .locate(
         [
@@ -304,9 +325,6 @@ export class NavPage {
         ],
         {
           intent: `administration section divider in the ${layout} nav layout`,
-          // The nav layout is set via API and the page navigated with networkidle,
-          // but React may still be committing the new layout subtree. Allow extra
-          // time for the component to mount before exhausting strategies.
           fallbackTimeout: 5_000,
         },
       )
