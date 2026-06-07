@@ -579,6 +579,124 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     system_flag: true,
     active_user_count: 0,
   },
+  // AI sub-feature flags (MINCRM-460) — all support role overrides
+  {
+    flag_key: 'ai_nli_page',
+    label: 'NLI Page',
+    description: 'Natural language interface page.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_activity_summarizer',
+    label: 'Activity Summarizer',
+    description: 'AI activity summaries.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_email_draft',
+    label: 'Email Draft',
+    description: 'AI email drafting.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_task_suggestions',
+    label: 'Task Suggestions',
+    description: 'AI task suggestions.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_contact_enrichment',
+    label: 'Contact Enrichment',
+    description: 'AI contact enrichment.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_duplicate_explanation',
+    label: 'Duplicate Explanation',
+    description: 'AI duplicate explanation.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_lead_score_narrative',
+    label: 'Lead Score Narrative',
+    description: 'AI lead score narrative.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_deal_health_check',
+    label: 'Deal Health Check',
+    description: 'AI deal health check.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
+  {
+    flag_key: 'ai_stage_advancement',
+    label: 'Stage Advancement Suggestion',
+    description: 'AI stage advancement suggestion.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    active_user_count: 0,
+  },
 ];
 
 /** Default handlers — can be overridden in individual tests with server.use() */
@@ -2397,6 +2515,42 @@ export const handlers = [
     return HttpResponse.json({
       ok: false,
       message: 'No API key configured. Enter an API key to test.',
+    });
+  }),
+
+  // ── AI token budget handlers (MINCRM-458) ──────────────────────────────────
+
+  /** AI token budgets: GET /api/v1/admin/ai/token-budgets */
+  http.get('/api/v1/admin/ai/token-budgets', () => {
+    return HttpResponse.json({
+      org_monthly_limit: 0,
+      org_used_this_month: 0,
+      users: [],
+    });
+  }),
+
+  /** AI token budgets: PATCH /api/v1/admin/ai/token-budgets/org */
+  http.patch('/api/v1/admin/ai/token-budgets/org', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({ monthly_limit: body['monthly_limit'] ?? 0 });
+  }),
+
+  /** AI token budgets: PATCH /api/v1/admin/ai/token-budgets/users/:userId */
+  http.patch('/api/v1/admin/ai/token-budgets/users/:userId', async ({ request, params }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      user_id: params['userId'],
+      monthly_limit: body['monthly_limit'] ?? null,
+    });
+  }),
+
+  /** AI token budget status: GET /api/v1/ai/token-budget/me */
+  http.get('/api/v1/ai/token-budget/me', () => {
+    return HttpResponse.json({
+      limit: null,
+      used: 0,
+      percentage: null,
+      status: 'ok',
     });
   }),
 ];
