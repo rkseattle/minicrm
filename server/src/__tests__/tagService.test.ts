@@ -17,6 +17,7 @@ import {
   detachTag,
 } from '../services/tagService.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
 const FILE_PREFIX = 'tag-svc';
@@ -33,6 +34,7 @@ let ownerId: string;
 let contactId: string;
 let accountId: string;
 let dealId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   await pool.query(
@@ -81,9 +83,11 @@ beforeAll(async () => {
   );
   contactId = contactResult.rows[0].id;
 
+  defaultPipelineId = await getDefaultPipelineId();
+
   const dealResult = await pool.query<{ id: string }>(
-    `INSERT INTO deals (name, stage, owner_id) VALUES ($1, $2, $3) RETURNING id`,
-    ['Tag Test Deal', 'Prospecting', ownerId],
+    `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+    ['Tag Test Deal', 'Prospecting', ownerId, defaultPipelineId],
   );
   dealId = dealResult.rows[0].id;
 });

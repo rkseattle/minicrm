@@ -471,5 +471,9 @@ describe('webhook_subscriptions.created_by FK — ON DELETE SET NULL', () => {
     const found = await findWebhookSubscriptionById(subscription.id);
     expect(found).not.toBeNull();
     expect(found!.created_by).toBeNull();
+
+    // Clean up the orphaned subscription (created_by is now NULL so the shared
+    // afterAll cleanup query using WHERE created_by IN (...) would miss it)
+    await pool.query('DELETE FROM webhook_subscriptions WHERE id = $1', [subscription.id]);
   });
 });

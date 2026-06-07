@@ -25,6 +25,7 @@ import {
 } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 import { uid } from './testUtils.js';
 
@@ -50,8 +51,8 @@ const makeContact = () => ({
 });
 
 let ownerId: string;
-
 let accountId: string;
+let defaultPipelineId: string;
 
 beforeAll(async () => {
   await pool.query(
@@ -79,6 +80,7 @@ beforeAll(async () => {
   ownerId = owner.id;
   const account = await createAccount({ name: 'Test Account', owner_id: ownerId });
   accountId = account.id;
+  defaultPipelineId = await getDefaultPipelineId();
 });
 
 beforeEach(async () => {
@@ -1033,10 +1035,10 @@ describe('mergeContacts', () => {
 
     // Create a deal linked to the loser
     const dealResult = await pool.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, account_id, owner_id)
-       VALUES ('Merge Deal', 'Prospecting', $1, $2)
+      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id)
+       VALUES ('Merge Deal', 'Prospecting', $1, $2, $3)
        RETURNING id`,
-      [accountId, ownerId],
+      [accountId, ownerId, defaultPipelineId],
     );
     const dealId = dealResult.rows[0].id;
 

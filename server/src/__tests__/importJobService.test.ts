@@ -237,5 +237,9 @@ describe('import_jobs.created_by FK — ON DELETE SET NULL', () => {
     const found = await getJob(job.id);
     expect(found).not.toBeNull();
     expect(found!.created_by).toBeNull();
+
+    // Clean up the orphaned job (created_by is now NULL; explicit removal since
+    // pruneOldJobs only targets rows older than 7 days)
+    await pool.query('DELETE FROM import_jobs WHERE id = $1', [job.id]);
   });
 });
