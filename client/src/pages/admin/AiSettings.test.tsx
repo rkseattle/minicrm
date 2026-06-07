@@ -236,6 +236,7 @@ describe('AiSettings — DPA acknowledgment', () => {
       expect(screen.getByTestId('ai-dpa-acknowledged-state')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('ai-dpa-warning-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ai-dpa-checkbox')).not.toBeInTheDocument();
   });
 
   it('shows self-hosted notice and hides checkbox in self_hosted mode', async () => {

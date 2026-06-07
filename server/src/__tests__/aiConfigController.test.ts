@@ -291,4 +291,18 @@ describe('POST /admin/ai/test-connection', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('returns 400 when deployment_mode is private_endpoint without base_url', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/ai/test-connection')
+      .set('Cookie', adminCookie)
+      .send({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-20250514',
+        deployment_mode: 'private_endpoint',
+        base_url: '',
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
 });

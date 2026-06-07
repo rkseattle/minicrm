@@ -252,6 +252,35 @@ describe('setAiConfig', () => {
     expect(unchanged.dpa_acknowledged).toBe(true);
   });
 
+  it('writes an audit entry when the API key is rotated', async () => {
+    await setAiConfig(
+      {
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-20250514',
+        deployment_mode: 'cloud_api',
+        base_url: '',
+        custom_dpa_url: '',
+        api_key: 'sk-ant-new-key',
+      },
+      ACTOR,
+    );
+
+    const row = await pool.query<{
+      field_name: string;
+      old_value: string | null;
+      new_value: string | null;
+    }>(
+      `SELECT field_name, old_value, new_value
+       FROM audit_log
+       WHERE record_type = 'ai_settings' AND field_name = 'api_key'
+       ORDER BY id DESC LIMIT 1`,
+    );
+    expect(row.rows).toHaveLength(1);
+    // Values must be null — the audit entry records the fact of a change, never the key.
+    expect(row.rows[0].old_value).toBeNull();
+    expect(row.rows[0].new_value).toBeNull();
+  });
+
   it('persists base_url for private_endpoint mode', async () => {
     const config = await setAiConfig(
       {
