@@ -1,8 +1,9 @@
 /**
  * FeatureFlagsSettings — Admin feature flag registry management.
- * Flags are grouped by category. Supports per-role override toggles for
- * reporting and csv_export. Changes require confirmation and write to the audit log.
- * (MINCRM-463)
+ * Flags are grouped by category. Supports per-role override toggles for flags
+ * listed in ROLE_OVERRIDE_FLAG_KEYS (reporting, csv_export, and all AI sub-features).
+ * Changes require confirmation and write to the audit log.
+ * (MINCRM-463, MINCRM-460)
  */
 
 import { useState } from 'react';

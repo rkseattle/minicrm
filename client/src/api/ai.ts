@@ -1,8 +1,7 @@
 /**
- * AI configuration API module.
- * Wraps the admin AI configuration endpoints.
- * All calls require admin authentication.
- * (MINCRM-457)
+ * AI configuration and token budget API module.
+ * Wraps admin AI configuration and token budget endpoints.
+ * (MINCRM-457, MINCRM-458)
  */
 
 import apiClient from './axiosInstance.js';
@@ -13,6 +12,10 @@ import type {
   SetAiDpaAcknowledgmentInput,
   TestAiConnectionInput,
   TestAiConnectionResponse,
+  AiTokenBudgetsResponse,
+  AiTokenBudgetStatusResponse,
+  SetOrgTokenBudgetInput,
+  SetUserTokenBudgetInput,
 } from '@shared/schemas/settingsSchema.js';
 
 /** React Query cache key for the AI configuration */
@@ -66,5 +69,60 @@ export async function testAiConnection(
     '/admin/ai/test-connection',
     params,
   );
+  return response.data;
+}
+
+// ── Token budget API (MINCRM-458) ─────────────────────────────────────────────
+
+/** React Query cache key for the admin AI token budgets summary */
+export const AI_TOKEN_BUDGETS_QUERY_KEY = ['admin', 'ai', 'token-budgets'] as const;
+
+/** React Query cache key for the current user's budget status */
+export const MY_TOKEN_BUDGET_QUERY_KEY = ['ai', 'token-budget', 'me'] as const;
+
+/**
+ * Returns the org token budget, per-user overrides, and current-month consumption.
+ * Admin only.
+ */
+export async function getAiTokenBudgets(): Promise<AiTokenBudgetsResponse> {
+  const response = await apiClient.get<AiTokenBudgetsResponse>('/admin/ai/token-budgets');
+  return response.data;
+}
+
+/**
+ * Sets the org-wide monthly token limit.
+ * 0 means unlimited (no enforcement). Admin only.
+ */
+export async function setOrgTokenBudget(
+  input: SetOrgTokenBudgetInput,
+): Promise<{ monthly_limit: number }> {
+  const response = await apiClient.patch<{ monthly_limit: number }>(
+    '/admin/ai/token-budgets/org',
+    input,
+  );
+  return response.data;
+}
+
+/**
+ * Sets or removes a per-user monthly token limit override.
+ * Pass monthly_limit: null to remove the override (user inherits org default). Admin only.
+ */
+export async function setUserTokenBudget(
+  userId: string,
+  input: SetUserTokenBudgetInput,
+): Promise<{ user_id: string; monthly_limit: number | null }> {
+  const response = await apiClient.patch<{ user_id: string; monthly_limit: number | null }>(
+    `/admin/ai/token-budgets/users/${userId}`,
+    input,
+  );
+  return response.data;
+}
+
+/**
+ * Returns the calling user's token budget status for the current calendar month.
+ * Admins always receive status='ok' with limit=null.
+ */
+export async function getMyTokenBudgetStatus(): Promise<AiTokenBudgetStatusResponse> {
+  const response = await apiClient.get<AiTokenBudgetStatusResponse>('/ai/token-budget/me');
   return response.data;
 }
