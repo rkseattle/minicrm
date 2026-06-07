@@ -50,9 +50,15 @@ exports.up = (pgm) => {
  */
 exports.down = (pgm) => {
   // ── webhook_subscriptions.created_by ────────────────────────────────────────
-  // Restore NOT NULL (requires no NULL values; safe because SET NULL only fires
-  // when a user is deleted, and restoring NOT NULL means users cannot be deleted
-  // while they own subscriptions — matching the original implicit RESTRICT behaviour).
+  // Restoring NOT NULL requires no existing NULL values. If any user was deleted
+  // after the up migration ran, SET NULL will have produced NULL rows and this
+  // statement will fail. A manual UPDATE ... SET created_by = <fallback_id>
+  // WHERE created_by IS NULL is required before rolling back in that case.
+  pgm.sql(`
+    UPDATE webhook_subscriptions
+    SET created_by = (SELECT id FROM users ORDER BY created_at LIMIT 1)
+    WHERE created_by IS NULL
+  `);
   pgm.sql(`
     ALTER TABLE webhook_subscriptions
       DROP CONSTRAINT webhook_subscriptions_created_by_fkey,
@@ -62,6 +68,11 @@ exports.down = (pgm) => {
   `);
 
   // ── import_jobs.created_by ──────────────────────────────────────────────────
+  pgm.sql(`
+    UPDATE import_jobs
+    SET created_by = (SELECT id FROM users ORDER BY created_at LIMIT 1)
+    WHERE created_by IS NULL
+  `);
   pgm.sql(`
     ALTER TABLE import_jobs
       DROP CONSTRAINT import_jobs_created_by_fkey,

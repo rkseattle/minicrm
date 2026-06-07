@@ -63,7 +63,10 @@ exports.up = (pgm) => {
   `);
 
   // Attach a BEFORE UPDATE trigger to every table with an updated_at column.
+  // DROP … IF EXISTS before CREATE makes the block idempotent on re-runs or
+  // partial failures, matching the same defensive pattern used in exports.down.
   for (const table of TABLES) {
+    pgm.sql(`DROP TRIGGER IF EXISTS ${table}_set_updated_at ON ${table};`);
     pgm.sql(`
       CREATE TRIGGER ${table}_set_updated_at
         BEFORE UPDATE ON ${table}
