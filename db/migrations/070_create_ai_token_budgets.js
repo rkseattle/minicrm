@@ -35,8 +35,8 @@ exports.up = (pgm) => {
       references: '"users"',
       onDelete: 'CASCADE',
     },
-    // 0 = disabled (no AI calls allowed). NULL is never stored — use 0 for unlimited-disable.
-    // A very large value (e.g. 2_000_000_000) represents "unlimited" for practical purposes.
+    // 0 = unlimited (no enforcement). Set a positive integer to impose a monthly cap.
+    // NULL is never stored in this column.
     monthly_limit: {
       type: 'integer',
       notNull: true,

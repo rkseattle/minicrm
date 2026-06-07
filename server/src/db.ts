@@ -6,7 +6,12 @@
 import pg from 'pg';
 import 'dotenv/config';
 
-const { Pool } = pg;
+const { Pool, types } = pg;
+
+// pg returns bigint (OID 20) as string by default to avoid JS number precision loss
+// above 2^53. All token counts and budget limits in this app fit safely within Number.MAX_SAFE_INTEGER
+// (~9 × 10^15), so we parse them as integers for consistent numeric arithmetic.
+types.setTypeParser(20, (val: string) => parseInt(val, 10));
 
 /** Default port for PostgreSQL */
 const DEFAULT_DB_PORT = 5432;
