@@ -226,6 +226,32 @@ export class AdminTagsPage {
   }
 
   /**
+   * Waits for the rename save button to become hidden (form closed), then returns true.
+   * Returns false if the button is still visible after the timeout.
+   * Prefer this over renameSaveButtonIsVisible for post-save assertions — it avoids
+   * the race between networkidle and the mutation response on slow connections.
+   *
+   * @param tagId - Tag UUID.
+   * @param timeout - Maximum wait in milliseconds (default 10 s).
+   */
+  async waitForRenameSaveGone(tagId: string, timeout = 10_000): Promise<boolean> {
+    try {
+      await this.page.waitFor(
+        [
+          { type: 'testId', value: `rename-save-${tagId}` },
+          { type: 'css', value: `[data-testid="rename-save-${tagId}"]` },
+        ],
+        'hidden',
+        { intent: 'save button hidden after successful rename' },
+        timeout,
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Returns the current page URL.
    */
   url(): string {

@@ -90,15 +90,13 @@ export async function renameTagViaUI(
   await adminTagsPage.fillRenameInput(tagId, newName);
   await adminTagsPage.clickRenameSave(tagId);
 
-  // After a successful save the rename form closes and the row reverts to
-  // read mode — the tag row itself remains visible.
-  await context.page.waitForLoadState('networkidle');
-
-  // The rename form's save button disappears on success.
-  const renameFormGone = !(await adminTagsPage.renameSaveButtonIsVisible(tagId));
+  // Wait for the rename form to close (save button hidden) rather than sampling
+  // after networkidle — on mobile viewports networkidle can resolve before the
+  // mutation response arrives, leaving the button still visible.
+  const saved = await adminTagsPage.waitForRenameSaveGone(tagId);
 
   const finalUrl = adminTagsPage.url();
-  return { saved: renameFormGone, finalUrl };
+  return { saved, finalUrl };
 }
 
 // ---------------------------------------------------------------------------

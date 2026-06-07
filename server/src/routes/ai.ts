@@ -326,6 +326,15 @@ router.patch(
   asyncHandler(setUserTokenBudgetHandler),
 );
 
+export default router;
+
+// ── User-facing AI router ──────────────────────────────────────────────────────
+// Mounted exclusively at /api/v1/ai. Kept separate from the admin router so
+// that mounting the admin router at /api/v1/admin/ai does not accidentally
+// expose admin-only handlers at /api/v1/ai/*. (MINCRM-458)
+
+const aiUserRouter = Router();
+
 /**
  * @openapi
  * /ai/token-budget/me:
@@ -340,6 +349,6 @@ router.patch(
  *       401:
  *         description: Unauthenticated
  */
-router.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudgetStatusHandler));
+aiUserRouter.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudgetStatusHandler));
 
-export default router;
+export { aiUserRouter };
