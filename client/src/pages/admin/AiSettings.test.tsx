@@ -305,3 +305,106 @@ describe('AiSettings — DPA status badge', () => {
     });
   });
 });
+
+// ── Token budget section (MINCRM-458) ─────────────────────────────────────────
+
+describe('AiSettings — token budget section', () => {
+  it('renders the token budget section after data loads', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-token-budgets-section')).toBeInTheDocument();
+    });
+  });
+
+  it('shows loading skeleton while budget data is fetching', async () => {
+    server.use(
+      http.get(
+        '/api/v1/admin/ai/token-budgets',
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    // The page-level AI config fetch must complete before TokenBudgetSection renders.
+    // Wait for the page to exit its top-level loading gate, then check the section skeleton.
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-settings-loading')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-token-budgets-loading')).toBeInTheDocument();
+  });
+
+  it('shows error state when budget fetch fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/token-budgets', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-token-budgets-error')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the org limit input and save button', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-org-monthly-limit-input')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-org-limit-save-button')).toBeInTheDocument();
+  });
+
+  it('renders per-user table when users are returned', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/token-budgets', () =>
+        HttpResponse.json({
+          org_monthly_limit: 100_000,
+          org_used_this_month: 15_000,
+          users: [
+            {
+              user_id: 'uid-1',
+              user_name: 'Alice Admin',
+              user_email: 'alice@example.com',
+              user_role: 'admin',
+              limit: null,
+              used: 5000,
+              percentage: null,
+              status: 'ok',
+            },
+            {
+              user_id: 'uid-2',
+              user_name: 'Bob Rep',
+              user_email: 'bob@example.com',
+              user_role: 'rep',
+              limit: 100_000,
+              used: 10_000,
+              percentage: 10,
+              status: 'ok',
+            },
+          ],
+        }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-budget-users-table')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('budget-row-uid-1')).toBeInTheDocument();
+    expect(screen.getByTestId('budget-row-uid-2')).toBeInTheDocument();
+  });
+
+  it('shows success message after saving org limit', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-org-monthly-limit-input')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('ai-org-monthly-limit-input'), {
+      target: { value: '500000' },
+    });
+    fireEvent.click(screen.getByTestId('ai-org-limit-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-org-limit-save-success')).toBeInTheDocument();
+    });
+  });
+});

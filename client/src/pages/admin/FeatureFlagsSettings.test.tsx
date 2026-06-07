@@ -111,6 +111,33 @@ describe('FeatureFlagsSettings', () => {
     expect(screen.queryByTestId('feature-flag-role-overrides-notes')).not.toBeInTheDocument();
   });
 
+  // MINCRM-460: AI sub-feature flags also render role override matrix
+  it('renders role override matrix for AI sub-feature flags', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-role-overrides-ai_nli_page')).toBeInTheDocument();
+    });
+
+    // Admin and rep checkboxes should be present for ai_nli_page
+    expect(screen.getByTestId('feature-flag-role-override-ai_nli_page-admin')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-flag-role-override-ai_nli_page-rep')).toBeInTheDocument();
+  });
+
+  it('AI sub-feature role override checkboxes reflect fixture values', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('feature-flag-role-override-ai_nli_page-admin'),
+      ).toBeInTheDocument();
+    });
+
+    // Fixture has admin=true, rep=true for all AI sub-feature flags
+    expect(screen.getByTestId('feature-flag-role-override-ai_nli_page-admin')).toBeChecked();
+    expect(screen.getByTestId('feature-flag-role-override-ai_nli_page-rep')).toBeChecked();
+  });
+
   it('role override checkboxes reflect role_overrides values', async () => {
     renderWithProviders(<FeatureFlagsSettings />);
 
