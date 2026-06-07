@@ -15,6 +15,9 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 6. [Automation Rules](#6-automation-rules)
 7. [Onboarding Checklist](#7-onboarding-checklist)
 8. [Feature Flags](#8-feature-flags)
+9. [AI Configuration](#9-ai-configuration)
+10. [AI Token Budgets](#10-ai-token-budgets)
+11. [AI Role-Based Feature Access](#11-ai-role-based-feature-access)
 
 ---
 
@@ -551,3 +554,112 @@ the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
   new provider before the data posture indicator turns green.
 - The master toggle and configuration are separate operations. You can configure AI
   without enabling it globally, which is useful for staging your setup before rollout.
+
+---
+
+## 10. AI Token Budgets
+
+> **Feature flags:** `ai_features`
+
+Token budgets let you control how many AI tokens are consumed per user per month. All
+counts are approximate (±5% due to provider-side rounding). Budgets reset automatically
+at the start of each calendar month — no manual intervention is required.
+
+### How limits work
+
+| Limit value | Behaviour                                                    |
+| ----------- | ------------------------------------------------------------ |
+| `0`         | Unlimited — no enforcement. Default for new installations.   |
+| `> 0`       | Monthly cap (input + output tokens combined) for that scope. |
+
+**Org limit:** a shared cap applied to every Rep who does not have a personal override.
+Admins are exempt from per-user enforcement and are never blocked, but their usage is
+counted in org-wide totals.
+
+**Per-user override:** when set, the per-user value replaces the org default for that
+specific Rep. Set to **Org default** (null) to remove the override and fall back to the
+org limit.
+
+### Status thresholds
+
+| Status       | Condition                              |
+| ------------ | -------------------------------------- |
+| **OK**       | Usage is below 80% of the limit        |
+| **Warning**  | Usage is at or above 80% of the limit  |
+| **Exceeded** | Usage is at or above 100% of the limit |
+
+When a Rep's budget is **Exceeded**, their next AI request returns a `429` error with the
+code `AI_BUDGET_EXCEEDED`. A red banner is shown at the top of every page until the budget
+resets at the start of the next month.
+
+When a Rep's budget is in **Warning**, an amber banner appears prompting them to contact
+their admin.
+
+### Tutorial: set the org monthly token limit
+
+1. Go to **Admin Settings → AI → Token Budgets**.
+2. Enter the desired monthly limit in the **Org Monthly Limit** field (e.g. `500000`).
+   Enter `0` to remove the limit.
+3. Click **Save Org Limit**.
+
+All Reps without a personal override will now be subject to this limit.
+
+### Tutorial: set a per-user token limit
+
+1. Go to **Admin Settings → AI → Token Budgets**.
+2. Locate the user in the **Current Month Usage** table.
+3. Enter a value in the **Override** column and click **Save**, or click **Remove** to
+   delete an existing override and return the user to the org default.
+
+### Audit trail
+
+Every change to token budgets is written to the audit log under the `ai_settings` record
+type, with the old and new values. You can review this history in
+**Admin Settings → Data → Audit Log**.
+
+---
+
+## 11. AI Role-Based Feature Access
+
+> **Feature flags:** `ai_nli_page`, `ai_activity_summarizer`, `ai_email_draft`,
+> `ai_task_suggestions`, `ai_contact_enrichment`, `ai_duplicate_explanation`,
+> `ai_lead_score_narrative`, `ai_deal_health_check`, `ai_stage_advancement`
+
+Individual AI sub-features can be enabled or disabled per role. This lets you roll out
+specific AI capabilities to admins first, or restrict certain features to admins only,
+without disabling AI entirely.
+
+### Available AI sub-features
+
+| Flag key                   | Feature                                                    |
+| -------------------------- | ---------------------------------------------------------- |
+| `ai_nli_page`              | Natural-language query page (ask questions in plain text)  |
+| `ai_activity_summarizer`   | Summarize recent activities on a contact, deal, or account |
+| `ai_email_draft`           | Draft outbound emails from a prompt                        |
+| `ai_task_suggestions`      | Suggest follow-up tasks after an activity                  |
+| `ai_contact_enrichment`    | Enrich contact profiles with public data                   |
+| `ai_duplicate_explanation` | Explain why two records were flagged as duplicates         |
+| `ai_lead_score_narrative`  | Narrative explanation of a lead's score                    |
+| `ai_deal_health_check`     | Health assessment and risk flags for a deal                |
+| `ai_stage_advancement`     | Suggested next pipeline stage and supporting rationale     |
+
+### How role overrides interact with the master toggle
+
+1. The `ai_features` master flag must be **on** for any AI feature to function.
+2. Each sub-feature flag has its own on/off toggle. When off, the feature is hidden from
+   all users regardless of role overrides.
+3. When a sub-feature flag is on, role overrides determine which roles can access it.
+   If the **Admin** checkbox is unchecked, admins lose access to that sub-feature too.
+
+> **Note:** By default all AI sub-features are enabled for both Admin and Rep. Changes
+> take effect on the user's next page load (sub-feature access is checked at login).
+
+### Tutorial: restrict an AI sub-feature to admins only
+
+1. Go to **Admin Settings → Features**.
+2. Locate the AI sub-feature flag (e.g. _Natural-language query page_).
+3. In the **Role overrides** column, uncheck **Rep**.
+4. The checkbox saves immediately — no confirmation dialog.
+
+Reps will no longer see that feature on their next page load. Their existing data is not
+affected.
