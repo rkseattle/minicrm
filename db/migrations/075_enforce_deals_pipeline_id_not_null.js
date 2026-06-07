@@ -22,7 +22,21 @@ exports.shorthands = undefined;
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
-  // Backfill any rows that somehow still have a NULL pipeline_id
+  // Guard: raise immediately if no default pipeline exists so the error message
+  // names the root cause rather than surfacing a cryptic NOT NULL violation.
+  pgm.sql(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pipelines WHERE is_default = true) THEN
+        RAISE EXCEPTION
+          'Migration 075 aborted: no row in pipelines has is_default = true. '
+          'Ensure the default pipeline is seeded before running this migration.';
+      END IF;
+    END;
+    $$
+  `);
+
+  // Backfill any rows that somehow still have a NULL pipeline_id.
   pgm.sql(`
     UPDATE deals
     SET pipeline_id = (SELECT id FROM pipelines WHERE is_default = true LIMIT 1)
