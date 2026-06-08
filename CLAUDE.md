@@ -647,6 +647,45 @@ No separate gRPC port — the AuditService is served on the same port as REST vi
 
 ---
 
+## Log Table Retention Policies (MINCRM-522)
+
+Append-only log tables are purged daily at 02:00 by `runRetentionPurge()` in
+`server/src/services/retentionService.ts`, scheduled via `node-cron` in `server.ts`.
+
+| Table                   | Retention window | Timestamp column | Condition                               |
+| ----------------------- | ---------------- | ---------------- | --------------------------------------- |
+| `automation_rule_logs`  | 90 days          | `triggered_at`   | all rows                                |
+| `webhook_delivery_logs` | 30 days          | `delivered_at`   | all rows                                |
+| `import_jobs`           | 180 days         | `created_at`     | `status IN ('complete', 'failed')` only |
+
+In-progress import jobs (`status = 'pending'` or `'processing'`) are never purged regardless of age.
+
+### Autovacuum tuning for burst-write tables
+
+Tables that receive bursts of writes during automation runs use a tighter autovacuum
+scale factor to prevent dead-tuple bloat building up between vacuum cycles.
+Applied in migration 082:
+
+| Table                   | `autovacuum_vacuum_scale_factor` | Reason                                        |
+| ----------------------- | -------------------------------- | --------------------------------------------- |
+| `automation_rule_logs`  | 0.05                             | Burst writes during automation rule execution |
+| `webhook_delivery_logs` | 0.05                             | Burst writes during webhook delivery attempts |
+
+All other tables use the PostgreSQL default of 0.2.
+
+### `automation_rule_logs.triggering_record_type` valid values (MINCRM-516)
+
+Valid values are `'deal'` and `'contact'`. Enforced at the service layer via the
+`AutomationTriggerContext` type in `server/src/services/automationService.ts` and the
+`z.enum(['deal', 'contact'])` in `shared/schemas/automationSchema.ts`.
+
+No DB CHECK constraint is used — following the same rationale as `audit_log.record_type`
+(migration 076): valid values evolve with new trigger entity types, and per-addition
+migrations solely to amend a CHECK constraint create unnecessary churn.
+A column comment (migration 083) documents the valid values for DBA inspection.
+
+---
+
 ## Known Architectural Constraints
 
 - **Automation is fire-and-forget:** always `void fireAutomationTrigger(...)`, never `await`.
