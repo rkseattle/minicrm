@@ -64,7 +64,7 @@ export async function ensureAuditLogPartitions(monthsAhead: number = 3): Promise
     const startLiteral = start.toISOString();
     const endLiteral = end.toISOString();
     await pool.query(
-      `CREATE TABLE IF NOT EXISTS ${name}
+      `CREATE TABLE IF NOT EXISTS "${name}"
          PARTITION OF audit_log
          FOR VALUES FROM ('${startLiteral}') TO ('${endLiteral}')`,
     );
