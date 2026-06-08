@@ -742,6 +742,95 @@ Do not add new values to these ENUM types; handle any extension by adding a sepa
 
 ---
 
+## Polymorphic FK Pattern (MINCRM-510)
+
+Five tables store references to parent CRM entities using a `(type, id)` discriminator
+pair instead of a typed FK column. PostgreSQL FK constraints can only reference a single
+parent table, so this pattern intentionally omits FK constraints. Reference integrity is
+enforced at the application layer.
+
+### Affected tables
+
+| Table                 | Type column                        | Valid type values                       | Orphan cleanup?         |
+| --------------------- | ---------------------------------- | --------------------------------------- | ----------------------- |
+| `attachments`         | `record_type`                      | `contact`, `account`, `deal`, `lead`    | Yes — required          |
+| `custom_field_values` | _(via definition's `entity_type`)_ | `contact`, `account`, `deal`            | Yes — required          |
+| `notes`               | `entity_type`                      | `contact`, `account`, `deal`, `lead`    | Yes — required          |
+| `gdpr_deletion_log`   | `record_type`                      | any erasable entity type                | No — retained by design |
+| `audit_log`           | `record_type`                      | see migration 076 comment for full list | No — retained by design |
+
+### Orphan accumulation
+
+When a parent entity (contact, account, deal, lead) is hard-deleted, rows in the
+polymorphic tables pointing at it are **not** automatically removed. The application
+**must** delete dependent rows before or alongside the parent delete for the three
+cleanup-candidate tables (`attachments`, `custom_field_values`, `notes`).
+
+`audit_log` and `gdpr_deletion_log` rows for deleted records are **retained intentionally**
+— they provide compliance and change-history traceability after the entity no longer exists.
+
+### Orphan detection queries (for DBA maintenance / diagnostics)
+
+```sql
+-- Orphaned attachments (parent entity no longer exists)
+SELECT a.id, a.record_type, a.record_id
+FROM attachments a
+WHERE a.record_type = 'contact' AND NOT EXISTS (SELECT 1 FROM contacts c WHERE c.id = a.record_id)
+UNION ALL
+SELECT a.id, a.record_type, a.record_id
+FROM attachments a
+WHERE a.record_type = 'account' AND NOT EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = a.record_id)
+UNION ALL
+SELECT a.id, a.record_type, a.record_id
+FROM attachments a
+WHERE a.record_type = 'deal' AND NOT EXISTS (SELECT 1 FROM deals d WHERE d.id = a.record_id)
+UNION ALL
+SELECT a.id, a.record_type, a.record_id
+FROM attachments a
+WHERE a.record_type = 'lead' AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.id = a.record_id);
+
+-- Orphaned custom_field_values (entity row no longer exists)
+-- Join to definition to resolve entity_type, then check the appropriate entity table.
+SELECT cfv.id, cfd.entity_type, cfv.record_id
+FROM custom_field_values cfv
+JOIN custom_field_definitions cfd ON cfd.id = cfv.definition_id
+WHERE cfd.entity_type = 'contact' AND NOT EXISTS (SELECT 1 FROM contacts c WHERE c.id = cfv.record_id)
+UNION ALL
+SELECT cfv.id, cfd.entity_type, cfv.record_id
+FROM custom_field_values cfv
+JOIN custom_field_definitions cfd ON cfd.id = cfv.definition_id
+WHERE cfd.entity_type = 'account' AND NOT EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = cfv.record_id)
+UNION ALL
+SELECT cfv.id, cfd.entity_type, cfv.record_id
+FROM custom_field_values cfv
+JOIN custom_field_definitions cfd ON cfd.id = cfv.definition_id
+WHERE cfd.entity_type = 'deal' AND NOT EXISTS (SELECT 1 FROM deals d WHERE d.id = cfv.record_id);
+
+-- Orphaned notes (hard orphans — entity_id references a deleted parent)
+-- Soft-deleted notes (deleted_at IS NOT NULL) are harmless but included here.
+SELECT n.id, n.entity_type, n.entity_id
+FROM notes n
+WHERE n.entity_type = 'contact' AND NOT EXISTS (SELECT 1 FROM contacts c WHERE c.id = n.entity_id)
+UNION ALL
+SELECT n.id, n.entity_type, n.entity_id
+FROM notes n
+WHERE n.entity_type = 'account' AND NOT EXISTS (SELECT 1 FROM accounts ac WHERE ac.id = n.entity_id)
+UNION ALL
+SELECT n.id, n.entity_type, n.entity_id
+FROM notes n
+WHERE n.entity_type = 'deal' AND NOT EXISTS (SELECT 1 FROM deals d WHERE d.id = n.entity_id)
+UNION ALL
+SELECT n.id, n.entity_type, n.entity_id
+FROM notes n
+WHERE n.entity_type = 'lead' AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.id = n.entity_id);
+```
+
+These queries are diagnostic only — no automated purge job exists for these tables.
+For `attachments`, the physical object-storage file (identified by `storage_key`) must
+be deleted from the object store before deleting the row.
+
+---
+
 ## Pre-PR Self-Review Checklist
 
 Real patterns from past findings on this repo:
