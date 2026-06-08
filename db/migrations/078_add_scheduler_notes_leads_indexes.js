@@ -4,10 +4,12 @@
  * Migration 078: Add missing indexes for sequence scheduler, notes soft-delete,
  * and lead conversion queries. (MINCRM-508)
  *
- * 1. sequence_enrollments_status_next_action_idx — partial composite index covering
- *    the scheduler's hot poll: WHERE status = 'active' AND next_action_at <= now().
- *    The existing next_action_at index covers all statuses; this partial index lets
- *    the planner skip completed/unenrolled rows entirely.
+ * 1. sequence_enrollments_status_next_action_idx — partial index on next_action_at
+ *    covering only active enrollments (WHERE status = 'active'). Every row inside
+ *    this index already satisfies status = 'active' via the predicate, so including
+ *    status as an index column would be redundant. The scheduler's query filters
+ *    next_action_at <= now() against the smaller active-only index instead of
+ *    scanning all statuses.
  *
  * 2. notes_entity_active_idx — partial index on (entity_type, entity_id) excluding
  *    soft-deleted notes. The existing notes_entity_idx covers all rows including
@@ -26,7 +28,7 @@ exports.shorthands = undefined;
 exports.up = (pgm) => {
   pgm.sql(`
     CREATE INDEX sequence_enrollments_status_next_action_idx
-      ON sequence_enrollments (status, next_action_at)
+      ON sequence_enrollments (next_action_at)
       WHERE status = 'active';
   `);
 

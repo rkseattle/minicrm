@@ -5,7 +5,7 @@
  * autovacuum for tables with burst write patterns. (MINCRM-522)
  *
  * Indexes added:
- *   automation_rule_logs_outcome_idx    — filtering for failed executions
+ *   automation_rule_logs_outcome_idx    — partial index (WHERE outcome = 'error') for filtering failed executions
  *   webhook_delivery_logs_delivered_at_idx — recent delivery history and purge queries
  *   sequence_enrollment_logs_executed_at_idx — time-range queries on step execution
  *   import_jobs_status_idx             — polling for pending/running jobs
@@ -31,7 +31,8 @@ exports.shorthands = undefined;
 exports.up = (pgm) => {
   pgm.sql(`
     CREATE INDEX automation_rule_logs_outcome_idx
-      ON automation_rule_logs (outcome);
+      ON automation_rule_logs (outcome)
+      WHERE outcome = 'error';
   `);
 
   pgm.sql(`
