@@ -1305,6 +1305,10 @@
       "user": "User",
       "system_settings": "System Settings",
       "custom_report": "Custom Report",
+      "sequence": "Sequence",
+      "sequence_enrollment": "Sequence Enrollment",
+      "feature_flag": "Feature Flag",
+      "ai_settings": "AI Settings",
       "all": "All"
     },
     "filters": {

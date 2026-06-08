@@ -1340,6 +1340,10 @@
       "user": "Benutzer",
       "system_settings": "Systemeinstellungen",
       "custom_report": "Benutzerdefinierter Bericht",
+      "sequence": "Sequenz",
+      "sequence_enrollment": "Sequenzregistrierung",
+      "feature_flag": "Feature-Flag",
+      "ai_settings": "KI-Einstellungen",
       "all": "Alle"
     },
     "filters": {

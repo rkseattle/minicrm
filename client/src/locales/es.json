@@ -1340,6 +1340,10 @@
       "user": "Usuario",
       "system_settings": "Configuración del sistema",
       "custom_report": "Informe personalizado",
+      "sequence": "Secuencia",
+      "sequence_enrollment": "Inscripción en secuencia",
+      "feature_flag": "Indicador de funcionalidad",
+      "ai_settings": "Configuración de IA",
       "all": "Todos"
     },
     "filters": {

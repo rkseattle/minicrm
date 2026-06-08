@@ -1171,6 +1171,10 @@
       "user": "[Üŝër~~]",
       "system_settings": "[Ŝyŝtëm Ŝëttïñgŝ~~~~~]",
       "custom_report": "[Ĉüŝtöm Rëpört~~~~~~]",
+      "sequence": "[Ŝëqüëñcë~~]",
+      "sequence_enrollment": "[Ŝëqüëñcë Ëñröllmëñt~~~~~~~~~]",
+      "feature_flag": "[Fëätürë Flàg~~~~~]",
+      "ai_settings": "[ÄÏ Ŝëttïñgŝ~~~~~]",
       "all": "[Äll~]"
     },
     "filters": {

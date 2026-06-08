@@ -1340,6 +1340,10 @@
       "user": "用户",
       "system_settings": "系统设置",
       "custom_report": "自定义报表",
+      "sequence": "序列",
+      "sequence_enrollment": "序列注册",
+      "feature_flag": "功能标志",
+      "ai_settings": "AI 设置",
       "all": "全部"
     },
     "filters": {
