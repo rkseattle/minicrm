@@ -155,6 +155,11 @@ tags
 gdpr_deletion_log                              ← GDPR Art. 17 erasure tracking
   record_type   record_id   requested_by_id   erasure_scope   completed_at nullable
   UNIQUE on (record_type, record_id)
+  ⚠ Unique constraint assumption: safe only while all record_ids are gen_random_uuid() UUIDs.
+    Re-imports always receive a new UUID, so an erased record can never reappear with the same
+    record_id. If deterministic external IDs are ever introduced this constraint must be
+    revisited — a re-import of a previously erased record followed by a second erasure would
+    fail with a 23505 unique violation. See migration 084. (MINCRM-517)
 
 audit_log.event_type also includes: note_created, note_updated, note_deleted, gdpr_erasure
 audit_log.record_type also includes: lead
