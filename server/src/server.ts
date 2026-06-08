@@ -15,6 +15,7 @@ import { runMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
+import { runRetentionPurge } from './services/retentionService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 
@@ -169,4 +170,16 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => sequenceCron.stop());
   process.once('SIGINT', () => sequenceCron.stop());
+
+  // Log table retention purge — runs daily at 02:00 server time (MINCRM-522).
+  // Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d),
+  // and completed/failed import_jobs (>180d).
+  const retentionCron = cron.schedule('0 2 * * *', () => {
+    logger.info('cron: running log table retention purge');
+    void runRetentionPurge();
+  });
+  logger.info('Log table retention cron scheduled (daily at 02:00)');
+
+  process.once('SIGTERM', () => retentionCron.stop());
+  process.once('SIGINT', () => retentionCron.stop());
 }
