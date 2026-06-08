@@ -127,6 +127,10 @@ const SERIAL_FILES = [
   // (MINCRM-457)
   'src/__tests__/aiConfigService.test.ts',
   'src/__tests__/aiConfigController.test.ts',
+  // smtpSettingsService deletes the smtp_configuration singleton row in one test to
+  // exercise the null-row defaults branch; any concurrent reader sees an empty table
+  // during the DELETE → re-INSERT window. (MINCRM-502)
+  'src/__tests__/smtpSettingsService.test.ts',
 ];
 
 const sharedResolve = {
