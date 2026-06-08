@@ -137,8 +137,10 @@ overdue_task_notifications  activity_id, notified_date  ← dedup guard for emai
 
 notes
   body text   visibility(private|team|public)   author_id → users
-  polymorphic: contact_id nullable, account_id nullable, deal_id nullable, lead_id nullable
-  GIN index on body (pg_trgm full-text search, migration 049)
+  entity_type varchar(16) NOT NULL   entity_id uuid NOT NULL  ← polymorphic discriminator pair
+    entity_type ∈ {contact, account, deal, lead}; no FK constraint (see Polymorphic FK Pattern)
+  deleted_at nullable  ← soft-delete; filter WHERE deleted_at IS NULL in application queries
+  GIN index on body_text (pg_trgm full-text search, partial — excludes soft-deleted rows, migration 079)
 
 custom_fields
   field_type   table_name   column_name   label   required bool
